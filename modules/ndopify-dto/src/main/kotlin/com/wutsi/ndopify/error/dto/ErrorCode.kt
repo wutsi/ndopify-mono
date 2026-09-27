@@ -24,14 +24,18 @@ object ErrorCode {
     val HTTP_AUTHENTICATION_FAILED = "$PREFIX:http:authetication-failed"
     val HTTP_DOWNSTREAM_ERROR = "$PREFIX:http:downstream-error"
 
+    val IDENTITY_CHANGE_ALREADY_PROCEEDED = "$PREFIX:identity-change:already-proceeded"
+    val IDENTITY_CHANGE_NOT_FOUND = "$PREFIX:identity-change:not-found"
+    val IDENTITY_CHANGE_NOT_FOR_MANUAL_REVIEW = "$PREFIX:mobile-change-request:not-for-manual-review"
+
     val IMPORT_ERROR = "$PREFIX:import-error"
 
     val LOCATION_NOT_FOUND = "$PREFIX:location:not-found"
     val LOCATION_FEED_NOT_FOUND = "$PREFIX:location:feed-not-found"
 
-    val MOBILE_CHANGE_REQUEST_NOT_FOUND = "$PREFIX:mobile-change-request:not-found"
-    val MOBILE_CHANGE_REQUEST_ALREADY_PROCEEDED = "$PREFIX:mobile-change-request:already-proceeded"
-    val MOBILE_CHANGE_REQUEST_NOT_FOR_MANUAL_REVIEW = "$PREFIX:mobile-change-request:not-for-manual-review"
+    val MOBILE_CHANGE_ALREADY_PROCEEDED = "$PREFIX:mobile-change:already-proceeded"
+    val MOBILE_CHANGE_NOT_FOUND = "$PREFIX:mobile-change:not-found"
+    val MOBILE_CHANGE_NOT_FOR_MANUAL_REVIEW = "$PREFIX:mobile-change:not-for-manual-review"
 
     val TENANT_NOT_FOUND: String = "$PREFIX:tenant:not-found"
 

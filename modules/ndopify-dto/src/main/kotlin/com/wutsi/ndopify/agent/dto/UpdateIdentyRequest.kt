@@ -8,6 +8,5 @@ data class UpdateIdentyRequest(
     @get:NotEmpty val lastName: String = "",
 
     val identityType: IdentityType = IdentityType.UNKNOWN,
-    @get:NotEmpty val documentPage1Url: String = "",
-    val documentPage2Url: String? = null,
+    @get:NotEmpty val imageUrls: List<String> = emptyList(),
 )
