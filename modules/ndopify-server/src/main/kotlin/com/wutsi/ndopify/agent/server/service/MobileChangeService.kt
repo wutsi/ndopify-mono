@@ -107,16 +107,26 @@ class MobileChangeService(
 
     @Transactional
     fun verify(change: MobileChangeEntity): MobileChangeEntity {
-        // START
         if (change.status != KycStatus.PENDING) {
             throw ConflictException(
                 error = Error(ErrorCode.MOBILE_CHANGE_REQUEST_ALREADY_PROCEEDED)
             )
         }
+
+        // CANCEL
+        val currentMobileChangeId = change.agent.mobileChange?.id
+        if (currentMobileChangeId != null && currentMobileChangeId != change.id) {
+            change.status = KycStatus.CANCELLED
+            dao.save(change)
+            return change
+        }
+
+        // START
+        val retries = change.retries?.let { it + 1 } ?: 0
         change.status = KycStatus.IN_PROGRESS
         change.verifiedAt = Date(clock.millis())
         change.verifyByUserId = null // Automatic review - no user involved
-        change.retries = change.retries?.let { it + 1 } ?: 0
+        change.retries = retries
         dao.save(change)
 
         // VERIFY
@@ -164,7 +174,7 @@ class MobileChangeService(
                 }
             }
         } catch (ex: IOException) {
-            change.status = if (change.retries > MAX_RETRIES) KycStatus.REQUIRES_MANUAL_REVIEW else KycStatus.PENDING
+            change.status = if (retries > MAX_RETRIES) KycStatus.REQUIRES_MANUAL_REVIEW else KycStatus.PENDING
             change.errorCode = KycErrorCode.GATEWAY_ERROR
             change.failureReason = ex.message
         } finally {

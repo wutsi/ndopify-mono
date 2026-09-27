@@ -33,7 +33,7 @@ data class MobileChangeEntity(
     var status: KycStatus = KycStatus.PENDING,
     var errorCode: String? = null,
     var failureReason: String? = null,
-    var retries: Int = 0,
+    var retries: Int? = null,
 
     val createdAt: Date = Date(),
     var verifiedAt: Date? = null,

@@ -24,6 +24,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/agent/VerifyMobileChangeRequestEndpoint.sql"])
 class VerifyMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest() {
@@ -78,8 +79,13 @@ class VerifyMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest
         assertEquals("+237600000002", agent.mobileMoneyNumber)
         assertEquals(MoMoGatewayType.MTN, agent.mobileMoneyGateway)
         assertEquals(KycStatus.VERIFIED, agent.mobileMoneyKycStatus)
+        assertNull(agent.mobileChange)
 
         val change = mobileChangeService.findById(4L, TENANT_ID)
+        assertEquals(KycStatus.VERIFIED, change.status)
+        assertEquals(null, change.errorCode)
+        assertEquals(null, change.failureReason)
+        assertEquals(0, change.retries)
         assertEquals(null, change.verifyByUserId)
     }
 
@@ -138,6 +144,13 @@ class VerifyMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(KycStatus.PENDING, response.body!!.status)
         assertEquals(KycErrorCode.GATEWAY_ERROR, response.body!!.errorCode)
+
+        val change = mobileChangeService.findById(8L, TENANT_ID)
+        assertEquals(KycStatus.PENDING, change.status)
+        assertEquals(KycErrorCode.GATEWAY_ERROR, change.errorCode)
+        assertEquals(2, change.retries)
+        assertEquals("timeout", change.failureReason)
+        assertEquals(null, change.verifyByUserId)
     }
 
     @Test
@@ -150,6 +163,25 @@ class VerifyMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(KycStatus.REQUIRES_MANUAL_REVIEW, response.body!!.status)
         assertEquals(KycErrorCode.GATEWAY_ERROR, response.body!!.errorCode)
+
+        val change = mobileChangeService.findById(9L, TENANT_ID)
+        assertEquals(KycStatus.REQUIRES_MANUAL_REVIEW, change.status)
+        assertEquals(KycErrorCode.GATEWAY_ERROR, change.errorCode)
+        assertEquals(4, change.retries)
+        assertEquals("timeout", change.failureReason)
+        assertEquals(null, change.verifyByUserId)
+    }
+
+    @Test
+    fun `cancelled when superseded by a newer mobile change request`() {
+        val response =
+            rest.postForEntity("/v1/mobile-change-requests/10/verify", null, VerifyMobileChangeResponse::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(KycStatus.CANCELLED, response.body!!.status)
+
+        val change = mobileChangeService.findById(10L, TENANT_ID)
+        assertEquals(KycStatus.CANCELLED, change.status)
     }
 
     @Test

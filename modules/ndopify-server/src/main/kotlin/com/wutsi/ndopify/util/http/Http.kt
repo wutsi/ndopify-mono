@@ -15,7 +15,7 @@ open class Http(
     open fun <T> get(
         uri: String,
         responseType: Class<T>,
-        headers: Map<String, String?> = emptyMap(),
+        headers: Map<String, String?>,
     ): T? {
         val request = HttpRequest.newBuilder()
             .uri(URI(uri))
@@ -30,7 +30,7 @@ open class Http(
         uri: String,
         requestPayload: Any,
         responseType: Class<T>,
-        headers: Map<String, String?> = emptyMap(),
+        headers: Map<String, String?>,
     ): T? {
         val requestBody = objectMapper.writeValueAsString(requestPayload)
         val request = HttpRequest.newBuilder()

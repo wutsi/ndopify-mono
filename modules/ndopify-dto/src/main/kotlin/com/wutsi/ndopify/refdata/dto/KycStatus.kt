@@ -6,5 +6,6 @@ enum class KycStatus {
     IN_PROGRESS,
     VERIFIED,
     REJECTED,
-    REQUIRES_MANUAL_REVIEW
+    REQUIRES_MANUAL_REVIEW,
+    CANCELLED,
 }

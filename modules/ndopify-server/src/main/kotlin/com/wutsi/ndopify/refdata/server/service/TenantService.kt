@@ -17,7 +17,7 @@ class TenantService(
         return tenant
     }
 
-    fun search(status: Boolean? = null): List<TenantEntity> {
+    fun search(status: Boolean?): List<TenantEntity> {
         return if (status == null) {
             dao.findAll().toList()
         } else {

@@ -46,6 +46,8 @@ class UpdateAgentMobileMoneyEndpointTest : TenantAwareEndpointIntegrationTest() 
         assertEquals("+237611111111", requests[0].newMobileNumber)
         assertEquals(MoMoGatewayType.MTN, requests[0].newGateway)
         assertEquals(KycStatus.PENDING, requests[0].status)
+
+        assertEquals(requests[0].id, agent.mobileChange?.id)
     }
 
     @Test

@@ -10,6 +10,8 @@ import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
+import jakarta.persistence.JoinColumn
+import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import java.util.Date
 
@@ -38,6 +40,10 @@ data class AgentEntity(
 
     val mobileMoneyNumber: String? = null,
     val mobileMoneyGateway: MoMoGatewayType = MoMoGatewayType.UNKNOWN,
+
+    @ManyToOne
+    @JoinColumn(name = "mobile_change_id")
+    val mobileChange: MobileChangeEntity? = null,
 
     val mobileMoneyKycStatus: KycStatus = KycStatus.UNKNOWN,
     val identityKycStatus: KycStatus = KycStatus.UNKNOWN,

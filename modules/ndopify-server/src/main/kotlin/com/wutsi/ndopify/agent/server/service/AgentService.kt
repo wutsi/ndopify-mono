@@ -29,8 +29,8 @@ import java.util.Date
 @Service
 class AgentService(
     private val dao: AgentRepository,
-    private val mobileChangeRequestDao: MobileChangeRepository,
-    private val identityChangeRequestDao: IdentityChangeRepository,
+    private val mobileChangeDao: MobileChangeRepository,
+    private val identityChangeDao: IdentityChangeRepository,
     private val clock: Clock,
 ) {
     @Transactional
@@ -102,6 +102,7 @@ class AgentService(
 
         ensureMobileMoneyNumberIsAvailable(request.mobileNumber, tenantId, agentId = id)
 
+        // Set phone number and gateway if not already set. If already set, we will create a change request for review.
         val updatedAgent = if (agent.mobileMoneyNumber.isNullOrEmpty()) {
             val mobileMoneyKycStatus = KycStatus.PENDING
             dao.save(
@@ -117,7 +118,8 @@ class AgentService(
             agent
         }
 
-        mobileChangeRequestDao.save(
+        // Store the change request for review
+        val mobileChange = mobileChangeDao.save(
             MobileChangeEntity(
                 agent = updatedAgent,
                 tenantId = tenantId,
@@ -128,6 +130,8 @@ class AgentService(
             )
         )
 
+        // Link the change to the agent
+        dao.save(updatedAgent.copy(mobileChange = mobileChange))
         return updatedAgent
     }
 
@@ -150,7 +154,7 @@ class AgentService(
             agent
         }
 
-        identityChangeRequestDao.save(
+        identityChangeDao.save(
             IdentityChangeEntity(
                 agent = updatedAgent,
                 tenantId = tenantId,
@@ -178,13 +182,15 @@ class AgentService(
         }
 
         val agent = request.agent
+        val mobileMoneyKycStatus = KycStatus.VERIFIED
         dao.save(
             agent.copy(
-                mobileMoneyKycStatus = KycStatus.VERIFIED,
+                mobileMoneyKycStatus = mobileMoneyKycStatus,
                 mobileMoneyNumber = request.newMobileNumber,
                 mobileMoneyGateway = request.newGateway,
+                mobileChange = null,
                 modifiedAt = Date(clock.millis()),
-                status = computeStatus(agent.identityKycStatus, KycStatus.VERIFIED)
+                status = computeStatus(agent.identityKycStatus, mobileMoneyKycStatus),
             )
         )
         return true
