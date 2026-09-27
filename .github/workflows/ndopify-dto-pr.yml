@@ -1,0 +1,30 @@
+name: ndopify-dto-pr
+
+on:
+    pull_request:
+        paths:
+            - 'modules/ndopify-dto/**'
+            - '.github/workflows/ndopify-dto-pr.yml'
+            - '!modules/ndopify-dto/*.md'
+
+jobs:
+    build:
+
+        runs-on: ubuntu-latest
+
+        steps:
+            -   uses: actions/checkout@v6
+
+            -   name: JDK
+                uses: actions/setup-java@v5
+                with:
+                    distribution: 'zulu'
+                    java-version: 17
+
+            -   name: Build
+                env:
+                    GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+                run: |
+                    mvn -s settings.xml --non-recursive install
+                    cd modules/ndopify-dto
+                    mvn -s ../../settings.xml package
