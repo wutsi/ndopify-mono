@@ -108,7 +108,7 @@
         <kotlinpoet.version>1.18.1</kotlinpoet.version>
         <ktlint.version>1.8.0</ktlint.version>
         <lettuce.version>7.4.0.RELEASE</lettuce.version>
-        <libphonenumber.version>9.0.24</libphonenumber.version>
+        <libphonenumber.version>9.0.40</libphonenumber.version>
         <mobiledetect.version>1.1.1</mobiledetect.version>
         <mustache.version>0.9.14</mustache.version>
         <mysql.version>9.6.0</mysql.version>
