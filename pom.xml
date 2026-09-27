@@ -22,7 +22,7 @@
     </modules>
 
     <scm>
-        <developerConnection>scm:git:https://github.com/ndopify/ndopify-mono.git</developerConnection>
+        <developerConnection>scm:git:https://github.com/wutsi/ndopify-mono.git</developerConnection>
         <tag>HEAD</tag>
     </scm>
 
