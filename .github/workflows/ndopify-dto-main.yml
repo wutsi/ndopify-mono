@@ -3,10 +3,10 @@ name: ndopify-dto
 on:
     push:
         branches:
-            - master
+            - main
         paths:
             - 'modules/ndopify-dto/**'
-            - '.github/workflows/ndopify-dto-master.yml'
+            - '.github/workflows/ndopify-dto-main.yml'
             - '!modules/ndopify-dto/*.md'
 
 jobs:
