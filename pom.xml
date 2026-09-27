@@ -129,7 +129,7 @@
         <springdoc-openapi.version>3.0.1</springdoc-openapi.version>
         <swagger-parser.version>2.1.22</swagger-parser.version>
         <telegrambots.version>9.2.0</telegrambots.version>
-        <thymeleaf.version>3.1.3.RELEASE</thymeleaf.version>
+        <thymeleaf.version>3.1.5.RELEASE</thymeleaf.version>
         <tika.version>3.2.3</tika.version>
         <ua-java.version>1.6.1</ua-java.version>
         <xmemcached.version>2.4.8</xmemcached.version>
