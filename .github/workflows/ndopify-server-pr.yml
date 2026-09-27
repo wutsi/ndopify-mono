@@ -1,6 +1,5 @@
 name: ndopify-server-pr
 
-
 on:
     pull_request:
         paths:
