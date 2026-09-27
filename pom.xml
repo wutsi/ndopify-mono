@@ -78,7 +78,7 @@
         <flexmark.version>0.64.8</flexmark.version>
         <flyway.version>10.18.0</flyway.version>
         <git-commit-id-plugin.version>4.9.10</git-commit-id-plugin.version>
-        <greenmail.version>2.1.8</greenmail.version>
+        <greenmail.version>2.1.14</greenmail.version>
         <hibernate-types-60.version>2.21.1</hibernate-types-60.version>
         <hypersistence-utils-hibernate-71.version>3.15.2</hypersistence-utils-hibernate-71.version>
         <hikari-cp.version>7.0.2</hikari-cp.version>
