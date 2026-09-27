@@ -26,8 +26,23 @@ class AiIdentityInfoExtractorTest {
         assertEquals("TANDENT YANG AHANDA", info.lastName)
         assertEquals("AA00000000", info.number)
         assertEquals("2032-01-12", info.expiryDate)
-        assertEquals(IdentityStatus.INVALID, info.status)
+        assertEquals(IdentityStatus.VALID, info.status)
         assertEquals(IdentityType.NATIONAL_ID, info.type)
-        assertEquals(true, info.invalidityReason?.contains("specimen"))
+    }
+
+    @Test
+    fun `passport - CM`() {
+        val images = listOf(
+            AiIdentityInfoExtractorTest::class.java.getResource("/files/identity/cm/passport.webp")?.file,
+        )
+        val info = extractor.extract(images.mapNotNull { image -> File(image) })
+
+        assertEquals("CM", info.countryCode)
+        assertEquals("SAMUEL", info.firstName)
+        assertEquals("ETO'O FILS", info.lastName)
+        assertEquals("01585140", info.number)
+        assertEquals("2023-03-09", info.expiryDate)
+        assertEquals(IdentityStatus.EXPIRED, info.status)
+        assertEquals(IdentityType.PASSPORT, info.type)
     }
 }
