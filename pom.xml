@@ -103,7 +103,7 @@
         <jgrapht.version>1.5.2</jgrapht.version>
         <jython.version>2.7.4</jython.version>
         <kotlin.version>2.3.10</kotlin.version>
-        <kotlin-jackson.version>2.21.1</kotlin-jackson.version>
+        <kotlin-jackson.version>2.22.3</kotlin-jackson.version>
         <kotlin-mockito.version>2.2.0</kotlin-mockito.version>
         <kotlinpoet.version>1.18.1</kotlinpoet.version>
         <ktlint.version>1.8.0</ktlint.version>
