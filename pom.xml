@@ -99,7 +99,7 @@
         <jsoup.version>1.22.1</jsoup.version>
         <junit.version>6.0.3</junit.version>
         <junit-platform-commons.version>1.10.0</junit-platform-commons.version>
-        <java-jwt.version>4.5.1</java-jwt.version>
+        <java-jwt.version>4.6.1</java-jwt.version>
         <jgrapht.version>1.5.2</jgrapht.version>
         <jython.version>2.7.4</jython.version>
         <kotlin.version>2.3.10</kotlin.version>
