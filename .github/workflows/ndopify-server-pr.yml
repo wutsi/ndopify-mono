@@ -1,5 +1,4 @@
-name: ndopify-server
-
+name: ndopify-server-pr
 
 on:
     pull_request:
