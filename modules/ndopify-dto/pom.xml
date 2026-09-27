@@ -9,12 +9,12 @@
     </parent>
 
     <artifactId>ndopify-dto</artifactId>
-    <version>0.0.4-SNAPSHOT</version>
+    <version>0.0.4</version>
     <packaging>jar</packaging>
 
     <scm>
         <developerConnection>scm:git:https://github.com/wutsi/ndopify-mono.git</developerConnection>
-        <tag>HEAD</tag>
+        <tag>ndopify-dto-0.0.4</tag>
     </scm>
 
     <distributionManagement>
