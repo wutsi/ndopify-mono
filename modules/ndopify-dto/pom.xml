@@ -17,6 +17,7 @@
         <developerConnection>scm:git:https://github.com/wutsi/ndopify-mono.git</developerConnection>
         <tag>HEAD</tag>
     </scm>
+
     <distributionManagement>
         <repository>
             <id>github</id>
