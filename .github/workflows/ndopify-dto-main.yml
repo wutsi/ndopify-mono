@@ -9,6 +9,9 @@ on:
             - '.github/workflows/ndopify-dto-main.yml'
             - '!modules/ndopify-dto/*.md'
 
+permissions:
+    contents: write
+    
 jobs:
     build:
 
