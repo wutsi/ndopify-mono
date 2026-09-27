@@ -112,7 +112,7 @@
         <mobiledetect.version>1.1.1</mobiledetect.version>
         <mustache.version>0.9.14</mustache.version>
         <mysql.version>9.6.0</mysql.version>
-        <pdfbox.vesion>3.0.6</pdfbox.vesion>
+        <pdfbox.vesion>3.0.8</pdfbox.vesion>
         <plexus-utils.version>4.0.2</plexus-utils.version>
         <poi.version>5.5.1</poi.version>
         <qrcode-kotlin.version>4.5.0</qrcode-kotlin.version>
