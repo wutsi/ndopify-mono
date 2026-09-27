@@ -11,7 +11,8 @@ on:
 
 permissions:
     contents: write
-    
+    packages: write
+
 jobs:
     build:
 
@@ -30,6 +31,7 @@ jobs:
                     maven-version: 3.8.2
             -   name: Build
                 env:
+                    GITHUB_USER: ${{github.actor}}
                     GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
                 run: |
                     mvn -s settings.xml --non-recursive install
