@@ -1,0 +1,9 @@
+package com.wutsi.ndopify.refdata.dto
+
+object KycErrorCode {
+    val COUNTRY_NOT_VALID = "COUNTRY_NOT_VALID"
+    val NAME_MISMATCH = "NAME_MISMATCH"
+    val ACCOUNT_NOT_ACTIVE = "ACCOUNT_NOT_ACTIVE"
+    val AUTO_REVIEW_NOT_SUPPORTED = "AUTO_REVIEW_NOT_SUPPORTED"
+    val GATEWAY_ERROR = "GATEWAY_ERROR"
+}

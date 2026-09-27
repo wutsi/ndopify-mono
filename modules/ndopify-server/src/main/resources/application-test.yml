@@ -1,0 +1,17 @@
+spring:
+    flyway:
+        clean-disabled: false
+        locations: "classpath:db/migration/common,classpath:db/migration/test"
+    jpa:
+        show-sql: false
+    datasource:
+        url: ${SPRING_DATABASE_URL}
+        username: ${SPRING_DATABASE_USERNAME}
+        password: ${SPRING_DATABASE_PASSWORD}
+
+swagger:
+    protocol: https
+
+logging:
+    level:
+        com.wutsi: INFO

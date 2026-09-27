@@ -1,0 +1,9 @@
+package com.wutsi.ndopify.agent.server.dao
+
+import com.wutsi.ndopify.agent.server.domain.AgentEntity
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor
+import org.springframework.data.repository.CrudRepository
+import org.springframework.stereotype.Repository
+
+@Repository
+interface AgentRepository : CrudRepository<AgentEntity, Long>, JpaSpecificationExecutor<AgentEntity>

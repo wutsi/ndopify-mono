@@ -1,0 +1,10 @@
+package com.wutsi.ndopify.error.dto
+
+enum class ParameterType {
+    PARAMETER_TYPE_UNKNOWN,
+    PARAMETER_TYPE_QUERY,
+    PARAMETER_TYPE_PATH,
+    PARAMETER_TYPE_HEADER,
+    PARAMETER_TYPE_COOKIE,
+    PARAMETER_TYPE_PAYLOAD,
+}

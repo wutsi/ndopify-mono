@@ -1,0 +1,84 @@
+id,name,city,latitude,longitude
+1000,Ahuntsic,Montreal,45.555979,-73.662675
+1001,Nouveau-Bordeaux,Montreal,45.548849,-73.704903
+1002,Cartierville,Montreal,45.531939,-73.730168
+1003,Saint-Sulpice,Montreal,45.568047,-73.633979
+1004,Sault-au-Récollet,Montreal,45.575200,-73.653000
+1005,Bas-Anjou,Montreal,45.607023,-73.553247
+1006,Haut-Anjou,Montreal,45.619722,-73.562222
+1007,Côte-des-Neiges,Montreal,45.496597,-73.630492
+1008,Notre-Dame-de-Grâce,Montreal,45.472672,-73.622545
+1009,Benny Farm,Montreal,45.470278,-73.615278
+1010,Snowdon,Montreal,45.484800,-73.631000
+1011,Le Triangle,Montreal,45.493889,-73.650000
+1012,Monkland Village,Montreal,45.474500,-73.616200
+1013,Glenmount,Montreal,,
+1014,Ville Saint-Pierre,Montreal,45.448611,-73.633056
+1015,Cecil-P.-Newman,Montreal,,
+1016,Sault-Saint-Louis,Montreal,,
+1017,Jacques-Bizard,Montreal,45.483333,-73.866667
+1018,Sainte-Geneviève,Montreal,45.488056,-73.862778
+1019,Hochelaga-Maisonneuve,Montreal,45.547764,-73.540754
+1020,Mercier,Montreal,45.577840,-73.537643
+1021,Mercier-Ouest,Montreal,45.575000,-73.541667
+1022,Mercier-Est,Montreal,45.585000,-73.520000
+1023,Viauville,Montreal,45.553611,-73.538611
+1024,Marie-Clarac,Montreal,,
+1025,Ovide-Clermont,Montreal,,
+1026,Claude-Ryan,Montreal,,
+1027,Jeanne-Sauvé,Montreal,,
+1028,Joseph-Beaubien,Montreal,,
+1029,Robert-Bourassa,Montreal,,
+1030,Pierrefonds,Montreal,45.483611,-73.843333
+1031,Roxboro,Montreal,45.503056,-73.816944
+1032,Pointe-aux-Trembles,Montreal,45.655833,-73.496111
+1033,Rivière-des-Prairies,Montreal,45.666667,-73.583333
+1034,Little Italy,Montreal,45.533750,-73.609500
+1035,La Petite-Patrie,Montreal,45.541667,-73.600000
+1036,Rosemont,Montreal,45.550000,-73.583333
+1037,Angus Shops,Montreal,45.547222,-73.564167
+1038,Bois-Franc,Montreal,45.510278,-73.723333
+1039,Città Italiana,Montreal,45.533750,-73.609500
+1040,Nuns' Island,Montreal,45.458611,-73.554167
+1041,Park Extension,Montreal,45.530278,-73.631389
+1042,Greektown,Montreal,,
+1043,Saint-Michel,Montreal,45.560278,-73.611389
+1044,Villeray,Montreal,45.548056,-73.618889
+1045,The Plateau,Montreal,45.524167,-73.576667
+1046,Mile End,Montreal,45.522500,-73.593056
+1047,Little Portugal,Montreal,45.521944,-73.582222
+1048,Milton-Parc,Montreal,45.510278,-73.576667
+1049,DeLorimier,Montreal,45.532222,-73.571667
+1050,Jeanne-Mance,Montreal,45.515278,-73.574444
+1051,Le Petit Laurier,Montreal,45.531944,-73.580556
+1052,Griffintown,Montreal,45.492778,-73.561111
+1053,Goose Village,Montreal,45.491667,-73.550000
+1054,Pointe-Saint-Charles,Montreal,45.481111,-73.559444
+1055,Saint-Henri,Montreal,45.478333,-73.583889
+1056,Little Burgundy,Montreal,45.488056,-73.573611
+1057,Côte-Saint-Paul,Montreal,45.468333,-73.590833
+1058,Ville-Émard,Montreal,45.459167,-73.598889
+1059,Downtown Montreal,Montreal,45.501000,-73.571000
+1060,Old Montreal,Montreal,45.504230,-73.554476
+1061,Chinatown,Montreal,45.507778,-73.560000
+1062,Gay Village,Montreal,45.517500,-73.556389
+1063,Cité du Multimédia,Montreal,45.498333,-73.558333
+1064,Quartier international de Montréal,Montreal,45.503056,-73.562500
+1065,Quartier Latin,Montreal,45.513889,-73.563056
+1066,Quartier des spectacles,Montreal,45.508889,-73.566111
+1067,Red-Light District,Montreal,,
+1068,Sainte-Marie,Montreal,45.523333,-73.550000
+1069,Shaughnessy Village,Montreal,45.493889,-73.582222
+1070,Fabreville,Laval,45.598611,-73.813056
+1071,Chomedey,Laval,45.555000,-73.769167
+1072,Pont-Viau,Laval,45.575000,-73.678056
+1073,Vimont,Laval,45.604444,-73.716111
+1074,Laval-Ouest,Laval,45.566667,-73.883333
+1075,Duvernay,Laval,45.600000,-73.633333
+1076,Auteuil,Laval,45.637500,-73.725000
+1077,Laval-sur-le-Lac,Laval,45.546111,-73.851944
+1078,Saint-François,Laval,45.666667,-73.600000
+1079,Saint Dorothée,Laval,45.555000,-73.838056
+1080,Laval-des-Rapides,Laval,45.560000,-73.708056
+1081,Sainte-Rose,Laval,45.615000,-73.783056
+1082,Saint-Vincent-de-Paul,Laval,45.610000,-73.646111
