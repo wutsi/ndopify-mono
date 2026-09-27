@@ -4,10 +4,10 @@ name: ndopify-server
 on:
     push:
         branches:
-            - master
+            - main
         paths:
             - 'modules/ndopify-server/**'
-            - '.github/workflows/ndopify-server-master.yml'
+            - '.github/workflows/ndopify-server-main.yml'
             - '!modules/ndopify-server/*.md'
 
 jobs:
