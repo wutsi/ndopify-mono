@@ -2,6 +2,18 @@ database:
     pool-size: 4
 
 spring:
+    ai:
+        openai:
+            #api-key: ${KIMI_API_KEY}
+            #base-url: https://api.moonshot.ai/v1
+            api-key: ${GEMINI_API_KEY}
+            base-url: https://generativelanguage.googleapis.com/v1beta/openai
+            chat:
+                options:
+                    #model: kimi-k2.6
+                    model: gemini-2.5-flash
+                    temperature: 1
+
     datasource:
         driverClassName: com.mysql.cj.jdbc.Driver
         url: jdbc:mysql://localhost:3306/ndopify?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true

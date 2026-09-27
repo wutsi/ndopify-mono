@@ -8,7 +8,7 @@ import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
-import com.wutsi.ndopify.platform.momo.MoMoGatewayFactory
+import com.wutsi.ndopify.platform.momo.MoMoGatewayProvider
 import com.wutsi.ndopify.platform.momo.model.MoMoKycMatchRequest
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
 import com.wutsi.ndopify.refdata.dto.KycStatus
@@ -28,7 +28,7 @@ class MobileChangeService(
     private val dao: MobileChangeRepository,
     private val tenantService: TenantService,
     private val agentService: AgentService,
-    private val momoGatewayFactory: MoMoGatewayFactory,
+    private val momoGatewayProvider: MoMoGatewayProvider,
     private val accessTokenService: AccessTokenService,
     private val clock: Clock,
 ) {
@@ -132,7 +132,7 @@ class MobileChangeService(
         // VERIFY
         val agent = change.agent
         try {
-            val gateway = momoGatewayFactory.get(change.newGateway)
+            val gateway = momoGatewayProvider.get(change.newGateway)
             if (gateway == null) {
                 change.status = KycStatus.REQUIRES_MANUAL_REVIEW
                 change.errorCode = KycErrorCode.AUTO_REVIEW_NOT_SUPPORTED

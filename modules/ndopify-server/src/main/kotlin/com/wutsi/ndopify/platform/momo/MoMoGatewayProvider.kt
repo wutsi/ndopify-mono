@@ -5,7 +5,7 @@ import com.wutsi.ndopify.refdata.dto.MoMoGatewayType
 import org.springframework.stereotype.Service
 
 @Service
-class MoMoGatewayFactory(
+class MoMoGatewayProvider(
     private val mtn: MoMoGatewayMtn,
 ) {
     fun get(type: MoMoGatewayType): MoMoGateway? {

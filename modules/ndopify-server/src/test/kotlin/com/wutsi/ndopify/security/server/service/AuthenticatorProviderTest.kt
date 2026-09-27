@@ -7,23 +7,23 @@ import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock
 import kotlin.test.assertEquals
 
-class AuthenticatorFactoryTest {
+class AuthenticatorProviderTest {
     private val password = mock<PasswordAuthenticator>()
     private val googleOneTap = mock<GoogleOneTapAuthenticator>()
-    private val factory = AuthenticatorFactory(password, googleOneTap)
+    private val provider = AuthenticatorProvider(password, googleOneTap)
 
     @Test
     fun password() {
-        assertEquals(password, factory.getAuthenticator(AuthType.PASSWORD))
+        assertEquals(password, provider.get(AuthType.PASSWORD))
     }
 
     @Test
     fun googleOneTag() {
-        assertEquals(googleOneTap, factory.getAuthenticator(AuthType.GOOGLE_ONE_TAP))
+        assertEquals(googleOneTap, provider.get(AuthType.GOOGLE_ONE_TAP))
     }
 
     @Test
     fun unknown() {
-        assertEquals(null, factory.getAuthenticator(AuthType.UNKNOWN))
+        assertEquals(null, provider.get(AuthType.UNKNOWN))
     }
 }

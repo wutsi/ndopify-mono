@@ -6,11 +6,11 @@ import com.wutsi.ndopify.security.server.service.authenticator.PasswordAuthentic
 import org.springframework.stereotype.Service
 
 @Service
-class AuthenticatorFactory(
+class AuthenticatorProvider(
     private val password: PasswordAuthenticator,
     private val googleOneTap: GoogleOneTapAuthenticator,
 ) {
-    fun getAuthenticator(type: AuthType): Authenticator? {
+    fun get(type: AuthType): Authenticator? {
         return when (type) {
             AuthType.PASSWORD -> password
             AuthType.GOOGLE_ONE_TAP -> googleOneTap
