@@ -10,11 +10,11 @@ import org.springframework.stereotype.Service
 
 @Service
 class AuthenticationService(
-    private val authenticatorFactory: AuthenticatorFactory
+    private val provider: AuthenticatorProvider
 ) {
     @Transactional
     fun authenticate(request: AuthenticateRequest, tenantId: Long?): String {
-        val authenticator = authenticatorFactory.getAuthenticator(request.authType)
+        val authenticator = provider.get(request.authType)
             ?: throw BadRequestException(
                 Error(code = ErrorCode.AUTH_TYPE_NOT_SUPPORTED, parameter = Parameter(value = request.authType)),
             )

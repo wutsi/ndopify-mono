@@ -45,7 +45,7 @@
     </repositories>
 
     <properties>
-        <ndopify-dto.version>0.0.3-SNAPSHOT</ndopify-dto.version>
+        <ndopify-dto.version>0.0.4-SNAPSHOT</ndopify-dto.version>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
@@ -122,6 +122,7 @@
         <slf4j.version>2.0.17</slf4j.version>
         <spring.version>7.0.5</spring.version>
         <spring-boot.version>4.0.3</spring-boot.version>
+        <spring-ai.version>2.0.0</spring-ai.version>
         <spring-mobile-device.version>2.0.0.M3</spring-mobile-device.version>
         <spring-security.version>7.0.3</spring-security.version>
         <spring-tx.version>2.4.5</spring-tx.version>
@@ -133,6 +134,18 @@
         <ua-java.version>1.6.1</ua-java.version>
         <xmemcached.version>2.4.8</xmemcached.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <dependency>

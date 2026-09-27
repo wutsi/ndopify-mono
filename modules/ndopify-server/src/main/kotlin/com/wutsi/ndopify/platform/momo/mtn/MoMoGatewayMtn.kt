@@ -15,13 +15,13 @@ class MoMoGatewayMtn(
     override fun kycMatch(request: MoMoKycMatchRequest): MoMoKycMatchResponse {
         collection.authenticate()
         val info = collection.userBasicInfo(request.phoneNumber)
-        val country = PhoneNumberUtils.extractCountryCode(request.phoneNumber)
+        val countryCode = PhoneNumberUtils.extractCountryCode(request.phoneNumber)
         val holderName = info.givenName + " " + info.familyName
 
         return MoMoKycMatchResponse(
             holderName = holderName,
             holderNameScore = KycUtils.verifyName(holderName, request.holderName),
-            countryCodeScore = if (country.equals(request.countryCode, true)) 1.0 else 0.0,
+            countryCodeScore = if (countryCode.equals(request.countryCode, true)) 1.0 else 0.0,
             active = info.status == MtnUserStatus.ACTIVE,
         )
     }

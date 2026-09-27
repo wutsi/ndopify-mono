@@ -6,22 +6,22 @@ import org.mockito.Mockito.mock
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class MoMoGatewayFactoryTest {
+class MoMoGatewayProviderTest {
     val mtnGateway = mock<MoMoGatewayMtn>()
-    val factory = MoMoGatewayFactory(mtnGateway)
+    val provider = MoMoGatewayProvider(mtnGateway)
 
     @Test
     fun mtn() {
-        assertEquals(mtnGateway, factory.get(MoMoGatewayType.MTN))
+        assertEquals(mtnGateway, provider.get(MoMoGatewayType.MTN))
     }
 
     @Test
     fun orange() {
-        assertEquals(null, factory.get(MoMoGatewayType.ORANGE))
+        assertEquals(null, provider.get(MoMoGatewayType.ORANGE))
     }
 
     @Test
     fun unknown() {
-        assertEquals(null, factory.get(MoMoGatewayType.UNKNOWN))
+        assertEquals(null, provider.get(MoMoGatewayType.UNKNOWN))
     }
 }
