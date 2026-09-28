@@ -5,4 +5,5 @@ enum class IdentityType {
     NATIONAL_ID,
     PASSPORT,
     DRIVER_LICENSE,
+    RESIDENT_CARD,
 }

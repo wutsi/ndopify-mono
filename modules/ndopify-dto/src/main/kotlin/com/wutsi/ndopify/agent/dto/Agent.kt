@@ -6,7 +6,8 @@ import com.wutsi.ndopify.refdata.dto.MoMoGatewayType
 data class Agent(
     val id: Long = -1,
     val userId: Long? = null,
-
+    val mobileChangeId: Long? = null,
+    val identityChangeId: Long? = null,
     val firstName: String = "",
     val lastName: String = "",
     val agentType: AgentType = AgentType.UNKNOWN,

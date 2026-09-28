@@ -14,6 +14,8 @@ data class MobileChange(
     val newGateway: MoMoGatewayType = MoMoGatewayType.UNKNOWN,
 
     var holderName: String? = null,
+    val holderNameScore: Double? = null,
+    val countryCodeScore: Double? = null,
     var status: KycStatus = KycStatus.PENDING,
     var errorCode: String? = null,
     var failureReason: String? = null,
