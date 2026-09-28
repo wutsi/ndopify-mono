@@ -15,6 +15,8 @@ class MobileChangeMapper {
             newMobileNumber = entity.newMobileNumber,
             newGateway = entity.newGateway,
             holderName = entity.holderName,
+            holderNameScore = entity.holderNameScore,
+            countryCodeScore = entity.countryCodeScore,
             status = entity.status,
             errorCode = entity.errorCode,
             failureReason = entity.failureReason,

@@ -11,6 +11,8 @@ class AgentMapper {
         return Agent(
             id = entity.id ?: -1,
             userId = entity.userId,
+            mobileChangeId = entity.mobileChange?.id,
+            identityChangeId = entity.identityChange?.id,
             firstName = entity.firstName,
             lastName = entity.lastName,
             agentType = entity.agentType,

@@ -9,6 +9,8 @@ CREATE TABLE T_MOBILE_CHANGE(
   new_mobile_number      VARCHAR(20) NOT NULL,
   new_gateway            INT NOT NULL DEFAULT 0,
   holder_name            VARCHAR(200),
+  country_code_score     DOUBLE,
+  holder_name_score      DOUBLE,
   status                 INT  NOT NULL DEFAULT 0,
   error_code             VARCHAR(100),
   retries                INT,

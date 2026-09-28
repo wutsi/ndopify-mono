@@ -21,7 +21,7 @@ data class IdentityChangeEntity(
     val id: Long? = null,
 
     val tenantId: Long = -1,
-    var verifyByUserId: Long? = null,
+    val verifyByUserId: Long? = null,
 
     @ManyToOne
     @JoinColumn(name = "agent_id")
@@ -37,12 +37,14 @@ data class IdentityChangeEntity(
     @Convert(converter = StringListConverter::class)
     val imageUrls: List<String> = emptyList(),
 
-    var holderName: String? = null,
-    var retries: Int? = null,
-
-    var status: KycStatus = KycStatus.PENDING,
-    var errorCode: String? = null,
-    var failureReason: String? = null,
+    val holderName: String? = null,
+    val holderNameScore: Double? = null,
+    val countryCodeScore: Double? = null,
+    val documentTypeScore: Double? = null,
+    val retries: Int? = null,
+    val status: KycStatus = KycStatus.PENDING,
+    val errorCode: String? = null,
+    val failureReason: String? = null,
     val createdAt: Date = Date(),
-    var verifiedAt: Date? = null,
+    val verifiedAt: Date? = null,
 )

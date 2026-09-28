@@ -13,7 +13,9 @@ CREATE TABLE T_IDENTITY_CHANGE(
   image_urls             TEXT,
 
   holder_name            VARCHAR(255),
-
+  country_code_score     DOUBLE,
+  holder_name_score      DOUBLE,
+  document_type_score    DOUBLE,
   status                 INT NOT NULL DEFAULT 0,
   error_code             VARCHAR(100),
   retries                INT,

@@ -19,7 +19,7 @@ data class MobileChangeEntity(
     val id: Long? = null,
 
     val tenantId: Long = -1,
-    var verifyByUserId: Long? = null,
+    val verifyByUserId: Long? = null,
 
     @ManyToOne
     @JoinColumn(name = "agent_id")
@@ -29,12 +29,14 @@ data class MobileChangeEntity(
     val newMobileNumber: String = "",
     val newGateway: MoMoGatewayType = MoMoGatewayType.UNKNOWN,
 
-    var holderName: String? = null,
-    var status: KycStatus = KycStatus.PENDING,
-    var errorCode: String? = null,
-    var failureReason: String? = null,
-    var retries: Int? = null,
+    val holderName: String? = null,
+    val holderNameScore: Double? = null,
+    val countryCodeScore: Double? = null,
+    val status: KycStatus = KycStatus.PENDING,
+    val errorCode: String? = null,
+    val failureReason: String? = null,
+    val retries: Int? = null,
 
     val createdAt: Date = Date(),
-    var verifiedAt: Date? = null,
+    val verifiedAt: Date? = null,
 )

@@ -19,7 +19,7 @@ class AiIdentityInfoExtractor(private val chatClientBuilder: ChatClient.Builder)
             You are an expert in identity verification.
             You will be provided images of identity documents and a selfie of the person.
             Your task is to extract the following information from the identity document:
-            - Type: Type if identification document (PASSPORT, NATIONAL_ID, DRIVER_LICENSE, OTHER)
+            - Type: Type if identification document (PASSPORT, NATIONAL_ID, DRIVER_LICENSE, RESIDENT_CARD, UNKNOWN)
             - Number: Identification number of the document
             - Fist name: First name of the holder of the document
             - Last name: Last name of the holder of the document

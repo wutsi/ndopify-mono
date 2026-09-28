@@ -87,6 +87,9 @@ class VerifyMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest
         assertEquals(null, change.failureReason)
         assertEquals(0, change.retries)
         assertEquals(null, change.verifyByUserId)
+        assertEquals("Ray Ray", change.holderName)
+        assertEquals(1.0, change.holderNameScore)
+        assertEquals(1.0, change.countryCodeScore)
     }
 
     @Test
@@ -106,6 +109,13 @@ class VerifyMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(KycStatus.REQUIRES_MANUAL_REVIEW, response.body!!.status)
         assertEquals(KycErrorCode.NAME_MISMATCH, response.body!!.errorCode)
+
+        val change = mobileChangeService.findById(5L, TENANT_ID)
+        assertEquals(KycStatus.REQUIRES_MANUAL_REVIEW, change.status)
+        assertEquals(KycErrorCode.NAME_MISMATCH, change.errorCode)
+        assertEquals("Raymondo Sponsible", change.holderName)
+        assertEquals(true, change.holderNameScore!! < .9)
+        assertEquals(1.0, change.countryCodeScore)
     }
 
     @Test
@@ -119,6 +129,13 @@ class VerifyMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(KycStatus.REJECTED, response.body!!.status)
         assertEquals(KycErrorCode.NAME_MISMATCH, response.body!!.errorCode)
+
+        val change = mobileChangeService.findById(6L, TENANT_ID)
+        assertEquals(KycStatus.REJECTED, change.status)
+        assertEquals(KycErrorCode.NAME_MISMATCH, change.errorCode)
+        assertEquals("Xyz Xyz", change.holderName)
+        assertEquals(true, change.holderNameScore!! < .75)
+        assertEquals(1.0, change.countryCodeScore)
     }
 
     @Test
@@ -132,6 +149,13 @@ class VerifyMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(KycStatus.REJECTED, response.body!!.status)
         assertEquals(KycErrorCode.COUNTRY_NOT_VALID, response.body!!.errorCode)
+
+        val change = mobileChangeService.findById(7L, TENANT_ID)
+        assertEquals(KycStatus.REJECTED, change.status)
+        assertEquals(KycErrorCode.COUNTRY_NOT_VALID, change.errorCode)
+        assertEquals("Kim Possible", change.holderName)
+        assertEquals(1.0, change.holderNameScore)
+        assertEquals(0.0, change.countryCodeScore)
     }
 
     @Test

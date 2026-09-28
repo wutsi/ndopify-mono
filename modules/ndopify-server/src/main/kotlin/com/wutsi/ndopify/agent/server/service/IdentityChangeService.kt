@@ -84,18 +84,19 @@ class IdentityChangeService(
         }
 
         // UPDATE
-        change.holderName = request.holderName
-        change.status = request.status
-        change.errorCode = request.errorCode
-        change.failureReason = request.failureReason
-        change.verifiedAt = Date(clock.millis())
-        change.verifyByUserId = accessTokenService.getPrincipal().getUserId()
-        dao.save(change)
+        dao.save(
+            change.copy(
+                status = request.status,
+                errorCode = request.errorCode,
+                failureReason = request.failureReason,
+                holderName = request.holderName,
+                verifiedAt = Date(clock.millis()),
+                verifyByUserId = accessTokenService.getPrincipal().getUserId(),
+            )
+        )
 
         // APPLY THE CHANGE
-        if (change.status == KycStatus.VERIFIED) {
-            agentService.apply(change)
-        }
+        agentService.apply(change)
 
         return change
     }
@@ -118,26 +119,38 @@ class IdentityChangeService(
         // CANCEL
         val currentIdentityChangeId = change.agent.identityChange?.id
         if (currentIdentityChangeId != null && currentIdentityChangeId != change.id) {
-            change.status = KycStatus.CANCELLED
-            dao.save(change)
+            dao.save(
+                change.copy(
+                    status = KycStatus.CANCELLED
+                )
+            )
             return change
         }
 
         // START
         val retries = change.retries?.let { it + 1 } ?: 0
-        change.status = KycStatus.IN_PROGRESS
-        change.verifiedAt = Date(clock.millis())
-        change.verifyByUserId = null // Automatic review - no user involved
-        change.retries = retries
-        dao.save(change)
+        dao.save(
+            change.copy(
+                status = KycStatus.IN_PROGRESS,
+                verifiedAt = Date(clock.millis()),
+                verifyByUserId = null, // Automatic review - no user involved
+                retries = retries
+            )
+        )
 
         // VERIFY
         val agent = change.agent
+        var status: KycStatus? = null
+        var errorCode: String? = null
         try {
             val kyc = identityKycProvider.get(change.identityType)
             if (kyc == null) {
-                change.status = KycStatus.REQUIRES_MANUAL_REVIEW
-                change.errorCode = KycErrorCode.AUTO_REVIEW_NOT_SUPPORTED
+                return dao.save(
+                    change.copy(
+                        status = KycStatus.REQUIRES_MANUAL_REVIEW,
+                        errorCode = KycErrorCode.AUTO_REVIEW_NOT_SUPPORTED
+                    )
+                )
             } else {
                 val tenant = tenantService.findById(change.tenantId)
                 val result = kyc.kycMatch(
@@ -149,51 +162,62 @@ class IdentityChangeService(
                     )
                 )
 
-                change.holderName = result.holderName
                 if (result.status != IdentityStatus.VALID) {
-                    change.status = KycStatus.REJECTED
-                    change.errorCode = when (result.status) {
+                    status = KycStatus.REJECTED
+                    errorCode = when (result.status) {
                         IdentityStatus.EXPIRED -> KycErrorCode.EXPIRED
                         IdentityStatus.SUSPENDED -> KycErrorCode.SUSPENDED
                         IdentityStatus.INVALID -> KycErrorCode.INVALID
                         else -> null
                     }
                 } else if (result.countryCodeScore < 1.0) {
-                    change.status = KycStatus.REJECTED
-                    change.errorCode = KycErrorCode.COUNTRY_NOT_VALID
+                    status = KycStatus.REJECTED
+                    errorCode = KycErrorCode.COUNTRY_NOT_VALID
                 } else if (result.documentTypeScore < 1.0) {
-                    change.status = KycStatus.REJECTED
-                    change.errorCode = KycErrorCode.INVALID
+                    status = KycStatus.REJECTED
+                    errorCode = KycErrorCode.INVALID
                 } else {
                     when {
                         result.holderNameScore >= 0.9 -> {
-                            change.status = KycStatus.VERIFIED
-                            change.errorCode = null
-                            change.failureReason = null
+                            status = KycStatus.VERIFIED
                         }
 
                         result.holderNameScore >= 0.75 -> {
-                            change.status = KycStatus.REQUIRES_MANUAL_REVIEW
-                            change.errorCode = KycErrorCode.NAME_MISMATCH
+                            status = KycStatus.REQUIRES_MANUAL_REVIEW
+                            errorCode = KycErrorCode.NAME_MISMATCH
                         }
 
                         else -> {
-                            change.status = KycStatus.REJECTED
-                            change.errorCode = KycErrorCode.NAME_MISMATCH
+                            status = KycStatus.REJECTED
+                            errorCode = KycErrorCode.NAME_MISMATCH
                         }
                     }
                 }
+                dao.save(
+                    change.copy(
+                        status = status,
+                        errorCode = errorCode,
+                        failureReason = null,
+                        holderName = result.holderName,
+                        holderNameScore = result.holderNameScore,
+                        countryCodeScore = result.countryCodeScore,
+                        documentTypeScore = result.documentTypeScore,
+                    )
+                )
+
+                // APPLY THE CHANGE
+                agentService.apply(change)
             }
         } catch (ex: Exception) {
-            change.status = if (retries > MAX_RETRIES) KycStatus.REQUIRES_MANUAL_REVIEW else KycStatus.PENDING
-            change.errorCode = KycErrorCode.GATEWAY_ERROR
-            change.failureReason = ex.message
-        } finally {
-            dao.save(change)
+            val status = if (retries > MAX_RETRIES) KycStatus.REQUIRES_MANUAL_REVIEW else KycStatus.PENDING
+            dao.save(
+                change.copy(
+                    status = status,
+                    errorCode = KycErrorCode.GATEWAY_ERROR,
+                    failureReason = ex.message
+                )
+            )
         }
-
-        // APPLY THE CHANGE
-        agentService.apply(change)
 
         return change
     }

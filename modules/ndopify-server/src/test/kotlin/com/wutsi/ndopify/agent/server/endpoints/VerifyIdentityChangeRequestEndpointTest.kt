@@ -46,6 +46,8 @@ class VerifyIdentityChangeRequestEndpointTest : TenantAwareEndpointIntegrationTe
         assertEquals(KycErrorCode.AUTO_REVIEW_NOT_SUPPORTED, response.body!!.errorCode)
 
         val change = identityChangeService.findById(1L, TENANT_ID)
+        assertEquals(KycStatus.REQUIRES_MANUAL_REVIEW, change.status)
+        assertEquals(KycErrorCode.AUTO_REVIEW_NOT_SUPPORTED, change.errorCode)
         assertEquals(null, change.verifyByUserId)
     }
 
@@ -67,6 +69,10 @@ class VerifyIdentityChangeRequestEndpointTest : TenantAwareEndpointIntegrationTe
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(KycStatus.REJECTED, response.body!!.status)
         assertEquals(KycErrorCode.INVALID, response.body!!.errorCode)
+
+        val change = identityChangeService.findById(2L, TENANT_ID)
+        assertEquals(KycStatus.REJECTED, change.status)
+        assertEquals(KycErrorCode.INVALID, change.errorCode)
     }
 
     @Test
@@ -87,6 +93,10 @@ class VerifyIdentityChangeRequestEndpointTest : TenantAwareEndpointIntegrationTe
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(KycStatus.REJECTED, response.body!!.status)
         assertEquals(KycErrorCode.EXPIRED, response.body!!.errorCode)
+
+        val change = identityChangeService.findById(12L, TENANT_ID)
+        assertEquals(KycStatus.REJECTED, change.status)
+        assertEquals(KycErrorCode.EXPIRED, change.errorCode)
     }
 
     @Test
@@ -107,6 +117,10 @@ class VerifyIdentityChangeRequestEndpointTest : TenantAwareEndpointIntegrationTe
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(KycStatus.REJECTED, response.body!!.status)
         assertEquals(KycErrorCode.SUSPENDED, response.body!!.errorCode)
+
+        val change = identityChangeService.findById(13L, TENANT_ID)
+        assertEquals(KycStatus.REJECTED, change.status)
+        assertEquals(KycErrorCode.SUSPENDED, change.errorCode)
     }
 
     @Test
@@ -134,9 +148,8 @@ class VerifyIdentityChangeRequestEndpointTest : TenantAwareEndpointIntegrationTe
         assertNull(agent.identityChange)
 
         val change = identityChangeService.findById(4L, TENANT_ID)
-        assertEquals(KycStatus.VERIFIED, change.status)
-        assertEquals(null, change.errorCode)
-        assertEquals(null, change.verifyByUserId)
+        assertEquals(1.0, change.holderNameScore)
+        assertEquals("Kim Possible", change.holderName)
     }
 
     @Test
@@ -157,6 +170,12 @@ class VerifyIdentityChangeRequestEndpointTest : TenantAwareEndpointIntegrationTe
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(KycStatus.REQUIRES_MANUAL_REVIEW, response.body!!.status)
         assertEquals(KycErrorCode.NAME_MISMATCH, response.body!!.errorCode)
+
+        val change = identityChangeService.findById(5L, TENANT_ID)
+        assertEquals(KycStatus.REQUIRES_MANUAL_REVIEW, change.status)
+        assertEquals(KycErrorCode.NAME_MISMATCH, change.errorCode)
+        assertEquals(true, change.holderNameScore!! <= 0.9 && change.holderNameScore >= 0.75)
+        assertEquals("Raymondo Sponsible", change.holderName)
     }
 
     @Test
@@ -177,6 +196,12 @@ class VerifyIdentityChangeRequestEndpointTest : TenantAwareEndpointIntegrationTe
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(KycStatus.REJECTED, response.body!!.status)
         assertEquals(KycErrorCode.NAME_MISMATCH, response.body!!.errorCode)
+
+        val change = identityChangeService.findById(6L, TENANT_ID)
+        assertEquals(KycStatus.REJECTED, change.status)
+        assertEquals(KycErrorCode.NAME_MISMATCH, change.errorCode)
+        assertEquals(true, change.holderNameScore!! < 0.75)
+        assertEquals("Xyz Qwerty", change.holderName)
     }
 
     @Test
@@ -197,6 +222,11 @@ class VerifyIdentityChangeRequestEndpointTest : TenantAwareEndpointIntegrationTe
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(KycStatus.REJECTED, response.body!!.status)
         assertEquals(KycErrorCode.COUNTRY_NOT_VALID, response.body!!.errorCode)
+
+        val change = identityChangeService.findById(7L, TENANT_ID)
+        assertEquals(KycStatus.REJECTED, change.status)
+        assertEquals(KycErrorCode.COUNTRY_NOT_VALID, change.errorCode)
+        assertEquals(0.0, change.countryCodeScore)
     }
 
     @Test
@@ -217,6 +247,11 @@ class VerifyIdentityChangeRequestEndpointTest : TenantAwareEndpointIntegrationTe
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(KycStatus.REJECTED, response.body!!.status)
         assertEquals(KycErrorCode.INVALID, response.body!!.errorCode)
+
+        val change = identityChangeService.findById(14L, TENANT_ID)
+        assertEquals(KycStatus.REJECTED, change.status)
+        assertEquals(KycErrorCode.INVALID, change.errorCode)
+        assertEquals(0.0, change.documentTypeScore)
     }
 
     @Test
