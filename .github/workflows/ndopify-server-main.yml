@@ -39,6 +39,7 @@ jobs:
             -   name: Build
                 env:
                     GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+                    KIMI_API_KEY: ${{secrets.KIMI_API_KEY}}
                     MTN_COLLECTION_SUBSCRIPTION_KEY: ${{secrets.MTN_COLLECTION_SUBSCRIPTION_KEY}}
                 run: |
                     mvn -q -s settings.xml --non-recursive install

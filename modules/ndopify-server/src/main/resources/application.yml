@@ -10,12 +10,12 @@ spring:
                 options:
                     model: kimi-k2.6
                     temperature: 1
-#        openai:
-#            api-key: ${GEMINI_API_KEY}
-#            base-url: https://generativelanguage.googleapis.com/v1beta/openai
-#            chat:
-#                options:
-#                    model: gemini-2.5-flash
+    #        openai:
+    #            api-key: ${GEMINI_API_KEY}
+    #            base-url: https://generativelanguage.googleapis.com/v1beta/openai
+    #            chat:
+    #                options:
+    #                    model: gemini-2.5-flash
 
     datasource:
         driverClassName: com.mysql.cj.jdbc.Driver
@@ -97,8 +97,10 @@ springdoc:
             paths-to-match:
                 - /v1/agents
                 - /v1/agents/**
-                - /v1/mobile-change-requests
-                - /v1/mobile-change-requests/**
+                - /v1/mobile-changes
+                - /v1/mobile-changes/**
+                - /v1/identity-changes
+                - /v1/identity-changes/**
 
         -   group: refdata
             display-name: RefData API

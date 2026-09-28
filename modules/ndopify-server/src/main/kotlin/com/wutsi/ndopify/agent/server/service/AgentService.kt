@@ -20,6 +20,7 @@ import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.refdata.dto.KycStatus
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
+import jdk.internal.agent.resources.agent
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
@@ -139,6 +140,7 @@ class AgentService(
     fun updateIdentity(id: Long, request: UpdateIdentyRequest, tenantId: Long): AgentEntity {
         val agent = findById(id, tenantId)
 
+        // Set first/last name if not already set. If already set, we will create a change request for review.
         val updatedAgent = if (agent.firstName.isEmpty() && agent.lastName.isEmpty()) {
             val identityKycStatus = KycStatus.PENDING
             dao.save(
@@ -154,7 +156,8 @@ class AgentService(
             agent
         }
 
-        identityChangeDao.save(
+        // Store the change request for review
+        val change = identityChangeDao.save(
             IdentityChangeEntity(
                 agent = updatedAgent,
                 tenantId = tenantId,
@@ -163,11 +166,13 @@ class AgentService(
                 newFirstName = request.firstName,
                 newLastName = request.lastName,
                 identityType = request.identityType,
-                documentPage1Url = request.documentPage1Url,
-                documentPage2Url = request.documentPage2Url,
+                imageUrls = request.imageUrls,
                 status = KycStatus.PENDING,
             )
         )
+
+        // Link the change to the agent
+        dao.save(updatedAgent.copy(identityChange = change))
 
         return updatedAgent
     }
@@ -177,11 +182,12 @@ class AgentService(
         if (request.status != KycStatus.VERIFIED) {
             return false
         }
-        if (request.newMobileNumber != request.oldMobileNumber) { // Extra-Precaution
+
+        val agent = findById(request.agent.id!!, request.tenantId)
+        if (request.id != agent.mobileChange?.id) { // Extra-Precaution
             return false
         }
 
-        val agent = request.agent
         val mobileMoneyKycStatus = KycStatus.VERIFIED
         dao.save(
             agent.copy(
@@ -191,6 +197,31 @@ class AgentService(
                 mobileChange = null,
                 modifiedAt = Date(clock.millis()),
                 status = computeStatus(agent.identityKycStatus, mobileMoneyKycStatus),
+            )
+        )
+        return true
+    }
+
+    @Transactional
+    fun apply(request: IdentityChangeEntity): Boolean {
+        if (request.status != KycStatus.VERIFIED) {
+            return false
+        }
+
+        val agent = findById(request.agent.id!!, request.tenantId)
+        if (request.id != agent.identityChange?.id) { // Extra-Precaution
+            return false
+        }
+
+        val identityKycStatus = KycStatus.VERIFIED
+        dao.save(
+            agent.copy(
+                identityKycStatus = identityKycStatus,
+                firstName = request.newFirstName,
+                lastName = request.newLastName,
+                identityChange = null,
+                modifiedAt = Date(clock.millis()),
+                status = computeStatus(identityKycStatus, agent.mobileMoneyKycStatus),
             )
         )
         return true

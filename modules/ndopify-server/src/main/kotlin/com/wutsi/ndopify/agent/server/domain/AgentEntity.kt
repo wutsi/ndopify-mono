@@ -45,6 +45,10 @@ data class AgentEntity(
     @JoinColumn(name = "mobile_change_id")
     val mobileChange: MobileChangeEntity? = null,
 
+    @ManyToOne
+    @JoinColumn(name = "identity_change_id")
+    val identityChange: IdentityChangeEntity? = null,
+
     val mobileMoneyKycStatus: KycStatus = KycStatus.UNKNOWN,
     val identityKycStatus: KycStatus = KycStatus.UNKNOWN,
     val status: AgentStatus = AgentStatus.UNKNOWN,

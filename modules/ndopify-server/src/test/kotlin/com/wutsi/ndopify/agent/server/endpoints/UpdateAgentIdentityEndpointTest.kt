@@ -29,8 +29,7 @@ class UpdateAgentIdentityEndpointTest : TenantAwareEndpointIntegrationTest() {
             firstName = "Ash",
             lastName = "Ketchum",
             identityType = IdentityType.NATIONAL_ID,
-            documentPage1Url = "https://example.com/page1.png",
-            documentPage2Url = "https://example.com/page2.png",
+            imageUrls = listOf("https://example.com/page1.png", "https://example.com/page2.png"),
         )
 
         val response = rest.postForEntity("/v1/agents/3/identity", request, Void::class.java)
@@ -53,9 +52,10 @@ class UpdateAgentIdentityEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(request.firstName, requests[0].newFirstName)
         assertEquals(request.lastName, requests[0].newLastName)
         assertEquals(request.identityType, requests[0].identityType)
-        assertEquals(request.documentPage1Url, requests[0].documentPage1Url)
-        assertEquals(request.documentPage2Url, requests[0].documentPage2Url)
+        assertEquals(request.imageUrls, requests[0].imageUrls)
         assertEquals(KycStatus.PENDING, requests[0].status)
+
+        assertEquals(requests[0].id, agent.identityChange?.id)
     }
 
     @Test
@@ -64,7 +64,7 @@ class UpdateAgentIdentityEndpointTest : TenantAwareEndpointIntegrationTest() {
             firstName = "Misty",
             lastName = "Waterflower",
             identityType = IdentityType.PASSPORT,
-            documentPage1Url = "https://example.com/page1.png",
+            imageUrls = listOf("https://example.com/page1.png"),
         )
 
         val response = rest.postForEntity("/v1/agents/1/identity", request, Void::class.java)
@@ -90,7 +90,7 @@ class UpdateAgentIdentityEndpointTest : TenantAwareEndpointIntegrationTest() {
             firstName = "Ash",
             lastName = "Ketchum",
             identityType = IdentityType.NATIONAL_ID,
-            documentPage1Url = "https://example.com/page1.png",
+            imageUrls = listOf("https://example.com/page1.png"),
         )
 
         val response = rest.postForEntity("/v1/agents/999/identity", request, ErrorResponse::class.java)
@@ -105,7 +105,7 @@ class UpdateAgentIdentityEndpointTest : TenantAwareEndpointIntegrationTest() {
             firstName = "",
             lastName = "Ketchum",
             identityType = IdentityType.NATIONAL_ID,
-            documentPage1Url = "https://example.com/page1.png",
+            imageUrls = listOf("https://example.com/page1.png"),
         )
 
         val response = rest.postForEntity("/v1/agents/3/identity", request, ErrorResponse::class.java)
@@ -120,7 +120,7 @@ class UpdateAgentIdentityEndpointTest : TenantAwareEndpointIntegrationTest() {
             firstName = "Ash",
             lastName = "Ketchum",
             identityType = IdentityType.NATIONAL_ID,
-            documentPage1Url = "",
+            imageUrls = listOf(),
         )
 
         val response = rest.postForEntity("/v1/agents/3/identity", request, ErrorResponse::class.java)
@@ -137,7 +137,7 @@ class UpdateAgentIdentityEndpointTest : TenantAwareEndpointIntegrationTest() {
             firstName = "Ash",
             lastName = "Ketchum",
             identityType = IdentityType.NATIONAL_ID,
-            documentPage1Url = "https://example.com/page1.png",
+            imageUrls = listOf("https://example.com/page1.png"),
         )
         val response = rest.postForEntity("/v1/agents/3/identity", request, ErrorResponse::class.java)
 

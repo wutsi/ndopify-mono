@@ -10,12 +10,9 @@ CREATE TABLE T_IDENTITY_CHANGE(
   new_first_name         VARCHAR(255) NOT NULL DEFAULT '',
   new_last_name          VARCHAR(255) NOT NULL DEFAULT '',
   identity_type          INT NOT NULL DEFAULT 0,
-  document_page1url      VARCHAR(255) NOT NULL DEFAULT '',
-  document_page2url      VARCHAR(255),
+  image_urls             TEXT,
 
   holder_name            VARCHAR(255),
-  number                 VARCHAR(255),
-  expiry_date            DATETIME,
 
   status                 INT NOT NULL DEFAULT 0,
   error_code             VARCHAR(100),
@@ -23,7 +20,7 @@ CREATE TABLE T_IDENTITY_CHANGE(
   failure_reason         TEXT,
 
   created_at             DATETIME DEFAULT NOW(),
-  verified_at            DATETIME NOT NULL DEFAULT now() ON UPDATE now(),
+  verified_at            DATETIME,
 
   PRIMARY KEY(id)
 ) ENGINE = InnoDB;
@@ -31,3 +28,5 @@ CREATE TABLE T_IDENTITY_CHANGE(
 CREATE INDEX I_IDENTITY_CHANGE_tenant ON T_IDENTITY_CHANGE(tenant_id);
 CREATE INDEX I_IDENTITY_CHANGE_status ON T_IDENTITY_CHANGE(status);
 CREATE INDEX I_IDENTITY_CHANGE_verify_by_user ON T_IDENTITY_CHANGE(verify_by_user_id);
+
+ALTER TABLE T_AGENT ADD COLUMN identity_change_id BIGINT REFERENCES T_IDENTITY_CHANGE(id);

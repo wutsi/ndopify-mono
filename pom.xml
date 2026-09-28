@@ -45,7 +45,7 @@
     </repositories>
 
     <properties>
-        <ndopify-dto.version>0.0.4</ndopify-dto.version>
+        <ndopify-dto.version>0.0.5-SNAPSHOT</ndopify-dto.version>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 

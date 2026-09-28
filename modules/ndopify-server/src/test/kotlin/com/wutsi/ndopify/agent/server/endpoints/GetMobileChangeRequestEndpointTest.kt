@@ -15,7 +15,7 @@ import kotlin.test.assertEquals
 class GetMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest() {
     @Test
     fun get() {
-        val response = rest.getForEntity("/v1/mobile-change-requests/1", GetMobileChangeResponse::class.java)
+        val response = rest.getForEntity("/v1/mobile-changes/1", GetMobileChangeResponse::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
 
@@ -33,19 +33,19 @@ class GetMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest() 
 
     @Test
     fun `not found`() {
-        val response = rest.getForEntity("/v1/mobile-change-requests/999", ErrorResponse::class.java)
+        val response = rest.getForEntity("/v1/mobile-changes/999", ErrorResponse::class.java)
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
-        assertEquals(ErrorCode.MOBILE_CHANGE_REQUEST_NOT_FOUND, response.body?.error?.code)
+        assertEquals(ErrorCode.MOBILE_CHANGE_NOT_FOUND, response.body?.error?.code)
     }
 
     @Test
     fun `mobile change request belongs to another tenant`() {
         overrideTenantId = 999L
 
-        val response = rest.getForEntity("/v1/mobile-change-requests/1", ErrorResponse::class.java)
+        val response = rest.getForEntity("/v1/mobile-changes/1", ErrorResponse::class.java)
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
-        assertEquals(ErrorCode.MOBILE_CHANGE_REQUEST_NOT_FOUND, response.body?.error?.code)
+        assertEquals(ErrorCode.MOBILE_CHANGE_NOT_FOUND, response.body?.error?.code)
     }
 }

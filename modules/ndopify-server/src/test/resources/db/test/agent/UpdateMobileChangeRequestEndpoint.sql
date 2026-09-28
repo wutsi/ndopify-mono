@@ -1,8 +1,8 @@
 INSERT INTO T_AGENT (
     id, tenant_id, user_id, agent_type, first_name, last_name,
-    mobile_money_number, mobile_money_gateway, mobile_money_kyc_status, created_at, modified_at
+    mobile_money_number, mobile_money_gateway, mobile_money_kyc_status, created_at, modified_at, mobile_change_id
 ) VALUES
-  (1, 1, 1, 1, 'Ray', 'Sponsible', '+237600000000', 0, 1, NOW(), NOW());
+  (1, 1, 1, 1, 'Ray', 'Sponsible', '+237600000000', 0, 1, NOW(), NOW(), 1);
 
 INSERT INTO T_MOBILE_CHANGE (
     id, tenant_id, agent_id, verify_by_user_id, old_mobile_number, new_mobile_number, new_gateway, status, retries, created_at

@@ -1,17 +1,17 @@
 package com.wutsi.ndopify.agent.server.endpoints
 
 import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
-import com.wutsi.ndopify.agent.dto.SearchMobileChangeResponse
+import com.wutsi.ndopify.agent.dto.SearchIdentityChangeResponse
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-@Sql(value = ["/db/test/clean.sql", "/db/test/agent/SearchMobileChangeRequestEndpoint.sql"])
-class SearchMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest() {
+@Sql(value = ["/db/test/clean.sql", "/db/test/agent/SearchIdentityChangeRequestEndpoint.sql"])
+class SearchIdentityChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest() {
     @Test
     fun all() {
-        val response = rest.getForEntity("/v1/mobile-changes", SearchMobileChangeResponse::class.java)
+        val response = rest.getForEntity("/v1/identity-changes", SearchIdentityChangeResponse::class.java)
 
         val changes = response.body!!.changes
         assertEquals(3, changes.size)
@@ -20,7 +20,7 @@ class SearchMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest
 
     @Test
     fun `by ids`() {
-        val response = rest.getForEntity("/v1/mobile-changes?ids=1&ids=3", SearchMobileChangeResponse::class.java)
+        val response = rest.getForEntity("/v1/identity-changes?ids=1&ids=3", SearchIdentityChangeResponse::class.java)
 
         val changes = response.body!!.changes
         assertEquals(2, changes.size)
@@ -29,7 +29,7 @@ class SearchMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest
 
     @Test
     fun `by agent id`() {
-        val response = rest.getForEntity("/v1/mobile-changes?agentId=1", SearchMobileChangeResponse::class.java)
+        val response = rest.getForEntity("/v1/identity-changes?agentId=1", SearchIdentityChangeResponse::class.java)
 
         val changes = response.body!!.changes
         assertEquals(2, changes.size)
@@ -38,7 +38,7 @@ class SearchMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest
 
     @Test
     fun `by status`() {
-        val response = rest.getForEntity("/v1/mobile-changes?status=PENDING", SearchMobileChangeResponse::class.java)
+        val response = rest.getForEntity("/v1/identity-changes?status=PENDING", SearchIdentityChangeResponse::class.java)
 
         val changes = response.body!!.changes
         assertEquals(2, changes.size)
@@ -47,14 +47,14 @@ class SearchMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest
 
     @Test
     fun `no match`() {
-        val response = rest.getForEntity("/v1/mobile-changes?agentId=999", SearchMobileChangeResponse::class.java)
+        val response = rest.getForEntity("/v1/identity-changes?agentId=999", SearchIdentityChangeResponse::class.java)
 
         assertEquals(0, response.body!!.changes.size)
     }
 
     @Test
     fun limit() {
-        val response = rest.getForEntity("/v1/mobile-changes?limit=2", SearchMobileChangeResponse::class.java)
+        val response = rest.getForEntity("/v1/identity-changes?limit=2", SearchIdentityChangeResponse::class.java)
 
         val changes = response.body!!.changes
         assertEquals(2, changes.size)
@@ -63,7 +63,7 @@ class SearchMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest
 
     @Test
     fun offset() {
-        val response = rest.getForEntity("/v1/mobile-changes?offset=1", SearchMobileChangeResponse::class.java)
+        val response = rest.getForEntity("/v1/identity-changes?offset=1", SearchIdentityChangeResponse::class.java)
 
         val changes = response.body!!.changes
         assertEquals(2, changes.size)
@@ -71,10 +71,10 @@ class SearchMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest
     }
 
     @Test
-    fun `other tenant sees no mobile change requests`() {
+    fun `other tenant sees no identity change requests`() {
         overrideTenantId = 999L
 
-        val response = rest.getForEntity("/v1/mobile-changes", SearchMobileChangeResponse::class.java)
+        val response = rest.getForEntity("/v1/identity-changes", SearchIdentityChangeResponse::class.java)
 
         assertEquals(0, response.body!!.changes.size)
     }

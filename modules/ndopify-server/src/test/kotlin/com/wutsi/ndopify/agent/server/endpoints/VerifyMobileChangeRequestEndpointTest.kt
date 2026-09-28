@@ -40,7 +40,7 @@ class VerifyMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest
     @Test
     fun `gateway not supported`() {
         val response =
-            rest.postForEntity("/v1/mobile-change-requests/1/verify", null, VerifyMobileChangeResponse::class.java)
+            rest.postForEntity("/v1/mobile-changes/1/verify", null, VerifyMobileChangeResponse::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(KycStatus.REQUIRES_MANUAL_REVIEW, response.body!!.status)
@@ -56,11 +56,11 @@ class VerifyMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest
             .whenever(mtnCollection).userBasicInfo(any())
 
         val response =
-            rest.postForEntity("/v1/mobile-change-requests/2/verify", null, VerifyMobileChangeResponse::class.java)
+            rest.postForEntity("/v1/mobile-changes/2/verify", null, VerifyMobileChangeResponse::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(KycStatus.REJECTED, response.body!!.status)
-        assertEquals(KycErrorCode.ACCOUNT_NOT_ACTIVE, response.body!!.errorCode)
+        assertEquals(KycErrorCode.INACTIVE, response.body!!.errorCode)
     }
 
     @Test
@@ -69,7 +69,7 @@ class VerifyMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest
             .whenever(mtnCollection).userBasicInfo(any())
 
         val response =
-            rest.postForEntity("/v1/mobile-change-requests/4/verify", null, VerifyMobileChangeResponse::class.java)
+            rest.postForEntity("/v1/mobile-changes/4/verify", null, VerifyMobileChangeResponse::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(KycStatus.VERIFIED, response.body!!.status)
@@ -101,7 +101,7 @@ class VerifyMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest
             .whenever(mtnCollection).userBasicInfo(any())
 
         val response =
-            rest.postForEntity("/v1/mobile-change-requests/5/verify", null, VerifyMobileChangeResponse::class.java)
+            rest.postForEntity("/v1/mobile-changes/5/verify", null, VerifyMobileChangeResponse::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(KycStatus.REQUIRES_MANUAL_REVIEW, response.body!!.status)
@@ -114,7 +114,7 @@ class VerifyMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest
             .whenever(mtnCollection).userBasicInfo(any())
 
         val response =
-            rest.postForEntity("/v1/mobile-change-requests/6/verify", null, VerifyMobileChangeResponse::class.java)
+            rest.postForEntity("/v1/mobile-changes/6/verify", null, VerifyMobileChangeResponse::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(KycStatus.REJECTED, response.body!!.status)
@@ -127,7 +127,7 @@ class VerifyMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest
             .whenever(mtnCollection).userBasicInfo(any())
 
         val response =
-            rest.postForEntity("/v1/mobile-change-requests/7/verify", null, VerifyMobileChangeResponse::class.java)
+            rest.postForEntity("/v1/mobile-changes/7/verify", null, VerifyMobileChangeResponse::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(KycStatus.REJECTED, response.body!!.status)
@@ -139,7 +139,7 @@ class VerifyMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest
         doAnswer { throw MoMoException(MoMoError(), "timeout") }.whenever(mtnCollection).userBasicInfo(any())
 
         val response =
-            rest.postForEntity("/v1/mobile-change-requests/8/verify", null, VerifyMobileChangeResponse::class.java)
+            rest.postForEntity("/v1/mobile-changes/8/verify", null, VerifyMobileChangeResponse::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(KycStatus.PENDING, response.body!!.status)
@@ -158,7 +158,7 @@ class VerifyMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest
         doAnswer { throw MoMoException(MoMoError(), "timeout") }.whenever(mtnCollection).userBasicInfo(any())
 
         val response =
-            rest.postForEntity("/v1/mobile-change-requests/9/verify", null, VerifyMobileChangeResponse::class.java)
+            rest.postForEntity("/v1/mobile-changes/9/verify", null, VerifyMobileChangeResponse::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(KycStatus.REQUIRES_MANUAL_REVIEW, response.body!!.status)
@@ -175,7 +175,7 @@ class VerifyMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest
     @Test
     fun `cancelled when superseded by a newer mobile change request`() {
         val response =
-            rest.postForEntity("/v1/mobile-change-requests/10/verify", null, VerifyMobileChangeResponse::class.java)
+            rest.postForEntity("/v1/mobile-changes/10/verify", null, VerifyMobileChangeResponse::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(KycStatus.CANCELLED, response.body!!.status)
@@ -186,27 +186,27 @@ class VerifyMobileChangeRequestEndpointTest : TenantAwareEndpointIntegrationTest
 
     @Test
     fun `not found`() {
-        val response = rest.postForEntity("/v1/mobile-change-requests/999/verify", null, ErrorResponse::class.java)
+        val response = rest.postForEntity("/v1/mobile-changes/999/verify", null, ErrorResponse::class.java)
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
-        assertEquals(ErrorCode.MOBILE_CHANGE_REQUEST_NOT_FOUND, response.body?.error?.code)
+        assertEquals(ErrorCode.MOBILE_CHANGE_NOT_FOUND, response.body?.error?.code)
     }
 
     @Test
     fun `already processed`() {
-        val response = rest.postForEntity("/v1/mobile-change-requests/3/verify", null, ErrorResponse::class.java)
+        val response = rest.postForEntity("/v1/mobile-changes/3/verify", null, ErrorResponse::class.java)
 
         assertEquals(HttpStatus.CONFLICT, response.statusCode)
-        assertEquals(ErrorCode.MOBILE_CHANGE_REQUEST_ALREADY_PROCEEDED, response.body?.error?.code)
+        assertEquals(ErrorCode.MOBILE_CHANGE_ALREADY_PROCEEDED, response.body?.error?.code)
     }
 
     @Test
     fun `mobile change request belongs to another tenant`() {
         overrideTenantId = 999L
 
-        val response = rest.postForEntity("/v1/mobile-change-requests/1/verify", null, ErrorResponse::class.java)
+        val response = rest.postForEntity("/v1/mobile-changes/1/verify", null, ErrorResponse::class.java)
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
-        assertEquals(ErrorCode.MOBILE_CHANGE_REQUEST_NOT_FOUND, response.body?.error?.code)
+        assertEquals(ErrorCode.MOBILE_CHANGE_NOT_FOUND, response.body?.error?.code)
     }
 }
