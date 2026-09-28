@@ -9,7 +9,6 @@ spring:
             chat:
                 options:
                     model: kimi-k2.6
-                    temperature: 1
     #        openai:
     #            api-key: ${GEMINI_API_KEY}
     #            base-url: https://generativelanguage.googleapis.com/v1beta/openai
