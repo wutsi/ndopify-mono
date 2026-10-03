@@ -56,11 +56,11 @@
                     <legend class="visually-hidden">Que recherchez-vous aujourd'hui ?</legend>
                     <h3 aria-hidden="true">Que recherchez-vous aujourd'hui ?</h3>
                     <div class="field">
-                        <label id="categorie-label">Catégorie de location</label>
-                        <div aria-labelledby="categorie-label" class="option-grid" role="radiogroup">
-                            <label><input name="categorie" required type="radio" value="residential">
+                        <label id="category-label">Catégorie de location</label>
+                        <div aria-labelledby="category-label" class="option-grid" role="radiogroup">
+                            <label><input name="category" required type="radio" value="residential">
                                 Résidentiel</label>
-                            <label><input name="categorie" required type="radio" value="commercial"> Commercial</label>
+                            <label><input name="category" required type="radio" value="commercial"> Commercial</label>
                         </div>
                         <span aria-live="polite" class="field-error"></span>
                     </div>
@@ -74,13 +74,13 @@
                     <legend class="visually-hidden">Dans quel secteur souhaitez-vous vous installer ?</legend>
                     <h3 aria-hidden="true">Dans quel secteur souhaitez-vous vous installer ?</h3>
                     <div class="field">
-                        <label for="ville">Ville</label>
-                        <input autocomplete="address-level2" id="ville" name="ville" required type="text">
+                        <label for="city">Ville</label>
+                        <input autocomplete="address-level2" id="city" name="city" required type="text">
                         <span aria-live="polite" class="field-error"></span>
                     </div>
                     <div class="field">
-                        <label for="quartiers">Quartiers prioritaires (1 à 3)</label>
-                        <input id="quartiers" name="quartiers" placeholder="Ex. Bastos, Mvan, Nsam" required
+                        <label for="neighborhoods">Quartiers prioritaires (1 à 3)</label>
+                        <input id="neighborhoods" name="neighborhoods" placeholder="Ex. Bastos, Mvan, Nsam" required
                                type="text">
                         <span class="hint">Séparez les quartiers par une virgule.</span>
                         <span aria-live="polite" class="field-error"></span>
@@ -95,13 +95,13 @@
                     <legend class="visually-hidden">Quel est votre budget mensuel ?</legend>
                     <h3 aria-hidden="true">Quel est votre budget mensuel ?</h3>
                     <div class="field">
-                        <label for="loyer-min">Loyer minimal</label>
-                        <input data-amount id="loyer-min" inputmode="decimal" name="loyer_min" required type="text">
+                        <label for="rent-min">Loyer minimal</label>
+                        <input data-amount id="rent-min" inputmode="decimal" name="rent_min" required type="text">
                         <span aria-live="polite" class="field-error"></span>
                     </div>
                     <div class="field">
-                        <label for="loyer-max">Loyer maximal</label>
-                        <input data-amount id="loyer-max" inputmode="decimal" name="loyer_max" required type="text">
+                        <label for="rent-max">Loyer maximal</label>
+                        <input data-amount id="rent-max" inputmode="decimal" name="rent_max" required type="text">
                         <span aria-live="polite" class="field-error"></span>
                     </div>
                     <div class="wizard-actions">
@@ -114,8 +114,8 @@
                     <legend class="visually-hidden">Décrivez-nous votre logement idéal</legend>
                     <h3 aria-hidden="true">Décrivez-nous votre logement idéal</h3>
                     <div class="field">
-                        <label for="type-propriete">Type de propriété</label>
-                        <select id="type-propriete" name="type_propriete" required>
+                        <label for="property-type">Type de propriété</label>
+                        <select id="property-type" name="property_type" required>
                             <option value="">Sélectionnez…</option>
                             <option value="room">Chambre</option>
                             <option value="studio">Studio</option>
@@ -126,17 +126,17 @@
                         <span aria-live="polite" class="field-error"></span>
                     </div>
                     <div class="field">
-                        <label id="meuble-label">Meublé</label>
-                        <div aria-labelledby="meuble-label" class="option-grid" role="radiogroup">
-                            <label><input name="meuble" required type="radio" value="yes"> Oui</label>
-                            <label><input name="meuble" required type="radio" value="no"> Non</label>
-                            <label><input name="meuble" required type="radio" value="any"> Indifférent</label>
+                        <label id="furnished-label">Meublé</label>
+                        <div aria-labelledby="furnished-label" class="option-grid" role="radiogroup">
+                            <label><input name="furnished" required type="radio" value="yes"> Oui</label>
+                            <label><input name="furnished" required type="radio" value="no"> Non</label>
+                            <label><input name="furnished" required type="radio" value="any"> Indifférent</label>
                         </div>
                         <span aria-live="polite" class="field-error"></span>
                     </div>
                     <div class="field">
-                        <label for="chambres">Nombre de chambres</label>
-                        <input id="chambres" min="0" name="chambres" required type="number">
+                        <label for="bedrooms">Nombre de chambres</label>
+                        <input id="bedrooms" min="0" name="bedrooms" required type="number">
                         <span aria-live="polite" class="field-error"></span>
                     </div>
                     <div class="field">
@@ -153,43 +153,39 @@
                     <legend class="visually-hidden">Quels sont vos critères d'infrastructure indispensables ?</legend>
                     <h3 aria-hidden="true">Quels sont vos critères d'infrastructure indispensables ?</h3>
                     <div class="field">
-                        <label id="eau-label">Accès à l'eau</label>
-                        <div aria-labelledby="eau-label" class="option-grid" role="group">
-                            <label><input name="eau" type="checkbox" value="camwater"> Camwater</label>
-                            <label><input name="eau" type="checkbox" value="dedicated-meter"> Compteur Dédié</label>
-                            <label><input name="eau" type="checkbox" value="borehole"> Forage</label>
-                            <label><input name="eau" type="checkbox" value="tank"> Citerne</label>
+                        <label id="water-label">Accès à l'eau</label>
+                        <div aria-labelledby="water-label" class="option-grid" role="group">
+                            <label><input name="water" type="checkbox" value="meter">Compteur d'eau</label>
+                            <label><input name="water" type="checkbox" value="dedicated-meter"> Compteur Dédié</label>
+                            <label><input name="water" type="checkbox" value="borehole_tank"> Forage / Citerne</label>
                         </div>
                     </div>
                     <div class="field">
-                        <label id="electricite-label">Accès à l'électricité</label>
-                        <div aria-labelledby="electricite-label" class="option-grid" role="group">
-                            <label><input name="electricite" type="checkbox" value="eneo"> Réseau Eneo</label>
-                            <label><input name="electricite" type="checkbox" value="dedicated-meter"> Compteur
+                        <label id="electricity-label">Accès à l'électricité</label>
+                        <div aria-labelledby="electricity-label" class="option-grid" role="group">
+                            <label><input name="electricity" type="checkbox" value="meter"> Compteur électrique</label>
+                            <label><input name="electricity" type="checkbox" value="dedicated-meter"> Compteur
                                 Dédié</label>
-                            <label><input name="electricite" type="checkbox" value="prepaid-meter"> Compteur
-                                Prépayé</label>
-                            <label><input name="electricite" type="checkbox" value="generator"> Groupe
-                                électrogène</label>
-                            <label><input name="electricite" type="checkbox" value="solar"> Solaire</label>
+                            <label><input name="electricity" type="checkbox" value="generator_solar"> Groupe
+                                électrogène / Panneau solaire</label>
                         </div>
                     </div>
                     <div class="field">
-                        <label id="route-label">Accès routier</label>
-                        <div aria-labelledby="route-label" class="option-grid" role="group">
-                            <label><input name="route" type="checkbox" value="paved"> Route bitumée</label>
-                            <label><input name="route" type="checkbox" value="dirt-road-car-accessible"> Piste
+                        <label id="road-label">Accès routier</label>
+                        <div aria-labelledby="road-label" class="option-grid" role="group">
+                            <label><input name="road" type="checkbox" value="paved"> Route bitumée</label>
+                            <label><input name="road" type="checkbox" value="dirt-road-car-accessible"> Piste
                                 accessible en voiture</label>
-                            <label><input name="route" type="checkbox" value="dirt-road-car-inaccessible"> Piste
+                            <label><input name="road" type="checkbox" value="dirt-road-car-inaccessible"> Piste
                                 inaccessible aux voitures</label>
                         </div>
                     </div>
                     <div class="field">
-                        <label id="securite-label">Sécurité</label>
-                        <div aria-labelledby="securite-label" class="option-grid" role="group">
-                            <label><input name="securite" type="checkbox" value="guard"> Gardiennage</label>
-                            <label><input name="securite" type="checkbox" value="video-surveillance"> Vidéo surveillance</label>
-                            <label><input name="securite" type="checkbox" value="fence"> Clôture/Mur</label>
+                        <label id="security-label">Sécurité</label>
+                        <div aria-labelledby="security-label" class="option-grid" role="group">
+                            <label><input name="security" type="checkbox" value="guard"> Gardiennage</label>
+                            <label><input name="security" type="checkbox" value="video-surveillance"> Vidéo surveillance</label>
+                            <label><input name="security" type="checkbox" value="fence">Barrière sécurisée</label>
                         </div>
                     </div>
                     <div class="wizard-actions">
@@ -202,13 +198,13 @@
                     <legend class="visually-hidden">Comment notre agent peut-il vous contacter ?</legend>
                     <h3 aria-hidden="true">Comment notre agent peut-il vous contacter ?</h3>
                     <div class="field">
-                        <label for="prenom">Prénom</label>
-                        <input autocomplete="given-name" id="prenom" name="prenom" required type="text">
+                        <label for="firstname">Prénom</label>
+                        <input autocomplete="given-name" id="firstname" name="firstname" required type="text">
                         <span aria-live="polite" class="field-error"></span>
                     </div>
                     <div class="field">
-                        <label for="nom">Nom</label>
-                        <input autocomplete="family-name" id="nom" name="nom" required type="text">
+                        <label for="lastname">Nom</label>
+                        <input autocomplete="family-name" id="lastname" name="lastname" required type="text">
                         <span aria-live="polite" class="field-error"></span>
                     </div>
                     <div class="field">
@@ -222,11 +218,11 @@
                         <span aria-live="polite" class="field-error"></span>
                     </div>
                     <div class="field">
-                        <label id="moment-label">Moment idéal pour vous contacter</label>
-                        <div aria-labelledby="moment-label" class="option-grid" role="radiogroup">
-                            <label><input name="moment" required type="radio" value="morning"> Matin</label>
-                            <label><input name="moment" required type="radio" value="afternoon"> Après-midi</label>
-                            <label><input name="moment" required type="radio" value="evening"> Soirée</label>
+                        <label id="timeslot-label">Moment idéal pour vous contacter</label>
+                        <div aria-labelledby="timeslot-label" class="option-grid" role="radiogroup">
+                            <label><input name="timeslot" required type="radio" value="morning"> Matin</label>
+                            <label><input name="timeslot" required type="radio" value="afternoon"> Après-midi</label>
+                            <label><input name="timeslot" required type="radio" value="evening"> Soirée</label>
                         </div>
                         <span aria-live="polite" class="field-error"></span>
                     </div>

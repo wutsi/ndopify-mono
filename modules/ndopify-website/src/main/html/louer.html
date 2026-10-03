@@ -56,11 +56,11 @@
                     <legend class="visually-hidden">Quel type de bien souhaitez-vous mettre en location ?</legend>
                     <h3 aria-hidden="true">Quel type de bien souhaitez-vous mettre en location ?</h3>
                     <div class="field">
-                        <label data-category-toggle id="categorie-label">Catégorie</label>
-                        <div aria-labelledby="categorie-label" class="option-grid" role="radiogroup">
-                            <label><input name="categorie" required type="radio" value="residential">
+                        <label data-category-toggle id="category-label">Catégorie</label>
+                        <div aria-labelledby="category-label" class="option-grid" role="radiogroup">
+                            <label><input name="category" required type="radio" value="residential">
                                 Résidentiel</label>
-                            <label><input name="categorie" required type="radio" value="commercial"> Commercial</label>
+                            <label><input name="category" required type="radio" value="commercial"> Commercial</label>
                         </div>
                         <span aria-live="polite" class="field-error"></span>
                     </div>
@@ -74,18 +74,18 @@
                     <legend class="visually-hidden">Où se situe votre propriété ?</legend>
                     <h3 aria-hidden="true">Où se situe votre propriété ?</h3>
                     <div class="field">
-                        <label for="ville">Ville</label>
-                        <input autocomplete="address-level2" id="ville" name="ville" required type="text">
+                        <label for="city">Ville</label>
+                        <input autocomplete="address-level2" id="city" name="city" required type="text">
                         <span aria-live="polite" class="field-error"></span>
                     </div>
                     <div class="field">
-                        <label for="quartier">Quartier</label>
-                        <input id="quartier" name="quartier" required type="text">
+                        <label for="neighborhood">Quartier</label>
+                        <input id="neighborhood" name="neighborhood" required type="text">
                         <span aria-live="polite" class="field-error"></span>
                     </div>
                     <div class="field">
-                        <label for="precision">Précision (repère/adresse) <span class="hint">(optionnel)</span></label>
-                        <input id="precision" name="precision" type="text">
+                        <label for="landmark">Précision (repère/adresse) <span class="hint">(optionnel)</span></label>
+                        <input id="landmark" name="landmark" type="text">
                     </div>
                     <div class="wizard-actions">
                         <button class="btn btn-outline" data-action="prev" type="button">Précédent</button>
@@ -97,13 +97,13 @@
                     <legend class="visually-hidden">Quelles sont vos conditions financières ?</legend>
                     <h3 aria-hidden="true">Quelles sont vos conditions financières ?</h3>
                     <div class="field">
-                        <label for="loyer">Loyer mensuel souhaité</label>
-                        <input data-amount id="loyer" inputmode="decimal" name="loyer" required type="text">
+                        <label for="rent">Loyer mensuel souhaité</label>
+                        <input data-amount id="rent" inputmode="decimal" name="rent" required type="text">
                         <span aria-live="polite" class="field-error"></span>
                     </div>
                     <div class="field">
-                        <label for="avance">Avance de loyer exigée</label>
-                        <select id="avance" name="avance" required>
+                        <label for="advance">Avance de loyer exigée</label>
+                        <select id="advance" name="advance" required>
                             <option value="">Sélectionnez…</option>
                             <option value="0">Pas d'avance</option>
                             <option value="1">1 mois</option>
@@ -133,8 +133,8 @@
                         </select>
                     </div>
                     <div class="field">
-                        <label for="caution">Caution réclamée</label>
-                        <select id="caution" name="caution" required>
+                        <label for="deposit">Caution réclamée</label>
+                        <select id="deposit" name="deposit" required>
                             <option value="">Sélectionnez…</option>
                             <option value="0">Pas de caution</option>
                             <option value="1">1 mois</option>
@@ -164,8 +164,8 @@
                         </select>
                     </div>
                     <div class="field">
-                        <label for="disponibilite">Date de disponibilité</label>
-                        <input id="disponibilite" name="disponibilite" type="date"/>
+                        <label for="availability">Date de disponibilité</label>
+                        <input id="availability" name="availability" type="date"/>
                         <span aria-live="polite" class="field-error"></span>
                     </div>
                     <div class="wizard-actions">
@@ -179,8 +179,8 @@
                     <h3 aria-hidden="true">Décrivez les caractéristiques de votre logement</h3>
                     <div data-show-for="residential">
                         <div class="field">
-                            <label for="type-bien">Type de bien</label>
-                            <select data-required-when-visible id="type-bien" name="type_bien">
+                            <label for="property-type">Type de bien</label>
+                            <select data-required-when-visible id="property-type" name="property_type">
                                 <option value="">Sélectionnez…</option>
                                 <option value="room">Chambre</option>
                                 <option value="studio">Studio</option>
@@ -191,8 +191,8 @@
                             <span aria-live="polite" class="field-error"></span>
                         </div>
                         <div class="field">
-                            <label for="ameublement">État d'ameublement</label>
-                            <select data-required-when-visible id="ameublement" name="ameublement">
+                            <label for="furnished">État d'ameublement</label>
+                            <select data-required-when-visible id="furnished" name="furnished">
                                 <option value="">Sélectionnez…</option>
                                 <option value="meuble">Meublé</option>
                                 <option value="non-meuble">Non meublé</option>
@@ -200,26 +200,26 @@
                             <span aria-live="polite" class="field-error"></span>
                         </div>
                         <div class="field">
-                            <label for="chambres">Nombre de chambres</label>
-                            <input data-required-when-visible id="chambres" min="0" name="chambres" type="number">
+                            <label for="bedrooms">Nombre de chambres</label>
+                            <input data-required-when-visible id="bedrooms" min="0" name="bedrooms" type="number">
                             <span aria-live="polite" class="field-error"></span>
                         </div>
                         <div class="field">
-                            <label for="douches">Nombre de douches/WC</label>
-                            <input data-required-when-visible id="douches" min="0" name="douches" type="number">
+                            <label for="bathrooms">Nombre de douches/WC</label>
+                            <input data-required-when-visible id="bathrooms" min="0" name="bathrooms" type="number">
                             <span aria-live="polite" class="field-error"></span>
                         </div>
                         <div class="field">
-                            <label for="parking-garage">Parking/Garage</label>
-                            <input data-required-when-visible id="parking-garage" min="0" name="parking_garage"
+                            <label for="parking">Parking/Garage</label>
+                            <input data-required-when-visible id="parking" min="0" name="parking"
                                    type="number">
                             <span aria-live="polite" class="field-error"></span>
                         </div>
                     </div>
                     <div data-show-for="commercial" hidden>
                         <div class="field">
-                            <label for="type-espace">Type d'espace</label>
-                            <select data-required-when-visible id="type-espace" name="type_espace">
+                            <label for="space-type">Type d'espace</label>
+                            <select data-required-when-visible id="space-type" name="space_type">
                                 <option value="">Sélectionnez…</option>
                                 <option value="boutique">Boutique</option>
                                 <option value="bureau">Bureau</option>
@@ -229,8 +229,8 @@
                             <span aria-live="polite" class="field-error"></span>
                         </div>
                         <div class="field">
-                            <label for="surface">Surface estimée (m²)</label>
-                            <input data-required-when-visible id="surface" min="0" name="surface" type="number">
+                            <label for="area">Surface estimée (m²)</label>
+                            <input data-required-when-visible id="area" min="0" name="area" type="number">
                             <span aria-live="polite" class="field-error"></span>
                         </div>
                     </div>
@@ -244,43 +244,39 @@
                     <legend class="visually-hidden">Quels sont les équipements et caractéristiques techniques ?</legend>
                     <h3 aria-hidden="true">Quels sont les équipements et caractéristiques techniques ?</h3>
                     <div class="field">
-                        <label id="eau-label">Accès à l'eau</label>
-                        <div aria-labelledby="eau-label" class="option-grid" role="group">
-                            <label><input name="eau" type="checkbox" value="camwater"> Camwater</label>
-                            <label><input name="eau" type="checkbox" value="dedicated-meter"> Compteur Dédié</label>
-                            <label><input name="eau" type="checkbox" value="borehole"> Forage</label>
-                            <label><input name="eau" type="checkbox" value="tank"> Citerne</label>
+                        <label id="water-label">Accès à l'eau</label>
+                        <div aria-labelledby="water-label" class="option-grid" role="group">
+                            <label><input name="water" type="checkbox" value="meter">Compteur d'eau</label>
+                            <label><input name="water" type="checkbox" value="dedicated-meter"> Compteur Dédié</label>
+                            <label><input name="water" type="checkbox" value="borehole_tank"> Forage / Citerne</label>
                         </div>
                     </div>
                     <div class="field">
-                        <label id="electricite-label">Accès à l'électricité</label>
-                        <div aria-labelledby="electricite-label" class="option-grid" role="group">
-                            <label><input name="electricite" type="checkbox" value="eneo"> Réseau Eneo</label>
-                            <label><input name="electricite" type="checkbox" value="dedicated-meter"> Compteur
+                        <label id="electricity-label">Accès à l'électricité</label>
+                        <div aria-labelledby="electricity-label" class="option-grid" role="group">
+                            <label><input name="electricity" type="checkbox" value="meter"> Compteur électrique</label>
+                            <label><input name="electricity" type="checkbox" value="dedicated-meter"> Compteur
                                 Dédié</label>
-                            <label><input name="electricite" type="checkbox" value="prepaid-meter"> Compteur
-                                Prépayé</label>
-                            <label><input name="electricite" type="checkbox" value="generator"> Groupe
-                                électrogène</label>
-                            <label><input name="electricite" type="checkbox" value="solar"> Solaire</label>
+                            <label><input name="electricity" type="checkbox" value="generator_solar"> Groupe
+                                électrogène / Panneau solaire</label>
                         </div>
                     </div>
                     <div class="field">
-                        <label id="route-label">Accès routier</label>
-                        <div aria-labelledby="route-label" class="option-grid" role="group">
-                            <label><input name="route" type="checkbox" value="paved"> Route bitumée</label>
-                            <label><input name="route" type="checkbox" value="dirt-road-car-accessible"> Piste
+                        <label id="road-label">Accès routier</label>
+                        <div aria-labelledby="road-label" class="option-grid" role="group">
+                            <label><input name="road" type="checkbox" value="paved"> Route bitumée</label>
+                            <label><input name="road" type="checkbox" value="dirt-road-car-accessible"> Piste
                                 accessible en voiture</label>
-                            <label><input name="route" type="checkbox" value="dirt-road-car-inaccessible"> Piste
+                            <label><input name="road" type="checkbox" value="dirt-road-car-inaccessible"> Piste
                                 inaccessible aux voitures</label>
                         </div>
                     </div>
                     <div class="field">
-                        <label id="securite-label">Sécurité</label>
-                        <div aria-labelledby="securite-label" class="option-grid" role="group">
-                            <label><input name="securite" type="checkbox" value="guard"> Gardiennage</label>
-                            <label><input name="securite" type="checkbox" value="video-surveillance"> Vidéo surveillance</label>
-                            <label><input name="securite" type="checkbox" value="fence"> Clôture/Mur</label>
+                        <label id="security-label">Sécurité</label>
+                        <div aria-labelledby="security-label" class="option-grid" role="group">
+                            <label><input name="security" type="checkbox" value="guard"> Gardiennage</label>
+                            <label><input name="security" type="checkbox" value="video-surveillance"> Vidéo surveillance</label>
+                            <label><input name="security" type="checkbox" value="fence">Barrière sécurisée</label>
                         </div>
                     </div>
                     <div class="wizard-actions">
@@ -293,13 +289,13 @@
                     <legend class="visually-hidden">Comment votre agent dédié peut-il vous contacter ?</legend>
                     <h3 aria-hidden="true">Comment votre agent dédié peut-il vous contacter ?</h3>
                     <div class="field">
-                        <label for="prenom">Prénom</label>
-                        <input autocomplete="given-name" id="prenom" name="prenom" required type="text">
+                        <label for="firstname">Prénom</label>
+                        <input autocomplete="given-name" id="firstname" name="firstname" required type="text">
                         <span aria-live="polite" class="field-error"></span>
                     </div>
                     <div class="field">
-                        <label for="nom">Nom</label>
-                        <input autocomplete="family-name" id="nom" name="nom" required type="text">
+                        <label for="lastname">Nom</label>
+                        <input autocomplete="family-name" id="lastname" name="lastname" required type="text">
                         <span aria-live="polite" class="field-error"></span>
                     </div>
                     <div class="field">
@@ -313,11 +309,11 @@
                         <span aria-live="polite" class="field-error"></span>
                     </div>
                     <div class="field">
-                        <label id="plage-label">Plage horaire idéale</label>
-                        <div aria-labelledby="plage-label" class="option-grid" role="radiogroup">
-                            <label><input name="plage" required type="radio" value="morning"> Matin</label>
-                            <label><input name="plage" required type="radio" value="afternoon"> Après-midi</label>
-                            <label><input name="plage" required type="radio" value="evening"> Soirée</label>
+                        <label id="timeslot-label">Plage horaire idéale</label>
+                        <div aria-labelledby="timeslot-label" class="option-grid" role="radiogroup">
+                            <label><input name="timeslot" required type="radio" value="morning"> Matin</label>
+                            <label><input name="timeslot" required type="radio" value="afternoon"> Après-midi</label>
+                            <label><input name="timeslot" required type="radio" value="evening"> Soirée</label>
                         </div>
                         <span aria-live="polite" class="field-error"></span>
                     </div>

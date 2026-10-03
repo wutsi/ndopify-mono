@@ -255,6 +255,18 @@ the warning.
 
 ### Form fields
 
+- **Field identifiers are always English, regardless of page language:** every `name`, `id`, `for`, and
+  `aria-labelledby` on a form control (and the matching group-label `id`, e.g. `*-label`) must be an English
+  token — `city`, `rent`, `firstname`, `property_type`, `category`, etc. — even on fully French-language pages.
+  Only the visible label text, placeholder, hint, and option text stay in the page's language; the DOM-facing
+  identifier never does. When the same concept appears on more than one form under a different French name (e.g.
+  the "property type" concept was `type_propriete` on one wizard and `type_bien` on another), standardize on one
+  English name across all forms rather than translating each literally — this is what makes the field names
+  reusable/greppable across pages. This isn't a source-doc rule (the source doc only specifies visible copy) but
+  is now the established implementation pattern — don't reintroduce a French `name`/`id`/`value` when adding or
+  regenerating a field.
+- **Radio/checkbox `value`s are English tokens too** (e.g. `value="yes"`/`"no"`/`"morning"`, not
+  `"oui"`/`"non"`/`"matin"`), for the same reason — they're data, not copy.
 - **Phone number:** use the `int-tel-input` library (https://github.com/jackocnr/intl-tel-input) — don't
   hand-roll phone input masking/validation.
 - **Country:** use a dropdown populated with the full list of countries, not a free-text field.
@@ -265,10 +277,10 @@ the warning.
   - Thousands separator: a space (e.g. `1 000 000`).
   - Decimal precision: `0` (`decimalPlaces: 0`) — XAF/FCFA has no subunit in practice.
   - Minimum value: `0` (`minimumValue: '0'`).
-- **Duration-in-months fields (e.g. `avance`/`caution` on `louer.html`):** when a field expresses a number of
-  months rather than a sum, use a plain `<select>` with options `0` ("pas d'avance"/"pas de caution") through
-  `24` ("24 mois") — not an AutoNumeric/FCFA-masked text input. Don't conflate "duration" fields with "amount"
-  fields just because both relate to rent terms.
+- **Duration-in-months fields (e.g. `advance`/`deposit` on `louer.html`):** when a field expresses a number of
+  months rather than a sum, use a plain `<select>` with options `0` (visible text "pas d'avance"/"pas de caution")
+  through `24` ("24 mois") — not an AutoNumeric/FCFA-masked text input. Don't conflate "duration" fields with
+  "amount" fields just because both relate to rent terms.
 - **Checkbox / radio option groups:** stack options in a single column, one option per row — not a horizontal/wrapping
   grid. Each option is its own row: `1px solid` `border-default`, `md` radius, `lg` padding, 44px minimum height
   (touch-target size), `md` gap between rows, the input itself fixed at 20×20px. This isn't a source-doc rule (the
@@ -319,6 +331,9 @@ or Tabs — don't invent styling for any of these; flag them as missing if neede
 - When wiring a CDN asset (e.g. intl-tel-input), verify the exact file path actually exists for the pinned
   version — some versions only publish an unminified CSS build (no `.min.css`); a guessed filename 404s silently
   and the component renders unstyled.
+- Do keep every form field's `name`/`id`/`for`/`aria-labelledby`/`value` in English even on French-language pages
+  (e.g. `name="city"` with label text "Ville"); don't translate the visible label and then mirror that French
+  word into the identifier too — see "Form fields" above.
 - Note: white text on `primary` (`#1d7edf`) measures 4.12:1 contrast, below WCAG AA's 4.5:1 minimum for normal
   text. This comes directly from the source doc's brand color and hover state — don't silently "fix" it by
   darkening `primary` or lightening the button text; flag it to design instead if AA compliance is required.

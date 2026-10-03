@@ -159,7 +159,7 @@
   }
 
   function applyCategoryToggle(form) {
-    var selected = form.querySelector('input[name="categorie"]:checked');
+    var selected = form.querySelector('input[name="category"]:checked');
     if (!selected) return;
     var value = selected.value;
     form.querySelectorAll('[data-show-for]').forEach(function (group) {

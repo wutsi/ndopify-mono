@@ -56,13 +56,13 @@
                     <legend class="visually-hidden">Parlez-nous de vous</legend>
                     <h3 aria-hidden="true">Parlez-nous de vous</h3>
                     <div class="field">
-                        <label for="prenom">Prénom</label>
-                        <input autocomplete="given-name" id="prenom" name="prenom" required type="text">
+                        <label for="firstname">Prénom</label>
+                        <input autocomplete="given-name" id="firstname" name="firstname" required type="text">
                         <span aria-live="polite" class="field-error"></span>
                     </div>
                     <div class="field">
-                        <label for="nom">Nom</label>
-                        <input autocomplete="family-name" id="nom" name="nom" required type="text">
+                        <label for="lastname">Nom</label>
+                        <input autocomplete="family-name" id="lastname" name="lastname" required type="text">
                         <span aria-live="polite" class="field-error"></span>
                     </div>
                     <div class="field">
@@ -85,23 +85,23 @@
                     <legend class="visually-hidden">Quelle est votre expérience sur le terrain ?</legend>
                     <h3 aria-hidden="true">Quelle est votre expérience sur le terrain ?</h3>
                     <div class="field">
-                        <label id="anciennete-label">Depuis combien de temps exercez-vous comme agent/démarcheur
+                        <label id="experience-label">Depuis combien de temps exercez-vous comme agent/démarcheur
                             ?</label>
-                        <div aria-labelledby="anciennete-label" class="option-grid" role="radiogroup">
-                            <label><input name="anciennete" required type="radio" value="less-than-1-year"> Moins d'un
+                        <div aria-labelledby="experience-label" class="option-grid" role="radiogroup">
+                            <label><input name="experience" required type="radio" value="less-than-1-year"> Moins d'un
                                 an</label>
-                            <label><input name="anciennete" required type="radio" value="1-to-3-years"> 1 à 3 ans</label>
-                            <label><input name="anciennete" required type="radio" value="3-to-5-years"> 3 à 5 ans</label>
-                            <label><input name="anciennete" required type="radio" value="more-than-5-years"> Plus de 5
+                            <label><input name="experience" required type="radio" value="1-to-3-years"> 1 à 3 ans</label>
+                            <label><input name="experience" required type="radio" value="3-to-5-years"> 3 à 5 ans</label>
+                            <label><input name="experience" required type="radio" value="more-than-5-years"> Plus de 5
                                 ans</label>
                         </div>
                         <span aria-live="polite" class="field-error"></span>
                     </div>
                     <div class="field">
-                        <label id="statut-label">Êtes-vous indépendant ou rattaché à une agence ?</label>
-                        <div aria-labelledby="statut-label" class="option-grid" role="radiogroup">
-                            <label><input name="statut" required type="radio" value="independent"> Indépendant</label>
-                            <label><input name="statut" required type="radio" value="agency"> Agence constituée</label>
+                        <label id="status-label">Êtes-vous indépendant ou rattaché à une agence ?</label>
+                        <div aria-labelledby="status-label" class="option-grid" role="radiogroup">
+                            <label><input name="status" required type="radio" value="independent"> Indépendant</label>
+                            <label><input name="status" required type="radio" value="agency"> Agence constituée</label>
                         </div>
                         <span aria-live="polite" class="field-error"></span>
                     </div>
@@ -115,13 +115,13 @@
                     <legend class="visually-hidden">Dans quelle zone géographique intervenez-vous ?</legend>
                     <h3 aria-hidden="true">Dans quelle zone géographique intervenez-vous ?</h3>
                     <div class="field">
-                        <label for="ville">Ville principale d'intervention</label>
-                        <input autocomplete="address-level2" id="ville" name="ville" required type="text">
+                        <label for="city">Ville principale d'intervention</label>
+                        <input autocomplete="address-level2" id="city" name="city" required type="text">
                         <span aria-live="polite" class="field-error"></span>
                     </div>
                     <div class="field">
-                        <label for="quartiers">Quartiers d'expertise (1 à 3)</label>
-                        <input id="quartiers" name="quartiers" placeholder="Ex. Bastos, Mvan, Nsam" required
+                        <label for="neighborhoods">Quartiers d'expertise (1 à 3)</label>
+                        <input id="neighborhoods" name="neighborhoods" placeholder="Ex. Bastos, Mvan, Nsam" required
                                type="text">
                         <span class="hint">Séparez les quartiers par une virgule.</span>
                         <span aria-live="polite" class="field-error"></span>
@@ -136,11 +136,11 @@
                     <legend class="visually-hidden">Quelle est votre spécialité immobilière ?</legend>
                     <h3 aria-hidden="true">Quelle est votre spécialité immobilière ?</h3>
                     <div class="field">
-                        <label id="specialite-label">Types de biens maîtrisés</label>
-                        <div aria-labelledby="specialite-label" class="option-grid" role="group">
-                            <label><input name="specialite" required type="checkbox" value="residential">
+                        <label id="specialty-label">Types de biens maîtrisés</label>
+                        <div aria-labelledby="specialty-label" class="option-grid" role="group">
+                            <label><input name="specialty" required type="checkbox" value="residential">
                                 Résidentiel</label>
-                            <label><input name="specialite" required type="checkbox" value="commercial">
+                            <label><input name="specialty" required type="checkbox" value="commercial">
                                 Commercial</label>
                         </div>
                         <span aria-live="polite" class="field-error"></span>
