@@ -28,7 +28,7 @@ jobs:
         runs-on: ubuntu-latest
         needs: [ build ]
         steps:
-            -   name: S3-Deploy-Test
+            -   name: Deploy-Test
                 env:
                     AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
                     AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
@@ -38,14 +38,4 @@ jobs:
                       --acl public-read \
                       --region us-east-1 \
                       modules/ndopify-website/src/main/html/ s3://com-wutsi-ndopify-test/www
-
-            -   name: Notification
-                uses: rtCamp/action-slack-notify@v2
-                if: always()
-                env:
-                    SLACK_COLOR: ${{ job.status }}
-                    SLACK_TITLE: wutsi-blog-web-test
-                    SLACK_MESSAGE: Heroku Deployment in TEST
-                    MSG_MINIMAL: true
-                    SLACK_WEBHOOK: ${{secrets.LOG4J_SLACK_WEBHOOK_URL_TEST}}
 
