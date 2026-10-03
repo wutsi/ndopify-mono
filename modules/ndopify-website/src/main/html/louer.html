@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>Proposer mon bien — Ndopify</title>
+    <meta
+        content="Soumettez votre bien à Ndopify : audit gratuit, kit média offert, locataires vérifiés. 3 à 5 minutes, aucun document requis ici."
+        name="description">
+    <link href="https://www.ndopify.com/louer.html" rel="canonical">
+    <meta content="noindex" name="robots">
+    <meta content="#1d7edf" name="theme-color">
+    <link href="assets/images/icon.png" rel="icon">
+    <link href="assets/images/icon.png" rel="apple-touch-icon">
+    <link href="assets/css/styles.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/23.0.10/css/intlTelInput.css" rel="stylesheet">
+</head>
+<body>
+<a class="skip-link" href="#main">Aller au contenu principal</a>
+<header class="site-header">
+    <a aria-label="Ndopify — accueil" class="site-header__logo" href="index.html">
+        <img alt="Ndopify" height="36" src="assets/images/logo.png" width="140">
+    </a>
+    <nav aria-label="Navigation principale" class="site-nav">
+        <button aria-controls="primary-nav-list" aria-expanded="false" class="nav-toggle">Menu</button>
+        <ul class="site-nav__list" id="primary-nav-list">
+            <li><a href="index.html">Locataires</a></li>
+            <li><a aria-current="page" href="bailleur.html">Bailleurs</a></li>
+            <li><a href="agent.html">Agents</a></li>
+        </ul>
+    </nav>
+</header>
+
+<main id="main">
+    <section class="section section--default">
+        <div class="container container--form">
+            <h1>Proposer mon bien</h1>
+            <p class="form-intro">
+                Parlez-nous de votre projet de location afin de nous aidez à vous recommander le meilleur agent pour
+                vous aider à trouver des locataires fiables et sérieux.
+                <br/><br/>
+                ⏱️ Temps estimé : <b>3 à 5 minutes</b>
+            </p>
+
+            <div aria-valuemax="6" aria-valuemin="1" aria-valuenow="1" aria-valuetext="Étape 1 sur 6" class="progress"
+                 data-progress-bar role="progressbar">
+                <div class="progress__bar">
+                    <div class="progress__fill" data-progress-fill style="transform:scaleX(0.17)"></div>
+                </div>
+                <span class="progress__label" data-progress-label>Étape 1 sur 6</span>
+            </div>
+
+            <h2 class="visually-hidden">Étapes du formulaire</h2>
+            <form class="wizard" novalidate>
+                <fieldset class="step" data-step="1">
+                    <legend class="visually-hidden">Quel type de bien souhaitez-vous mettre en location ?</legend>
+                    <h3 aria-hidden="true">Quel type de bien souhaitez-vous mettre en location ?</h3>
+                    <div class="field">
+                        <label data-category-toggle id="categorie-label">Catégorie</label>
+                        <div aria-labelledby="categorie-label" class="option-grid" role="radiogroup">
+                            <label><input name="categorie" required type="radio" value="residential">
+                                Résidentiel</label>
+                            <label><input name="categorie" required type="radio" value="commercial"> Commercial</label>
+                        </div>
+                        <span aria-live="polite" class="field-error"></span>
+                    </div>
+                    <div class="wizard-actions">
+                        <span></span>
+                        <button class="btn btn-primary" data-action="next" type="button">Suivant</button>
+                    </div>
+                </fieldset>
+
+                <fieldset class="step" data-step="2" hidden>
+                    <legend class="visually-hidden">Où se situe votre propriété ?</legend>
+                    <h3 aria-hidden="true">Où se situe votre propriété ?</h3>
+                    <div class="field">
+                        <label for="ville">Ville</label>
+                        <input autocomplete="address-level2" id="ville" name="ville" required type="text">
+                        <span aria-live="polite" class="field-error"></span>
+                    </div>
+                    <div class="field">
+                        <label for="quartier">Quartier</label>
+                        <input id="quartier" name="quartier" required type="text">
+                        <span aria-live="polite" class="field-error"></span>
+                    </div>
+                    <div class="field">
+                        <label for="precision">Précision (repère/adresse) <span class="hint">(optionnel)</span></label>
+                        <input id="precision" name="precision" type="text">
+                    </div>
+                    <div class="wizard-actions">
+                        <button class="btn btn-outline" data-action="prev" type="button">Précédent</button>
+                        <button class="btn btn-primary" data-action="next" type="button">Suivant</button>
+                    </div>
+                </fieldset>
+
+                <fieldset class="step" data-step="3" hidden>
+                    <legend class="visually-hidden">Quelles sont vos conditions financières ?</legend>
+                    <h3 aria-hidden="true">Quelles sont vos conditions financières ?</h3>
+                    <div class="field">
+                        <label for="loyer">Loyer mensuel souhaité</label>
+                        <input data-amount id="loyer" inputmode="decimal" name="loyer" required type="text">
+                        <span aria-live="polite" class="field-error"></span>
+                    </div>
+                    <div class="field">
+                        <label for="avance">Avance de loyer exigée</label>
+                        <select id="avance" name="avance" required>
+                            <option value="">Sélectionnez…</option>
+                            <option value="0">Pas d'avance</option>
+                            <option value="1">1 mois</option>
+                            <option value="2">2 mois</option>
+                            <option value="3">3 mois</option>
+                            <option value="4">4 mois</option>
+                            <option value="5">5 mois</option>
+                            <option value="6">6 mois</option>
+                            <option value="7">7 mois</option>
+                            <option value="8">8 mois</option>
+                            <option value="9">9 mois</option>
+                            <option value="10">10 mois</option>
+                            <option value="11">11 mois</option>
+                            <option value="12">12 mois</option>
+                            <option value="13">13 mois</option>
+                            <option value="14">14 mois</option>
+                            <option value="15">15 mois</option>
+                            <option value="16">16 mois</option>
+                            <option value="17">17 mois</option>
+                            <option value="18">18 mois</option>
+                            <option value="19">19 mois</option>
+                            <option value="20">20 mois</option>
+                            <option value="21">21 mois</option>
+                            <option value="22">22 mois</option>
+                            <option value="23">23 mois</option>
+                            <option value="24">24 mois</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="caution">Caution réclamée</label>
+                        <select id="caution" name="caution" required>
+                            <option value="">Sélectionnez…</option>
+                            <option value="0">Pas de caution</option>
+                            <option value="1">1 mois</option>
+                            <option value="2">2 mois</option>
+                            <option value="3">3 mois</option>
+                            <option value="4">4 mois</option>
+                            <option value="5">5 mois</option>
+                            <option value="6">6 mois</option>
+                            <option value="7">7 mois</option>
+                            <option value="8">8 mois</option>
+                            <option value="9">9 mois</option>
+                            <option value="10">10 mois</option>
+                            <option value="11">11 mois</option>
+                            <option value="12">12 mois</option>
+                            <option value="13">13 mois</option>
+                            <option value="14">14 mois</option>
+                            <option value="15">15 mois</option>
+                            <option value="16">16 mois</option>
+                            <option value="17">17 mois</option>
+                            <option value="18">18 mois</option>
+                            <option value="19">19 mois</option>
+                            <option value="20">20 mois</option>
+                            <option value="21">21 mois</option>
+                            <option value="22">22 mois</option>
+                            <option value="23">23 mois</option>
+                            <option value="24">24 mois</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="disponibilite">Date de disponibilité</label>
+                        <input id="disponibilite" name="disponibilite" type="date"/>
+                        <span aria-live="polite" class="field-error"></span>
+                    </div>
+                    <div class="wizard-actions">
+                        <button class="btn btn-outline" data-action="prev" type="button">Précédent</button>
+                        <button class="btn btn-primary" data-action="next" type="button">Suivant</button>
+                    </div>
+                </fieldset>
+
+                <fieldset class="step" data-step="4" hidden>
+                    <legend class="visually-hidden">Décrivez les caractéristiques de votre logement</legend>
+                    <h3 aria-hidden="true">Décrivez les caractéristiques de votre logement</h3>
+                    <div data-show-for="residential">
+                        <div class="field">
+                            <label for="type-bien">Type de bien</label>
+                            <select data-required-when-visible id="type-bien" name="type_bien">
+                                <option value="">Sélectionnez…</option>
+                                <option value="room">Chambre</option>
+                                <option value="studio">Studio</option>
+                                <option value="appartement">Appartement</option>
+                                <option value="maison">Maison/Villa</option>
+                                <option value="villa">Duplex</option>
+                            </select>
+                            <span aria-live="polite" class="field-error"></span>
+                        </div>
+                        <div class="field">
+                            <label for="ameublement">État d'ameublement</label>
+                            <select data-required-when-visible id="ameublement" name="ameublement">
+                                <option value="">Sélectionnez…</option>
+                                <option value="meuble">Meublé</option>
+                                <option value="non-meuble">Non meublé</option>
+                            </select>
+                            <span aria-live="polite" class="field-error"></span>
+                        </div>
+                        <div class="field">
+                            <label for="chambres">Nombre de chambres</label>
+                            <input data-required-when-visible id="chambres" min="0" name="chambres" type="number">
+                            <span aria-live="polite" class="field-error"></span>
+                        </div>
+                        <div class="field">
+                            <label for="douches">Nombre de douches/WC</label>
+                            <input data-required-when-visible id="douches" min="0" name="douches" type="number">
+                            <span aria-live="polite" class="field-error"></span>
+                        </div>
+                        <div class="field">
+                            <label for="parking-garage">Parking/Garage</label>
+                            <input data-required-when-visible id="parking-garage" min="0" name="parking_garage"
+                                   type="number">
+                            <span aria-live="polite" class="field-error"></span>
+                        </div>
+                    </div>
+                    <div data-show-for="commercial" hidden>
+                        <div class="field">
+                            <label for="type-espace">Type d'espace</label>
+                            <select data-required-when-visible id="type-espace" name="type_espace">
+                                <option value="">Sélectionnez…</option>
+                                <option value="boutique">Boutique</option>
+                                <option value="bureau">Bureau</option>
+                                <option value="entrepot">Entrepôt</option>
+                                <option value="autre">Autre</option>
+                            </select>
+                            <span aria-live="polite" class="field-error"></span>
+                        </div>
+                        <div class="field">
+                            <label for="surface">Surface estimée (m²)</label>
+                            <input data-required-when-visible id="surface" min="0" name="surface" type="number">
+                            <span aria-live="polite" class="field-error"></span>
+                        </div>
+                    </div>
+                    <div class="wizard-actions">
+                        <button class="btn btn-outline" data-action="prev" type="button">Précédent</button>
+                        <button class="btn btn-primary" data-action="next" type="button">Suivant</button>
+                    </div>
+                </fieldset>
+
+                <fieldset class="step" data-step="5" hidden>
+                    <legend class="visually-hidden">Quels sont les équipements et caractéristiques techniques ?</legend>
+                    <h3 aria-hidden="true">Quels sont les équipements et caractéristiques techniques ?</h3>
+                    <div class="field">
+                        <label id="eau-label">Accès à l'eau</label>
+                        <div aria-labelledby="eau-label" class="option-grid" role="group">
+                            <label><input name="eau" type="checkbox" value="camwater"> Camwater</label>
+                            <label><input name="eau" type="checkbox" value="dedicated-meter"> Compteur Dédié</label>
+                            <label><input name="eau" type="checkbox" value="borehole"> Forage</label>
+                            <label><input name="eau" type="checkbox" value="tank"> Citerne</label>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label id="electricite-label">Accès à l'électricité</label>
+                        <div aria-labelledby="electricite-label" class="option-grid" role="group">
+                            <label><input name="electricite" type="checkbox" value="eneo"> Réseau Eneo</label>
+                            <label><input name="electricite" type="checkbox" value="dedicated-meter"> Compteur
+                                Dédié</label>
+                            <label><input name="electricite" type="checkbox" value="prepaid-meter"> Compteur
+                                Prépayé</label>
+                            <label><input name="electricite" type="checkbox" value="generator"> Groupe
+                                électrogène</label>
+                            <label><input name="electricite" type="checkbox" value="solar"> Solaire</label>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label id="route-label">Accès routier</label>
+                        <div aria-labelledby="route-label" class="option-grid" role="group">
+                            <label><input name="route" type="checkbox" value="paved"> Route bitumée</label>
+                            <label><input name="route" type="checkbox" value="dirt-road-car-accessible"> Piste
+                                accessible en voiture</label>
+                            <label><input name="route" type="checkbox" value="dirt-road-car-inaccessible"> Piste
+                                inaccessible aux voitures</label>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label id="securite-label">Sécurité</label>
+                        <div aria-labelledby="securite-label" class="option-grid" role="group">
+                            <label><input name="securite" type="checkbox" value="guard"> Gardiennage</label>
+                            <label><input name="securite" type="checkbox" value="video-surveillance"> Vidéo surveillance</label>
+                            <label><input name="securite" type="checkbox" value="fence"> Clôture/Mur</label>
+                        </div>
+                    </div>
+                    <div class="wizard-actions">
+                        <button class="btn btn-outline" data-action="prev" type="button">Précédent</button>
+                        <button class="btn btn-primary" data-action="next" type="button">Suivant</button>
+                    </div>
+                </fieldset>
+
+                <fieldset class="step" data-step="6" hidden>
+                    <legend class="visually-hidden">Comment votre agent dédié peut-il vous contacter ?</legend>
+                    <h3 aria-hidden="true">Comment votre agent dédié peut-il vous contacter ?</h3>
+                    <div class="field">
+                        <label for="prenom">Prénom</label>
+                        <input autocomplete="given-name" id="prenom" name="prenom" required type="text">
+                        <span aria-live="polite" class="field-error"></span>
+                    </div>
+                    <div class="field">
+                        <label for="nom">Nom</label>
+                        <input autocomplete="family-name" id="nom" name="nom" required type="text">
+                        <span aria-live="polite" class="field-error"></span>
+                    </div>
+                    <div class="field">
+                        <label for="email">Adresse e-mail</label>
+                        <input autocomplete="email" id="email" name="email" required type="email">
+                        <span aria-live="polite" class="field-error"></span>
+                    </div>
+                    <div class="field">
+                        <label for="whatsapp">Numéro WhatsApp</label>
+                        <input autocomplete="tel" data-phone id="whatsapp" name="whatsapp" required type="tel">
+                        <span aria-live="polite" class="field-error"></span>
+                    </div>
+                    <div class="field">
+                        <label id="plage-label">Plage horaire idéale</label>
+                        <div aria-labelledby="plage-label" class="option-grid" role="radiogroup">
+                            <label><input name="plage" required type="radio" value="morning"> Matin</label>
+                            <label><input name="plage" required type="radio" value="afternoon"> Après-midi</label>
+                            <label><input name="plage" required type="radio" value="evening"> Soirée</label>
+                        </div>
+                        <span aria-live="polite" class="field-error"></span>
+                    </div>
+                    <div class="wizard-actions">
+                        <button class="btn btn-outline" data-action="prev" type="button">Précédent</button>
+                        <button class="btn btn-primary" type="submit">Envoyer mon bien</button>
+                    </div>
+                </fieldset>
+
+                <fieldset class="step" data-confirmation data-step="7" hidden>
+                    <legend class="visually-hidden">Confirmation</legend>
+                    <div>
+                        <h4 class="confirmation">Votre bien a été soumis</h4>
+                        <p>
+                            <b>Prochaine Étape :</b>
+                            Nous allons vous attribuer un Agent Vérifié expert de votre quartier qui vous contactera
+                            dans les 24h pour finaliser la mise en location de votre bien.
+                        </p>
+                    </div>
+                </fieldset>
+            </form>
+        </div>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <div class="container site-footer__inner">
+        <img alt="Ndopify" height="32" src="assets/images/icon.png" width="32">
+        <nav aria-label="Navigation du pied de page">
+            <ul>
+                <li><a href="index.html">Locataires</a></li>
+                <li><a href="bailleur.html">Bailleurs</a></li>
+                <li><a href="agent.html">Agents</a></li>
+            </ul>
+        </nav>
+        <small>© 2026 Ndopify. Logements vérifiés. Locations fiables.</small>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/autonumeric@4/dist/autoNumeric.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/intl-tel-input/23.0.10/js/intlTelInput.min.js"></script>
+<script src="assets/js/main.js"></script>
+</body>
+</html>
