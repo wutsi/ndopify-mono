@@ -81,7 +81,7 @@
         <greenmail.version>2.1.14</greenmail.version>
         <hibernate-types-60.version>2.21.1</hibernate-types-60.version>
         <hypersistence-utils-hibernate-71.version>3.15.2</hypersistence-utils-hibernate-71.version>
-        <hikari-cp.version>7.0.2</hikari-cp.version>
+        <hikari-cp.version>7.1.0</hikari-cp.version>
         <jackson.version>2.17.2</jackson.version>
         <firebase-admin.version>9.3.0</firebase-admin.version>
         <flying-saucer-pdf.version>10.0.6</flying-saucer-pdf.version>
