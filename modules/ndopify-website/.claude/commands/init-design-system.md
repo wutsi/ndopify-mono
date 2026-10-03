@@ -1,5 +1,5 @@
 ---
-name: generate-design-system
+name: init-design-system
 description: Use when setting up or refreshing the design system reference for this project — generates DESIGN.md (colors, typography, spacing, components) from the canonical Ndopify design doc, for consistent AI-driven UI generation.
 ---
 

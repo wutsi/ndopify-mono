@@ -1,5 +1,5 @@
 ---
-name: generate-website
+name: init-website
 description: Use when setting up or refreshing the HTML reference for this project — generates HTML files from the canonical Ndopify design doc, for consistent AI-driven UI generation.
 ---
 
@@ -99,7 +99,8 @@ contrast ratio baked into the brand's own primary color), not as something to ke
 - For the wizard pages, respect the steps defined in the website document, and use the same conversational tone and
   style as in the document.
 
-- The css files should be generated into `src/main/html/assets/css/` and the js files into `src/main/html/assets/js/`. The images
+- The css files should be generated into `src/main/html/assets/css/` and the js files into `src/main/html/assets/js/`.
+  The images
   should be
   placed in `src/main/html/assets/images/`.
 
