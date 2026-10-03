@@ -1,5 +1,8 @@
 # Ndopify Website
 
+[![main](https://github.com/wutsi/ndopify-mono/actions/workflows/ndopify-website-main.yml/badge.svg)](https://github.com/wutsi/ndopify-mono/actions/workflows/ndopify-website-main.yml)
+[![pull_request](https://github.com/wutsi/ndopify-mono/actions/workflows/ndopify-website-pr.yml/badge.svg)](https://github.com/wutsi/ndopify-mono/actions/workflows/ndopify-website-pr.yml)
+
 Static, self-contained marketing + lead-capture website for Ndopify (Cameroon PropTech, Mobile-Money-based rental
 platform) — three audiences (locataires, bailleurs, agents), each with a marketing page and a multi-step wizard
 form. No build step, no framework: plain HTML/CSS/JS, content in French.
@@ -46,20 +49,20 @@ canonical Ndopify source docs, and to keep the UI design-system-compliant.
 
 ### Slash commands (`.claude/commands/`)
 
-| Command | File | Purpose |
-|---|---|---|
-| `/init-design-system` | `init-design-system.md` | (Re)generates `DESIGN.md` — colors, typography, spacing, components — from the canonical Ndopify design doc. |
-| `/init-website` | `init-website.md` | (Re)generates the full website under `src/main/html/` in three stages — journey mapping, brand-native generation, then critique/fix — using the three skills below in sequence. |
+| Command               | File                    | Purpose                                                                                                                                                                         |
+|-----------------------|-------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `/init-design-system` | `init-design-system.md` | (Re)generates `DESIGN.md` — colors, typography, spacing, components — from the canonical Ndopify design doc.                                                                    |
+| `/init-website`       | `init-website.md`       | (Re)generates the full website under `src/main/html/` in three stages — journey mapping, brand-native generation, then critique/fix — using the three skills below in sequence. |
 
 ### Skills (`.claude/skills/`)
 
 Vendored skills invoked by `/init-website` (and usable standalone for ad-hoc UX/design work):
 
-| Skill | Purpose |
-|---|---|
-| `neo-user-journey` | UX journey mapping, synthetic persona walkthroughs, flow/step design, microcopy — used to plan wizard step order and KYC-disclosure copy before any HTML exists. |
-| `power-design` | Generates brand-native HTML (pages or decks) from design tokens and a codified rulebook (20 web-design rules) — used for the actual page/CSS generation, with `DESIGN.md` as the brand source instead of a live site crawl. |
-| `impeccable` | Frontend design critique + mechanical defect detection (contrast, heading structure, spacing, color/radius drift) — used to audit and fix the generated pages against `DESIGN.md` and accessibility rules. |
+| Skill              | Purpose                                                                                                                                                                                                                     |
+|--------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `neo-user-journey` | UX journey mapping, synthetic persona walkthroughs, flow/step design, microcopy — used to plan wizard step order and KYC-disclosure copy before any HTML exists.                                                            |
+| `power-design`     | Generates brand-native HTML (pages or decks) from design tokens and a codified rulebook (20 web-design rules) — used for the actual page/CSS generation, with `DESIGN.md` as the brand source instead of a live site crawl. |
+| `impeccable`       | Frontend design critique + mechanical defect detection (contrast, heading structure, spacing, color/radius drift) — used to audit and fix the generated pages against `DESIGN.md` and accessibility rules.                  |
 
 ### Typical workflow
 
