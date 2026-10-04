@@ -247,7 +247,9 @@ a { color: var(--color-text-info); }
   list-style: none;
   padding: 0;
 }
-.proof-stats li { text-align: left; }
+.proof-stats li {
+    text-align: center;
+}
 .proof-stats strong {
   display: block;
   font-family: var(--font-heading);
