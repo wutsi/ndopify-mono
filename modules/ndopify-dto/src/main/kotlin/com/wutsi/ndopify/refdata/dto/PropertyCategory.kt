@@ -1,9 +1,7 @@
 package com.wutsi.ndopify.refdata.dto
 
-enum class ExperienceLevel {
+enum class PropertyCategory {
     UNKNOWN,
-    NOVICE,
-    JUNIOR,
-    INTERMEDIATE,
-    SENIOR,
+    RESIDENTIAL,
+    COMMERCIAL,
 }

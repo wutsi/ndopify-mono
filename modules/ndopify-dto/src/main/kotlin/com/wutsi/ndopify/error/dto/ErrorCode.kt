@@ -4,9 +4,7 @@ object ErrorCode {
     private val PREFIX = "urn:wutsi:ndopify:error"
 
     val AGENT_NOT_FOUND = "$PREFIX:agent:not-found"
-    val AGENT_MOBILE_MONEY_NUMBER_ALREADY_ASSIGNED = "$PREFIX:agent:mobile-money-number-already-assigned"
-
-    val APPLICATION_NOT_FOUND = "$PREFIX:application:not-found"
+    val AGENT_ALREADY_EXISTS = "$PREFIX:agent:already-exists"
 
     val AUTH_MISSING_SECRET = "$PREFIX:auth:missing-secret"
     val AUTH_MISSING_PAYLOAD = "$PREFIX:auth:missing-payload"
@@ -21,21 +19,21 @@ object ErrorCode {
     val HTTP_INTERNAL = "$PREFIX:http:unexpected-error"
     val HTTP_METHOD_NOT_SUPPORTED = "$PREFIX:http:method-not-supported"
     val HTTP_ACCESS_DENIED = "$PREFIX:http:access-denied"
-    val HTTP_AUTHENTICATION_FAILED = "$PREFIX:http:authetication-failed"
+    val HTTP_AUTHENTICATION_FAILED = "$PREFIX:http:authentication-failed"
     val HTTP_DOWNSTREAM_ERROR = "$PREFIX:http:downstream-error"
 
-    val IDENTITY_CHANGE_ALREADY_PROCEEDED = "$PREFIX:identity-change:already-proceeded"
-    val IDENTITY_CHANGE_NOT_FOUND = "$PREFIX:identity-change:not-found"
-    val IDENTITY_CHANGE_NOT_FOR_MANUAL_REVIEW = "$PREFIX:mobile-change-request:not-for-manual-review"
-
-    val IMPORT_ERROR = "$PREFIX:import-error"
+    val IDENTIFICATION_NOT_FOUND = "$PREFIX:identification:not-found"
 
     val LOCATION_NOT_FOUND = "$PREFIX:location:not-found"
     val LOCATION_FEED_NOT_FOUND = "$PREFIX:location:feed-not-found"
 
-    val MOBILE_CHANGE_ALREADY_PROCEEDED = "$PREFIX:mobile-change:already-proceeded"
-    val MOBILE_CHANGE_NOT_FOUND = "$PREFIX:mobile-change:not-found"
-    val MOBILE_CHANGE_NOT_FOR_MANUAL_REVIEW = "$PREFIX:mobile-change:not-for-manual-review"
+    val PARTY_NOT_FOUND = "$PREFIX:party:not-found"
+    val PARTY_EMAIL_ALREADY_EXISTS = "$PREFIX:party:email-already-exists"
+
+    val PAYMENT_METHOD_NOT_FOUND = "$PREFIX:payment-method:not-found"
+    val PAYMENT_METHOD_ALREADY_EXISTS = "$PREFIX:payment-method:already-exists"
+    val PAYMENT_METHOD_EOL = "$PREFIX:payment-method:eol"
+    val PAYMENT_METHOD_NUMBER_NOT_VALID = "$PREFIX:payment-method:number-not-valid"
 
     val TENANT_NOT_FOUND: String = "$PREFIX:tenant:not-found"
 

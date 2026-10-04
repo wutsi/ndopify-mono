@@ -1,7 +1,7 @@
 package com.wutsi.ndopify.agent.dto
 
-enum class AgentType {
+enum class AgentDocumentType {
     UNKNOWN,
-    REAL_ESTATE_AGENT,
-    INDEPENDANT,
+    NATIONAL_IDENTITY_CARD,
+    PASSPORT,
 }

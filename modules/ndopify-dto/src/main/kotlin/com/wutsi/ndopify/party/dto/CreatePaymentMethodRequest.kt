@@ -1,8 +1,11 @@
 package com.wutsi.ndopify.party.dto
 
-data class CreatePaymentMethod(
+import java.util.Date
+
+data class CreatePaymentMethodRequest(
     val number: String = "",
     val providerName: String? = null,
     val holderName: String? = null,
-    val methodType: PaymentMethodType = PaymentMethodType.UNKNOWN,
+    val expiresAt: Date? = null,
+    val type: PaymentMethodType = PaymentMethodType.UNKNOWN,
 )

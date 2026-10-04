@@ -1,7 +1,7 @@
-package com.wutsi.ndopify.agent.dto
+package com.wutsi.ndopify.party.dto
 
 import jakarta.validation.constraints.NotEmpty
 
-data class UpdateImageRequest(
+data class UpdatePhotoRequest(
     @get:NotEmpty val url: String = "",
 )

@@ -1,12 +1,11 @@
 package com.wutsi.ndopify.agent.dto
 
+import com.wutsi.ndopify.party.dto.Party
+import java.util.Date
+
 data class AgentSummary(
     val id: Long = -1,
-
-    val firstName: String = "",
-    val lastName: String = "",
-    val agentType: AgentType = AgentType.UNKNOWN,
-    val agencyName: String? = null,
-    val photoUrl: String? = null,
-    val agencyLogoUrl: String? = null,
+    val party: Party = Party(),
+    val createdAt: Date = Date(),
+    val modifiedAt: Date = Date(),
 )
