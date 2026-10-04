@@ -1,10 +1,10 @@
-package com.wutsi.ndopify.agent.server.endpoints
+package com.wutsi.ndopify.agent.server.endpoint
 
 import com.wutsi.ndopify.agent.dto.AgentType
+import com.wutsi.ndopify.agent.dto.ExperienceLevel
 import com.wutsi.ndopify.agent.dto.GetAgentResponse
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
-import com.wutsi.ndopify.refdata.dto.ExperienceLevel
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test

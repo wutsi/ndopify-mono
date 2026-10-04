@@ -1,4 +1,4 @@
-package com.wutsi.koki.platform.logger
+package com.wutsi.ndopify.platform.logger
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull

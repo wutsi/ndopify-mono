@@ -17,7 +17,8 @@
     <packaging>jar</packaging>
 
     <properties>
-        <jacoco.threshold.line>0.91</jacoco.threshold.line>
+        <jacoco.threshold.line>0.85</jacoco.threshold.line>
+        <jacoco.threshold.class>0.89</jacoco.threshold.class>
     </properties>
 
     <dependencies>

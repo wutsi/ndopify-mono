@@ -96,10 +96,16 @@ springdoc:
             paths-to-match:
                 - /v1/agents
                 - /v1/agents/**
-                - /v1/mobile-changes
-                - /v1/mobile-changes/**
-                - /v1/identity-changes
-                - /v1/identity-changes/**
+
+        -   group: party
+            display-name: Party API
+            paths-to-match:
+                - /v1/parties
+                - /v1/parties/**
+                - /v1/identifications
+                - /v1/identifications/**
+                - /v1/payment-methods
+                - /v1/payment-methods/**
 
         -   group: refdata
             display-name: RefData API

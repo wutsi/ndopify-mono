@@ -1,12 +1,11 @@
 package com.wutsi.ndopify.party.server.dao
 
-import com.wutsi.ndopify.agent.server.domain.AgentEntity
+import com.wutsi.ndopify.party.server.domain.IdentificationEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor
 import org.springframework.data.repository.CrudRepository
 import org.springframework.stereotype.Repository
 
 @Repository
-interface PartyRepository : CrudRepository<PartyEntity, Long>, JpaSpecificationExecutor<AgentEntity> {
-    fun findByEmail(email: String): PartyEntity?
+interface IdentificationRepository : CrudRepository<IdentificationEntity, String> {
+    fun findByParty(party: PartyEntity): List<IdentificationEntity>
 }

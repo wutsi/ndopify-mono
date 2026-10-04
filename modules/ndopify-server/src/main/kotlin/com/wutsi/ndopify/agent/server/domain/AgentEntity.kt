@@ -1,17 +1,17 @@
 package com.wutsi.ndopify.agent.server.domain
 
-import com.wutsi.ndopify.agent.dto.AgentStatus
 import com.wutsi.ndopify.agent.dto.AgentType
-import com.wutsi.ndopify.refdata.dto.KycStatus
-import com.wutsi.ndopify.refdata.dto.MoMoGatewayType
-import com.wutsi.ndopify.util.jpa.LongListConverter
-import jakarta.persistence.Convert
+import com.wutsi.ndopify.agent.dto.ExperienceLevel
+import com.wutsi.ndopify.party.server.domain.PartyEntity
+import jakarta.persistence.CollectionTable
+import jakarta.persistence.Column
+import jakarta.persistence.ElementCollection
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
-import jakarta.persistence.ManyToOne
+import jakarta.persistence.OneToOne
 import jakarta.persistence.Table
 import java.util.Date
 
@@ -22,37 +22,23 @@ data class AgentEntity(
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
 
-    val tenantId: Long = 0,
+    @OneToOne
+    @JoinColumn(name = "party_id")
+    val party: PartyEntity = PartyEntity(),
 
-    val userId: Long? = null,
-    val agentType: AgentType = AgentType.UNKNOWN,
-    val firstName: String = "",
-    val lastName: String = "",
-    val biography: String? = null,
-    val agencyName: String? = null,
-    val cityId: Long? = null,
-
-    @Convert(LongListConverter::class)
+    @ElementCollection
+    @CollectionTable(
+        name = "T_AGENT_NEIGHBORHOOD",
+        joinColumns = [JoinColumn(name = "agent_id")]
+    )
+    @Column(name = "neighborhood_id")
     val neighborhoodIds: List<Long> = emptyList(),
 
-    val photoUrl: String? = null,
-    val agencyLogoUrl: String? = null,
-
-    val mobileMoneyNumber: String? = null,
-    val mobileMoneyGateway: MoMoGatewayType = MoMoGatewayType.UNKNOWN,
-
-    @ManyToOne
-    @JoinColumn(name = "mobile_change_id")
-    val mobileChange: MobileChangeEntity? = null,
-
-    @ManyToOne
-    @JoinColumn(name = "identity_change_id")
-    val identityChange: IdentityChangeEntity? = null,
-
-    val mobileMoneyKycStatus: KycStatus = KycStatus.UNKNOWN,
-    val identityKycStatus: KycStatus = KycStatus.UNKNOWN,
-    val status: AgentStatus = AgentStatus.UNKNOWN,
-
+    val cityId: Long? = null,
+    val whatsappNumber: String? = null,
+    val agentType: AgentType = AgentType.UNKNOWN,
+    val experienceLevel: ExperienceLevel = ExperienceLevel.UNKNOWN,
+    val biography: String? = null,
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
 )

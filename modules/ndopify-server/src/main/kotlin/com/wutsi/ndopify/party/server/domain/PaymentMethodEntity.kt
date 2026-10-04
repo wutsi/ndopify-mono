@@ -1,29 +1,26 @@
-package com.wutsi.ndopify.party.domain
+package com.wutsi.ndopify.party.server.domain
 
+import com.wutsi.ndopify.party.dto.PaymentMethodStatus
 import com.wutsi.ndopify.party.dto.PaymentMethodType
-import com.wutsi.ndopify.refdata.dto.PaymentMethodStatus
 import jakarta.persistence.Entity
 import jakarta.persistence.FetchType
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import java.util.Date
+import java.util.UUID
 
 @Entity
 @Table(name = "T_PAYMENT_METHOD")
 data class PaymentMethodEntity(
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long? = null,
+    val id: String = UUID.randomUUID().toString(),
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "party_id")
     val party: PartyEntity = PartyEntity(),
 
-    val hash: String = "",
     val number: String = "",
     val providerName: String? = null,
     val holderName: String? = null,

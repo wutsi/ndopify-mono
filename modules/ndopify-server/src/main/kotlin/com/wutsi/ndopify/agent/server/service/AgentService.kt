@@ -1,26 +1,24 @@
 package com.wutsi.ndopify.agent.server.service
 
-import com.wutsi.ndopify.agent.dto.AgentStatus
 import com.wutsi.ndopify.agent.dto.CreateAgentRequest
 import com.wutsi.ndopify.agent.dto.SearchAgentRequest
 import com.wutsi.ndopify.agent.dto.UpdateAgentRequest
-import com.wutsi.ndopify.agent.dto.UpdateIdentyRequest
-import com.wutsi.ndopify.agent.dto.UpdateImageRequest
-import com.wutsi.ndopify.agent.dto.UpdateMobileMoneyRequest
 import com.wutsi.ndopify.agent.server.dao.AgentRepository
-import com.wutsi.ndopify.agent.server.dao.IdentityChangeRepository
-import com.wutsi.ndopify.agent.server.dao.MobileChangeRepository
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
-import com.wutsi.ndopify.agent.server.domain.IdentityChangeEntity
-import com.wutsi.ndopify.agent.server.domain.MobileChangeEntity
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
-import com.wutsi.ndopify.refdata.dto.KycStatus
+import com.wutsi.ndopify.party.dto.CreatePartyRequest
+import com.wutsi.ndopify.party.dto.CreatePaymentMethodRequest
+import com.wutsi.ndopify.party.dto.PaymentMethodType
+import com.wutsi.ndopify.party.dto.UpdatePartyRequest
+import com.wutsi.ndopify.party.server.domain.PartyEntity
+import com.wutsi.ndopify.party.server.domain.PaymentMethodEntity
+import com.wutsi.ndopify.party.server.service.PartyService
+import com.wutsi.ndopify.party.server.service.PaymentMethodService
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
-import jdk.internal.agent.resources.agent
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
@@ -30,245 +28,34 @@ import java.util.Date
 @Service
 class AgentService(
     private val dao: AgentRepository,
-    private val mobileChangeDao: MobileChangeRepository,
-    private val identityChangeDao: IdentityChangeRepository,
     private val clock: Clock,
+    private val partyService: PartyService,
+    private val paymentMethodService: PaymentMethodService,
 ) {
-    @Transactional
-    fun create(request: CreateAgentRequest, tenantId: Long): AgentEntity {
-        val identityKycStatus = KycStatus.UNKNOWN
-        val mobileMoneyKycStatus = KycStatus.UNKNOWN
+    fun search(request: SearchAgentRequest): List<AgentEntity> {
+        val spec = Specification<AgentEntity> { root, query, cb ->
+            query.distinct(true)
 
-        return dao.save(
-            AgentEntity(
-                tenantId = tenantId,
-                userId = request.userId,
-                agentType = request.agentType,
-                firstName = request.firstName,
-                lastName = request.lastName,
-                biography = request.biography,
-                agencyName = request.agencyName,
-                cityId = request.cityId,
-                neighborhoodIds = request.neighborhoodIds,
-                identityKycStatus = identityKycStatus,
-                mobileMoneyKycStatus = mobileMoneyKycStatus,
-                status = computeStatus(identityKycStatus, mobileMoneyKycStatus),
-            )
-        )
-    }
-
-    @Transactional
-    fun update(id: Long, request: UpdateAgentRequest, tenantId: Long): AgentEntity {
-        val agent = findById(id, tenantId)
-
-        return dao.save(
-            agent.copy(
-                agentType = request.agentType,
-                biography = request.biography,
-                agencyName = request.agencyName,
-                cityId = request.cityId,
-                neighborhoodIds = request.neighborhoodIds,
-                modifiedAt = Date(),
-            )
-        )
-    }
-
-    @Transactional
-    fun updatePhoto(id: Long, request: UpdateImageRequest, tenantId: Long): AgentEntity {
-        val agent = findById(id, tenantId)
-
-        return dao.save(
-            agent.copy(
-                photoUrl = request.url,
-                modifiedAt = Date(),
-            )
-        )
-    }
-
-    @Transactional
-    fun updateAgencyLogo(id: Long, request: UpdateImageRequest, tenantId: Long): AgentEntity {
-        val agent = findById(id, tenantId)
-
-        return dao.save(
-            agent.copy(
-                agencyLogoUrl = request.url,
-                modifiedAt = Date(),
-            )
-        )
-    }
-
-    @Transactional
-    fun updateMobileMoney(id: Long, request: UpdateMobileMoneyRequest, tenantId: Long): AgentEntity {
-        val agent = findById(id, tenantId)
-
-        ensureMobileMoneyNumberIsAvailable(request.mobileNumber, tenantId, agentId = id)
-
-        // Set phone number and gateway if not already set. If already set, we will create a change request for review.
-        val updatedAgent = if (agent.mobileMoneyNumber.isNullOrEmpty()) {
-            val mobileMoneyKycStatus = KycStatus.PENDING
-            dao.save(
-                agent.copy(
-                    mobileMoneyNumber = request.mobileNumber,
-                    mobileMoneyGateway = request.gateway,
-                    mobileMoneyKycStatus = mobileMoneyKycStatus,
-                    status = computeStatus(agent.identityKycStatus, mobileMoneyKycStatus),
-                    modifiedAt = Date(),
-                )
-            )
-        } else {
-            agent
-        }
-
-        // Store the change request for review
-        val mobileChange = mobileChangeDao.save(
-            MobileChangeEntity(
-                agent = updatedAgent,
-                tenantId = tenantId,
-                oldMobileNumber = agent.mobileMoneyNumber,
-                newMobileNumber = request.mobileNumber,
-                newGateway = request.gateway,
-                status = KycStatus.PENDING
-            )
-        )
-
-        // Link the change to the agent
-        dao.save(updatedAgent.copy(mobileChange = mobileChange))
-        return updatedAgent
-    }
-
-    @Transactional
-    fun updateIdentity(id: Long, request: UpdateIdentyRequest, tenantId: Long): AgentEntity {
-        val agent = findById(id, tenantId)
-
-        // Set first/last name if not already set. If already set, we will create a change request for review.
-        val updatedAgent = if (agent.firstName.isEmpty() && agent.lastName.isEmpty()) {
-            val identityKycStatus = KycStatus.PENDING
-            dao.save(
-                agent.copy(
-                    firstName = request.firstName,
-                    lastName = request.lastName,
-                    identityKycStatus = identityKycStatus,
-                    status = computeStatus(identityKycStatus, agent.mobileMoneyKycStatus),
-                    modifiedAt = Date(),
-                )
-            )
-        } else {
-            agent
-        }
-
-        // Store the change request for review
-        val change = identityChangeDao.save(
-            IdentityChangeEntity(
-                agent = updatedAgent,
-                tenantId = tenantId,
-                oldFirstName = agent.firstName,
-                oldLastName = agent.lastName,
-                newFirstName = request.firstName,
-                newLastName = request.lastName,
-                identityType = request.identityType,
-                imageUrls = request.imageUrls,
-                status = KycStatus.PENDING,
-            )
-        )
-
-        // Link the change to the agent
-        dao.save(updatedAgent.copy(identityChange = change))
-
-        return updatedAgent
-    }
-
-    @Transactional
-    fun apply(request: MobileChangeEntity): Boolean {
-        if (request.status != KycStatus.VERIFIED) {
-            return false
-        }
-
-        val agent = findById(request.agent.id!!, request.tenantId)
-        if (request.id != agent.mobileChange?.id) { // Extra-Precaution
-            return false
-        }
-
-        val mobileMoneyKycStatus = KycStatus.VERIFIED
-        dao.save(
-            agent.copy(
-                mobileMoneyKycStatus = mobileMoneyKycStatus,
-                mobileMoneyNumber = request.newMobileNumber,
-                mobileMoneyGateway = request.newGateway,
-                mobileChange = null,
-                modifiedAt = Date(clock.millis()),
-                status = computeStatus(agent.identityKycStatus, mobileMoneyKycStatus),
-            )
-        )
-        return true
-    }
-
-    @Transactional
-    fun apply(request: IdentityChangeEntity): Boolean {
-        if (request.status != KycStatus.VERIFIED) {
-            return false
-        }
-
-        val agent = findById(request.agent.id!!, request.tenantId)
-        if (request.id != agent.identityChange?.id) { // Extra-Precaution
-            return false
-        }
-
-        val identityKycStatus = KycStatus.VERIFIED
-        dao.save(
-            agent.copy(
-                identityKycStatus = identityKycStatus,
-                firstName = request.newFirstName,
-                lastName = request.newLastName,
-                identityChange = null,
-                modifiedAt = Date(clock.millis()),
-                status = computeStatus(identityKycStatus, agent.mobileMoneyKycStatus),
-            )
-        )
-        return true
-    }
-
-    private fun computeStatus(identityKycStatus: KycStatus, mobileMoneyKycStatus: KycStatus): AgentStatus =
-        when {
-            identityKycStatus == KycStatus.VERIFIED && mobileMoneyKycStatus == KycStatus.VERIFIED -> AgentStatus.ACTIVE
-            identityKycStatus == KycStatus.VERIFIED -> AgentStatus.RESTRICTED
-            else -> AgentStatus.LIMITED
-        }
-
-    private fun ensureMobileMoneyNumberIsAvailable(mobileNumber: String, tenantId: Long, agentId: Long) {
-        val spec = Specification<AgentEntity> { root, _, cb ->
-            cb.and(
-                cb.equal(root.get<Long>("tenantId"), tenantId),
-                cb.equal(root.get<String>("mobileMoneyNumber"), mobileNumber),
-                cb.equal(root.get<Any>("mobileMoneyKycStatus"), KycStatus.VERIFIED),
-                cb.notEqual(root.get<Long>("id"), agentId),
-            )
-        }
-
-        if (dao.exists(spec)) {
-            throw ConflictException(error = Error(code = ErrorCode.AGENT_MOBILE_MONEY_NUMBER_ALREADY_ASSIGNED))
-        }
-    }
-
-    fun search(request: SearchAgentRequest, tenantId: Long): List<AgentEntity> {
-        val spec = Specification<AgentEntity> { root, _, cb ->
             val predicates = mutableListOf<Predicate>()
-
-            predicates.add(cb.equal(root.get<Long>("tenantId"), tenantId))
 
             if (request.ids.isNotEmpty()) {
                 predicates.add(root.get<Long>("id").`in`(request.ids))
             }
-            request.userId?.let { userId ->
-                predicates.add(cb.equal(root.get<Long>("userId"), userId))
+            if (request.partyIds.isNotEmpty()) {
+                predicates.add(root.get<PartyEntity>("party").get<Long>("id").`in`(request.partyIds))
             }
             request.cityId?.let { cityId ->
                 predicates.add(cb.equal(root.get<Long>("cityId"), cityId))
             }
-            request.status?.let { status ->
-                predicates.add(cb.equal(root.get<Any>("status"), status))
+            if (request.neighborhoodIds.isNotEmpty()) {
+                predicates.add(root.join<AgentEntity, Long>("neighborhoodIds").`in`(request.neighborhoodIds))
             }
             request.mobileMoneyNumber?.let { mobileMoneyNumber ->
-                predicates.add(cb.equal(root.get<String>("mobileMoneyNumber"), mobileMoneyNumber))
+                val subquery = query.subquery(Long::class.java)
+                val paymentMethod = subquery.from(PaymentMethodEntity::class.java)
+                subquery.select(paymentMethod.get<PartyEntity>("party").get<Long>("id"))
+                subquery.where(cb.equal(paymentMethod.get<String>("number"), mobileMoneyNumber))
+                predicates.add(root.get<PartyEntity>("party").get<Long>("id").`in`(subquery))
             }
 
             cb.and(*predicates.toTypedArray())
@@ -279,12 +66,94 @@ class AgentService(
             .take(request.limit)
     }
 
-    fun findByIdOrNull(id: Long, tenantId: Long): AgentEntity? {
-        return dao.findById(id).orElse(null)?.takeIf { it.tenantId == tenantId }
+    fun findByIdOrNull(id: Long): AgentEntity? {
+        return dao.findById(id).orElse(null)
     }
 
-    fun findById(id: Long, tenantId: Long): AgentEntity {
-        return findByIdOrNull(id, tenantId)
+    fun findById(id: Long): AgentEntity {
+        return findByIdOrNull(id)
             ?: throw NotFoundException(error = Error(code = ErrorCode.AGENT_NOT_FOUND))
+    }
+
+    @Transactional
+    fun create(request: CreateAgentRequest): AgentEntity {
+        // Party
+        val party = partyService.findByEmailOrNull(request.email)
+            ?: partyService.create(
+                CreatePartyRequest(
+                    firstName = request.firstName,
+                    lastName = request.lastName,
+                    email = request.email,
+                )
+            )
+        ensureAgentNotAlreadyExists(party)
+
+        // Payment method
+        paymentMethodService.create(
+            party,
+            CreatePaymentMethodRequest(
+                type = PaymentMethodType.MOBILE_MONEY,
+                number = request.mobileMoneyNumber,
+            )
+        )
+
+        // Agent
+        val now = Date(clock.millis())
+        return dao.save(
+            AgentEntity(
+                party = party,
+                whatsappNumber = request.whatsappNumber,
+                agentType = request.agentType,
+                experienceLevel = request.experienceLevel,
+                cityId = request.cityId,
+                neighborhoodIds = request.neighborhoodIds,
+                biography = request.biography,
+                createdAt = now,
+                modifiedAt = now,
+            )
+        )
+    }
+
+    @Transactional
+    fun update(id: Long, request: UpdateAgentRequest): AgentEntity {
+        val agent = findById(id)
+
+        // Update party
+        if (request.firstName != null || request.lastName != null || request.email != null) {
+            val updateParty = UpdatePartyRequest(
+                firstName = request.firstName,
+                lastName = request.lastName,
+                email = request.email,
+            )
+            partyService.update(agent.party, updateParty)
+        }
+
+        // Update agent
+        val now = Date(clock.millis())
+        return dao.save(
+            agent.copy(
+                whatsappNumber = request.whatsappNumber ?: agent.whatsappNumber,
+                agentType = request.agentType ?: agent.agentType,
+                experienceLevel = request.experienceLevel ?: agent.experienceLevel,
+                cityId = request.cityId ?: agent.cityId,
+                neighborhoodIds = request.neighborhoodIds ?: agent.neighborhoodIds,
+                biography = request.biography ?: agent.biography,
+                modifiedAt = now,
+            )
+        )
+    }
+
+    private fun ensureAgentNotAlreadyExists(party: PartyEntity) {
+        val agent = dao.findByParty(party)
+        if (agent != null) {
+            throw ConflictException(
+                error = Error(
+                    code = ErrorCode.AGENT_ALREADY_EXISTS,
+                    data = mapOf(
+                        "email" to agent.party.email,
+                    ),
+                )
+            )
+        }
     }
 }

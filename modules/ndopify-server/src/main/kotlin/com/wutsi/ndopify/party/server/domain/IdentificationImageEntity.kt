@@ -12,19 +12,21 @@ import java.util.Date
 import java.util.UUID
 
 @Entity
-@Table(name = "T_PARTY_IDENTIFICATION_IMAGE")
-data class PartyIdentificationImage(
+@Table(name = "T_IDENTIFICATION_IMAGE")
+data class IdentificationImageEntity(
     @Id
     val id: String = UUID.randomUUID().toString(),
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "identification_id")
-    val identification: PartyIdentification = PartyIdentification(),
+    val identification: IdentificationEntity = IdentificationEntity(),
 
     val imageType: IdentificationImageType = IdentificationImageType.UNKNOWN,
     val storageType: StorageType = StorageType.UNKNOWN,
     val path: String? = null,
     val mimeType: String? = null,
+    val uploaded: Boolean = false,
 
-    val createdAt: Date = Date()
+    val createdAt: Date = Date(),
+    val uploadedAt: Date? = null,
 )

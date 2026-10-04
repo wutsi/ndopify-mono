@@ -1,4 +1,4 @@
-package com.wutsi.koki.platform.logger
+package com.wutsi.ndopify.platform.logger
 
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doReturn
@@ -34,7 +34,7 @@ class DynamicKVLoggerTest {
 
     @Test
     fun setException() {
-        val ex = Exception()
+        val ex = kotlin.Exception()
         kv.setException(ex)
 
         verify(delegate).setException(ex)
@@ -77,7 +77,7 @@ class DynamicKVLoggerTest {
 
     @Test
     fun addAny() {
-        val any = Object()
+        val any = Any()
         kv.add("foo", any)
 
         verify(delegate).add("foo", any)
@@ -91,7 +91,7 @@ class DynamicKVLoggerTest {
         kv.add("foo", 11.0)
         kv.add("foo", Optional.of(11))
         kv.add("foo", listOf(11))
-        kv.add("foo", Object())
+        kv.add("foo", Any())
 
         verify(delegate, never()).add(any(), any<String>())
     }

@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.agent.server.endpoints
+package com.wutsi.ndopify.agent.server.endpoint
 
 import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import org.springframework.beans.factory.annotation.Autowired

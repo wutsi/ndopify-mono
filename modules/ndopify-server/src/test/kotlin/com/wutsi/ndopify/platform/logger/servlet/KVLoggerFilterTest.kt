@@ -5,9 +5,9 @@ import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
-import com.wutsi.koki.common.dto.HttpHeader
-import com.wutsi.koki.platform.logger.KVLogger
 import com.wutsi.koki.platform.logger.servlet.KVLoggerFilter
+import com.wutsi.ndopify.common.dto.HttpHeader
+import com.wutsi.ndopify.platform.logger.KVLogger
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -17,9 +17,6 @@ import org.junit.jupiter.api.fail
 import org.mockito.ArgumentMatchers
 import org.springframework.http.HttpHeaders
 import java.io.IOException
-import kotlin.collections.toList
-import kotlin.jvm.Throws
-import kotlin.to
 
 class KVLoggerFilterTest {
     private lateinit var kv: KVLogger

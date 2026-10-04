@@ -19,7 +19,7 @@ class UserService(private val dao: UserRepository) {
     fun findByEmailOrCreate(email: String): UserEntity {
         val user = findByEmailOrNull(email)
         return if (user == null) {
-            dao.save(UserEntity(email = email))
+            dao.save(UserEntity(email = email.lowercase()))
         } else {
             user
         }

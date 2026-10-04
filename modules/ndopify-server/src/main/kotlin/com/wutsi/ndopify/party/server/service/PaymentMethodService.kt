@@ -1,19 +1,19 @@
-package com.wutsi.ndopify.party.service
+package com.wutsi.ndopify.party.server.service
 
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
+import com.wutsi.ndopify.error.server.exception.BadRequestException
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
-import com.wutsi.ndopify.party.dao.PaymentMethodRepository
-import com.wutsi.ndopify.party.domain.PartyEntity
-import com.wutsi.ndopify.party.domain.PaymentMethodEntity
 import com.wutsi.ndopify.party.dto.CreatePaymentMethodRequest
+import com.wutsi.ndopify.party.dto.PaymentMethodStatus
 import com.wutsi.ndopify.party.dto.PaymentMethodType
+import com.wutsi.ndopify.party.server.dao.PaymentMethodRepository
+import com.wutsi.ndopify.party.server.domain.PartyEntity
+import com.wutsi.ndopify.party.server.domain.PaymentMethodEntity
 import com.wutsi.ndopify.platform.momo.MoMoGatewayProvider
-import com.wutsi.ndopify.refdata.dto.PaymentMethodStatus
 import jakarta.transaction.Transactional
-import org.apache.commons.codec.digest.DigestUtils
 import org.springframework.stereotype.Service
 import java.time.Clock
 import java.util.Date
@@ -32,7 +32,7 @@ class PaymentMethodService(
         )
     }
 
-    fun findById(id: Long): PaymentMethodEntity {
+    fun findById(id: String): PaymentMethodEntity {
         return dao.findById(id).orElseThrow {
             NotFoundException(
                 error = Error(
@@ -43,31 +43,23 @@ class PaymentMethodService(
         }
     }
 
-    fun findByTypeAndNumber(type: PaymentMethodType, number: String): PaymentMethodEntity {
-        val hash = computeHash(type, number)
-        return dao.findByHash(hash)
-            ?: throw NotFoundException(
-                error = Error(
-                    code = ErrorCode.PAYMENT_METHOD_NOT_FOUND,
-                )
-            )
+    fun findByIdOrNull(id: String): PaymentMethodEntity? {
+        return dao.findById(id).orElse(null)
     }
 
-    fun findByIdOrNull(id: Long): PaymentMethodEntity? {
-        return dao.findById(id).orElse(null)
+    fun findByParty(party: PartyEntity): List<PaymentMethodEntity> {
+        return dao.findByParty(party)
     }
 
     @Transactional
     fun create(party: PartyEntity, request: CreatePaymentMethodRequest): PaymentMethodEntity {
-        val hash = computeHash(request.type, request.number)
-        ensureHashUnique(hash)
         ensureMobileMoneyIsValid(request)
+        ensurePaymentMethodNotExists(party, request)
 
         val now = Date(clock.millis())
         return dao.save(
             PaymentMethodEntity(
                 party = party,
-                hash = hash,
                 number = request.number,
                 providerName = request.providerName,
                 holderName = request.holderName,
@@ -93,20 +85,6 @@ class PaymentMethodService(
         )
     }
 
-    private fun computeHash(type: PaymentMethodType, number: String): String {
-        return DigestUtils.md5Hex("$type:${number.lowercase()}")
-    }
-
-    private fun ensureHashUnique(hash: String) {
-        if (dao.findByHash(hash) != null) {
-            throw ConflictException(
-                error = Error(
-                    code = ErrorCode.PAYMENT_METHOD_ALREADY_EXISTS,
-                )
-            )
-        }
-    }
-
     private fun ensureNotEol(paymentMethod: PaymentMethodEntity) {
         if (EOL_STATUSES.contains(paymentMethod.status)) {
             throw ConflictException(
@@ -121,7 +99,18 @@ class PaymentMethodService(
     private fun ensureMobileMoneyIsValid(request: CreatePaymentMethodRequest) {
         if (request.type == PaymentMethodType.MOBILE_MONEY) {
             momoGatewayProvider.getByPhoneNumber(request.number)
-                ?: throw ConflictException(error = Error(code = ErrorCode.AGENT_MOBILE_MONEY_NUMBER_INVALID))
+                ?: throw BadRequestException(error = Error(code = ErrorCode.PAYMENT_METHOD_NUMBER_NOT_VALID))
+        }
+    }
+
+    private fun ensurePaymentMethodNotExists(party: PartyEntity, request: CreatePaymentMethodRequest) {
+        val existing = dao.findByPartyAndTypeAndNumber(party, request.type, request.number)
+        if (existing != null) {
+            throw ConflictException(
+                error = Error(
+                    code = ErrorCode.PAYMENT_METHOD_ALREADY_EXISTS,
+                )
+            )
         }
     }
 }

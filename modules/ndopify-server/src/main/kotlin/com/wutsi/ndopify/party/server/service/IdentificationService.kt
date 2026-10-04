@@ -3,99 +3,75 @@ package com.wutsi.ndopify.party.server.service
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
-import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
-import com.wutsi.ndopify.party.dto.CreatePartyRequest
-import com.wutsi.ndopify.party.dto.UpdatePartyRequest
-import com.wutsi.ndopify.party.dto.UpdatePhotoRequest
-import com.wutsi.ndopify.party.server.dao.PartyRepository
+import com.wutsi.ndopify.party.dto.CreateIdentificationRequest
+import com.wutsi.ndopify.party.server.dao.IdentificationImageRepository
+import com.wutsi.ndopify.party.server.dao.IdentificationRepository
+import com.wutsi.ndopify.party.server.domain.IdentificationEntity
+import com.wutsi.ndopify.party.server.domain.IdentificationImageEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.refdata.dto.KycStatus
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
 import java.time.Clock
 import java.util.Date
+import java.util.UUID
 
 @Service
-class PartyService(
-    private val dao: PartyRepository,
+class IdentificationService(
+    private val dao: IdentificationRepository,
+    private val imageDao: IdentificationImageRepository,
     private val clock: Clock,
 ) {
-    fun findById(id: Long): PartyEntity {
+    fun findById(id: String): IdentificationEntity {
         return findByIdOrNull(id)
             ?: throw NotFoundException(
                 error = Error(
-                    code = ErrorCode.PARTY_NOT_FOUND,
+                    code = ErrorCode.IDENTIFICATION_NOT_FOUND,
                     parameter = Parameter(value = id)
                 )
             )
     }
 
-    fun findByIdOrNull(id: Long): PartyEntity? {
+    fun findByIdOrNull(id: String): IdentificationEntity? {
         return dao.findById(id).orElse(null)
     }
 
-    fun findByEmailOrNull(email: String): PartyEntity? {
-        return dao.findByEmail(email.lowercase())
+    fun findByParty(party: PartyEntity): List<IdentificationEntity> {
+        return dao.findByParty(party)
     }
 
     @Transactional
-    fun create(request: CreatePartyRequest): PartyEntity {
-        ensureEmailUnique(request.email.lowercase())
-
+    fun create(party: PartyEntity, request: CreateIdentificationRequest): IdentificationEntity {
         val now = Date(clock.millis())
-        return dao.save(
-            PartyEntity(
-                firstName = request.firstName,
-                lastName = request.lastName,
-                email = request.email.lowercase(),
-                kycStatus = KycStatus.PENDING,
+
+        // ID
+        val identification = dao.save(
+            IdentificationEntity(
+                party = party,
+                type = request.type,
+                issuingCountryCode = request.issuingCountryCode,
                 createdAt = now,
-                modifiedAt = now,
+                status = KycStatus.PENDING,
             )
         )
-    }
 
-    @Transactional
-    fun update(party: PartyEntity, request: UpdatePartyRequest): PartyEntity {
-        val email = request.email?.lowercase()
-        if (email != null) {
-            ensureEmailUnique(email, party.id)
-        }
-
-        val now = Date(clock.millis())
-        return dao.save(
-            party.copy(
-                firstName = request.firstName ?: party.firstName,
-                lastName = request.lastName ?: party.lastName,
-                email = request.email?.lowercase() ?: party.email,
-                modifiedAt = now,
-            )
-        )
-    }
-
-    @Transactional
-    fun updatePhoto(id: Long, request: UpdatePhotoRequest): PartyEntity {
-        val party = findById(id)
-
-        val now = Date(clock.millis())
-        return dao.save(
-            party.copy(
-                photoUrl = request.url,
-                modifiedAt = now,
-            )
-        )
-    }
-
-    private fun ensureEmailUnique(email: String, partyId: Long? = null) {
-        val existingParty = findByEmailOrNull(email)
-        if (existingParty != null && existingParty.id != partyId) {
-            throw ConflictException(
-                error = Error(
-                    code = ErrorCode.PARTY_EMAIL_ALREADY_EXISTS,
-                    parameter = Parameter(value = email)
+        // IMAGES
+        request.imageTypes.forEach { imageType ->
+            val imageId = UUID.randomUUID().toString()
+            imageDao.save(
+                IdentificationImageEntity(
+                    id = imageId,
+                    identification = identification,
+                    imageType = imageType,
+                    mimeType = "image/jpeg",
+                    path = "kyc/${party.id}/${identification.id}/$imageId.jpeg",
+                    createdAt = now,
+                    uploaded = false,
                 )
             )
         }
+
+        return identification
     }
 }

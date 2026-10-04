@@ -9,6 +9,7 @@ import com.wutsi.ndopify.error.dto.ParameterType.PARAMETER_TYPE_HEADER
 import com.wutsi.ndopify.error.dto.ParameterType.PARAMETER_TYPE_PATH
 import com.wutsi.ndopify.error.dto.ParameterType.PARAMETER_TYPE_QUERY
 import com.wutsi.ndopify.error.server.exception.WutsiException
+import com.wutsi.ndopify.platform.logger.KVLogger
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
 import org.springframework.http.HttpStatus.BAD_REQUEST
@@ -29,7 +30,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
 
 @RestControllerAdvice
-class ControllerErrorHandler {
+class ControllerErrorHandler(private val logger: KVLogger) {
     @ExceptionHandler(Throwable::class)
     fun onException(request: HttpServletRequest, e: Throwable): ResponseEntity<ErrorResponse> {
         val error = if (e is WutsiException) e.error else null
@@ -198,18 +199,18 @@ class ControllerErrorHandler {
     }
 
     private fun log(error: Error, e: Throwable) {
-//        PropertyKey.logger.add("error_code", error.code)
-//        PropertyKey.logger.add("error_message", error.message)
-//        PropertyKey.logger.add("error_downstream_code", error.downstreamCode)
-//        PropertyKey.logger.add("error_downstream_message", error.downstreamMessage)
-//        PropertyKey.logger.add("error_parameter_name", error.parameter?.name)
-//        PropertyKey.logger.add("error_parameter_value", error.parameter?.value)
-//        PropertyKey.logger.add("error_parameter_type", error.parameter?.type)
-//        error.data?.forEach {
-//            PropertyKey.logger.add("error_data_${it.key}", it.value)
-//        }
-//
-//        PropertyKey.logger.setException(e)
+        logger.add("error_code", error.code)
+        logger.add("error_message", error.message)
+        logger.add("error_downstream_code", error.downstreamCode)
+        logger.add("error_downstream_message", error.downstreamMessage)
+        logger.add("error_parameter_name", error.parameter?.name)
+        logger.add("error_parameter_value", error.parameter?.value)
+        logger.add("error_parameter_type", error.parameter?.type)
+        error.data?.forEach {
+            logger.add("error_data_${it.key}", it.value)
+        }
+
+        logger.setException(e)
     }
 
     private fun status(e: Throwable): HttpStatus {

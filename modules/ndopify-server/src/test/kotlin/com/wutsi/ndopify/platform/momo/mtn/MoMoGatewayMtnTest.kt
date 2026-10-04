@@ -17,6 +17,19 @@ class MoMoGatewayMtnTest {
     private val gateway = MoMoGatewayMtn(collection)
 
     @Test
+    fun `get phone number prefixes`() {
+        val prefixes = gateway.getPhoneNumberPrefixes("CM")
+        assertEquals(
+            listOf(
+                "23767",
+                "237650", "237651", "237652", "237653", "237654",
+                "237680", "237681", "237682", "237683", "237684",
+            ),
+            prefixes,
+        )
+    }
+
+    @Test
     fun `active user with matching country code`() {
         doReturn(
             MtnBasicUserInfoResponse(

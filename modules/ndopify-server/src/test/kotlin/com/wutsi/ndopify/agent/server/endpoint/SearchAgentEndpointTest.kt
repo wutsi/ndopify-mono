@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.agent.server.endpoints
+package com.wutsi.ndopify.agent.server.endpoint
 
 import com.wutsi.ndopify.agent.dto.SearchAgentResponse
 import org.springframework.test.context.jdbc.Sql
@@ -57,7 +57,8 @@ class SearchAgentEndpointTest : AbstractAgentEndpointTest() {
 
     @Test
     fun `agent with multiple matching neighborhoods is not duplicated`() {
-        val response = rest.getForEntity("/v1/agents?neighborhoodIds=111&neighborhoodIds=222", SearchAgentResponse::class.java)
+        val response =
+            rest.getForEntity("/v1/agents?neighborhoodIds=111&neighborhoodIds=222", SearchAgentResponse::class.java)
 
         val agents = response.body!!.agents
         assertEquals(1, agents.size)

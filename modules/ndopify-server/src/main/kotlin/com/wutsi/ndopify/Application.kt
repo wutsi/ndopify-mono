@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement
 @EntityScan(
     basePackages = [
         "com.wutsi.ndopify.agent.server.domain",
+        "com.wutsi.ndopify.party.server.domain",
         "com.wutsi.ndopify.refdata.server.domain",
         "com.wutsi.ndopify.security.server.domain",
     ],
@@ -24,6 +25,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement
 @EnableJpaRepositories(
     basePackages = [
         "com.wutsi.ndopify.agent.server.dao",
+        "com.wutsi.ndopify.party.server.dao",
         "com.wutsi.ndopify.refdata.server.dao",
         "com.wutsi.ndopify.security.server.dao",
     ],

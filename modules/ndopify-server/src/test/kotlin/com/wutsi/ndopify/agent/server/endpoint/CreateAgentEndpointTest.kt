@@ -1,16 +1,16 @@
-package com.wutsi.ndopify.agent.server.endpoints
+package com.wutsi.ndopify.agent.server.endpoint
 
 import com.wutsi.ndopify.agent.dto.AgentType
 import com.wutsi.ndopify.agent.dto.CreateAgentRequest
 import com.wutsi.ndopify.agent.dto.CreateAgentResponse
+import com.wutsi.ndopify.agent.dto.ExperienceLevel
 import com.wutsi.ndopify.agent.server.dao.AgentRepository
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.party.dto.PaymentMethodStatus
 import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.party.server.service.PaymentMethodService
-import com.wutsi.ndopify.refdata.dto.ExperienceLevel
 import com.wutsi.ndopify.refdata.dto.KycStatus
-import com.wutsi.ndopify.refdata.dto.PaymentMethodStatus
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
@@ -180,5 +180,20 @@ class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
         val response = rest.postForEntity("/v1/agents", request, ErrorResponse::class.java)
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+    }
+
+    @Test
+    fun `invalid method payment number`() {
+        val request = CreateAgentRequest(
+            firstName = "Yo",
+            lastName = "Man",
+            email = "yo.man@gmail.com",
+            mobileMoneyNumber = "+15147589999",
+            whatsappNumber = "+237660000044"
+        )
+        val response = rest.postForEntity("/v1/agents", request, ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.PAYMENT_METHOD_NUMBER_NOT_VALID, response.body?.error?.code)
     }
 }

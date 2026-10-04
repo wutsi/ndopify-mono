@@ -1,14 +1,15 @@
-package com.wutsi.ndopify.party.service
+package com.wutsi.ndopify.party.server.service
 
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
-import com.wutsi.ndopify.party.dao.PartyRepository
-import com.wutsi.ndopify.party.domain.PartyEntity
 import com.wutsi.ndopify.party.dto.CreatePartyRequest
 import com.wutsi.ndopify.party.dto.UpdatePartyRequest
+import com.wutsi.ndopify.party.dto.UpdatePhotoRequest
+import com.wutsi.ndopify.party.server.dao.PartyRepository
+import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.refdata.dto.KycStatus
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
@@ -21,14 +22,13 @@ class PartyService(
     private val clock: Clock,
 ) {
     fun findById(id: Long): PartyEntity {
-        return dao.findById(id).orElseThrow {
-            NotFoundException(
+        return findByIdOrNull(id)
+            ?: throw NotFoundException(
                 error = Error(
                     code = ErrorCode.PARTY_NOT_FOUND,
                     parameter = Parameter(value = id)
                 )
             )
-        }
     }
 
     fun findByIdOrNull(id: Long): PartyEntity? {
@@ -69,6 +69,19 @@ class PartyService(
                 firstName = request.firstName ?: party.firstName,
                 lastName = request.lastName ?: party.lastName,
                 email = request.email?.lowercase() ?: party.email,
+                modifiedAt = now,
+            )
+        )
+    }
+
+    @Transactional
+    fun updatePhoto(id: Long, request: UpdatePhotoRequest): PartyEntity {
+        val party = findById(id)
+
+        val now = Date(clock.millis())
+        return dao.save(
+            party.copy(
+                photoUrl = request.url,
                 modifiedAt = now,
             )
         )

@@ -1,2 +1,13 @@
-INSERT INTO T_AGENT (id, tenant_id, user_id, agent_type, first_name, last_name, biography, agency_name, city_id, created_at, modified_at) VALUES
-  (1, 1, 1, 1, 'Ray', 'Sponsible', 'Old bio', 'Old Realty', 2370201, NOW(), NOW());
+INSERT INTO T_PARTY(id, email, first_name, last_name, created_at, modified_at) VALUES
+    (100, 'roger.milla@gmail.com', 'Roger', 'Milla', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (101, '007@gmail.com', 'J', 'Bond', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (102, 'samuel.eto@gmail.com', 'Samuel', 'Eto', '2024-06-10 00:00:00', '2024-06-10 00:00:00');
+
+INSERT INTO T_AGENT(id, party_id) VALUES
+    (100, 100),
+    (101, 101),
+    (102, 102);
+
+INSERT INTO T_AGENT_NEIGHBORHOOD(agent_id, neighborhood_id) VALUES
+    (102, 555),
+    (102, 666);

@@ -1,4 +1,4 @@
-package com.wutsi.koki.platform.logger
+package com.wutsi.ndopify.platform.logger
 
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -98,7 +98,7 @@ class DefaultKVLoggerTest {
         // Given
         val ch100 =
             "1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890"
-        val longString = StringBuilder()
+        val longString = kotlin.text.StringBuilder()
         for (i in 0..999) {
             longString.append(ch100).append('\n')
         }

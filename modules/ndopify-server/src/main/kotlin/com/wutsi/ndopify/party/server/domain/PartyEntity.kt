@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.party.domain
+package com.wutsi.ndopify.party.server.domain
 
 import com.wutsi.ndopify.refdata.dto.KycStatus
 import jakarta.persistence.Entity
@@ -19,6 +19,7 @@ data class PartyEntity(
     val lastName: String = "",
     val email: String = "",
     val kycStatus: KycStatus = KycStatus.UNKNOWN,
+    val photoUrl: String? = null,
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
 )
