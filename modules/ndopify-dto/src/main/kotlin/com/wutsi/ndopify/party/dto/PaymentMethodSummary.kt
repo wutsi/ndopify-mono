@@ -2,12 +2,10 @@ package com.wutsi.ndopify.party.dto
 
 import java.util.Date
 
-data class PaymentMethod(
+data class PaymentMethodSummary(
     val id: String = "",
     val partyId: Long = -1,
     val number: String = "",
-    val providerName: String? = null,
-    val holderName: String? = null,
     val methodType: PaymentMethodType = PaymentMethodType.UNKNOWN,
     val verificationStatus: PaymentMethodStatus = PaymentMethodStatus.UNKNOWN,
     val expiresAt: Date? = null,
