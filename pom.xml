@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.3</version>
+        <version>4.1.1</version>
     </parent>
 
     <name>ndopify-mono</name>
@@ -45,7 +45,7 @@
     </repositories>
 
     <properties>
-        <ndopify-dto.version>0.0.10</ndopify-dto.version>
+        <ndopify-dto.version>0.0.12</ndopify-dto.version>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
@@ -57,11 +57,11 @@
         <jacoco-maven-plugin.version>0.8.15</jacoco-maven-plugin.version>
 
         <maven-antrun-plugin.version>3.2.0</maven-antrun-plugin.version>
-        <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
+        <maven-compiler-plugin.version>3.16.0</maven-compiler-plugin.version>
         <maven-exec-plugin.version>3.6.4</maven-exec-plugin.version>
         <maven.minify-maven-plugin.version>1.7.6</maven.minify-maven-plugin.version>
-        <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
-        <maven-failsafe-plugin.version>3.5.5</maven-failsafe-plugin.version>
+        <maven-surefire-plugin.version>3.6.0</maven-surefire-plugin.version>
+        <maven-failsafe-plugin.version>3.6.0</maven-failsafe-plugin.version>
 
         <amqp-client.version>5.28.0</amqp-client.version>
         <aws.version>1.12.797</aws.version>
@@ -95,7 +95,7 @@
         <jakarta.servlet-api.version>6.1.0</jakarta.servlet-api.version>
         <jakarta.validation-api.version>3.0.2</jakarta.validation-api.version>
         <jakarta.xml.bind-api.version>4.0.2</jakarta.xml.bind-api.version>
-        <jsoup.version>1.22.1</jsoup.version>
+        <jsoup.version>1.23.2</jsoup.version>
         <junit.version>6.1.3</junit.version>
         <junit-platform-commons.version>1.10.0</junit-platform-commons.version>
         <java-jwt.version>4.6.1</java-jwt.version>
@@ -110,7 +110,7 @@
         <libphonenumber.version>9.0.40</libphonenumber.version>
         <mobiledetect.version>1.1.1</mobiledetect.version>
         <mustache.version>0.9.14</mustache.version>
-        <mysql.version>9.6.0</mysql.version>
+        <mysql.version>9.7.0</mysql.version>
         <pdfbox.vesion>3.0.8</pdfbox.vesion>
         <plexus-utils.version>4.0.2</plexus-utils.version>
         <poi.version>5.5.1</poi.version>
@@ -121,11 +121,11 @@
         <slf4j.version>2.0.17</slf4j.version>
         <spring.version>7.0.5</spring.version>
         <spring-boot.version>4.0.3</spring-boot.version>
-        <spring-ai.version>2.0.0</spring-ai.version>
+        <spring-ai.version>2.0.1</spring-ai.version>
         <spring-mobile-device.version>2.0.0.M3</spring-mobile-device.version>
         <spring-security.version>7.0.3</spring-security.version>
         <spring-tx.version>2.4.5</spring-tx.version>
-        <springdoc-openapi.version>3.0.1</springdoc-openapi.version>
+        <springdoc-openapi.version>3.1.1</springdoc-openapi.version>
         <swagger-parser.version>2.1.22</swagger-parser.version>
         <telegrambots.version>9.2.0</telegrambots.version>
         <thymeleaf.version>3.1.5.RELEASE</thymeleaf.version>
