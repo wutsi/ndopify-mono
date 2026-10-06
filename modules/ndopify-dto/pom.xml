@@ -8,12 +8,12 @@
         <relativePath>../../pom.xml</relativePath>
     </parent>
     <artifactId>ndopify-dto</artifactId>
-    <version>0.0.13-SNAPSHOT</version>
+    <version>0.0.13</version>
     <packaging>jar</packaging>
 
     <scm>
         <developerConnection>scm:git:https://github.com/wutsi/ndopify-mono.git</developerConnection>
-        <tag>ndopify-dto-0.0.12</tag>
+        <tag>ndopify-dto-0.0.13</tag>
     </scm>
 
     <distributionManagement>
