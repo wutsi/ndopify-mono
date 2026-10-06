@@ -60,7 +60,7 @@
         <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
         <maven-exec-plugin.version>3.6.4</maven-exec-plugin.version>
         <maven.minify-maven-plugin.version>1.7.6</maven.minify-maven-plugin.version>
-        <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
+        <maven-surefire-plugin.version>3.6.0</maven-surefire-plugin.version>
         <maven-failsafe-plugin.version>3.5.5</maven-failsafe-plugin.version>
 
         <amqp-client.version>5.28.0</amqp-client.version>
