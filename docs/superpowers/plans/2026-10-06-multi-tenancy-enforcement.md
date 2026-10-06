@@ -230,6 +230,11 @@ git commit -m "scope payment method, identification, and KYC case entities to te
 
 ### Task 3: Update `CLAUDE.md`'s Multi-Tenancy section to match reality
 
+> **Status: done.** Rewrote the section as planned: the real `TenantContext`/`TenantIdentifierResolver`/
+> `TenantContextFilter` mechanism, `@TenantId` as the actual enforcement point (listing all six entities, with
+> `KycVerificationEntity`'s exclusion explained), the `MobileChangeEntity`/`IdentityChangeEntity` reference removed,
+> and the unsigned-JWT/`permitAll()` resolution gap called out explicitly as known and deferred.
+
 **Files:**
 - Modify: `CLAUDE.md` (the "Multi-Tenancy — current state" section)
 

@@ -140,23 +140,35 @@ providers, used by the `agent` domain to KYC-verify a mobile-money number/holder
 
 ### Multi-Tenancy — current state
 
-Tenancy is **partially row-level**, and the pattern differs by domain — check which one applies before assuming either:
+Tenancy is enforced via **Hibernate's built-in multi-tenancy mechanism**, not hand-rolled predicates:
 
-- `X-Tenant-ID` header (`HttpHeader.TENANT_ID` in `ndopify-dto`) carries the tenant on inbound requests.
-- The issued JWT embeds `tenantId` as a claim (`JWTPrincipal.CLAIM_TENANT_ID`, set by `AccessTokenService`).
-- **refdata / security entities are still global**: `TenantEntity`, `LocationEntity`, `UserEntity`, etc. have no
-  `tenantId` column and no repository filters by tenant.
-- **`agent` domain entities are tenant-scoped by convention, not by framework**: `AgentEntity`, `MobileChangeEntity`,
-  `IdentityChangeEntity` each have an explicit `tenantId: Long` column. There is no Hibernate filter or JPA listener
-  enforcing this — every `AgentService`/`MobileChangeService` method takes `tenantId` as an explicit parameter and
-  callers must pass it through; repositories (`AgentRepository`, etc.) extend `JpaSpecificationExecutor` and services
-  build a `CriteriaBuilder` predicate on `tenantId` themselves (see `AgentService.search` /
-  `ensureMobileMoneyNumberIsAvailable`). If you add a query path that skips the service layer, it will leak across
-  tenants.
-- If you add tenant-scoped data to a new or existing domain, follow the `agent` domain's pattern (explicit `tenantId`
-  column + explicit predicate in the service/repository) — it is not inherited for free from any base class.
-- `SecurityConfiguration` currently `permitAll()`s every request (stateless sessions, CSRF disabled) — endpoint-level
-  authorization is not yet enforced at the filter-chain level.
+- `TenantContext` (`platform/tenant/TenantContext.kt`) is a `ThreadLocal<Long?>` holding the current request's
+  tenant.
+- `TenantIdentifierResolver` (`platform/tenant/jpa/TenantIdentifierResolver.kt`) implements Hibernate's
+  `CurrentTenantIdentifierResolver<Long>`, resolving from `TenantContext` and failing closed to `NO_TENANT = -1L`
+  when unset.
+- `TenantContextFilter` (`platform/tenant/servlet/TenantContextFilter.kt`), registered at
+  `Ordered.HIGHEST_PRECEDENCE` via `platform/config/TenantConfiguration.kt`, populates `TenantContext` per request —
+  preferring the tenant claim on the decoded JWT (`JWTPrincipal.CLAIM_TENANT_ID` / `AccessTokenService`) and falling
+  back to the `X-Tenant-ID` header (`HttpHeader.TENANT_ID` in `ndopify-dto`) if there's no principal.
+- Any JPA entity annotated `org.hibernate.annotations.@TenantId` is automatically filtered by Hibernate for every
+  query against it — no `CriteriaBuilder` predicate, repository override, or service-level check needed. Today
+  that's `PartyEntity`, `PaymentMethodEntity`, `IdentificationEntity`, `IdentificationImageEntity`, `KycCaseEntity`,
+  and `AgentEntity`. Leave the field `null` on construction (see the comment on any of them) so Hibernate's
+  `TenantIdGeneration` populates it from `TenantContext` on insert — setting a non-null value yourself makes
+  Hibernate treat it as caller-assigned and throw if it doesn't match the resolved tenant.
+- `KycVerificationEntity` is deliberately **not** `@TenantId`-annotated: it's never loaded by its own id anywhere in
+  the codebase, only reached via the already-tenant-filtered `KycCaseEntity.verifications` association.
+- If you add tenant-scoped data to a new or existing domain, add `@TenantId` to the entity — don't write a manual
+  predicate; that duplicates enforcement and can silently drift from what Hibernate actually filters.
+- refdata entities are still global: `TenantEntity`, `LocationEntity`, `ApplicationEntity`, `RoleEntity` have no
+  `tenantId` and are not filtered. Same for `UserEntity`, `UserApplicationEntity`, `AuthFactorEntity` in the
+  `security` domain.
+- **Known, not-yet-closed gap**: tenant *resolution* itself isn't trustworthy yet. JWTs are issued via
+  `Algorithm.none()` (unsigned, in `AccessTokenService`), and `SecurityConfiguration` currently `permitAll()`s every
+  request — there is no Spring Security authentication enforced at the filter-chain level. A caller can set
+  `X-Tenant-ID` to whatever it wants. The `@TenantId` mechanism above correctly isolates data *once a tenant is
+  resolved*, but closing the resolution/authentication gap is separate, future work.
 
 ### Testing Patterns
 
