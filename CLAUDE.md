@@ -201,3 +201,16 @@ Flyway, split across two classpath locations composed in `application.yml`
 - `modules/ndopify-server/src/main/resources/application.yml` — default config (MySQL, Flyway locations, Jackson,
   SpringDoc/Swagger groups)
 - `application-test.yml` / `application-prod.yml` — profile overrides
+
+## README.md Files
+
+Every module (`modules/ndopify-dto/README.md`, `modules/ndopify-server/README.md`) has CI-managed badges as the
+first lines, right after the `# <module-name>` heading:
+
+- `main` and `pull_request` GitHub Actions workflow-status badges (both modules).
+- A JaCoCo coverage badge (`ndopify-server` only), pointing at the auto-generated SVG in
+  `.github/badges/ndopify-server-jacoco.svg`.
+
+These badges must be preserved whenever a README is edited. Edit module READMEs with a targeted edit (not a
+full-file rewrite) so the badge block isn't clobbered — and if a full rewrite is unavoidable, read the existing
+file first and carry the badge lines over verbatim.

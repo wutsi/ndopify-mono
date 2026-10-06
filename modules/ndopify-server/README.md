@@ -1,5 +1,9 @@
 # ndopify-server
 
+[![main](https://github.com/wutsi/ndopify-mono/actions/workflows/ndopify-server-main.yml/badge.svg)](https://github.com/wutsi/ndopify-mono/actions/workflows/ndopify-server-main.yml)
+[![pull_request](https://github.com/wutsi/ndopify-mono/actions/workflows/ndopify-server-pr.yml/badge.svg)](https://github.com/wutsi/ndopify-mono/actions/workflows/ndopify-server-pr.yml)
+[![JaCoCo](https://github.com/wutsi/ndopify-mono/blob/main/.github/badges/ndopify-server-jacoco.svg)](https://github.com/wutsi/ndopify-mono/blob/main/.github/badges/ndopify-server-jacoco.svg)
+
 REST API backend for Ndopify — a multi-tenant service for managing mobile-money agents, their KYC verification,
 party/identification records, payment methods, and mobile-money payment integrations across Africa.
 

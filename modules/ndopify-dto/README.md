@@ -1,5 +1,8 @@
 # ndopify-dto
 
+[![main](https://github.com/wutsi/ndopify-mono/actions/workflows/ndopify-dto-main.yml/badge.svg)](https://github.com/wutsi/ndopify-mono/actions/workflows/ndopify-dto-main.yml)
+[![pull_request](https://github.com/wutsi/ndopify-mono/actions/workflows/ndopify-dto-pr.yml/badge.svg)](https://github.com/wutsi/ndopify-mono/actions/workflows/ndopify-dto-pr.yml)
+
 Shared request/response DTOs and contracts for Ndopify. This module has no business logic — it exists purely to be
 a dependency of `ndopify-server` (and, in the future, other consumers such as SDKs or a portal).
 
