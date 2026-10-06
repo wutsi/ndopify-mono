@@ -22,6 +22,10 @@ object ErrorCode {
     val HTTP_AUTHENTICATION_FAILED = "$PREFIX:http:authentication-failed"
     val HTTP_DOWNSTREAM_ERROR = "$PREFIX:http:downstream-error"
 
+    val IDENTIFICATION_IMAGE_ALREADY_UPLOADED = "$PREFIX:identification-image:already-uploaded"
+    val IDENTIFICATION_IMAGE_INVALID_MIME_TYPE = "$PREFIX:identification-image:invalid-mime-type"
+    val IDENTIFICATION_IMAGE_NO_CONTENT = "$PREFIX:identification-image:image-no-content"
+    val IDENTIFICATION_IMAGE_NOT_FOUND = "$PREFIX:identification-image:not-found"
     val IDENTIFICATION_NOT_FOUND = "$PREFIX:identification:not-found"
 
     val KYC_CASE_NOT_FOUND = "$PREFIX:kyc-case:not-found"
