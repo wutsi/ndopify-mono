@@ -100,6 +100,8 @@ springdoc:
         -   group: party
             display-name: Party API
             paths-to-match:
+                - /v1/kyc
+                - /v1/kyc/**
                 - /v1/parties
                 - /v1/parties/**
                 - /v1/identifications
@@ -156,6 +158,14 @@ ndopify:
                 expression: "0 0 * * * ?"    # Every hour at 00 minutes
             identity-change-verify:
                 expression: "0 15 * * * ?"   # Every hour at 15 minutes
+
+    storage:
+        default-type: local
+        local:
+            directory: /${user.home}/ndopify
+        s3:
+            bucket: com-wutsi-ndopify-test
+            region: us-east-1
 
     mobile-money:
         mtn:

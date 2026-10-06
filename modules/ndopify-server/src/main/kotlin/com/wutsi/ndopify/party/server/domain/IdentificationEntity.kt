@@ -1,7 +1,7 @@
 package com.wutsi.ndopify.party.server.domain
 
+import com.wutsi.ndopify.party.dto.IdentificationStatus
 import com.wutsi.ndopify.party.dto.IdentificationType
-import com.wutsi.ndopify.refdata.dto.KycStatus
 import jakarta.persistence.Entity
 import jakarta.persistence.FetchType
 import jakarta.persistence.Id
@@ -32,7 +32,7 @@ data class IdentificationEntity(
     val numberSuffix: String? = null, // Last 4 digits of the number (masked for privacy)
     val issuedAt: Date? = null,
     val expiresAt: Date? = null,
-    val status: KycStatus = KycStatus.UNKNOWN,
+    val status: IdentificationStatus = IdentificationStatus.UNKNOWN,
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
 )

@@ -9,11 +9,15 @@ import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.party.dto.CreatePaymentMethodRequest
 import com.wutsi.ndopify.party.dto.PaymentMethodStatus
 import com.wutsi.ndopify.party.dto.PaymentMethodType
+import com.wutsi.ndopify.party.dto.SearchPaymentMethodRequest
 import com.wutsi.ndopify.party.server.dao.PaymentMethodRepository
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.party.server.domain.PaymentMethodEntity
 import com.wutsi.ndopify.platform.momo.MoMoGatewayProvider
+import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
+import org.springframework.data.domain.Sort
+import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
 import java.time.Clock
 import java.util.Date
@@ -49,6 +53,28 @@ class PaymentMethodService(
 
     fun findByParty(party: PartyEntity): List<PaymentMethodEntity> {
         return dao.findByParty(party)
+    }
+
+    fun search(request: SearchPaymentMethodRequest): List<PaymentMethodEntity> {
+        val spec = Specification<PaymentMethodEntity> { root, _, cb ->
+            val predicates = mutableListOf<Predicate>()
+
+            request.partyId?.let { partyId ->
+                predicates.add(cb.equal(root.get<PartyEntity>("party").get<Long>("id"), partyId))
+            }
+            if (request.types.isNotEmpty()) {
+                predicates.add(root.get<PaymentMethodType>("type").`in`(request.types))
+            }
+            if (request.statuses.isNotEmpty()) {
+                predicates.add(root.get<PaymentMethodStatus>("status").`in`(request.statuses))
+            }
+
+            cb.and(*predicates.toTypedArray())
+        }
+
+        return dao.findAll(spec, Sort.by("id"))
+            .drop(request.offset)
+            .take(request.limit)
     }
 
     @Transactional

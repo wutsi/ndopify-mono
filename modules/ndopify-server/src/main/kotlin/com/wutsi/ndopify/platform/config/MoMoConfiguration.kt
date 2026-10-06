@@ -1,8 +1,9 @@
-package com.wutsi.ndopify.config
+package com.wutsi.ndopify.platform.config
 
 import com.wutsi.ndopify.platform.momo.MoMoGatewayProvider
 import com.wutsi.ndopify.platform.momo.mtn.MoMoGatewayMtn
 import com.wutsi.ndopify.platform.momo.mtn.MtnCollectionProduct
+import com.wutsi.ndopify.platform.momo.mtn.MtnProductHealthIndicator
 import com.wutsi.ndopify.platform.momo.mtn.MtnUserProvider
 import com.wutsi.ndopify.platform.momo.mtn.impl.MtnUserProviderProduction
 import com.wutsi.ndopify.platform.momo.mtn.impl.MtnUserProviderSandbox
@@ -30,10 +31,18 @@ class MoMoConfiguration(
             mtn = moMoGatewayMtn()
         )
     }
-    
+
     @Bean
     fun moMoGatewayMtn(): MoMoGatewayMtn {
         return MoMoGatewayMtn(collection = mtnCollectionProduct())
+    }
+
+    @Bean
+    fun mtnCollectionHealthIndicator(): MtnProductHealthIndicator {
+        return MtnProductHealthIndicator(
+            environment = environment,
+            product = mtnCollectionProduct()
+        )
     }
 
     @Bean

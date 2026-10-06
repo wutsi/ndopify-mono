@@ -33,6 +33,11 @@ CREATE TABLE T_PAYMENT_METHOD(
   PRIMARY KEY(id)
 ) ENGINE = InnoDB;
 
+-- #########################
+--
+-- Identification tables
+--
+-- #########################
 CREATE TABLE T_IDENTIFICATION(
   id                      VARCHAR(36) NOT NULL,
 
@@ -66,6 +71,45 @@ CREATE TABLE T_IDENTIFICATION_IMAGE(
   created_at              DATETIME DEFAULT NOW(),
   modified_at             DATETIME NOT NULL DEFAULT now() ON UPDATE now(),
   uploaded_at             DATETIME,
+
+  PRIMARY KEY(id)
+) ENGINE = InnoDB;
+
+-- ###################
+--
+-- KYC tables
+--
+-- ###################
+CREATE TABLE T_KYC_CASE(
+  id                      VARCHAR(36) NOT NULL,
+
+  party_id                BIGINT NOT NULL REFERENCES T_PARTY(id),
+  identification_id       VARCHAR(36) NOT NULL REFERENCES T_IDENTIFICATION(id),
+  payment_method_id       VARCHAR(36) REFERENCES T_PAYMENT_METHOD(id),
+
+  score                   INT,
+  status                  INT NOT NULL DEFAULT 0,
+  error_code              VARCHAR(100),
+
+  created_at              DATETIME DEFAULT NOW(),
+  modified_at             DATETIME NOT NULL DEFAULT now() ON UPDATE now(),
+
+  PRIMARY KEY(id)
+) ENGINE = InnoDB;
+
+CREATE TABLE T_KYC_VERIFICATION(
+  id                      VARCHAR(36) NOT NULL,
+
+  case_id                 VARCHAR(36) NOT NULL REFERENCES T_KYC_CASE(id),
+
+  type                    INT NOT NULL DEFAULT 0,
+  status                  INT NOT NULL DEFAULT 0,
+  score                   INT,
+  error_code              VARCHAR(100),
+  error_message           TEXT,
+
+  created_at              DATETIME DEFAULT NOW(),
+  modified_at             DATETIME NOT NULL DEFAULT now() ON UPDATE now(),
 
   PRIMARY KEY(id)
 ) ENGINE = InnoDB;

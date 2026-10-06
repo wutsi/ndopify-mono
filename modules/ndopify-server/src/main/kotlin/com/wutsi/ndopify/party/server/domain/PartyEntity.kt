@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.party.server.domain
 
-import com.wutsi.ndopify.refdata.dto.KycStatus
+import com.wutsi.ndopify.party.dto.KycStatus
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType

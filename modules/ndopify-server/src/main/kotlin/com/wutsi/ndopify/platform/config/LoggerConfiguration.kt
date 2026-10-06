@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.config
+package com.wutsi.ndopify.platform.config
 
 import com.wutsi.koki.platform.logger.servlet.KVLoggerFilter
 import com.wutsi.ndopify.platform.logger.DefaultKVLogger

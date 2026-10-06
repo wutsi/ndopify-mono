@@ -1,34 +1,33 @@
 package com.wutsi.ndopify.party.server.endpoint
 
 import com.wutsi.ndopify.party.dto.GetPaymentMethodResponse
+import com.wutsi.ndopify.party.dto.SearchPaymentMethodRequest
 import com.wutsi.ndopify.party.dto.SearchPaymentMethodResponse
 import com.wutsi.ndopify.party.server.mapper.PaymentMethodMapper
-import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.party.server.service.PaymentMethodService
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 @RestController
-@RequestMapping("/v1")
+@RequestMapping("/v1/payment-methods")
 class PaymentMethodEndpoints(
     private val service: PaymentMethodService,
-    private val partyService: PartyService,
     private val mapper: PaymentMethodMapper,
 ) {
-    @GetMapping("/parties/{id}/payment-methods")
-    fun getByParty(
-        @PathVariable id: Long,
+    @GetMapping
+    fun search(
+        @ModelAttribute request: SearchPaymentMethodRequest,
     ): SearchPaymentMethodResponse {
-        val party = partyService.findById(id)
-        val paymentMethods = service.findByParty(party)
+        val paymentMethods = service.search(request)
         return SearchPaymentMethodResponse(
             paymentMethods = paymentMethods.map { paymentMethod -> mapper.toPaymentMethodSummary(paymentMethod) },
         )
     }
 
-    @GetMapping("/payment-methods/{id}")
+    @GetMapping("/{id}")
     fun get(
         @PathVariable id: String,
     ): GetPaymentMethodResponse {

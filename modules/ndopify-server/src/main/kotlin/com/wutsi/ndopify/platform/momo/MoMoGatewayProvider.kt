@@ -1,13 +1,10 @@
 package com.wutsi.ndopify.platform.momo
 
-import com.wutsi.ndopify.platform.momo.mtn.MoMoGatewayMtn
 import com.wutsi.ndopify.refdata.dto.MoMoGatewayType
 import com.wutsi.ndopify.util.PhoneNumberUtils
-import org.springframework.stereotype.Service
 
-@Service
 class MoMoGatewayProvider(
-    private val mtn: MoMoGatewayMtn,
+    private val mtn: MoMoGateway,
 ) {
     fun getByPhoneNumber(phoneNumber: String): MoMoGateway? {
         val countryCode = PhoneNumberUtils.extractCountryCode(phoneNumber)
@@ -20,18 +17,6 @@ class MoMoGatewayProvider(
             gateway
                 .getPhoneNumberPrefixes(countryCode)
                 .find { prefix -> normalizedPhoneNumber.startsWith(prefix) } != null
-        } catch (_: MoMoException) {
-            false
-        }
-    }
-
-    private fun supports(phoneNumber: String, gateway: MoMoGateway): Boolean {
-        val countryCode = PhoneNumberUtils.extractCountryCode(phoneNumber)
-        val normalized = PhoneNumberUtils.normalize(phoneNumber)
-        return try {
-            gateway
-                .getPhoneNumberPrefixes(countryCode)
-                .find { prefix -> normalized.startsWith(prefix) } != null
         } catch (_: MoMoException) {
             false
         }

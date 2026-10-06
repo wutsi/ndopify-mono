@@ -1,23 +1,21 @@
-package com.wutsi.platform.payment.provider.mtn.spring
+package com.wutsi.ndopify.platform.momo.mtn
 
-import com.wutsi.platform.payment.provider.mtn.product.Product
 import org.slf4j.LoggerFactory
-import org.springframework.boot.actuate.health.Health
-import org.springframework.boot.actuate.health.HealthIndicator
-import java.util.UUID
+import org.springframework.boot.health.contributor.Health
+import org.springframework.boot.health.contributor.HealthIndicator
 
-class MTNProductHealthIndicator(
+class MtnProductHealthIndicator(
     private val environment: String,
-    private val product: Product,
+    private val product: MtnProduct,
 ) : HealthIndicator {
     companion object {
-        private val LOGGER = LoggerFactory.getLogger(MTNProductHealthIndicator::class.java)
+        private val LOGGER = LoggerFactory.getLogger(MtnProductHealthIndicator::class.java)
     }
 
     override fun health(): Health {
         val now = System.currentTimeMillis()
         try {
-            product.token(UUID.randomUUID().toString())
+            product.authenticate()
             return Health.up()
                 .withDetail("environment", environment)
                 .withDetail("durationMillis", System.currentTimeMillis() - now)

@@ -9,9 +9,7 @@ import com.wutsi.ndopify.platform.momo.model.MoMoKycMatchResponse
 import com.wutsi.ndopify.platform.momo.mtn.model.MtnUserStatus
 import com.wutsi.ndopify.util.KycUtils
 import com.wutsi.ndopify.util.PhoneNumberUtils
-import org.springframework.stereotype.Service
 
-@Service
 class MoMoGatewayMtn(
     val collection: MtnCollectionProduct,
 ) : MoMoGateway {

@@ -15,12 +15,12 @@
     <artifactId>ndopify-server</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
-
     <properties>
-        <jacoco.threshold.line>0.85</jacoco.threshold.line>
-        <jacoco.threshold.class>0.89</jacoco.threshold.class>
+        <jacoco.threshold.line>0.92</jacoco.threshold.line>
+        <!--
+        <jacoco.threshold.class>0.90</jacoco.threshold.class>
+        -->
     </properties>
-
     <dependencies>
         <dependency>
             <groupId>com.wutsi.ndopify</groupId>
@@ -28,6 +28,11 @@
             <version>${ndopify-dto.version}</version>
         </dependency>
 
+        <dependency>
+            <groupId>com.amazonaws</groupId>
+            <artifactId>aws-java-sdk-s3</artifactId>
+            <version>${aws.version}</version>
+        </dependency>
         <dependency>
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>

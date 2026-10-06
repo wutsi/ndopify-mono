@@ -6,11 +6,11 @@ import com.wutsi.ndopify.error.dto.Parameter
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.party.dto.CreatePartyRequest
+import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.UpdatePartyRequest
 import com.wutsi.ndopify.party.dto.UpdatePhotoRequest
 import com.wutsi.ndopify.party.server.dao.PartyRepository
 import com.wutsi.ndopify.party.server.domain.PartyEntity
-import com.wutsi.ndopify.refdata.dto.KycStatus
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
 import java.time.Clock

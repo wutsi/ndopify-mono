@@ -5,8 +5,8 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.dto.GetIdentificationResponse
 import com.wutsi.ndopify.party.dto.IdentificationImageType
+import com.wutsi.ndopify.party.dto.IdentificationStatus
 import com.wutsi.ndopify.party.dto.IdentificationType
-import com.wutsi.ndopify.refdata.dto.KycStatus
 import com.wutsi.ndopify.refdata.dto.StorageType
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
@@ -27,11 +27,14 @@ class GetIdentificationEndpointTest : BaseEndpointIntegrationTest() {
         assertEquals(IdentificationType.NATIONAL_ID, identification.type)
         assertEquals("CM", identification.issuingCountryCode)
         assertEquals("7890", identification.numberSuffix)
-        assertEquals(KycStatus.PENDING, identification.status)
+        assertEquals(IdentificationStatus.PENDING_VERIFICATION, identification.status)
 
         val images = identification.images
         assertEquals(2, images.size)
-        assertEquals(setOf(IdentificationImageType.FRONT, IdentificationImageType.BACK), images.map { it.imageType }.toSet())
+        assertEquals(
+            setOf(IdentificationImageType.FRONT, IdentificationImageType.BACK),
+            images.map { it.imageType }.toSet()
+        )
         images.forEach { image ->
             assertEquals(StorageType.LOCAL, image.storageType)
             assertEquals("image/jpeg", image.mimeType)

@@ -1,79 +1,54 @@
-package com.wutsi.ndopify.config
+package com.wutsi.ndopify.platform.config
 
-import com.wutsi.ndopify.platform.momo.MoMoGatewayProvider
-import com.wutsi.ndopify.platform.momo.mtn.MoMoGatewayMtn
-import com.wutsi.ndopify.platform.momo.mtn.MtnCollectionProduct
-import com.wutsi.ndopify.platform.momo.mtn.MtnUserProvider
-import com.wutsi.ndopify.platform.momo.mtn.impl.MtnUserProviderProduction
-import com.wutsi.ndopify.platform.momo.mtn.impl.MtnUserProviderSandbox
-import com.wutsi.ndopify.platform.momo.mtn.model.MtnEnvironment
-import com.wutsi.ndopify.util.http.Http
+import com.amazonaws.services.s3.AmazonS3
+import com.amazonaws.services.s3.AmazonS3ClientBuilder
+import com.wutsi.ndopify.platform.storage.StorageService
+import com.wutsi.ndopify.platform.storage.StorageServiceProvider
+import com.wutsi.ndopify.platform.storage.local.StorageServiceLocal
+import com.wutsi.ndopify.platform.storage.s3.S3HealthIndicator
+import com.wutsi.ndopify.platform.storage.s3.StorageServiceS3
+import com.wutsi.ndopify.refdata.dto.StorageType
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.health.contributor.HealthIndicator
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import tools.jackson.databind.json.JsonMapper
-import java.net.http.HttpClient
 
 @Configuration
-class MoMoConfiguration(
-    @Value("\${ndopify.mobile-money.mtn.environment}") private val environment: String,
-    @Value("\${ndopify.mobile-money.mtn.callback-url}") private val callbackUrl: String,
-    @Value("\${ndopify.mobile-money.mtn.collection.user-id}") private val collectionUserId: String,
-    @Value("\${ndopify.mobile-money.mtn.collection.api-key}") private val collectionApiKey: String,
-    @Value("\${ndopify.mobile-money.mtn.collection.subscription-key}") private val collectionSubscriptionKey: String,
-
-    private val objectMapper: JsonMapper
+class StorageConfiguration(
+    @Value("\${ndopify.storage.default-type}") private val defaultType: String,
+    @Value("\${ndopify.storage.local.directory}") private val localDirectory: String,
+    @Value("\${ndopify.storage.s3.bucket}") private val s3Bucket: String,
+    @Value("\${ndopify.storage.s3.region}") private val s3Region: String,
 ) {
     @Bean
-    fun moMoGatewayProvider(): MoMoGatewayProvider {
-        return MoMoGatewayProvider(
-            mtn = moMoGatewayMtn()
+    fun storageServiceProvider(): StorageServiceProvider {
+        return StorageServiceProvider(
+            defaultType = StorageType.valueOf(defaultType.uppercase()),
+            local = storageServiceLocal(),
+            s3 = storageServiceS3()
         )
-    }
-    
-    @Bean
-    fun moMoGatewayMtn(): MoMoGatewayMtn {
-        return MoMoGatewayMtn(collection = mtnCollectionProduct())
     }
 
     @Bean
-    fun mtnCollectionProduct(): MtnCollectionProduct {
-        val env = getMTNEnvironment()
-        val http = Http(
-            client = HttpClient.newBuilder()
-                .version(HttpClient.Version.HTTP_1_1)
-                .followRedirects(HttpClient.Redirect.NORMAL)
-                .build(),
-            objectMapper = objectMapper,
-        )
-        return MtnCollectionProduct(
-            environment = env,
-            subscriptionKey = collectionSubscriptionKey,
-            callbackUrl = callbackUrl,
-            userProvider = createUserProvider(env, collectionUserId, collectionApiKey, collectionSubscriptionKey, http),
-            http = http
-        )
+    fun storageServiceLocal(): StorageService {
+        return StorageServiceLocal(localDirectory)
     }
 
-    private fun createUserProvider(
-        env: MtnEnvironment,
-        userId: String,
-        apiKey: String,
-        subscriptionKey: String,
-        http: Http
-    ): MtnUserProvider {
-        return if (env == MtnEnvironment.PRODUCTION) {
-            MtnUserProviderProduction(userId, apiKey)
-        } else {
-            MtnUserProviderSandbox(subscriptionKey, callbackUrl, http)
-        }
+    @Bean
+    open fun storageServiceS3(): StorageService {
+        return StorageServiceS3(s3Bucket, amazonS3())
     }
 
-    private fun getMTNEnvironment(): MtnEnvironment {
-        return if (environment.equals("sandbox", ignoreCase = true)) {
-            MtnEnvironment.SANDBOX
-        } else {
-            MtnEnvironment.PRODUCTION
-        }
+    @Bean
+    open fun amazonS3(): AmazonS3 {
+        return AmazonS3ClientBuilder
+            .standard()
+            .withRegion(s3Region)
+            .build()
+    }
+
+    @Bean
+    open fun s3StorageHealthIndicator(): HealthIndicator {
+        return S3HealthIndicator(s3Bucket, amazonS3())
     }
 }

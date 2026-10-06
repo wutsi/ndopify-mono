@@ -5,10 +5,10 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.dto.CreateIdentificationRequest
 import com.wutsi.ndopify.party.dto.IdentificationImageType
+import com.wutsi.ndopify.party.dto.IdentificationStatus
 import com.wutsi.ndopify.party.dto.IdentificationType
 import com.wutsi.ndopify.party.server.dao.IdentificationImageRepository
 import com.wutsi.ndopify.party.server.dao.IdentificationRepository
-import com.wutsi.ndopify.refdata.dto.KycStatus
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
@@ -26,12 +26,13 @@ class CreateIdentificationEndpointTest : BaseEndpointIntegrationTest() {
     @Test
     fun identifications() {
         val request = CreateIdentificationRequest(
+            partyId = 100L,
             type = IdentificationType.NATIONAL_ID,
             issuingCountryCode = "CM",
             imageTypes = listOf(IdentificationImageType.FRONT, IdentificationImageType.BACK),
         )
 
-        val response = rest.postForEntity("/v1/parties/100/identifications", request, Void::class.java)
+        val response = rest.postForEntity("/v1/identifications", request, Void::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
 
@@ -42,25 +43,30 @@ class CreateIdentificationEndpointTest : BaseEndpointIntegrationTest() {
         assertEquals(100L, identification.party.id)
         assertEquals(IdentificationType.NATIONAL_ID, identification.type)
         assertEquals("CM", identification.issuingCountryCode)
-        assertEquals(KycStatus.PENDING, identification.status)
+        assertEquals(IdentificationStatus.PENDING_VERIFICATION, identification.status)
 
         val images = imageDao.findAll().toList()
         assertEquals(2, images.size)
-        assertEquals(setOf(IdentificationImageType.FRONT, IdentificationImageType.BACK), images.map { it.imageType }.toSet())
+        assertEquals(
+            setOf(IdentificationImageType.FRONT, IdentificationImageType.BACK),
+            images.map { it.imageType }.toSet()
+        )
         images.forEach { image ->
             assertEquals(identification.id, image.identification.id)
+            assertEquals(false, image.uploaded)
         }
     }
 
     @Test
     fun `no issuing country code`() {
         val request = CreateIdentificationRequest(
+            partyId = 100L,
             type = IdentificationType.NATIONAL_ID,
             issuingCountryCode = "",
             imageTypes = listOf(IdentificationImageType.FRONT),
         )
 
-        val response = rest.postForEntity("/v1/parties/100/identifications", request, ErrorResponse::class.java)
+        val response = rest.postForEntity("/v1/identifications", request, ErrorResponse::class.java)
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
         assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
@@ -69,12 +75,13 @@ class CreateIdentificationEndpointTest : BaseEndpointIntegrationTest() {
     @Test
     fun `no image types`() {
         val request = CreateIdentificationRequest(
+            partyId = 100L,
             type = IdentificationType.NATIONAL_ID,
             issuingCountryCode = "CM",
             imageTypes = emptyList(),
         )
 
-        val response = rest.postForEntity("/v1/parties/100/identifications", request, ErrorResponse::class.java)
+        val response = rest.postForEntity("/v1/identifications", request, ErrorResponse::class.java)
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
         assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
@@ -83,12 +90,13 @@ class CreateIdentificationEndpointTest : BaseEndpointIntegrationTest() {
     @Test
     fun `party not found`() {
         val request = CreateIdentificationRequest(
+            partyId = 999L,
             type = IdentificationType.NATIONAL_ID,
             issuingCountryCode = "CM",
             imageTypes = listOf(IdentificationImageType.FRONT),
         )
 
-        val response = rest.postForEntity("/v1/parties/999/identifications", request, ErrorResponse::class.java)
+        val response = rest.postForEntity("/v1/identifications", request, ErrorResponse::class.java)
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals(ErrorCode.PARTY_NOT_FOUND, response.body?.error?.code)

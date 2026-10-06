@@ -1,7 +1,7 @@
-package com.wutsi.ndopify.kyc.server.domain
+package com.wutsi.ndopify.party.server.domain
 
-import com.wutsi.ndopify.kyc.dto.KycStatus
-import com.wutsi.ndopify.kyc.dto.KycVerificationType
+import com.wutsi.ndopify.party.dto.KycStatus
+import com.wutsi.ndopify.party.dto.KycVerificationType
 import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
@@ -17,13 +17,14 @@ data class KycVerificationEntity(
     val id: String = UUID.randomUUID().toString(),
 
     @ManyToOne
-    @JoinColumn(name = "kyc_case_id")
-    val kycCase: KycCaseEntity = KycCaseEntity(),
+    @JoinColumn(name = "case_id")
+    val case: KycCaseEntity = KycCaseEntity(),
 
     val type: KycVerificationType = KycVerificationType.UNKNOWN,
     val status: KycStatus = KycStatus.UNKNOWN,
     val score: Int? = null,
-    val failureCode: String? = null,
+    val errorCode: String? = null,
+    val errorMessage: String? = null,
     val createdAt: Date = Date(),
-    val updatedAt: Date = Date(),
+    val modifiedAt: Date = Date(),
 )

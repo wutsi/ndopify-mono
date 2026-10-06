@@ -1,13 +1,13 @@
-package com.wutsi.platform.core.storage.spring
+package com.wutsi.ndopify.platform.storage.s3
 
 import com.amazonaws.services.s3.AmazonS3
 import org.slf4j.LoggerFactory
-import org.springframework.boot.actuate.health.Health
-import org.springframework.boot.actuate.health.HealthIndicator
+import org.springframework.boot.health.contributor.Health
+import org.springframework.boot.health.contributor.HealthIndicator
 
 open class S3HealthIndicator(
-    private val s3: AmazonS3,
     private val bucket: String,
+    private val s3: AmazonS3,
 ) : HealthIndicator {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(S3HealthIndicator::class.java)
