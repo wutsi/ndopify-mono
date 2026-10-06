@@ -8,6 +8,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
+import org.hibernate.annotations.TenantId
 import java.util.Date
 import java.util.UUID
 
@@ -16,6 +17,11 @@ import java.util.UUID
 data class IdentificationImageEntity(
     @Id
     val id: String = UUID.randomUUID().toString(),
+
+    // Left unset (null) on construction so Hibernate's TenantIdGeneration can populate it from the current
+    // tenant on insert — mirrors PartyEntity.tenantId exactly.
+    @TenantId
+    val tenantId: Long? = null,
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "identification_id")
