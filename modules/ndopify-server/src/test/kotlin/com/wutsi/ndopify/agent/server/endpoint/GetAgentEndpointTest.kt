@@ -41,4 +41,12 @@ class GetAgentEndpointTest : AbstractAgentEndpointTest() {
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals(ErrorCode.AGENT_NOT_FOUND, response.body?.error?.code)
     }
+
+    @Test
+    fun `agent from another tenant is not found`() {
+        val response = rest.getForEntity("/v1/agents/2", ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
+        assertEquals(ErrorCode.AGENT_NOT_FOUND, response.body?.error?.code)
+    }
 }

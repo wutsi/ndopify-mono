@@ -108,4 +108,22 @@ class SearchAgentEndpointTest : AbstractAgentEndpointTest() {
         assertEquals(1, agents.size)
         assertEquals(2L, agents[0].id)
     }
+
+    @Test
+    fun `agent from another tenant is not returned`() {
+        val response = rest.getForEntity("/v1/agents", SearchAgentResponse::class.java)
+
+        val agentIds = response.body!!.agents.map { it.id }
+        assertTrue(!agentIds.contains(4L))
+    }
+
+    @Test
+    fun `switching tenant context reveals only that tenant's agent`() {
+        overrideTenantId = 2L
+
+        val response = rest.getForEntity("/v1/agents", SearchAgentResponse::class.java)
+
+        val agentIds = response.body!!.agents.map { it.id }
+        assertEquals(listOf(4L), agentIds)
+    }
 }

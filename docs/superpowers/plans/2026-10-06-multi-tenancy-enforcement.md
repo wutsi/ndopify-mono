@@ -210,169 +210,21 @@ git commit -m "scope payment method, identification, and KYC case entities to te
 
 ### Task 2: Add `tenantId` to `AgentEntity` via `@TenantId`
 
-**Files:**
-- Create: `modules/ndopify-server/src/main/resources/db/migration/common/V6_0__agent-tenant.sql`
+> **Status: done** (same session as Task 1). Two deviations, consistent with Task 1's precedent:
+> 1. The `tenant_id` column was squashed directly into `V4_0__agent.sql` instead of a separate `V6_0__agent-tenant.sql` migration — unshipped feature, no deployed schema to preserve.
+> 2. The cross-tenant isolation assertions were folded into the existing `GetAgentEndpointTest` (`agent from another tenant is not found`) and `SearchAgentEndpointTest` (`agent from another tenant is not returned`, `switching tenant context reveals only that tenant's agent`) instead of a standalone `AgentTenantIsolationEndpointTest`.
+>
+> Verified the fix is load-bearing by temporarily reverting `@TenantId` on `AgentEntity` and re-running: 7 of the new/existing assertions failed (search returned 0 instead of the tenant's own rows; the cross-tenant get returned 500 instead of 404). Restored the fix — full agent suite (32 tests) and ktlint are green.
+
+**Files (as actually changed):**
+- Modified: `modules/ndopify-server/src/main/resources/db/migration/common/V4_0__agent.sql` (tenant_id column + index added directly)
 - Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/agent/server/domain/AgentEntity.kt`
-- Test: `modules/ndopify-server/src/test/kotlin/com/wutsi/ndopify/agent/server/endpoint/AgentTenantIsolationEndpointTest.kt`
-- Test fixture: `modules/ndopify-server/src/test/resources/db/test/agent/AgentTenantIsolationEndpoint.sql`
+- Modified: `GetAgentEndpointTest.kt` / `.sql`, `SearchAgentEndpointTest.kt` / `.sql` (under `modules/ndopify-server/src/test/.../agent/server/endpoint/` and `.../db/test/agent/`)
 
 **Interfaces:**
-- Produces: `AgentEntity.tenantId: Long?` (nullable, left `null` on construction exactly like `PartyEntity.tenantId` — Hibernate's `TenantIdGeneration` populates it from `TenantContext` on insert; passing a non-null value makes Hibernate throw if it doesn't match the resolved tenant).
-- No change to `AgentService`, `AgentRepository`, or `AgentEndpoints` signatures — per the Global Constraints, isolation comes from the annotation + the existing `TenantIdentifierResolver`, the same way it already does for every `PartyEntity` query in the codebase today.
+- Produces: `AgentEntity.tenantId: Long?` (nullable, left `null` on construction exactly like `PartyEntity.tenantId` — Hibernate's `TenantIdGeneration` populates it from `TenantContext` on insert).
+- No change to `AgentService`, `AgentRepository`, or `AgentEndpoints` signatures — isolation comes from the annotation + the existing `TenantIdentifierResolver`, the same way it already does for `PartyEntity`.
 
-- [ ] **Step 1: Add the migration**
-
-```sql
-ALTER TABLE T_AGENT ADD COLUMN tenant_id BIGINT NOT NULL DEFAULT 1 AFTER id;
-
-CREATE INDEX I_AGENT_tenant ON T_AGENT(tenant_id);
-```
-
-- [ ] **Step 2: Write the failing cross-tenant isolation test**
-
-```sql
--- modules/ndopify-server/src/test/resources/db/test/agent/AgentTenantIsolationEndpoint.sql
-INSERT INTO T_PARTY(id, tenant_id, first_name, last_name, email) VALUES
-  (201, 1, 'Ada', 'T1', 'ada.t1@example.com'),
-  (202, 2, 'Bob', 'T2', 'bob.t2@example.com');
-
-INSERT INTO T_AGENT(id, tenant_id, party_id) VALUES
-  (301, 1, 201),
-  (302, 2, 202);
-```
-
-```kotlin
-package com.wutsi.ndopify.agent.server.endpoint
-
-import com.wutsi.ndopify.agent.dto.GetAgentResponse
-import com.wutsi.ndopify.agent.dto.SearchAgentResponse
-import org.springframework.http.HttpStatus
-import org.springframework.test.context.jdbc.Sql
-import kotlin.test.Test
-import kotlin.test.assertEquals
-
-@Sql(value = ["/db/test/clean.sql", "/db/test/agent/AgentTenantIsolationEndpoint.sql"])
-class AgentTenantIsolationEndpointTest : AbstractAgentEndpointTest() {
-    @Test
-    fun `search only returns agents belonging to the caller's tenant`() {
-        val response = rest.getForEntity("/v1/agents", SearchAgentResponse::class.java)
-
-        val agentIds = response.body!!.agents.map { it.id }
-        assertEquals(listOf(301L), agentIds)
-    }
-
-    @Test
-    fun `get by id for another tenant's agent is not found`() {
-        overrideTenantId = 1L
-
-        val response = rest.getForEntity("/v1/agents/302", GetAgentResponse::class.java)
-
-        assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
-    }
-
-    @Test
-    fun `get by id for the caller's own tenant succeeds`() {
-        overrideTenantId = 1L
-
-        val response = rest.getForEntity("/v1/agents/301", GetAgentResponse::class.java)
-
-        assertEquals(HttpStatus.OK, response.statusCode)
-        assertEquals(301L, response.body!!.agent.id)
-    }
-
-    @Test
-    fun `switching tenant context reveals the other tenant's agent instead`() {
-        overrideTenantId = 2L
-
-        val response = rest.getForEntity("/v1/agents", SearchAgentResponse::class.java)
-
-        val agentIds = response.body!!.agents.map { it.id }
-        assertEquals(listOf(302L), agentIds)
-    }
-}
-```
-
-Note: `overrideTenantId` and `TENANT_ID` already exist on `TenantAwareEndpointIntegrationTest` today (see `modules/ndopify-server/src/test/kotlin/com/wutsi/ndopify/TenantAwareEndpointIntegrationTest.kt`) — no base test class changes are needed for this plan, since tenant resolution via the `X-Tenant-ID` header already works independently of the JWT/auth work that's deferred.
-
-- [ ] **Step 3: Run the test to verify it fails**
-
-Run: `cd modules/ndopify-server && mvn test -Dtest=AgentTenantIsolationEndpointTest`
-Expected: FAIL on `search only returns agents belonging to the caller's tenant` and `get by id for another tenant's agent is not found` — today both tenants' agents are visible/reachable from either tenant context, since `AgentEntity` has no `@TenantId`.
-
-- [ ] **Step 4: Add `@TenantId` to `AgentEntity`**
-
-```kotlin
-package com.wutsi.ndopify.agent.server.domain
-
-import com.wutsi.ndopify.agent.dto.AgentType
-import com.wutsi.ndopify.agent.dto.ExperienceLevel
-import com.wutsi.ndopify.party.server.domain.PartyEntity
-import jakarta.persistence.CollectionTable
-import jakarta.persistence.Column
-import jakarta.persistence.ElementCollection
-import jakarta.persistence.Entity
-import jakarta.persistence.GeneratedValue
-import jakarta.persistence.GenerationType
-import jakarta.persistence.Id
-import jakarta.persistence.JoinColumn
-import jakarta.persistence.OneToOne
-import jakarta.persistence.Table
-import org.hibernate.annotations.TenantId
-import java.util.Date
-
-@Entity
-@Table(name = "T_AGENT")
-data class AgentEntity(
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    val id: Long? = null,
-
-    // Left unset (null) on construction so Hibernate's TenantIdGeneration can populate it from the current
-    // tenant on insert — mirrors PartyEntity.tenantId exactly.
-    @TenantId
-    val tenantId: Long? = null,
-
-    @OneToOne
-    @JoinColumn(name = "party_id")
-    val party: PartyEntity = PartyEntity(),
-
-    @ElementCollection
-    @CollectionTable(
-        name = "T_AGENT_NEIGHBORHOOD",
-        joinColumns = [JoinColumn(name = "agent_id")]
-    )
-    @Column(name = "neighborhood_id")
-    val neighborhoodIds: List<Long> = emptyList(),
-
-    val cityId: Long? = null,
-    val whatsappNumber: String? = null,
-    val agentType: AgentType = AgentType.UNKNOWN,
-    val experienceLevel: ExperienceLevel = ExperienceLevel.UNKNOWN,
-    val biography: String? = null,
-    val createdAt: Date = Date(),
-    val modifiedAt: Date = Date(),
-)
-```
-
-- [ ] **Step 5: Run the test to verify it passes**
-
-Run: `cd modules/ndopify-server && mvn test -Dtest=AgentTenantIsolationEndpointTest`
-Expected: PASS, all four tests green.
-
-- [ ] **Step 6: Run the full existing agent test suite to catch regressions**
-
-Run: `cd modules/ndopify-server && mvn test -Dtest=CreateAgentEndpointTest,GetAgentEndpointTest,SearchAgentEndpointTest,UpdateAgentEndpointTest`
-Expected: PASS — these tests run under `TENANT_ID = 1` by default (from `TenantAwareEndpointIntegrationTest`), and their fixtures don't mix tenants, so adding the column/annotation should be transparent to them.
-
-- [ ] **Step 7: Commit**
-
-```bash
-git add modules/ndopify-server/src/main/resources/db/migration/common/V6_0__agent-tenant.sql \
-        modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/agent/server/domain/AgentEntity.kt \
-        modules/ndopify-server/src/test/kotlin/com/wutsi/ndopify/agent/server/endpoint/AgentTenantIsolationEndpointTest.kt \
-        modules/ndopify-server/src/test/resources/db/test/agent/AgentTenantIsolationEndpoint.sql
-git commit -m "scope AgentEntity to tenant via @TenantId, matching PartyEntity"
-```
 
 ---
 

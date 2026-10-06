@@ -1,5 +1,6 @@
 CREATE TABLE T_AGENT(
   id                      BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id               BIGINT NOT NULL DEFAULT 1,
   party_id                BIGINT NOT NULL REFERENCES T_PARTY(id),
 
   whatsapp_number         VARCHAR(20),
@@ -16,6 +17,7 @@ CREATE TABLE T_AGENT(
 ) ENGINE = InnoDB;
 
 CREATE INDEX I_AGENT_city ON T_AGENT(city_id);
+CREATE INDEX I_AGENT_tenant ON T_AGENT(tenant_id);
 
 
 CREATE TABLE T_AGENT_NEIGHBORHOOD(
