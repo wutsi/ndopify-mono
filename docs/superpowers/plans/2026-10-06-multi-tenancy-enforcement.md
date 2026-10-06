@@ -36,14 +36,17 @@
 
 ### Task 1: Add `tenantId` to the `party` domain's child entities via `@TenantId`
 
-**Files:**
-- Create: `modules/ndopify-server/src/main/resources/db/migration/common/V5_0__party-children-tenant.sql`
+> **Status: done** (commits `d518954`, `d61ed6e`, and the fold-into-existing-tests follow-up). Two deviations from the plan as originally written, both per explicit direction during review:
+> 1. The `tenant_id` columns were squashed directly into `V3_0__party.sql` instead of a separate `V5_0__party-children-tenant.sql` migration — the feature hadn't shipped yet, so there was no deployed schema to leave alone.
+> 2. The cross-tenant isolation assertions were folded into the existing `GetPaymentMethodEndpointTest`, `GetIdentificationEndpointTest`, `GetIdentificationImageUrlEndpointTest`, and `GetKycCaseEndpointTest` (each gained a tenant-2 fixture row and a `... from another tenant is not found` test) instead of a standalone `PartyChildTenantIsolationEndpointTest`. Final count: 54/54 party tests green.
+
+**Files (as actually changed):**
+- Modified: `modules/ndopify-server/src/main/resources/db/migration/common/V3_0__party.sql` (tenant_id columns + indexes added directly)
 - Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/party/server/domain/PaymentMethodEntity.kt`
 - Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/party/server/domain/IdentificationEntity.kt`
 - Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/party/server/domain/IdentificationImageEntity.kt`
 - Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/party/server/domain/KycCaseEntity.kt`
-- Test: `modules/ndopify-server/src/test/kotlin/com/wutsi/ndopify/party/endpoint/PartyChildTenantIsolationEndpointTest.kt`
-- Test fixture: `modules/ndopify-server/src/test/resources/db/test/party/PartyChildTenantIsolationEndpoint.sql`
+- Modified: `GetPaymentMethodEndpointTest.kt` / `.sql`, `GetIdentificationEndpointTest.kt` / `.sql`, `GetIdentificationImageUrlEndpointTest.kt` / `.sql`, `GetKycCaseEndpointTest.kt` / `.sql` (all under `modules/ndopify-server/src/test/.../party/endpoint/` and `.../db/test/party/`)
 
 **Interfaces:**
 - Produces: `tenantId: Long?` on all four entities, nullable and left `null` on construction exactly like `PartyEntity.tenantId` — Hibernate's `TenantIdGeneration` populates it from `TenantContext` on insert.

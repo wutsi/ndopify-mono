@@ -43,4 +43,12 @@ class GetIdentificationEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals(ErrorCode.IDENTIFICATION_NOT_FOUND, response.body?.error?.code)
     }
+
+    @Test
+    fun `identification from another tenant is not found`() {
+        val response = rest.getForEntity("/v1/identifications/id-900", ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
+        assertEquals(ErrorCode.IDENTIFICATION_NOT_FOUND, response.body?.error?.code)
+    }
 }

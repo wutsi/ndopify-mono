@@ -64,4 +64,12 @@ class GetKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals(ErrorCode.KYC_CASE_NOT_FOUND, response.body?.error?.code)
     }
+
+    @Test
+    fun `case from another tenant is not found`() {
+        val response = rest.getForEntity("/v1/kyc/cases/kyc-case-900", ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
+        assertEquals(ErrorCode.KYC_CASE_NOT_FOUND, response.body?.error?.code)
+    }
 }

@@ -69,4 +69,15 @@ class GetIdentificationImageUrlEndpointTest : TenantAwareEndpointIntegrationTest
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals(ErrorCode.IDENTIFICATION_IMAGE_NO_CONTENT, response.body?.error?.code)
     }
+
+    @Test
+    fun `image from another tenant is not found`() {
+        val response = rest.getForEntity(
+            "/v1/identifications/images/img-900-front/url",
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
+        assertEquals(ErrorCode.IDENTIFICATION_IMAGE_NOT_FOUND, response.body?.error?.code)
+    }
 }

@@ -36,4 +36,12 @@ class GetPaymentMethodEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals(ErrorCode.PAYMENT_METHOD_NOT_FOUND, response.body?.error?.code)
     }
+
+    @Test
+    fun `payment method from another tenant is not found`() {
+        val response = rest.getForEntity("/v1/payment-methods/pm-900", ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
+        assertEquals(ErrorCode.PAYMENT_METHOD_NOT_FOUND, response.body?.error?.code)
+    }
 }
