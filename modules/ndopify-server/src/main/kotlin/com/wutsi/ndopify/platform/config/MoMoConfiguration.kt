@@ -17,11 +17,11 @@ import java.net.http.HttpClient
 
 @Configuration
 class MoMoConfiguration(
-    @Value("\${ndopify.mobile-money.mtn.environment}") private val environment: String,
-    @Value("\${ndopify.mobile-money.mtn.callback-url}") private val callbackUrl: String,
-    @Value("\${ndopify.mobile-money.mtn.collection.user-id}") private val collectionUserId: String,
-    @Value("\${ndopify.mobile-money.mtn.collection.api-key}") private val collectionApiKey: String,
-    @Value("\${ndopify.mobile-money.mtn.collection.subscription-key}") private val collectionSubscriptionKey: String,
+    @param:Value("\${ndopify.mobile-money.mtn.environment}") private val environment: String,
+    @param:Value("\${ndopify.mobile-money.mtn.callback-url}") private val callbackUrl: String,
+    @param:Value("\${ndopify.mobile-money.mtn.collection.user-id}") private val collectionUserId: String,
+    @param:Value("\${ndopify.mobile-money.mtn.collection.api-key}") private val collectionApiKey: String,
+    @param:Value("\${ndopify.mobile-money.mtn.collection.subscription-key}") private val collectionSubscriptionKey: String,
 
     private val objectMapper: JsonMapper
 ) {

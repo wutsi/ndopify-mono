@@ -16,18 +16,18 @@ import java.io.File
 import java.io.IOException
 import kotlin.test.assertEquals
 
-class LocalStorageServletTest {
+class StorageServletLocalTest {
     @TempDir
     lateinit var tmpDir: File
 
-    private lateinit var servlet: LocalStorageServlet
+    private lateinit var servlet: StorageServletLocal
     private lateinit var request: HttpServletRequest
     private lateinit var response: HttpServletResponse
     private lateinit var out: ByteArrayOutputStream
 
     @BeforeEach
     fun setUp() {
-        servlet = LocalStorageServlet(tmpDir.absolutePath)
+        servlet = StorageServletLocal(tmpDir.absolutePath)
         request = mock()
         response = mock()
 

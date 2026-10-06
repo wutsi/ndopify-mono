@@ -7,7 +7,6 @@ import com.wutsi.ndopify.party.dto.GetIdentificationResponse
 import com.wutsi.ndopify.party.dto.IdentificationImageType
 import com.wutsi.ndopify.party.dto.IdentificationStatus
 import com.wutsi.ndopify.party.dto.IdentificationType
-import com.wutsi.ndopify.refdata.dto.StorageType
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
@@ -35,11 +34,6 @@ class GetIdentificationEndpointTest : BaseEndpointIntegrationTest() {
             setOf(IdentificationImageType.FRONT, IdentificationImageType.BACK),
             images.map { it.imageType }.toSet()
         )
-        images.forEach { image ->
-            assertEquals(StorageType.LOCAL, image.storageType)
-            assertEquals("image/jpeg", image.mimeType)
-            assertEquals(false, image.uploaded)
-        }
     }
 
     @Test

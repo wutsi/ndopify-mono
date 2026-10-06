@@ -15,7 +15,7 @@ object UrlUtils {
             if (connection.responseCode == HttpURLConnection.HTTP_OK) {
                 val contentType = connection.contentType
                 val extension = MimeUtils.getExtensionFromMimeType(contentType)
-                val file = File.createTempFile(UUID.randomUUID().toString(), extension)
+                val file = File.createTempFile(UUID.randomUUID().toString(), ".$extension")
                 connection.inputStream.use { input ->
                     file.outputStream().use { output ->
                         input.copyTo(output)

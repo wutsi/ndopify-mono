@@ -53,7 +53,7 @@ class CreateIdentificationEndpointTest : BaseEndpointIntegrationTest() {
         )
         images.forEach { image ->
             assertEquals(identification.id, image.identification.id)
-            assertEquals(false, image.uploaded)
+            assertEquals(null, image.path)
         }
     }
 

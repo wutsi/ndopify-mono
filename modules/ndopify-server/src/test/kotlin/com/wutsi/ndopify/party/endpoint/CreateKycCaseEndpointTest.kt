@@ -38,7 +38,7 @@ class CreateKycCaseEndpointTest : BaseEndpointIntegrationTest() {
         val caseId = response.body?.caseId
         val case = dao.findById(caseId!!).orElseThrow()
         assertEquals(100L, case.party.id)
-        assertEquals("identification-100", case.identification?.id)
+        assertEquals("identification-100", case.identification.id)
         assertEquals("payment-method-100", case.paymentMethod?.id)
         assertEquals(KycStatus.PENDING, case.status)
         assertNull(case.score)
@@ -68,7 +68,7 @@ class CreateKycCaseEndpointTest : BaseEndpointIntegrationTest() {
         val caseId = response.body?.caseId
         val case = dao.findById(caseId!!).orElseThrow()
         assertEquals(100L, case.party.id)
-        assertEquals("identification-100", case.identification?.id)
+        assertEquals("identification-100", case.identification.id)
         assertNull(case.paymentMethod)
 
         val verifications = daoVerification.findAll().filter { it.case.id == caseId }

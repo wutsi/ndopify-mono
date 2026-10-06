@@ -25,7 +25,6 @@ data class IdentificationImageEntity(
     val storageType: StorageType = StorageType.UNKNOWN,
     val path: String? = null,
     val mimeType: String? = null,
-    val uploaded: Boolean = false,
 
     val createdAt: Date = Date(),
     val uploadedAt: Date? = null,

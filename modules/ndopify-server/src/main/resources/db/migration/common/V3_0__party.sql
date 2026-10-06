@@ -66,12 +66,12 @@ CREATE TABLE T_IDENTIFICATION_IMAGE(
   storage_type            INT NOT NULL DEFAULT 0,
   path                    TEXT,
   mime_type               VARCHAR(100),
-  uploaded                BOOLEAN NOT NULL DEFAULT FALSE,
 
   created_at              DATETIME DEFAULT NOW(),
   modified_at             DATETIME NOT NULL DEFAULT now() ON UPDATE now(),
   uploaded_at             DATETIME,
 
+  UNIQUE(identification_id, image_type),
   PRIMARY KEY(id)
 ) ENGINE = InnoDB;
 

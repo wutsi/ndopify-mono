@@ -90,7 +90,7 @@ class KycVerifierIdentification(
             )
 
         val extension = MimeUtils.getExtensionFromMimeType(img.mimeType)
-        val file = Files.createTempFile(img.id + "-${img.imageType}", extension).toFile()
+        val file = Files.createTempFile(img.id + "-${img.imageType}", ".$extension").toFile()
         val storage = storageProvider.get()
         FileOutputStream(file).use { out ->
             storage.get(path, out)

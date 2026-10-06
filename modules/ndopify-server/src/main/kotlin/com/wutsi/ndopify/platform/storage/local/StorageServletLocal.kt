@@ -9,11 +9,11 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileNotFoundException
 
-class LocalStorageServlet(
+class StorageServletLocal(
     private val directory: String,
 ) : HttpServlet() {
     companion object {
-        private val LOGGER = LoggerFactory.getLogger(LocalStorageServlet::class.java)
+        private val LOGGER = LoggerFactory.getLogger(StorageServletLocal::class.java)
     }
 
     override fun doGet(req: HttpServletRequest, resp: HttpServletResponse) {

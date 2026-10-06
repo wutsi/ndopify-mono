@@ -16,6 +16,7 @@ import com.wutsi.ndopify.party.server.domain.KycCaseEntity
 import com.wutsi.ndopify.party.server.domain.KycVerificationEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.party.server.domain.PaymentMethodEntity
+import com.wutsi.ndopify.platform.logger.KVLogger
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
 import org.springframework.data.domain.Sort
@@ -33,6 +34,7 @@ class KycService(
     private val paymentMethodService: PaymentMethodService,
     private val verifierProvider: KycVerifierProvider,
     private val clock: Clock,
+    private val logger: KVLogger,
 ) {
     fun findById(id: String): KycCaseEntity {
         return dao.findById(id).orElseThrow {
@@ -74,7 +76,7 @@ class KycService(
         // Case
         val case = dao.save(
             KycCaseEntity(
-                party = (identification?.party ?: paymentMethod?.party)!!,
+                party = identification.party,
                 identification = identification,
                 paymentMethod = paymentMethod,
                 status = KycStatus.PENDING,
@@ -118,14 +120,22 @@ class KycService(
 
         // Verifications
         case.verifications.forEach { verification ->
+            val logPrefix = "verifier_${verification.type.name.lowercase()}"
             val verifier = verifierProvider.get(verification)
             verifier.verify(verification)
+
+            logger.add("${logPrefix}_status", verification.status)
+            logger.add("${logPrefix}_score", verification.score)
+            logger.add("${logPrefix}_error_code", verification.errorCode)
+            logger.add("${logPrefix}_error_message", verification.errorMessage)
         }
 
         // For the overall status and score, consider ONLY the identification verification.
         val idVerification = case.verifications.find { it.type == KycVerificationType.IDENTIFICATION }!!
         val status = idVerification.status
         val score = idVerification.score
+        logger.add("kyc_case_status", status)
+        logger.add("kyc_case_score", score)
         val copy = dao.save(
             case.copy(
                 status = status,

@@ -42,10 +42,6 @@ class IdentificationMapper {
         return IdentificationImage(
             id = entity.id,
             imageType = entity.imageType,
-            storageType = entity.storageType,
-            path = entity.path,
-            mimeType = entity.mimeType,
-            uploaded = entity.uploaded,
             createdAt = entity.createdAt,
             uploadedAt = entity.uploadedAt,
         )

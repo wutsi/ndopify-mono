@@ -56,8 +56,9 @@ mvn antrun:run@ktlint-format
 mvn verify
 ```
 
-Coverage thresholds are set per-module and override the parent POM's defaults (98% line / 95% class):
-`ndopify-server` currently requires 83% line / 89% class coverage (`modules/ndopify-server/pom.xml`).
+Coverage thresholds are set per-module and can override the parent POM's defaults — see `jacoco.threshold.line` /
+`jacoco.threshold.class` in the root `pom.xml` and any per-module override (e.g. `modules/ndopify-server/pom.xml`)
+for the current values; they change over time so are not duplicated here.
 
 ### Running the Server
 

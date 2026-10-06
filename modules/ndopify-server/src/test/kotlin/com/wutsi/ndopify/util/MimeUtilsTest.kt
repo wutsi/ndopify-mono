@@ -7,100 +7,100 @@ class MimeUtilsTest {
     @Test
     fun `getExtensionFromMimeType should return jpg for image jpeg`() {
         val result = MimeUtils.getExtensionFromMimeType("image/jpeg")
-        assertEquals(".jpg", result)
+        assertEquals("jpg", result)
     }
 
     @Test
     fun `getExtensionFromMimeType should return png for image png`() {
         val result = MimeUtils.getExtensionFromMimeType("image/png")
-        assertEquals(".png", result)
+        assertEquals("png", result)
     }
 
     @Test
     fun `getExtensionFromMimeType should return gif for image gif`() {
         val result = MimeUtils.getExtensionFromMimeType("image/gif")
-        assertEquals(".gif", result)
+        assertEquals("gif", result)
     }
 
     @Test
     fun `getExtensionFromMimeType should return webp for image webp`() {
         val result = MimeUtils.getExtensionFromMimeType("image/webp")
-        assertEquals(".webp", result)
+        assertEquals("webp", result)
     }
 
     @Test
     fun `getExtensionFromMimeType should return pdf for application pdf`() {
         val result = MimeUtils.getExtensionFromMimeType("application/pdf")
-        assertEquals(".pdf", result)
+        assertEquals("pdf", result)
     }
 
     @Test
     fun `getExtensionFromMimeType should return html for text html`() {
         val result = MimeUtils.getExtensionFromMimeType("text/html")
-        assertEquals(".html", result)
+        assertEquals("html", result)
     }
 
     @Test
     fun `getExtensionFromMimeType should return txt for text plain`() {
         val result = MimeUtils.getExtensionFromMimeType("text/plain")
-        assertEquals(".txt", result)
+        assertEquals("txt", result)
     }
 
     @Test
     fun `getExtensionFromMimeType should return json for application json`() {
         val result = MimeUtils.getExtensionFromMimeType("application/json")
-        assertEquals(".json", result)
+        assertEquals("json", result)
     }
 
     @Test
     fun `getExtensionFromMimeType should return bin for unknown mime type`() {
         val result = MimeUtils.getExtensionFromMimeType("application/unknown")
-        assertEquals(".bin", result)
+        assertEquals("bin", result)
     }
 
     @Test
     fun `getExtensionFromMimeType should return bin for null content type`() {
         val result = MimeUtils.getExtensionFromMimeType(null)
-        assertEquals(".bin", result)
+        assertEquals("bin", result)
     }
 
     @Test
     fun `getExtensionFromMimeType should ignore parameters like charset`() {
         val result = MimeUtils.getExtensionFromMimeType("image/jpeg; charset=UTF-8")
-        assertEquals(".jpg", result)
+        assertEquals("jpg", result)
     }
 
     @Test
     fun `getExtensionFromMimeType should handle mime type with multiple parameters`() {
         val result = MimeUtils.getExtensionFromMimeType("text/html; charset=UTF-8; boundary=something")
-        assertEquals(".html", result)
+        assertEquals("html", result)
     }
 
     @Test
     fun `getExtensionFromMimeType should be case insensitive`() {
         val result1 = MimeUtils.getExtensionFromMimeType("IMAGE/JPEG")
-        assertEquals(".jpg", result1)
+        assertEquals("jpg", result1)
 
-        val result2 = MimeUtils.getExtensionFromMimeType("Image/Png")
-        assertEquals(".png", result2)
+        val result2 = MimeUtils.getExtensionFromMimeType("Image/jpeg")
+        assertEquals("jpg", result2)
     }
 
     @Test
     fun `getExtensionFromMimeType should handle mime type with whitespace`() {
         val result = MimeUtils.getExtensionFromMimeType("  image/png  ")
-        assertEquals(".png", result)
+        assertEquals("png", result)
     }
 
     @Test
     fun `getExtensionFromMimeType should return bin for empty string`() {
         val result = MimeUtils.getExtensionFromMimeType("")
-        assertEquals(".bin", result)
+        assertEquals("bin", result)
     }
 
     @Test
     fun `getExtensionFromMimeType should return bin for blank string`() {
         val result = MimeUtils.getExtensionFromMimeType("   ")
-        assertEquals(".bin", result)
+        assertEquals("bin", result)
     }
 
     // Tests for getMimeTypeFromExtension

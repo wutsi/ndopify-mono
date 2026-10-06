@@ -2,21 +2,21 @@ package com.wutsi.ndopify.util
 
 object MimeUtils {
     fun getExtensionFromMimeType(contentType: String?): String {
-        if (contentType == null) return ".bin" // Default for unknown data
+        if (contentType == null) return "bin" // Default for unknown data
 
         // Remove any parameters like charset (e.g., "image/jpeg; charset=UTF-8")
         val pureMimeType = contentType.split(";")[0].trim().lowercase()
 
         return when (pureMimeType) {
-            "image/jpeg" -> ".jpg"
-            "image/png" -> ".png"
-            "image/gif" -> ".gif"
-            "image/webp" -> ".webp"
-            "application/pdf" -> ".pdf"
-            "text/html" -> ".html"
-            "text/plain" -> ".txt"
-            "application/json" -> ".json"
-            else -> ".bin"
+            "image/jpeg" -> "jpg"
+            "image/png" -> "png"
+            "image/gif" -> "gif"
+            "image/webp" -> "webp"
+            "application/pdf" -> "pdf"
+            "text/html" -> "html"
+            "text/plain" -> "txt"
+            "application/json" -> "json"
+            else -> "bin"
         }
     }
 
