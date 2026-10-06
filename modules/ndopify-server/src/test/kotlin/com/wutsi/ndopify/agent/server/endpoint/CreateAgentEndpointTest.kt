@@ -7,8 +7,13 @@ import com.wutsi.ndopify.agent.dto.ExperienceLevel
 import com.wutsi.ndopify.agent.server.dao.AgentRepository
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.party.dto.IdentificationStatus
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.PaymentMethodStatus
+import com.wutsi.ndopify.party.dto.SearchIdentificationRequest
+import com.wutsi.ndopify.party.dto.SearchKycCaseRequest
+import com.wutsi.ndopify.party.server.service.IdentificationService
+import com.wutsi.ndopify.party.server.service.KycService
 import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.party.server.service.PaymentMethodService
 import org.springframework.beans.factory.annotation.Autowired
@@ -29,6 +34,12 @@ class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
 
     @Autowired
     private lateinit var paymentMethodService: PaymentMethodService
+
+    @Autowired
+    private lateinit var identificationService: IdentificationService
+
+    @Autowired
+    private lateinit var kycService: KycService
 
     @Test
     fun create() {
@@ -72,6 +83,21 @@ class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
         assertEquals(request.mobileMoneyNumber, paymentMethod.number)
         assertEquals(PaymentMethodStatus.PENDING_VERIFICATION, paymentMethod.status)
         assertNull(paymentMethod.expiresAt)
+
+        val identifications = identificationService.search(SearchIdentificationRequest(partyId = party.id))
+        assertEquals(1, identifications.size)
+        val identification = identifications.first()
+        assertEquals(IdentificationStatus.PENDING_VERIFICATION, identification.status)
+        assertEquals(null, identification.number)
+        assertEquals(null, identification.expiresAt)
+
+        val cases = kycService.search(SearchKycCaseRequest(partyId = party.id))
+        assertEquals(1, cases.size)
+        val case = cases.first()
+        assertEquals(party.id, case.party.id)
+        assertEquals(identification.id, case.identification.id)
+        assertEquals(paymentMethod.id, case.paymentMethod?.id)
+        assertEquals(KycStatus.PENDING, case.status)
     }
 
     @Test

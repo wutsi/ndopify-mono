@@ -9,12 +9,18 @@ import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
+import com.wutsi.ndopify.party.dto.CreateIdentificationRequest
+import com.wutsi.ndopify.party.dto.CreateKycCaseRequest
 import com.wutsi.ndopify.party.dto.CreatePartyRequest
 import com.wutsi.ndopify.party.dto.CreatePaymentMethodRequest
+import com.wutsi.ndopify.party.dto.IdentificationImageType
+import com.wutsi.ndopify.party.dto.IdentificationType
 import com.wutsi.ndopify.party.dto.PaymentMethodType
 import com.wutsi.ndopify.party.dto.UpdatePartyRequest
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.party.server.domain.PaymentMethodEntity
+import com.wutsi.ndopify.party.server.service.IdentificationService
+import com.wutsi.ndopify.party.server.service.KycService
 import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.party.server.service.PaymentMethodService
 import jakarta.persistence.criteria.Predicate
@@ -30,6 +36,8 @@ class AgentService(
     private val dao: AgentRepository,
     private val clock: Clock,
     private val partyService: PartyService,
+    private val identificationService: IdentificationService,
+    private val kycService: KycService,
     private val paymentMethodService: PaymentMethodService,
 ) {
     fun search(request: SearchAgentRequest): List<AgentEntity> {
@@ -86,14 +94,35 @@ class AgentService(
                     email = request.email,
                 )
             )
+        val partyId = party.id ?: -1
         ensureAgentNotAlreadyExists(party)
 
         // Payment method
-        paymentMethodService.create(
+        val paymentMethod = paymentMethodService.create(
             party,
             CreatePaymentMethodRequest(
                 type = PaymentMethodType.MOBILE_MONEY,
                 number = request.mobileMoneyNumber,
+            )
+        )
+
+        // Identification
+        val identification = identificationService.create(
+            CreateIdentificationRequest(
+                partyId = partyId,
+                type = IdentificationType.NATIONAL_ID,
+                imageTypes = listOf(
+                    IdentificationImageType.FRONT,
+                    IdentificationImageType.BACK,
+                )
+            )
+        )
+
+        // Create KYC case
+        kycService.create(
+            CreateKycCaseRequest(
+                identificationId = identification.id,
+                paymentMethodId = paymentMethod.id
             )
         )
 
