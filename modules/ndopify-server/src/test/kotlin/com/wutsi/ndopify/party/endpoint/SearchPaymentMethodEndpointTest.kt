@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.party.endpoint
 
-import com.wutsi.ndopify.BaseEndpointIntegrationTest
+import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import com.wutsi.ndopify.party.dto.PaymentMethodStatus
 import com.wutsi.ndopify.party.dto.SearchPaymentMethodResponse
 import org.springframework.http.HttpStatus
@@ -10,7 +10,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/party/SearchPaymentMethodEndpoint.sql"])
-class SearchPaymentMethodEndpointTest : BaseEndpointIntegrationTest() {
+class SearchPaymentMethodEndpointTest : TenantAwareEndpointIntegrationTest() {
     @Test
     fun search() {
         val response = rest.getForEntity(

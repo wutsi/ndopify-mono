@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.party.endpoint
 
-import com.wutsi.ndopify.BaseEndpointIntegrationTest
+import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import com.wutsi.ndopify.party.dto.IdentificationStatus
 import com.wutsi.ndopify.party.dto.IdentificationType
 import com.wutsi.ndopify.party.dto.SearchIdentificationResponse
@@ -11,7 +11,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/party/SearchIdentificationEndpoint.sql"])
-class SearchIdentificationEndpointTest : BaseEndpointIntegrationTest() {
+class SearchIdentificationEndpointTest : TenantAwareEndpointIntegrationTest() {
     @Test
     fun search() {
         val response = rest.getForEntity(

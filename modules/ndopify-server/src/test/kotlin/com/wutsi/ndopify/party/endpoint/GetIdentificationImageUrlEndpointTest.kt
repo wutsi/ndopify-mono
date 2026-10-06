@@ -4,7 +4,7 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
-import com.wutsi.ndopify.BaseEndpointIntegrationTest
+import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.dto.GetIdentificationImageUrlResponse
@@ -20,7 +20,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/party/GetIdentificationImageUrlEndpoint.sql"])
-class GetIdentificationImageUrlEndpointTest : BaseEndpointIntegrationTest() {
+class GetIdentificationImageUrlEndpointTest : TenantAwareEndpointIntegrationTest() {
     @MockitoBean
     private lateinit var storageProvider: StorageServiceProvider
 

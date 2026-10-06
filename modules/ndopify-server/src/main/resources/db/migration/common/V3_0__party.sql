@@ -1,5 +1,6 @@
 CREATE TABLE T_PARTY(
   id                      BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id               BIGINT NOT NULL DEFAULT 1,
 
   first_name              VARCHAR(100) NOT NULL,
   last_name               VARCHAR(100) NOT NULL,
@@ -10,7 +11,7 @@ CREATE TABLE T_PARTY(
   created_at              DATETIME DEFAULT NOW(),
   modified_at             DATETIME NOT NULL DEFAULT now() ON UPDATE now(),
 
-  UNIQUE(email),
+  UNIQUE(tenant_id, email),
   PRIMARY KEY(id)
 ) ENGINE = InnoDB;
 

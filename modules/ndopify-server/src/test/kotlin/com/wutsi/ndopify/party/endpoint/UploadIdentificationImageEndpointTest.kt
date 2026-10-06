@@ -6,7 +6,7 @@ import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
-import com.wutsi.ndopify.BaseEndpointIntegrationTest
+import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.dto.IdentificationImageType
@@ -31,7 +31,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/party/UploadIdentificationImageEndpoint.sql"])
-class UploadIdentificationImageEndpointTest : BaseEndpointIntegrationTest() {
+class UploadIdentificationImageEndpointTest : TenantAwareEndpointIntegrationTest() {
     @Autowired
     private lateinit var identificationDao: IdentificationRepository
 

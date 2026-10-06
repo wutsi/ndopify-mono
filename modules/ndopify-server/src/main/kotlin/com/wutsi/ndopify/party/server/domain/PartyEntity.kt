@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.Table
+import org.hibernate.annotations.TenantId
 import java.util.Date
 
 @Entity
@@ -14,6 +15,12 @@ data class PartyEntity(
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     val id: Long? = null,
+
+    // Left unset (null) on construction so Hibernate's TenantIdGeneration can populate it from the current
+    // tenant on insert — setting any non-null value here makes Hibernate treat it as caller-assigned and throw
+    // if it doesn't match the resolved tenant.
+    @TenantId
+    val tenantId: Long? = null,
 
     val firstName: String = "",
     val lastName: String = "",

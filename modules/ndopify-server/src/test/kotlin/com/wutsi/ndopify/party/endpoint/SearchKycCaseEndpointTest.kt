@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.party.endpoint
 
-import com.wutsi.ndopify.BaseEndpointIntegrationTest
+import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.SearchKycCaseResponse
 import org.springframework.http.HttpStatus
@@ -10,7 +10,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/party/SearchKycCaseEndpoint.sql"])
-class SearchKycCaseEndpointTest : BaseEndpointIntegrationTest() {
+class SearchKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
     @Test
     fun `filter by party`() {
         val response = rest.getForEntity(

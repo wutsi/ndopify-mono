@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.party.endpoint
 
-import com.wutsi.ndopify.BaseEndpointIntegrationTest
+import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.dto.UpdatePhotoRequest
@@ -12,7 +12,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/party/UpdatePartyPhotoEndpoint.sql"])
-class UpdatePartyPhotoEndpointTest : BaseEndpointIntegrationTest() {
+class UpdatePartyPhotoEndpointTest : TenantAwareEndpointIntegrationTest() {
     @Autowired
     private lateinit var dao: PartyRepository
 
@@ -26,6 +26,7 @@ class UpdatePartyPhotoEndpointTest : BaseEndpointIntegrationTest() {
 
         val party = dao.findById(100L).get()
         assertEquals("https://cdn.example.com/new-photo.jpg", party.photoUrl)
+        assertEquals(TENANT_ID, party.tenantId)
     }
 
     @Test
@@ -43,6 +44,17 @@ class UpdatePartyPhotoEndpointTest : BaseEndpointIntegrationTest() {
         val request = UpdatePhotoRequest(url = "https://cdn.example.com/new-photo.jpg")
 
         val response = rest.postForEntity("/v1/parties/999/photo", request, ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
+        assertEquals(ErrorCode.PARTY_NOT_FOUND, response.body?.error?.code)
+    }
+
+    @Test
+    fun `party belongs to a different tenant`() {
+        overrideTenantId = 2L
+        val request = UpdatePhotoRequest(url = "https://cdn.example.com/new-photo.jpg")
+
+        val response = rest.postForEntity("/v1/parties/100/photo", request, ErrorResponse::class.java)
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals(ErrorCode.PARTY_NOT_FOUND, response.body?.error?.code)

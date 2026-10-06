@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.party.endpoint
 
-import com.wutsi.ndopify.BaseEndpointIntegrationTest
+import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.dto.CreateIdentificationRequest
@@ -16,7 +16,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/party/CreateIdentificationEndpoint.sql"])
-class CreateIdentificationEndpointTest : BaseEndpointIntegrationTest() {
+class CreateIdentificationEndpointTest : TenantAwareEndpointIntegrationTest() {
     @Autowired
     private lateinit var dao: IdentificationRepository
 

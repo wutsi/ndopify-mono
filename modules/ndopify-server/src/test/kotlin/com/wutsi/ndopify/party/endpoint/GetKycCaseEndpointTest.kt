@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.party.endpoint
 
-import com.wutsi.ndopify.BaseEndpointIntegrationTest
+import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.dto.GetKycCaseResponse
@@ -13,7 +13,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/party/GetKycCaseEndpoint.sql"])
-class GetKycCaseEndpointTest : BaseEndpointIntegrationTest() {
+class GetKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
     @Test
     fun `with payment method`() {
         val response = rest.getForEntity("/v1/kyc/cases/kyc-case-100", GetKycCaseResponse::class.java)
