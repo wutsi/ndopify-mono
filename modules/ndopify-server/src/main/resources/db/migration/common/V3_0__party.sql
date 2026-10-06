@@ -14,10 +14,11 @@ CREATE TABLE T_PARTY(
   UNIQUE(tenant_id, email),
   PRIMARY KEY(id)
 ) ENGINE = InnoDB;
+CREATE INDEX I_PARTY_tenant ON T_PARTY(tenant_id);
 
 CREATE TABLE T_PAYMENT_METHOD(
   id                      VARCHAR(36) NOT NULL,
-
+  tenant_id               BIGINT NOT NULL DEFAULT 1,
   party_id                BIGINT NOT NULL REFERENCES T_PARTY(id),
 
   number                  VARCHAR(20) NOT NULL,
@@ -33,6 +34,7 @@ CREATE TABLE T_PAYMENT_METHOD(
   UNIQUE(party_id, number, type),
   PRIMARY KEY(id)
 ) ENGINE = InnoDB;
+CREATE INDEX I_PAYMENT_METHOD_tenant ON T_PAYMENT_METHOD(tenant_id);
 
 -- #########################
 --
@@ -41,6 +43,7 @@ CREATE TABLE T_PAYMENT_METHOD(
 -- #########################
 CREATE TABLE T_IDENTIFICATION(
   id                      VARCHAR(36) NOT NULL,
+  tenant_id               BIGINT NOT NULL DEFAULT 1,
 
   party_id                BIGINT NOT NULL REFERENCES T_PARTY(id),
 
@@ -57,9 +60,11 @@ CREATE TABLE T_IDENTIFICATION(
 
   PRIMARY KEY(id)
 ) ENGINE = InnoDB;
+CREATE INDEX I_IDENTIFICATION_tenant ON T_IDENTIFICATION(tenant_id);
 
 CREATE TABLE T_IDENTIFICATION_IMAGE(
   id                      VARCHAR(36) NOT NULL,
+  tenant_id               BIGINT NOT NULL DEFAULT 1,
 
   identification_id       VARCHAR(36) NOT NULL REFERENCES T_IDENTIFICATION(id),
 
@@ -75,6 +80,7 @@ CREATE TABLE T_IDENTIFICATION_IMAGE(
   UNIQUE(identification_id, image_type),
   PRIMARY KEY(id)
 ) ENGINE = InnoDB;
+CREATE INDEX I_IDENTIFICATION_IMAGE_tenant ON T_IDENTIFICATION_IMAGE(tenant_id);
 
 -- ###################
 --
@@ -83,6 +89,7 @@ CREATE TABLE T_IDENTIFICATION_IMAGE(
 -- ###################
 CREATE TABLE T_KYC_CASE(
   id                      VARCHAR(36) NOT NULL,
+  tenant_id               BIGINT NOT NULL DEFAULT 1,
 
   party_id                BIGINT NOT NULL REFERENCES T_PARTY(id),
   identification_id       VARCHAR(36) NOT NULL REFERENCES T_IDENTIFICATION(id),
@@ -97,6 +104,7 @@ CREATE TABLE T_KYC_CASE(
 
   PRIMARY KEY(id)
 ) ENGINE = InnoDB;
+CREATE INDEX I_KYC_CASE_tenant ON T_KYC_CASE(tenant_id);
 
 CREATE TABLE T_KYC_VERIFICATION(
   id                      VARCHAR(36) NOT NULL,
