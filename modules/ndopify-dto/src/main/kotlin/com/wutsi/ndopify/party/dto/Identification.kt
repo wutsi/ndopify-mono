@@ -1,6 +1,5 @@
 package com.wutsi.ndopify.party.dto
 
-import com.wutsi.ndopify.refdata.dto.KycStatus
 import java.util.Date
 
 data class Identification(
@@ -11,7 +10,7 @@ data class Identification(
     val numberSuffix: String? = null,
     val issuedAt: Date? = null,
     val expiresAt: Date? = null,
-    val status: KycStatus = KycStatus.UNKNOWN,
+    val status: IdentificationStatus = IdentificationStatus.UNKNOWN,
     val images: List<IdentificationImage> = emptyList(),
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),

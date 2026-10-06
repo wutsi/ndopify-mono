@@ -1,12 +1,11 @@
 package com.wutsi.ndopify.refdata.dto
 
 object KycErrorCode {
-    val COUNTRY_NOT_VALID = "COUNTRY_NOT_VALID"
-    val NAME_MISMATCH = "NAME_MISMATCH"
     val INACTIVE = "INACTIVE"
-    val AUTO_REVIEW_NOT_SUPPORTED = "AUTO_REVIEW_NOT_SUPPORTED"
     val GATEWAY_ERROR = "GATEWAY_ERROR"
     val EXPIRED = "EXPIRED"
     val SUSPENDED = "SUSPENDED"
     val INVALID = "INVALID"
+    val TYPE_MISMATCH = "TYPE_MISMATCH"
+    val LOW_SCORE = "LOW_SCORE"
 }

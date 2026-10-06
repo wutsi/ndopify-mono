@@ -4,5 +4,4 @@ enum class IdentificationImageType {
     UNKNOWN,
     FRONT,
     BACK,
-    SELFIE,
 }

@@ -24,6 +24,11 @@ object ErrorCode {
 
     val IDENTIFICATION_NOT_FOUND = "$PREFIX:identification:not-found"
 
+    val KYC_CASE_NOT_FOUND = "$PREFIX:kyc-case:not-found"
+    val KYC_CASE_PARTY_MISMATCH = "$PREFIX:kyc-case:party-mismatch"
+    val KYC_CASE_NOT_PENDING = "$PREFIX:kyc-case:not-pending"
+    val KYC_CASE_MISSING_IDENTIFICATION_IMAGE = "$PREFIX:kyc-case:missing-identification-image"
+
     val LOCATION_NOT_FOUND = "$PREFIX:location:not-found"
     val LOCATION_FEED_NOT_FOUND = "$PREFIX:location:feed-not-found"
 

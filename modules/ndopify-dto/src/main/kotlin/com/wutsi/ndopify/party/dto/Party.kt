@@ -1,6 +1,5 @@
 package com.wutsi.ndopify.party.dto
 
-import com.wutsi.ndopify.refdata.dto.KycStatus
 import java.util.Date
 
 data class Party(

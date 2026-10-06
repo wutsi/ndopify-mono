@@ -1,6 +1,5 @@
 package com.wutsi.ndopify.party.dto
 
-import com.wutsi.ndopify.refdata.dto.KycStatus
 import java.util.Date
 
 data class IdentificationSummary(
@@ -9,7 +8,7 @@ data class IdentificationSummary(
     val type: IdentificationType = IdentificationType.UNKNOWN,
     val issuingCountryCode: String? = "",
     val numberSuffix: String? = null,
-    val status: KycStatus = KycStatus.UNKNOWN,
+    val status: IdentificationStatus = IdentificationStatus.UNKNOWN,
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
 )
