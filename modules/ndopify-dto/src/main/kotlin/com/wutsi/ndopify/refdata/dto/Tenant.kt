@@ -18,5 +18,8 @@ data class Tenant(
     val iconUrl: String? = null,
     val logoUrl: String? = null,
     val active: Boolean = true,
+    val adminConsoleUrl: String? = null,
+    val partnerCentralUrl: String? = null,
+    val publicPortalUrl: String? = null,
     val createdAt: Date = Date(),
 )
