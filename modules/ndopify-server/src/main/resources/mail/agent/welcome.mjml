@@ -1,0 +1,75 @@
+<mjml>
+    <mj-head>
+        <mj-style>
+            {{__css__}}
+        </mj-style>
+    </mj-head>
+    <mj-body css-class="body">
+        <mj-section css-class="main-content">
+            <mj-column>
+                <!-- Logo -->
+                <mj-image align="center" css-class="logo" src="{{tenant_logo_url}}" alt="Logo"/>
+
+                <!-- Divider with class for CSS injection -->
+                <mj-divider css-class="divider"/>
+
+                <!-- Body Text -->
+                <mj-text>
+                    Bonjour <strong>{{recipient_name}}</strong>,
+                </mj-text>
+                <mj-text>
+                    Bienvenue sur <strong>{{tenant_name}}</strong> ! Nous sommes ravis de vous compter parmi les
+                    professionnels de l'immobilier sur notre plateforme.
+                </mj-text>
+                <mj-text>
+                    Afin de finaliser la création de votre compte agent et de recevoir vos premiers clients, nous vous
+                    invitons à effectuer votre vérification d'identité (KYC).
+                </mj-text>
+
+                <!-- Explanation Block -->
+                <mj-spacer/>
+                <mj-text font-weight="bold" font-size="20px">
+                    Pourquoi cette démarche ?
+                </mj-text>
+                <mj-text>
+                    Chez {{tenant_name}}, la <strong>confiance</strong> et la <strong>sécurité</strong> sont nos
+                    priorités. La vérification de votre Carte Nationale d'Identité (CNI) permet de :
+                    <ul style="margin-top: 8px; margin-bottom: 8px; padding-left: 20px;">
+                        <li style="margin-bottom: 6px;">
+                            Garantir un réseau composé uniquement de professionnels vérifiés.
+                        </li>
+                        <li style="margin-bottom: 6px;">
+                            Renforcer la confiance des locataires et bailleurs envers vos offres.
+                        </li>
+                        <li style="margin-bottom: 6px;">
+                            Protéger votre profil contre toute tentative d'usurpation d'identité.
+                        </li>
+                    </ul>
+                </mj-text>
+
+                <!-- Button with class for CSS injection -->
+                <mj-spacer/>
+                <mj-button href="{{kyc_url}}" css-class="btn-primary" align="center">
+                    Vérifier mon identité
+                </mj-button>
+                <mj-spacer/>
+
+                <!-- Trust / Reassurance -->
+                <mj-text font-size="13px" color="#666666">
+                    Vos documents d'identité sont traités en toute sécurité et conservés de manière strictement
+                    confidentielle.
+                    <br/>
+                    Si vous avez la moindre question, notre équipe reste à votre disposition pour vous accompagner.
+                </mj-text>
+
+                <!-- Sign-off -->
+                <mj-spacer/>
+                <mj-text>
+                    Cordialement,
+                    <br/>
+                    L'équipe {{tenant_name}}
+                </mj-text>
+            </mj-column>
+        </mj-section>
+    </mj-body>
+</mjml>

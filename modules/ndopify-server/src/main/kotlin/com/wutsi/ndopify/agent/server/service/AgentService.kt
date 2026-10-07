@@ -15,7 +15,9 @@ import com.wutsi.ndopify.party.dto.CreatePartyRequest
 import com.wutsi.ndopify.party.dto.CreatePaymentMethodRequest
 import com.wutsi.ndopify.party.dto.IdentificationImageType
 import com.wutsi.ndopify.party.dto.IdentificationType
+import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.PaymentMethodType
+import com.wutsi.ndopify.party.dto.SearchKycCaseRequest
 import com.wutsi.ndopify.party.dto.UpdatePartyRequest
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.party.server.domain.PaymentMethodEntity
@@ -41,6 +43,7 @@ class AgentService(
     private val kycService: KycService,
     private val paymentMethodService: PaymentMethodService,
     private val userService: UserService,
+    private val welcomeMailet: WelcomeMailet,
 ) {
     fun search(request: SearchAgentRequest): List<AgentEntity> {
         val spec = Specification<AgentEntity> { root, query, cb ->
@@ -87,7 +90,7 @@ class AgentService(
 
     @Transactional
     fun create(request: CreateAgentRequest): AgentEntity {
-        // Party
+        // Recipient
         val party = partyService.findByEmailOrNull(request.email)
             ?: partyService.create(
                 CreatePartyRequest(
@@ -98,6 +101,9 @@ class AgentService(
             )
         val partyId = party.id ?: -1
         ensureAgentNotAlreadyExists(party)
+
+        // User
+        userService.create(party)
 
         // Payment method
         val paymentMethod = paymentMethodService.create(
@@ -116,7 +122,7 @@ class AgentService(
                 imageTypes = listOf(
                     IdentificationImageType.FRONT,
                     IdentificationImageType.BACK,
-                )
+                ),
             )
         )
 
@@ -127,9 +133,6 @@ class AgentService(
                 paymentMethodId = paymentMethod.id
             )
         )
-
-        // User
-        userService.create(party)
 
         // Agent
         val now = Date(clock.millis())
@@ -175,6 +178,20 @@ class AgentService(
                 modifiedAt = now,
             )
         )
+    }
+
+    fun sendWelcomeEmail(agent: AgentEntity) {
+        val kyc = kycService.search(
+            SearchKycCaseRequest(
+                partyId = agent.party.id,
+                statuses = listOf(KycStatus.PENDING),
+                limit = 1
+            )
+        ).firstOrNull()
+
+        kyc?.let {
+            welcomeMailet.send(kyc)
+        }
     }
 
     private fun ensureAgentNotAlreadyExists(party: PartyEntity) {

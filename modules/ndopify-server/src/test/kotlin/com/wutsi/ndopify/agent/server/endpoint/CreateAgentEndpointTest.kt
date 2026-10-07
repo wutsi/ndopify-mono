@@ -1,5 +1,7 @@
 package com.wutsi.ndopify.agent.server.endpoint
 
+import com.icegreen.greenmail.util.GreenMail
+import com.icegreen.greenmail.util.ServerSetupTest
 import com.wutsi.ndopify.agent.dto.AgentType
 import com.wutsi.ndopify.agent.dto.CreateAgentRequest
 import com.wutsi.ndopify.agent.dto.CreateAgentResponse
@@ -16,10 +18,14 @@ import com.wutsi.ndopify.party.server.service.IdentificationService
 import com.wutsi.ndopify.party.server.service.KycService
 import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.party.server.service.PaymentMethodService
+import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.security.server.service.UserService
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -27,6 +33,12 @@ import kotlin.test.assertNull
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/agent/CreateAgentEndpoint.sql"])
 class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
+    @Value("\${spring.mail.username}")
+    private lateinit var username: String
+
+    @Value("\${spring.mail.password}")
+    private lateinit var password: String
+
     @Autowired
     private lateinit var dao: AgentRepository
 
@@ -44,6 +56,27 @@ class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
 
     @Autowired
     private lateinit var userService: UserService
+
+    @Autowired
+    private lateinit var tenantService: TenantService
+
+    private lateinit var smtp: GreenMail
+
+    @BeforeTest
+    override fun setUp() {
+        super.setUp()
+
+        smtp = GreenMail(ServerSetupTest.SMTP)
+        smtp.setUser(username, password)
+        smtp.start()
+    }
+
+    @AfterTest
+    fun tearDown() {
+        if (smtp.isRunning) {
+            smtp.stop()
+        }
+    }
 
     @Test
     fun create() {
@@ -111,6 +144,18 @@ class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
         val user = userService.findByPartyIdOrNull(party.id!!)
         assertEquals(TENANT_ID, user?.tenantId)
         assertEquals(request.email.lowercase(), user?.email)
+
+        Thread.sleep(1000) // Wait for email to be sent
+        val tenant = tenantService.findById(TENANT_ID)
+        val messages = smtp.receivedMessages
+        assertEquals(1, messages.size)
+        assertEquals("Bienvenue sur Ndopify ! Finalisez votre profil agent", messages[0].subject)
+
+        val body = messages[0].content.toString()
+        assertEquals(true, body.contains(tenant.name))
+        assertEquals(true, body.contains(tenant.logoUrl!!))
+        assertEquals(true, body.contains(tenant.partnerCentralUrl!!))
+        assertEquals(true, body.contains("${request.firstName} ${request.lastName}"))
     }
 
     @Test
@@ -234,5 +279,25 @@ class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
         assertEquals(ErrorCode.PAYMENT_METHOD_NUMBER_NOT_VALID, response.body?.error?.code)
+    }
+
+    @Test
+    fun `email delivery failure`() {
+        smtp.stop()
+
+        val request = CreateAgentRequest(
+            firstName = "Paul",
+            lastName = "Biya",
+            email = "Paul.Biya@gmail.com",
+            mobileMoneyNumber = "+237671234588",
+            whatsappNumber = "+237650000011",
+
+            cityId = 2370201L,
+            neighborhoodIds = listOf(111L, 222L),
+        )
+        val response = rest.postForEntity("/v1/agents", request, CreateAgentResponse::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+
     }
 }

@@ -45,7 +45,7 @@
     </repositories>
 
     <properties>
-        <ndopify-dto.version>0.0.16-SNAPSHOT</ndopify-dto.version>
+        <ndopify-dto.version>0.0.17</ndopify-dto.version>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
@@ -108,6 +108,7 @@
         <ktlint.version>1.8.0</ktlint.version>
         <lettuce.version>7.4.0.RELEASE</lettuce.version>
         <libphonenumber.version>9.0.40</libphonenumber.version>
+        <mjml-java.version>1.0.2</mjml-java.version>
         <mobiledetect.version>1.1.1</mobiledetect.version>
         <mustache.version>0.9.14</mustache.version>
         <mysql.version>9.7.0</mysql.version>

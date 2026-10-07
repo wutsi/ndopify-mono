@@ -2,7 +2,7 @@ package com.wutsi.ndopify.platform.mail
 
 import jakarta.mail.internet.InternetAddress
 
-data class MailAddress(
+data class Receipient(
     val email: String = "",
     val displayName: String? = null,
 ) {

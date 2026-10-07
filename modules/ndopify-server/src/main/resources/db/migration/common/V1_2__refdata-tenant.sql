@@ -15,6 +15,11 @@ CREATE TABLE T_TENANT(
   active                  BOOLEAN NOT NULL DEFAULT true,
   logo_url                TEXT,
   icon_url                TEXT,
+
+  admin_console_url       TEXT DEFAULT null,
+  partner_central_url     TEXT DEFAULT null,
+  public_portal_url       TEXT DEFAULT null,
+
   created_at              DATETIME DEFAULT NOW(),
 
   UNIQUE(name),

@@ -1,0 +1,18 @@
+<mjml>
+    <mj-head>
+        <mj-style>
+            {{__css__}}
+        </mj-style>
+    </mj-head>
+    <mj-body>
+        <mj-section>
+            <mj-column>
+
+                <mj-image src="/assets/img/logo-small.png"/>
+                <mj-divider/>
+                <mj-text>Hello {{name}}</mj-text>
+
+            </mj-column>
+        </mj-section>
+    </mj-body>
+</mjml>

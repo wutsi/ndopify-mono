@@ -8,6 +8,8 @@ import com.wutsi.ndopify.agent.dto.SearchAgentResponse
 import com.wutsi.ndopify.agent.dto.UpdateAgentRequest
 import com.wutsi.ndopify.agent.server.mapper.AgentMapper
 import com.wutsi.ndopify.agent.server.service.AgentService
+import com.wutsi.ndopify.party.dto.KycStatus
+import com.wutsi.ndopify.platform.logger.KVLogger
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController
 class AgentEndpoints(
     private val service: AgentService,
     private val mapper: AgentMapper,
+    private val logger: KVLogger
 ) {
     @GetMapping("/{id}")
     fun get(
@@ -44,6 +47,13 @@ class AgentEndpoints(
         @RequestBody @Valid request: CreateAgentRequest,
     ): CreateAgentResponse {
         val agent = service.create(request)
+        if (agent.party.kycStatus == KycStatus.PENDING) {
+            try {
+                service.sendWelcomeEmail(agent)
+            } catch (ex: Exception) {
+                logger.add("kyc_email_error", ex.message)
+            }
+        }
         return CreateAgentResponse(agentId = agent.id ?: -1)
     }
 

@@ -1,0 +1,44 @@
+.body {
+    background-color: #dbeafe !important;
+}
+
+div {
+    font-face: "Arial, Helvetica, sans-serif"  !important;
+    line-height: 1.5  !important;
+    font-size: 16px;
+}
+
+
+.main-content{
+    background-color: #ffffff !important;
+    border-radius: 30px !important;
+    padding: 20px !important;
+    margin-top: 30px !important;
+}
+
+.btn-primary td {
+  background-color: white !important;
+}
+
+.btn-primary a {
+    display: inline-block !important;
+    background-color: #1d7edf !important;
+    color: #ffffff !important;
+    font-size: 15px !important;
+    font-weight: bold !important;
+    border-radius: 30px !important;
+    padding: 12px 24px !important;
+    text-decoration: none !important;
+}
+
+.divider p {
+    border-top: 4px solid #1d7edf !important;
+    width: 100% !important;
+    margin: 0 auto !important;
+}
+
+.logo img {
+    height: 64px !important;
+    width: auto !important;
+    margin: 0 auto;
+}

@@ -31,4 +31,8 @@ data class TenantEntity(
     val logoUrl: String? = null,
     val active: Boolean = true,
     val createdAt: Date = Date(),
+
+    val adminConsoleUrl: String? = null,
+    val partnerCentralUrl: String? = null,
+    val publicPortalUrl: String? = null
 )

@@ -1,34 +1,42 @@
 package com.wutsi.ndopify.platform.config
 
-import com.wutsi.koki.platform.logger.servlet.KVLoggerFilter
-import com.wutsi.ndopify.platform.logger.DefaultKVLogger
-import com.wutsi.ndopify.platform.logger.DynamicKVLogger
-import com.wutsi.ndopify.platform.logger.KVLogger
-import org.springframework.boot.web.servlet.FilterRegistrationBean
-import org.springframework.context.ApplicationContext
+import com.github.mustachejava.DefaultMustacheFactory
+import com.github.mustachejava.MustacheFactory
+import com.wutsi.ndopify.platform.mail.MailBodyResolver
+import com.wutsi.ndopify.platform.mail.MailService
+import dev.jcputney.mjml.ClasspathIncludeResolver
+import dev.jcputney.mjml.MjmlConfiguration
+import dev.jcputney.mjml.MjmlRenderer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.context.annotation.Scope
-import org.springframework.context.annotation.ScopedProxyMode
-import org.springframework.core.Ordered
+import org.springframework.mail.javamail.JavaMailSender
 
 @Configuration
-open class LoggerConfiguration(
-    private val context: ApplicationContext,
+open class MailConfiguration(
+    private val mail: JavaMailSender,
 ) {
     @Bean
-    open fun loggerFilter(): FilterRegistrationBean<KVLoggerFilter> {
-        val filter = FilterRegistrationBean(KVLoggerFilter(logger()))
-        filter.order = Ordered.LOWEST_PRECEDENCE
-        return filter
+    open fun mailService(): MailService {
+        return MailService(mail)
     }
 
     @Bean
-    open fun logger(): KVLogger =
-        DynamicKVLogger(context)
+    open fun mjmlRenderer(): MjmlRenderer {
+        val config = MjmlConfiguration.builder()
+            .direction("ltr")
+            .includeResolver(ClasspathIncludeResolver())
+            .sanitizeOutput(true)
+            .build()
+        return MjmlRenderer.create(config)
+    }
 
     @Bean
-    @Scope(value = "request", proxyMode = ScopedProxyMode.TARGET_CLASS)
-    open fun requestLogger(): DefaultKVLogger =
-        DefaultKVLogger()
+    fun mustacheFactory(): MustacheFactory {
+        return DefaultMustacheFactory()
+    }
+
+    @Bean
+    fun mailBodyResolver(): MailBodyResolver {
+        return MailBodyResolver(mjmlRenderer(), mustacheFactory())
+    }
 }

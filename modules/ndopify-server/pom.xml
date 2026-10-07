@@ -33,6 +33,11 @@
             <version>${aws.version}</version>
         </dependency>
         <dependency>
+            <groupId>com.github.spullara.mustache.java</groupId>
+            <artifactId>compiler</artifactId>
+            <version>${mustache.version}</version>
+        </dependency>
+        <dependency>
             <groupId>com.zaxxer</groupId>
             <artifactId>HikariCP</artifactId>
             <version>${hikari-cp.version}</version>
@@ -49,12 +54,18 @@
             <artifactId>mysql-connector-j</artifactId>
             <version>${mysql.version}</version>
         </dependency>
+
+        <dependency>
+            <groupId>dev.jcputney</groupId>
+            <artifactId>mjml-java-core</artifactId>
+            <version>${mjml-java.version}</version>
+        </dependency>
+
         <dependency>
             <groupId>io.hypersistence</groupId>
             <artifactId>hypersistence-utils-hibernate-71</artifactId>
             <version>${hypersistence-utils-hibernate-71.version}</version>
         </dependency>
-
         <dependency>
             <groupId>io.github.g0dkar</groupId>
             <artifactId>qrcode-kotlin-jvm</artifactId>

@@ -29,4 +29,8 @@ data class PartyEntity(
     val photoUrl: String? = null,
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
-)
+) {
+    fun fullName(): String {
+        return "$firstName $lastName".trim()
+    }
+}

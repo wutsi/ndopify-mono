@@ -8,9 +8,9 @@ import jakarta.mail.internet.MimeMessage
 import jakarta.mail.internet.MimeMultipart
 import org.springframework.mail.javamail.JavaMailSender
 
-class MailSender(private val mail: JavaMailSender) {
-    fun send(message: Email) {
-        val msg = createMessage(message)
+class MailService(private val mail: JavaMailSender) {
+    fun send(email: Email) {
+        val msg = createMessage(email)
         Transport.send(msg)
     }
 

@@ -1,12 +1,12 @@
 package com.wutsi.ndopify.platform.mail
 
 import com.icegreen.greenmail.util.GreenMail
-import com.icegreen.greenmail.util.ServerSetup
+import com.icegreen.greenmail.util.ServerSetupTest
 import jakarta.mail.Message.RecipientType
 import jakarta.mail.MessagingException
-import jakarta.mail.Session
 import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
 import java.io.File
 import kotlin.test.AfterTest
@@ -16,19 +16,21 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class MailSenderTest {
-    private val port = 8025
+class MailServiceTest {
+    @Value("\${spring.mail.username}")
+    private lateinit var username: String
+
+    @Value("\${spring.mail.password}")
+    private lateinit var password: String
+
     private lateinit var smtp: GreenMail
 
     @Autowired
-    private lateinit var session: Session
-
-    @Autowired
-    private lateinit var sender: MailSender
+    private lateinit var service: MailService
 
     private val message = Email(
-        sender = MailAddress(email = "no-reply@tenant1.com", displayName = "Tenant1"),
-        recipient = MailAddress(email = "ray.sponsible@gmail.com", displayName = "Ray Sponsible"),
+        sender = Receipient(email = "no-reply@tenant1.com", displayName = "Tenant1"),
+        recipient = Receipient(email = "ray.sponsible@gmail.com", displayName = "Ray Sponsible"),
         subject = "Hello",
         body = "Yo man",
         language = "en",
@@ -37,8 +39,8 @@ class MailSenderTest {
 
     @BeforeTest
     fun setUp() {
-        smtp = GreenMail(ServerSetup.SMTP.port(port))
-        smtp.setUser("wutsi", "secret")
+        smtp = GreenMail(ServerSetupTest.SMTP)
+        smtp.setUser(username, password)
         smtp.start()
     }
 
@@ -51,7 +53,7 @@ class MailSenderTest {
 
     @Test
     fun send() {
-        sender.send(message)
+        service.send(message)
 
         val messages = smtp.receivedMessages
         assertTrue(messages.isNotEmpty())
@@ -72,7 +74,7 @@ class MailSenderTest {
 
     @Test
     fun `recipient without displayName`() {
-        sender.send(
+        service.send(
             message.copy(recipient = message.recipient.copy(displayName = null))
         )
 
@@ -85,7 +87,7 @@ class MailSenderTest {
 
     @Test
     fun `send without language`() {
-        sender.send(message.copy(language = null))
+        service.send(message.copy(language = null))
 
         val messages = smtp.receivedMessages
         assertTrue(messages.isNotEmpty())
@@ -100,7 +102,7 @@ class MailSenderTest {
         val file = File.createTempFile("test", ".txt")
         file.writeText("Hello world")
 
-        sender.send(message.copy(attachments = listOf(file)))
+        service.send(message.copy(attachments = listOf(file)))
 
         val messages = smtp.receivedMessages
         assertTrue(messages.isNotEmpty())
@@ -111,6 +113,6 @@ class MailSenderTest {
         // Stop
         smtp.stop()
 
-        assertThrows<MessagingException> { sender.send(message) }
+        assertThrows<MessagingException> { service.send(message) }
     }
 }

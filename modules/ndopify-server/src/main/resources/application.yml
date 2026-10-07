@@ -57,6 +57,23 @@ spring:
             ACCEPT_CASE_INSENSITIVE_ENUMS: true
             ACCEPT_CASE_INSENSITIVE_PROPERTIES: true
 
+    mail:
+        default-encoding: UTF-8
+        host: localhost
+        username: user@example.com
+        password: secret
+        test-connection: false
+        properties:
+            mail:
+                debug: false
+                smtp:
+                    from: no-reply@wutsi.com
+                    port: 3025
+                    auth: false
+                    starttls:
+                        enable: false
+                        required: false
+
     mvc:
         pathmatch:
             matching-strategy: ANT_PATH_MATCHER
@@ -98,7 +115,7 @@ springdoc:
                 - /v1/agents/**
 
         -   group: party
-            display-name: Party API
+            display-name: Receipient API
             paths-to-match:
                 - /v1/kyc
                 - /v1/kyc/**
@@ -139,7 +156,7 @@ logging:
     level:
         root: INFO
         com.amazonaws: ERROR
-        com.icegreen.greenmail.smtp.SmtpManager: ERROR
+        com.icegreen.greenmail.smtp.SmtpManager: DEBUG
         org.springframework: INFO
         org.hibernate: ERROR
         org.apache.poi: ERROR
