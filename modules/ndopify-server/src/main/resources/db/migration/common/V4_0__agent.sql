@@ -1,6 +1,7 @@
 CREATE TABLE T_AGENT(
   id                      BIGINT NOT NULL AUTO_INCREMENT,
   tenant_id               BIGINT NOT NULL DEFAULT 1,
+
   party_id                BIGINT NOT NULL REFERENCES T_PARTY(id),
 
   whatsapp_number         VARCHAR(20),

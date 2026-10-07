@@ -8,4 +8,5 @@ import java.util.Optional
 @Repository
 interface UserRepository : CrudRepository<UserEntity, Long> {
     fun findByEmailIgnoreCase(email: String): Optional<UserEntity>
+    fun findByPartyId(partyId: Long): UserEntity?
 }

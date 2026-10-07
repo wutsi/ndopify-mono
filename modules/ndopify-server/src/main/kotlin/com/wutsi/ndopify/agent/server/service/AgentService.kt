@@ -23,6 +23,7 @@ import com.wutsi.ndopify.party.server.service.IdentificationService
 import com.wutsi.ndopify.party.server.service.KycService
 import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.party.server.service.PaymentMethodService
+import com.wutsi.ndopify.security.server.service.UserService
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
 import org.springframework.data.domain.Sort
@@ -39,6 +40,7 @@ class AgentService(
     private val identificationService: IdentificationService,
     private val kycService: KycService,
     private val paymentMethodService: PaymentMethodService,
+    private val userService: UserService,
 ) {
     fun search(request: SearchAgentRequest): List<AgentEntity> {
         val spec = Specification<AgentEntity> { root, query, cb ->
@@ -118,13 +120,16 @@ class AgentService(
             )
         )
 
-        // Create KYC case
+        // KYC case
         kycService.create(
             CreateKycCaseRequest(
                 identificationId = identification.id,
                 paymentMethodId = paymentMethod.id
             )
         )
+
+        // User
+        userService.create(party)
 
         // Agent
         val now = Date(clock.millis())

@@ -16,6 +16,7 @@ import com.wutsi.ndopify.party.server.service.IdentificationService
 import com.wutsi.ndopify.party.server.service.KycService
 import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.party.server.service.PaymentMethodService
+import com.wutsi.ndopify.security.server.service.UserService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
@@ -41,6 +42,9 @@ class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
     @Autowired
     private lateinit var kycService: KycService
 
+    @Autowired
+    private lateinit var userService: UserService
+
     @Test
     fun create() {
         val request = CreateAgentRequest(
@@ -65,6 +69,7 @@ class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
         assertNotNull(agentId)
 
         val agent = dao.findById(agentId).get()
+        assertEquals(TENANT_ID, agent.tenantId)
         assertEquals(request.agentType, agent.agentType)
         assertEquals(request.experienceLevel, agent.experienceLevel)
         assertEquals(request.biography, agent.biography)
@@ -73,12 +78,14 @@ class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
         assertEquals(request.whatsappNumber, agent.whatsappNumber)
 
         val party = partyService.findByEmailOrNull(request.email)
+        assertEquals(TENANT_ID, party?.tenantId)
         assertEquals(request.firstName, party?.firstName)
         assertEquals(request.lastName, party?.lastName)
         assertEquals(request.email.lowercase(), party?.email)
         assertEquals(KycStatus.PENDING, party?.kycStatus)
 
         val paymentMethod = paymentMethodService.findByParty(party!!).first()
+        assertEquals(TENANT_ID, paymentMethod.tenantId)
         assertEquals(agent.party.id, paymentMethod.party.id)
         assertEquals(request.mobileMoneyNumber, paymentMethod.number)
         assertEquals(PaymentMethodStatus.PENDING_VERIFICATION, paymentMethod.status)
@@ -87,6 +94,7 @@ class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
         val identifications = identificationService.search(SearchIdentificationRequest(partyId = party.id))
         assertEquals(1, identifications.size)
         val identification = identifications.first()
+        assertEquals(TENANT_ID, identification.tenantId)
         assertEquals(IdentificationStatus.PENDING_VERIFICATION, identification.status)
         assertEquals(null, identification.number)
         assertEquals(null, identification.expiresAt)
@@ -94,10 +102,15 @@ class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
         val cases = kycService.search(SearchKycCaseRequest(partyId = party.id))
         assertEquals(1, cases.size)
         val case = cases.first()
+        assertEquals(TENANT_ID, case.tenantId)
         assertEquals(party.id, case.party.id)
         assertEquals(identification.id, case.identification.id)
         assertEquals(paymentMethod.id, case.paymentMethod?.id)
         assertEquals(KycStatus.PENDING, case.status)
+
+        val user = userService.findByPartyIdOrNull(party.id!!)
+        assertEquals(TENANT_ID, user?.tenantId)
+        assertEquals(request.email.lowercase(), user?.email)
     }
 
     @Test

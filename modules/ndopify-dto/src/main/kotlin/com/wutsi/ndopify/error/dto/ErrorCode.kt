@@ -47,4 +47,5 @@ object ErrorCode {
     val TENANT_NOT_FOUND: String = "$PREFIX:tenant:not-found"
 
     val USER_NOT_FOUND: String = "$PREFIX:user:not-found"
+    val USER_EMAIL_ALREADY_EXISTS: String = "$PREFIX:user:email-already-exists"
 }

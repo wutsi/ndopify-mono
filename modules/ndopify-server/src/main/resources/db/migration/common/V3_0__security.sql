@@ -1,5 +1,8 @@
 CREATE TABLE T_USER(
   id                     BIGINT NOT NULL AUTO_INCREMENT,
+  tenant_id              BIGINT,
+
+  party_id               BIGINT REFERENCES T_PARTY(id),
 
   email                  VARCHAR(255) NOT NULL,
   deleted                BOOLEAN NOT NULL DEFAULT false,
@@ -7,8 +10,10 @@ CREATE TABLE T_USER(
   deleted_at             DATETIME,
 
   UNIQUE(email),
+  UNIQUE(party_id),
   PRIMARY KEY(id)
 ) ENGINE = InnoDB;
+CREATE INDEX I_USER_tenant ON T_USER(tenant_id);
 
 CREATE TABLE T_AUTH_FACTOR(
   id                     BIGINT NOT NULL AUTO_INCREMENT,

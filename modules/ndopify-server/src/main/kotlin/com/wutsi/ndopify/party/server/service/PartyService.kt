@@ -11,6 +11,7 @@ import com.wutsi.ndopify.party.dto.UpdatePartyRequest
 import com.wutsi.ndopify.party.dto.UpdatePhotoRequest
 import com.wutsi.ndopify.party.server.dao.PartyRepository
 import com.wutsi.ndopify.party.server.domain.PartyEntity
+import com.wutsi.ndopify.security.server.dao.UserRepository
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
 import java.time.Clock
@@ -19,6 +20,7 @@ import java.util.Date
 @Service
 class PartyService(
     private val dao: PartyRepository,
+    private val userDao: UserRepository,
     private val clock: Clock,
 ) {
     fun findById(id: Long): PartyEntity {
@@ -59,19 +61,29 @@ class PartyService(
     @Transactional
     fun update(party: PartyEntity, request: UpdatePartyRequest): PartyEntity {
         val email = request.email?.lowercase()
+        val linkedUser = party.id?.let { userDao.findByPartyId(it) }
         if (email != null) {
             ensureEmailUnique(email, party.id)
+            if (linkedUser != null && !linkedUser.email.equals(email, ignoreCase = true)) {
+                ensureUserEmailUnique(email, linkedUser.id)
+            }
         }
 
         val now = Date(clock.millis())
-        return dao.save(
+        val updated = dao.save(
             party.copy(
                 firstName = request.firstName ?: party.firstName,
                 lastName = request.lastName ?: party.lastName,
-                email = request.email?.lowercase() ?: party.email,
+                email = email ?: party.email,
                 modifiedAt = now,
             )
         )
+
+        if (linkedUser != null && email != null && !linkedUser.email.equals(email, ignoreCase = true)) {
+            userDao.save(linkedUser.copy(email = email))
+        }
+
+        return updated
     }
 
     @Transactional
@@ -93,6 +105,18 @@ class PartyService(
             throw ConflictException(
                 error = Error(
                     code = ErrorCode.PARTY_EMAIL_ALREADY_EXISTS,
+                    parameter = Parameter(value = email)
+                )
+            )
+        }
+    }
+
+    private fun ensureUserEmailUnique(email: String, userId: Long?) {
+        val existingUser = userDao.findByEmailIgnoreCase(email).orElse(null)
+        if (existingUser != null && existingUser.id != userId) {
+            throw ConflictException(
+                error = Error(
+                    code = ErrorCode.USER_EMAIL_ALREADY_EXISTS,
                     parameter = Parameter(value = email)
                 )
             )
