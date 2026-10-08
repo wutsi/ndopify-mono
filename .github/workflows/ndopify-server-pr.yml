@@ -51,7 +51,7 @@ jobs:
                     min-coverage-changed-files: 90
 
             -   name: Upload JaCoCo Report
-                uses: actions/upload-artifact@v6
+                uses: actions/upload-artifact@v7
                 with:
                     name: jacoco-report
                     path: modules/ndopify-server/target/site/jacoco/**/*

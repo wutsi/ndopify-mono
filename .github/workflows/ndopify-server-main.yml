@@ -47,13 +47,13 @@ jobs:
                     mvn -Dspring.datasource.username=root -Dspring.datasource.password=root -q -s ../../settings.xml install
 
             -   name: Upload app bundle
-                uses: actions/upload-artifact@v6
+                uses: actions/upload-artifact@v7
                 with:
                     name: appbundle
                     path: modules/ndopify-server/target/*.jar
 
             -   name: Upload JaCoCo Report
-                uses: actions/upload-artifact@v6
+                uses: actions/upload-artifact@v7
                 with:
                     name: jacoco
                     path: modules/ndopify-server/target/site/jacoco/**/*
