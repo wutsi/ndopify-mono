@@ -3,7 +3,7 @@
 Maven monorepo for Ndopify — a multi-tenant backend for managing mobile-money agents, their KYC verification, and
 mobile-money payment integrations across Africa.
 
-[![master](https://github.com/wutsi/ndopify-mono/actions/workflows/_master.yml/badge.svg)](https://github.com/wutsi/ndopify-mono/actions/workflows/_master.yml)
+[![main](https://github.com/wutsi/ndopify-mono/actions/workflows/_main.yml/badge.svg)](https://github.com/wutsi/ndopify-mono/actions/workflows/_main.yml)
 [![pr](https://github.com/wutsi/ndopify-mono/actions/workflows/_pr.yml/badge.svg)](https://github.com/wutsi/ndopify-mono/actions/workflows/_pr.yml)
 
 ## Project Status
@@ -12,10 +12,10 @@ Early-stage. Only three modules exist today — there is no portal, SDK, or trac
 
 ## Modules
 
-| Module                                     | Description                                                                          |
-|--------------------------------------------|--------------------------------------------------------------------------------------|
-| [ndopify-dto](modules/ndopify-dto)         | Shared request/response DTOs and contracts — no business logic                       |
-| [ndopify-server](modules/ndopify-server)   | REST API backend (Spring Boot)                                                       |
+| Module                                     | Description                                                                              |
+|--------------------------------------------|------------------------------------------------------------------------------------------|
+| [ndopify-dto](modules/ndopify-dto)         | Shared request/response DTOs and contracts — no business logic                           |
+| [ndopify-server](modules/ndopify-server)   | REST API backend (Spring Boot)                                                           |
 | [ndopify-website](modules/ndopify-website) | Static marketing + lead-capture website (plain HTML/CSS/JS, French) — not a Maven module |
 
 ### Module Dependency
