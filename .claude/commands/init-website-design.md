@@ -1,13 +1,16 @@
 ---
-name: init-design-system
+name: init-website-design
 description: Use when setting up or refreshing the design system reference for this project — generates DESIGN.md (colors, typography, spacing, components) from the canonical Ndopify design doc, for consistent AI-driven UI generation.
 ---
 
-This skill generates a DESIGN.md file describing design patterns, colors, typography, spacing, and components, so an
+This skill generates a `modules/ndopify-website/DESIGN.md` file describing design patterns, colors, typography, spacing,
+and components, so an
 AI agent can generate consistent UI for this project.
 
 The DESIGN.md must follow the specification defined here:
-https://github.com/google-labs-code/design.md/blob/main/docs/spec.md
+
+- https://github.com/google-labs-code/design.md/blob/main/docs/spec.md
+- https://stitch.withgoogle.com/docs/design-md/specification
 
 The design system content itself comes from the following source of truth; pull colors, typography, spacing, and
 component definitions from it:
@@ -52,3 +55,9 @@ npx @google/design.md lint DESIGN.md
 
 If `npx` / the package isn't available in this environment, say so explicitly rather than skipping validation
 silently — don't just eyeball the spec and assume conformance.
+
+### Additional Instructions
+
+- Before overwriting DESIGN.md, create a backup copy of the existing file (if any) in the same directory, e.g.
+  `DESIGN.md.bak`, so you can
+  compare changes if needed.

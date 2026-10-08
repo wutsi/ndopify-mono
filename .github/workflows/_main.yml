@@ -1,7 +1,9 @@
 name: main
 
 on:
-    pull_request:
+    push:
+        branches:
+            - main
         paths:
             - 'pom.xml'
             - 'settings.xml'

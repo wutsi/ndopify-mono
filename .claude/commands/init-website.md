@@ -6,8 +6,9 @@ description: Use when setting up or refreshing the HTML reference for this proje
 Build the Ndopify website in three stages, using the skills `neo-user-journey`, `power-design`, and `impeccable` in
 sequence.
 
-Output location: write all generated HTML (and any page-specific assets) under `src/main/html/` — the existing
-`src/main/html/images/` directory already holds the checked-in logo/icon assets.
+Output location: write all generated HTML (and any page-specific assets) under
+`modules/ndopify-website/src/main/html/` — the existing
+`modules/ndopify-website/src/main/html/images/` directory already holds the checked-in logo/icon assets.
 
 Language: all generated page content — copy, labels, microcopy, form field names, error/validation messages,
 button text — must be in French. The source docs and the CTA strings below are all French; don't default to
@@ -99,14 +100,15 @@ contrast ratio baked into the brand's own primary color), not as something to ke
 - For the wizard pages, respect the steps defined in the website document, and use the same conversational tone and
   style as in the document.
 
-- The css files should be generated into `src/main/html/assets/css/` and the js files into `src/main/html/assets/js/`.
-  The images
-  should be
-  placed in `src/main/html/assets/images/`.
+- The css files should be generated into `modules/ndopify-website/src/main/html/assets/css/` and the js files into
+  `modules/ndopify-website/src/main/html/assets/js/`.
+  The images should be placed in `modules/ndopify-website/src/main/html/assets/images/`.
 
 - For the FAQ sections, use the questions provided in the pitch document. Answer based on the informations provided in
   the documents. Feel free to add additional questions if necessary, but make sure to answer them based on the
   information provided in the documents. The max number of questions should be 10.
+
+- **IMPORTANT:** Before updating any file, you must backup the original file first (with extension `.bak.html`).
 
 # Content Sources
 
