@@ -1,0 +1,44 @@
+name: pull_request
+
+on:
+    pull_request:
+        paths:
+            - 'pom.xml'
+            - 'settings.xml'
+            - '.github/workflows/_pr.yml'
+
+jobs:
+    build:
+
+        runs-on: ubuntu-latest
+
+        services:
+            mysql:
+                image: mysql:9.6
+                env:
+                    MYSQL_USER: admin
+                    MYSQL_PASSWORD: admin
+                    MYSQL_ROOT_PASSWORD: root
+                    MYSQL_DATABASE: ndopify
+                ports:
+                    - 3306:3306
+
+        steps:
+            -   uses: actions/checkout@v7
+
+            -   name: JDK
+                uses: actions/setup-java@v5
+                with:
+                    distribution: 'zulu'
+                    java-version: 17
+
+
+            -   name: Build
+                env:
+                    GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+                    KIMI_API_KEY: ${{secrets.KIMI_API_KEY}}
+                    MTN_COLLECTION_SUBSCRIPTION_KEY: ${{secrets.MTN_COLLECTION_SUBSCRIPTION_KEY}}
+                run: |
+                    mvn -s settings.xml validate
+                    mvn -q -s settings.xml --non-recursive install
+                    mvn -Dspring.datasource.username=root -Dspring.datasource.password=root -Dheadless=true -T1C -q -s settings.xml package

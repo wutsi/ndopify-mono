@@ -298,6 +298,5 @@ class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
         val response = rest.postForEntity("/v1/agents", request, CreateAgentResponse::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
-
     }
 }
