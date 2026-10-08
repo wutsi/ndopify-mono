@@ -3,22 +3,29 @@
 Maven monorepo for Ndopify — a multi-tenant backend for managing mobile-money agents, their KYC verification, and
 mobile-money payment integrations across Africa.
 
+[![master](https://github.com/wutsi/ndopify-mono/actions/workflows/_master.yml/badge.svg)](https://github.com/wutsi/ndopify-mono/actions/workflows/_master.yml)
+[![pr](https://github.com/wutsi/ndopify-mono/actions/workflows/_pr.yml/badge.svg)](https://github.com/wutsi/ndopify-mono/actions/workflows/_pr.yml)
+
 ## Project Status
 
-Early-stage. Only two modules exist today — there is no portal, SDK, or tracking-server module (yet).
+Early-stage. Only three modules exist today — there is no portal, SDK, or tracking-server module (yet).
 
 ## Modules
 
-| Module                                   | Description                                                    |
-|------------------------------------------|----------------------------------------------------------------|
-| [ndopify-dto](modules/ndopify-dto)       | Shared request/response DTOs and contracts — no business logic |
-| [ndopify-server](modules/ndopify-server) | REST API backend (Spring Boot)                                 |
+| Module                                     | Description                                                                          |
+|--------------------------------------------|--------------------------------------------------------------------------------------|
+| [ndopify-dto](modules/ndopify-dto)         | Shared request/response DTOs and contracts — no business logic                       |
+| [ndopify-server](modules/ndopify-server)   | REST API backend (Spring Boot)                                                       |
+| [ndopify-website](modules/ndopify-website) | Static marketing + lead-capture website (plain HTML/CSS/JS, French) — not a Maven module |
 
 ### Module Dependency
 
 ```
 ndopify-dto  →  ndopify-server
 ```
+
+`ndopify-website` is standalone: it is not part of the Maven reactor and has no build-time dependency on the other
+modules.
 
 ## Technologies
 
@@ -67,6 +74,13 @@ First-time local setup requires importing reference data:
 
 ```bash
 curl "http://localhost:8080/v1/locations/import?country=<ISO-country-code>"
+```
+
+To preview the website (no build step):
+
+```bash
+cd modules/ndopify-website/src/main/html
+python3 -m http.server 8080   # then open http://localhost:8080/index.html
 ```
 
 ## License
