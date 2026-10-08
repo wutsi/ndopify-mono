@@ -37,3 +37,4 @@ chromedriver
 
 *.tmp.html
 *.bak
+*.bak.html

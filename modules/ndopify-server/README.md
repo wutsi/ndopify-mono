@@ -17,9 +17,9 @@ Code is organized by business domain under `com.wutsi.ndopify.<domain>.server`, 
 | Domain       | Responsibility                                                                                    |
 |--------------|-----------------------------------------------------------------------------------------------------|
 | **refdata**  | Shared reference data: `Tenant`, `Location` (imported from GeoNames), `Application`, `Role`. Global, not tenant-scoped. |
-| **security** | `User` accounts, `UserApplication` membership/roles, JWT issuance (`AccessTokenService`), pluggable authentication (`PasswordAuthenticator`, `GoogleOneTapAuthenticator`). |
-| **agent**    | Mobile-money agents and their KYC lifecycle — mobile number changes and identity document changes, verified via a `MoMoGateway` and reconciled by scheduled jobs (`MobileChangeJobs`). Tenant-scoped by explicit `tenantId` column + service-level predicate (no framework-level enforcement). |
-| **party**    | Parties, identifications (with uploaded images), KYC cases/verifications, and payment methods. KYC cases are verified via pluggable `KycVerifier` strategies (`KycVerifierIdentification`, `KycVerifierMoMo`, `KycVerifierManual`). |
+| **security** | `User` accounts, `UserApplication` membership/roles, JWT issuance (`AccessTokenService`), pluggable authentication (`PasswordAuthenticator`, `GoogleOneTapAuthenticator`). Global, not tenant-scoped. |
+| **agent**    | Mobile-money agents (`/v1/agents`: get, search, create, update). Sends a welcome e-mail (`WelcomeMailet`) when a tenant has a `partnerCentralUrl`. Tenant-scoped via Hibernate `@TenantId` on `AgentEntity`. |
+| **party**    | Parties, identifications (with uploaded images), KYC cases/verifications, and payment methods. KYC cases are verified via pluggable `KycVerifier` strategies (`KycVerifierIdentification`, `KycVerifierMoMo`, `KycVerifierManual`). Tenant-scoped via Hibernate `@TenantId`. |
 | **error**    | Shared exception types (`WutsiException` subclasses) and a global `ControllerErrorHandler`. |
 
 A non-domain **`platform`** package holds infrastructure shared across domains:
@@ -28,6 +28,9 @@ A non-domain **`platform`** package holds infrastructure shared across domains:
   implementation (`momo.mtn`) is wired up today.
 - `platform.storage` — file storage abstraction (`StorageService`, `StorageServiceProvider`) with `local` (disk +
   servlet) and `s3` implementations, selected via `ndopify.storage.default-type`.
+- `platform.mail` — e-mail sending (`MailService`, `MailBodyResolver`), with templates under `src/main/resources/mail`.
+- `platform.tenant` — per-request tenant resolution (`TenantContext`, `TenantContextFilter`,
+  `TenantIdentifierResolver`) that feeds Hibernate's multi-tenancy.
 - `platform.logger` — structured key-value request logging (`KVLogger`, `KVLoggerFilter`).
 - `platform.config` — Spring `@Configuration` classes wiring the above.
 

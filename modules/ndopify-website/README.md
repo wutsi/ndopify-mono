@@ -21,10 +21,21 @@ src/main/html/
   assets/css/styles.css        Shared stylesheet (tokens from DESIGN.md)
   assets/js/main.js            Shared behavior: wizard navigation/validation, FAQ accordion, nav, field masking
   assets/images/               Logo/icon assets
-.claude/
-  commands/                    Project slash commands (below)
-  skills/                      Vendored skills used by those commands (below)
 ```
+
+The pages are generated and refreshed by the `init-website-design` and `init-website` Claude Code skills, which live
+at the repo root in [`.claude/skills`](../../.claude/skills) — see the
+[main README](../../README.md#ai-commands--skills).
+
+## Current behavior
+
+The wizard forms (`rechercher`, `louer`, `joindre`) are front-end only for now: they validate each step and show the
+confirmation screen, but do not send data to `ndopify-server`.
+
+## Deployment
+
+On push to `main`, the `ndopify-website-main` workflow syncs `src/main/html/` to the test S3 bucket. There is no
+pull-request workflow yet, so the `pull_request` badge above points to a workflow that doesn't exist.
 
 ## Running locally
 

@@ -8,14 +8,16 @@ a dependency of `ndopify-server` (and, in the future, other consumers such as SD
 
 ## Packages
 
-| Package     | Contents                                                                                       |
-|-------------|--------------------------------------------------------------------------------------------------|
-| `agent`     | Agent and KYC-change request/response DTOs (mobile number change, identity change, search/CRUD) |
-| `common`    | Cross-cutting DTOs used by multiple domains (e.g. `HttpHeader` constants)                        |
-| `error`     | `ErrorCode`, `Error`, `ErrorResponse`, `Parameter` — the shared error contract                   |
-| `party`     | Party, identification, KYC case, and payment method DTOs                                        |
-| `refdata`   | Reference data DTOs — `Tenant`, `Location`, `Application`, `Role`, `StorageType`, etc.            |
-| `security`  | Authentication request/response DTOs and `AuthType`                                              |
+All packages live under `com.wutsi.ndopify.<package>.dto`.
+
+| Package    | Contents                                                                                                  |
+|------------|-----------------------------------------------------------------------------------------------------------|
+| `agent`    | Agent DTOs: `Agent`, `AgentSummary`, create/update/search requests and responses, `AgentType`, `ExperienceLevel`, `AgentDocumentType` |
+| `common`   | Cross-cutting DTOs: `HttpHeader` constants, `ImportResponse`, `ImportMessage`                              |
+| `error`    | The shared error contract: `ErrorCode`, `Error`, `ErrorResponse`, `Parameter`, `ParameterType`            |
+| `party`    | Party, identification (and images), KYC case/verification, and payment method DTOs and enums              |
+| `refdata`  | Reference data: `Tenant`, `Location`, `Application`, `Role`, `AuthType`, `MoMoGatewayType`, `PropertyCategory`, `StorageType`, `KycErrorCode`, etc. |
+| `security` | `AuthenticateRequest` / `AuthenticateResponse`                                                            |
 
 ## Build
 

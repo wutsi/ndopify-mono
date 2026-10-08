@@ -44,16 +44,18 @@ layering (`endpoint` → `service` → `dao` → `domain`, plus `mapper` for ent
 - **refdata** — shared reference data: `Tenant`, `Location` (imported from GeoNames), `Application`, `Role`.
 - **security** — `User` accounts, JWT issuance, and pluggable authentication (`PasswordAuthenticator`,
   `GoogleOneTapAuthenticator`).
-- **agent** — mobile-money agents and their KYC lifecycle: mobile number changes and identity document changes,
-  each verified through a `MoMoGateway` (currently MTN Mobile Money) and reconciled by a scheduled job.
+- **party** — parties, identifications (with uploaded images), KYC cases/verifications, and payment methods. KYC
+  cases are verified through pluggable `KycVerifier` strategies (identification, mobile-money, manual).
+- **agent** — mobile-money agents: create, update, get and search, plus a welcome e-mail on registration.
 - **error** — shared exception types and a global error handler.
 
-A non-domain **`platform.momo`** package holds the mobile-money gateway integration (`MoMoGateway`,
-`MoMoGatewayFactory`, MTN-specific implementation), used by the `agent` domain to verify KYC data.
+A non-domain **`platform`** package holds shared infrastructure: the mobile-money gateway integration
+(`platform.momo`, MTN only today), file storage (`platform.storage`, local or S3), mail (`platform.mail`),
+request logging (`platform.logger`) and tenant resolution (`platform.tenant`).
 
-Tenancy is request/token-scoped via the `X-Tenant-ID` header and a `tenantId` JWT claim; only the `agent` domain
-currently persists a `tenantId` column and filters by it explicitly in its service layer — reference data (`refdata`,
-`security`) is still global.
+Tenancy is request/token-scoped via the `X-Tenant-ID` header and a `tenantId` JWT claim, and enforced by Hibernate's
+`@TenantId` on the `party` entities and `AgentEntity` — every query against them is filtered automatically.
+Reference data (`refdata`) and `security` entities are global.
 
 See [CLAUDE.md](CLAUDE.md) for detailed build/test commands and architecture notes for AI-assisted development.
 
@@ -82,6 +84,31 @@ To preview the website (no build step):
 cd modules/ndopify-website/src/main/html
 python3 -m http.server 8080   # then open http://localhost:8080/index.html
 ```
+
+## AI Commands & Skills
+
+AI tooling for [Claude Code](https://claude.com/claude-code) lives in [`.claude/`](.claude). There are no custom
+slash commands; everything is a skill under `.claude/skills/`.
+
+### Project skills
+
+These drive the generation of the website. Run `init-website-design` first, since `init-website` reads the
+`DESIGN.md` it produces.
+
+| Skill                                                              | Purpose                                                                                                                                                   |
+|--------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`init-website-design`](.claude/skills/init-website-design/SKILL.md) | Generates `modules/ndopify-website/DESIGN.md` (colors, typography, spacing, components) from the canonical design doc, then validates it with `npx @google/design.md lint`. |
+| [`init-website`](.claude/skills/init-website/SKILL.md)             | Builds the French website in `modules/ndopify-website/src/main/html/` in three stages: journey planning (`neo-user-journey`), generation (`power-design`), critique and fixes (`impeccable`). |
+
+### Vendored third-party skills
+
+Used by `init-website`; not specific to Ndopify.
+
+| Skill                                                          | Purpose                                                                                           |
+|----------------------------------------------------------------|---------------------------------------------------------------------------------------------------|
+| [`neo-user-journey`](.claude/skills/neo-user-journey/SKILL.md) | UX research: user journeys, personas, synthetic-user walkthroughs, accessibility audits           |
+| [`power-design`](.claude/skills/power-design/SKILL.md)         | On-brand HTML decks and websites, using 20 codified web design rules                              |
+| [`impeccable`](.claude/skills/impeccable/SKILL.md)             | Design critique, audit, polish and an anti-pattern detector for frontend interfaces               |
 
 ## License
 

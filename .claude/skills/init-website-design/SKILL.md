@@ -21,7 +21,7 @@ exists, regenerate it from the source doc rather than hand-merging — the sourc
 
 ### Logo & icon assets
 
-Check `src/main/html/images/` for checked-in logo/icon files (e.g. `logo.png`, `logo-dark.png`, `icon.png`) before
+Check `src/main/html/assets/images/` for checked-in logo/icon files (e.g. `logo.png`, `logo-dark.png`, `icon.png`) before
 writing the Overview section's asset guidance. If local files exist, reference their actual repo paths and
 describe which variant they are (e.g. dark-on-transparent, for light surfaces) rather than just pointing at the
 external Canva/Drive links from the source doc. Only fall back to the external links for variants that aren't
@@ -29,7 +29,7 @@ checked into the repo yet, and call out explicitly which variants are missing �
 exists or invent one.
 
 In addition to the Overview prose, add a frontmatter `assets` block mapping each checked-in variant to its repo
-path (relative to the module root, e.g. `src/main/html/images/logo.png`), so the paths are machine-readable and not
+path (relative to the module root, e.g. `src/main/html/assets/images/logo.png`), so the paths are machine-readable and not
 just described in prose. Use descriptive keys per variant, e.g. `logo-light`, `logo-dark`, `icon-light`. Leave out
 any variant that isn't checked in — don't invent a path for a missing asset, even a placeholder one. Example:
 
