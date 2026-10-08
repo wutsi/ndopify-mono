@@ -3,7 +3,7 @@ package com.wutsi.ndopify.platform.momo.mtn.impl
 import org.junit.jupiter.api.Assertions.assertEquals
 import kotlin.test.Test
 
-class MTNUserProviderProductionTest {
+class MtnUserProviderProductionTest {
     private val provider = MtnUserProviderProduction("A", "B")
 
     @Test

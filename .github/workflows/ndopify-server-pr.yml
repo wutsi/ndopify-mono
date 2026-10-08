@@ -25,7 +25,7 @@ jobs:
         steps:
             -   uses: actions/checkout@v7
             -   name: JDK
-                uses: actions/setup-java@v5
+                uses: actions/setup-java@v6
                 with:
                     distribution: 'zulu'
                     java-version: 17
@@ -42,7 +42,7 @@ jobs:
 
             -   name: Add coverage to PR
                 id: jacoco
-                uses: madrapps/jacoco-report@v1.7.2
+                uses: madrapps/jacoco-report@v1.8.0
                 with:
                     paths: |
                         ${{ github.workspace }}/modules/ndopify-server/target/site/jacoco/jacoco.xml
@@ -51,7 +51,7 @@ jobs:
                     min-coverage-changed-files: 90
 
             -   name: Upload JaCoCo Report
-                uses: actions/upload-artifact@v6
+                uses: actions/upload-artifact@v7
                 with:
                     name: jacoco-report
                     path: modules/ndopify-server/target/site/jacoco/**/*

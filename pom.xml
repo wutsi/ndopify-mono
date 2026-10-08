@@ -111,7 +111,7 @@
         <mjml-java.version>1.0.2</mjml-java.version>
         <mobiledetect.version>1.1.1</mobiledetect.version>
         <mustache.version>0.9.14</mustache.version>
-        <mysql.version>9.7.0</mysql.version>
+        <mysql.version>26.7.0</mysql.version>
         <pdfbox.vesion>3.0.8</pdfbox.vesion>
         <plexus-utils.version>4.0.2</plexus-utils.version>
         <poi.version>5.5.1</poi.version>
@@ -130,7 +130,7 @@
         <swagger-parser.version>2.1.22</swagger-parser.version>
         <telegrambots.version>9.2.0</telegrambots.version>
         <thymeleaf.version>3.1.5.RELEASE</thymeleaf.version>
-        <tika.version>3.2.3</tika.version>
+        <tika.version>3.3.2</tika.version>
         <ua-java.version>1.6.1</ua-java.version>
         <xmemcached.version>2.4.8</xmemcached.version>
     </properties>

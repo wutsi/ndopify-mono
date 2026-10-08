@@ -6,7 +6,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import kotlin.test.assertEquals
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class MTNCollectionProductTest {
+class MtnCollectionProductTest {
     @Autowired
     private lateinit var product: MtnCollectionProduct
 

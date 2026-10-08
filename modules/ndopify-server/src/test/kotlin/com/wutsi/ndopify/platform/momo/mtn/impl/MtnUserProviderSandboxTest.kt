@@ -11,7 +11,7 @@ import java.net.http.HttpClient.Version.HTTP_1_1
 import kotlin.test.Test
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class MTNUserProviderSandboxTest {
+class MtnUserProviderSandboxTest {
     @Value("\${ndopify.mobile-money.mtn.collection.subscription-key}")
     private lateinit var subscriptionId: String
 
