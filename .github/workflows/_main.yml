@@ -7,7 +7,7 @@ on:
         paths:
             - 'pom.xml'
             - 'settings.xml'
-            - '.github/workflows/_pr.yml'
+            - '.github/workflows/_main.yml'
 
 jobs:
     build:
