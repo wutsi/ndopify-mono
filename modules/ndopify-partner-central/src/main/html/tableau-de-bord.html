@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>Mon compte — Partner Central</title>
+    <meta content="Suivez le statut de votre compte agent Ndopify et la vérification de votre identité." name="description">
+    <meta content="noindex" name="robots">
+    <link href="https://partner.ndopify.com/tableau-de-bord.html" rel="canonical">
+    <meta content="website" property="og:type">
+    <meta content="Mon compte — Partner Central" property="og:title">
+    <meta content="Suivez le statut de votre compte agent Ndopify et la vérification de votre identité." property="og:description">
+    <meta content="https://partner.ndopify.com/assets/images/og-image.png" property="og:image">
+    <meta content="https://partner.ndopify.com/tableau-de-bord.html" property="og:url">
+    <meta content="summary_large_image" name="twitter:card">
+    <meta content="#1d7edf" name="theme-color">
+    <link href="assets/images/icon.png" rel="icon">
+    <link href="assets/images/icon.png" rel="apple-touch-icon">
+    <link href="assets/css/styles.css" rel="stylesheet">
+    <link href="assets/css/partner.css" rel="stylesheet">
+    
+</head>
+<body>
+<a class="skip-link" href="#main">Aller au contenu principal</a>
+<header class="site-header">
+    <a aria-label="Ndopify Partner Central — accueil" class="site-header__logo" href="index.html">
+        <img alt="Ndopify" height="44" src="assets/images/logo.png" width="92">
+    </a>
+    <nav aria-label="Navigation principale" class="site-nav">
+        <button aria-controls="primary-nav-list" aria-expanded="false" class="nav-toggle" type="button"><span aria-hidden="true" class="nav-toggle__icon icon icon-menu"></span> Menu</button>
+        <ul class="site-nav__list" id="primary-nav-list">
+            <li><a aria-current="page" href="tableau-de-bord.html">Mon compte</a></li>
+            <li data-requires-verified hidden><a href="espace-agent.html">Espace agent</a></li>
+            <li><a href="index.html">Se déconnecter</a></li>
+        </ul>
+    </nav>
+</header>
+
+<main id="main">
+    <section aria-labelledby="account-heading" class="section section--default" data-account-status>
+        <div class="container stack">
+            <h1 id="account-heading">Mon compte</h1>
+
+            <ol aria-label="Étapes de votre compte" class="tracker">
+                <li><span aria-hidden="true" class="tracker__mark icon icon-dot"></span> <span>Soumission des documents</span></li>
+                <li><span aria-hidden="true" class="tracker__mark icon icon-ring"></span> <span>Vérification</span></li>
+                <li><span aria-hidden="true" class="tracker__mark icon icon-ring"></span> <span>Vérifié</span></li>
+            </ol>
+
+            <div data-for-status="non-verifie">
+                <p class="status status--error"><span aria-hidden="true" class="icon icon-cross"></span> Compte non vérifié</p>
+                <h2>Vérifiez votre identité pour commencer</h2>
+                <div class="alert alert--warning"><p>Tant que votre identité n'est pas vérifiée, vous ne pouvez pas utiliser les services de Ndopify : ni visites, ni clients, ni commissions.</p></div>
+                <p>Il vous faut une pièce d'identité en cours de validité. L'envoi prend environ 3 minutes.</p>
+                <a class="btn btn-primary" href="verification.html">Vérifier mon identité</a>
+            </div>
+
+            <div data-for-status="en-attente" hidden>
+                <p class="status status--warning"><span aria-hidden="true" class="icon icon-clock"></span> En attente de validation</p>
+                <h2>Nous examinons vos documents</h2>
+                <p>Vos documents sont bien reçus. Le traitement prend moins de 24 heures. Vous serez prévenu par e-mail et par SMS.</p>
+                <p>L'espace agent s'ouvrira dès que votre identité sera vérifiée.</p>
+            </div>
+
+            <div data-for-status="verifie" hidden>
+                <p class="status status--success"><span aria-hidden="true" class="icon icon-check"></span> Compte vérifié</p>
+                <h2>Votre compte est actif</h2>
+                <p>Vous avez accès à toutes les fonctionnalités : visites, commissions, clients attribués et anti-sautage.</p>
+                <a class="btn btn-primary" href="espace-agent.html">Accéder à mon espace agent</a>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <div class="container site-footer__inner">
+        <img alt="Ndopify" height="32" src="assets/images/icon.png" width="32">
+        <nav aria-label="Navigation du pied de page">
+            <ul>
+                <li><a href="index.html">Partner Central</a></li>
+                <li><a href="https://www.ndopify.com/joindre.html">Rejoindre Ndopify</a></li>
+            </ul>
+        </nav>
+        <small>© 2026 Ndopify. Logements vérifiés. Locations fiables.</small>
+    </div>
+</footer>
+
+<script src="assets/js/partner.js"></script>
+</body>
+</html>

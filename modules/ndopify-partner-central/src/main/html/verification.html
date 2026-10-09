@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>Vérifier mon identité — Partner Central</title>
+    <meta content="Envoyez votre carte nationale d'identité (CNI) pour activer votre compte agent Ndopify." name="description">
+    <meta content="noindex" name="robots">
+    <link href="https://partner.ndopify.com/verification.html" rel="canonical">
+    <meta content="website" property="og:type">
+    <meta content="Vérifier mon identité — Partner Central" property="og:title">
+    <meta content="Envoyez votre carte nationale d'identité (CNI) pour activer votre compte agent Ndopify." property="og:description">
+    <meta content="https://partner.ndopify.com/assets/images/og-image.png" property="og:image">
+    <meta content="https://partner.ndopify.com/verification.html" property="og:url">
+    <meta content="summary_large_image" name="twitter:card">
+    <meta content="#1d7edf" name="theme-color">
+    <link href="assets/images/icon.png" rel="icon">
+    <link href="assets/images/icon.png" rel="apple-touch-icon">
+    <link href="assets/css/styles.css" rel="stylesheet">
+    <link href="assets/css/partner.css" rel="stylesheet">
+    
+</head>
+<body>
+<a class="skip-link" href="#main">Aller au contenu principal</a>
+<header class="site-header">
+    <a aria-label="Ndopify Partner Central — accueil" class="site-header__logo" href="index.html">
+        <img alt="Ndopify" height="44" src="assets/images/logo.png" width="92">
+    </a>
+    <nav aria-label="Navigation principale" class="site-nav">
+        <button aria-controls="primary-nav-list" aria-expanded="false" class="nav-toggle" type="button"><span aria-hidden="true" class="nav-toggle__icon icon icon-menu"></span> Menu</button>
+        <ul class="site-nav__list" id="primary-nav-list">
+            <li><a aria-current="page" href="tableau-de-bord.html">Mon compte</a></li>
+            <li data-requires-verified hidden><a href="espace-agent.html">Espace agent</a></li>
+            <li><a href="index.html">Se déconnecter</a></li>
+        </ul>
+    </nav>
+</header>
+
+<main id="main">
+    <section aria-labelledby="kyc-heading" class="section section--default">
+        <div class="container">
+            <h1 id="kyc-heading">Vérifier mon identité</h1>
+            <div class="alert alert--warning"><p>Un agent non vérifié ne peut pas utiliser les services de Ndopify. Cette étape est obligatoire et gratuite.</p></div>
+
+            <h2 class="visually-hidden">Formulaire de vérification</h2>
+            <form class="stack" data-kyc-form>
+                <fieldset class="step">
+                    <legend>Photographiez votre carte nationale d'identité</legend>
+                    <ul class="checklist">
+                        <li>La carte est lisible : texte et photo nets, rien de coupé.</li>
+                        <li>Pas de reflet : évitez le flash et la lumière directe.</li>
+                        <li>La carte n'est pas expirée.</li>
+                        <li>Photo au format JPG ou PNG, 5 Mo maximum par fichier.</li>
+                    </ul>
+                </fieldset>
+
+                <div class="upload-grid">
+                    <div class="upload" data-zone="front">
+                        <svg aria-hidden="true" focusable="false" viewBox="0 0 240 150" xmlns="http://www.w3.org/2000/svg"><rect fill="#e4edf7" height="146" rx="10" stroke="#1e3a8a" stroke-dasharray="6 4" stroke-width="2" width="236" x="2" y="2"/><rect fill="#dbeafe" height="62" rx="6" stroke="#1e3a8a" stroke-width="2" width="52" x="16" y="38"/><circle cx="42" cy="58" fill="#1e3a8a" r="10"/><path d="M22 96c4-14 40-14 40 0v2H22z" fill="#1e3a8a"/><rect fill="#1e3a8a" height="6" rx="3" width="110" x="84" y="42"/><rect fill="#1e3a8a" height="6" rx="3" width="86" x="84" y="60"/><rect fill="#1e3a8a" height="6" rx="3" width="98" x="84" y="78"/></svg>
+                        <img alt="Aperçu de la face avant de la carte" class="upload__preview" height="150" hidden width="240">
+                        <h3>Face avant</h3>
+                        <p>Celle qui porte votre photo.</p>
+                        <input accept="image/jpeg,image/png" id="front" name="front" required type="file">
+                        <label class="btn btn-outline" for="front">Choisir le fichier</label>
+                        <span aria-live="polite" class="field-error"></span>
+                    </div>
+                    <div class="upload" data-zone="back">
+                        <svg aria-hidden="true" focusable="false" viewBox="0 0 240 150" xmlns="http://www.w3.org/2000/svg"><rect fill="#e4edf7" height="146" rx="10" stroke="#1e3a8a" stroke-dasharray="6 4" stroke-width="2" width="236" x="2" y="2"/><rect fill="#1e3a8a" height="22" width="232" x="4" y="22"/><rect fill="#1e3a8a" height="6" rx="3" width="150" x="16" y="70"/><rect fill="#1e3a8a" height="6" rx="3" width="120" x="16" y="88"/><rect fill="#dbeafe" height="22" rx="4" stroke="#1e3a8a" stroke-width="2" width="64" x="160" y="106"/></svg>
+                        <img alt="Aperçu de la face arrière de la carte" class="upload__preview" height="150" hidden width="240">
+                        <h3>Face arrière</h3>
+                        <p>Le dos de la carte.</p>
+                        <input accept="image/jpeg,image/png" id="back" name="back" required type="file">
+                        <label class="btn btn-outline" for="back">Choisir le fichier</label>
+                        <span aria-live="polite" class="field-error"></span>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <div class="option-grid">
+                        <label><input name="consent" type="checkbox" value="yes"> Cette carte est la mienne et elle est en cours de validité.</label>
+                    </div>
+                    <span aria-live="polite" class="field-error" data-consent-error></span>
+                </div>
+
+                <p class="submit-hint" id="submit-hint">Ajoutez les deux photos et cochez la case pour envoyer vos documents.</p>
+
+                <div class="wizard-actions">
+                    <a class="btn btn-outline" href="tableau-de-bord.html">Retour</a>
+                    <button aria-describedby="submit-hint" class="btn btn-primary" data-submit disabled type="submit">Envoyer mes documents</button>
+                </div>
+            </form>
+        </div>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <div class="container site-footer__inner">
+        <img alt="Ndopify" height="32" src="assets/images/icon.png" width="32">
+        <nav aria-label="Navigation du pied de page">
+            <ul>
+                <li><a href="index.html">Partner Central</a></li>
+                <li><a href="https://www.ndopify.com/joindre.html">Rejoindre Ndopify</a></li>
+            </ul>
+        </nav>
+        <small>© 2026 Ndopify. Logements vérifiés. Locations fiables.</small>
+    </div>
+</footer>
+
+<script src="assets/js/partner.js"></script>
+</body>
+</html>
