@@ -15,7 +15,7 @@
     <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
     <properties>
-        <jacoco.threshold.line>0.92</jacoco.threshold.line>
+        <jacoco.threshold.line>0.93</jacoco.threshold.line>
         <!--
         <jacoco.threshold.class>0.90</jacoco.threshold.class>
         -->
