@@ -79,8 +79,16 @@ abstract class AbstractAuthenticator(
 
     protected abstract fun checkCredentials(request: AuthenticateRequest, user: UserEntity): AuthFactorEntity
 
-    protected abstract fun checkApplicationAccess(
+    protected open fun checkApplicationAccess(
         user: UserEntity,
         application: ApplicationEntity
-    ): UserApplicationEntity
+    ): UserApplicationEntity {
+        val userApplication = userApplicationService.findByUserAndApplicationOrNull(user, application)
+            ?: throw ConflictException(
+                error = Error(
+                    code = ErrorCode.AUTH_ACCESS_DENIED
+                )
+            )
+        return userApplication
+    }
 }

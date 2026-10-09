@@ -21,25 +21,45 @@ open class AuthFactorService(
         return dao.findByUserAndAuthType(user, authType).orElse(null)
     }
 
-    fun findByUserAndAuthTypeOrNullOrCreate(user: UserEntity, authType: AuthType, data: String): AuthFactorEntity {
+    fun findByUserAndAuthTypeOrNullOrCreate(
+        user: UserEntity,
+        authType: AuthType,
+        data: String,
+        salt: String? = null,
+        ttl: Int? = null,
+    ): AuthFactorEntity {
         val authFactor = findByUserAndAuthTypeOrNull(user, authType)
+        val now = Date(clock.millis())
         return if (authFactor == null) {
             dao.save(
                 AuthFactorEntity(
                     user = user,
                     authType = authType,
                     data = data,
+                    salt = salt,
+                    createdAt = now,
+                    modifiedAt = now,
+                    expiresAt = ttl?.let { Date(now.time + it * 1000L) }
                 )
             )
         } else {
-            authFactor.data = data
-            dao.save(authFactor)
+            dao.save(
+                authFactor.copy(
+                    data = data,
+                    salt = salt,
+                    modifiedAt = now,
+                    expiresAt = ttl?.let { Date(now.time + it * 1000L) }
+                )
+            )
         }
     }
 
     fun saveLastLoggedIn(authFactor: AuthFactorEntity): AuthFactorEntity {
         val millis = clock.millis()
-        authFactor.lastLoggedInAt = Date(millis)
-        return dao.save(authFactor)
+        return dao.save(
+            authFactor.copy(
+                lastLoggedInAt = Date(millis)
+            )
+        )
     }
 }

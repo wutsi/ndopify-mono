@@ -11,7 +11,7 @@ import org.springframework.stereotype.Service
 import java.time.Clock
 
 @Service
-class PasswordAuthenticator(
+class OtpAuthenticator(
     userApplicationService: UserApplicationService,
     applicationService: ApplicationService,
     tokenService: AccessTokenService,
@@ -29,6 +29,6 @@ class PasswordAuthenticator(
     passwordEncryptor
 ) {
     override fun getAuthType(): AuthType {
-        return AuthType.PASSWORD
+        return AuthType.OTP
     }
 }

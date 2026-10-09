@@ -23,12 +23,12 @@ data class AuthFactorEntity(
     val user: UserEntity = UserEntity(),
 
     val authType: AuthType = AuthType.UNKNOWN,
-    var data: String = "",
+    val data: String = "",
     val salt: String? = null,
 
     val createdAt: Date = Date(),
-    var modifiedAt: Date = Date(),
-    var lastLoggedInAt: Date? = null,
+    val modifiedAt: Date = Date(),
+    val lastLoggedInAt: Date? = null,
     val expiresAt: Date? = null,
 ) {
     fun hasExpired(clock: Clock): Boolean {

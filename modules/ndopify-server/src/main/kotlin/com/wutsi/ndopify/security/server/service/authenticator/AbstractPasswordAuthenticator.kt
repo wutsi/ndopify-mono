@@ -4,23 +4,18 @@ import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.BadRequestException
 import com.wutsi.ndopify.error.server.exception.ConflictException
-import com.wutsi.ndopify.refdata.dto.AuthType
-import com.wutsi.ndopify.refdata.server.domain.ApplicationEntity
 import com.wutsi.ndopify.refdata.server.service.ApplicationService
 import com.wutsi.ndopify.security.dto.AuthenticateRequest
 import com.wutsi.ndopify.security.server.domain.AuthFactorEntity
-import com.wutsi.ndopify.security.server.domain.UserApplicationEntity
 import com.wutsi.ndopify.security.server.domain.UserEntity
 import com.wutsi.ndopify.security.server.service.AccessTokenService
 import com.wutsi.ndopify.security.server.service.AuthFactorService
 import com.wutsi.ndopify.security.server.service.PasswordEncryptor
 import com.wutsi.ndopify.security.server.service.UserApplicationService
 import com.wutsi.ndopify.security.server.service.UserService
-import org.springframework.stereotype.Service
 import java.time.Clock
 
-@Service
-class PasswordAuthenticator(
+abstract class AbstractPasswordAuthenticator(
     userApplicationService: UserApplicationService,
     applicationService: ApplicationService,
     tokenService: AccessTokenService,
@@ -30,10 +25,6 @@ class PasswordAuthenticator(
     private val userService: UserService,
     private val passwordEncryptor: PasswordEncryptor,
 ) : AbstractAuthenticator(userApplicationService, applicationService, tokenService, authFactorService, clock) {
-    override fun getAuthType(): AuthType {
-        return AuthType.PASSWORD
-    }
-
     override fun validateRequest(request: AuthenticateRequest) {
         if (request.secret == null) {
             throw BadRequestException(
