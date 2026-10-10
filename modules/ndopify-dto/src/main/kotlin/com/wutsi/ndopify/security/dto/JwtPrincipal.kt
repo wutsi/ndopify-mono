@@ -3,7 +3,7 @@ package com.wutsi.ndopify.security.dto
 import com.auth0.jwt.interfaces.DecodedJWT
 import java.security.Principal
 
-open class JWTPrincipal(private val jwt: DecodedJWT) : Principal {
+open class JwtPrincipal(private val jwt: DecodedJWT) : Principal {
     companion object {
         const val CLAIM_USER_ID = "userId"
         const val CLAIM_TENANT_ID = "tenantId"

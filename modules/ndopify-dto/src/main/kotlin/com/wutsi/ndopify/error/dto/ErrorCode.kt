@@ -6,6 +6,8 @@ object ErrorCode {
     val AGENT_NOT_FOUND = "$PREFIX:agent:not-found"
     val AGENT_ALREADY_EXISTS = "$PREFIX:agent:already-exists"
 
+    val APPLICATION_NOT_FOUND = "$PREFIX:application:not-found"
+
     val AUTH_MISSING_SECRET = "$PREFIX:auth:missing-secret"
     val AUTH_MISSING_PAYLOAD = "$PREFIX:auth:missing-payload"
     val AUTH_INVALID_CREDENTIALS = "$PREFIX:auth:invalid-credentials"

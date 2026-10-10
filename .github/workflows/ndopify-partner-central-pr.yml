@@ -1,0 +1,57 @@
+name: ndopify-server-pr
+
+on:
+    pull_request:
+        paths:
+            - 'modules/ndopify-server/**'
+            - '.github/workflows/ndopify-server-main.yml'
+            - '!modules/ndopify-server/*.md'
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+
+        services:
+            mysql:
+                image: mysql:26.7
+                env:
+                    MYSQL_USER: admin
+                    MYSQL_PASSWORD: admin
+                    MYSQL_ROOT_PASSWORD: root
+                    MYSQL_DATABASE: ndopify
+                ports:
+                    - 3306:3306
+
+        steps:
+            -   uses: actions/checkout@v7
+            -   name: JDK
+                uses: actions/setup-java@v6
+                with:
+                    distribution: 'zulu'
+                    java-version: 17
+
+            -   name: Build
+                env:
+                    GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+                    KIMI_API_KEY: ${{secrets.KIMI_API_KEY}}
+                    MTN_COLLECTION_SUBSCRIPTION_KEY: ${{secrets.MTN_COLLECTION_SUBSCRIPTION_KEY}}
+                run: |
+                    mvn -q -s settings.xml --non-recursive install
+                    cd modules/ndopify-server
+                    mvn -Dspring.datasource.username=root -Dspring.datasource.password=root -q -s ../../settings.xml install
+
+            -   name: Add coverage to PR
+                id: jacoco
+                uses: madrapps/jacoco-report@v1.8.0
+                with:
+                    paths: |
+                        ${{ github.workspace }}/modules/ndopify-server/target/site/jacoco/jacoco.xml
+                    token: ${{ secrets.GITHUB_TOKEN }}
+                    min-coverage-overall: 90
+                    min-coverage-changed-files: 90
+
+            -   name: Upload JaCoCo Report
+                uses: actions/upload-artifact@v7
+                with:
+                    name: jacoco-report
+                    path: modules/ndopify-server/target/site/jacoco/**/*

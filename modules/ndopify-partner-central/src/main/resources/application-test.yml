@@ -1,0 +1,35 @@
+koki:
+    webapp:
+        asset-url: https://com-wutsi-koki-test.s3.amazonaws.com/static/koki-portal-public
+        base-url: ${APP_URL}
+
+    sdk:
+        base-url: ${KOKI_SERVER_URL}
+
+    rabbitmq:
+        url: ${CLOUDAMQP_URL}
+
+    storage:
+        type: s3
+        s3:
+            bucket: com-wutsi-koki-test
+            region: us-east-1
+            access-key: ${AWS_ACCESS_KEY}
+            secret-key: ${AWS_SECRET_KEY}
+
+wutsi:
+    platform:
+        cache:
+            redis:
+                url: ${REDISCLOUD_URL}
+        storage:
+            type: s3
+            s3:
+                bucket: com-wutsi-koki-test
+                region: us-east-1
+                access-key: ${AWS_ACCESS_KEY}
+                secret-key: ${AWS_SECRET_KEY}
+        mq:
+            type: rabbitmq
+            rabbitmq:
+                url: ${CLOUDAMQP_URL}

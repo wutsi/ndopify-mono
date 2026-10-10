@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Revue du dossier — Ndopify Partner Central</title>
+    <meta name="description" content="Vérifiez et modifiez votre dossier d'identité avant de l'envoyer à l'équipe Ndopify.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="../assets/images/icon.png">
+    <link rel="apple-touch-icon" href="../assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="../assets/css/partner-central.css">
+    <script src="../assets/js/partner-central.js" defer></script>
+</head>
+<body data-page="kyc-review">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" href="../index.html">
+                <img src="../assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <span aria-hidden="true" data-user-initials>NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li class="user-menu__email" data-user-email></li>
+                    <li>
+                        <span class="user-menu__item" aria-disabled="true">
+                            Profil <span class="user-menu__soon">(bientôt disponible)</span>
+                        </span>
+                    </li>
+                    <li><a class="user-menu__item" href="../login/index.html" data-logout>Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <div class="page-intro">
+                <h1>Vérification d'identité</h1>
+            </div>
+
+            <div class="progress">
+                <p class="progress__label" id="progress-label" data-progress-label>Étape 4 sur 4</p>
+                <div class="progress__track" role="progressbar" aria-labelledby="progress-label"
+                     aria-valuemin="1" aria-valuemax="4" aria-valuenow="4" aria-valuetext="Étape 4 sur 4"
+                     data-progress>
+                    <div class="progress__bar" style="transform: scaleX(1.0)" data-progress-bar></div>
+                </div>
+            </div>
+
+            <h2 class="visually-hidden">Étapes du formulaire</h2>
+            <form class="form" novalidate data-review-form>
+                <fieldset class="step">
+                    <legend class="visually-hidden">Étape 4 sur 4 : revue de votre dossier</legend>
+                    <h3 aria-hidden="true">Vérifiez votre dossier</h3>
+                    <p>Relisez avant d'envoyer. Vous pouvez modifier chaque élément.</p>
+
+                    <dl class="review">
+                        <div class="review__item">
+                            <dt class="review__term">Recto de la carte</dt>
+                            <dd class="review__value">
+                                <div data-review-image="front" data-alt="Photo du recto de votre carte"></div>
+                                <p class="review__missing" hidden data-review-missing="front"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Photo
+                                    manquante</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="review__edit" href="verification.html?retour=revue">Modifier<span class="visually-hidden"> le recto</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Verso de la carte</dt>
+                            <dd class="review__value">
+                                <div data-review-image="back" data-alt="Photo du verso de votre carte"></div>
+                                <p class="review__missing" hidden data-review-missing="back"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Photo
+                                    manquante</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="review__edit" href="verification.html?etape=verso&amp;retour=revue">Modifier<span class="visually-hidden"> le verso</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">NIU</dt>
+                            <dd class="review__value" data-review-niu>Non renseigné (optionnel)</dd>
+                            <dd class="review__value">
+                                <a class="review__edit" href="niu.html?retour=revue">Modifier<span class="visually-hidden"> le NIU</span></a>
+                            </dd>
+                        </div>
+                    </dl>
+
+                    <div class="alert alert--error" hidden data-incomplete>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        <p>Il manque une ou plusieurs photos. Ajoutez-les pour pouvoir envoyer votre dossier.</p>
+                    </div>
+
+                    <div class="hint" id="review-hint">
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <p>Après l'envoi, l'équipe Ndopify examine vos documents sous 24&nbsp;heures. Elle
+                                vérifie que le nom sur votre carte correspond au titulaire de votre compte Mobile
+                                Money.</p>
+                            <p>Vous recevrez le résultat par email et par SMS.</p>
+                        </div>
+                    </div>
+
+                    <div class="form__actions">
+                        <a class="btn btn--outline" href="niu.html">Précédent</a>
+                        <button class="btn btn--primary" type="submit" aria-disabled="true"
+                                aria-describedby="review-hint" data-submit>Envoyer mon dossier</button>
+                    </div>
+                    <p class="visually-hidden" role="status" data-sending></p>
+                </fieldset>
+            </form>
+        </div>
+    </main>
+</body>
+</html>

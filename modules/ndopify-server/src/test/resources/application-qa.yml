@@ -1,0 +1,205 @@
+database:
+    pool-size: 4
+
+spring:
+    ai:
+        openai:
+            api-key: ${KIMI_API_KEY}
+            base-url: https://api.moonshot.ai/v1
+            chat:
+                options:
+                    model: kimi-k2.6
+    #        openai:
+    #            api-key: ${GEMINI_API_KEY}
+    #            base-url: https://generativelanguage.googleapis.com/v1beta/openai
+    #            chat:
+    #                options:
+    #                    model: gemini-2.5-flash
+
+    datasource:
+        driverClassName: com.mysql.cj.jdbc.Driver
+        url: jdbc:mysql://localhost:3306/ndopify?serverTimezone=UTC&useSSL=false&allowPublicKeyRetrieval=true
+        username: root
+        password:
+        hikari:
+            connection-timeout: 30000
+            connection-test-query: "SELECT 1"
+            idle-timeout: 600000             # 10 mins
+            initialization-fail-timeout: 60000
+            leak-detection-threshold: 0
+            max-lifetime: 1800000            # 30 mins
+            maximum-pool-size: ${database.pool-size}
+            data-source-properties:
+                cachePrepStmts: true
+                prepStmtCacheSize: 250
+                prepStmtCacheSqlLimit: 2048
+    flyway:
+        clean-disabled: false
+        locations: "classpath:db/migration/common,classpath:db/migration/local"
+    jpa:
+        show-sql: false
+        hibernate:
+            ddl-auto: none
+            naming:
+                physical-strategy: com.wutsi.ndopify.util.jpa.CustomPhysicalNamingStrategy
+        properties:
+            hibernate:
+                dialect: org.hibernate.dialect.MySQLDialect
+
+    jackson:
+        default-property-inclusion: non_null
+        use-jackson2-defaults: true
+        deserialization:
+            FAIL_ON_UNKNOWN_PROPERTIES: false
+            FAIL_ON_NULL_FOR_PRIMITIVES: false
+            ACCEPT_EMPTY_STRING_AS_NULL_OBJECT: true
+        mapper:
+            ACCEPT_CASE_INSENSITIVE_ENUMS: true
+            ACCEPT_CASE_INSENSITIVE_PROPERTIES: true
+
+    mail:
+        default-encoding: UTF-8
+        host: localhost
+        username: user@example.com
+        password: secret
+        test-connection: false
+        properties:
+            mail:
+                debug: false
+                smtp:
+                    from: no-reply@wutsi.com
+                    port: 25
+                    auth: false
+                    starttls:
+                        enable: false
+                        required: false
+
+    mvc:
+        pathmatch:
+            matching-strategy: ANT_PATH_MATCHER
+    servlet:
+        multipart:
+            max-file-size: 10240KB
+            max-request-size: 10240KB
+    task:
+        scheduling:
+            thread-name-prefix: "ndopify-job-"
+            pool:
+                size: 4
+        task:
+            executor:
+                core-pool-size: 4
+                max-pool-size: 4
+                thread-name-prefix: "ndopify-task-"
+
+
+server:
+    port: 8080
+    compression:
+        enabled: true
+        mime-types: application/json,application/xml,text/html,text/xml,text/plain
+        min-response-size: 512
+
+springdoc:
+    packages-to-scan: com.wutsi.ndopify
+    show-actuator: true
+    swagger-ui:
+        path: /api.html
+        operations-sorter: alpha
+        tags-sorter: alpha
+    group-configs:
+        -   group: agent
+            display-name: Agent API
+            paths-to-match:
+                - /v1/agents
+                - /v1/agents/**
+
+        -   group: party
+            display-name: Party API
+            paths-to-match:
+                - /v1/kyc
+                - /v1/kyc/**
+                - /v1/parties
+                - /v1/parties/**
+                - /v1/identifications
+                - /v1/identifications/**
+                - /v1/payment-methods
+                - /v1/payment-methods/**
+
+        -   group: refdata
+            display-name: RefData API
+            paths-to-match:
+                - /v1/applications
+                - /v1/locations/**
+                - /v1/locations
+                - /v1/locations/**
+                - /v1/tenants
+
+        -   group: security
+            display-name: Security API
+            paths-to-match:
+                - /v1/auth
+
+management:
+    endpoint:
+        health:
+            show-details: always
+        info:
+            git:
+                mode: full
+    endpoints:
+        web:
+            exposure:
+                include: "beans,flyway,health,info,scheduledtasks,mappings"
+
+logging:
+    level:
+        root: INFO
+        com.amazonaws: ERROR
+        com.icegreen.greenmail.smtp.SmtpManager: DEBUG
+        org.springframework: INFO
+        org.hibernate: ERROR
+        org.apache.poi: ERROR
+        org.hibernate.engine.jdbc.spi.SqlExceptionHelper: OFF
+        com.wutsi: DEBUG
+        springfox: ERROR
+
+    pattern:
+        console: "%d Type=%level Logger=%c Thread=%thread %m%n"
+        file: "%d Type=%level Logger=%c Thread=%thread %m%n"
+
+ndopify:
+    agent:
+        cron:
+            mobile-change-verify:
+                expression: "0 0 * * * ?"    # Every hour at 00 minutes
+            identity-change-verify:
+                expression: "0 15 * * * ?"   # Every hour at 15 minutes
+
+    party:
+        identification:
+            image:
+                url-ttl-seconds: 3600   # 1h
+
+    storage:
+        default-type: local
+        local:
+            directory: /${user.home}/ndopify
+            servlet-path: /storage
+        s3:
+            bucket: com-wutsi-ndopify-test
+            region: us-east-1
+
+    mobile-money:
+        mtn:
+            environment: sandbox
+            callback-url: http://127.0.0.1/mtn/callback
+            collection:
+                user-id:
+                api-key:
+                subscription-key: ${MTN_COLLECTION_SUBSCRIPTION_KEY}
+
+    ref-data:
+        geonames:
+            connect-timeout: 30000
+            read-timeout: 60000

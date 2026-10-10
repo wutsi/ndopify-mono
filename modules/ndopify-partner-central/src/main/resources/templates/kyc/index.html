@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Statut de vérification — Ndopify Partner Central</title>
+    <meta name="description" content="Suivez l'état de la vérification de votre identité d'agent Ndopify.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="../assets/images/icon.png">
+    <link rel="apple-touch-icon" href="../assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="../assets/css/partner-central.css">
+    <script src="../assets/js/partner-central.js" defer></script>
+</head>
+<body data-page="kyc-status">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" href="../index.html">
+                <img src="../assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <span aria-hidden="true" data-user-initials>NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li class="user-menu__email" data-user-email></li>
+                    <li>
+                        <span class="user-menu__item" aria-disabled="true">
+                            Profil <span class="user-menu__soon">(bientôt disponible)</span>
+                        </span>
+                    </li>
+                    <li><a class="user-menu__item" href="../login/index.html" data-logout>Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <div class="page-intro">
+                <h1>Vérification d'identité</h1>
+            </div>
+
+            <div class="stack" data-status="soumission" hidden>
+                <h2>Votre dossier est à compléter</h2>
+                <div class="alert alert--warning">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                    <div>
+                        <p class="alert__title">Statut&nbsp;: soumission requise</p>
+                        <p>Transmettez vos pièces officielles pour débloquer l'accès aux services.</p>
+                    </div>
+                </div>
+                <p>La vérification vous donne le statut d'agent vérifié, celui qui rassure les locataires et les
+                    bailleurs.</p>
+                <div class="hint">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <p>Préparez votre carte nationale d'identité (recto et verso) et, si vous l'avez, votre NIU.
+                        Comptez environ 3&nbsp;minutes.</p>
+                </div>
+                <div class="cta-row">
+                    <a class="btn btn--primary" href="verification.html">Commencer la vérification</a>
+                </div>
+            </div>
+
+            <div class="stack" data-status="attente" hidden>
+                <h2>Votre dossier est en cours d'analyse</h2>
+                <div class="alert alert--info">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 5.5V10l3 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <div>
+                        <p class="alert__title">Statut&nbsp;: en attente de validation</p>
+                        <p>Vos documents ont été reçus et sont en cours d'analyse par l'équipe Ndopify.</p>
+                    </div>
+                </div>
+                <ol class="tracker">
+                    <li data-state="done"><span class="tracker__mark"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>Documents envoyés</li>
+                    <li data-state="current" aria-current="step"><span class="tracker__mark"></span>Analyse en cours,
+                        sous 24&nbsp;heures</li>
+                    <li data-state="todo"><span class="tracker__mark"></span>Identité vérifiée</li>
+                </ol>
+                <p>Vous recevrez une notification par email et par SMS dès que l'examen sera terminé.</p>
+            </div>
+
+            <div class="stack" data-status="verifie" hidden>
+                <h2>Votre identité est vérifiée</h2>
+                <div class="alert alert--success">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <div>
+                        <p class="alert__title">Statut&nbsp;: vérifié</p>
+                        <p>Vous avez accès à l'ensemble des services de la plateforme.</p>
+                    </div>
+                </div>
+                <div class="cta-row">
+                    <a class="btn btn--primary" href="../index.html">Accéder à mon espace agent</a>
+                </div>
+            </div>
+
+            <div class="stack" data-status="rejete" hidden>
+                <h2>Votre dossier n'a pas pu être validé</h2>
+                <div class="alert alert--error">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <div>
+                        <p class="alert__title">Statut&nbsp;: rejeté</p>
+                        <!-- PROTOTYPE: the reason comes from the verification result. -->
+                        <p>Motif&nbsp;: la photo du recto est floue, le numéro de la carte n'est pas lisible.</p>
+                    </div>
+                </div>
+                <p>Reprenez la photo concernée dans un endroit bien éclairé, sans flash, puis soumettez à nouveau
+                    votre dossier.</p>
+                <div class="cta-row">
+                    <a class="btn btn--primary" href="verification.html">Soumettre de nouveaux documents</a>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
