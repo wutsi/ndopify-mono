@@ -7,6 +7,7 @@ import com.wutsi.ndopify.npc.service.TenantContext
 import org.springframework.boot.restclient.RestClientCustomizer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.web.client.RestTemplate
 
 /**
  * Applied to every `RestClient.Builder` Spring Boot hands out, so all clients built from it log their calls and
@@ -26,4 +27,9 @@ class RestConfiguration {
     @Bean
     fun tenantIdRestClientCustomizer(tenantContext: TenantContext): RestClientCustomizer =
         RestClientCustomizer { builder -> builder.requestInterceptor(TenantIdClientHttpRequestInterceptor(tenantContext)) }
+
+    @Bean
+    fun restTemplate(): RestTemplate {
+        return RestTemplate()
+    }
 }

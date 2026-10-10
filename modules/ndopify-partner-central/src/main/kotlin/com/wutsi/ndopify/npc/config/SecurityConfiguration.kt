@@ -1,34 +1,43 @@
 package com.wutsi.ndopify.npc.config
 
+import com.wutsi.ndopify.npc.service.security.AccessTokenService
 import com.wutsi.ndopify.npc.service.security.JwtAuthenticationFilter
+import com.wutsi.ndopify.npc.service.security.JwtDecoder
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint
 
 @Configuration
 @EnableWebSecurity
 class SecurityConfiguration(
-    private val authenticationFilter: JwtAuthenticationFilter
+    private val accessTokenService: AccessTokenService,
+    private val jwtDecoder: JwtDecoder,
 ) {
     @Bean
     fun filterChain(http: HttpSecurity): SecurityFilterChain {
         return http
             .authorizeHttpRequests { customizer ->
                 customizer
-                    .requestMatchers("/login").permitAll()
-                    .requestMatchers("/login/**").permitAll()
-                    .anyRequest().permitAll()
+                    .requestMatchers("/assets/**").permitAll()
+                    .requestMatchers("/login", "/login/**").permitAll()
+                    .requestMatchers("/error").permitAll()
+                    .anyRequest().authenticated()
             }
-            .addFilterBefore(authenticationFilter, AnonymousAuthenticationFilter::class.java)
+            .addFilterBefore(authorizationFilter(), AnonymousAuthenticationFilter::class.java)
+            .exceptionHandling { it.authenticationEntryPoint(LoginUrlAuthenticationEntryPoint("/login")) }
             .csrf { customizer -> customizer.disable() }
             .httpBasic { customizer -> customizer.disable() }
-            // No formLogin: it would make POST /login a username/password endpoint and swallow LoginController's
-            // OTP request. Sign-in is email + one-time code, handled entirely by LoginController.
-            // Spring's own logout filter would intercept /logout before LogoutController, which clears our token cookie.
-            .logout { customizer -> customizer.disable() }
+//            .formLogin { customizer -> customizer.loginPage("/login") }
+//            .logout { customizer -> customizer.disable() }
             .build()
+    }
+
+    @Bean
+    fun authorizationFilter(): JwtAuthenticationFilter {
+        return JwtAuthenticationFilter(accessTokenService, jwtDecoder)
     }
 }

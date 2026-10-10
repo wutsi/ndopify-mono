@@ -14,8 +14,7 @@ import org.springframework.web.util.UriComponentsBuilder
 class NdTenantClient internal constructor(
     @param:Value("\${ndopify.server.api.base-url}") private val baseUrl: String,
     private val rest: RestTemplate,
-
-    ) {
+) {
     fun search(): SearchTenantResponse {
         val uri = UriComponentsBuilder.fromUriString(baseUrl)
             .path("/v1/tenants")
