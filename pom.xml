@@ -71,7 +71,7 @@
         <commons-io.version>2.21.0</commons-io.version>
         <commons-lang3.version>3.20.0</commons-lang3.version>
         <commons-math3.version>3.6.1</commons-math3.version>
-        <common-net.version>3.12.0</common-net.version>
+        <common-net.version>3.13.0</common-net.version>
         <commons-text.version>1.15.0</commons-text.version>
         <commons-validator.version>1.11.0</commons-validator.version>
         <epub4j.version>4.2.1</epub4j.version>
