@@ -101,7 +101,7 @@
         <java-jwt.version>4.6.1</java-jwt.version>
         <jgrapht.version>1.5.2</jgrapht.version>
         <jython.version>2.7.4</jython.version>
-        <kotlin.version>2.3.10</kotlin.version>
+        <kotlin.version>2.4.21</kotlin.version>
         <kotlin-jackson.version>2.22.3</kotlin-jackson.version>
         <kotlin-mockito.version>2.2.0</kotlin-mockito.version>
         <kotlinpoet.version>1.18.1</kotlinpoet.version>
