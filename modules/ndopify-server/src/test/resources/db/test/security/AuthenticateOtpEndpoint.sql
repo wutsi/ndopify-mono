@@ -20,10 +20,10 @@ INSERT INTO T_USER (id, email, deleted, created_at, deleted_at) VALUES
 
 -- auth_type: 1=PASSWORD, 3=OTP. data = md5("<code>-<salt>"), same as PasswordEncryptor.
 INSERT INTO T_AUTH_FACTOR (id, user_id, auth_type, data, salt, created_at, modified_at, expires_at) VALUES
-  (1, 1, 3, MD5('123456-test-salt'), 'test-salt', NOW(), NOW(), '2099-01-01 00:00:00'),
-  (2, 2, 3, MD5('123456-test-salt'), 'test-salt', '2019-01-01 00:00:00', '2019-01-01 00:00:00', '2020-01-01 00:00:00'),
+  (1, 1, 3, '123456-test-salt', 'test-salt', NOW(), NOW(), '2099-01-01 00:00:00'),
+  (2, 2, 3, '123456-test-salt', 'test-salt', '2019-01-01 00:00:00', '2019-01-01 00:00:00', '2020-01-01 00:00:00'),
   (3, 3, 1, 'secret-password', NULL, NOW(), NOW(), NULL),
-  (4, 4, 3, MD5('123456-test-salt'), 'test-salt', NOW(), NOW(), '2099-01-01 00:00:00');
+  (4, 4, 3, '123456-test-salt', 'test-salt', NOW(), NOW(), '2099-01-01 00:00:00');
 
 INSERT INTO T_USER_APPLICATION (id, user_id, application_id) VALUES
   (11, 1, 3),

@@ -1,6 +1,10 @@
 package com.wutsi.ndopify.security.server.endpoints
 
-import com.icegreen.greenmail.util.GreenMail
+import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.anyOrNull
+import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.eq
+import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
@@ -10,8 +14,11 @@ import com.wutsi.ndopify.security.dto.AuthenticateRequest
 import com.wutsi.ndopify.security.dto.AuthenticateResponse
 import com.wutsi.ndopify.security.server.dao.AuthFactorRepository
 import com.wutsi.ndopify.security.server.service.AccessTokenService
+import com.wutsi.ndopify.security.server.service.PasswordEncryptor
+import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -26,8 +33,11 @@ import kotlin.test.assertTrue
 )
 class AuthenticateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
     companion object {
-        const val CODE = "123456" // matches the hash in the fixture
+        const val CODE = "123456"
     }
+
+    @MockitoBean
+    private lateinit var passwordEncryptor: PasswordEncryptor
 
     @Autowired
     private lateinit var accessTokenService: AccessTokenService
@@ -35,7 +45,14 @@ class AuthenticateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
     @Autowired
     private lateinit var authFactorRepository: AuthFactorRepository
 
-    private lateinit var smtp: GreenMail
+    @BeforeEach
+    override fun setUp() {
+        super.setUp()
+
+        // Only the right code matches
+        doReturn(false).whenever(passwordEncryptor).matches(any(), any(), anyOrNull())
+        doReturn(true).whenever(passwordEncryptor).matches(eq(CODE), any(), anyOrNull())
+    }
 
     @Test
     fun login() {
