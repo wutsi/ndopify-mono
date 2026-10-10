@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Code de connexion — Ndopify Partner Central</title>
+    <meta name="description" content="Saisissez le code à 6 chiffres reçu par email pour accéder à votre espace partenaires Ndopify.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="../assets/images/icon.png">
+    <link rel="apple-touch-icon" href="../assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="../assets/css/partner-central.css">
+    <script src="../assets/js/partner-central.js" defer></script>
+</head>
+<body data-page="login-code">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" href="index.html">
+                <img src="../assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <div class="page-intro">
+                <h1>Saisissez votre code</h1>
+                <p data-sent-to>Nous avons envoyé un code à 6&nbsp;chiffres par email à
+                    <strong data-masked-email>votre adresse</strong>.</p>
+            </div>
+
+            <div class="alert alert--warning" hidden data-missing-session>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <p class="alert__title">Nous ne retrouvons pas votre demande de connexion</p>
+                    <p><a href="index.html">Saisissez à nouveau votre adresse email</a> pour recevoir un code.</p>
+                </div>
+            </div>
+
+            <form class="form" novalidate data-code-form>
+                <div class="field">
+                    <label class="field__label" for="code">Code de connexion</label>
+                    <input class="input input--code" id="code" name="code" type="text" inputmode="numeric"
+                           autocomplete="one-time-code" required
+                           aria-describedby="code-hint code-error">
+                    <div class="hint" id="code-hint">
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <p>Le code est valable 5&nbsp;minutes, jusqu'à <span data-expiry>—</span>.</p>
+                            <p>Vous ne le voyez pas&nbsp;? Regardez dans vos courriers indésirables.</p>
+                        </div>
+                    </div>
+                    <p class="field__error" id="code-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                </div>
+
+                <button class="btn btn--primary btn--block" type="submit" aria-disabled="true"
+                        aria-describedby="code-hint" data-submit>Me connecter</button>
+
+                <div class="stack">
+                    <p>Code expiré ou jamais reçu&nbsp;?
+                        <button class="link-button" type="button" data-resend>Renvoyer le code</button></p>
+                    <p role="status" data-status></p>
+                    <p><a href="index.html">Utiliser une autre adresse email</a></p>
+                </div>
+            </form>
+        </div>
+    </main>
+</body>
+</html>

@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.platform.mail
 
 import com.github.mustachejava.DefaultMustacheFactory
+import com.wutsi.ndopify.platform.mail.filter.MailFilterNull
 import dev.jcputney.mjml.MjmlRenderer
 import org.junit.jupiter.api.assertThrows
 import java.io.FileNotFoundException
@@ -11,6 +12,7 @@ class MailBodyResolverTest {
     private val resolver = MailBodyResolver(
         renderer = MjmlRenderer.create(),
         mustache = DefaultMustacheFactory(),
+        filters = listOf(MailFilterNull())
     )
 
     @Test

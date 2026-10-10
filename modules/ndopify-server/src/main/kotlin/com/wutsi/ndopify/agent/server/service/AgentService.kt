@@ -25,6 +25,7 @@ import com.wutsi.ndopify.party.server.service.IdentificationService
 import com.wutsi.ndopify.party.server.service.KycService
 import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.party.server.service.PaymentMethodService
+import com.wutsi.ndopify.refdata.dto.ApplicationCode
 import com.wutsi.ndopify.security.server.service.UserService
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
@@ -103,7 +104,8 @@ class AgentService(
         ensureAgentNotAlreadyExists(party)
 
         // User
-        userService.create(party)
+        val user = userService.create(party)
+        userService.grantAccess(user, ApplicationCode.PARTNER_CENTRAL)
 
         // Payment method
         val paymentMethod = paymentMethodService.create(

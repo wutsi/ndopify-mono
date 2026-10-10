@@ -70,7 +70,8 @@ abstract class AbstractAuthenticator(
         if (!application.supportedAuthTypes.contains(getAuthType())) {
             throw ConflictException(
                 error = Error(
-                    code = ErrorCode.AUTH_TYPE_NOT_SUPPORTED
+                    code = ErrorCode.AUTH_TYPE_NOT_SUPPORTED,
+                    message = "Application ${application.code} does not support ${getAuthType()}"
                 )
             )
         }

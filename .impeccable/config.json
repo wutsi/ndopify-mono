@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "montserrat",
+        "files": [
+          "modules/ndopify-partner-central/**"
+        ],
+        "createdAt": "2026-10-10T18:56:46.707Z",
+        "reason": "Body font mandated by DESIGN.md (Ndopify brand: Lora + Montserrat)"
+      }
+    ]
+  }
+}

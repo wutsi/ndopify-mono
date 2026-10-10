@@ -1,7 +1,5 @@
 package com.wutsi.ndopify.agent.server.endpoint
 
-import com.icegreen.greenmail.util.GreenMail
-import com.icegreen.greenmail.util.ServerSetupTest
 import com.wutsi.ndopify.agent.dto.AgentType
 import com.wutsi.ndopify.agent.dto.CreateAgentRequest
 import com.wutsi.ndopify.agent.dto.CreateAgentResponse
@@ -18,14 +16,14 @@ import com.wutsi.ndopify.party.server.service.IdentificationService
 import com.wutsi.ndopify.party.server.service.KycService
 import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.party.server.service.PaymentMethodService
+import com.wutsi.ndopify.refdata.dto.ApplicationCode
+import com.wutsi.ndopify.refdata.server.service.ApplicationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
+import com.wutsi.ndopify.security.server.dao.UserApplicationRepository
 import com.wutsi.ndopify.security.server.service.UserService
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -33,12 +31,6 @@ import kotlin.test.assertNull
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/agent/CreateAgentEndpoint.sql"])
 class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
-    @Value("\${spring.mail.username}")
-    private lateinit var username: String
-
-    @Value("\${spring.mail.password}")
-    private lateinit var password: String
-
     @Autowired
     private lateinit var dao: AgentRepository
 
@@ -60,23 +52,11 @@ class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
     @Autowired
     private lateinit var tenantService: TenantService
 
-    private lateinit var smtp: GreenMail
+    @Autowired
+    private lateinit var applicationService: ApplicationService
 
-    @BeforeTest
-    override fun setUp() {
-        super.setUp()
-
-        smtp = GreenMail(ServerSetupTest.SMTP)
-        smtp.setUser(username, password)
-        smtp.start()
-    }
-
-    @AfterTest
-    fun tearDown() {
-        if (smtp.isRunning) {
-            smtp.stop()
-        }
-    }
+    @Autowired
+    private lateinit var userApplicationDao: UserApplicationRepository
 
     @Test
     fun create() {
@@ -144,6 +124,9 @@ class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
         val user = userService.findByPartyIdOrNull(party.id!!)
         assertEquals(TENANT_ID, user?.tenantId)
         assertEquals(request.email.lowercase(), user?.email)
+
+        val app = applicationService.findByCode(ApplicationCode.PARTNER_CENTRAL)
+        assertNotNull(userApplicationDao.findByUserAndApplication(user!!, app))
 
         Thread.sleep(1000) // Wait for email to be sent
         val tenant = tenantService.findById(TENANT_ID)

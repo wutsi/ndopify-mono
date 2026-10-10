@@ -7,12 +7,16 @@ import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.party.dto.CreatePartyRequest
 import com.wutsi.ndopify.party.dto.KycStatus
+import com.wutsi.ndopify.party.dto.SearchPartyRequest
 import com.wutsi.ndopify.party.dto.UpdatePartyRequest
 import com.wutsi.ndopify.party.dto.UpdatePhotoRequest
 import com.wutsi.ndopify.party.server.dao.PartyRepository
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.security.server.dao.UserRepository
+import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
+import org.springframework.data.domain.Sort
+import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
 import java.time.Clock
 import java.util.Date
@@ -39,6 +43,25 @@ class PartyService(
 
     fun findByEmailOrNull(email: String): PartyEntity? {
         return dao.findByEmail(email.lowercase())
+    }
+
+    fun search(request: SearchPartyRequest): List<PartyEntity> {
+        val spec = Specification<PartyEntity> { root, _, cb ->
+            val predicates = mutableListOf<Predicate>()
+
+            if (request.id.isNotEmpty()) {
+                predicates.add(root.get<Long>("id").`in`(request.id))
+            }
+            request.email?.takeIf { it.isNotBlank() }?.let { email ->
+                predicates.add(cb.equal(root.get<String>("email"), email.trim().lowercase()))
+            }
+
+            cb.and(*predicates.toTypedArray())
+        }
+
+        return dao.findAll(spec, Sort.by("id"))
+            .drop(request.offset)
+            .take(request.limit)
     }
 
     @Transactional

@@ -6,27 +6,14 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <artifactId>koki-mono</artifactId>
-        <groupId>com.wutsi.koki</groupId>
+        <artifactId>ndopify-mono</artifactId>
+        <groupId>com.wutsi.ndopify</groupId>
         <version>1.0.0</version>
         <relativePath>../../pom.xml</relativePath>
     </parent>
-
-    <artifactId>koki-portal</artifactId>
+    <artifactId>ndopify-partner-central</artifactId>
     <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
-
-    <scm>
-        <developerConnection>scm:git:https://github.com/koki/koki-mono.git</developerConnection>
-        <tag>HEAD</tag>
-    </scm>
-
-    <distributionManagement>
-        <repository>
-            <id>github</id>
-            <url>https://maven.pkg.github.com/koki/koki-mono</url>
-        </repository>
-    </distributionManagement>
 
     <repositories>
         <repository>
@@ -41,37 +28,14 @@
     </repositories>
 
     <properties>
-        <jacoco.threshold.line>0.80</jacoco.threshold.line>
-        <jacoco.threshold.class>0.80</jacoco.threshold.class>
+        <jacoco.threshold.class>0.94</jacoco.threshold.class>
     </properties>
 
     <dependencies>
         <dependency>
-            <groupId>com.wutsi.koki</groupId>
-            <artifactId>koki-dto</artifactId>
-            <version>${wutsi-dto.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.wutsi.koki</groupId>
-            <artifactId>koki-platform</artifactId>
-            <version>${wutsi-platform.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.wutsi.koki</groupId>
-                    <artifactId>koki-dto</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>com.wutsi.koki</groupId>
-            <artifactId>koki-sdk</artifactId>
-            <version>${wutsi-sdk.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.wutsi.koki</groupId>
-                    <artifactId>koki-dto</artifactId>
-                </exclusion>
-            </exclusions>
+            <groupId>com.wutsi.ndopify</groupId>
+            <artifactId>ndopify-dto</artifactId>
+            <version>${ndopify-dto.version}</version>
         </dependency>
 
         <dependency>

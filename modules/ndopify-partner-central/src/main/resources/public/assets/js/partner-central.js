@@ -6,22 +6,13 @@
 (function () {
     "use strict";
 
-    var OTP_TTL_MS = 5 * 60 * 1000;
-    var OTP_MAX_ATTEMPTS = 5;
     var MAX_FILE_BYTES = 5 * 1024 * 1024;
     var ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
     var NIU_PATTERN = /^[A-Z0-9]{14}$/;
     var EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
-    // PROTOTYPE: accounts the simulated API "knows". Any other address takes the "Rejoindre" branch.
-    var KNOWN_EMAILS = ["agent@ndopify.com", "serge@ndopify.com"];
-    // PROTOTYPE: this code simulates a wrong code; any other 6-digit code is accepted.
-    var WRONG_CODE = "000000";
-
     var KEYS = {
         email: "npc.email",
-        otpExpiry: "npc.otpExpiry",
-        otpAttempts: "npc.otpAttempts",
         front: "npc.kyc.front",
         frontName: "npc.kyc.frontName",
         back: "npc.kyc.back",
@@ -110,14 +101,6 @@
         return img;
     }
 
-    function maskEmail(email) {
-        var parts = email.split("@");
-        if (parts.length !== 2) return email;
-        var name = parts[0];
-        var visible = name.length <= 2 ? name.charAt(0) : name.slice(0, 2);
-        return visible + "•••@" + parts[1];
-    }
-
     function formatTime(ms) {
         var d = new Date(ms);
         var h = d.getHours();
@@ -190,14 +173,12 @@
         });
     }
 
-    /* ---------- login/index.html ---------- */
+    /* ---------- login/index.html (LoginController: POST /login) ---------- */
     function initLoginEmail() {
         var form = $("[data-login-form]");
         var input = $("#email");
         var error = $("#email-error");
         var submit = $("[data-submit]");
-        var unknown = $("[data-unknown-email]");
-        var joinHeading = $("#join-title");
 
         function validity() {
             var value = input.value.trim();
@@ -211,7 +192,6 @@
         }
 
         input.addEventListener("input", function () {
-            unknown.hidden = true;
             if (input.getAttribute("aria-invalid") === "true") setFieldError(input, error, validity());
             sync();
         });
@@ -220,73 +200,46 @@
             if (input.value.trim()) setFieldError(input, error, validity());
         });
 
+        // Validation only: a valid form is submitted to the server as-is.
         form.addEventListener("submit", function (event) {
-            event.preventDefault();
             var message = validity();
             setFieldError(input, error, message);
             if (message) {
+                event.preventDefault();
                 input.focus();
                 return;
             }
-            var email = input.value.trim().toLowerCase();
-
-            if (KNOWN_EMAILS.indexOf(email) === -1) {
-                unknown.hidden = false;
-                joinHeading.focus();
-                return;
-            }
-
-            store.set(KEYS.email, email);
-            store.set(KEYS.otpExpiry, String(Date.now() + OTP_TTL_MS));
-            store.set(KEYS.otpAttempts, "0");
-            window.location.href = "connection.html";
+            // PROTOTYPE: the KYC pages still read the email from sessionStorage for the header menu.
+            store.set(KEYS.email, input.value.trim().toLowerCase());
         });
 
-        var remembered = store.get(KEYS.email);
-        if (remembered && !input.value) input.value = remembered;
+        if (!input.value) input.value = store.get(KEYS.email) || "";
+        if (input.getAttribute("aria-invalid") === "true") input.focus();
         sync();
     }
 
-    /* ---------- login/connection.html ---------- */
+    /* ---------- login/connection.html (LoginController: POST /login/verify, resend via POST /login) ---------- */
     function initLoginCode() {
         var form = $("[data-code-form]");
+        if (!form) return; // no sign-in in progress: the page shows the "start again" alert
         var input = $("#code");
         var error = $("#code-error");
         var submit = $("[data-submit]");
         var status = $("[data-status]");
         var expiryEl = $("[data-expiry]");
-        var resend = $("[data-resend]");
-        var missing = $("[data-missing-session]");
-        var email = store.get(KEYS.email);
-        var expiryTimer = null;
-
-        if (!email) {
-            form.hidden = true;
-            $("[data-sent-to]").hidden = true;
-            missing.hidden = false;
-            return;
-        }
-
-        $("[data-masked-email]").textContent = maskEmail(email);
-
-        function expiry() {
-            return Number(store.get(KEYS.otpExpiry)) || 0;
-        }
-
-        function attempts() {
-            return Number(store.get(KEYS.otpAttempts)) || 0;
-        }
+        var expiresAt = expiryEl ? Number(expiryEl.getAttribute("data-expires-at")) || 0 : 0;
 
         function isExpired() {
-            return Date.now() >= expiry();
+            return expiresAt > 0 && Date.now() >= expiresAt;
         }
 
+        // The server is the authority on expiry; this only tells the user before they try.
         function scheduleExpiry() {
-            window.clearTimeout(expiryTimer);
-            expiryEl.textContent = formatTime(expiry());
-            var remaining = expiry() - Date.now();
+            if (!expiresAt) return;
+            expiryEl.textContent = formatTime(expiresAt);
+            var remaining = expiresAt - Date.now();
             if (remaining <= 0) return;
-            expiryTimer = window.setTimeout(function () {
+            window.setTimeout(function () {
                 setFieldError(input, error, "Ce code a expiré. Demandez un nouveau code ci-dessous.");
                 announce(status, "Votre code a expiré. Vous pouvez demander un nouveau code.");
                 sync();
@@ -301,7 +254,7 @@
         }
 
         function sync() {
-            setActive(submit, validity() === "" && !isExpired() && attempts() < OTP_MAX_ATTEMPTS);
+            setActive(submit, validity() === "" && !isExpired());
         }
 
         input.addEventListener("input", function () {
@@ -312,60 +265,20 @@
         });
 
         form.addEventListener("submit", function (event) {
-            event.preventDefault();
-            if (attempts() >= OTP_MAX_ATTEMPTS) {
-                setFieldError(input, error, "Trop d'essais pour ce code. Demandez un nouveau code ci-dessous.");
-                input.focus();
-                return;
-            }
-            if (isExpired()) {
-                setFieldError(input, error, "Ce code a expiré. Demandez un nouveau code ci-dessous.");
-                input.focus();
-                return;
-            }
-            var message = validity();
+            var message = isExpired() ? "Ce code a expiré. Demandez un nouveau code ci-dessous." : validity();
             setFieldError(input, error, message);
             if (message) {
+                event.preventDefault();
                 input.focus();
-                return;
             }
-
-            if (input.value === WRONG_CODE) {
-                var used = attempts() + 1;
-                store.set(KEYS.otpAttempts, String(used));
-                var left = OTP_MAX_ATTEMPTS - used;
-                setFieldError(
-                    input,
-                    error,
-                    left > 0
-                        ? "Code incorrect. Il vous reste " + left + (left > 1 ? " essais." : " essai.")
-                        : "Trop d'essais pour ce code. Demandez un nouveau code ci-dessous."
-                );
-                input.select();
-                input.focus();
-                sync();
-                return;
-            }
-
-            store.remove(KEYS.otpExpiry);
-            store.remove(KEYS.otpAttempts);
-            window.location.href = "../kyc/index.html";
-        });
-
-        resend.addEventListener("click", function () {
-            // PROTOTYPE: a real resend calls the API, which applies its own rate limit.
-            store.set(KEYS.otpExpiry, String(Date.now() + OTP_TTL_MS));
-            store.set(KEYS.otpAttempts, "0");
-            input.value = "";
-            setFieldError(input, error, "");
-            scheduleExpiry();
-            sync();
-            announce(status, "Nouveau code envoyé à " + maskEmail(email) + ". Il est valable jusqu'à " + formatTime(expiry()) + ".");
-            input.focus();
         });
 
         scheduleExpiry();
         if (isExpired()) setFieldError(input, error, "Ce code a expiré. Demandez un nouveau code ci-dessous.");
+        if (input.getAttribute("aria-invalid") === "true") {
+            input.select();
+            input.focus();
+        }
         sync();
     }
 

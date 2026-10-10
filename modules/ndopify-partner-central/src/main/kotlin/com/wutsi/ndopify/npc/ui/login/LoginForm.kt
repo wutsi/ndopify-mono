@@ -1,4 +1,6 @@
 package com.wutsi.ndopify.npc.ui.login
 
-class LoginForm {
-}
+data class LoginForm(
+    val email: String = "",
+    val resend: Boolean = false,
+)

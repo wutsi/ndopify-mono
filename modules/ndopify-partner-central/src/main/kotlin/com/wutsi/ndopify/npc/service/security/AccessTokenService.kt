@@ -7,7 +7,7 @@ import org.springframework.http.ResponseCookie
 import org.springframework.stereotype.Service
 
 @Service
-class AccessTokenHolder(private val request: HttpServletRequest, private val response: HttpServletResponse) {
+class AccessTokenService(private val request: HttpServletRequest, private val response: HttpServletResponse) {
     companion object {
         const val ACCESS_TOKEN_COOKIE = "__npc_access_token"
     }
@@ -39,6 +39,6 @@ class AccessTokenHolder(private val request: HttpServletRequest, private val res
     }
 
     private fun findCookie(request: HttpServletRequest): jakarta.servlet.http.Cookie? {
-        return request.cookies?.find { cookie -> cookie.name == "access_token" }
+        return request.cookies?.find { cookie -> cookie.name == ACCESS_TOKEN_COOKIE }
     }
 }

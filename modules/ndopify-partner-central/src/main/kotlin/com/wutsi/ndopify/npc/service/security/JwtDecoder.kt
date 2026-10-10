@@ -1,18 +1,21 @@
-package com.wutsi.koki.security.dto
+package com.wutsi.ndopify.npc.service.security
 
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
+import com.wutsi.ndopify.security.dto.JwtPrincipal
+import org.springframework.stereotype.Service
 
-open class JWTDecoder {
+@Service
+open class JwtDecoder {
     companion object {
-        const val ISSUER = "Koki"
+        const val ISSUER = "Ndopify"
     }
 
-    fun decode(accessToken: String): JWTPrincipal {
+    fun decode(accessToken: String): JwtPrincipal {
         val verifier = JWT.require(getAlgorithm())
             .withIssuer(ISSUER)
             .build()
-        return JWTPrincipal(verifier.verify(accessToken))
+        return JwtPrincipal(verifier.verify(accessToken))
     }
 
     private fun getAlgorithm(): Algorithm {

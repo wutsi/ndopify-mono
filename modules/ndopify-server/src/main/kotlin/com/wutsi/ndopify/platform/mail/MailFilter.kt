@@ -1,5 +1,5 @@
 package com.wutsi.ndopify.platform.mail
 
-interface EmailFilter {
-    fun filter(html: String, tenantId: Long): String
+interface MailFilter {
+    fun filter(html: String): String
 }

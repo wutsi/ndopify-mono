@@ -1,9 +1,6 @@
-package com.wutsi.koki.platform.security.servlet
+package com.wutsi.ndopify.npc.service.security
 
 import com.auth0.jwt.exceptions.TokenExpiredException
-import com.wutsi.koki.platform.security.AccessTokenHolder
-import com.wutsi.koki.platform.security.JWTAuthentication
-import com.wutsi.koki.security.dto.JWTDecoder
 import jakarta.servlet.Filter
 import jakarta.servlet.FilterChain
 import jakarta.servlet.ServletRequest
@@ -13,13 +10,15 @@ import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.LoggerFactory
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.core.context.SecurityContextImpl
+import org.springframework.stereotype.Service
 
-class JWTAuthenticationFilter(
-    private val accessTokenHolder: AccessTokenHolder,
-    private val jwtDecoder: JWTDecoder,
+@Service
+class JwtAuthenticationFilter(
+    private val accessTokenHolder: AccessTokenService,
+    private val jwtDecoder: JwtDecoder,
 ) : Filter {
     companion object {
-        private val LOGGER = LoggerFactory.getLogger(JWTAuthenticationFilter::class.java)
+        private val LOGGER = LoggerFactory.getLogger(JwtAuthenticationFilter::class.java)
     }
 
     override fun doFilter(
@@ -41,7 +40,7 @@ class JWTAuthenticationFilter(
                 SecurityContextHolder.clearContext()
             } else {
                 val principal = jwtDecoder.decode(accessToken)
-                val auth = JWTAuthentication(principal)
+                val auth = JwtAuthentication(principal)
                 auth.isAuthenticated = true
                 SecurityContextHolder.setContext(SecurityContextImpl(auth))
             }

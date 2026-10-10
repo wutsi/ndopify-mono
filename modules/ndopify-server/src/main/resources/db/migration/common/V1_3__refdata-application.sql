@@ -26,7 +26,7 @@ INSERT INTO T_APPLICATION(id, code, supported_auth_types)
 VALUES
     (1, 'public-portal',   'PASSWORD,GOOGLE_ONE_TAP'),
     (2, 'admin-console',   'PASSWORD'),
-    (3, 'partner-central', 'PASSWORD')
+    (3, 'partner-central', 'OTP')
 ;
 
 INSERT INTO T_ROLE(application_id, code)

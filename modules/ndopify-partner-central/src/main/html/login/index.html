@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Connexion — Ndopify Partner Central</title>
+    <meta name="description" content="Connectez-vous à l'espace partenaires Ndopify avec votre adresse email et un code à usage unique.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="../assets/images/icon.png">
+    <link rel="apple-touch-icon" href="../assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="../assets/css/partner-central.css">
+    <script src="../assets/js/partner-central.js" defer></script>
+</head>
+<body data-page="login-email">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" href="index.html">
+                <img src="../assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <div class="page-intro">
+                <h1>Espace partenaires</h1>
+                <p>Connectez-vous avec votre adresse email. Nouveau chez Ndopify&nbsp;? Saisissez-la aussi&nbsp;:
+                    nous vous indiquerons comment nous rejoindre.</p>
+            </div>
+
+            <form class="form" novalidate data-login-form>
+                <div class="field">
+                    <label class="field__label" for="email">Adresse email</label>
+                    <input class="input" id="email" name="email" type="email" inputmode="email" autocomplete="email"
+                           autocapitalize="off" spellcheck="false" required aria-describedby="email-hint email-error">
+                    <div class="hint" id="email-hint">
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <p>Nous vous envoyons un code de connexion à 6&nbsp;chiffres par email. Aucun mot de passe à
+                            retenir.</p>
+                    </div>
+                    <p class="field__error" id="email-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                </div>
+
+                <div aria-live="polite">
+                    <p class="notice" hidden data-unknown-email><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg><span>Aucun compte n'utilise cette adresse.
+                        Vérifiez-la, ou découvrez ci-dessous comment rejoindre Ndopify.</span></p>
+                </div>
+
+                <button class="btn btn--primary btn--block" type="submit" aria-disabled="true"
+                        aria-describedby="email-hint" data-submit>Recevoir mon code</button>
+            </form>
+
+            <section class="section" aria-labelledby="join-title">
+                <h2 id="join-title" tabindex="-1">Rejoindre Ndopify</h2>
+                <p>Avec Ndopify, chaque visite que vous organisez vous est indemnisée et votre part de la commission
+                    arrive directement sur votre compte Mobile Money. Les contacts des bailleurs restent masqués et la
+                    répartition entre agents est fixée d'avance&nbsp;: personne ne peut vous contourner.</p>
+                <div class="cta-row">
+                    <a class="btn btn--secondary" href="https://www.ndopify.com/joindre">Rejoindre Ndopify</a>
+                </div>
+            </section>
+        </div>
+    </main>
+</body>
+</html>

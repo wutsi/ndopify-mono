@@ -1,1 +1,1 @@
-web: java $JAVA_OPTS -Dserver.port=$PORT -jar ndopify-server.jar --spring.profiles.active=$APP_PROFILE
+web: java $JAVA_OPTS -Dserver.port=$PORT -jar ndopify-partner-central.jar --spring.profiles.active=$APP_PROFILE

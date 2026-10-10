@@ -4,6 +4,7 @@ import com.github.mustachejava.DefaultMustacheFactory
 import com.github.mustachejava.MustacheFactory
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
+import com.wutsi.ndopify.platform.mail.filter.HtmlEscapeFilter
 import dev.jcputney.mjml.ClasspathIncludeResolver
 import dev.jcputney.mjml.MjmlConfiguration
 import dev.jcputney.mjml.MjmlRenderer
@@ -37,6 +38,6 @@ open class MailConfiguration(
 
     @Bean
     fun mailBodyResolver(): MailBodyResolver {
-        return MailBodyResolver(mjmlRenderer(), mustacheFactory())
+        return MailBodyResolver(mjmlRenderer(), mustacheFactory(), listOf(HtmlEscapeFilter()))
     }
 }

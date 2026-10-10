@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pièce d'identité — Ndopify Partner Central</title>
+    <meta name="description" content="Téléversez le recto et le verso de votre carte nationale d'identité pour vérifier votre compte agent Ndopify.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="../assets/images/icon.png">
+    <link rel="apple-touch-icon" href="../assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="../assets/css/partner-central.css">
+    <script src="../assets/js/partner-central.js" defer></script>
+</head>
+<body data-page="kyc-documents">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" href="../index.html">
+                <img src="../assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <span aria-hidden="true" data-user-initials>NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li class="user-menu__email" data-user-email></li>
+                    <li>
+                        <span class="user-menu__item" aria-disabled="true">
+                            Profil <span class="user-menu__soon">(bientôt disponible)</span>
+                        </span>
+                    </li>
+                    <li><a class="user-menu__item" href="../login/index.html" data-logout>Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <div class="page-intro">
+                <h1>Vérification d'identité</h1>
+                <div class="alert alert--warning">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                    <p>Un agent non vérifié ne peut pas exercer sur la plateforme.</p>
+                </div>
+            </div>
+
+            <div class="progress">
+                <p class="progress__label" id="progress-label" data-progress-label>Étape 1 sur 4</p>
+                <div class="progress__track" role="progressbar" aria-labelledby="progress-label"
+                     aria-valuemin="1" aria-valuemax="4" aria-valuenow="1" aria-valuetext="Étape 1 sur 4"
+                     data-progress>
+                    <div class="progress__bar" style="transform: scaleX(0.25)" data-progress-bar></div>
+                </div>
+            </div>
+
+            <h2 class="visually-hidden">Étapes du formulaire</h2>
+            <form class="form" novalidate>
+                <fieldset class="step" tabindex="-1" data-step="front">
+                    <legend class="visually-hidden">Étape 1 sur 4 : Recto de votre carte</legend>
+                    <h3 aria-hidden="true">Recto de votre carte</h3>
+                    <p>Photographiez la face avant de votre carte nationale d'identité, celle avec votre photo.</p>
+
+                    <div class="hint" id="front-hint">
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <p>Pour être acceptée, la photo doit&nbsp;:</p>
+                            <ul>
+                                <li>être au format JPG, PNG ou WEBP, 5&nbsp;Mo maximum&nbsp;;</li>
+                                <li>montrer la carte entière, nette et lisible&nbsp;;</li>
+                                <li>être prise sans reflet ni flash sur la carte&nbsp;;</li>
+                                <li>concerner une carte en cours de validité.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <div class="upload__preview" data-preview data-alt="Aperçu du recto de votre carte">
+                            <div class="upload__placeholder" data-placeholder>
+                                <svg viewBox="0 0 86 54" aria-hidden="true" focusable="false"><rect x="1" y="1" width="84" height="52" fill="none" stroke="currentColor" stroke-width="2"/><rect x="10" y="14" width="26" height="32" fill="none" stroke="currentColor" stroke-width="2"/><path d="M44 20h30M44 30h30M44 40h20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                                <p>Aucune photo pour l'instant</p>
+                            </div>
+                        </div>
+                        <input class="upload__input" id="front-file" name="front" type="file"
+                               accept="image/jpeg,image/png,image/webp" aria-describedby="front-hint front-error">
+                        <label class="btn btn--outline btn--block upload__button" for="front-file">
+                            <span data-upload-label>Choisir une photo du recto</span>
+                        </label>
+                        <p class="upload__filename" aria-live="polite" hidden data-filename></p>
+                        <p class="field__error" id="front-error" role="alert" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                    </div>
+
+                    <div class="form__actions">
+                        <button class="btn btn--outline" type="button" data-prev>Précédent</button>
+                        <button class="btn btn--primary" type="button" aria-disabled="true"
+                                aria-describedby="front-hint" data-next>Suivant</button>
+                    </div>
+                </fieldset>
+                <fieldset class="step" tabindex="-1" data-step="back" hidden>
+                    <legend class="visually-hidden">Étape 2 sur 4 : Verso de votre carte</legend>
+                    <h3 aria-hidden="true">Verso de votre carte</h3>
+                    <p>Retournez la carte et photographiez la face arrière.</p>
+
+                    <div class="hint" id="back-hint">
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <p>Pour être acceptée, la photo doit&nbsp;:</p>
+                            <ul>
+                                <li>être au format JPG, PNG ou WEBP, 5&nbsp;Mo maximum&nbsp;;</li>
+                                <li>montrer la carte entière, nette et lisible&nbsp;;</li>
+                                <li>être prise sans reflet ni flash sur la carte&nbsp;;</li>
+                                <li>concerner une carte en cours de validité.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <div class="upload__preview" data-preview data-alt="Aperçu du verso de votre carte">
+                            <div class="upload__placeholder" data-placeholder>
+                                <svg viewBox="0 0 86 54" aria-hidden="true" focusable="false"><rect x="1" y="1" width="84" height="52" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 16h66" stroke="currentColor" stroke-width="6"/><path d="M10 32h46M10 42h36" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                                <p>Aucune photo pour l'instant</p>
+                            </div>
+                        </div>
+                        <input class="upload__input" id="back-file" name="back" type="file"
+                               accept="image/jpeg,image/png,image/webp" aria-describedby="back-hint back-error">
+                        <label class="btn btn--outline btn--block upload__button" for="back-file">
+                            <span data-upload-label>Choisir une photo du verso</span>
+                        </label>
+                        <p class="upload__filename" aria-live="polite" hidden data-filename></p>
+                        <p class="field__error" id="back-error" role="alert" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                    </div>
+
+                    <div class="form__actions">
+                        <button class="btn btn--outline" type="button" data-prev>Précédent</button>
+                        <button class="btn btn--primary" type="button" aria-disabled="true"
+                                aria-describedby="back-hint" data-next>Suivant</button>
+                    </div>
+                </fieldset>
+            </form>
+        </div>
+    </main>
+</body>
+</html>

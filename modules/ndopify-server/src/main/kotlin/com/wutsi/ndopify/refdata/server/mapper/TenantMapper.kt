@@ -24,6 +24,9 @@ class TenantMapper {
             numberFormat = entity.numberFormat,
             logoUrl = entity.logoUrl,
             iconUrl = entity.iconUrl,
+            adminConsoleUrl = entity.adminConsoleUrl,
+            partnerCentralUrl = entity.partnerCentralUrl,
+            publicPortalUrl = entity.publicPortalUrl,
         )
     }
 }

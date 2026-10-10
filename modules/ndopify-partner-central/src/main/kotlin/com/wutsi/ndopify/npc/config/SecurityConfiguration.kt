@@ -1,10 +1,6 @@
-package com.wutsi.koki.portal.config
+package com.wutsi.ndopify.npc.config
 
-import com.wutsi.koki.platform.security.AccessTokenHolder
-import com.wutsi.koki.platform.security.servlet.JWTAuthenticationFilter
-import com.wutsi.koki.portal.security.LogoutSuccessHandlerImpl
-import com.wutsi.koki.security.dto.JWTDecoder
-import jakarta.servlet.Filter
+import com.wutsi.ndopify.npc.service.security.JwtAuthenticationFilter
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
@@ -15,54 +11,24 @@ import org.springframework.security.web.authentication.AnonymousAuthenticationFi
 @Configuration
 @EnableWebSecurity
 class SecurityConfiguration(
-    private val logoutSuccessHandler: LogoutSuccessHandlerImpl,
-    private val accessTokenHolder: AccessTokenHolder,
+    private val authenticationFilter: JwtAuthenticationFilter
 ) {
     @Bean
     fun filterChain(http: HttpSecurity): SecurityFilterChain {
         return http
             .authorizeHttpRequests { customizer ->
                 customizer
-                    .requestMatchers("/").authenticated()
-                    .requestMatchers("/accounts").authenticated()
-                    .requestMatchers("/accounts/**").authenticated()
-                    .requestMatchers("/agents").authenticated()
-                    .requestMatchers("/agents/**").authenticated()
-                    .requestMatchers("/contacts").authenticated()
-                    .requestMatchers("/contacts/**").authenticated()
-                    .requestMatchers("/images").authenticated()
-                    .requestMatchers("/images/**").authenticated()
-                    .requestMatchers("/leads").authenticated()
-                    .requestMatchers("/leads/**").authenticated()
-                    .requestMatchers("/listings").authenticated()
-                    .requestMatchers("/listings/**").authenticated()
-                    .requestMatchers("/offers").authenticated()
-                    .requestMatchers("/offers/**").authenticated()
-                    .requestMatchers("/settings").authenticated()
-                    .requestMatchers("/settings/**").authenticated()
-                    .requestMatchers("/users").authenticated()
-                    .requestMatchers("/users/**").authenticated()
+                    .requestMatchers("/login").permitAll()
+                    .requestMatchers("/login/**").permitAll()
                     .anyRequest().permitAll()
             }
-            .addFilterBefore(authorizationFilter(), AnonymousAuthenticationFilter::class.java)
+            .addFilterBefore(authenticationFilter, AnonymousAuthenticationFilter::class.java)
             .csrf { customizer -> customizer.disable() }
             .httpBasic { customizer -> customizer.disable() }
-            .formLogin { customizer ->
-                customizer.loginPage("/login")
-            }
-            .logout { customizer ->
-                customizer.logoutSuccessHandler(logoutSuccessHandler)
-            }
+            // No formLogin: it would make POST /login a username/password endpoint and swallow LoginController's
+            // OTP request. Sign-in is email + one-time code, handled entirely by LoginController.
+            // Spring's own logout filter would intercept /logout before LogoutController, which clears our token cookie.
+            .logout { customizer -> customizer.disable() }
             .build()
-    }
-
-    @Bean
-    fun authorizationFilter(): Filter {
-        return JWTAuthenticationFilter(accessTokenHolder, jwtDecoder())
-    }
-
-    @Bean
-    fun jwtDecoder(): JWTDecoder {
-        return JWTDecoder()
     }
 }

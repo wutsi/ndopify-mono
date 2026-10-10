@@ -7,7 +7,7 @@ import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.ForbiddenException
 import com.wutsi.ndopify.error.server.exception.UnauthorizedException
-import com.wutsi.ndopify.security.dto.JWTPrincipal
+import com.wutsi.ndopify.security.dto.JwtPrincipal
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.stereotype.Service
 import java.time.Clock
@@ -33,15 +33,15 @@ open class AccessTokenService(
         val now = clock.millis()
         val builder = JWT.create()
             .withIssuer(ISSUER)
-            .withClaim(JWTPrincipal.CLAIM_USER_ID, userId)
-            .withClaim(JWTPrincipal.CLAIM_TENANT_ID, tenantId)
-            .withClaim(JWTPrincipal.CLAIM_APPLICATION, application)
-            .withArrayClaim(JWTPrincipal.CLAIM_ROLE, roles)
+            .withClaim(JwtPrincipal.CLAIM_USER_ID, userId)
+            .withClaim(JwtPrincipal.CLAIM_TENANT_ID, tenantId)
+            .withClaim(JwtPrincipal.CLAIM_APPLICATION, application)
+            .withArrayClaim(JwtPrincipal.CLAIM_ROLE, roles)
             .withSubject(userId.toString())
             .withIssuedAt(Instant.ofEpochMilli(now))
 
         if (tenantId != null) {
-            builder.withClaim(JWTPrincipal.CLAIM_TENANT_ID, tenantId)
+            builder.withClaim(JwtPrincipal.CLAIM_TENANT_ID, tenantId)
         }
         if (ttlSeconds != null) {
             builder.withExpiresAt(Instant.ofEpochMilli(now + ttlSeconds * 1000))
@@ -51,21 +51,21 @@ open class AccessTokenService(
     }
 
     @Throws(TokenExpiredException::class)
-    fun decode(accessToken: String): JWTPrincipal {
+    fun decode(accessToken: String): JwtPrincipal {
         val verifier = JWT.require(getAlgorithm())
             .withIssuer(Companion.ISSUER)
             .build()
-        return JWTPrincipal(verifier.verify(accessToken))
+        return JwtPrincipal(verifier.verify(accessToken))
     }
 
-    fun getPrincipal(): JWTPrincipal {
+    fun getPrincipal(): JwtPrincipal {
         return getPrincipalOrNull()
             ?: throw UnauthorizedException(
                 error = Error(code = ErrorCode.AUTH_UNAUTHORIZED)
             )
     }
 
-    fun getPrincipalOrNull(): JWTPrincipal? {
+    fun getPrincipalOrNull(): JwtPrincipal? {
         val accessToken = request.getHeader("Authorization")?.removePrefix("Bearer ")
             ?: return null
 

@@ -4,6 +4,7 @@ spring:
         use-jackson2-defaults: true
         deserialization:
             FAIL_ON_UNKNOWN_PROPERTIES: false
+            FAIL_ON_NULL_FOR_PRIMITIVES: false
             ACCEPT_EMPTY_STRING_AS_NULL_OBJECT: true
         mapper:
             ACCEPT_CASE_INSENSITIVE_ENUMS: true
@@ -11,11 +12,11 @@ spring:
 
     servlet:
         multipart:
-            max-file-size: 50MB
-            max-request-size: 50MB
+            max-file-size: 5MB
+            max-request-size: 5MB
 
 server:
-    port: 8082
+    port: 8081
     error:
         whitelabel:
             enabled: false
@@ -40,10 +41,7 @@ logging:
     level:
         root: INFO
         com.amazonaws: ERROR
-        com.icegreen.greenmail.smtp.SmtpManager: ERROR
         org.springframework: INFO
-        org.hibernate: ERROR
-        org.hibernate.engine.jdbc.spi.SqlExceptionHelper: OFF
         com.wutsi: DEBUG
         springfox: ERROR
 
@@ -51,45 +49,7 @@ logging:
         console: "%d Type=%level Logger=%c Thread=%thread %m%n"
         file: "%d Type=%level Logger=%c Thread=%thread %m%n"
 
-koki:
-    webapp:
-        client-id: koki-portal-public
-        base-url: http://localhost:${server.port}
-        asset-url: ""
-    rest:
-        connection-timeout: 15000
-        read-timeout: 15000
-    sdk:
-        base-url: http://localhost:8080
-
-wutsi:
-    platform:
-        cache:
-            name: koki
-            type: redis
-            ttl: 86400
-            redis:
-                url: redis://:test@localhost:6379
-        executor:
-            thread-pool:
-                name: ${koki.webapp.client-id}
-                size: 16
-        mq:
-            type: rabbitmq
-            rabbitmq:
-                url: amqp://localhost
-                exchange-name: koki-tracking
-                max-retries: 24
-                ttl-seconds: 84600
-        storage:
-            enabled: true
-            type: local # local | s3
-            local:
-                directory: ${user.home}/__wutsi
-                base-url: http://localhost:${server.port}
-                servlet-path: /local-storage
-            s3:
-                bucket: koki-test
-                region: us-east-1
-                access-key: ""
-                secret-key: ""
+ndopify:
+    server:
+        api:
+            base-url: http://localhost:8080

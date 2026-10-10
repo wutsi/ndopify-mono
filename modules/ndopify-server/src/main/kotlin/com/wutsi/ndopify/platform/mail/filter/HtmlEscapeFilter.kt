@@ -1,8 +1,7 @@
-package com.wutsi.koki.email.server.service.filter
+package com.wutsi.ndopify.platform.mail.filter
 
-import com.wutsi.koki.email.server.service.EmailFilter
+import com.wutsi.ndopify.platform.mail.MailFilter
 import org.apache.commons.text.StringEscapeUtils
-import org.springframework.stereotype.Service
 
 /**
  * Filter that escape latin characters:
@@ -10,9 +9,8 @@ import org.springframework.stereotype.Service
  * - ç -> &ccedil;
  * - etc...
  */
-@Service
-class HtmlEscapeFilter : EmailFilter {
-    override fun filter(html: String, tenantId: Long): String {
+class HtmlEscapeFilter : MailFilter {
+    override fun filter(html: String): String {
         return StringEscapeUtils.unescapeXml(
             StringEscapeUtils.escapeHtml4(html)
         )

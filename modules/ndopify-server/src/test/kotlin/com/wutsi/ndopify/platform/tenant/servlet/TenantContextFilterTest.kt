@@ -11,7 +11,7 @@ import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.ForbiddenException
 import com.wutsi.ndopify.platform.tenant.TenantContext
-import com.wutsi.ndopify.security.dto.JWTPrincipal
+import com.wutsi.ndopify.security.dto.JwtPrincipal
 import com.wutsi.ndopify.security.server.service.AccessTokenService
 import jakarta.servlet.FilterChain
 import jakarta.servlet.ServletResponse
@@ -36,7 +36,7 @@ class TenantContextFilterTest {
 
     @Test
     fun `sets tenant id from principal during the chain, then clears it`() {
-        val principal = mock<JWTPrincipal>()
+        val principal = mock<JwtPrincipal>()
         doReturn(100L).whenever(principal).getTenantId()
         doReturn(principal).whenever(accessTokenService).getPrincipalOrNull()
 
@@ -78,7 +78,7 @@ class TenantContextFilterTest {
 
     @Test
     fun `principal tenant id takes precedence over the header`() {
-        val principal = mock<JWTPrincipal>()
+        val principal = mock<JwtPrincipal>()
         doReturn(100L).whenever(principal).getTenantId()
         doReturn(principal).whenever(accessTokenService).getPrincipalOrNull()
         doReturn("200").whenever(request).getHeader(HttpHeader.TENANT_ID)

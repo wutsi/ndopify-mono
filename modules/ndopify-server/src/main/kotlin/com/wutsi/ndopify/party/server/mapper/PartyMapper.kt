@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.party.server.mapper
 
 import com.wutsi.ndopify.party.dto.Party
+import com.wutsi.ndopify.party.dto.PartySummary
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import org.springframework.stereotype.Service
 
@@ -16,6 +17,19 @@ class PartyMapper {
             createdAt = entity.createdAt,
             modifiedAt = entity.modifiedAt,
             photoUrl = entity.photoUrl,
+        )
+    }
+
+    fun toPartySummary(entity: PartyEntity): PartySummary {
+        return PartySummary(
+            id = entity.id ?: -1,
+            firstName = entity.firstName,
+            lastName = entity.lastName,
+            email = entity.email,
+            kycStatus = entity.kycStatus,
+            photoUrl = entity.photoUrl,
+            createdAt = entity.createdAt,
+            modifiedAt = entity.modifiedAt,
         )
     }
 }

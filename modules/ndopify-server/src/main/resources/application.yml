@@ -59,7 +59,7 @@ spring:
 
     mail:
         default-encoding: UTF-8
-        host: localhost
+        host: localhost # Local SMTP server mailpit - for testing
         username: user@example.com
         password: secret
         test-connection: false
@@ -68,7 +68,7 @@ spring:
                 debug: false
                 smtp:
                     from: no-reply@wutsi.com
-                    port: 3025
+                    port: 1025
                     auth: false
                     starttls:
                         enable: false
@@ -115,7 +115,7 @@ springdoc:
                 - /v1/agents/**
 
         -   group: party
-            display-name: Receipient API
+            display-name: Party API
             paths-to-match:
                 - /v1/kyc
                 - /v1/kyc/**

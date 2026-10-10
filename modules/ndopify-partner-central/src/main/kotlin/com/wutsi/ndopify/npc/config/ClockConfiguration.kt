@@ -1,4 +1,4 @@
-package com.wutsi.koki.portal.pub.config
+package com.wutsi.ndopify.npc.config
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration

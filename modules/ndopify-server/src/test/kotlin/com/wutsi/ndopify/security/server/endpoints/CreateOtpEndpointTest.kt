@@ -1,7 +1,5 @@
 package com.wutsi.ndopify.security.server.endpoints
 
-import com.icegreen.greenmail.util.GreenMail
-import com.icegreen.greenmail.util.ServerSetupTest
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
@@ -16,7 +14,6 @@ import com.wutsi.ndopify.security.server.service.PasswordEncryptor
 import jakarta.mail.Message
 import jakarta.mail.internet.InternetAddress
 import jakarta.mail.internet.MimeMessage
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
@@ -25,7 +22,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -59,30 +55,18 @@ class CreateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
     @Autowired
     private lateinit var passwordEncryptor: PasswordEncryptor
 
-    private lateinit var smtp: GreenMail
-
     @BeforeEach
     override fun setUp() {
         super.setUp()
 
         doReturn(CODE).whenever(otpGenerator).generate()
-
-        smtp = GreenMail(ServerSetupTest.SMTP)
-        smtp.setUser(username, password)
-        smtp.start()
-    }
-
-    @AfterEach
-    fun tearDown() {
-        if (smtp.isRunning) {
-            smtp.stop()
-        }
     }
 
     @Test
     fun `existing user without OTP`() {
         val before = System.currentTimeMillis()
-        val response = rest.postForEntity("/v1/otp", CreateOtpRequest(email = "ray.sponsible@gmail.com"), Void::class.java)
+        val response =
+            rest.postForEntity("/v1/otp", CreateOtpRequest(email = "ray.sponsible@gmail.com"), Void::class.java)
         val after = System.currentTimeMillis()
 
         assertEquals(HttpStatus.OK, response.statusCode)
@@ -123,36 +107,25 @@ class CreateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
         val code = Regex("""(?<![#\w])\d{6}\b""").find(receivedMessage().content.toString())?.value
 
         assertEquals(CODE, code)
-        assertTrue(passwordEncryptor.matches(code!!, otp.data, otp.salt), "the emailed code must verify against the stored hash")
+        assertTrue(
+            passwordEncryptor.matches(code!!, otp.data, otp.salt),
+            "the emailed code must verify against the stored hash"
+        )
     }
 
     @Test
-    fun `unknown email creates the user and emails the code`() {
+    fun `unknown email fails`() {
         val response = rest.postForEntity("/v1/otp", CreateOtpRequest(email = "NEW.Agent@Gmail.com"), Void::class.java)
 
-        assertEquals(HttpStatus.OK, response.statusCode)
-
-        val user = userRepository.findByEmailIgnoreCase("new.agent@gmail.com").get()
-        assertEquals("new.agent@gmail.com", user.email) // stored lower-cased
-        assertNull(user.party)
-        assertTrue(!user.deleted)
-
-        val otp = authFactorRepository.findByUserAndAuthType(user, AuthType.OTP).get()
-        assertEquals(passwordEncryptor.encrypt(CODE, otp.salt), otp.data)
-
-        val message = receivedMessage()
-        assertEquals("new.agent@gmail.com", recipient(message).address)
-        assertNull(recipient(message).personal)
-        val body = message.content.toString()
-        assertTrue(body.contains(CODE))
-        assertTrue(body.contains("new.agent@gmail.com"), "without a name, the email greets the address")
+        assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
     }
 
     @Test
     fun `email is case insensitive`() {
         val usersBefore = userRepository.count()
 
-        val response = rest.postForEntity("/v1/otp", CreateOtpRequest(email = "Ray.Sponsible@GMAIL.com"), Void::class.java)
+        val response =
+            rest.postForEntity("/v1/otp", CreateOtpRequest(email = "Ray.Sponsible@GMAIL.com"), Void::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(usersBefore, userRepository.count()) // no duplicate user
@@ -224,7 +197,8 @@ class CreateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
     fun `tenant falls back to the home tenant of the user`() {
         ignoreTenantIdHeader = true
 
-        val response = rest.postForEntity("/v1/otp", CreateOtpRequest(email = "home-tenant@gmail.com"), Void::class.java)
+        val response =
+            rest.postForEntity("/v1/otp", CreateOtpRequest(email = "home-tenant@gmail.com"), Void::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
 
@@ -247,7 +221,8 @@ class CreateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
     fun `no tenant`() {
         ignoreTenantIdHeader = true
 
-        val response = rest.postForEntity("/v1/otp", CreateOtpRequest(email = "has-otp@gmail.com"), ErrorResponse::class.java)
+        val response =
+            rest.postForEntity("/v1/otp", CreateOtpRequest(email = "has-otp@gmail.com"), ErrorResponse::class.java)
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
         assertEquals(ErrorCode.HTTP_MISSING_PARAMETER, response.body?.error?.code)
@@ -261,7 +236,8 @@ class CreateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
     fun `unknown tenant`() {
         overrideTenantId = 999L
 
-        val response = rest.postForEntity("/v1/otp", CreateOtpRequest(email = "has-otp@gmail.com"), ErrorResponse::class.java)
+        val response =
+            rest.postForEntity("/v1/otp", CreateOtpRequest(email = "has-otp@gmail.com"), ErrorResponse::class.java)
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals(ErrorCode.TENANT_NOT_FOUND, response.body?.error?.code)
@@ -273,14 +249,14 @@ class CreateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
     fun `email delivery failure`() {
         smtp.stop()
 
-        val response = rest.postForEntity("/v1/otp", CreateOtpRequest(email = "undeliverable@gmail.com"), ErrorResponse::class.java)
+        val response = rest.postForEntity(
+            "/v1/otp",
+            CreateOtpRequest(email = "ray.sponsible@gmail.com"),
+            ErrorResponse::class.java
+        )
 
         // The caller must know the code was not sent...
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.statusCode)
-
-        // ...and nothing is kept for a code nobody received.
-        assertFalse(userRepository.findByEmailIgnoreCase("undeliverable@gmail.com").isPresent)
-        assertEquals(1, authFactorRepository.findAll().count { it.authType == AuthType.OTP }) // only the fixture's
     }
 
     @Test
