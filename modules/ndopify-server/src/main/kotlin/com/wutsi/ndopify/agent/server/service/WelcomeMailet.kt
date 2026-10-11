@@ -36,7 +36,7 @@ class WelcomeMailet(
                 context = mapOf(
                     "tenant_logo_url" to tenant.logoUrl,
                     "tenant_name" to tenant.name,
-                    "kyc_url" to "${tenant.partnerCentralUrl}/kyc/${kyc.id}/start",
+                    "kyc_url" to "${tenant.partnerCentralUrl}/kyc",
                     "recipient_name" to party.fullName(),
                 )
             )

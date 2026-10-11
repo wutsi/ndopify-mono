@@ -26,13 +26,14 @@ class OtpMailet(
         val user = authFactor.user
 
         // The tenant of the request wins; fall back to the user's home tenant.
-        val tenantId = TenantContext.get() ?: user.tenantId
-        ?: throw BadRequestException(
-            Error(
-                code = ErrorCode.HTTP_MISSING_PARAMETER,
-                parameter = Parameter(name = HttpHeader.TENANT_ID, type = ParameterType.PARAMETER_TYPE_HEADER),
+        val tenantId = TenantContext.get()
+            ?: user.tenantId
+            ?: throw BadRequestException(
+                Error(
+                    code = ErrorCode.HTTP_MISSING_PARAMETER,
+                    parameter = Parameter(name = HttpHeader.TENANT_ID, type = ParameterType.PARAMETER_TYPE_HEADER),
+                )
             )
-        )
         val tenant = tenantService.findById(tenantId)
 
         val expiresAt = requireNotNull(authFactor.expiresAt) { "An OTP must have an expiry" }
@@ -48,7 +49,7 @@ class OtpMailet(
                     context = mapOf(
                         "tenant_logo_url" to tenant.logoUrl,
                         "tenant_name" to tenant.name,
-                        "recipient_name" to (fullName ?: user.email),
+                        "recipient_name" to (fullName ?: ""),
                         "otp_code" to code,
                         "ttl" to ttlMinutes,
                     )

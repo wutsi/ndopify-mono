@@ -11,6 +11,7 @@ import com.wutsi.ndopify.party.dto.IdentificationType
 import com.wutsi.ndopify.party.dto.KycImageType
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.KycVerificationType
+import com.wutsi.ndopify.party.dto.PaymentMethodStatus
 import com.wutsi.ndopify.party.dto.SearchKycCaseRequest
 import com.wutsi.ndopify.party.server.dao.KycCaseRepository
 import com.wutsi.ndopify.party.server.dao.KycImageRepository
@@ -41,6 +42,7 @@ class KycService(
     private val kycImageDao: KycImageRepository,
     private val verifierProvider: KycCaseVerifierProvider,
     private val storageProvider: StorageServiceProvider,
+    private val paymentMethodService: PaymentMethodService,
     private val clock: Clock,
     private val logger: KVLogger,
 ) {
@@ -168,6 +170,14 @@ class KycService(
         startVerification(case)
 
         // Verifications
+        val updatedCase = verifyIdentification(case)
+        verifyPaymentMethods(updatedCase)
+
+        return updatedCase
+    }
+
+    private fun verifyIdentification(case: KycCaseEntity): KycCaseEntity {
+        // ID
         val idVerification = verify(case, KycVerificationType.IDENTIFICATION).firstOrNull()
             ?: throw ConflictException(
                 error = Error(
@@ -178,13 +188,12 @@ class KycService(
         logger.add("kyc_id_status", idVerification.status)
         logger.add("kyc_id_score", idVerification.score)
 
+        // Selfie
         val selfieVerification = verify(case, KycVerificationType.SELFIE).firstOrNull()
         logger.add("kyc_selfie_status", selfieVerification?.status)
         logger.add("kyc_selfie_score", selfieVerification?.score)
 
-        verify(case, KycVerificationType.PAYMENT_METHOD)
-
-        // For the overall status and score, consider ONLY the ID and selfie verifications.
+        // KYC status
         val status =
             if (idVerification.status == KycStatus.VERIFIED && (selfieVerification == null || selfieVerification.status == KycStatus.VERIFIED)) {
                 KycStatus.VERIFIED
@@ -198,8 +207,7 @@ class KycService(
         }
         logger.add("kyc_case_status", status)
         logger.add("kyc_case_score", score)
-
-        val copy = dao.save(
+        val updatedCase = dao.save(
             case.copy(
                 status = status,
                 score = score,
@@ -208,9 +216,28 @@ class KycService(
         )
 
         // Update party KYC status
-        partyService.updateKyStatus(copy.party, copy.status)
+        partyService.updateKyStatus(case.party, status)
 
-        return copy
+        return updatedCase
+    }
+
+    private fun verifyPaymentMethods(case: KycCaseEntity): KycCaseEntity {
+        val paymentVerifications = verify(case, KycVerificationType.PAYMENT_METHOD)
+
+        // Update the payment methods KYC status
+        paymentVerifications.forEach { verification ->
+            val paymentMethod = verification.paymentMethod
+            if (paymentMethod != null && paymentMethod.status == PaymentMethodStatus.PENDING_VERIFICATION) {
+                val status = if (verification.status == KycStatus.VERIFIED) {
+                    PaymentMethodStatus.VERIFIED
+                } else {
+                    PaymentMethodStatus.REJECTED
+                }
+                paymentMethodService.updateStatus(verification.paymentMethod, status)
+            }
+        }
+
+        return case
     }
 
     private fun verify(case: KycCaseEntity, verificationType: KycVerificationType): List<KycVerificationEntity> {

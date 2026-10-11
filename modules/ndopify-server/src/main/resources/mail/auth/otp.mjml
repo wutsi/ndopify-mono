@@ -20,7 +20,7 @@
                 <mj-text>
                     Voici votre code de vérification à usage unique:
                 </mj-text>
-                <mj-text font-weight="bold">
+                <mj-text font-weight="bold" font-size="20px">
                     {{otp_code}}
                 </mj-text>
                 <mj-text>

@@ -18,7 +18,6 @@ import com.wutsi.ndopify.party.dto.SearchKycCaseRequest
 import com.wutsi.ndopify.party.dto.UpdatePartyRequest
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.party.server.domain.PaymentMethodEntity
-import com.wutsi.ndopify.party.server.service.IdentificationService
 import com.wutsi.ndopify.party.server.service.KycService
 import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.party.server.service.PaymentMethodService
@@ -37,7 +36,6 @@ class AgentService(
     private val dao: AgentRepository,
     private val clock: Clock,
     private val partyService: PartyService,
-    private val identificationService: IdentificationService,
     private val kycService: KycService,
     private val paymentMethodService: PaymentMethodService,
     private val userService: UserService,

@@ -37,14 +37,13 @@ class PaymentMethodService(
     }
 
     fun findById(id: String): PaymentMethodEntity {
-        return dao.findById(id).orElseThrow {
-            NotFoundException(
+        return findByIdOrNull(id)
+            ?: throw NotFoundException(
                 error = Error(
                     code = ErrorCode.PAYMENT_METHOD_NOT_FOUND,
                     parameter = Parameter(value = id)
                 )
             )
-        }
     }
 
     fun findByIdOrNull(id: String): PaymentMethodEntity? {

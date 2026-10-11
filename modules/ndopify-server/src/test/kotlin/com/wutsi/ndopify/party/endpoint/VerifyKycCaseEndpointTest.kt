@@ -11,8 +11,10 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.KycVerificationType
+import com.wutsi.ndopify.party.dto.PaymentMethodStatus
 import com.wutsi.ndopify.party.server.dao.KycCaseRepository
 import com.wutsi.ndopify.party.server.dao.PartyRepository
+import com.wutsi.ndopify.party.server.dao.PaymentMethodRepository
 import com.wutsi.ndopify.party.server.domain.KycCaseEntity
 import com.wutsi.ndopify.party.server.domain.KycVerificationEntity
 import com.wutsi.ndopify.party.server.service.KycCaseVerifier
@@ -30,7 +32,7 @@ import kotlin.test.assertNull
 
 /**
  * The verifiers are unit-tested on their own, so they're mocked here: this test only covers how the endpoint
- * orchestrates them and aggregates their results into the case and party KYC status.
+ * orchestrates them and aggregates their results into the case, party and payment method statuses.
  */
 @Sql(value = ["/db/test/clean.sql", "/db/test/party/VerifyKycCaseEndpoint.sql"])
 class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
@@ -39,6 +41,9 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
 
     @Autowired
     private lateinit var partyDao: PartyRepository
+
+    @Autowired
+    private lateinit var paymentMethodDao: PaymentMethodRepository
 
     @MockitoBean
     private lateinit var idVerifier: KycCaseVerifierIdentification
@@ -51,7 +56,21 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
 
     @BeforeEach
     fun stubPaymentMethodVerifier() {
-        setUpVerifier(paymentMethodVerifier, KycVerificationType.PAYMENT_METHOD, KycStatus.VERIFIED, 100)
+        setUpPaymentMethodVerifier("payment-method-pending", KycStatus.VERIFIED)
+    }
+
+    private fun setUpPaymentMethodVerifier(paymentMethodId: String?, status: KycStatus) {
+        val paymentMethod = paymentMethodId?.let { paymentMethodDao.findById(it).orElseThrow() }
+        doReturn(
+            listOf(
+                KycVerificationEntity(
+                    type = KycVerificationType.PAYMENT_METHOD,
+                    paymentMethod = paymentMethod,
+                    status = status,
+                    score = if (status == KycStatus.VERIFIED) 100 else 10,
+                )
+            )
+        ).whenever(paymentMethodVerifier).verify(any())
     }
 
     private fun setUpVerifier(
@@ -85,6 +104,11 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(status, party.kycStatus)
     }
 
+    private fun assertPaymentMethodStatus(status: PaymentMethodStatus, id: String = "payment-method-pending") {
+        val paymentMethod = paymentMethodDao.findById(id).orElseThrow()
+        assertEquals(status, paymentMethod.status)
+    }
+
     private fun assertNoVerifierCalled() {
         verify(idVerifier, never()).verify(any())
         verify(selfieVerifier, never()).verify(any())
@@ -101,6 +125,7 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(HttpStatus.OK, response.statusCode)
         assertCase(KycStatus.VERIFIED, 95)
         assertPartyKycStatus(KycStatus.VERIFIED)
+        assertPaymentMethodStatus(PaymentMethodStatus.VERIFIED)
 
         val isPendingCase = { c: KycCaseEntity -> c.id == "kyc-case-pending" }
         verify(idVerifier).verify(argThat(isPendingCase))
@@ -156,16 +181,55 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
-    fun `payment method rejected - does not affect the case status nor score`() {
+    fun `payment method rejected - payment method rejected, without affecting the case status nor score`() {
         setUpVerifier(idVerifier, KycVerificationType.IDENTIFICATION, KycStatus.VERIFIED, 90)
         setUpVerifier(selfieVerifier, KycVerificationType.SELFIE, KycStatus.VERIFIED, 100)
-        setUpVerifier(paymentMethodVerifier, KycVerificationType.PAYMENT_METHOD, KycStatus.REJECTED, 10)
+        setUpPaymentMethodVerifier("payment-method-pending", KycStatus.REJECTED)
 
         val response = verify()
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertCase(KycStatus.VERIFIED, 95)
         assertPartyKycStatus(KycStatus.VERIFIED)
+        assertPaymentMethodStatus(PaymentMethodStatus.REJECTED)
+    }
+
+    @Test
+    fun `identification rejected - payment method still verified on its own result`() {
+        setUpVerifier(idVerifier, KycVerificationType.IDENTIFICATION, KycStatus.REJECTED, 40)
+        setUpVerifier(selfieVerifier, KycVerificationType.SELFIE, KycStatus.VERIFIED, 100)
+
+        val response = verify()
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertCase(KycStatus.REJECTED, 70)
+        assertPaymentMethodStatus(PaymentMethodStatus.VERIFIED)
+    }
+
+    @Test
+    fun `payment method not pending verification - status unchanged`() {
+        setUpVerifier(idVerifier, KycVerificationType.IDENTIFICATION, KycStatus.VERIFIED, 90)
+        setUpVerifier(selfieVerifier, KycVerificationType.SELFIE, KycStatus.VERIFIED, 100)
+        setUpPaymentMethodVerifier("payment-method-verified", KycStatus.REJECTED)
+
+        val response = verify()
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertPaymentMethodStatus(PaymentMethodStatus.VERIFIED, "payment-method-verified")
+        assertPaymentMethodStatus(PaymentMethodStatus.PENDING_VERIFICATION)
+    }
+
+    @Test
+    fun `payment method verification without payment method - no payment method updated`() {
+        setUpVerifier(idVerifier, KycVerificationType.IDENTIFICATION, KycStatus.VERIFIED, 90)
+        setUpVerifier(selfieVerifier, KycVerificationType.SELFIE, KycStatus.VERIFIED, 100)
+        setUpPaymentMethodVerifier(null, KycStatus.VERIFIED)
+
+        val response = verify()
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertPaymentMethodStatus(PaymentMethodStatus.PENDING_VERIFICATION)
+        assertPaymentMethodStatus(PaymentMethodStatus.VERIFIED, "payment-method-verified")
     }
 
     @Test
@@ -180,6 +244,7 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         // The transaction is rolled back: the case doesn't stay IN_PROGRESS
         assertCase(KycStatus.PENDING, null)
         assertPartyKycStatus(KycStatus.PENDING)
+        assertPaymentMethodStatus(PaymentMethodStatus.PENDING_VERIFICATION)
 
         verify(selfieVerifier, never()).verify(any())
         verify(paymentMethodVerifier, never()).verify(any())
