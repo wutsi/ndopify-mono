@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.party.server.domain
 
-import com.wutsi.ndopify.party.dto.IdentificationImageType
+import com.wutsi.ndopify.party.dto.IdentificationType
+import com.wutsi.ndopify.party.dto.KycImageType
 import com.wutsi.ndopify.refdata.dto.StorageType
 import jakarta.persistence.Entity
 import jakarta.persistence.FetchType
@@ -13,8 +14,8 @@ import java.util.Date
 import java.util.UUID
 
 @Entity
-@Table(name = "T_IDENTIFICATION_IMAGE")
-data class IdentificationImageEntity(
+@Table(name = "T_KYC_IMAGE")
+data class KycImageEntity(
     @Id
     val id: String = UUID.randomUUID().toString(),
 
@@ -24,14 +25,15 @@ data class IdentificationImageEntity(
     val tenantId: Long? = null,
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "identification_id")
-    val identification: IdentificationEntity = IdentificationEntity(),
+    @JoinColumn(name = "case_id")
+    val kycCase: KycCaseEntity = KycCaseEntity(),
 
-    val imageType: IdentificationImageType = IdentificationImageType.UNKNOWN,
+    val identificationType: IdentificationType = IdentificationType.UNKNOWN,
+    val imageType: KycImageType = KycImageType.UNKNOWN,
     val storageType: StorageType = StorageType.UNKNOWN,
     val path: String? = null,
     val mimeType: String? = null,
 
     val createdAt: Date = Date(),
-    val uploadedAt: Date? = null,
+    val modifiedAt: Date = Date(),
 )

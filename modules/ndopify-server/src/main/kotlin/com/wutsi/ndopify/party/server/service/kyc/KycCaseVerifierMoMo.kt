@@ -1,80 +1,107 @@
 package com.wutsi.ndopify.party.server.service.kyc
 
-import com.wutsi.ndopify.party.dto.KycImageType
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.KycVerificationType
+import com.wutsi.ndopify.party.dto.PaymentMethodStatus
+import com.wutsi.ndopify.party.dto.PaymentMethodType
 import com.wutsi.ndopify.party.server.dao.KycVerificationRepository
+import com.wutsi.ndopify.party.server.dao.PaymentMethodRepository
 import com.wutsi.ndopify.party.server.domain.KycCaseEntity
-import com.wutsi.ndopify.party.server.domain.KycImageEntity
 import com.wutsi.ndopify.party.server.domain.KycVerificationEntity
+import com.wutsi.ndopify.party.server.domain.PaymentMethodEntity
 import com.wutsi.ndopify.party.server.service.KycCaseVerifier
-import com.wutsi.ndopify.party.server.service.KycInfoExtractorProvider
-import com.wutsi.ndopify.platform.storage.StorageServiceProvider
-import com.wutsi.ndopify.util.MimeUtils
+import com.wutsi.ndopify.party.server.service.KycCaseVerifier.Companion.LOW_SCORE_THRESHOLD
+import com.wutsi.ndopify.platform.momo.MoMoGatewayProvider
+import com.wutsi.ndopify.platform.momo.model.MoMoKycMatchRequest
+import com.wutsi.ndopify.refdata.dto.KycErrorCode
 import jakarta.transaction.Transactional
-import java.io.File
-import java.io.FileOutputStream
-import java.nio.file.Files
+import org.springframework.stereotype.Service
 import java.time.Clock
 import java.util.Date
 import java.util.UUID
 
-abstract class AbstractImageBasedKycCaseVerifier(
-    protected val verificationDao: KycVerificationRepository,
-    protected val clock: Clock,
-    protected val storageProvider: StorageServiceProvider,
-    protected val infoExtractorProvider: KycInfoExtractorProvider,
+@Service
+class KycCaseVerifierMoMo(
+    private val verificationDao: KycVerificationRepository,
+    private val paymentMethodDao: PaymentMethodRepository,
+    private val clock: Clock,
+    private val gatewayProvider: MoMoGatewayProvider,
 ) : KycCaseVerifier {
-    abstract fun getVerificationType(): KycVerificationType
-    abstract fun getImageTypes(): List<KycImageType>
-    abstract fun match(verification: KycVerificationEntity, info: KycInfo): KycVerificationEntity
-
     @Transactional
     override fun verify(case: KycCaseEntity): List<KycVerificationEntity> {
-        val files = getFiles(case)
-        if (files.isEmpty()) {
+        val paymentMethods = getPaymentMethods(case)
+        if (paymentMethods.isEmpty()) {
             return emptyList()
         }
 
-        val verification = start(case)
-        val info = extractInformations(files)
-        return listOf(match(verification, info))
+        return paymentMethods.map { method -> verify(method, case) }
     }
 
-    private fun start(case: KycCaseEntity): KycVerificationEntity {
+    private fun getPaymentMethods(case: KycCaseEntity): List<PaymentMethodEntity> {
+        return paymentMethodDao.findByParty(case.party)
+            .filter { method -> method.status == PaymentMethodStatus.PENDING_VERIFICATION }
+            .filter { method -> method.type == PaymentMethodType.MOBILE_MONEY }
+    }
+
+    private fun verify(paymentMethod: PaymentMethodEntity, case: KycCaseEntity): KycVerificationEntity {
+        val verification = start(paymentMethod, case)
+        return match(paymentMethod, verification)
+    }
+
+    private fun start(paymentMethod: PaymentMethodEntity, case: KycCaseEntity): KycVerificationEntity {
         val now = Date(clock.millis())
         return verificationDao.save(
             KycVerificationEntity(
                 id = UUID.randomUUID().toString(),
                 case = case,
-                type = getVerificationType(),
+                type = KycVerificationType.PAYMENT_METHOD,
                 status = KycStatus.IN_PROGRESS,
+                paymentMethod = paymentMethod,
                 createdAt = now,
                 modifiedAt = now
             )
         )
     }
 
-    private fun extractInformations(files: List<File>): KycInfo {
-        val infoExtractor = infoExtractorProvider.get(getVerificationType())
-        return infoExtractor.extract(files)
-    }
-
-    private fun getFiles(case: KycCaseEntity): List<File> {
-        val files = case.images
-            .filter { img -> img.path != null }
-            .filter { img -> getImageTypes().contains(img.imageType) }
-            .map { img -> toFile(img) }
-        return files
-    }
-
-    private fun toFile(img: KycImageEntity): File {
-        val extension = MimeUtils.getExtensionFromMimeType(img.mimeType)
-        val file = Files.createTempFile(img.id + "-${img.imageType}", ".$extension").toFile()
-        val storage = storageProvider.get()
-        FileOutputStream(file).use { out ->
-            storage.get(img.path!!, out)
+    private fun match(paymentMethod: PaymentMethodEntity, verification: KycVerificationEntity): KycVerificationEntity {
+        val gateway = gatewayProvider.getByPhoneNumber(paymentMethod.number)
+        if (gateway == null) {
+            return verificationDao.save(
+                verification.copy(
+                    status = KycStatus.REQUIRES_MANUAL_REVIEW,
+                    modifiedAt = Date(clock.millis())
+                )
+            )
         }
-        return file
+
+        val match = gateway.kycMatch(
+            MoMoKycMatchRequest(
+                phoneNumber = paymentMethod.number,
+                holderName = paymentMethod.party.fullName(),
+                countryCode = ""
+            )
+        )
+
+        val score = match.holderNameScore * 100.0
+        var status = KycStatus.REJECTED
+        var errorCode: String? = null
+        if (!match.active) {
+            errorCode = KycErrorCode.INACTIVE
+        } else {
+            if (score < LOW_SCORE_THRESHOLD) {
+                errorCode = KycErrorCode.LOW_SCORE
+            } else {
+                status = KycStatus.VERIFIED
+            }
+        }
+
+        return verificationDao.save(
+            verification.copy(
+                score = score.toInt(),
+                status = status,
+                errorCode = errorCode,
+                modifiedAt = Date(clock.millis())
+            )
+        )
     }
 }

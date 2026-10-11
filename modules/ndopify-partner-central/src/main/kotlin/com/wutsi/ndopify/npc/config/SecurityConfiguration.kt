@@ -31,8 +31,6 @@ class SecurityConfiguration(
             .exceptionHandling { it.authenticationEntryPoint(LoginUrlAuthenticationEntryPoint("/login")) }
             .csrf { customizer -> customizer.disable() }
             .httpBasic { customizer -> customizer.disable() }
-//            .formLogin { customizer -> customizer.loginPage("/login") }
-//            .logout { customizer -> customizer.disable() }
             .build()
     }
 

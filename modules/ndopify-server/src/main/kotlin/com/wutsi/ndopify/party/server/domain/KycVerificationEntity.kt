@@ -8,17 +8,20 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
 import java.util.Date
-import java.util.UUID
 
 @Entity
 @Table(name = "T_KYC_VERIFICATION")
 data class KycVerificationEntity(
     @Id
-    val id: String = UUID.randomUUID().toString(),
+    val id: String? = null,
 
     @ManyToOne
     @JoinColumn(name = "case_id")
     val case: KycCaseEntity = KycCaseEntity(),
+
+    @ManyToOne
+    @JoinColumn(name = "payment_method_id")
+    val paymentMethod: PaymentMethodEntity? = null,
 
     val type: KycVerificationType = KycVerificationType.UNKNOWN,
     val status: KycStatus = KycStatus.UNKNOWN,

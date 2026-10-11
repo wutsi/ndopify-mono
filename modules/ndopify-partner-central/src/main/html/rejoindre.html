@@ -1,0 +1,565 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>Rejoindre Ndopify — Ndopify Partner Central</title>
+    <meta content="Créez votre compte agent Ndopify : vos coordonnées, votre expérience, votre zone et votre numéro Mobile Money."
+          name="description">
+    <meta content="noindex, nofollow" name="robots">
+    <meta content="#ffffff" name="theme-color">
+    <link href="assets/images/icon.png" rel="icon" type="image/png">
+    <link href="assets/images/icon.png" rel="apple-touch-icon">
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
+    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap"
+          rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/css/intlTelInput.min.css" rel="stylesheet">
+    <link href="assets/css/partner-central.css" rel="stylesheet">
+    <link href="assets/css/rejoindre.css" rel="stylesheet">
+    <script defer src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/js/intlTelInput.min.js"></script>
+    <script defer src="assets/js/util.js"></script>
+    <script defer src="assets/js/rejoindre.js"></script>
+</head>
+<body data-page="join">
+<a class="skip-link" href="#main">Aller au contenu</a>
+<header class="site-header">
+    <div class="site-header__inner">
+        <a class="site-header__brand" href="login.html">
+            <img alt="Ndopify, espace partenaires" height="40" src="assets/images/logo.png" width="84">
+        </a>
+    </div>
+</header>
+<main class="page" id="main">
+    <div class="column">
+        <div class="page-intro">
+            <h1>Rejoindre Ndopify</h1>
+        </div>
+
+        <div class="progress" data-progress-block>
+            <p class="progress__label" data-progress-label id="progress-label">Étape 1 sur 5</p>
+            <div aria-labelledby="progress-label" aria-valuemax="5" aria-valuemin="1"
+                 aria-valuenow="1" aria-valuetext="Étape 1 sur 5" class="progress__track" data-progress
+                 role="progressbar">
+                <div class="progress__bar" data-progress-bar style="transform: scaleX(0.2)"></div>
+            </div>
+        </div>
+
+        <h2 class="visually-hidden" data-steps-title>Étapes du formulaire</h2>
+        <form class="form" data-join-form novalidate>
+            <fieldset class="step" data-step="identite" tabindex="-1">
+                <legend class="visually-hidden">Étape 1 sur 5 : vos coordonnées</legend>
+                <h3 aria-hidden="true">Parlez-nous de vous</h3>
+                <p>Ces informations servent à créer votre compte agent. Comptez environ 3&nbsp;minutes pour tout le
+                    formulaire.</p>
+                <div class="field">
+                    <label class="field__label" for="firstName">Prénom</label>
+                    <input aria-describedby="firstName-error" autocapitalize="words" autocomplete="given-name" class="input" id="firstName"
+                           name="firstName" required
+                           type="text">
+                    <p class="field__error" hidden id="firstName-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </div>
+                <div class="field">
+                    <label class="field__label" for="lastName">Nom</label>
+                    <input aria-describedby="lastName-error" autocapitalize="words" autocomplete="family-name" class="input" id="lastName"
+                           name="lastName" required
+                           type="text">
+                    <p class="field__error" hidden id="lastName-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </div>
+                <div class="field">
+                    <label class="field__label" for="email">Adresse email</label>
+                    <input aria-describedby="email-error" autocapitalize="off" autocomplete="email" class="input" id="email" inputmode="email"
+                           name="email" required spellcheck="false" type="email">
+                    <p class="field__error" hidden id="email-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                    <div aria-live="polite">
+                        <p class="notice" data-existing-account hidden>
+                            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round"
+                                      stroke-width="1.5"/>
+                                <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
+                            </svg>
+                            <span>Un compte utilise déjà cette
+                                adresse. <a href="login.html">Connectez-vous à votre espace</a>.</span></p>
+                    </div>
+                </div>
+                <div class="field">
+                    <label class="field__label" for="whatsappNumber">Numéro WhatsApp</label>
+                    <input aria-describedby="whatsappNumber-error" autocomplete="tel" class="input" id="whatsappNumber" required
+                           type="tel">
+                    <input name="whatsappNumber" type="hidden">
+                    <p class="field__error" hidden id="whatsappNumber-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </div>
+
+                <div class="hint" id="identity-hint">
+                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                        <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/>
+                        <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
+                    </svg>
+                    <div>
+                        <p>Saisissez vos prénom et nom tels qu'ils figurent sur votre carte nationale
+                            d'identité&nbsp;: ils seront comparés lors de la vérification de votre identité.</p>
+                        <p>Votre email sert à vous connecter, avec un code à usage unique. Votre numéro WhatsApp
+                            permet à l'équipe Ndopify de vous joindre.</p>
+                    </div>
+                </div>
+
+                <div class="alert alert--warning" data-phone-unavailable hidden>
+                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                        <path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-linejoin="round"
+                              stroke-width="1.5"/>
+                        <path d="M10 8v4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/>
+                        <circle cx="10" cy="14.5" fill="currentColor" r="1"/>
+                    </svg>
+                    <div>
+                        <p class="alert__title">Nous ne pouvons pas vérifier votre numéro pour l'instant</p>
+                        <p>Vérifiez votre connexion internet, puis rechargez la page.</p>
+                    </div>
+                </div>
+
+                <div class="form__actions">
+                    <a class="btn btn--outline" data-prev href="login.html">Précédent</a>
+                    <button aria-describedby="identity-hint" aria-disabled="true" class="btn btn--primary"
+                            data-next type="button">Suivant
+                    </button>
+                </div>
+            </fieldset>
+
+            <fieldset class="step" data-step="experience" hidden tabindex="-1">
+                <legend class="visually-hidden">Étape 2 sur 5 : votre expérience</legend>
+                <h3 aria-hidden="true">Votre expérience sur le terrain</h3>
+                <p>Deux questions rapides pour mieux vous connaître.</p>
+                <fieldset aria-describedby="experienceLevel-error" class="choices" data-group="experienceLevel">
+                    <legend class="choices__legend">Depuis combien de temps exercez-vous comme agent ou démarcheur&nbsp;?</legend>
+                    <div class="choices__grid choices__grid--2">
+                        <label class="choice"><input name="experienceLevel" required type="radio" value="NOVICE"> Moins
+                            d'un an</label>
+                        <label class="choice"><input name="experienceLevel" required type="radio" value="JUNIOR"> 1 à 3
+                            ans</label>
+                        <label class="choice"><input name="experienceLevel" required type="radio" value="INTERMEDIATE">
+                            3 à 5 ans</label>
+                        <label class="choice"><input name="experienceLevel" required type="radio" value="SENIOR"> Plus
+                            de 5 ans</label>
+                    </div>
+                    <p class="field__error" hidden id="experienceLevel-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </fieldset>
+                <fieldset aria-describedby="agentType-error" class="choices" data-group="agentType">
+                    <legend class="choices__legend">Comment exercez-vous&nbsp;?</legend>
+                    <div class="choices__grid">
+                        <label class="choice"><input name="agentType" required type="radio" value="INDEPENDANT">
+                            Indépendant</label>
+                        <label class="choice"><input name="agentType" required type="radio" value="REAL_ESTATE_AGENT">
+                            Rattaché à une agence immobilière</label>
+                    </div>
+                    <p class="field__error" hidden id="agentType-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </fieldset>
+
+                <div class="hint" id="experience-hint">
+                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                        <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/>
+                        <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
+                    </svg>
+                    <div>
+                        <p>Les débutants sont les bienvenus&nbsp;: il n'y a pas de minimum d'expérience pour
+                            rejoindre Ndopify.</p>
+                    </div>
+                </div>
+
+                <div class="form__actions">
+                    <button class="btn btn--outline" data-prev type="button">Précédent</button>
+                    <button aria-describedby="experience-hint" aria-disabled="true" class="btn btn--primary"
+                            data-next type="button">Suivant
+                    </button>
+                </div>
+            </fieldset>
+
+            <fieldset class="step" data-step="secteur" hidden tabindex="-1">
+                <legend class="visually-hidden">Étape 3 sur 5 : votre zone d'intervention</legend>
+                <h3 aria-hidden="true">Votre zone d'intervention</h3>
+                <p>Les visites vous sont proposées dans les quartiers que vous connaissez.</p>
+                <div class="field">
+                    <label class="field__label" for="cityId">Ville principale d'intervention</label>
+                    <select aria-describedby="cityId-error" class="input select" id="cityId" name="cityId" required>
+                        <option value="">Choisissez une ville</option>
+                    </select>
+                    <p class="field__error" hidden id="cityId-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </div>
+
+                <p data-neighborhoods-empty>Choisissez d'abord votre ville pour voir ses quartiers.</p>
+
+                <fieldset aria-describedby="neighborhood-counter neighborhoodIds-error" class="choices" data-group="neighborhoodIds"
+                          hidden>
+                    <legend class="choices__legend">Quartiers que vous connaissez le mieux
+                        <span class="field__optional">(1&nbsp;à&nbsp;3)</span></legend>
+                    <p class="field__counter" data-neighborhood-counter id="neighborhood-counter">0 sur 3
+                        sélectionné</p>
+                    <div class="choices__grid choices__grid--compact" data-neighborhoods></div>
+                    <p class="field__error" hidden id="neighborhoodIds-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                    <p class="visually-hidden" data-neighborhood-status role="status"></p>
+                </fieldset>
+
+                <div class="hint" id="sector-hint">
+                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                        <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/>
+                        <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
+                    </svg>
+                    <div>
+                        <p>Choisissez de 1 à 3&nbsp;quartiers. Une fois les 3 choisis, décochez-en un pour en
+                            prendre un autre.</p>
+                        <p>Vous pourrez modifier votre zone plus tard.</p>
+                    </div>
+                </div>
+
+                <div class="form__actions">
+                    <button class="btn btn--outline" data-prev type="button">Précédent</button>
+                    <button aria-describedby="sector-hint" aria-disabled="true" class="btn btn--primary"
+                            data-next type="button">Suivant
+                    </button>
+                </div>
+            </fieldset>
+
+            <fieldset class="step" data-step="paiement" hidden tabindex="-1">
+                <legend class="visually-hidden">Étape 4 sur 5 : votre numéro Mobile Money</legend>
+                <h3 aria-hidden="true">Comment souhaitez-vous être payé&nbsp;?</h3>
+                <p>Ndopify vous paie directement sur votre compte Mobile Money.</p>
+                <div class="field">
+                    <label class="field__label" for="mobileMoneyNumber">Numéro Mobile Money</label>
+                    <input aria-describedby="mobileMoneyNumber-error" autocomplete="tel" class="input" id="mobileMoneyNumber" required
+                           type="tel">
+                    <input name="mobileMoneyNumber" type="hidden">
+                    <label class="check" data-same-as-whatsapp>
+                        <input id="sameAsWhatsapp" name="sameAsWhatsapp" type="checkbox">
+                        <span>Utiliser mon numéro WhatsApp (<span data-whatsapp-number></span>)</span>
+                    </label>
+                    <p class="field__error" hidden id="mobileMoneyNumber-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </div>
+
+                <div class="hint" id="payment-hint">
+                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                        <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/>
+                        <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
+                    </svg>
+                    <div>
+                        <p>MTN Mobile Money ou Orange Money.</p>
+                        <p>Le compte doit être à votre nom&nbsp;: lors de la vérification, nous comparons le nom du
+                            titulaire avec celui de votre carte nationale d'identité.</p>
+                    </div>
+                </div>
+
+                <div class="alert alert--warning" data-phone-unavailable hidden>
+                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                        <path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-linejoin="round"
+                              stroke-width="1.5"/>
+                        <path d="M10 8v4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/>
+                        <circle cx="10" cy="14.5" fill="currentColor" r="1"/>
+                    </svg>
+                    <div>
+                        <p class="alert__title">Nous ne pouvons pas vérifier votre numéro pour l'instant</p>
+                        <p>Vérifiez votre connexion internet, puis rechargez la page.</p>
+                    </div>
+                </div>
+
+                <div class="form__actions">
+                    <button class="btn btn--outline" data-prev type="button">Précédent</button>
+                    <button aria-describedby="payment-hint" aria-disabled="true" class="btn btn--primary"
+                            data-next type="button">Suivant
+                    </button>
+                </div>
+            </fieldset>
+
+            <fieldset class="step" data-step="revue" hidden tabindex="-1">
+                <legend class="visually-hidden">Étape 5 sur 5 : revue de votre candidature</legend>
+                <h3 aria-hidden="true">Vérifiez votre candidature</h3>
+                <p>Relisez avant d'envoyer. Vous pouvez modifier chaque élément.</p>
+
+                <dl class="review">
+                    <div class="review__item">
+                        <dt class="review__term">Nom complet</dt>
+                        <dd class="review__value">
+                            <p data-review-value="name" hidden></p>
+                            <p class="review__missing" data-review-missing="name" hidden>
+                                <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                    <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor"
+                                            stroke-width="1.5"/>
+                                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                          stroke-width="1.5"/>
+                                </svg>
+                                Information
+                                manquante
+                            </p>
+                        </dd>
+                        <dd class="review__value">
+                            <button class="link-button review__edit" data-edit="identite" type="button">Modifier<span
+                                class="visually-hidden"> votre nom</span></button>
+                        </dd>
+                    </div>
+                    <div class="review__item">
+                        <dt class="review__term">Adresse email</dt>
+                        <dd class="review__value">
+                            <p data-review-value="email" hidden></p>
+                            <p class="review__missing" data-review-missing="email" hidden>
+                                <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                    <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor"
+                                            stroke-width="1.5"/>
+                                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                          stroke-width="1.5"/>
+                                </svg>
+                                Information
+                                manquante
+                            </p>
+                        </dd>
+                        <dd class="review__value">
+                            <button class="link-button review__edit" data-edit="identite" type="button">Modifier<span
+                                class="visually-hidden"> votre adresse email</span></button>
+                        </dd>
+                    </div>
+                    <div class="review__item">
+                        <dt class="review__term">Numéro WhatsApp</dt>
+                        <dd class="review__value">
+                            <p data-review-value="whatsappNumber" hidden></p>
+                            <p class="review__missing" data-review-missing="whatsappNumber" hidden>
+                                <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                    <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor"
+                                            stroke-width="1.5"/>
+                                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                          stroke-width="1.5"/>
+                                </svg>
+                                Information
+                                manquante
+                            </p>
+                        </dd>
+                        <dd class="review__value">
+                            <button class="link-button review__edit" data-edit="identite" type="button">Modifier<span
+                                class="visually-hidden"> votre numéro WhatsApp</span></button>
+                        </dd>
+                    </div>
+                    <div class="review__item">
+                        <dt class="review__term">Expérience</dt>
+                        <dd class="review__value">
+                            <p data-review-value="experienceLevel" hidden></p>
+                            <p class="review__missing" data-review-missing="experienceLevel" hidden>
+                                <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                    <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor"
+                                            stroke-width="1.5"/>
+                                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                          stroke-width="1.5"/>
+                                </svg>
+                                Information
+                                manquante
+                            </p>
+                        </dd>
+                        <dd class="review__value">
+                            <button class="link-button review__edit" data-edit="experience" type="button">Modifier<span
+                                class="visually-hidden"> votre expérience</span></button>
+                        </dd>
+                    </div>
+                    <div class="review__item">
+                        <dt class="review__term">Statut</dt>
+                        <dd class="review__value">
+                            <p data-review-value="agentType" hidden></p>
+                            <p class="review__missing" data-review-missing="agentType" hidden>
+                                <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                    <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor"
+                                            stroke-width="1.5"/>
+                                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                          stroke-width="1.5"/>
+                                </svg>
+                                Information
+                                manquante
+                            </p>
+                        </dd>
+                        <dd class="review__value">
+                            <button class="link-button review__edit" data-edit="experience" type="button">Modifier<span
+                                class="visually-hidden"> votre statut</span></button>
+                        </dd>
+                    </div>
+                    <div class="review__item">
+                        <dt class="review__term">Ville</dt>
+                        <dd class="review__value">
+                            <p data-review-value="cityId" hidden></p>
+                            <p class="review__missing" data-review-missing="cityId" hidden>
+                                <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                    <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor"
+                                            stroke-width="1.5"/>
+                                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                          stroke-width="1.5"/>
+                                </svg>
+                                Information
+                                manquante
+                            </p>
+                        </dd>
+                        <dd class="review__value">
+                            <button class="link-button review__edit" data-edit="secteur" type="button">Modifier<span
+                                class="visually-hidden"> votre ville</span></button>
+                        </dd>
+                    </div>
+                    <div class="review__item">
+                        <dt class="review__term">Quartiers</dt>
+                        <dd class="review__value">
+                            <p data-review-value="neighborhoodIds" hidden></p>
+                            <p class="review__missing" data-review-missing="neighborhoodIds" hidden>
+                                <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                    <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor"
+                                            stroke-width="1.5"/>
+                                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                          stroke-width="1.5"/>
+                                </svg>
+                                Information
+                                manquante
+                            </p>
+                        </dd>
+                        <dd class="review__value">
+                            <button class="link-button review__edit" data-edit="secteur" type="button">Modifier<span
+                                class="visually-hidden"> vos quartiers</span></button>
+                        </dd>
+                    </div>
+                    <div class="review__item">
+                        <dt class="review__term">Numéro Mobile Money</dt>
+                        <dd class="review__value">
+                            <p data-review-value="mobileMoneyNumber" hidden></p>
+                            <p class="review__missing" data-review-missing="mobileMoneyNumber" hidden>
+                                <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                    <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor"
+                                            stroke-width="1.5"/>
+                                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                          stroke-width="1.5"/>
+                                </svg>
+                                Information
+                                manquante
+                            </p>
+                        </dd>
+                        <dd class="review__value">
+                            <button class="link-button review__edit" data-edit="paiement" type="button">Modifier<span
+                                class="visually-hidden"> votre numéro Mobile Money</span></button>
+                        </dd>
+                    </div>
+                </dl>
+
+                <div class="alert alert--error" data-incomplete hidden>
+                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                        <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                              stroke-width="1.5"/>
+                    </svg>
+                    <p>Il manque une ou plusieurs informations. Complétez-les pour pouvoir envoyer votre
+                        candidature.</p>
+                </div>
+
+                <div class="hint" id="review-hint">
+                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                        <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/>
+                        <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
+                    </svg>
+                    <div>
+                        <p>Après l'envoi, vous recevrez par email un lien sécurisé pour vérifier votre identité.
+                            Préparez le recto et le verso de votre carte nationale d'identité.</p>
+                    </div>
+                </div>
+
+                <div class="form__actions">
+                    <button class="btn btn--outline" data-prev type="button">Précédent</button>
+                    <button aria-describedby="review-hint" aria-disabled="true" class="btn btn--primary"
+                            data-submit type="submit">Envoyer ma candidature
+                    </button>
+                </div>
+                <p class="visually-hidden" data-sending role="status"></p>
+            </fieldset>
+        </form>
+
+        <section aria-labelledby="confirmation-title" class="confirmation stack" data-confirmation hidden
+                 tabindex="-1">
+            <span class="confirmation__mark"><svg aria-hidden="true" class="confirmation__icon" focusable="false"
+                                                  viewBox="0 0 20 20"><circle cx="10" cy="10" fill="none" r="8.25"
+                                                                            stroke="currentColor" stroke-width="1.5"/><path
+                d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                stroke-width="1.5"/></svg></span>
+            <h2 id="confirmation-title">Candidature envoyée</h2>
+            <p>Bienvenue chez Ndopify&nbsp;! Votre compte agent est créé. Voici les prochaines étapes&nbsp;:</p>
+            <ol class="next-steps">
+                <li>
+                    <div>
+                        <p class="next-steps__title">Vérifiez votre identité</p>
+                        <p>Nous envoyons à <strong data-joined-email>votre adresse email</strong> un lien sécurisé.
+                            Munissez-vous du recto et du verso de votre carte nationale d'identité.</p>
+                    </div>
+                </li>
+                <li>
+                    <div>
+                        <p class="next-steps__title">Validation de votre profil</p>
+                        <p>L'équipe Ndopify examine votre dossier sous 24 à 48&nbsp;heures.</p>
+                    </div>
+                </li>
+                <li>
+                    <div>
+                        <p class="next-steps__title">Accès à votre espace partenaires</p>
+                        <p>Une fois votre profil validé, vous vous connectez avec votre adresse email.</p>
+                    </div>
+                </li>
+            </ol>
+            <div class="cta-row">
+                <a class="btn btn--primary" href="login.html">Accéder à l'espace partenaires</a>
+            </div>
+        </section>
+    </div>
+</main>
+</body>
+</html>

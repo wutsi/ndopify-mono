@@ -161,7 +161,9 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
 Package `com.wutsi.ndopify.npc`: `ui/` (MVC controllers + Thymeleaf templates in `src/main/resources/templates/`),
 `client/` (REST clients for `ndopify-server` and their interceptors), `service/` (tenant + security), `config/`.
 
-- Sign-in is e-mail + one-time code (`LoginController`: `/login` → `/login/connection` → `/login/verify`), calling
+- Sign-in is e-mail + one-time code on a single page, `templates/login.html` (`LoginController`: `/login` →
+  `/login?etape=code` → `/login/verify`). The code step is only shown while a `PendingLogin` (e-mail + expiry) is in
+  the HTTP session, and verify reads the e-mail from there, not from the form. It calls
   `/v1/otp` then `/v1/auth` with `AuthType.OTP` and `ApplicationCode.PARTNER_CENTRAL`. The JWT is kept in the
   HTTP-only `__npc_access_token` cookie (`AccessTokenService`) and decoded by `JwtAuthenticationFilter`; everything
   except `/assets/**`, `/login/**`, `/error` requires authentication. `/logout` clears the cookie and session.

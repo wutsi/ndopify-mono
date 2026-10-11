@@ -10,7 +10,6 @@
     var OTP_MAX_ATTEMPTS = 5;
     var MAX_FILE_BYTES = 5 * 1024 * 1024;
     var ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
-    var NIU_PATTERN = /^[A-Z0-9]{14}$/;
     var EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
     // PROTOTYPE: accounts the simulated API "knows". Any other address takes the "Rejoindre" branch.
@@ -26,7 +25,6 @@
         frontName: "npc.kyc.frontName",
         back: "npc.kyc.back",
         backName: "npc.kyc.backName",
-        niu: "npc.kyc.niu",
         submitted: "npc.kyc.submitted"
     };
 
@@ -190,14 +188,15 @@
         });
     }
 
-    /* ---------- login/index.html ---------- */
-    function initLoginEmail() {
-        var form = $("[data-login-form]");
-        var input = $("#email");
-        var error = $("#email-error");
-        var submit = $("[data-submit]");
-        var unknown = $("[data-unknown-email]");
-        var joinHeading = $("#join-title");
+    /* ---------- login.html — step 1: e-mail ---------- */
+    function initLoginEmail(root, onCodeSent) {
+        var form = $("[data-login-form]", root);
+        var input = $("#email", root);
+        var error = $("#email-error", root);
+        var submit = $("[data-submit]", root);
+        var unknown = $("[data-unknown-email]", root);
+        var joinHeading = $("#join-title", root);
+        var joinLink = $("[data-join-link]", root);
 
         function validity() {
             var value = input.value.trim();
@@ -231,6 +230,8 @@
             var email = input.value.trim().toLowerCase();
 
             if (KNOWN_EMAILS.indexOf(email) === -1) {
+                // rejoindre.html pre-fills the address, so the visitor doesn't type it twice.
+                joinLink.setAttribute("href", "rejoindre.html?email=" + encodeURIComponent(email));
                 unknown.hidden = false;
                 joinHeading.focus();
                 return;
@@ -239,7 +240,7 @@
             store.set(KEYS.email, email);
             store.set(KEYS.otpExpiry, String(Date.now() + OTP_TTL_MS));
             store.set(KEYS.otpAttempts, "0");
-            window.location.href = "connection.html";
+            onCodeSent();
         });
 
         var remembered = store.get(KEYS.email);
@@ -247,27 +248,21 @@
         sync();
     }
 
-    /* ---------- login/connection.html ---------- */
-    function initLoginCode() {
-        var form = $("[data-code-form]");
-        var input = $("#code");
-        var error = $("#code-error");
-        var submit = $("[data-submit]");
-        var status = $("[data-status]");
-        var expiryEl = $("[data-expiry]");
-        var resend = $("[data-resend]");
-        var missing = $("[data-missing-session]");
-        var email = store.get(KEYS.email);
+    /* ---------- login.html — step 2: code ---------- */
+    // Listeners are bound once; enter()/leave() run each time the step is shown or hidden.
+    function initLoginCode(root) {
+        var form = $("[data-code-form]", root);
+        var input = $("#code", root);
+        var error = $("#code-error", root);
+        var submit = $("[data-submit]", root);
+        var status = $("[data-status]", root);
+        var expiryEl = $("[data-expiry]", root);
+        var resend = $("[data-resend]", root);
         var expiryTimer = null;
 
-        if (!email) {
-            form.hidden = true;
-            $("[data-sent-to]").hidden = true;
-            missing.hidden = false;
-            return;
+        function email() {
+            return store.get(KEYS.email) || "";
         }
-
-        $("[data-masked-email]").textContent = maskEmail(email);
 
         function expiry() {
             return Number(store.get(KEYS.otpExpiry)) || 0;
@@ -349,7 +344,7 @@
 
             store.remove(KEYS.otpExpiry);
             store.remove(KEYS.otpAttempts);
-            window.location.href = "../kyc/index.html";
+            window.location.href = "kyc/index.html";
         });
 
         resend.addEventListener("click", function () {
@@ -360,13 +355,84 @@
             setFieldError(input, error, "");
             scheduleExpiry();
             sync();
-            announce(status, "Nouveau code envoyé à " + maskEmail(email) + ". Il est valable jusqu'à " + formatTime(expiry()) + ".");
+            announce(status, "Nouveau code envoyé à " + maskEmail(email()) + ". Il est valable jusqu'à " + formatTime(expiry()) + ".");
             input.focus();
         });
 
-        scheduleExpiry();
-        if (isExpired()) setFieldError(input, error, "Ce code a expiré. Demandez un nouveau code ci-dessous.");
-        sync();
+        return {
+            enter: function () {
+                $("[data-masked-email]", root).textContent = maskEmail(email());
+                input.value = "";
+                status.textContent = "";
+                setFieldError(input, error, isExpired() ? "Ce code a expiré. Demandez un nouveau code ci-dessous." : "");
+                scheduleExpiry();
+                sync();
+            },
+            leave: function () {
+                window.clearTimeout(expiryTimer);
+            }
+        };
+    }
+
+    /*
+     * login.html — both steps on one page, as slides. Each step is a history entry (?etape=code) so the
+     * Back button works, but the URL is never trusted: the code step only opens while a code requested in
+     * this session is pending; otherwise (direct link, new tab, after logout) the e-mail step is shown.
+     */
+    function initLogin() {
+        var slides = { email: $('[data-step="email"]'), code: $('[data-step="code"]') };
+        var code = initLoginCode(slides.code);
+
+        function state() {
+            return window.history.state || {};
+        }
+
+        function requestedStep() {
+            if (state().step) return state().step;
+            return new URLSearchParams(window.location.search).get("etape") === "code" ? "code" : "email";
+        }
+
+        function allowed(step) {
+            return step === "code" && store.get(KEYS.email) && store.get(KEYS.otpExpiry) ? "code" : "email";
+        }
+
+        function urlFor(step) {
+            return window.location.pathname + (step === "code" ? "?etape=code" : "");
+        }
+
+        function show(step, moveFocus) {
+            Object.keys(slides).forEach(function (key) {
+                slides[key].hidden = key !== step;
+            });
+            if (step === "code") code.enter();
+            else code.leave();
+            if (moveFocus) $("h1", slides[step]).focus();
+        }
+
+        function settle(moveFocus) {
+            var step = allowed(requestedStep());
+            window.history.replaceState({ step: step, depth: state().depth || 0 }, "", urlFor(step));
+            show(step, moveFocus);
+        }
+
+        initLoginEmail(slides.email, function () {
+            window.history.pushState({ step: "code", depth: (state().depth || 0) + 1 }, "", urlFor("code"));
+            show("code", true);
+        });
+
+        $("[data-change-email]", slides.code).addEventListener("click", function () {
+            if (state().depth > 0) {
+                window.history.back();
+            } else {
+                window.history.replaceState({ step: "email", depth: 0 }, "", urlFor("email"));
+                show("email", true);
+            }
+        });
+
+        window.addEventListener("popstate", function () {
+            settle(true);
+        });
+        settle(false);
     }
 
     /* ---------- kyc/index.html ---------- */
@@ -494,7 +560,7 @@
                 step.hidden = i !== index;
             });
             current = index;
-            setProgress(index + 1, 4);
+            setProgress(index + 1, 3);
             if (moveFocus) focusStep(steps[index]);
         }
 
@@ -527,7 +593,7 @@
                 } else if (index < steps.length - 1) {
                     go(index + 1);
                 } else {
-                    window.location.href = "niu.html";
+                    window.location.href = "revue.html";
                 }
             });
 
@@ -544,68 +610,9 @@
         show(current, false);
     }
 
-    /* ---------- kyc/niu.html ---------- */
-    function initKycNiu() {
-        var params = new URLSearchParams(window.location.search);
-        var returnToReview = params.get("retour") === "revue";
-        var input = $("#niu");
-        var error = $("#niu-error");
-        var next = $("[data-next]");
-        var prev = $("[data-prev]");
-        var counter = $("[data-counter]");
-
-        setProgress(3, 4);
-        if (returnToReview) {
-            next.textContent = "Revenir à la revue";
-            prev.href = "revue.html";
-        }
-
-        var saved = store.get(KEYS.niu);
-        if (saved) input.value = saved;
-
-        function validity() {
-            var value = input.value.trim();
-            if (!value) return "";
-            if (!NIU_PATTERN.test(value)) return "Le NIU contient 14 caractères (lettres et chiffres). Vérifiez votre saisie ou laissez le champ vide.";
-            return "";
-        }
-
-        function sync() {
-            setActive(next, validity() === "");
-            var length = input.value.trim().length;
-            counter.textContent = length + " / 14 caractères" + (length > 0 && length < 14 ? " — il en manque " + (14 - length) : "");
-        }
-
-        input.addEventListener("input", function () {
-            var cleaned = input.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 14);
-            if (cleaned !== input.value) input.value = cleaned;
-            if (input.getAttribute("aria-invalid") === "true") setFieldError(input, error, validity());
-            sync();
-        });
-
-        input.addEventListener("blur", function () {
-            setFieldError(input, error, validity());
-        });
-
-        $("[data-niu-form]").addEventListener("submit", function (event) {
-            event.preventDefault();
-            var message = validity();
-            setFieldError(input, error, message);
-            if (message) {
-                input.focus();
-                return;
-            }
-            if (input.value.trim()) store.set(KEYS.niu, input.value.trim());
-            else store.remove(KEYS.niu);
-            window.location.href = "revue.html";
-        });
-
-        sync();
-    }
-
     /* ---------- kyc/revue.html ---------- */
     function initKycReview() {
-        setProgress(4, 4);
+        setProgress(3, 3);
         var submit = $("[data-submit]");
         var complete = true;
 
@@ -622,9 +629,6 @@
             }
         });
 
-        var niu = store.get(KEYS.niu);
-        $("[data-review-niu]").textContent = niu || "Non renseigné (optionnel)";
-
         setActive(submit, complete);
         $("[data-incomplete]").hidden = complete;
 
@@ -634,10 +638,10 @@
             setActive(submit, false);
             submit.textContent = "Envoi en cours…";
             announce($("[data-sending]"), "Envoi de votre dossier en cours.");
-            // PROTOTYPE: the real page uploads both images + NIU, then redirects on success.
+            // PROTOTYPE: the real page uploads both images, then redirects on success.
             window.setTimeout(function () {
                 store.set(KEYS.submitted, "1");
-                ["front", "frontName", "back", "backName", "niu"].forEach(function (k) {
+                ["front", "frontName", "back", "backName"].forEach(function (k) {
                     store.remove(KEYS[k]);
                 });
                 window.location.href = "confirmation.html";
@@ -647,11 +651,9 @@
 
     /* ---------- Boot ---------- */
     var pages = {
-        "login-email": initLoginEmail,
-        "login-code": initLoginCode,
+        login: initLogin,
         "kyc-status": initKycStatus,
         "kyc-documents": initKycDocuments,
-        "kyc-niu": initKycNiu,
         "kyc-review": initKycReview
     };
 

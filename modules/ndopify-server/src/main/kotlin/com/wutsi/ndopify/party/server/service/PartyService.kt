@@ -122,6 +122,17 @@ class PartyService(
         )
     }
 
+    @Transactional
+    fun updateKyStatus(party: PartyEntity, kycStatus: KycStatus): PartyEntity {
+        val now = Date(clock.millis())
+        return dao.save(
+            party.copy(
+                kycStatus = kycStatus,
+                modifiedAt = now,
+            )
+        )
+    }
+
     private fun ensureEmailUnique(email: String, partyId: Long? = null) {
         val existingParty = findByEmailOrNull(email)
         if (existingParty != null && existingParty.id != partyId) {

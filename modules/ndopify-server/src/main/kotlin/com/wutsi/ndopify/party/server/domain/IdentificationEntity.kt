@@ -7,17 +7,15 @@ import jakarta.persistence.FetchType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
-import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
 import org.hibernate.annotations.TenantId
 import java.util.Date
-import java.util.UUID
 
 @Entity
 @Table(name = "T_IDENTIFICATION")
 data class IdentificationEntity(
     @Id
-    val id: String = UUID.randomUUID().toString(),
+    val id: String? = null,
 
     // Left unset (null) on construction so Hibernate's TenantIdGeneration can populate it from the current
     // tenant on insert — mirrors PartyEntity.tenantId exactly.
@@ -27,9 +25,6 @@ data class IdentificationEntity(
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "party_id")
     val party: PartyEntity = PartyEntity(),
-
-    @OneToMany(mappedBy = "identification")
-    val images: List<IdentificationImageEntity> = emptyList(),
 
     val type: IdentificationType = IdentificationType.UNKNOWN,
     val issuingCountryCode: String? = "",

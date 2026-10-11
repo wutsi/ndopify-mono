@@ -71,7 +71,7 @@ class AuthenticateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
 
         val authFactor = authFactorRepository.findById(1L).get()
         assertNotNull(authFactor.lastLoggedInAt)
-        assertTrue(authFactor.lastLoggedInAt!!.time >= now - 1000) // DATETIME has second precision
+        assertTrue(authFactor.lastLoggedInAt.time >= now - 1000) // DATETIME has second precision
     }
 
     @Test

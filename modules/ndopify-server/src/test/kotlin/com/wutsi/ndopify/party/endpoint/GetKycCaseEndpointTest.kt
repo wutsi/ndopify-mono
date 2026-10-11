@@ -4,6 +4,8 @@ import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.dto.GetKycCaseResponse
+import com.wutsi.ndopify.party.dto.IdentificationType
+import com.wutsi.ndopify.party.dto.KycImageType
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.KycVerificationType
 import org.springframework.http.HttpStatus
@@ -22,9 +24,7 @@ class GetKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
 
         val case = response.body!!.case
         assertEquals("kyc-case-100", case.id)
-        assertEquals("100", case.partyId)
-        assertEquals("identification-100", case.identificationId)
-        assertEquals("payment-method-100", case.paymentMethodId)
+        assertEquals(100L, case.partyId)
         assertEquals(80, case.score)
         assertEquals(KycStatus.VERIFIED, case.status)
         assertNull(case.errorCode)
@@ -39,6 +39,20 @@ class GetKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
             assertEquals("kyc-case-100", verification.kycCaseId)
             assertEquals(KycStatus.VERIFIED, verification.status)
         }
+
+        val images = case.images.sortedBy { it.imageType }
+        assertEquals(
+            listOf(KycImageType.FRONT, KycImageType.BACK, KycImageType.SELFIE),
+            images.map { it.imageType },
+        )
+        assertEquals(
+            listOf("kyc-image-100-front", "kyc-image-100-back", "kyc-image-100-selfie"),
+            images.map { it.id },
+        )
+        images.forEach { image ->
+            assertEquals("kyc-case-100", image.caseId)
+            assertEquals(IdentificationType.NATIONAL_ID, image.identificationType)
+        }
     }
 
     @Test
@@ -49,12 +63,11 @@ class GetKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
 
         val case = response.body!!.case
         assertEquals("kyc-case-200", case.id)
-        assertEquals("100", case.partyId)
-        assertEquals("identification-100", case.identificationId)
-        assertNull(case.paymentMethodId)
+        assertEquals(100L, case.partyId)
         assertNull(case.score)
         assertEquals(KycStatus.PENDING, case.status)
         assertEquals(0, case.verifications.size)
+        assertEquals(0, case.images.size)
     }
 
     @Test

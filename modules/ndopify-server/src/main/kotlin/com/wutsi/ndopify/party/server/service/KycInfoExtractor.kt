@@ -1,8 +1,8 @@
 package com.wutsi.ndopify.party.server.service
 
-import com.wutsi.ndopify.party.server.service.identification.IdentificationInfo
+import com.wutsi.ndopify.party.server.service.kyc.KycInfo
 import java.io.File
 
-interface IdentificationInfoExtractor {
-    fun extract(images: List<File>): IdentificationInfo
+interface KycInfoExtractor {
+    fun extract(images: List<File>): KycInfo
 }

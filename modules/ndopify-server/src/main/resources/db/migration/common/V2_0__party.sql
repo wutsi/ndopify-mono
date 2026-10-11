@@ -62,26 +62,6 @@ CREATE TABLE T_IDENTIFICATION(
 ) ENGINE = InnoDB;
 CREATE INDEX I_IDENTIFICATION_tenant ON T_IDENTIFICATION(tenant_id);
 
-CREATE TABLE T_IDENTIFICATION_IMAGE(
-  id                      VARCHAR(36) NOT NULL,
-  tenant_id               BIGINT NOT NULL DEFAULT 1,
-
-  identification_id       VARCHAR(36) NOT NULL REFERENCES T_IDENTIFICATION(id),
-
-  image_type              INT NOT NULL DEFAULT 0,
-  storage_type            INT NOT NULL DEFAULT 0,
-  path                    TEXT,
-  mime_type               VARCHAR(100),
-
-  created_at              DATETIME DEFAULT NOW(),
-  modified_at             DATETIME NOT NULL DEFAULT now() ON UPDATE now(),
-  uploaded_at             DATETIME,
-
-  UNIQUE(identification_id, image_type),
-  PRIMARY KEY(id)
-) ENGINE = InnoDB;
-CREATE INDEX I_IDENTIFICATION_IMAGE_tenant ON T_IDENTIFICATION_IMAGE(tenant_id);
-
 -- ###################
 --
 -- KYC tables
@@ -92,9 +72,8 @@ CREATE TABLE T_KYC_CASE(
   tenant_id               BIGINT NOT NULL DEFAULT 1,
 
   party_id                BIGINT NOT NULL REFERENCES T_PARTY(id),
-  identification_id       VARCHAR(36) NOT NULL REFERENCES T_IDENTIFICATION(id),
-  payment_method_id       VARCHAR(36) REFERENCES T_PAYMENT_METHOD(id),
 
+  identification_type     INT NOT NULL DEFAULT 0,
   score                   INT,
   status                  INT NOT NULL DEFAULT 0,
   error_code              VARCHAR(100),
@@ -106,10 +85,31 @@ CREATE TABLE T_KYC_CASE(
 ) ENGINE = InnoDB;
 CREATE INDEX I_KYC_CASE_tenant ON T_KYC_CASE(tenant_id);
 
+CREATE TABLE T_KYC_IMAGE(
+  id                      VARCHAR(36) NOT NULL,
+  tenant_id               BIGINT NOT NULL DEFAULT 1,
+
+  case_id                 VARCHAR(36) NOT NULL REFERENCES T_KYC_CASE(id),
+
+  identification_type     INT NOT NULL DEFAULT 0,
+  image_type              INT NOT NULL DEFAULT 0,
+  storage_type            INT NOT NULL DEFAULT 0,
+  path                    TEXT,
+  mime_type               VARCHAR(100),
+
+  created_at              DATETIME DEFAULT NOW(),
+  modified_at             DATETIME NOT NULL DEFAULT now() ON UPDATE now(),
+
+  UNIQUE(case_id, identification_type, image_type),
+  PRIMARY KEY(id)
+) ENGINE = InnoDB;
+CREATE INDEX I_KYC_IMAGE_tenant ON T_KYC_IMAGE(tenant_id);
+
 CREATE TABLE T_KYC_VERIFICATION(
   id                      VARCHAR(36) NOT NULL,
 
   case_id                 VARCHAR(36) NOT NULL REFERENCES T_KYC_CASE(id),
+  payment_method_id       VARCHAR(36) REFERENCES T_PAYMENT_METHOD(id),
 
   type                    INT NOT NULL DEFAULT 0,
   status                  INT NOT NULL DEFAULT 0,

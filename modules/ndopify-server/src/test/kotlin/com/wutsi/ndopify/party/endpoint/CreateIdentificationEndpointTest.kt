@@ -4,10 +4,9 @@ import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.dto.CreateIdentificationRequest
-import com.wutsi.ndopify.party.dto.IdentificationImageType
 import com.wutsi.ndopify.party.dto.IdentificationStatus
 import com.wutsi.ndopify.party.dto.IdentificationType
-import com.wutsi.ndopify.party.server.dao.IdentificationImageRepository
+import com.wutsi.ndopify.party.dto.KycImageType
 import com.wutsi.ndopify.party.server.dao.IdentificationRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -20,16 +19,13 @@ class CreateIdentificationEndpointTest : TenantAwareEndpointIntegrationTest() {
     @Autowired
     private lateinit var dao: IdentificationRepository
 
-    @Autowired
-    private lateinit var imageDao: IdentificationImageRepository
-
     @Test
     fun identifications() {
         val request = CreateIdentificationRequest(
             partyId = 100L,
             type = IdentificationType.NATIONAL_ID,
             issuingCountryCode = "CM",
-            imageTypes = listOf(IdentificationImageType.FRONT, IdentificationImageType.BACK),
+            imageTypes = listOf(KycImageType.FRONT, KycImageType.BACK),
         )
 
         val response = rest.postForEntity("/v1/identifications", request, Void::class.java)
@@ -44,17 +40,6 @@ class CreateIdentificationEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(IdentificationType.NATIONAL_ID, identification.type)
         assertEquals("CM", identification.issuingCountryCode)
         assertEquals(IdentificationStatus.PENDING_VERIFICATION, identification.status)
-
-        val images = imageDao.findAll().toList()
-        assertEquals(2, images.size)
-        assertEquals(
-            setOf(IdentificationImageType.FRONT, IdentificationImageType.BACK),
-            images.map { it.imageType }.toSet()
-        )
-        images.forEach { image ->
-            assertEquals(identification.id, image.identification.id)
-            assertEquals(null, image.path)
-        }
     }
 
     @Test
@@ -63,7 +48,7 @@ class CreateIdentificationEndpointTest : TenantAwareEndpointIntegrationTest() {
             partyId = 100L,
             type = IdentificationType.NATIONAL_ID,
             issuingCountryCode = "",
-            imageTypes = listOf(IdentificationImageType.FRONT),
+            imageTypes = listOf(KycImageType.FRONT),
         )
 
         val response = rest.postForEntity("/v1/identifications", request, ErrorResponse::class.java)
@@ -93,7 +78,7 @@ class CreateIdentificationEndpointTest : TenantAwareEndpointIntegrationTest() {
             partyId = 999L,
             type = IdentificationType.NATIONAL_ID,
             issuingCountryCode = "CM",
-            imageTypes = listOf(IdentificationImageType.FRONT),
+            imageTypes = listOf(KycImageType.FRONT),
         )
 
         val response = rest.postForEntity("/v1/identifications", request, ErrorResponse::class.java)

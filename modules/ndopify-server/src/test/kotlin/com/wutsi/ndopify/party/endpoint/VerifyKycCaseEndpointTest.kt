@@ -1,20 +1,25 @@
 package com.wutsi.ndopify.party.endpoint
 
 import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.argThat
 import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.never
+import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.dto.KycStatus
+import com.wutsi.ndopify.party.dto.KycVerificationType
 import com.wutsi.ndopify.party.server.dao.KycCaseRepository
 import com.wutsi.ndopify.party.server.dao.PartyRepository
-import com.wutsi.ndopify.party.server.service.KycVerifier
-import com.wutsi.ndopify.party.server.service.KycVerifierProvider
+import com.wutsi.ndopify.party.server.domain.KycCaseEntity
+import com.wutsi.ndopify.party.server.domain.KycVerificationEntity
+import com.wutsi.ndopify.party.server.service.KycCaseVerifier
+import com.wutsi.ndopify.party.server.service.kyc.KycCaseVerifierIdentification
+import com.wutsi.ndopify.party.server.service.kyc.KycCaseVerifierMoMo
+import com.wutsi.ndopify.party.server.service.kyc.KycCaseVerifierSelfie
 import org.junit.jupiter.api.BeforeEach
-import org.mockito.Mockito.mock
-import org.mockito.Mockito.times
-import org.mockito.Mockito.verify
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.bean.override.mockito.MockitoBean
@@ -23,6 +28,10 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
+/**
+ * The verifiers are unit-tested on their own, so they're mocked here: this test only covers how the endpoint
+ * orchestrates them and aggregates their results into the case and party KYC status.
+ */
 @Sql(value = ["/db/test/clean.sql", "/db/test/party/VerifyKycCaseEndpoint.sql"])
 class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
     @Autowired
@@ -32,80 +41,179 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
     private lateinit var partyDao: PartyRepository
 
     @MockitoBean
-    private lateinit var verifierProvider: KycVerifierProvider
+    private lateinit var idVerifier: KycCaseVerifierIdentification
 
-    private val verifier = mock<KycVerifier>()
+    @MockitoBean
+    private lateinit var selfieVerifier: KycCaseVerifierSelfie
+
+    @MockitoBean
+    private lateinit var paymentMethodVerifier: KycCaseVerifierMoMo
 
     @BeforeEach
-    fun stubVerifierProvider() {
-        doReturn(verifier).whenever(verifierProvider).get(any())
+    fun stubPaymentMethodVerifier() {
+        setUpVerifier(paymentMethodVerifier, KycVerificationType.PAYMENT_METHOD, KycStatus.VERIFIED, 100)
+    }
+
+    private fun setUpVerifier(
+        verifier: KycCaseVerifier,
+        type: KycVerificationType,
+        status: KycStatus,
+        score: Int?,
+    ) {
+        doReturn(listOf(KycVerificationEntity(type = type, status = status, score = score)))
+            .whenever(verifier).verify(any())
+    }
+
+    private fun setUpNoVerification(verifier: KycCaseVerifier) {
+        doReturn(emptyList<KycVerificationEntity>()).whenever(verifier).verify(any())
+    }
+
+    private fun verify(id: String = "kyc-case-pending") =
+        rest.postForEntity("/v1/kyc/cases/$id/verify", null, Void::class.java)
+
+    private fun verifyWithError(id: String) =
+        rest.postForEntity("/v1/kyc/cases/$id/verify", null, ErrorResponse::class.java)
+
+    private fun assertCase(status: KycStatus, score: Int?, id: String = "kyc-case-pending") {
+        val case = dao.findById(id).orElseThrow()
+        assertEquals(status, case.status)
+        assertEquals(score, case.score)
+    }
+
+    private fun assertPartyKycStatus(status: KycStatus, partyId: Long = 100L) {
+        val party = partyDao.findById(partyId).orElseThrow()
+        assertEquals(status, party.kycStatus)
+    }
+
+    private fun assertNoVerifierCalled() {
+        verify(idVerifier, never()).verify(any())
+        verify(selfieVerifier, never()).verify(any())
+        verify(paymentMethodVerifier, never()).verify(any())
     }
 
     @Test
-    fun `identification verified - case and party verified`() {
-        val response = rest.postForEntity(
-            "/v1/kyc/cases/kyc-case-identification-verified/verify",
-            null,
-            Void::class.java
-        )
+    fun `identification and selfie verified - case and party verified`() {
+        setUpVerifier(idVerifier, KycVerificationType.IDENTIFICATION, KycStatus.VERIFIED, 90)
+        setUpVerifier(selfieVerifier, KycVerificationType.SELFIE, KycStatus.VERIFIED, 100)
+
+        val response = verify()
 
         assertEquals(HttpStatus.OK, response.statusCode)
+        assertCase(KycStatus.VERIFIED, 95)
+        assertPartyKycStatus(KycStatus.VERIFIED)
 
-        // Only the identification verification is considered for the overall score/status,
-        // even though the (rejected) payment-method verification was also run.
-        val case = dao.findById("kyc-case-identification-verified").orElseThrow()
-        assertEquals(KycStatus.VERIFIED, case.status)
-        assertEquals(95, case.score)
-
-        val party = partyDao.findById(100L).orElseThrow()
-        assertEquals(KycStatus.VERIFIED, party.kycStatus)
-
-        verify(verifierProvider, times(2)).get(any())
-        verify(verifier, times(2)).verify(any())
+        val isPendingCase = { c: KycCaseEntity -> c.id == "kyc-case-pending" }
+        verify(idVerifier).verify(argThat(isPendingCase))
+        verify(selfieVerifier).verify(argThat(isPendingCase))
+        verify(paymentMethodVerifier).verify(argThat(isPendingCase))
     }
 
     @Test
     fun `identification rejected - case and party rejected`() {
-        val response = rest.postForEntity(
-            "/v1/kyc/cases/kyc-case-identification-rejected/verify",
-            null,
-            Void::class.java
-        )
+        setUpVerifier(idVerifier, KycVerificationType.IDENTIFICATION, KycStatus.REJECTED, 40)
+        setUpVerifier(selfieVerifier, KycVerificationType.SELFIE, KycStatus.VERIFIED, 100)
+
+        val response = verify()
 
         assertEquals(HttpStatus.OK, response.statusCode)
+        assertCase(KycStatus.REJECTED, 70)
+        assertPartyKycStatus(KycStatus.REJECTED)
+    }
 
-        // Only the identification verification is considered, even though the (verified)
-        // payment-method verification was also run.
-        val case = dao.findById("kyc-case-identification-rejected").orElseThrow()
-        assertEquals(KycStatus.REJECTED, case.status)
-        assertEquals(50, case.score)
+    @Test
+    fun `selfie rejected - case and party rejected`() {
+        setUpVerifier(idVerifier, KycVerificationType.IDENTIFICATION, KycStatus.VERIFIED, 100)
+        setUpVerifier(selfieVerifier, KycVerificationType.SELFIE, KycStatus.REJECTED, 20)
 
-        val party = partyDao.findById(200L).orElseThrow()
-        assertEquals(KycStatus.REJECTED, party.kycStatus)
+        val response = verify()
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertCase(KycStatus.REJECTED, 60)
+        assertPartyKycStatus(KycStatus.REJECTED)
+    }
+
+    @Test
+    fun `no selfie verification - case status and score from identification only`() {
+        setUpVerifier(idVerifier, KycVerificationType.IDENTIFICATION, KycStatus.VERIFIED, 90)
+        setUpNoVerification(selfieVerifier)
+
+        val response = verify()
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertCase(KycStatus.VERIFIED, 90)
+        assertPartyKycStatus(KycStatus.VERIFIED)
+    }
+
+    @Test
+    fun `missing scores - counted as zero in the case score`() {
+        setUpVerifier(idVerifier, KycVerificationType.IDENTIFICATION, KycStatus.VERIFIED, null)
+        setUpVerifier(selfieVerifier, KycVerificationType.SELFIE, KycStatus.VERIFIED, 80)
+
+        val response = verify()
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertCase(KycStatus.VERIFIED, 40)
+    }
+
+    @Test
+    fun `payment method rejected - does not affect the case status nor score`() {
+        setUpVerifier(idVerifier, KycVerificationType.IDENTIFICATION, KycStatus.VERIFIED, 90)
+        setUpVerifier(selfieVerifier, KycVerificationType.SELFIE, KycStatus.VERIFIED, 100)
+        setUpVerifier(paymentMethodVerifier, KycVerificationType.PAYMENT_METHOD, KycStatus.REJECTED, 10)
+
+        val response = verify()
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertCase(KycStatus.VERIFIED, 95)
+        assertPartyKycStatus(KycStatus.VERIFIED)
+    }
+
+    @Test
+    fun `no identification verification - conflict and case left pending`() {
+        setUpNoVerification(idVerifier)
+
+        val response = verifyWithError("kyc-case-pending")
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.KYC_IMAGE_NO_IDENTIFICATION_VERIFICATION, response.body?.error?.code)
+
+        // The transaction is rolled back: the case doesn't stay IN_PROGRESS
+        assertCase(KycStatus.PENDING, null)
+        assertPartyKycStatus(KycStatus.PENDING)
+
+        verify(selfieVerifier, never()).verify(any())
+        verify(paymentMethodVerifier, never()).verify(any())
     }
 
     @Test
     fun `case not pending - bad request`() {
-        val response = rest.postForEntity(
-            "/v1/kyc/cases/kyc-case-already-verified/verify",
-            null,
-            ErrorResponse::class.java
-        )
+        val response = verifyWithError("kyc-case-already-verified")
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
         assertEquals(ErrorCode.KYC_CASE_NOT_PENDING, response.body?.error?.code)
 
-        val case = dao.findById("kyc-case-already-verified").orElseThrow()
-        assertEquals(KycStatus.VERIFIED, case.status)
-        assertEquals(95, case.score)
+        assertCase(KycStatus.VERIFIED, 95, "kyc-case-already-verified")
+        assertNoVerifierCalled()
     }
 
     @Test
     fun `case not found`() {
-        val response = rest.postForEntity("/v1/kyc/cases/unknown-id/verify", null, ErrorResponse::class.java)
+        val response = verifyWithError("unknown-id")
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals(ErrorCode.KYC_CASE_NOT_FOUND, response.body?.error?.code)
         assertNull(response.body?.error?.data)
+
+        assertNoVerifierCalled()
+    }
+
+    @Test
+    fun `case of another tenant - not found`() {
+        val response = verifyWithError("kyc-case-other-tenant")
+
+        assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
+        assertEquals(ErrorCode.KYC_CASE_NOT_FOUND, response.body?.error?.code)
+
+        assertNoVerifierCalled()
     }
 }

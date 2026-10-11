@@ -4,7 +4,6 @@ import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.dto.GetIdentificationResponse
-import com.wutsi.ndopify.party.dto.IdentificationImageType
 import com.wutsi.ndopify.party.dto.IdentificationStatus
 import com.wutsi.ndopify.party.dto.IdentificationType
 import org.springframework.http.HttpStatus
@@ -27,13 +26,6 @@ class GetIdentificationEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals("CM", identification.issuingCountryCode)
         assertEquals("7890", identification.numberSuffix)
         assertEquals(IdentificationStatus.PENDING_VERIFICATION, identification.status)
-
-        val images = identification.images
-        assertEquals(2, images.size)
-        assertEquals(
-            setOf(IdentificationImageType.FRONT, IdentificationImageType.BACK),
-            images.map { it.imageType }.toSet()
-        )
     }
 
     @Test

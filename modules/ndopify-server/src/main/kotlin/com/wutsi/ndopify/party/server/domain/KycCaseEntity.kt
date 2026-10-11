@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.party.server.domain
 
+import com.wutsi.ndopify.party.dto.IdentificationType
 import com.wutsi.ndopify.party.dto.KycStatus
 import jakarta.persistence.Entity
 import jakarta.persistence.FetchType
@@ -27,17 +28,13 @@ data class KycCaseEntity(
     @JoinColumn(name = "party_id")
     val party: PartyEntity = PartyEntity(),
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "identification_id")
-    val identification: IdentificationEntity = IdentificationEntity(),
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "payment_method_id")
-    val paymentMethod: PaymentMethodEntity? = null,
-
     @OneToMany(mappedBy = "case")
     val verifications: List<KycVerificationEntity> = emptyList(),
 
+    @OneToMany(mappedBy = "kycCase")
+    val images: List<KycImageEntity> = emptyList(),
+
+    val identificationType: IdentificationType = IdentificationType.UNKNOWN,
     val score: Int? = null,
     val status: KycStatus = KycStatus.UNKNOWN,
     val errorCode: String? = null,

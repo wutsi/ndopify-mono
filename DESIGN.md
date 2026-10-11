@@ -259,8 +259,39 @@ the warning.
   regenerating a field.
 - **Radio/checkbox `value`s are English tokens too** (e.g. `value="yes"`/`"no"`/`"morning"`, not
   `"oui"`/`"non"`/`"matin"`), for the same reason — they're data, not copy.
-- **Phone number:** use the `int-tel-input` library (https://github.com/jackocnr/intl-tel-input) — don't
-  hand-roll phone input masking/validation.
+- **Phone number:** use the `intl-tel-input` library (https://github.com/jackocnr/intl-tel-input), version
+  `25.11.2`, **together with its `utils.js`** (libphonenumber) — don't hand-roll phone input masking/validation.
+  Without `utils.js` the library only draws the country picker: no formatting, no validation, no E.164.
+    - **Data format — E.164, always.** Phone numbers are stored, sent to the API and posted by forms in E.164:
+      `+` country code + national number, no spaces or punctuation (e.g. `+237677123456`). Never store the
+      formatted display string, a national number without its country code, or a `00`-prefixed number. Read the
+      value with `iti.getNumber(intlTelInput.utils.numberFormat.E164)`, and only once `isValidNumberPrecise()` is
+      true — an invalid number has no E.164 value (send nothing rather than a partial number).
+    - **Form submission:** the visible `type="tel"` input has **no `name`**; a hidden input carries the field's
+      English name (e.g. `name="whatsappNumber"`) and the E.164 value, via the library's `hiddenInput` option. Keep
+      it in sync on every `input`/`countrychange`, not only on native submit, so script-driven wizards read the
+      same value a plain form post sends.
+    - **Formatting as you type:** `formatAsYouType` (on by default with `utils.js`) groups digits in the selected
+      country's national format (Cameroon: `6 77 12 34 56`); `strictMode: true` rejects letters and digits beyond
+      the country's maximum length. Use `separateDialCode: true` so the dial code (`+237`) shows next to the flag,
+      outside the editable text. Let the library's example-number placeholder stand (`autoPlaceholder`), rather
+      than a hand-written one.
+    - **Display:** show a stored number with `intlTelInput.utils.formatNumber(e164, null, numberFormat.INTERNATIONAL)`
+      (e.g. `+237 6 77 12 34 56`) — e.g. on review pages. Fall back to the raw E.164 string if `utils.js` hasn't
+      loaded.
+    - **Countries:** default to Cameroon (`initialCountry: "cm"`), with Cameroon and its CEMAC neighbours first
+      (`countryOrder: ["cm", "ga", "cg", "td", "cf", "gq"]`). Lock the country (`onlyCountries: ["cm"]`,
+      `allowDropdown: false`) when only a Cameroonian number makes sense, e.g. a Mobile Money number. Validate as
+      mobile numbers (`validationNumberTypes: ["MOBILE"]`).
+    - **Language:** load the French translation (`build/js/i18n/fr/index.js`) and pass it as `i18n`, so country
+      names and the search box are in French on French pages.
+    - **Errors:** map `getValidationError()` codes (`TOO_SHORT`, `TOO_LONG`, `INVALID_COUNTRY_CODE`, …) to a French
+      message that says what to fix, with a generic fallback ("Ce numéro n'est pas un numéro mobile valide…").
+    - **Loading:** `utils.js` and the translations are ES modules — load them with `import()` (`attachUtils` for
+      `utils.js`), not a `<script>` tag. If `utils.js` can't load, numbers can't be checked: show a warning and keep
+      the step's submit/next button inactive rather than accepting unvalidated input.
+    - **Partner Central:** this is wrapped by `NdUtil` in `assets/js/util.js` (`phoneReady()`, `bindPhone()`,
+      `toE164()`, `formatPhone()`) — use it instead of calling `intlTelInput` directly from page scripts.
 - **Country:** use a dropdown populated with the full list of countries, not a free-text field.
 - **Amount / currency (FCFA):** use the `AutoNumeric.js` library (https://github.com/autoNumeric/autoNumeric) —
   don't hand-roll currency masking/validation. Per the source doc's exact spec:
@@ -322,7 +353,12 @@ or Tabs — don't invent styling for any of these; flag them as missing if neede
   or the heading hierarchy).
 - When wiring a CDN asset (e.g. intl-tel-input), verify the exact file path actually exists for the pinned
   version — some versions only publish an unminified CSS build (no `.min.css`); a guessed filename 404s silently
-  and the component renders unstyled.
+  and the component renders unstyled. For intl-tel-input `25.11.2` specifically, cdnjs lists the version but
+  serves none of its files (every path 404s); load it from jsDelivr instead:
+  `https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/` (`css/intlTelInput.min.css`,
+  `js/intlTelInput.min.js`, `js/utils.js`, `js/i18n/fr/index.js`).
+- Do store and send phone numbers in E.164 (`+237677123456`) only; don't persist the formatted display value or a
+  number without its country code — see "Form fields › Phone number" above.
 - Do keep every form field's `name`/`id`/`for`/`aria-labelledby`/`value` in English even on French-language pages
   (e.g. `name="city"` with label text "Ville"); don't translate the visible label and then mirror that French
   word into the identifier too — see "Form fields" above.

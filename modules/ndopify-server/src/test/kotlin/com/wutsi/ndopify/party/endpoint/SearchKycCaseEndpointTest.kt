@@ -25,8 +25,7 @@ class SearchKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertTrue(cases.map { it.id }.containsAll(listOf("kyc-case-100-a", "kyc-case-100-b")))
 
         val case = cases.first { it.id == "kyc-case-100-b" }
-        assertEquals("100", case.partyId)
-        assertEquals("identification-100", case.identificationId)
+        assertEquals(100L, case.partyId)
         assertEquals(80, case.score)
         assertEquals(KycStatus.VERIFIED, case.status)
     }

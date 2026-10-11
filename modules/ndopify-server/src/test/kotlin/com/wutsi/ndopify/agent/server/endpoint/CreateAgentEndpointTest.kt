@@ -7,12 +7,10 @@ import com.wutsi.ndopify.agent.dto.ExperienceLevel
 import com.wutsi.ndopify.agent.server.dao.AgentRepository
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
-import com.wutsi.ndopify.party.dto.IdentificationStatus
+import com.wutsi.ndopify.party.dto.IdentificationType
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.PaymentMethodStatus
-import com.wutsi.ndopify.party.dto.SearchIdentificationRequest
 import com.wutsi.ndopify.party.dto.SearchKycCaseRequest
-import com.wutsi.ndopify.party.server.service.IdentificationService
 import com.wutsi.ndopify.party.server.service.KycService
 import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.party.server.service.PaymentMethodService
@@ -39,9 +37,6 @@ class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
 
     @Autowired
     private lateinit var paymentMethodService: PaymentMethodService
-
-    @Autowired
-    private lateinit var identificationService: IdentificationService
 
     @Autowired
     private lateinit var kycService: KycService
@@ -104,22 +99,13 @@ class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
         assertEquals(PaymentMethodStatus.PENDING_VERIFICATION, paymentMethod.status)
         assertNull(paymentMethod.expiresAt)
 
-        val identifications = identificationService.search(SearchIdentificationRequest(partyId = party.id))
-        assertEquals(1, identifications.size)
-        val identification = identifications.first()
-        assertEquals(TENANT_ID, identification.tenantId)
-        assertEquals(IdentificationStatus.PENDING_VERIFICATION, identification.status)
-        assertEquals(null, identification.number)
-        assertEquals(null, identification.expiresAt)
-
         val cases = kycService.search(SearchKycCaseRequest(partyId = party.id))
         assertEquals(1, cases.size)
         val case = cases.first()
         assertEquals(TENANT_ID, case.tenantId)
         assertEquals(party.id, case.party.id)
-        assertEquals(identification.id, case.identification.id)
-        assertEquals(paymentMethod.id, case.paymentMethod?.id)
         assertEquals(KycStatus.PENDING, case.status)
+        assertEquals(IdentificationType.NATIONAL_ID, case.identificationType)
 
         val user = userService.findByPartyIdOrNull(party.id!!)
         assertEquals(TENANT_ID, user?.tenantId)

@@ -3,7 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1" name="viewport">
-    <title>Connexion — Ndopify Partner Central</title>
+    <title th:text="${step == 'code'} ? 'Code de connexion — Ndopify Partner Central' : 'Connexion — Ndopify Partner Central'">
+        Connexion — Ndopify Partner Central</title>
     <meta content="Connectez-vous à l'espace partenaires Ndopify avec votre adresse email et un code à usage unique."
           name="description">
     <meta content="noindex, nofollow" name="robots">
@@ -17,19 +18,21 @@
     <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
     <script defer th:src="@{/assets/js/partner-central.js}"></script>
 </head>
-<body data-page="login-email">
+<!--/* One page, two steps: LoginController picks the step (model attribute "step") and only renders that one. */-->
+<body data-page="login">
 <a class="skip-link" href="#main">Aller au contenu</a>
 <header class="site-header">
     <div class="site-header__inner">
-        <a class="site-header__brand" th:href="@{/}">
+        <a class="site-header__brand" th:href="@{/login}">
             <img alt="Ndopify, accueil" height="40" th:src="@{/assets/images/logo.png}" width="84">
         </a>
     </div>
 </header>
 <main class="page" id="main">
-    <div class="column">
+    <!--/* Step 1: e-mail (POST /login) */-->
+    <section aria-labelledby="email-title" class="column" data-step="email" th:if="${step == 'email'}">
         <div class="page-intro">
-            <h1>Espace partenaires</h1>
+            <h1 id="email-title">Espace partenaires</h1>
             <p>Connectez-vous avec votre adresse email. Nouveau chez Ndopify&nbsp;? Saisissez-la aussi&nbsp;:
                 nous vous indiquerons comment nous rejoindre.</p>
         </div>
@@ -58,7 +61,6 @@
                     <span data-error-text th:text="${error}"></span></p>
             </div>
 
-
             <button aria-describedby="email-hint" aria-disabled="true" class="btn btn--primary btn--block"
                     data-submit type="submit">Recevoir mon code
             </button>
@@ -70,10 +72,64 @@
                 arrive directement sur votre compte Mobile Money. Les contacts des bailleurs restent masqués et la
                 répartition entre agents est fixée d'avance&nbsp;: personne ne peut vous contourner.</p>
             <div class="cta-row">
+                <!--/* The sign-up wizard (src/main/html/rejoindre.html) isn't served by this app yet. */-->
                 <a class="btn btn--secondary" href="https://www.ndopify.com/joindre">Rejoindre Ndopify</a>
             </div>
         </section>
-    </div>
+    </section>
+
+    <!--/* Step 2: code (POST /login/verify) — only rendered while a sign-in is pending in the session */-->
+    <section aria-labelledby="code-title" class="column" data-step="code" th:if="${step == 'code'}">
+        <div class="page-intro">
+            <h1 id="code-title">Saisissez votre code</h1>
+            <p>Nous avons envoyé un code à 6&nbsp;chiffres par email à
+                <strong data-masked-email th:text="${maskedEmail}">votre adresse</strong>.</p>
+        </div>
+
+        <form class="form" data-code-form method="post" novalidate th:action="@{/login/verify}">
+            <div class="field">
+                <label class="field__label" for="code">Code de connexion</label>
+                <input aria-describedby="code-hint code-error" autocomplete="one-time-code" class="input input--code" id="code" inputmode="numeric"
+                       name="code" required th:attr="aria-invalid=${error != null ? 'true' : null}"
+                       type="text">
+                <div class="hint" id="code-hint">
+                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                        <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/>
+                        <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
+                    </svg>
+                    <div>
+                        <p>Le code est valable 5&nbsp;minutes, jusqu'à <span data-expiry th:attr="data-expires-at=${expiresAt}">—</span>.</p>
+                        <p>Vous ne le voyez pas&nbsp;? Regardez dans vos courriers indésirables.</p>
+                    </div>
+                </div>
+                <p class="field__error" id="code-error" th:hidden="${error == null}">
+                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                        <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                              stroke-width="1.5"/>
+                    </svg>
+                    <span data-error-text th:text="${error}"></span></p>
+            </div>
+
+            <button aria-describedby="code-hint" aria-disabled="true" class="btn btn--primary btn--block"
+                    data-submit type="submit">Me connecter
+            </button>
+
+            <div class="stack">
+                <p>Code expiré ou jamais reçu&nbsp;?
+                    <button class="link-button" form="resend-form" type="submit">Renvoyer le code</button>
+                </p>
+                <p data-status role="status"><span th:if="${resent == true}"
+                        th:text="|Nouveau code envoyé à ${maskedEmail}.|"></span></p>
+                <p><a th:href="@{/login}">Utiliser une autre adresse email</a></p>
+            </div>
+        </form>
+        <!--/* Resend goes to the pending address, kept in the session: the page doesn't carry the e-mail. */-->
+        <form hidden id="resend-form" method="post" th:action="@{/login}">
+            <input name="resend" type="hidden" value="true">
+        </form>
+    </section>
 </main>
 </body>
 </html>

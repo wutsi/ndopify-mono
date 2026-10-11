@@ -4,35 +4,43 @@ import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
 import com.wutsi.ndopify.error.server.exception.BadRequestException
+import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.party.dto.CreateKycCaseRequest
+import com.wutsi.ndopify.party.dto.IdentificationType
+import com.wutsi.ndopify.party.dto.KycImageType
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.KycVerificationType
 import com.wutsi.ndopify.party.dto.SearchKycCaseRequest
 import com.wutsi.ndopify.party.server.dao.KycCaseRepository
-import com.wutsi.ndopify.party.server.dao.KycVerificationRepository
-import com.wutsi.ndopify.party.server.dao.PartyRepository
+import com.wutsi.ndopify.party.server.dao.KycImageRepository
 import com.wutsi.ndopify.party.server.domain.KycCaseEntity
+import com.wutsi.ndopify.party.server.domain.KycImageEntity
 import com.wutsi.ndopify.party.server.domain.KycVerificationEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
-import com.wutsi.ndopify.party.server.domain.PaymentMethodEntity
 import com.wutsi.ndopify.platform.logger.KVLogger
+import com.wutsi.ndopify.platform.storage.StorageServiceProvider
+import com.wutsi.ndopify.util.MimeUtils
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
+import org.springframework.web.multipart.MultipartFile
+import java.net.URL
 import java.time.Clock
 import java.util.Date
 
 @Service
 class KycService(
+    @param:Value("\${ndopify.party.kyc.image.url-ttl-seconds}") val imageUrlTTL: Int,
+
     private val dao: KycCaseRepository,
-    private val partyDao: PartyRepository,
-    private val daoVerification: KycVerificationRepository,
-    private val identificationService: IdentificationService,
-    private val paymentMethodService: PaymentMethodService,
-    private val verifierProvider: KycVerifierProvider,
+    private val partyService: PartyService,
+    private val kycImageDao: KycImageRepository,
+    private val verifierProvider: KycCaseVerifierProvider,
+    private val storageProvider: StorageServiceProvider,
     private val clock: Clock,
     private val logger: KVLogger,
 ) {
@@ -45,6 +53,18 @@ class KycService(
                 )
             )
         }
+    }
+
+    fun findImageById(id: String): KycImageEntity {
+        return kycImageDao.findById(id)
+            .orElseThrow {
+                NotFoundException(
+                    error = Error(
+                        code = ErrorCode.KYC_IMAGE_NOT_FOUND,
+                        message = "Image#$id not found",
+                    )
+                )
+            }
     }
 
     fun search(request: SearchKycCaseRequest): List<KycCaseEntity> {
@@ -68,47 +88,76 @@ class KycService(
 
     @Transactional
     fun create(request: CreateKycCaseRequest): KycCaseEntity {
-        val identification = identificationService.findById(request.identificationId)
-        val paymentMethod = request.paymentMethodId?.let { id -> paymentMethodService.findById(id) }
-        ensureSameParty(identification.party.id, paymentMethod)
+        val party = partyService.findById(request.partyId)
+        return create(party, request.identificationType)
+    }
+
+    @Transactional
+    fun create(party: PartyEntity, identificationType: IdentificationType): KycCaseEntity {
         val now = Date(clock.millis())
 
         // Case
-        val case = dao.save(
+        return dao.save(
             KycCaseEntity(
-                party = identification.party,
-                identification = identification,
-                paymentMethod = paymentMethod,
+                party = party,
+                identificationType = identificationType,
                 status = KycStatus.PENDING,
                 createdAt = now,
                 modifiedAt = now,
             )
         )
+    }
 
-        // Verifications
-        daoVerification.save(
-            KycVerificationEntity(
-                case = case,
-                type = KycVerificationType.IDENTIFICATION,
-                status = KycStatus.PENDING,
-                createdAt = now,
+    @Transactional
+    fun upload(
+        id: String,
+        identificationType: IdentificationType,
+        imageType: KycImageType,
+        file: MultipartFile
+    ): KycImageEntity {
+        ensureImage(file)
+
+        val case = findById(id)
+        val now = Date(clock.millis())
+        val image = kycImageDao.findByKycCaseAndIdentificationTypeAndImageType(
+            case, identificationType, imageType
+        ) ?: KycImageEntity(
+            kycCase = case,
+            identificationType = identificationType,
+            imageType = imageType,
+            createdAt = now,
+            modifiedAt = now,
+        )
+
+        // Store
+        val mimeType = file.contentType
+        val extension = MimeUtils.getExtensionFromMimeType(mimeType)
+        val path = "kyc/${case.id}/images/${image.id}.$extension"
+        val storage = storageProvider.get()
+        storage.store(path, file.inputStream, mimeType)
+
+        return kycImageDao.save(
+            image.copy(
+                path = path,
+                storageType = storage.type(),
+                mimeType = mimeType,
                 modifiedAt = now,
             )
         )
+    }
 
-        if (paymentMethod != null) {
-            daoVerification.save(
-                KycVerificationEntity(
-                    case = case,
-                    type = KycVerificationType.PAYMENT_METHOD,
-                    status = KycStatus.PENDING,
-                    createdAt = now,
-                    modifiedAt = now,
+    fun getImageUrl(imageId: String): URL {
+        val image = findImageById(imageId)
+        if (image.path == null) {
+            throw NotFoundException(
+                error = Error(
+                    code = ErrorCode.KYC_IMAGE_NO_CONTENT,
+                    message = "Image#$imageId has no content"
                 )
             )
         }
-
-        return case
+        val storage = storageProvider.get(image.storageType)
+        return storage.generatePresignedUrl(image.path, imageUrlTTL)
     }
 
     @Transactional
@@ -119,23 +168,37 @@ class KycService(
         startVerification(case)
 
         // Verifications
-        case.verifications.forEach { verification ->
-            val logPrefix = "verifier_${verification.type.name.lowercase()}"
-            val verifier = verifierProvider.get(verification)
-            verifier.verify(verification)
+        val idVerification = verify(case, KycVerificationType.IDENTIFICATION).firstOrNull()
+            ?: throw ConflictException(
+                error = Error(
+                    code = ErrorCode.KYC_IMAGE_NO_IDENTIFICATION_VERIFICATION,
+                    message = "No identification verification could be performed for case#${case.id}"
+                )
+            )
+        logger.add("kyc_id_status", idVerification.status)
+        logger.add("kyc_id_score", idVerification.score)
 
-            logger.add("${logPrefix}_status", verification.status)
-            logger.add("${logPrefix}_score", verification.score)
-            logger.add("${logPrefix}_error_code", verification.errorCode)
-            logger.add("${logPrefix}_error_message", verification.errorMessage)
+        val selfieVerification = verify(case, KycVerificationType.SELFIE).firstOrNull()
+        logger.add("kyc_selfie_status", selfieVerification?.status)
+        logger.add("kyc_selfie_score", selfieVerification?.score)
+
+        verify(case, KycVerificationType.PAYMENT_METHOD)
+
+        // For the overall status and score, consider ONLY the ID and selfie verifications.
+        val status =
+            if (idVerification.status == KycStatus.VERIFIED && (selfieVerification == null || selfieVerification.status == KycStatus.VERIFIED)) {
+                KycStatus.VERIFIED
+            } else {
+                KycStatus.REJECTED
+            }
+        val score = if (selfieVerification != null) {
+            ((idVerification.score ?: 0) + (selfieVerification.score ?: 0)) / 2
+        } else {
+            idVerification.score
         }
-
-        // For the overall status and score, consider ONLY the identification verification.
-        val idVerification = case.verifications.find { it.type == KycVerificationType.IDENTIFICATION }!!
-        val status = idVerification.status
-        val score = idVerification.score
         logger.add("kyc_case_status", status)
         logger.add("kyc_case_score", score)
+
         val copy = dao.save(
             case.copy(
                 status = status,
@@ -145,14 +208,14 @@ class KycService(
         )
 
         // Update party KYC status
-        partyDao.save(
-            copy.party.copy(
-                kycStatus = copy.status,
-                modifiedAt = Date(clock.millis()),
-            )
-        )
+        partyService.updateKyStatus(copy.party, copy.status)
 
         return copy
+    }
+
+    private fun verify(case: KycCaseEntity, verificationType: KycVerificationType): List<KycVerificationEntity> {
+        val verifier = verifierProvider.get(verificationType)
+        return verifier?.verify(case) ?: emptyList()
     }
 
     private fun startVerification(case: KycCaseEntity) {
@@ -172,10 +235,14 @@ class KycService(
         }
     }
 
-    private fun ensureSameParty(partyId: Long?, paymentMethod: PaymentMethodEntity?) {
-        if (paymentMethod != null && paymentMethod.party.id != partyId) {
+    private fun ensureImage(file: MultipartFile) {
+        val mimeType = file.contentType
+        if (mimeType?.startsWith("image/") != true) {
             throw BadRequestException(
-                error = Error(code = ErrorCode.KYC_CASE_PARTY_MISMATCH)
+                error = Error(
+                    code = ErrorCode.IDENTIFICATION_IMAGE_INVALID_MIME_TYPE,
+                    message = "${file.originalFilename} is a $mimeType - This is not an image file.",
+                )
             )
         }
     }

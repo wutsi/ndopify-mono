@@ -12,14 +12,20 @@ contracts from [ndopify-dto](../ndopify-dto).
 
 ## Features
 
-- **E-mail OTP sign-in** (`ui/login/LoginController`)
+- **E-mail OTP sign-in** (`ui/login/LoginController`) — one page, `templates/login.html`, with two steps:
     1. `GET /login` asks for the e-mail; `POST /login` has ndopify-server e-mail a 6-digit code (`POST /v1/otp`,
-       5-minute TTL). The same endpoint is used to resend the code.
-    2. `GET /login/connection` asks for the code; `POST /login/verify` exchanges it for an access token
-       (`POST /v1/auth`, `AuthType.OTP`, application `partner-central`) and redirects to `/kyc`.
+       5-minute TTL) and keeps a `PendingLogin` (e-mail + expiry) in the HTTP session. `POST /login` with
+       `resend=true` sends a new code to the pending address.
+    2. `GET /login?etape=code` asks for the code; `POST /login/verify` exchanges it for an access token
+       (`POST /v1/auth`, `AuthType.OTP`, application `partner-central`), clears the pending sign-in and redirects
+       to `/kyc`.
+
+  The code step is only shown while a sign-in is pending in the session; otherwise `/login?etape=code` shows the
+  e-mail step. The e-mail is read from the session at verify time, never from the page. `/login/connection` (the
+  former code page) redirects to `/login?etape=code`.
 - **Sign-out** — `GET /logout` drops the access-token cookie and the HTTP session. ndopify-server has no revocation
   endpoint, so the token stays valid until it expires.
-- **KYC wizard** — Thymeleaf templates under `templates/kyc/` (`index`, `verification`, `niu`, `revue`,
+- **KYC wizard** — Thymeleaf templates under `templates/kyc/` (`index`, `verification`, `revue`,
   `confirmation`). No controller serves them yet.
 
 ## How it works

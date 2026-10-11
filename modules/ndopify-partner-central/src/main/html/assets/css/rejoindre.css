@@ -1,0 +1,204 @@
+/*
+ * Ndopify Partner Central — "Rejoindre Ndopify" wizard (rejoindre.html).
+ * Loaded after partner-central.css; uses its tier-2 semantic tokens only, no new colours.
+ */
+
+/* Radio / checkbox choices rendered as full-width, thumb-sized rows. */
+.choices {
+    /* Only inline/bottom: the top margin comes from the .step rhythm in partner-central.css. */
+    margin-inline: 0;
+    margin-bottom: 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+}
+
+.choices > * + * {
+    margin-top: var(--space-2);
+}
+
+.choices__legend {
+    padding: 0;
+    margin-bottom: var(--space-2);
+    font-weight: 600;
+}
+
+.choices__grid {
+    display: grid;
+    gap: var(--space-2);
+}
+
+/* Short labels (neighbourhoods) fit two per row even on phones. */
+.choices__grid--compact {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.choices__grid--compact .choice {
+    padding-inline: var(--space-3);
+}
+
+@media (min-width: 480px) {
+    .choices__grid--2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.choice {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: var(--target);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-control);
+    background: var(--color-bg);
+    cursor: pointer;
+    transition: border-color var(--duration) var(--ease-out), background-color var(--duration) var(--ease-out);
+}
+
+.choice:hover {
+    border-color: var(--color-fg);
+}
+
+.choice:has(input:checked) {
+    border-color: var(--color-accent);
+    background: var(--color-bg-subtle);
+    font-weight: 600;
+}
+
+.choice:has(input:focus-visible) {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
+.choice:has(input:disabled) {
+    color: var(--color-fg-disabled);
+    cursor: not-allowed;
+}
+
+.choice:has(input:disabled):hover {
+    border-color: var(--color-border-strong);
+}
+
+.choice input {
+    flex: none;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: 0;
+    accent-color: var(--color-accent);
+}
+
+.choices[aria-invalid="true"] .choice {
+    border-color: var(--color-error-fg);
+}
+
+/*
+ * Phone number: intl-tel-input (DESIGN.md › Form fields). The library wraps the .input in .iti and puts the
+ * country button inside its left edge; these rules only make it full width and pill-shaped like other fields.
+ */
+.iti {
+    --iti-border-color: var(--color-border);
+    --iti-dialcode-color: var(--color-fg);
+    --iti-arrow-color: var(--color-fg);
+    --iti-hover-color: var(--color-bg-subtle);
+    --iti-dropdown-bg: var(--color-surface);
+}
+
+/* The field wrapper only — the fullscreen country popup reuses the .iti class. */
+.iti:not(.iti--container) {
+    display: block;
+    width: 100%;
+}
+
+.iti .input {
+    font-variant-numeric: tabular-nums;
+}
+
+/* The country button sits inside the pill: round its hover background so it doesn't poke out. */
+.iti__selected-country,
+.iti__selected-country-primary {
+    border-radius: var(--radius-control) 0 0 var(--radius-control);
+}
+
+.iti__selected-country-primary {
+    padding-left: var(--space-4);
+}
+
+.iti__selected-dial-code {
+    font-weight: 600;
+}
+
+.iti__search-input {
+    min-height: var(--target);
+    font: inherit;
+}
+
+.iti__country {
+    min-height: var(--target);
+}
+
+/* "Même numéro que WhatsApp" shortcut. */
+.check {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: var(--target);
+    cursor: pointer;
+}
+
+.check input {
+    flex: none;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin: 0;
+    accent-color: var(--color-accent);
+}
+
+/* Select keeps the pill shape of .input. */
+.select {
+    appearance: none;
+    padding-right: calc(var(--space-4) * 2);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='m5 7.5 5 5 5-5' fill='none' stroke='%23040404' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right var(--space-4) center;
+    background-size: 1.25rem;
+    cursor: pointer;
+}
+
+/* Next steps on the confirmation page. */
+.next-steps {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: next-step;
+    text-align: left;
+}
+
+.next-steps li {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+    counter-increment: next-step;
+}
+
+.next-steps li + li {
+    margin-top: var(--space-4);
+}
+
+.next-steps li::before {
+    content: counter(next-step);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 1.75rem;
+    height: 1.75rem;
+    border: 2px solid var(--color-accent);
+    border-radius: var(--radius-control);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.next-steps__title {
+    font-weight: 600;
+}

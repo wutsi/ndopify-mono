@@ -3,6 +3,11 @@
 Sources: *Ndopify Partner Central* (structure du site), *Ndopify — Pitch*, *Ndopify Vision + Mission*.
 Supersedes `agent-onboarding.md` and the previous revision of this file wherever they differ.
 
+**Revision 2026-10-10 (c) — NIU step removed for now.** The KYC process does not collect or verify the NIU yet:
+`kyc/niu.html` is gone and the wizard is 3 steps (**1 sur 3** recto, **2 sur 3** verso, **3 sur 3** revue). The
+review page no longer shows a NIU row, and `kyc/index.html` no longer asks agents to prepare their NIU. Wherever the
+sections below mention `niu.html` or a 4-step wizard, this revision wins.
+
 **Revision 2026-10-10 (b) — source doc restructured.** Changes from the previous revision:
 
 - File layout is now prescribed: `login/index.html`, `login/connection.html`, `kyc/index.html`,

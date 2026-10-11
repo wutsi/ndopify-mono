@@ -19,9 +19,9 @@ import java.text.SimpleDateFormat
 import java.util.TimeZone
 import kotlin.test.assertEquals
 
-class KycIdentificationInfoExtractorAiTest {
+class KycInfoExtractorIdentificationTest {
     private val chatModel = mock<ChatModel>()
-    private val extractor = KycInfoExtractorAi(ChatClient.builder(chatModel))
+    private val extractor = KycInfoExtractorIdentification(ChatClient.builder(chatModel))
     private val fmt = SimpleDateFormat("yyyy-MM-dd")
 
     @BeforeEach
@@ -52,8 +52,8 @@ class KycIdentificationInfoExtractorAiTest {
         )
 
         val images = listOf(
-            KycIdentificationInfoExtractorAiTest::class.java.getResource("/files/identity/cm/cni-front.png")?.file,
-            KycIdentificationInfoExtractorAiTest::class.java.getResource("/files/identity/cm/cni-back.png")?.file,
+            KycInfoExtractorIdentificationTest::class.java.getResource("/files/identity/cm/cni-front.png")?.file,
+            KycInfoExtractorIdentificationTest::class.java.getResource("/files/identity/cm/cni-back.png")?.file,
         )
         val info = extractor.extract(images.mapNotNull { image -> File(image) })
 
@@ -83,7 +83,7 @@ class KycIdentificationInfoExtractorAiTest {
         )
 
         val images = listOf(
-            KycIdentificationInfoExtractorAiTest::class.java.getResource("/files/identity/cm/passport.webp")?.file,
+            KycInfoExtractorIdentificationTest::class.java.getResource("/files/identity/cm/passport.webp")?.file,
         )
         val info = extractor.extract(images.mapNotNull { image -> File(image) })
 
@@ -114,7 +114,7 @@ class KycIdentificationInfoExtractorAiTest {
         )
 
         val images = listOf(
-            KycIdentificationInfoExtractorAiTest::class.java.getResource("/files/identity/us/driver-license-front.jpg")?.file,
+            KycInfoExtractorIdentificationTest::class.java.getResource("/files/identity/us/driver-license-front.jpg")?.file,
         )
         val info = extractor.extract(images.mapNotNull { image -> File(image) })
 

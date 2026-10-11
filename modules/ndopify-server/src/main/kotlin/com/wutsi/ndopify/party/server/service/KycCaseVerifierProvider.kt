@@ -1,29 +1,23 @@
 package com.wutsi.ndopify.party.server.service
 
 import com.wutsi.ndopify.party.dto.KycVerificationType
-import com.wutsi.ndopify.party.dto.PaymentMethodType
-import com.wutsi.ndopify.party.server.domain.KycVerificationEntity
-import com.wutsi.ndopify.party.server.service.kyc.KycVerifierIdentification
-import com.wutsi.ndopify.party.server.service.kyc.KycVerifierManual
-import com.wutsi.ndopify.party.server.service.kyc.KycVerifierMoMo
+import com.wutsi.ndopify.party.server.service.kyc.KycCaseVerifierIdentification
+import com.wutsi.ndopify.party.server.service.kyc.KycCaseVerifierMoMo
+import com.wutsi.ndopify.party.server.service.kyc.KycCaseVerifierSelfie
 import org.springframework.stereotype.Service
 
-@Deprecated("")
 @Service
-class KycVerifierProvider(
-    private val momo: KycVerifierMoMo,
-    private val id: KycVerifierIdentification,
-    private val manual: KycVerifierManual,
+class KycCaseVerifierProvider(
+    private val id: KycCaseVerifierIdentification,
+    private val selfie: KycCaseVerifierSelfie,
+    private val momo: KycCaseVerifierMoMo,
 ) {
-    fun get(verification: KycVerificationEntity): KycVerifier {
-        return when (verification.type) {
+    fun get(verificationType: KycVerificationType): KycCaseVerifier? {
+        return when (verificationType) {
             KycVerificationType.IDENTIFICATION -> id
-            KycVerificationType.PAYMENT_METHOD -> when (verification.case.paymentMethod?.type) {
-                PaymentMethodType.MOBILE_MONEY -> momo
-                else -> manual
-            }
-
-            else -> manual
+            KycVerificationType.PAYMENT_METHOD -> momo
+            KycVerificationType.SELFIE -> selfie
+            else -> null
         }
     }
 }

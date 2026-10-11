@@ -9,11 +9,8 @@ import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
-import com.wutsi.ndopify.party.dto.CreateIdentificationRequest
-import com.wutsi.ndopify.party.dto.CreateKycCaseRequest
 import com.wutsi.ndopify.party.dto.CreatePartyRequest
 import com.wutsi.ndopify.party.dto.CreatePaymentMethodRequest
-import com.wutsi.ndopify.party.dto.IdentificationImageType
 import com.wutsi.ndopify.party.dto.IdentificationType
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.PaymentMethodType
@@ -91,7 +88,7 @@ class AgentService(
 
     @Transactional
     fun create(request: CreateAgentRequest): AgentEntity {
-        // Recipient
+        // Party
         val party = partyService.findByEmailOrNull(request.email)
             ?: partyService.create(
                 CreatePartyRequest(
@@ -100,7 +97,6 @@ class AgentService(
                     email = request.email,
                 )
             )
-        val partyId = party.id ?: -1
         ensureAgentNotAlreadyExists(party)
 
         // User
@@ -108,7 +104,7 @@ class AgentService(
         userService.grantAccess(user, ApplicationCode.PARTNER_CENTRAL)
 
         // Payment method
-        val paymentMethod = paymentMethodService.create(
+        paymentMethodService.create(
             party,
             CreatePaymentMethodRequest(
                 type = PaymentMethodType.MOBILE_MONEY,
@@ -116,25 +112,8 @@ class AgentService(
             )
         )
 
-        // Identification
-        val identification = identificationService.create(
-            CreateIdentificationRequest(
-                partyId = partyId,
-                type = IdentificationType.NATIONAL_ID,
-                imageTypes = listOf(
-                    IdentificationImageType.FRONT,
-                    IdentificationImageType.BACK,
-                ),
-            )
-        )
-
         // KYC case
-        kycService.create(
-            CreateKycCaseRequest(
-                identificationId = identification.id,
-                paymentMethodId = paymentMethod.id
-            )
-        )
+        kycService.create(party, IdentificationType.NATIONAL_ID)
 
         // Agent
         val now = Date(clock.millis())

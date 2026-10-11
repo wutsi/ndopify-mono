@@ -1,15 +1,17 @@
 package com.wutsi.ndopify.party.server.dao
 
-import com.wutsi.ndopify.party.dto.IdentificationImageType
-import com.wutsi.ndopify.party.server.domain.IdentificationEntity
-import com.wutsi.ndopify.party.server.domain.IdentificationImageEntity
+import com.wutsi.ndopify.party.dto.IdentificationType
+import com.wutsi.ndopify.party.dto.KycImageType
+import com.wutsi.ndopify.party.server.domain.KycCaseEntity
+import com.wutsi.ndopify.party.server.domain.KycImageEntity
 import org.springframework.data.repository.CrudRepository
 import org.springframework.stereotype.Repository
 
 @Repository
-interface IdentificationImageRepository : CrudRepository<IdentificationImageEntity, String> {
-    fun findByIdentificationAndImageType(
-        identification: IdentificationEntity,
-        imageType: IdentificationImageType
-    ): IdentificationImageEntity?
+interface KycImageRepository : CrudRepository<KycImageEntity, String> {
+    fun findByKycCaseAndIdentificationTypeAndImageType(
+        kycCase: KycCaseEntity,
+        identificationType: IdentificationType,
+        imageType: KycImageType
+    ): KycImageEntity?
 }
