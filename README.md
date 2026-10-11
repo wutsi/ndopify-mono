@@ -16,7 +16,7 @@ Early-stage. Only four modules exist today — there is no SDK or tracking-serve
 |------------------------------------------------------------|------------------------------------------------------------------------------------------|
 | [ndopify-dto](modules/ndopify-dto)                         | Shared request/response DTOs and contracts — no business logic                           |
 | [ndopify-server](modules/ndopify-server)                   | REST API backend (Spring Boot)                                                           |
-| [ndopify-partner-central](modules/ndopify-partner-central) | Agent-facing web app (Spring Boot + Thymeleaf, French): e-mail OTP sign-in, KYC wizard   |
+| [ndopify-partner-central](modules/ndopify-partner-central) | Agent-facing web app (Spring Boot + Thymeleaf, French): sign-up wizard, e-mail OTP sign-in, KYC wizard |
 | [ndopify-website](modules/ndopify-website)                 | Static marketing + lead-capture website (plain HTML/CSS/JS, French) — not a Maven module |
 
 ### Module Dependency
@@ -49,7 +49,7 @@ layering (`endpoint` → `service` → `dao` → `domain`, plus `mapper` for ent
 
 - **refdata** — shared reference data: `Tenant`, `Location` (imported from GeoNames), `Application`, `Role`.
 - **security** — `User` accounts, JWT issuance, and pluggable authentication (`PasswordAuthenticator`,
-  `GoogleOneTapAuthenticator`, `OtpAuthenticator` for e-mailed one-time codes issued via `/v1/otp`).
+  `GoogleOneTapAuthenticator`, `OtpAuthenticator` for e-mailed one-time codes).
 - **party** — parties, identifications (with uploaded images), KYC cases/verifications, and payment methods. KYC
   cases are verified through pluggable `KycVerifier` strategies (identification, mobile-money, manual); data is
   extracted from identity-document images by an LLM (`IdentificationInfoExtractorAi`).
@@ -110,23 +110,13 @@ AI tooling for [Claude Code](https://claude.com/claude-code) lives in [`.claude/
 
 | Command                                                            | Purpose                                                                                                   |
 |--------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
-| [`/init-website-design`](.claude/commands/init-website-design.md)   | Same as the `init-website-design` skill below.                                                            |
-| [`/init-website`](.claude/commands/init-website.md)                 | Same as the `init-website` skill below.                                                                   |
+| [`/init-website-design`](.claude/commands/init-website-design.md)   | Generates `modules/ndopify-website/DESIGN.md` (colors, typography, spacing, components) from the canonical design doc. Run it before `/init-website`, which reads that file. |
+| [`/init-website`](.claude/commands/init-website.md)                 | Builds the French website in `modules/ndopify-website/src/main/html/` in three stages: journey planning (`neo-user-journey`), generation (`power-design`), critique and fixes (`impeccable`). |
 | [`/init-partner-central`](.claude/commands/init-partner-central.md) | Builds the French partner central pages in `modules/ndopify-partner-central/src/main/html/` using the same three-stage pipeline (`neo-user-journey` → `power-design` → `impeccable`). |
-
-### Project skills
-
-These drive the generation of the website. Run `init-website-design` first, since `init-website` reads the
-`DESIGN.md` it produces.
-
-| Skill                                                              | Purpose                                                                                                                                                   |
-|--------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`init-website-design`](.claude/skills/init-website-design/SKILL.md) | Generates `modules/ndopify-website/DESIGN.md` (colors, typography, spacing, components) from the canonical design doc, then validates it with `npx @google/design.md lint`. |
-| [`init-website`](.claude/skills/init-website/SKILL.md)             | Builds the French website in `modules/ndopify-website/src/main/html/` in three stages: journey planning (`neo-user-journey`), generation (`power-design`), critique and fixes (`impeccable`). |
 
 ### Vendored third-party skills
 
-Used by `init-website` and `init-partner-central`; not specific to Ndopify.
+Used by `/init-website` and `/init-partner-central`; not specific to Ndopify.
 
 | Skill                                                          | Purpose                                                                                           |
 |----------------------------------------------------------------|---------------------------------------------------------------------------------------------------|

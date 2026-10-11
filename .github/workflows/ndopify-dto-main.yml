@@ -1,4 +1,4 @@
-name: ndopify-dto
+name: ndopify-dto-main
 
 on:
     push:

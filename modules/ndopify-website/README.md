@@ -23,8 +23,8 @@ src/main/html/
   assets/images/               Logo/icon assets
 ```
 
-The pages are generated and refreshed by the `init-website-design` and `init-website` Claude Code skills, which live
-at the repo root in [`.claude/skills`](../../.claude/skills) — see the
+The pages are generated and refreshed by the `/init-website-design` and `/init-website` Claude Code slash commands,
+which live at the repo root in [`.claude/commands`](../../.claude/commands) — see the
 [main README](../../README.md#ai-commands--skills).
 
 ## Current behavior

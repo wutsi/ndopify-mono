@@ -341,6 +341,7 @@
                             <input id="sameAsWhatsapp" name="sameAsWhatsapp" type="checkbox" value="true"
                                    th:checked="${answers.mobileMoneyNumber != null and answers.mobileMoneyNumber == answers.whatsappNumber}">
                             <span>Utiliser mon numéro WhatsApp (<span data-whatsapp-number
+                                                                      th:attr="data-e164=${answers.whatsappNumber}"
                                                                       th:text="${answers.whatsappNumber}">+237 6 77 12 34 56</span>)</span>
                         </label>
                         <p class="field__error" id="mobileMoneyNumber-error"

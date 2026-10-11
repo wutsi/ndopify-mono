@@ -17,8 +17,8 @@ Code is organized by business domain under `com.wutsi.ndopify.<domain>.server`, 
 | Domain       | Responsibility                                                                                    |
 |--------------|-----------------------------------------------------------------------------------------------------|
 | **refdata**  | Shared reference data: `Tenant`, `Location` (imported from GeoNames), `Application`, `Role`. Global, not tenant-scoped. |
-| **security** | `User` accounts, `UserApplication` membership/roles, JWT issuance (`AccessTokenService`), pluggable authentication (`PasswordAuthenticator`, `GoogleOneTapAuthenticator`, `OtpAuthenticator`) selected by `AuthenticatorProvider`. One-time codes are issued via `POST /v1/otp` (`OtpService`) and e-mailed by `OtpMailet`. Global, not tenant-scoped. |
-| **agent**    | Mobile-money agents (`/v1/agents`: get, search, create, update). Sends a welcome e-mail (`WelcomeMailet`) when a tenant has a `partnerCentralUrl`. Tenant-scoped via Hibernate `@TenantId` on `AgentEntity`. |
+| **security** | `User` accounts, `UserApplication` membership/roles, JWT issuance (`AccessTokenService`), pluggable authentication (`PasswordAuthenticator`, `GoogleOneTapAuthenticator`, `OtpAuthenticator`) selected by `AuthenticatorProvider`. One-time codes are issued by `OtpService` and e-mailed by `OtpMailet`. Global, not tenant-scoped. |
+| **agent**    | Mobile-money agents. Sends a welcome e-mail (`WelcomeMailet`) when a tenant has a `partnerCentralUrl`. Tenant-scoped via Hibernate `@TenantId` on `AgentEntity`. |
 | **party**    | Parties, identifications (with uploaded images), KYC cases/verifications, and payment methods. KYC cases are verified via pluggable `KycVerifier` strategies (`KycVerifierIdentification`, `KycVerifierMoMo`, `KycVerifierManual`). Identity-document data is extracted by an LLM via Spring AI (`IdentificationInfoExtractorAi`). Tenant-scoped via Hibernate `@TenantId`. |
 | **error**    | Shared exception types (`WutsiException` subclasses) and a global `ControllerErrorHandler`. |
 
@@ -36,6 +36,19 @@ A non-domain **`platform`** package holds infrastructure shared across domains:
 
 See the root [CLAUDE.md](../../CLAUDE.md) for architecture notes aimed at AI-assisted development, and
 [Multi-Tenancy](../../CLAUDE.md#multi-tenancy--current-state) for the tenancy model in detail.
+
+## API Documentation
+
+The REST API is documented with SpringDoc OpenAPI — refer to Swagger rather than to this README for endpoints,
+parameters and payloads. With the server running locally:
+
+- **Swagger UI**: <http://localhost:8080/api.html>. The API is split into groups — *Agent API*, *Party API*,
+  *RefData API*, *Security API* — picked from the "Select a definition" list at the top right.
+- **OpenAPI JSON**: `http://localhost:8080/v3/api-docs/<group>`, with `<group>` one of `agent`, `party`, `refdata`,
+  `security` (e.g. to import into Postman or generate a client).
+
+Groups are configured under `springdoc.group-configs` in `src/main/resources/application.yml`: an endpoint only
+appears in Swagger UI if its path matches one of a group's `paths-to-match`, so add new paths there.
 
 ## Environment Setup
 
