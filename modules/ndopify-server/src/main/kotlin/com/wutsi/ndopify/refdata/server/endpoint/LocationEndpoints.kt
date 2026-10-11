@@ -1,13 +1,16 @@
 package com.wutsi.ndopify.refdata.server.endpoint
 
 import com.wutsi.ndopify.common.dto.ImportResponse
-import com.wutsi.ndopify.refdata.dto.LocationType
+import com.wutsi.ndopify.refdata.dto.GetLocationResponse
+import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
 import com.wutsi.ndopify.refdata.dto.SearchLocationResponse
 import com.wutsi.ndopify.refdata.server.io.GeonamesImporter
 import com.wutsi.ndopify.refdata.server.io.NeighbourhoodImporter
 import com.wutsi.ndopify.refdata.server.mapper.LocationMapper
 import com.wutsi.ndopify.refdata.server.service.LocationService
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.ModelAttribute
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -34,25 +37,19 @@ class LocationEndpoints(
         )
     }
 
+    @GetMapping("/{id}")
+    fun get(
+        @PathVariable id: Long,
+    ): GetLocationResponse {
+        val location = service.findById(id)
+        return GetLocationResponse(location = mapper.toLocation(location))
+    }
+
     @GetMapping
     fun search(
-        @RequestParam(required = false, name = "q") keyword: String? = null,
-        @RequestParam(required = false, name = "id") ids: List<Long> = emptyList(),
-        @RequestParam(required = false, name = "parent-id") parentId: Long? = null,
-        @RequestParam(required = false, name = "type") types: List<LocationType> = emptyList(),
-        @RequestParam(required = false) country: String? = null,
-        @RequestParam(required = false) limit: Int = 20,
-        @RequestParam(required = false) offset: Int = 0,
+        @ModelAttribute request: SearchLocationRequest,
     ): SearchLocationResponse {
-        val locations = service.search(
-            keyword = keyword,
-            ids = ids,
-            parentId = parentId,
-            types = types,
-            country = country,
-            limit = limit,
-            offset = offset,
-        )
+        val locations = service.search(request)
         return SearchLocationResponse(
             locations = locations.map { location -> mapper.toLocation(location) }
         )

@@ -3,6 +3,7 @@ package com.wutsi.ndopify.refdata.server.io
 import com.wutsi.ndopify.common.dto.ImportMessage
 import com.wutsi.ndopify.common.dto.ImportResponse
 import com.wutsi.ndopify.refdata.dto.LocationType
+import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
 import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.util.StringUtils
@@ -46,7 +47,13 @@ class NeighbourhoodImporter(
 
         var row = 0
         val cities = locationService
-            .search(country = country, types = listOf(LocationType.CITY), limit = Integer.MAX_VALUE)
+            .search(
+                SearchLocationRequest(
+                    country = country,
+                    types = listOf(LocationType.CITY),
+                    limit = Integer.MAX_VALUE,
+                )
+            )
             .associateBy { city -> city.asciiName.lowercase() }
 
         val parser = createParser(input)

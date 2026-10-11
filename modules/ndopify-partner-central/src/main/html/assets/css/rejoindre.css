@@ -28,15 +28,6 @@
     gap: var(--space-2);
 }
 
-/* Short labels (neighbourhoods) fit two per row even on phones. */
-.choices__grid--compact {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-.choices__grid--compact .choice {
-    padding-inline: var(--space-3);
-}
-
 @media (min-width: 480px) {
     .choices__grid--2 {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -163,6 +154,177 @@
     background-position: right var(--space-4) center;
     background-size: 1.25rem;
     cursor: pointer;
+}
+
+/*
+ * City and neighbourhoods: slim-select (rejoindre.js › slimSelect). The library replaces the <select> with its
+ * own combobox (.ss-main) and dropdown (.ss-content); these rules give them the look of .input / .select.
+ */
+.ss-main,
+.ss-content {
+    --ss-primary-color: var(--color-accent);
+    --ss-bg-color: var(--color-bg);
+    --ss-font-color: var(--color-fg);
+    --ss-placeholder-color: var(--color-fg-disabled);
+    --ss-disabled-color: var(--color-surface-alt);
+    --ss-border-color: var(--color-border-strong);
+    --ss-highlight-color: var(--color-info-bg);
+    --ss-focus-color: var(--color-focus);
+    --ss-error-color: var(--color-error-fg);
+    --ss-main-height: var(--target);
+    --ss-content-height: 18rem;
+    --ss-spacing-s: var(--space-1);
+    --ss-spacing-m: var(--space-2);
+    --ss-spacing-l: var(--space-3);
+    --ss-border-radius: var(--radius-control);
+    font: 400 var(--step-body) / 1.25 var(--font-body);
+}
+
+/* slim-select copies the <select>'s "input select" classes onto .ss-main, so the pill and chevron come from
+ * .input / .select; only the layout needs adjusting for the chips. */
+.ss-main.input {
+    display: flex;
+    padding-block: var(--space-1);
+}
+
+.ss-main .ss-arrow {
+    display: none;
+}
+
+/* Focus and open state get the accent edge of .input:focus-visible (plus the global ring), not the library's glow;
+ * the pill keeps its shape while open (the library squares the corner next to the dropdown). */
+.ss-main:focus,
+.ss-main.ss-dir-above,
+.ss-main.ss-dir-below {
+    border-color: var(--color-focus);
+    border-radius: var(--radius-control);
+    box-shadow: none;
+}
+
+/* …but an error still wins, as on the other fields. */
+.ss-main[aria-invalid="true"] {
+    border-color: var(--color-error-fg);
+}
+
+.ss-main.ss-disabled {
+    cursor: progress;
+}
+
+.ss-main .ss-values .ss-placeholder {
+    padding: 0;
+}
+
+.ss-main .ss-values .ss-single {
+    margin: 0;
+    padding: 0;
+}
+
+/* Selected neighbourhoods: chips in the selected-choice style (.choice:has(input:checked)). */
+.ss-main .ss-values .ss-value {
+    margin: var(--space-1);
+    border: 1px solid var(--color-accent);
+    border-radius: var(--radius-control);
+    background: var(--color-bg-subtle);
+    color: var(--color-fg);
+    font-weight: 600;
+}
+
+.ss-main .ss-values .ss-value .ss-value-text {
+    color: var(--color-fg);
+    padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+    font-size: var(--step-hint);
+}
+
+.ss-main .ss-values .ss-value .ss-value-delete {
+    padding: var(--space-2) var(--space-3) var(--space-2) var(--space-1);
+    border-left: 0;
+}
+
+.ss-main .ss-values .ss-value .ss-value-delete svg path {
+    stroke: var(--color-fg);
+}
+
+/* Dropdown: a rounded panel under the pill, rows at tap-target height. It gets the copied classes too, so
+ * .input / .select are undone here. */
+.ss-content,
+.ss-content.input {
+    display: flex;
+    min-height: 0;
+    padding: 0;
+    background-image: none;
+    margin-top: var(--space-1);
+    border: 1px solid var(--color-border-strong);
+    border-radius: calc(var(--radius-control) / 2);
+    box-shadow: 0 4px 12px rgba(4, 4, 4, 0.08);
+    overflow: hidden;
+}
+
+.ss-content .ss-search {
+    padding: var(--space-2);
+    border-bottom-color: var(--color-border);
+}
+
+.ss-content .ss-search input {
+    min-height: var(--target);
+    padding: var(--space-2) var(--space-4);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-control);
+    font: inherit;
+}
+
+.ss-content .ss-search input:focus {
+    border-color: var(--color-focus);
+    box-shadow: none;
+}
+
+.ss-content .ss-list .ss-option {
+    min-height: var(--target);
+    display: flex;
+    align-items: center;
+    padding: var(--space-2) var(--space-4);
+}
+
+.ss-content .ss-list .ss-option:hover,
+.ss-content .ss-list .ss-option.ss-highlighted {
+    background: var(--color-bg-subtle);
+    color: var(--color-fg);
+}
+
+.ss-content .ss-list .ss-option.ss-selected,
+.ss-content .ss-list .ss-option:not(.ss-disabled).ss-selected {
+    background: var(--color-bg-subtle);
+    color: var(--color-fg);
+    font-weight: 600;
+}
+
+.ss-content .ss-list .ss-option.ss-disabled {
+    color: var(--color-fg-disabled);
+    background: transparent;
+}
+
+/* Review: "Modifier" sits on the value's line, at the right, to keep the list short. */
+.review__item {
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: var(--space-3);
+    align-items: center;
+}
+
+.review__term {
+    grid-column: 1 / -1;
+}
+
+.review__value:has(.review__edit) {
+    grid-column: 2;
+    grid-row: 2;
+}
+
+.review__value {
+    overflow-wrap: anywhere;
+}
+
+/* Keeps its 44px tap target, but lets it overlap the row padding instead of making the row taller. */
+.review__edit {
+    margin-block: calc((1.25em - var(--target)) / 2);
 }
 
 /* Next steps on the confirmation page. */

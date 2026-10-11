@@ -23,9 +23,9 @@
     // PROTOTYPE: accounts the simulated API "knows" (same list as partner-central.js).
     var KNOWN_EMAILS = ["agent@ndopify.com", "serge@ndopify.com"];
 
-    // PROTOTYPE: the real page loads cities and neighbourhoods from ndopify-server (/v1/locations).
+    // PROTOTYPE: rows the simulated GET /v1/locations serves, shaped like its Location DTO (ndopify-dto).
     // City ids are the GeoNames ids; neighbourhood ids are placeholders.
-    var CITIES = [
+    var LOCATIONS = [
         {
             id: 2220957,
             name: "Yaoundé",
@@ -42,15 +42,45 @@
                 "Logbessou", "Logpom", "Makepe", "Ndokoti", "Village"
             ]
         }
-    ].map(function (city, c) {
-        return {
-            id: city.id,
-            name: city.name,
-            neighborhoods: city.neighborhoods.map(function (name, n) {
-                return { id: (c + 1) * 1000 + n + 1, name: name };
-            })
-        };
-    });
+    ].reduce(function (rows, city, c) {
+        rows.push({ id: city.id, parentId: null, name: city.name, type: "CITY", country: "CM" });
+        city.neighborhoods.forEach(function (name, n) {
+            rows.push({ id: (c + 1) * 1000 + n + 1, parentId: city.id, name: name, type: "NEIGHBORHOOD", country: "CM" });
+        });
+        return rows;
+    }, []);
+
+    /*
+     * PROTOTYPE: stands in for the BFF's JSON proxy to GET /v1/locations — same parameters (type, parent-id, id,
+     * limit) and the same SearchLocationResponse shape, so wiring the real page is a fetch() swap.
+     */
+    function searchLocations(params) {
+        var rows = LOCATIONS.filter(function (l) {
+            return (!params.type || l.type === params.type) &&
+                (params.parentId == null || l.parentId === params.parentId) &&
+                (!params.country || l.country === params.country) &&
+                (!params.ids || params.ids.indexOf(l.id) !== -1);
+        }).sort(function (a, b) {
+            return a.name.localeCompare(b.name, "fr");
+        }).slice(0, params.limit || 100);
+        return new Promise(function (resolve) {
+            window.setTimeout(function () {
+                resolve({ locations: rows });
+            }, 300);
+        });
+    }
+
+    // Names of every location loaded so far, for the review step.
+    var locationNames = {};
+
+    function loadLocations(params) {
+        return searchLocations(params).then(function (response) {
+            response.locations.forEach(function (l) {
+                locationNames[l.id] = l.name;
+            });
+            return response.locations;
+        });
+    }
 
     var EXPERIENCE_LABELS = {
         NOVICE: "Moins d'un an",
@@ -157,12 +187,54 @@
         });
     }
 
-    function findCity(id) {
-        id = Number(id);
-        for (var i = 0; i < CITIES.length; i++) {
-            if (CITIES[i].id === id) return CITIES[i];
-        }
-        return null;
+    // Accent- and case-insensitive "contains", so "ekelle" finds "Ngoa-Ekellé" and "mbi" finds "Mvog-Mbi".
+    function fold(text) {
+        return String(text).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    }
+
+    /*
+     * A slim-select dropdown over a native <select> (DESIGN.md › Form fields — styled in rejoindre.css).
+     * The <select> stays the source of truth and keeps firing "change"; slim-select's combobox becomes the
+     * field's visible, focusable control, so it takes over the error description.
+     */
+    function slimSelect(select, settings) {
+        var slim = new window.SlimSelect({
+            select: select,
+            settings: Object.assign({
+                searchPlaceholder: "Rechercher…",
+                searchText: "Aucun résultat",
+                searchingText: "Recherche…",
+                resultsText: "{count} résultat(s)",
+                removeText: "Retirer",
+                deselectText: "Effacer",
+                maxValuesMessage: "{number} sélectionnés",
+                // The dropdown stays anchored under the field on phones too, instead of a full-screen modal.
+                modal: "off",
+                openPosition: "down",
+                contentLocation: select.parentNode
+            }, settings),
+            events: {
+                searchFilter: function (option, search) {
+                    return fold(option.text).indexOf(fold(search)) !== -1;
+                }
+            }
+        });
+        var control = slim.render.main.main;
+        control.setAttribute("aria-describedby", select.getAttribute("aria-describedby"));
+        select.removeAttribute("aria-describedby");
+        return { slim: slim, control: control, content: slim.render.content.main };
+    }
+
+    function slimField(select, ui, extra) {
+        return Object.assign({
+            target: ui.control,
+            source: select,
+            error: $("#" + select.id + "-error"),
+            // Moving into the open dropdown (its search box, its options) isn't leaving the field.
+            contains: function (el) {
+                return ui.control.contains(el) || ui.content.contains(el);
+            }
+        }, extra);
     }
 
 
@@ -281,7 +353,7 @@
             case "experience":
                 return !!EXPERIENCE_LABELS[a.experienceLevel] && !!AGENT_TYPE_LABELS[a.agentType];
             case "secteur":
-                return !!findCity(a.cityId) && Array.isArray(a.neighborhoodIds) &&
+                return a.cityId > 0 && Array.isArray(a.neighborhoodIds) &&
                     a.neighborhoodIds.length >= 1 && a.neighborhoodIds.length <= MAX_NEIGHBORHOODS;
             case "paiement":
                 return /^\+237\d{9}$/.test(a.mobileMoneyNumber || "");
@@ -356,96 +428,108 @@
 
     function sectorStep(resync) {
         var answers = loadAnswers();
-        var city = $("#cityId");
+        var citySelect = $("#cityId");
+        var neighborhoodSelect = $("#neighborhoodIds");
         var group = $('[data-group="neighborhoodIds"]');
-        var list = $("[data-neighborhoods]");
         var empty = $("[data-neighborhoods-empty]");
         var counter = $("[data-neighborhood-counter]");
         var status = $("[data-neighborhood-status]");
 
-        CITIES.forEach(function (c) {
-            var option = document.createElement("option");
-            option.value = String(c.id);
-            option.textContent = c.name;
-            city.appendChild(option);
+        var city = slimSelect(citySelect, {
+            placeholderText: "Choisissez une ville",
+            ariaLabel: "Ville principale d'intervention"
+        });
+        var neighborhoods = slimSelect(neighborhoodSelect, {
+            placeholderText: "Choisissez vos quartiers",
+            ariaLabel: "Quartiers",
+            maxSelected: MAX_NEIGHBORHOODS,
+            closeOnSelect: false
         });
 
-        function selected() {
-            return $all('input[name="neighborhoodIds"]:checked', list).map(function (input) {
-                return Number(input.value);
-            });
+        function cityId() {
+            return Number(citySelect.value) || 0;
         }
 
-        function updateLimit(announceIt) {
+        function selected() {
+            return neighborhoods.slim.getSelected().map(Number);
+        }
+
+        function updateCounter(announceIt) {
             var count = selected().length;
             counter.textContent = count + " sur " + MAX_NEIGHBORHOODS + " sélectionné" + (count > 1 ? "s" : "");
-            $all('input[name="neighborhoodIds"]', list).forEach(function (input) {
-                input.disabled = !input.checked && count >= MAX_NEIGHBORHOODS;
-            });
             if (announceIt && count === MAX_NEIGHBORHOODS) {
                 announce(status, "Vous avez choisi " + MAX_NEIGHBORHOODS + " quartiers, le maximum.");
             }
         }
 
-        function renderNeighborhoods(keep) {
-            list.textContent = "";
-            var c = findCity(city.value);
-            empty.hidden = !!c;
-            group.hidden = !c;
-            if (!c) return;
-            c.neighborhoods.forEach(function (n) {
-                var label = document.createElement("label");
-                label.className = "choice";
-                var input = document.createElement("input");
-                input.type = "checkbox";
-                input.name = "neighborhoodIds";
-                input.value = String(n.id);
-                input.checked = (keep || []).indexOf(n.id) !== -1;
-                label.appendChild(input);
-                label.appendChild(document.createTextNode(" " + n.name));
-                list.appendChild(label);
+        function toOptions(locations, keep) {
+            return locations.map(function (l) {
+                return { value: String(l.id), text: l.name, selected: (keep || []).indexOf(l.id) !== -1 };
             });
-            updateLimit(false);
         }
 
-        if (findCity(answers.cityId)) city.value = String(answers.cityId);
-        renderNeighborhoods(answers.neighborhoodIds);
+        // Each city change loads that city's neighbourhoods once; typing then filters them in the browser.
+        var pending = 0;
 
-        city.addEventListener("change", function () {
-            renderNeighborhoods([]);
-            setFieldError(group, $("#neighborhoodIds-error"), "");
-            resync();
+        function loadNeighborhoods(keep) {
+            var id = cityId();
+            var request = ++pending;
+            empty.hidden = !!id;
+            group.hidden = !id;
+            neighborhoods.slim.setData([]);
+            updateCounter(false);
+            if (!id) return;
+            neighborhoods.slim.disable();
+            loadLocations({ type: "NEIGHBORHOOD", parentId: id }).then(function (locations) {
+                if (request !== pending) return; // the city changed again meanwhile
+                neighborhoods.slim.setData(toOptions(locations, keep));
+                neighborhoods.slim.enable();
+                updateCounter(false);
+                resync();
+            });
+        }
+
+        city.slim.disable();
+        loadLocations({ type: "CITY", country: "CM" }).then(function (locations) {
+            var saved = locationNames[answers.cityId] ? [answers.cityId] : [];
+            city.slim.setData([{ value: "", text: "Choisissez une ville", placeholder: true }]
+                .concat(toOptions(locations, saved)));
+            city.slim.enable();
+            loadNeighborhoods(answers.neighborhoodIds);
+            citySelect.addEventListener("change", function () {
+                loadNeighborhoods([]);
+                setFieldError(neighborhoods.control, $("#neighborhoodIds-error"), "");
+            });
         });
-        list.addEventListener("change", function () {
-            updateLimit(true);
+        neighborhoodSelect.addEventListener("change", function () {
+            updateCounter(true);
         });
 
         return {
             fields: [
-                {
-                    target: city,
-                    error: $("#cityId-error"),
+                slimField(citySelect, city, {
+                    touched: function () {
+                        return cityId() > 0;
+                    },
                     validate: function () {
-                        return findCity(city.value) ? "" : "Choisissez votre ville principale d'intervention.";
+                        return cityId() ? "" : "Choisissez votre ville principale d'intervention.";
                     }
-                },
-                {
-                    target: group,
-                    error: $("#neighborhoodIds-error"),
+                }),
+                slimField(neighborhoodSelect, neighborhoods, {
                     touched: function () {
                         return selected().length > 0;
                     },
                     validate: function () {
-                        if (!findCity(city.value)) return "";
+                        if (!cityId()) return "";
                         var count = selected().length;
                         if (count === 0) return "Choisissez au moins un quartier.";
                         if (count > MAX_NEIGHBORHOODS) return "Choisissez au plus " + MAX_NEIGHBORHOODS + " quartiers.";
                         return "";
                     }
-                }
+                })
             ],
             collect: function () {
-                return { cityId: Number(city.value), neighborhoodIds: selected() };
+                return { cityId: cityId(), neighborhoodIds: selected() };
             }
         };
     }
@@ -482,39 +566,48 @@
 
     function reviewStep() {
         var submit = $("[data-submit]");
+
+        function render(answers) {
+            var values = {
+                name: answers.firstName && answers.lastName ? answers.firstName + " " + answers.lastName : "",
+                email: answers.email || "",
+                whatsappNumber: answers.whatsappNumber ? formatPhone(answers.whatsappNumber) : "",
+                experienceLevel: EXPERIENCE_LABELS[answers.experienceLevel] || "",
+                agentType: AGENT_TYPE_LABELS[answers.agentType] || "",
+                cityId: locationNames[answers.cityId] || "",
+                neighborhoodIds: (answers.neighborhoodIds || [])
+                    .map(function (id) {
+                        return locationNames[id];
+                    })
+                    .filter(Boolean)
+                    .join(", "),
+                mobileMoneyNumber: answers.mobileMoneyNumber ? formatPhone(answers.mobileMoneyNumber) : ""
+            };
+            var complete = firstIncompleteStep(answers) === REVIEW;
+            Object.keys(values).forEach(function (key) {
+                var valueEl = $('[data-review-value="' + key + '"]');
+                var missing = $('[data-review-missing="' + key + '"]');
+                valueEl.textContent = values[key];
+                valueEl.hidden = !values[key];
+                missing.hidden = !!values[key];
+            });
+            setActive(submit, complete);
+            $("[data-incomplete]").hidden = complete;
+        }
+
         return {
             onShow: function () {
                 var answers = loadAnswers();
-                var city = findCity(answers.cityId);
-                var values = {
-                    name: answers.firstName && answers.lastName ? answers.firstName + " " + answers.lastName : "",
-                    email: answers.email || "",
-                    whatsappNumber: answers.whatsappNumber ? formatPhone(answers.whatsappNumber) : "",
-                    experienceLevel: EXPERIENCE_LABELS[answers.experienceLevel] || "",
-                    agentType: AGENT_TYPE_LABELS[answers.agentType] || "",
-                    cityId: city ? city.name : "",
-                    neighborhoodIds: city && answers.neighborhoodIds && answers.neighborhoodIds.length
-                        ? city.neighborhoods
-                            .filter(function (n) {
-                                return answers.neighborhoodIds.indexOf(n.id) !== -1;
-                            })
-                            .map(function (n) {
-                                return n.name;
-                            })
-                            .join(", ")
-                        : "",
-                    mobileMoneyNumber: answers.mobileMoneyNumber ? formatPhone(answers.mobileMoneyNumber) : ""
-                };
-                var complete = firstIncompleteStep(answers) === REVIEW;
-                Object.keys(values).forEach(function (key) {
-                    var valueEl = $('[data-review-value="' + key + '"]');
-                    var missing = $('[data-review-missing="' + key + '"]');
-                    valueEl.textContent = values[key];
-                    valueEl.hidden = !values[key];
-                    missing.hidden = !!values[key];
+                var unknown = [answers.cityId].concat(answers.neighborhoodIds || []).filter(function (id) {
+                    return id && !locationNames[id];
                 });
-                setActive(submit, complete);
-                $("[data-incomplete]").hidden = complete;
+                render(answers);
+                // After a reload the location names aren't loaded yet: fetch them by id, then render again.
+                if (unknown.length) {
+                    loadLocations({ ids: unknown }).then(function () {
+                        render(answers);
+                    });
+                }
             },
             fields: [],
             collect: function () {
@@ -646,7 +739,7 @@
                 if (message && !firstInvalid) firstInvalid = field;
             });
             if (firstInvalid) {
-                var focusable = firstInvalid.target.matches("input, select, textarea")
+                var focusable = firstInvalid.target.matches("input, select, textarea, [tabindex]")
                     ? firstInvalid.target
                     : $("input:not(:disabled)", firstInvalid.target);
                 if (focusable) focusable.focus();
@@ -699,11 +792,13 @@
                     }
                     sync(index);
                 };
-                field.target.addEventListener("input", refresh);
-                field.target.addEventListener("change", refresh);
-                field.target.addEventListener("countrychange", refresh);
+                // A slim-select field shows its errors on the combobox but listens to the native <select>.
+                var source = field.source || field.target;
+                source.addEventListener("input", refresh);
+                source.addEventListener("change", refresh);
+                source.addEventListener("countrychange", refresh);
                 field.target.addEventListener("focusout", function (event) {
-                    if (field.target.contains(event.relatedTarget)) return;
+                    if ((field.contains || field.target.contains.bind(field.target))(event.relatedTarget)) return;
                     if (field.touched ? field.touched() : true) setFieldError(field.target, field.error, field.validate());
                 });
             });

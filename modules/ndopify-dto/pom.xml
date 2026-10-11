@@ -35,5 +35,11 @@
             <artifactId>java-jwt</artifactId>
             <version>${java-jwt.version}</version>
         </dependency>
+        <dependency>
+            <!-- Only for @BindParam (query-parameter aliases) on Search*Request; optional so non-Spring clients don't inherit it -->
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+            <optional>true</optional>
+        </dependency>
     </dependencies>
 </project>

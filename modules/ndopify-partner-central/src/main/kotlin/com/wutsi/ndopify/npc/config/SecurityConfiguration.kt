@@ -25,6 +25,8 @@ class SecurityConfiguration(
                     .requestMatchers("/assets/**").permitAll()
                     .requestMatchers("/login", "/login/**").permitAll()
                     .requestMatchers("/error").permitAll()
+                    // Public reference data, needed by the anonymous "Rejoindre Ndopify" wizard
+                    .requestMatchers("/locations", "/locations/**").permitAll()
                     .anyRequest().authenticated()
             }
             .addFilterBefore(authorizationFilter(), AnonymousAuthenticationFilter::class.java)

@@ -15,9 +15,11 @@
     <link href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap"
           rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/css/intlTelInput.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.css" rel="stylesheet">
     <link href="assets/css/partner-central.css" rel="stylesheet">
     <link href="assets/css/rejoindre.css" rel="stylesheet">
     <script defer src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/js/intlTelInput.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.iife.js"></script>
     <script defer src="assets/js/util.js"></script>
     <script defer src="assets/js/rejoindre.js"></script>
 </head>
@@ -218,7 +220,7 @@
                 <div class="field">
                     <label class="field__label" for="cityId">Ville principale d'intervention</label>
                     <select aria-describedby="cityId-error" class="input select" id="cityId" name="cityId" required>
-                        <option value="">Choisissez une ville</option>
+                        <option data-placeholder="true" value="">Choisissez une ville</option>
                     </select>
                     <p class="field__error" hidden id="cityId-error">
                         <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
@@ -231,13 +233,13 @@
 
                 <p data-neighborhoods-empty>Choisissez d'abord votre ville pour voir ses quartiers.</p>
 
-                <fieldset aria-describedby="neighborhood-counter neighborhoodIds-error" class="choices" data-group="neighborhoodIds"
-                          hidden>
-                    <legend class="choices__legend">Quartiers que vous connaissez le mieux
-                        <span class="field__optional">(1&nbsp;à&nbsp;3)</span></legend>
+                <div class="field" data-group="neighborhoodIds" hidden>
+                    <label class="field__label" for="neighborhoodIds">Quartiers que vous connaissez le mieux
+                        <span class="field__optional">(1&nbsp;à&nbsp;3)</span></label>
+                    <select aria-describedby="neighborhood-counter neighborhoodIds-error" class="input select"
+                            id="neighborhoodIds" multiple name="neighborhoodIds"></select>
                     <p class="field__counter" data-neighborhood-counter id="neighborhood-counter">0 sur 3
                         sélectionné</p>
-                    <div class="choices__grid choices__grid--compact" data-neighborhoods></div>
                     <p class="field__error" hidden id="neighborhoodIds-error">
                         <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
                             <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
@@ -246,7 +248,7 @@
                         </svg>
                         <span data-error-text></span></p>
                     <p class="visually-hidden" data-neighborhood-status role="status"></p>
-                </fieldset>
+                </div>
 
                 <div class="hint" id="sector-hint">
                     <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
@@ -255,7 +257,7 @@
                         <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
                     </svg>
                     <div>
-                        <p>Choisissez de 1 à 3&nbsp;quartiers. Une fois les 3 choisis, décochez-en un pour en
+                        <p>Choisissez de 1 à 3&nbsp;quartiers. Une fois les 3 choisis, retirez-en un pour en
                             prendre un autre.</p>
                         <p>Vous pourrez modifier votre zone plus tard.</p>
                     </div>

@@ -1,11 +1,17 @@
 package com.wutsi.ndopify.refdata.server.service
 
+import com.wutsi.ndopify.error.dto.Error
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.Parameter
+import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.refdata.dto.LocationType
+import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
 import com.wutsi.ndopify.refdata.server.dao.LocationRepository
 import com.wutsi.ndopify.refdata.server.domain.LocationEntity
-import jakarta.annotation.PostConstruct
+import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
-import org.slf4j.LoggerFactory
+import org.springframework.data.domain.Sort
+import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
 import java.text.Normalizer
 
@@ -15,32 +21,26 @@ class LocationService(
 ) {
     companion object {
         private val REGEX_UNACCENT = "\\p{InCombiningDiacriticalMarks}+".toRegex()
-        private val LOGGER = LoggerFactory.getLogger(LocationService::class.java)
     }
 
-    /**
-     * In-memory cache of locations to reduce database hits.
-     * TODO: This should be moved to a distributed cache like Redis.
-     */
-    @Suppress("ktlint:standard:backing-property-naming")
-    private var __cache: MutableMap<Long, LocationEntity>? = null
-
-    @PostConstruct
-    fun init() {
-        clearCache()
+    fun findById(id: Long): LocationEntity {
+        return findByIdOrNull(id)
+            ?: throw NotFoundException(
+                error = Error(
+                    code = ErrorCode.LOCATION_NOT_FOUND,
+                    parameter = Parameter(value = id)
+                )
+            )
     }
 
     fun findByIdOrNull(id: Long): LocationEntity? {
-        return loadCache().get(id)
+        return dao.findById(id).orElse(null)
     }
 
     @Transactional
     fun save(location: LocationEntity): LocationEntity {
         location.asciiName = toAscii(location.name)
-        val saved = dao.save(location)
-
-        cache(saved)
-        return saved
+        return dao.save(location)
     }
 
     @Transactional
@@ -53,53 +53,37 @@ class LocationService(
         return true
     }
 
-    fun search(
-        keyword: String? = null,
-        ids: List<Long> = emptyList(),
-        parentId: Long? = null,
-        types: List<LocationType> = emptyList(),
-        country: String? = null,
-        limit: Int = 20,
-        offset: Int = 0,
-    ): List<LocationEntity> {
-        return loadCache().values.filter { location ->
-            (keyword.isNullOrEmpty() || location.asciiName.uppercase().startsWith(toAscii(keyword).uppercase())) &&
-                (ids.isEmpty() || ids.contains(location.id)) &&
-                (parentId == null || location.parentId == parentId) &&
-                (types.isEmpty() || types.contains(location.type)) &&
-                (country.isNullOrEmpty() || location.country.equals(country, ignoreCase = true))
+    fun search(request: SearchLocationRequest): List<LocationEntity> {
+        val spec = Specification<LocationEntity> { root, _, cb ->
+            val predicates = mutableListOf<Predicate>()
+
+            request.keyword?.takeIf { it.isNotEmpty() }?.let { keyword ->
+                predicates.add(cb.like(cb.upper(root.get("asciiName")), toAscii(keyword).uppercase() + "%"))
+            }
+            if (request.ids.isNotEmpty()) {
+                predicates.add(root.get<Long>("id").`in`(request.ids))
+            }
+            request.parentId?.let { parentId ->
+                predicates.add(cb.equal(root.get<Long>("parentId"), parentId))
+            }
+            if (request.types.isNotEmpty()) {
+                predicates.add(root.get<LocationType>("type").`in`(request.types))
+            }
+            request.country?.takeIf { it.isNotEmpty() }?.let { country ->
+                predicates.add(cb.equal(cb.upper(root.get("country")), country.uppercase()))
+            }
+
+            cb.and(*predicates.toTypedArray())
         }
-            .sortedWith(
-                compareBy<LocationEntity> { it.name }
-                    .thenByDescending { it.population }
-            )
-            .drop(offset)
-            .take(limit)
+
+        return dao.findAll(spec, Sort.by(Sort.Order.asc("name"), Sort.Order.desc("population")))
+            .drop(request.offset)
+            .take(request.limit)
     }
 
     fun toAscii(str: String): String {
         val temp = Normalizer.normalize(str, Normalizer.Form.NFD)
         return REGEX_UNACCENT.replace(temp, "")
             .replace(" ", "-")
-    }
-
-    private fun cacheKey(entity: LocationEntity): Long {
-        return entity.id
-    }
-
-    private fun cache(entity: LocationEntity) {
-        loadCache()[cacheKey(entity)] = entity
-    }
-
-    private fun loadCache(): MutableMap<Long, LocationEntity> {
-        if (__cache == null || __cache!!.isEmpty()) {
-            __cache = dao.findAll().associateBy { entity -> entity.id }.toMutableMap()
-            LOGGER.info("${__cache?.size} locations put the cache")
-        }
-        return __cache!!
-    }
-
-    private fun clearCache() {
-        __cache = null
     }
 }

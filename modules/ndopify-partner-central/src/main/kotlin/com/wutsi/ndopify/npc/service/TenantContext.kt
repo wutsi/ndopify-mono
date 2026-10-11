@@ -12,12 +12,14 @@ class TenantContext(
 ) {
     private lateinit var tenants: List<Tenant>
 
-    fun getTenantId(): Long {
+    fun getTenantId(): Long = getTenant().id
+
+    fun getTenant(): Tenant {
         val requestUrl = request.requestURL.toString()
         val tenants = all()
         return tenants.firstOrNull { tenant ->
             tenant.partnerCentralUrl?.let { url -> requestUrl.startsWith(url) } ?: false
-        }?.id
+        }
             ?: throw IllegalStateException("No tenant found for URL: $requestUrl")
     }
 
