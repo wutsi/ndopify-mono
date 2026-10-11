@@ -17,14 +17,14 @@ Code is organized by business domain under `com.wutsi.ndopify.<domain>.server`, 
 | Domain       | Responsibility                                                                                    |
 |--------------|-----------------------------------------------------------------------------------------------------|
 | **refdata**  | Shared reference data: `Tenant`, `Location` (imported from GeoNames), `Application`, `Role`. Global, not tenant-scoped. |
-| **security** | `User` accounts, `UserApplication` membership/roles, JWT issuance (`AccessTokenService`), pluggable authentication (`PasswordAuthenticator`, `GoogleOneTapAuthenticator`). Global, not tenant-scoped. |
+| **security** | `User` accounts, `UserApplication` membership/roles, JWT issuance (`AccessTokenService`), pluggable authentication (`PasswordAuthenticator`, `GoogleOneTapAuthenticator`, `OtpAuthenticator`) selected by `AuthenticatorProvider`. One-time codes are issued via `POST /v1/otp` (`OtpService`) and e-mailed by `OtpMailet`. Global, not tenant-scoped. |
 | **agent**    | Mobile-money agents (`/v1/agents`: get, search, create, update). Sends a welcome e-mail (`WelcomeMailet`) when a tenant has a `partnerCentralUrl`. Tenant-scoped via Hibernate `@TenantId` on `AgentEntity`. |
-| **party**    | Parties, identifications (with uploaded images), KYC cases/verifications, and payment methods. KYC cases are verified via pluggable `KycVerifier` strategies (`KycVerifierIdentification`, `KycVerifierMoMo`, `KycVerifierManual`). Tenant-scoped via Hibernate `@TenantId`. |
+| **party**    | Parties, identifications (with uploaded images), KYC cases/verifications, and payment methods. KYC cases are verified via pluggable `KycVerifier` strategies (`KycVerifierIdentification`, `KycVerifierMoMo`, `KycVerifierManual`). Identity-document data is extracted by an LLM via Spring AI (`IdentificationInfoExtractorAi`). Tenant-scoped via Hibernate `@TenantId`. |
 | **error**    | Shared exception types (`WutsiException` subclasses) and a global `ControllerErrorHandler`. |
 
 A non-domain **`platform`** package holds infrastructure shared across domains:
 
-- `platform.momo` — mobile-money gateway integration (`MoMoGateway`, `MoMoGatewayFactory`); only the MTN
+- `platform.momo` — mobile-money gateway integration (`MoMoGateway`, `MoMoGatewayProvider`); only the MTN
   implementation (`momo.mtn`) is wired up today.
 - `platform.storage` — file storage abstraction (`StorageService`, `StorageServiceProvider`) with `local` (disk +
   servlet) and `s3` implementations, selected via `ndopify.storage.default-type`.
@@ -44,7 +44,10 @@ Required for local development:
 - JDK 17, Maven 3.9+
 - MySQL 8+, with the `root` user having **no password** (matches the default `application.yml` datasource)
 
-No RabbitMQ or messaging broker is wired up today. MTN Mobile Money credentials
+No RabbitMQ or messaging broker is wired up today. E-mails (agent welcome, OTP codes) go to the SMTP server
+configured under `spring.mail` — `localhost:1025` by default, e.g. [Mailpit](https://mailpit.axllent.org/).
+Identity-document extraction calls an OpenAI-compatible LLM (`spring.ai.openai`, Kimi by default) and needs
+`KIMI_API_KEY`. MTN Mobile Money credentials
 (`ndopify.mobile-money.mtn.*`) default to sandbox values and don't need to be set for local dev unless exercising
 real MTN calls. Local file storage defaults to `~/ndopify` (`ndopify.storage.local.directory`); S3 is only used when
 `ndopify.storage.default-type` is set to `s3`.

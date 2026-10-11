@@ -4,7 +4,7 @@
 [![pull_request](https://github.com/wutsi/ndopify-mono/actions/workflows/ndopify-dto-pr.yml/badge.svg)](https://github.com/wutsi/ndopify-mono/actions/workflows/ndopify-dto-pr.yml)
 
 Shared request/response DTOs and contracts for Ndopify. This module has no business logic — it exists purely to be
-a dependency of `ndopify-server` (and, in the future, other consumers such as SDKs or a portal).
+a dependency of `ndopify-server` and `ndopify-partner-central` (and, in the future, other consumers such as SDKs).
 
 ## Packages
 
@@ -16,8 +16,8 @@ All packages live under `com.wutsi.ndopify.<package>.dto`.
 | `common`   | Cross-cutting DTOs: `HttpHeader` constants, `ImportResponse`, `ImportMessage`                              |
 | `error`    | The shared error contract: `ErrorCode`, `Error`, `ErrorResponse`, `Parameter`, `ParameterType`            |
 | `party`    | Party, identification (and images), KYC case/verification, and payment method DTOs and enums              |
-| `refdata`  | Reference data: `Tenant`, `Location`, `Application`, `Role`, `AuthType`, `MoMoGatewayType`, `PropertyCategory`, `StorageType`, `KycErrorCode`, etc. |
-| `security` | `AuthenticateRequest` / `AuthenticateResponse`                                                            |
+| `refdata`  | Reference data: `Tenant`, `Location`, `Application`, `ApplicationCode`, `Role`, `AuthType`, `MoMoGatewayType`, `PropertyCategory`, `StorageType`, `KycErrorCode`, etc. |
+| `security` | `AuthenticateRequest` / `AuthenticateResponse`, `CreateOtpRequest`, `GoogleOneTapPayload`, `JwtPrincipal` |
 
 ## Build
 
@@ -37,7 +37,7 @@ mvn antrun:run@ktlint-format          # auto-format
 
 This module is versioned and released independently of `ndopify-server` (its own `<version>` in `pom.xml`, distinct
 from the parent/root version) and published to GitHub Packages (`maven.pkg.github.com/wutsi/ndopify-mono`).
-`ndopify-server` depends on it via the `${ndopify-dto.version}` property in the root `pom.xml`.
+`ndopify-server` and `ndopify-partner-central` depend on it via the `${ndopify-dto.version}` property in the root `pom.xml`.
 
 ## Conventions
 

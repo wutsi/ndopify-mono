@@ -4,14 +4,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-`ndopify-mono` is an early-stage Maven monorepo. The group/package is `com.wutsi.ndopify`. Only two modules
-currently exist:
+`ndopify-mono` is an early-stage monorepo. The group/package is `com.wutsi.ndopify`. Four modules currently exist:
 
 - `modules/ndopify-dto` — shared DTOs/contracts (no business logic)
 - `modules/ndopify-server` — the REST API backend (Spring Boot)
+- `modules/ndopify-partner-central` — agent-facing web app (Spring Boot + Thymeleaf, French UI), package
+  `com.wutsi.ndopify.npc`. No database; talks to `ndopify-server` over REST.
+- `modules/ndopify-website` — static marketing site (plain HTML/CSS/JS, French). **Not** a Maven module (not in the
+  root `pom.xml` reactor); deployed to S3 by its own workflow.
 
-There is no portal, SDK, platform, or tracking-server module yet. Do not assume they exist or scaffold code that
-depends on them.
+There is no SDK or tracking-server module yet. Do not assume they exist or scaffold code that depends on them.
 
 ## Build & Test Commands
 
@@ -40,8 +42,9 @@ mvn test -Dtest=ClassName
 mvn test -Dtest=ClassName#methodName
 ```
 
-Endpoint tests use `TestRestTemplate` against a real MySQL database (Flyway-migrated), so a local MySQL instance
-must be running (see Environment Setup below).
+`ndopify-server` endpoint tests use `TestRestTemplate` against a real MySQL database (Flyway-migrated), so a local
+MySQL instance must be running (see Environment Setup below). `ndopify-partner-central` tests are plain unit tests /
+standalone `MockMvc` and need neither MySQL nor a running server.
 
 ### Code Quality
 
@@ -65,6 +68,9 @@ for the current values; they change over time so are not duplicated here.
 ```bash
 cd modules/ndopify-server
 mvn spring-boot:run          # starts on port 8080, Swagger UI at /api.html
+
+cd modules/ndopify-partner-central
+mvn spring-boot:run          # starts on port 8081, calls ndopify-server at ndopify.server.api.base-url
 ```
 
 First-time local setup requires importing reference data (see `LocationEndpoints` / `ApplicationEndpoints`):
@@ -81,8 +87,12 @@ and the module POMs):
 - JDK 17, Maven 3.9+
 - MySQL 8+, with the `root` user having **no password** (matches the default `application.yml` datasource)
 
-No RabbitMQ, external AI/LLM API keys, or messaging broker are wired up in `ndopify-server` today — don't assume
-those integrations exist. MTN Mobile Money credentials (`ndopify.mobile-money.mtn.*` in `application.yml`) default to
+- An SMTP server on `localhost:1025` (e.g. Mailpit) to receive e-mails sent by `ndopify-server` (agent welcome,
+  OTP codes) — see `spring.mail` in `application.yml`.
+- `KIMI_API_KEY` for identity-document extraction: `ndopify-server` uses Spring AI's OpenAI-compatible client
+  (`spring.ai.openai`, pointed at Moonshot/Kimi) in `IdentificationInfoExtractorAi`.
+
+No RabbitMQ or messaging broker is wired up in `ndopify-server` today — don't assume one exists. MTN Mobile Money credentials (`ndopify.mobile-money.mtn.*` in `application.yml`) default to
 sandbox values and don't need to be set for local dev unless you're exercising real MTN calls.
 
 ## Architecture Overview
@@ -91,10 +101,12 @@ sandbox values and don't need to be set for local dev unless you're exercising r
 
 ```
 ndopify-dto  →  ndopify-server
+ndopify-dto  →  ndopify-partner-central  ──(REST, runtime)──▶  ndopify-server
 ```
 
-DTOs live in `ndopify-dto` and are shared between server request/response contracts. `ndopify-server` must not be
-depended on by `ndopify-dto`.
+DTOs live in `ndopify-dto` and are the request/response contracts shared by the server and its clients. `ndopify-dto`
+must never depend on `ndopify-server` or `ndopify-partner-central`, and `ndopify-partner-central` must not depend on
+`ndopify-server` at build time — only call it over HTTP.
 
 ### Domains in `ndopify-server`
 
@@ -107,36 +119,60 @@ Code is organized by domain under `com.wutsi.ndopify.<domain>.server`, each foll
     dao/        - Spring Data JPA repositories (*Repository.kt)
     domain/     - JPA entities (*Entity.kt)
     mapper/     - Entity ↔ DTO mapping (*Mapper.kt)
-    io/         - import/export (e.g. GeonamesImporter, NeighbourhoodImporter)
-    cron/       - @Scheduled jobs (e.g. MobileChangeJobs)
+    io/         - import/export (refdata only, e.g. GeonamesImporter, NeighbourhoodImporter)
 ```
+
+There are no `@Scheduled` jobs in the codebase today.
 
 Current domains:
 
 - **refdata** — `Tenant`, `Location` (countries/regions/cities/neighbourhoods, imported from GeoNames), `Application`,
   `Role`. This is shared reference data, not tenant-scoped.
 - **security** — `User`, `UserApplication` (a user's membership + roles in a given `Application`), `AuthFactor`
-  (password/Google One Tap credentials), JWT issuance (`AccessTokenService`), and the `Authenticator` strategy
-  interface with `PasswordAuthenticator` / `GoogleOneTapAuthenticator` implementations, selected via
-  `AuthenticatorFactory` based on `AuthType`.
-- **agent** — mobile-money agents (`AgentEntity`: identity, mobile-money number/gateway, KYC status) and their KYC
-  workflows: `MobileChangeEntity` (mobile number change requests) and `IdentityChangeEntity` (identity document change
-  requests), each going through a `KycStatus` (PENDING/verified/failed) lifecycle. `MobileChangeJobs`
-  (`agent/server/cron`) is a `@Scheduled` job, cron expression from `ndopify.agent.cron.mobile-change-verify.expression`,
-  that polls pending `MobileChangeEntity` rows and calls `MobileChangeService.verify()` on each. This is the one
-  domain that is tenant-scoped today (see Multi-Tenancy below).
+  (credentials), JWT issuance (`AccessTokenService`), and the `Authenticator` strategy interface with
+  `PasswordAuthenticator` / `GoogleOneTapAuthenticator` / `OtpAuthenticator` implementations, selected via
+  `AuthenticatorProvider` based on `AuthType`. One-time codes are created via `POST /v1/otp` (`OtpService`,
+  `OtpGenerator`) and e-mailed by `OtpMailet`; `POST /v1/auth` exchanges credentials for a JWT.
+- **party** — `Party`, `Identification` (+ uploaded `IdentificationImage`s), `KycCase` / `KycVerification`, and
+  `PaymentMethod`. KYC cases are verified by pluggable `KycVerifier` strategies (`KycVerifierIdentification`,
+  `KycVerifierMoMo`, `KycVerifierManual`) selected via `KycVerifierProvider`. Identity-document data is extracted
+  by `IdentificationInfoExtractorAi` (LLM via Spring AI), behind `IdentificationInfoExtractorProvider`.
+  Tenant-scoped (see Multi-Tenancy below).
+- **agent** — mobile-money agents (`AgentEntity`; `/v1/agents`: get, search, create, update). `WelcomeMailet` sends
+  a welcome e-mail on registration when the tenant has a `partnerCentralUrl`. Tenant-scoped.
 - **error** — shared exception types (`WutsiException` subclasses: `BadRequestException`, `NotFoundException`,
   `ConflictException`, `ForbiddenException`, `UnauthorizedException`, `InternalErrorException`) and a global
   `ControllerErrorHandler`.
 
-There's also a non-domain **`platform`** package (`platform/momo`) — infrastructure for talking to mobile-money
-providers, used by the `agent` domain to KYC-verify a mobile-money number/holder-name match:
+There's also a non-domain **`platform`** package holding shared infrastructure (wired by `platform/config`):
 
-- `MoMoGateway` — interface with a single `kycMatch(request): MoMoKycMatchResponse` operation.
-- `MoMoGatewayFactory` — picks an implementation from `MoMoGatewayType` (`refdata.dto`); only `MTN` is wired up today,
-  other gateway types resolve to `null`.
-- `mtn/` — the MTN implementation (`MoMoGatewayMtn`), with `MtnUserProvider` split into `MtnUserProviderSandbox` /
-  `MtnUserProviderProduction` (env-driven via `MtnMoMoConfiguration` / `MtnEnvironment`).
+- `platform/momo` — mobile-money providers, used by `KycVerifierMoMo` to KYC-verify a mobile-money
+  number/holder-name match. `MoMoGateway` is the interface; `MoMoGatewayProvider` picks an implementation from
+  `MoMoGatewayType` (`refdata.dto`). Only `MTN` (`mtn/MoMoGatewayMtn`) is wired up today.
+- `platform/storage` — file storage (`StorageService`, `StorageServiceProvider`) with `local` and `s3`
+  implementations, selected via `ndopify.storage.default-type`.
+- `platform/mail` — e-mail sending (`MailService`, `MailBodyResolver`, `MailFilter`); MJML templates under
+  `src/main/resources/mail/`.
+- `platform/logger` — key-value request logging (`KVLogger`, `KVLoggerFilter`).
+- `platform/tenant` — tenant resolution (see Multi-Tenancy below).
+
+### `ndopify-partner-central`
+
+Package `com.wutsi.ndopify.npc`: `ui/` (MVC controllers + Thymeleaf templates in `src/main/resources/templates/`),
+`client/` (REST clients for `ndopify-server` and their interceptors), `service/` (tenant + security), `config/`.
+
+- Sign-in is e-mail + one-time code (`LoginController`: `/login` → `/login/connection` → `/login/verify`), calling
+  `/v1/otp` then `/v1/auth` with `AuthType.OTP` and `ApplicationCode.PARTNER_CENTRAL`. The JWT is kept in the
+  HTTP-only `__npc_access_token` cookie (`AccessTokenService`) and decoded by `JwtAuthenticationFilter`; everything
+  except `/assets/**`, `/login/**`, `/error` requires authentication. `/logout` clears the cookie and session.
+- Tenant is resolved by `TenantContext` matching the request URL against each active tenant's `partnerCentralUrl`
+  (from `GET /v1/tenants`).
+- `RestConfiguration` adds logging, `Authorization` and `X-Tenant-ID` interceptors to every Spring-built
+  `RestClient`. `NdTenantClient` uses a plain `RestTemplate` instead, since tenants are global.
+- The KYC templates (`templates/kyc/`) exist but no controller serves them yet (login redirects to `/kyc`).
+- `src/main/html/` holds static mockups generated by the `/init-partner-central` command; the served pages are the
+  Thymeleaf templates. `application-test.yml` / `application-prod.yml` still contain config copied from another
+  project (`koki`) — don't treat it as meaningful.
 
 ### Multi-Tenancy — current state
 
@@ -149,7 +185,7 @@ Tenancy is enforced via **Hibernate's built-in multi-tenancy mechanism**, not ha
   when unset.
 - `TenantContextFilter` (`platform/tenant/servlet/TenantContextFilter.kt`), registered at
   `Ordered.HIGHEST_PRECEDENCE` via `platform/config/TenantConfiguration.kt`, populates `TenantContext` per request —
-  preferring the tenant claim on the decoded JWT (`JWTPrincipal.CLAIM_TENANT_ID` / `AccessTokenService`) and falling
+  preferring the tenant claim on the decoded JWT (`JwtPrincipal.CLAIM_TENANT_ID` / `AccessTokenService`) and falling
   back to the `X-Tenant-ID` header (`HttpHeader.TENANT_ID` in `ndopify-dto`) if there's no principal.
 - Any JPA entity annotated `org.hibernate.annotations.@TenantId` is automatically filtered by Hibernate for every
   query against it — no `CriteriaBuilder` predicate, repository override, or service-level check needed. Today
@@ -162,10 +198,13 @@ Tenancy is enforced via **Hibernate's built-in multi-tenancy mechanism**, not ha
 - If you add tenant-scoped data to a new or existing domain, add `@TenantId` to the entity — don't write a manual
   predicate; that duplicates enforcement and can silently drift from what Hibernate actually filters.
 - refdata entities are still global: `TenantEntity`, `LocationEntity`, `ApplicationEntity`, `RoleEntity` have no
-  `tenantId` and are not filtered. Same for `UserEntity`, `UserApplicationEntity`, `AuthFactorEntity` in the
-  `security` domain.
+  `tenantId` and are not filtered. `UserEntity`, `UserApplicationEntity`, `AuthFactorEntity` in the `security`
+  domain are not filtered either. `UserEntity.tenantId` exists but is the user's *home* tenant, deliberately not
+  `@TenantId`: it's looked up by e-mail before `TenantContext` is known (see `AbstractAuthenticator`), and is null
+  for cross-tenant users (e.g. a super-admin on `admin-console`).
 - **Known, not-yet-closed gap**: tenant *resolution* itself isn't trustworthy yet. JWTs are issued via
-  `Algorithm.none()` (unsigned, in `AccessTokenService`), and `SecurityConfiguration` currently `permitAll()`s every
+  `Algorithm.none()` (unsigned, in `AccessTokenService` — and `ndopify-partner-central`'s `JwtDecoder` decodes them the
+  same way), and `SecurityConfiguration` currently `permitAll()`s every
   request — there is no Spring Security authentication enforced at the filter-chain level. A caller can set
   `X-Tenant-ID` to whatever it wants. The `@TenantId` mechanism above correctly isolates data *once a tenant is
   resolved*, but closing the resolution/authentication gap is separate, future work.
@@ -184,8 +223,12 @@ Base classes (`src/test/kotlin/com/wutsi/ndopify/`):
 - `TenantAwareEndpointIntegrationTest` — extends `BaseEndpointIntegrationTest`, additionally injects
   `X-Tenant-ID: 1` (override via `ignoreTenantIdHeader = true` in a test to omit it).
 
-There is currently no `AuthorizationAwareEndpointTest`; tests needing an authenticated user obtain a JWT explicitly
-via the auth endpoints (see `AuthenticatePasswordEndpointTest`, `AuthenticateGoogleOneTapEndpointTest`).
+- `AuthorizationAwareEndpointIntegrationTest` — extends `TenantAwareEndpointIntegrationTest`, additionally sends an
+  `Authorization: Bearer` JWT (user `11`, tenant `1`, `admin-console` by default) minted via `AccessTokenService`;
+  set `anonymousUser = true` to omit it.
+
+Mock Spring beans in `@SpringBootTest` tests with `@MockitoBean`
+(`org.springframework.test.context.bean.override.mockito.MockitoBean`), not the removed `@MockBean`.
 
 SQL test fixtures live under `modules/ndopify-server/src/test/resources/db/test/<domain>/`, named after the test
 class per convention (`FooEndpointTest.kt` → `FooEndpoint.sql`). `ResetDBTest`/Flyway config in
@@ -196,7 +239,10 @@ class per convention (`FooEndpointTest.kt` → `FooEndpoint.sql`). `ResetDBTest`
 Flyway, split across two classpath locations composed in `application.yml`
 (`db.migration.common` + `db.migration.local`):
 
-- `modules/ndopify-server/src/main/resources/db/migration/` — versioned as `V{version}__{description}.sql`
+- `modules/ndopify-server/src/main/resources/db/migration/common/` — schema, versioned as
+  `V{version}__{description}.sql`
+- `db/migration/local/` (default profile) and `db/migration/test/` (`application-test.yml`) — environment-specific
+  seed data layered on top of `common`
 - Never modify an existing migration; always add a new one.
 
 ### Custom JPA Utilities (`util/jpa`)
@@ -211,17 +257,19 @@ Flyway, split across two classpath locations composed in `application.yml`
 - `pom.xml` (root) — parent POM: shared dependencies, JaCoCo/ktlint plugin config, coverage thresholds
 - `modules/*/pom.xml` — module-specific dependencies and overrides (e.g. `ndopify-server`'s coverage thresholds)
 - `modules/ndopify-server/src/main/resources/application.yml` — default config (MySQL, Flyway locations, Jackson,
-  SpringDoc/Swagger groups)
+  mail, Spring AI, storage, SpringDoc/Swagger groups)
+- `modules/ndopify-partner-central/src/main/resources/application.yml` — port 8081, `ndopify.server.api.base-url`
 - `application-test.yml` / `application-prod.yml` — profile overrides
 
 ## README.md Files
 
-Every module (`modules/ndopify-dto/README.md`, `modules/ndopify-server/README.md`) has CI-managed badges as the
-first lines, right after the `# <module-name>` heading:
+Every module README (`modules/<module>/README.md`) has CI-managed badges as the first lines, right after the
+`# <module-name>` heading:
 
-- `main` and `pull_request` GitHub Actions workflow-status badges (both modules).
-- A JaCoCo coverage badge (`ndopify-server` only), pointing at the auto-generated SVG in
-  `.github/badges/ndopify-server-jacoco.svg`.
+- `main` and `pull_request` GitHub Actions workflow-status badges (all modules; `ndopify-website` has no PR
+  workflow yet, so its PR badge points at a missing workflow).
+- A JaCoCo coverage badge (`ndopify-server` and `ndopify-partner-central`), pointing at the auto-generated SVG in
+  `.github/badges/<module>-jacoco.svg`.
 
 These badges must be preserved whenever a README is edited. Edit module READMEs with a targeted edit (not a
 full-file rewrite) so the badge block isn't clobbered — and if a full rewrite is unavoidable, read the existing

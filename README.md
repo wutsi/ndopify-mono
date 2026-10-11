@@ -8,21 +8,26 @@ mobile-money payment integrations across Africa.
 
 ## Project Status
 
-Early-stage. Only three modules exist today — there is no portal, SDK, or tracking-server module (yet).
+Early-stage. Only four modules exist today — there is no SDK or tracking-server module (yet).
 
 ## Modules
 
-| Module                                     | Description                                                                              |
-|--------------------------------------------|------------------------------------------------------------------------------------------|
-| [ndopify-dto](modules/ndopify-dto)         | Shared request/response DTOs and contracts — no business logic                           |
-| [ndopify-server](modules/ndopify-server)   | REST API backend (Spring Boot)                                                           |
-| [ndopify-website](modules/ndopify-website) | Static marketing + lead-capture website (plain HTML/CSS/JS, French) — not a Maven module |
+| Module                                                     | Description                                                                              |
+|------------------------------------------------------------|------------------------------------------------------------------------------------------|
+| [ndopify-dto](modules/ndopify-dto)                         | Shared request/response DTOs and contracts — no business logic                           |
+| [ndopify-server](modules/ndopify-server)                   | REST API backend (Spring Boot)                                                           |
+| [ndopify-partner-central](modules/ndopify-partner-central) | Agent-facing web app (Spring Boot + Thymeleaf, French): e-mail OTP sign-in, KYC wizard   |
+| [ndopify-website](modules/ndopify-website)                 | Static marketing + lead-capture website (plain HTML/CSS/JS, French) — not a Maven module |
 
 ### Module Dependency
 
 ```
 ndopify-dto  →  ndopify-server
+ndopify-dto  →  ndopify-partner-central  ──(REST, runtime)──▶  ndopify-server
 ```
+
+`ndopify-partner-central` depends on `ndopify-dto` at build time and calls `ndopify-server` over HTTP at runtime
+(`ndopify.server.api.base-url`); it has no database of its own.
 
 `ndopify-website` is standalone: it is not part of the Maven reactor and has no build-time dependency on the other
 modules.
@@ -30,7 +35,8 @@ modules.
 ## Technologies
 
 - **Language**: Kotlin, JDK 17
-- **Framework**: Spring Boot (Web, Data JPA, Security, Cache, Validation, Actuator)
+- **Framework**: Spring Boot (Web, Data JPA, Security, Cache, Validation, Actuator), Thymeleaf (partner central)
+- **AI**: Spring AI (OpenAI-compatible client, Kimi by default) for identity-document data extraction
 - **Database**: MySQL, with Flyway for versioned schema migrations
 - **API docs**: SpringDoc OpenAPI / Swagger UI
 - **Build**: Maven
@@ -43,9 +49,10 @@ layering (`endpoint` → `service` → `dao` → `domain`, plus `mapper` for ent
 
 - **refdata** — shared reference data: `Tenant`, `Location` (imported from GeoNames), `Application`, `Role`.
 - **security** — `User` accounts, JWT issuance, and pluggable authentication (`PasswordAuthenticator`,
-  `GoogleOneTapAuthenticator`).
+  `GoogleOneTapAuthenticator`, `OtpAuthenticator` for e-mailed one-time codes issued via `/v1/otp`).
 - **party** — parties, identifications (with uploaded images), KYC cases/verifications, and payment methods. KYC
-  cases are verified through pluggable `KycVerifier` strategies (identification, mobile-money, manual).
+  cases are verified through pluggable `KycVerifier` strategies (identification, mobile-money, manual); data is
+  extracted from identity-document images by an LLM (`IdentificationInfoExtractorAi`).
 - **agent** — mobile-money agents: create, update, get and search, plus a welcome e-mail on registration.
 - **error** — shared exception types and a global error handler.
 
@@ -61,7 +68,9 @@ See [CLAUDE.md](CLAUDE.md) for detailed build/test commands and architecture not
 
 ## Getting Started
 
-Requirements: JDK 17, Maven 3.9+, MySQL 8+ (local `root` user with no password).
+Requirements: JDK 17, Maven 3.9+, MySQL 8+ (local `root` user with no password). For OTP sign-in e-mails, a local
+SMTP catcher such as [Mailpit](https://mailpit.axllent.org/) on `localhost:1025`. For identity-document extraction,
+a `KIMI_API_KEY`.
 
 ```bash
 # Build the whole monorepo
@@ -78,6 +87,13 @@ First-time local setup requires importing reference data:
 curl "http://localhost:8080/v1/locations/import?country=<ISO-country-code>"
 ```
 
+Run the partner central (starts on port 8081, expects `ndopify-server` on `http://localhost:8080`):
+
+```bash
+cd modules/ndopify-partner-central
+mvn spring-boot:run
+```
+
 To preview the website (no build step):
 
 ```bash
@@ -87,8 +103,16 @@ python3 -m http.server 8080   # then open http://localhost:8080/index.html
 
 ## AI Commands & Skills
 
-AI tooling for [Claude Code](https://claude.com/claude-code) lives in [`.claude/`](.claude). There are no custom
-slash commands; everything is a skill under `.claude/skills/`.
+AI tooling for [Claude Code](https://claude.com/claude-code) lives in [`.claude/`](.claude): slash commands under
+`.claude/commands/` and skills under `.claude/skills/`.
+
+### Slash commands
+
+| Command                                                            | Purpose                                                                                                   |
+|--------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
+| [`/init-website-design`](.claude/commands/init-website-design.md)   | Same as the `init-website-design` skill below.                                                            |
+| [`/init-website`](.claude/commands/init-website.md)                 | Same as the `init-website` skill below.                                                                   |
+| [`/init-partner-central`](.claude/commands/init-partner-central.md) | Builds the French partner central pages in `modules/ndopify-partner-central/src/main/html/` using the same three-stage pipeline (`neo-user-journey` → `power-design` → `impeccable`). |
 
 ### Project skills
 
@@ -102,7 +126,7 @@ These drive the generation of the website. Run `init-website-design` first, sinc
 
 ### Vendored third-party skills
 
-Used by `init-website`; not specific to Ndopify.
+Used by `init-website` and `init-partner-central`; not specific to Ndopify.
 
 | Skill                                                          | Purpose                                                                                           |
 |----------------------------------------------------------------|---------------------------------------------------------------------------------------------------|
