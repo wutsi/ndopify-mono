@@ -16,7 +16,7 @@ All packages live under `com.wutsi.ndopify.<package>.dto`.
 | `common`   | Cross-cutting DTOs: `HttpHeader` constants, `ImportResponse`, `ImportMessage`                              |
 | `error`    | The shared error contract: `ErrorCode`, `Error`, `ErrorResponse`, `Parameter`, `ParameterType`            |
 | `party`    | Party, identification (and images), KYC case/verification, and payment method DTOs and enums              |
-| `refdata`  | Reference data: `Tenant`, `Location`, `Application`, `ApplicationCode`, `Role`, `AuthType`, `MoMoGatewayType`, `PropertyCategory`, `StorageType`, `KycErrorCode`, etc. |
+| `refdata`  | Reference data: `Tenant`, `Location` (+ `SearchLocationRequest`, `GetLocationResponse`), `Application`, `ApplicationCode`, `Role`, `AuthType`, `MoMoGatewayType`, `PropertyCategory`, `StorageType`, `KycErrorCode`, etc. |
 | `security` | `AuthenticateRequest` / `AuthenticateResponse`, `CreateOtpRequest`, `GoogleOneTapPayload`, `JwtPrincipal` |
 
 ## Build
@@ -41,7 +41,10 @@ from the parent/root version) and published to GitHub Packages (`maven.pkg.githu
 
 ## Conventions
 
-- Pure data classes only — no Spring annotations, no persistence (JPA) annotations, no business logic.
+- Pure data classes only — no persistence (JPA) annotations, no business logic, and no Spring annotations except
+  `@BindParam` on `Search*Request` fields whose query-parameter name differs from the field (e.g.
+  `SearchLocationRequest.keyword` ← `q`). `spring-web` is an `<optional>` dependency for that purpose only, so
+  consumers don't inherit it.
 - Enums and constants that are part of an API contract (e.g. `IdentificationType`, `KycStatus`, `StorageType`)
   belong here, not in `ndopify-server`.
 - `ndopify-dto` must never depend on `ndopify-server`.
