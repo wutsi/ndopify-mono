@@ -25,7 +25,8 @@ class SecurityConfiguration(
                     .requestMatchers("/assets/**").permitAll()
                     .requestMatchers("/login", "/login/**").permitAll()
                     .requestMatchers("/error").permitAll()
-                    // Public reference data, needed by the anonymous "Rejoindre Ndopify" wizard
+                    // The "Rejoindre Ndopify" sign-up wizard, and the public reference data its dropdowns need
+                    .requestMatchers("/rejoindre", "/rejoindre/**").permitAll()
                     .requestMatchers("/locations", "/locations/**").permitAll()
                     .anyRequest().authenticated()
             }

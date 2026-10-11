@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title th:text="${step == 'confirmation'} ? 'Candidature envoyée — Ndopify Partner Central' : 'Rejoindre Ndopify — Ndopify Partner Central'">
+        Rejoindre Ndopify — Ndopify Partner Central</title>
+    <meta content="Créez votre compte agent Ndopify : vos coordonnées, votre expérience, votre zone et votre numéro Mobile Money."
+          name="description">
+    <meta content="noindex, nofollow" name="robots">
+    <meta content="#ffffff" name="theme-color">
+    <link rel="icon" th:href="@{/assets/images/icon.png}" type="image/png">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
+    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap"
+          rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/css/intlTelInput.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.css" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/rejoindre.css}">
+    <script defer src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/js/intlTelInput.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.iife.js"></script>
+    <script defer th:src="@{/assets/js/util.js}"></script>
+    <script defer th:src="@{/assets/js/rejoindre.js}"></script>
+</head>
+<!--/*
+  One page, five steps then the confirmation: JoinController picks the step (model attribute "step") and only renders
+  that one. Each step is its own form, posted to /rejoindre/{step}; the answers live in the HTTP session, so a step's
+  fields are pre-filled from "answers" and its errors come from "errors" (field name → message).
+  Without JavaScript every step still works, except that the neighbourhoods of a city are loaded by rejoindre.js
+  (slim-select, GET /locations) — see data-locations-url.
+*/-->
+<body data-page="join">
+<a class="skip-link" href="#main">Aller au contenu</a>
+<header class="site-header">
+    <div class="site-header__inner">
+        <a class="site-header__brand" th:href="@{/login}">
+            <img alt="Ndopify, espace partenaires" height="40" th:src="@{/assets/images/logo.png}" width="84">
+        </a>
+    </div>
+</header>
+<main class="page" id="main">
+    <div class="column">
+        <!--/* Steps 1 to 5 */-->
+        <th:block th:if="${step != 'confirmation'}">
+            <div class="page-intro">
+                <h1>Rejoindre Ndopify</h1>
+            </div>
+            <div class="progress" data-progress-block>
+                <p class="progress__label" data-progress-label id="progress-label"
+                   th:text="|Étape ${stepNumber} sur ${stepCount}|">Étape 1 sur 5</p>
+                <div aria-labelledby="progress-label" class="progress__track" data-progress role="progressbar"
+                     th:attr="aria-valuemin=1, aria-valuemax=${stepCount}, aria-valuenow=${stepNumber},
+                              aria-valuetext=|Étape ${stepNumber} sur ${stepCount}|">
+                    <div class="progress__bar" data-progress-bar
+                         th:style="|transform: scaleX(${stepNumber * 1.0 / stepCount})|"></div>
+                </div>
+            </div>
+
+            <h2 class="visually-hidden" data-steps-title>Étapes du formulaire</h2>
+
+            <!--/* Step 1: identite (POST /rejoindre/identite) */-->
+            <form class="form" data-join-form method="post" novalidate th:action="@{/rejoindre/identite}"
+                  th:if="${step == 'identite'}">
+                <input name="retour" th:if="${returning}" type="hidden" value="revue">
+                <fieldset class="step" data-step="identite" tabindex="-1">
+                    <legend class="visually-hidden" th:text="|Étape ${stepNumber} sur ${stepCount} : vos coordonnées|">
+                        Étape 1 sur 5 : vos coordonnées</legend>
+                    <h3 aria-hidden="true">Parlez-nous de vous</h3>
+                    <p>Ces informations servent à créer votre compte agent. Comptez environ 3&nbsp;minutes pour tout le
+                        formulaire.</p>
+                    <div class="field">
+                        <label class="field__label" for="firstName">Prénom</label>
+                        <input aria-describedby="firstName-error" autocapitalize="words" autocomplete="given-name"
+                               class="input" id="firstName" name="firstName" required
+                               th:attr="aria-invalid=${errors['firstName'] != null ? 'true' : null}"
+                               th:value="${answers.firstName}" type="text">
+                        <p class="field__error" id="firstName-error" th:hidden="${errors['firstName'] == null}">
+                            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                      stroke-width="1.5"/>
+                            </svg>
+                            <span data-error-text th:text="${errors['firstName']}"></span></p>
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="lastName">Nom</label>
+                        <input aria-describedby="lastName-error" autocapitalize="words" autocomplete="family-name"
+                               class="input" id="lastName" name="lastName" required
+                               th:attr="aria-invalid=${errors['lastName'] != null ? 'true' : null}"
+                               th:value="${answers.lastName}" type="text">
+                        <p class="field__error" id="lastName-error" th:hidden="${errors['lastName'] == null}">
+                            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                      stroke-width="1.5"/>
+                            </svg>
+                            <span data-error-text th:text="${errors['lastName']}"></span></p>
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="email">Adresse email</label>
+                        <input aria-describedby="email-error" autocapitalize="off" autocomplete="email" class="input"
+                               id="email" inputmode="email" name="email" required spellcheck="false"
+                               th:attr="aria-invalid=${errors['email'] != null ? 'true' : null}"
+                               th:value="${answers.email}" type="email">
+                        <p class="field__error" id="email-error" th:hidden="${errors['email'] == null}">
+                            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                      stroke-width="1.5"/>
+                            </svg>
+                            <span data-error-text th:text="${errors['email']}"></span></p>
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="whatsappNumber">Numéro WhatsApp</label>
+                        <!--/* E.164 ("+237677123456"): rejoindre.js (intl-tel-input) formats and converts it. */-->
+                        <input aria-describedby="whatsappNumber-error" autocomplete="tel" class="input"
+                               id="whatsappNumber" name="whatsappNumber" required
+                               th:attr="aria-invalid=${errors['whatsappNumber'] != null ? 'true' : null}"
+                               th:value="${answers.whatsappNumber}" type="tel">
+                        <p class="field__error" id="whatsappNumber-error"
+                           th:hidden="${errors['whatsappNumber'] == null}">
+                            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                      stroke-width="1.5"/>
+                            </svg>
+                            <span data-error-text th:text="${errors['whatsappNumber']}"></span></p>
+                    </div>
+                    <div class="hint" id="identity-hint">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                            <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
+                        </svg>
+                        <div>
+                            <p>Saisissez vos prénom et nom tels qu'ils figurent sur votre carte nationale
+                                d'identité&nbsp;: ils seront comparés lors de la vérification de votre identité.</p>
+                            <p>Votre email sert à vous connecter, avec un code à usage unique. Votre numéro WhatsApp
+                                permet à l'équipe Ndopify de vous joindre.</p>
+                        </div>
+                    </div>
+                    <div class="alert alert--warning" data-phone-unavailable hidden>
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-linejoin="round"
+                                  stroke-width="1.5"/>
+                            <path d="M10 8v4" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                            <circle cx="10" cy="14.5" fill="currentColor" r="1"/>
+                        </svg>
+                        <div>
+                            <p class="alert__title">Nous ne pouvons pas vérifier votre numéro pour l'instant</p>
+                            <p>Vérifiez votre connexion internet, puis rechargez la page.</p>
+                        </div>
+                    </div>
+                    <div class="form__actions">
+                        <a class="btn btn--outline" data-prev
+                           th:href="${returning} ? @{/rejoindre(etape='revue')} : @{/login}">Précédent</a>
+                        <button aria-describedby="identity-hint" class="btn btn--primary" data-next
+                                th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
+                        </button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <!--/* Step 2: experience (POST /rejoindre/experience) */-->
+            <form class="form" data-join-form method="post" novalidate th:action="@{/rejoindre/experience}"
+                  th:if="${step == 'experience'}">
+                <input name="retour" th:if="${returning}" type="hidden" value="revue">
+                <fieldset class="step" data-step="experience" tabindex="-1">
+                    <legend class="visually-hidden"
+                            th:text="|Étape ${stepNumber} sur ${stepCount} : votre expérience|">
+                        Étape 2 sur 5 : votre expérience</legend>
+                    <h3 aria-hidden="true">Votre expérience sur le terrain</h3>
+                    <p>Deux questions rapides pour mieux vous connaître.</p>
+                    <fieldset aria-describedby="experienceLevel-error" class="choices" data-group="experienceLevel"
+                              th:attr="aria-invalid=${errors['experienceLevel'] != null ? 'true' : null}">
+                        <legend class="choices__legend">Depuis combien de temps exercez-vous comme agent ou
+                            démarcheur&nbsp;?</legend>
+                        <div class="choices__grid choices__grid--2">
+                            <label class="choice"><input name="experienceLevel" required
+                                                         th:checked="${#strings.equals(answers.experienceLevel, 'NOVICE')}"
+                                                         type="radio" value="NOVICE"> Moins d'un an</label>
+                            <label class="choice"><input name="experienceLevel" required
+                                                         th:checked="${#strings.equals(answers.experienceLevel, 'JUNIOR')}"
+                                                         type="radio" value="JUNIOR"> 1 à 3 ans</label>
+                            <label class="choice"><input name="experienceLevel" required
+                                                         th:checked="${#strings.equals(answers.experienceLevel, 'INTERMEDIATE')}"
+                                                         type="radio" value="INTERMEDIATE"> 3 à 5 ans</label>
+                            <label class="choice"><input name="experienceLevel" required
+                                                         th:checked="${#strings.equals(answers.experienceLevel, 'SENIOR')}"
+                                                         type="radio" value="SENIOR"> Plus de 5 ans</label>
+                        </div>
+                        <p class="field__error" id="experienceLevel-error"
+                           th:hidden="${errors['experienceLevel'] == null}">
+                            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                      stroke-width="1.5"/>
+                            </svg>
+                            <span data-error-text th:text="${errors['experienceLevel']}"></span></p>
+                    </fieldset>
+                    <fieldset aria-describedby="agentType-error" class="choices" data-group="agentType"
+                              th:attr="aria-invalid=${errors['agentType'] != null ? 'true' : null}">
+                        <legend class="choices__legend">Comment exercez-vous&nbsp;?</legend>
+                        <div class="choices__grid">
+                            <label class="choice"><input name="agentType" required
+                                                         th:checked="${#strings.equals(answers.agentType, 'INDEPENDANT')}"
+                                                         type="radio" value="INDEPENDANT"> Indépendant</label>
+                            <label class="choice"><input name="agentType" required
+                                                         th:checked="${#strings.equals(answers.agentType, 'REAL_ESTATE_AGENT')}"
+                                                         type="radio" value="REAL_ESTATE_AGENT"> Rattaché à une agence
+                                immobilière</label>
+                        </div>
+                        <p class="field__error" id="agentType-error" th:hidden="${errors['agentType'] == null}">
+                            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                      stroke-width="1.5"/>
+                            </svg>
+                            <span data-error-text th:text="${errors['agentType']}"></span></p>
+                    </fieldset>
+                    <div class="hint" id="experience-hint">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                            <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
+                        </svg>
+                        <div>
+                            <p>Les débutants sont les bienvenus&nbsp;: il n'y a pas de minimum d'expérience pour
+                                rejoindre Ndopify.</p>
+                        </div>
+                    </div>
+                    <div class="form__actions">
+                        <a class="btn btn--outline" data-prev
+                           th:href="${returning} ? @{/rejoindre(etape='revue')} : @{/rejoindre}">Précédent</a>
+                        <button aria-describedby="experience-hint" class="btn btn--primary" data-next
+                                th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
+                        </button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <!--/* Step 3: secteur (POST /rejoindre/secteur) */-->
+            <form class="form" data-join-form method="post" novalidate th:action="@{/rejoindre/secteur}"
+                  th:attr="data-locations-url=@{/locations}" th:if="${step == 'secteur'}">
+                <input name="retour" th:if="${returning}" type="hidden" value="revue">
+                <fieldset class="step" data-step="secteur" tabindex="-1">
+                    <legend class="visually-hidden"
+                            th:text="|Étape ${stepNumber} sur ${stepCount} : votre zone d'intervention|">
+                        Étape 3 sur 5 : votre zone d'intervention</legend>
+                    <h3 aria-hidden="true">Votre zone d'intervention</h3>
+                    <p>Les visites vous sont proposées dans les quartiers que vous connaissez.</p>
+                    <div class="field">
+                        <label class="field__label" for="cityId">Ville principale d'intervention</label>
+                        <!--/* Only the chosen city is rendered: rejoindre.js searches the others (GET /locations?q=). */-->
+                        <select aria-describedby="cityId-error" class="input select" id="cityId" name="cityId" required
+                                th:attr="aria-invalid=${errors['cityId'] != null ? 'true' : null}">
+                            <option data-placeholder="true" value="">Choisissez une ville</option>
+                            <option selected th:if="${city != null}" th:text="${city.name}"
+                                    th:value="${city.id}">Yaoundé</option>
+                        </select>
+                        <p class="field__error" id="cityId-error" th:hidden="${errors['cityId'] == null}">
+                            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                      stroke-width="1.5"/>
+                            </svg>
+                            <span data-error-text th:text="${errors['cityId']}"></span></p>
+                    </div>
+                    <p data-neighborhoods-empty th:hidden="${city != null}">Choisissez d'abord votre ville pour voir ses
+                        quartiers.</p>
+                    <div class="field" data-group="neighborhoodIds" th:hidden="${city == null}">
+                        <label class="field__label" for="neighborhoodIds">Quartiers que vous connaissez le mieux
+                            <span class="field__optional">(1&nbsp;à&nbsp;3)</span></label>
+                        <!--/* Only the chosen neighbourhoods are rendered: rejoindre.js loads the city's others. */-->
+                        <select aria-describedby="neighborhood-counter neighborhoodIds-error" class="input select"
+                                id="neighborhoodIds" multiple name="neighborhoodIds"
+                                th:attr="aria-invalid=${errors['neighborhoodIds'] != null ? 'true' : null}">
+                            <option selected th:each="neighborhood : ${neighborhoods}" th:text="${neighborhood.name}"
+                                    th:value="${neighborhood.id}">Bastos</option>
+                        </select>
+                        <p class="field__counter" data-neighborhood-counter id="neighborhood-counter"
+                           th:text="|${#lists.size(neighborhoods)} sur 3 sélectionné${#lists.size(neighborhoods) > 1 ? 's' : ''}|">
+                            0 sur 3 sélectionné</p>
+                        <p class="field__error" id="neighborhoodIds-error"
+                           th:hidden="${errors['neighborhoodIds'] == null}">
+                            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                      stroke-width="1.5"/>
+                            </svg>
+                            <span data-error-text th:text="${errors['neighborhoodIds']}"></span></p>
+                        <p class="visually-hidden" data-neighborhood-status role="status"></p>
+                    </div>
+                    <div class="hint" id="sector-hint">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                            <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
+                        </svg>
+                        <div>
+                            <p>Choisissez de 1 à 3&nbsp;quartiers. Une fois les 3 choisis, retirez-en un pour en
+                                prendre un autre.</p>
+                            <p>Vous pourrez modifier votre zone plus tard.</p>
+                        </div>
+                    </div>
+                    <div class="form__actions">
+                        <a class="btn btn--outline" data-prev
+                           th:href="${returning} ? @{/rejoindre(etape='revue')} : @{/rejoindre(etape='experience')}">Précédent</a>
+                        <button aria-describedby="sector-hint" class="btn btn--primary" data-next
+                                th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
+                        </button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <!--/* Step 4: paiement (POST /rejoindre/paiement) */-->
+            <form class="form" data-join-form method="post" novalidate th:action="@{/rejoindre/paiement}"
+                  th:if="${step == 'paiement'}">
+                <input name="retour" th:if="${returning}" type="hidden" value="revue">
+                <fieldset class="step" data-step="paiement" tabindex="-1">
+                    <legend class="visually-hidden"
+                            th:text="|Étape ${stepNumber} sur ${stepCount} : votre numéro Mobile Money|">
+                        Étape 4 sur 5 : votre numéro Mobile Money</legend>
+                    <h3 aria-hidden="true">Comment souhaitez-vous être payé&nbsp;?</h3>
+                    <p>Ndopify vous paie directement sur votre compte Mobile Money.</p>
+                    <div class="field">
+                        <label class="field__label" for="mobileMoneyNumber">Numéro Mobile Money</label>
+                        <!--/* E.164, Cameroonian only (+237): rejoindre.js locks intl-tel-input to Cameroon. */-->
+                        <input aria-describedby="mobileMoneyNumber-error" autocomplete="tel" class="input"
+                               id="mobileMoneyNumber" name="mobileMoneyNumber" required
+                               th:attr="aria-invalid=${errors['mobileMoneyNumber'] != null ? 'true' : null}"
+                               th:value="${answers.mobileMoneyNumber}" type="tel">
+                        <!--/* Checked, the server takes the WhatsApp number from the session, not the field above. */-->
+                        <label class="check" data-same-as-whatsapp th:if="${canUseWhatsapp}">
+                            <input id="sameAsWhatsapp" name="sameAsWhatsapp" type="checkbox" value="true"
+                                   th:checked="${answers.mobileMoneyNumber != null and answers.mobileMoneyNumber == answers.whatsappNumber}">
+                            <span>Utiliser mon numéro WhatsApp (<span data-whatsapp-number
+                                                                      th:text="${answers.whatsappNumber}">+237 6 77 12 34 56</span>)</span>
+                        </label>
+                        <p class="field__error" id="mobileMoneyNumber-error"
+                           th:hidden="${errors['mobileMoneyNumber'] == null}">
+                            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                                <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                      stroke-width="1.5"/>
+                            </svg>
+                            <span data-error-text th:text="${errors['mobileMoneyNumber']}"></span></p>
+                    </div>
+                    <div class="hint" id="payment-hint">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                            <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
+                        </svg>
+                        <div>
+                            <p>MTN Mobile Money ou Orange Money.</p>
+                            <p>Le compte doit être à votre nom&nbsp;: lors de la vérification, nous comparons le nom
+                                du titulaire avec celui de votre carte nationale d'identité.</p>
+                        </div>
+                    </div>
+                    <div class="alert alert--warning" data-phone-unavailable hidden>
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-linejoin="round"
+                                  stroke-width="1.5"/>
+                            <path d="M10 8v4" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                            <circle cx="10" cy="14.5" fill="currentColor" r="1"/>
+                        </svg>
+                        <div>
+                            <p class="alert__title">Nous ne pouvons pas vérifier votre numéro pour l'instant</p>
+                            <p>Vérifiez votre connexion internet, puis rechargez la page.</p>
+                        </div>
+                    </div>
+                    <div class="form__actions">
+                        <a class="btn btn--outline" data-prev
+                           th:href="${returning} ? @{/rejoindre(etape='revue')} : @{/rejoindre(etape='secteur')}">Précédent</a>
+                        <button aria-describedby="payment-hint" class="btn btn--primary" data-next
+                                th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
+                        </button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <!--/* Step 5: revue (POST /rejoindre/revue) — only reachable once every answer is in the session */-->
+            <form class="form" data-join-form method="post" novalidate th:action="@{/rejoindre/revue}"
+                  th:if="${step == 'revue'}">
+                <fieldset class="step" data-step="revue" tabindex="-1">
+                    <legend class="visually-hidden"
+                            th:text="|Étape ${stepNumber} sur ${stepCount} : revue de votre candidature|">
+                        Étape 5 sur 5 : revue de votre candidature</legend>
+                    <h3 aria-hidden="true">Vérifiez votre candidature</h3>
+                    <p>Relisez avant d'envoyer. Vous pouvez modifier chaque élément.</p>
+
+                    <dl class="review">
+                        <div class="review__item">
+                            <dt class="review__term">Nom complet</dt>
+                            <dd class="review__value">
+                                <p data-review-value="name" th:text="|${answers.firstName} ${answers.lastName}|">Ray
+                                    Sponsible</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/rejoindre(etape='identite', retour='revue')}">Modifier<span
+                                        class="visually-hidden"> votre nom</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Adresse email</dt>
+                            <dd class="review__value">
+                                <p data-review-value="email" th:text="${answers.email}">ray@gmail.com</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/rejoindre(etape='identite', retour='revue')}">Modifier<span
+                                        class="visually-hidden"> votre adresse email</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Numéro WhatsApp</dt>
+                            <dd class="review__value">
+                                <p data-phone data-review-value="whatsappNumber" th:text="${answers.whatsappNumber}">
+                                    +237677123456</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/rejoindre(etape='identite', retour='revue')}">Modifier<span
+                                        class="visually-hidden"> votre numéro WhatsApp</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Expérience</dt>
+                            <dd class="review__value">
+                                <p data-review-value="experienceLevel" th:text="${experienceLabel}">1 à 3 ans</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/rejoindre(etape='experience', retour='revue')}">Modifier<span
+                                        class="visually-hidden"> votre expérience</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Statut</dt>
+                            <dd class="review__value">
+                                <p data-review-value="agentType" th:text="${agentTypeLabel}">Indépendant</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/rejoindre(etape='experience', retour='revue')}">Modifier<span
+                                        class="visually-hidden"> votre statut</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Ville</dt>
+                            <dd class="review__value">
+                                <p data-review-value="cityId" th:text="${city?.name}">Yaoundé</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/rejoindre(etape='secteur', retour='revue')}">Modifier<span
+                                        class="visually-hidden"> votre ville</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Quartiers</dt>
+                            <dd class="review__value">
+                                <p data-review-value="neighborhoodIds"
+                                   th:text="${#strings.listJoin(neighborhoods.![name], ', ')}">Bastos, Essos</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/rejoindre(etape='secteur', retour='revue')}">Modifier<span
+                                        class="visually-hidden"> vos quartiers</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Numéro Mobile Money</dt>
+                            <dd class="review__value">
+                                <p data-phone data-review-value="mobileMoneyNumber"
+                                   th:text="${answers.mobileMoneyNumber}">+237677123456</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/rejoindre(etape='paiement', retour='revue')}">Modifier<span
+                                        class="visually-hidden"> votre numéro Mobile Money</span></a>
+                            </dd>
+                        </div>
+                    </dl>
+
+                    <!--/* The submission failed: the answers are still in the session, ready to be sent again. */-->
+                    <div class="alert alert--error" data-submit-error role="alert" th:if="${error != null}">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <div>
+                            <p class="alert__title" th:text="${error}">Envoi impossible pour le moment.</p>
+                            <p th:if="${existingAccount == true}"><a th:href="@{/login}">Connectez-vous à votre
+                                espace</a>, ou <a th:href="@{/rejoindre(etape='identite', retour='revue')}">utilisez
+                                une autre adresse email</a>.</p>
+                        </div>
+                    </div>
+
+                    <div class="hint" id="review-hint">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                            <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
+                        </svg>
+                        <div>
+                            <p>Après l'envoi, vous recevrez par email un lien sécurisé pour vérifier votre identité.
+                                Préparez le recto et le verso de votre carte nationale d'identité.</p>
+                        </div>
+                    </div>
+
+                    <div class="form__actions">
+                        <a class="btn btn--outline" data-prev th:href="@{/rejoindre(etape='paiement')}">Précédent</a>
+                        <button aria-describedby="review-hint" class="btn btn--primary" data-submit type="submit">
+                            Envoyer ma candidature
+                        </button>
+                    </div>
+                    <p class="visually-hidden" data-sending role="status"></p>
+                </fieldset>
+            </form>
+        </th:block>
+
+        <!--/* Confirmation — only rendered while a submitted application is in the session */-->
+        <section aria-labelledby="confirmation-title" class="confirmation stack" data-confirmation tabindex="-1"
+                 th:if="${step == 'confirmation'}">
+            <span class="confirmation__mark"><svg aria-hidden="true" class="icon" focusable="false"
+                                                  viewBox="0 0 20 20"><circle cx="10" cy="10" fill="none" r="8.25"
+                                                                            stroke="currentColor" stroke-width="1.5"/><path
+                d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-linecap="round"
+                stroke-linejoin="round" stroke-width="1.5"/></svg></span>
+            <h2 id="confirmation-title">Candidature envoyée</h2>
+            <p>Bienvenue chez Ndopify&nbsp;! Votre compte agent est créé. Voici les prochaines étapes&nbsp;:</p>
+            <ol class="next-steps">
+                <li>
+                    <div>
+                        <p class="next-steps__title">Vérifiez votre identité</p>
+                        <p>Nous envoyons à <strong data-joined-email th:text="${maskedEmail}">votre adresse
+                            email</strong> un lien sécurisé. Munissez-vous du recto et du verso de votre carte nationale
+                            d'identité.</p>
+                    </div>
+                </li>
+                <li>
+                    <div>
+                        <p class="next-steps__title">Validation de votre profil</p>
+                        <p>L'équipe Ndopify examine votre dossier sous 24 à 48&nbsp;heures.</p>
+                    </div>
+                </li>
+                <li>
+                    <div>
+                        <p class="next-steps__title">Accès à votre espace partenaires</p>
+                        <p>Une fois votre profil validé, vous vous connectez avec votre adresse email.</p>
+                    </div>
+                </li>
+            </ol>
+            <div class="cta-row">
+                <a class="btn btn--primary" th:href="@{/login}">Accéder à l'espace partenaires</a>
+            </div>
+        </section>
+    </div>
+</main>
+</body>
+</html>
