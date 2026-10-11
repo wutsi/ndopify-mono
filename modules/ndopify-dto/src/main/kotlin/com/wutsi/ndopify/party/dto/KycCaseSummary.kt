@@ -4,9 +4,8 @@ import java.util.Date
 
 data class KycCaseSummary(
     val id: String = "",
-    val partyId: String = "",
-    val identificationId: String = "",
-    val paymentMethodId: String? = null,
+    val partyId: Long = -1,
+
     val score: Int? = null,
     val status: KycStatus = KycStatus.UNKNOWN,
     val errorCode: String? = null,

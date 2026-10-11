@@ -8,6 +8,7 @@ import com.wutsi.ndopify.party.server.service.kyc.KycVerifierManual
 import com.wutsi.ndopify.party.server.service.kyc.KycVerifierMoMo
 import org.springframework.stereotype.Service
 
+@Deprecated("")
 @Service
 class KycVerifierProvider(
     private val momo: KycVerifierMoMo,

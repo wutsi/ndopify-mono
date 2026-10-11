@@ -32,7 +32,7 @@ class KycVerifierIdentification(
     @Transactional
     override fun verify(verification: KycVerificationEntity): KycVerificationEntity {
         startReview(verification)
-        return doReview(verification, verification.case.identification)
+        return doReview(verification, verification.case.identification!!)
     }
 
     private fun doReview(

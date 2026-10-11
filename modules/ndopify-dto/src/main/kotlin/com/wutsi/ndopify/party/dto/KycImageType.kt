@@ -1,7 +1,8 @@
 package com.wutsi.ndopify.party.dto
 
-enum class IdentificationImageType {
+enum class KycImageType {
     UNKNOWN,
     FRONT,
     BACK,
+    SELFIE,
 }

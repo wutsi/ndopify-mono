@@ -4,4 +4,5 @@ enum class KycVerificationType {
     UNKNOWN,
     IDENTIFICATION,
     PAYMENT_METHOD,
+    SELFIE,
 }

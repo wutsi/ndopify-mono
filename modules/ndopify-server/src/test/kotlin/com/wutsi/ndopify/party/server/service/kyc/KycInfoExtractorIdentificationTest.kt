@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.party.server.service.identification
+package com.wutsi.ndopify.party.server.service.kyc
 
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doReturn
@@ -19,9 +19,9 @@ import java.text.SimpleDateFormat
 import java.util.TimeZone
 import kotlin.test.assertEquals
 
-class IdentificationInfoExtractorAiTest {
+class KycIdentificationInfoExtractorAiTest {
     private val chatModel = mock<ChatModel>()
-    private val extractor = IdentificationInfoExtractorAi(ChatClient.builder(chatModel))
+    private val extractor = KycInfoExtractorAi(ChatClient.builder(chatModel))
     private val fmt = SimpleDateFormat("yyyy-MM-dd")
 
     @BeforeEach
@@ -52,8 +52,8 @@ class IdentificationInfoExtractorAiTest {
         )
 
         val images = listOf(
-            IdentificationInfoExtractorAiTest::class.java.getResource("/files/identity/cm/cni-front.png")?.file,
-            IdentificationInfoExtractorAiTest::class.java.getResource("/files/identity/cm/cni-back.png")?.file,
+            KycIdentificationInfoExtractorAiTest::class.java.getResource("/files/identity/cm/cni-front.png")?.file,
+            KycIdentificationInfoExtractorAiTest::class.java.getResource("/files/identity/cm/cni-back.png")?.file,
         )
         val info = extractor.extract(images.mapNotNull { image -> File(image) })
 
@@ -83,7 +83,7 @@ class IdentificationInfoExtractorAiTest {
         )
 
         val images = listOf(
-            IdentificationInfoExtractorAiTest::class.java.getResource("/files/identity/cm/passport.webp")?.file,
+            KycIdentificationInfoExtractorAiTest::class.java.getResource("/files/identity/cm/passport.webp")?.file,
         )
         val info = extractor.extract(images.mapNotNull { image -> File(image) })
 
@@ -114,7 +114,7 @@ class IdentificationInfoExtractorAiTest {
         )
 
         val images = listOf(
-            IdentificationInfoExtractorAiTest::class.java.getResource("/files/identity/us/driver-license-front.jpg")?.file,
+            KycIdentificationInfoExtractorAiTest::class.java.getResource("/files/identity/us/driver-license-front.jpg")?.file,
         )
         val info = extractor.extract(images.mapNotNull { image -> File(image) })
 

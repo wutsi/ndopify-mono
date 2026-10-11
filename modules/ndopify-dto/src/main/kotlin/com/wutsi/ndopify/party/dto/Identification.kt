@@ -11,7 +11,6 @@ data class Identification(
     val issuedAt: Date? = null,
     val expiresAt: Date? = null,
     val status: IdentificationStatus = IdentificationStatus.UNKNOWN,
-    val images: List<IdentificationImage> = emptyList(),
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
 )

@@ -1,7 +1,7 @@
-package com.wutsi.ndopify.party.server.service.identification
+package com.wutsi.ndopify.party.server.service.kyc
 
 import com.wutsi.ndopify.party.dto.IdentificationType
-import com.wutsi.ndopify.party.server.service.IdentificationInfoExtractor
+import com.wutsi.ndopify.party.server.service.KycInfoExtractor
 import com.wutsi.ndopify.util.MimeUtils
 import org.springframework.ai.chat.client.ChatClient
 import org.springframework.core.io.FileSystemResource
@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service
 import java.io.File
 
 @Service
-class IdentificationInfoExtractorAi(private val chatClientBuilder: ChatClient.Builder) : IdentificationInfoExtractor {
+class KycInfoExtractorAi(private val chatClientBuilder: ChatClient.Builder) : KycInfoExtractor {
     companion object {
         const val PROMPT = """
             You are an expert in identity verification.
@@ -24,7 +24,11 @@ class IdentificationInfoExtractorAi(private val chatClientBuilder: ChatClient.Bu
             - Expiry date: Expiry date of the document in YYYY-MM-DD format
             - valid: true if the document is valid, false otherwise
                 - Do not consider expired document as invalid, but provide the expiry date.
-                - Consider the document valid if it looks forged or tampered, even if it is not expired.
+                - Consider the document invalid when:
+                    - it looks forged or tampered
+                    - image is blurry
+                    - information is not readable.
+                    - other reasons that make the document invalid.
             - Reason for invalidity: If the document is invalid, provide a reason for invalidity. If the document is valid, do not include this field.
 
             Return the information in the following JSON format:
@@ -43,7 +47,7 @@ class IdentificationInfoExtractorAi(private val chatClientBuilder: ChatClient.Bu
 
     private val client = chatClientBuilder.build()
 
-    override fun extract(images: List<File>): IdentificationInfo {
+    override fun extract(images: List<File>): KycInfo {
         val instructions = PROMPT
             .replace("{{ID_TYPES}}", IdentificationType.entries.joinToString(", ") { it.name })
 
@@ -58,7 +62,7 @@ class IdentificationInfoExtractorAi(private val chatClientBuilder: ChatClient.Bu
                 spec
             }
             .call()
-            .entity(IdentificationInfo::class.java)
-            ?: IdentificationInfo()
+            .entity(KycInfo::class.java)
+            ?: KycInfo()
     }
 }
