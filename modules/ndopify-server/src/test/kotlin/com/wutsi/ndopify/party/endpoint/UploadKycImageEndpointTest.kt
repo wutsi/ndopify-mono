@@ -12,12 +12,15 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.dto.IdentificationType
 import com.wutsi.ndopify.party.dto.KycImageType
+import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.server.dao.KycCaseRepository
 import com.wutsi.ndopify.party.server.dao.KycImageRepository
 import com.wutsi.ndopify.platform.storage.StorageService
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.refdata.dto.StorageType
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.EnumSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.core.io.ByteArrayResource
 import org.springframework.http.HttpEntity
@@ -144,6 +147,25 @@ class UploadKycImageEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals(ErrorCode.KYC_CASE_NOT_FOUND, response.body?.error?.code)
         verify(storage, never()).store(any(), any(), any())
+    }
+
+    // Every status but PENDING, so a status added to KycStatus later is covered too (with a fixture row).
+    @ParameterizedTest
+    @EnumSource(value = KycStatus::class, names = ["PENDING"], mode = EnumSource.Mode.EXCLUDE)
+    fun `case not pending - bad request, documents frozen`(status: KycStatus) {
+        val caseId = "kyc-case-100-" + status.name.lowercase().replace('_', '-')
+        assertEquals(status, caseDao.findById(caseId).orElseThrow().status)
+
+        val response = rest.postForEntity(
+            url(caseId, KycImageType.FRONT),
+            request("front.jpg", MediaType.IMAGE_JPEG, byteArrayOf(1, 2, 3)),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.KYC_CASE_NOT_PENDING, response.body?.error?.code)
+        verify(storage, never()).store(any(), any(), any())
+        assertEquals(1, imageDao.findAll().count())
     }
 
     @Test

@@ -47,6 +47,11 @@ class KycEndpoints(
         )
     }
 
+    @PostMapping("/{id}/submit")
+    fun submit(@PathVariable id: String) {
+        service.submit(id)
+    }
+
     @PostMapping("/{id}/verify")
     fun verify(@PathVariable id: String) {
         service.verify(id)

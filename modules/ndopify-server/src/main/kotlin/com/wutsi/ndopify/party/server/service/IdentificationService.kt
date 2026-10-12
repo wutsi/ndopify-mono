@@ -13,7 +13,6 @@ import com.wutsi.ndopify.party.server.domain.IdentificationEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
@@ -23,8 +22,6 @@ import java.util.UUID
 
 @Service
 class IdentificationService(
-    @param:Value("\${ndopify.party.identification.image.url-ttl-seconds}") val imageUrlTTL: Int,
-
     private val dao: IdentificationRepository,
     private val clock: Clock,
     private val partyService: PartyService,

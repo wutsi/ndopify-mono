@@ -137,7 +137,11 @@ Current domains:
   `PaymentMethod`. KYC cases are verified by pluggable `KycVerifier` strategies (`KycVerifierIdentification`,
   `KycVerifierMoMo`, `KycVerifierManual`) selected via `KycVerifierProvider`. Identity-document data is extracted
   by `IdentificationInfoExtractorAi` (LLM via Spring AI), behind `IdentificationInfoExtractorProvider`.
-  Tenant-scoped (see Multi-Tenancy below).
+  KYC case lifecycle: `PENDING` (images uploaded via `/v1/kyc/cases/{id}/images/upload`) → `POST
+  /v1/kyc/cases/{id}/submit` → `SUBMITTED` (requires FRONT + BACK; images frozen) → `POST .../verify` →
+  `IN_PROGRESS` → `VERIFIED` / `REJECTED`. Verification is meant to run offline (a future cron job), never from a
+  UI. `KycStatus` is persisted by ordinal: inserting or reordering values needs a migration that renumbers
+  existing rows (as `V4_1__party-kyc-status-submitted.sql` does). Tenant-scoped (see Multi-Tenancy below).
 - **agent** — mobile-money agents (`AgentEntity`; `/v1/agents`: get, search, create, update). `WelcomeMailet` sends
   a welcome e-mail on registration when the tenant has a `partnerCentralUrl`. Tenant-scoped.
 - **error** — shared exception types (`WutsiException` subclasses: `BadRequestException`, `NotFoundException`,

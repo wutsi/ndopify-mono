@@ -119,7 +119,10 @@ class KycService(
     ): KycImageEntity {
         ensureImage(file)
 
+        // Images can only be added or replaced while the case is PENDING: once submitted, the documents under
+        // review (or already reviewed) must not change.
         val case = findById(id)
+        ensureStatusIsPending(case)
         val now = Date(clock.millis())
         val image = kycImageDao.findByKycCaseAndIdentificationTypeAndImageType(
             case, identificationType, imageType
@@ -162,14 +165,37 @@ class KycService(
         return storage.generatePresignedUrl(image.path, imageUrlTTL)
     }
 
+    /**
+     * Sends a case for review: PENDING → SUBMITTED. Its documents are frozen from then on, and the offline
+     * verification (see [verify]) picks it up. Requires the front and back of the identification document.
+     */
     @Transactional
-    fun verify(id: String): KycCaseEntity {
-        // Start
+    fun submit(id: String): KycCaseEntity {
         val case = findById(id)
         ensureStatusIsPending(case)
-        startVerification(case)
 
-        // Verifications
+        return dao.save(
+            case.copy(
+                status = KycStatus.SUBMITTED,
+                modifiedAt = Date(clock.millis()),
+            )
+        )
+    }
+
+    /**
+     * Verifies a SUBMITTED case. Never triggered by the UI: run offline, on the cases sent for review.
+     */
+    @Transactional
+    fun verify(id: String): KycCaseEntity {
+        val case = findById(id)
+        return verify(case)
+    }
+
+    @Transactional
+    fun verify(case: KycCaseEntity): KycCaseEntity {
+        ensureStatusIsSubmitted(case)
+
+        startVerification(case)
         val updatedCase = verifyIdentification(case)
         verifyPaymentMethods(updatedCase)
 
@@ -211,6 +237,7 @@ class KycService(
             case.copy(
                 status = status,
                 score = score,
+                errorCode = idVerification.errorCode ?: selfieVerification?.errorCode,
                 modifiedAt = Date(clock.millis()),
             )
         )
@@ -258,6 +285,14 @@ class KycService(
         if (case.status != KycStatus.PENDING) {
             throw BadRequestException(
                 error = Error(code = ErrorCode.KYC_CASE_NOT_PENDING)
+            )
+        }
+    }
+
+    private fun ensureStatusIsSubmitted(case: KycCaseEntity) {
+        if (case.status != KycStatus.SUBMITTED) {
+            throw BadRequestException(
+                error = Error(code = ErrorCode.KYC_CASE_NOT_SUBMITTED)
             )
         }
     }

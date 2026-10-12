@@ -87,13 +87,13 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         doReturn(emptyList<KycVerificationEntity>()).whenever(verifier).verify(any())
     }
 
-    private fun verify(id: String = "kyc-case-pending") =
+    private fun verify(id: String = "kyc-case-submitted") =
         rest.postForEntity("/v1/kyc/cases/$id/verify", null, Void::class.java)
 
     private fun verifyWithError(id: String) =
         rest.postForEntity("/v1/kyc/cases/$id/verify", null, ErrorResponse::class.java)
 
-    private fun assertCase(status: KycStatus, score: Int?, id: String = "kyc-case-pending") {
+    private fun assertCase(status: KycStatus, score: Int?, id: String = "kyc-case-submitted") {
         val case = dao.findById(id).orElseThrow()
         assertEquals(status, case.status)
         assertEquals(score, case.score)
@@ -127,10 +127,10 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertPartyKycStatus(KycStatus.VERIFIED)
         assertPaymentMethodStatus(PaymentMethodStatus.VERIFIED)
 
-        val isPendingCase = { c: KycCaseEntity -> c.id == "kyc-case-pending" }
-        verify(idVerifier).verify(argThat(isPendingCase))
-        verify(selfieVerifier).verify(argThat(isPendingCase))
-        verify(paymentMethodVerifier).verify(argThat(isPendingCase))
+        val isSubmittedCase = { c: KycCaseEntity -> c.id == "kyc-case-submitted" }
+        verify(idVerifier).verify(argThat(isSubmittedCase))
+        verify(selfieVerifier).verify(argThat(isSubmittedCase))
+        verify(paymentMethodVerifier).verify(argThat(isSubmittedCase))
     }
 
     @Test
@@ -233,16 +233,16 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
-    fun `no identification verification - conflict and case left pending`() {
+    fun `no identification verification - conflict and case left submitted`() {
         setUpNoVerification(idVerifier)
 
-        val response = verifyWithError("kyc-case-pending")
+        val response = verifyWithError("kyc-case-submitted")
 
         assertEquals(HttpStatus.CONFLICT, response.statusCode)
         assertEquals(ErrorCode.KYC_IMAGE_NO_IDENTIFICATION_VERIFICATION, response.body?.error?.code)
 
         // The transaction is rolled back: the case doesn't stay IN_PROGRESS
-        assertCase(KycStatus.PENDING, null)
+        assertCase(KycStatus.SUBMITTED, null)
         assertPartyKycStatus(KycStatus.PENDING)
         assertPaymentMethodStatus(PaymentMethodStatus.PENDING_VERIFICATION)
 
@@ -251,11 +251,22 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
-    fun `case not pending - bad request`() {
+    fun `case pending - bad request, not submitted for review yet`() {
+        val response = verifyWithError("kyc-case-pending")
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.KYC_CASE_NOT_SUBMITTED, response.body?.error?.code)
+
+        assertCase(KycStatus.PENDING, null, "kyc-case-pending")
+        assertNoVerifierCalled()
+    }
+
+    @Test
+    fun `case already verified - bad request`() {
         val response = verifyWithError("kyc-case-already-verified")
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
-        assertEquals(ErrorCode.KYC_CASE_NOT_PENDING, response.body?.error?.code)
+        assertEquals(ErrorCode.KYC_CASE_NOT_SUBMITTED, response.body?.error?.code)
 
         assertCase(KycStatus.VERIFIED, 95, "kyc-case-already-verified")
         assertNoVerifierCalled()

@@ -11,13 +11,13 @@ INSERT INTO T_PAYMENT_METHOD(id, tenant_id, party_id, number, type, status, crea
     ('payment-method-900', 2, 900, '+237659000000', 1, 1, '2024-06-10 00:00:00', '2024-06-10 00:00:00');
 
 INSERT INTO T_KYC_CASE(id, tenant_id, party_id,  score, status, error_code, created_at, modified_at) VALUES
-    ('kyc-case-100', 1, 100, 80, 3, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    ('kyc-case-100', 1, 100, 80, 4, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     ('kyc-case-200', 1, 100, NULL, 1, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    ('kyc-case-900', 2, 900, 80, 3, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00');
+    ('kyc-case-900', 2, 900, 80, 4, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00');
 
 INSERT INTO T_KYC_VERIFICATION(id, case_id, type, status, score, error_code, created_at, modified_at) VALUES
-    ('verification-100', 'kyc-case-100', 1, 3, 80, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    ('verification-200', 'kyc-case-100', 2, 3, 90, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00');
+    ('verification-100', 'kyc-case-100', 1, 4, 80, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    ('verification-200', 'kyc-case-100', 2, 4, 90, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00');
 
 INSERT INTO T_KYC_IMAGE(id, tenant_id, case_id, identification_type, image_type, storage_type, path, mime_type, created_at, modified_at) VALUES
     ('kyc-image-100-front', 1, 'kyc-case-100', 1, 1, 1, 'kyc/kyc-case-100/images/kyc-image-100-front.png', 'image/png', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
