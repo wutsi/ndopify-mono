@@ -9,6 +9,8 @@ data class KycCase(
     val score: Int? = null,
     val status: KycStatus = KycStatus.UNKNOWN,
     val errorCode: String? = null,
+    val errorMessage: String? = null,
+    val retries: Int? = null,
     val verifications: List<KycVerification> = emptyList(),
     val images: List<KycImage> = emptyList(),
     val createdAt: Date = Date(),
