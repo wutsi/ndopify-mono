@@ -32,6 +32,7 @@ object ErrorCode {
 
     val KYC_CASE_NOT_FOUND = "$PREFIX:kyc-case:not-found"
     val KYC_CASE_NOT_PENDING = "$PREFIX:kyc-case:not-pending"
+    val KYC_CASE_NOT_SUBMITTED = "$PREFIX:kyc-case:not-submitted"
     val KYC_CASE_MISSING_IDENTIFICATION_IMAGE = "$PREFIX:kyc-case:missing-identification-image"
     val KYC_IMAGE_NOT_FOUND = "$PREFIX:kyc-image:not-found"
     val KYC_IMAGE_NO_CONTENT = "$PREFIX:kyc-image:image-no-content"
