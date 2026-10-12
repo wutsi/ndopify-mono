@@ -51,6 +51,7 @@ class KycController(
 
         const val VIEW = "kyc"
         const val RETURN_TO_REVIEW = "revue"
+        const val ERROR_TOO_LARGE = "taille"
 
         // No party for the signed-in user (gone, other tenant, or party-less like an admin): have them sign in again.
         const val SIGN_OUT = "redirect:/logout"
@@ -60,6 +61,7 @@ class KycController(
     fun show(
         @RequestParam(required = false) etape: String?,
         @RequestParam(required = false) retour: String?,
+        @RequestParam(required = false) erreur: String?,
         session: HttpSession,
         model: Model,
     ): String {
@@ -80,7 +82,9 @@ class KycController(
         val photos = KycRules.photos(case)
         val requested = STEPS.indexOf(etape).coerceAtLeast(0)
         val allowed = STEPS.indexOf(KycRules.firstIncompleteStep(photos.keys))
-        return wizard(party, STEPS[minOf(requested, allowed)], photos, retour, null, model)
+        val shown = STEPS[minOf(requested, allowed)]
+        val error = if (erreur == ERROR_TOO_LARGE && shown == etape) "Cette photo dépasse la taille maximale de 5 Mo." else null
+        return wizard(party, shown, photos, retour, error, model)
     }
 
     @PostMapping("/{step:recto|verso|selfie}")

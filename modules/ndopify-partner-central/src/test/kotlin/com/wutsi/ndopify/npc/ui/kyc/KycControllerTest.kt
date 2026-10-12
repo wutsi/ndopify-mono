@@ -444,4 +444,14 @@ class KycControllerTest {
         assertEquals("redirect:/logout", mvc.perform(post("/kyc/revue").session(session)).andReturn().modelAndView?.viewName)
         assertEquals("redirect:/logout", mvc.perform(post("/kyc/recommencer").session(session)).andReturn().modelAndView?.viewName)
     }
+
+    @Test
+    fun `photo over the upload limit - size error on its step`() {
+        given(case(images = listOf(front)))
+
+        val result = mvc.perform(get("/kyc?etape=verso&erreur=taille").session(session)).andReturn()
+
+        assertEquals("verso", model(result)["step"])
+        assertEquals("Cette photo dépasse la taille maximale de 5 Mo.", model(result)["error"])
+    }
 }
