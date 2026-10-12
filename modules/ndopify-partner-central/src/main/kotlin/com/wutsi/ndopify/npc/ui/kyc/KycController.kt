@@ -1,0 +1,129 @@
+package com.wutsi.ndopify.npc.ui.kyc
+
+import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
+import com.wutsi.ndopify.npc.service.security.CurrentParty
+import com.wutsi.ndopify.npc.ui.kyc.KycRules.PHOTOS
+import com.wutsi.ndopify.npc.ui.kyc.KycRules.STEPS
+import com.wutsi.ndopify.npc.ui.kyc.KycRules.STEP_CONFIRMATION
+import com.wutsi.ndopify.npc.ui.kyc.KycRules.STEP_FRONT
+import com.wutsi.ndopify.npc.ui.kyc.KycRules.STEP_REVIEW
+import com.wutsi.ndopify.party.dto.KycCase
+import com.wutsi.ndopify.party.dto.KycImage
+import com.wutsi.ndopify.party.dto.KycImageType
+import com.wutsi.ndopify.party.dto.Party
+import jakarta.servlet.http.HttpSession
+import org.slf4j.LoggerFactory
+import org.springframework.stereotype.Controller
+import org.springframework.ui.Model
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.client.HttpClientErrorException
+
+/**
+ * The agent's identity verification, on a single page (`kyc.html`), in three views:
+ * - wizard: four steps, [STEPS] (recto → verso → selfie → revue). `GET /kyc?etape=…` shows a step. Each upload
+ *   step posts its photo to `POST /kyc/{step}`, which adds it straight to the agent's PENDING case on
+ *   ndopify-server, so the case is the wizard's state and the session holds no photos. `POST /kyc/revue`
+ *   submits the case.
+ * - confirmation: `?etape=confirmation`, right after submitting (while [SubmittedKyc] is in the session).
+ * - status: once the case is no longer PENDING (en attente / vérifié / rejeté), whatever the URL says. A rejected
+ *   case can be restarted (`POST /kyc/recommencer`), which opens a new case.
+ *
+ * The URL is never trusted: a step is only shown once the case has every photo before it.
+ */
+@Controller
+@RequestMapping("/kyc")
+class KycController(
+    private val kycClient: NdKycClient,
+    private val currentParty: CurrentParty,
+) {
+    companion object {
+        private val LOGGER = LoggerFactory.getLogger(KycController::class.java)
+
+        const val VIEW = "kyc"
+        const val RETURN_TO_REVIEW = "revue"
+
+        // No party for the signed-in user (gone, other tenant, or party-less like an admin): have them sign in again.
+        const val SIGN_OUT = "redirect:/logout"
+    }
+
+    @GetMapping
+    fun show(
+        @RequestParam(required = false) etape: String?,
+        @RequestParam(required = false) retour: String?,
+        session: HttpSession,
+        model: Model,
+    ): String {
+        val party = currentParty.get() ?: return SIGN_OUT
+        val case = kycClient.current(party.id)
+        val status = KycRules.status(case)
+
+        val submitted = session.getAttribute(SubmittedKyc.SESSION_ATTRIBUTE) as SubmittedKyc?
+        if (etape == STEP_CONFIRMATION && status != null && submitted?.caseId == case?.id) {
+            header(party, model)
+            model.addAttribute("view", "confirmation")
+            return VIEW
+        }
+        if (status != null) {
+            return status(party, status, case!!, model)
+        }
+
+        val photos = KycRules.photos(case)
+        val requested = STEPS.indexOf(etape).coerceAtLeast(0)
+        val allowed = STEPS.indexOf(KycRules.firstIncompleteStep(photos.keys))
+        return wizard(party, STEPS[minOf(requested, allowed)], photos, retour, null, model)
+    }
+
+    private fun status(party: Party, status: String, case: KycCase, model: Model): String {
+        header(party, model)
+        model.addAttribute("view", "status")
+        model.addAttribute("status", status)
+        if (status == KycRules.STATUS_REJECTED) {
+            model.addAttribute("rejectionReason", KycRules.rejectionReason(case.errorCode))
+        }
+        return VIEW
+    }
+
+    private fun wizard(
+        party: Party,
+        step: String,
+        photos: Map<KycImageType, KycImage>,
+        retour: String?,
+        error: String?,
+        model: Model,
+    ): String {
+        header(party, model)
+        model.addAttribute("view", "wizard")
+        model.addAttribute("step", step)
+        model.addAttribute("stepNumber", STEPS.indexOf(step) + 1)
+        model.addAttribute("stepCount", STEPS.size)
+        model.addAttribute("error", error)
+        // "Revenir à la revue" instead of "Suivant": only once every photo is in.
+        model.addAttribute(
+            "returning",
+            retour == RETURN_TO_REVIEW && step != STEP_REVIEW && KycRules.firstIncompleteStep(photos.keys) == STEP_REVIEW,
+        )
+
+        // Photos already in the case: an upload step previews its own, the review shows all three.
+        val shown = if (step == STEP_REVIEW) photos.values else listOfNotNull(photos[PHOTOS[step]])
+        model.addAttribute("photoUrls", shown.associate { image -> image.imageType.name to kycClient.imageUrl(image.id) })
+        return VIEW
+    }
+
+    private fun header(party: Party, model: Model) {
+        model.addAttribute("email", party.email)
+        model.addAttribute("initials", KycRules.initials(party.firstName, party.lastName))
+    }
+
+    private fun redirect(step: String): String =
+        if (step == STEP_FRONT) "redirect:/kyc" else "redirect:/kyc?etape=$step"
+
+    private fun errorCode(ex: HttpClientErrorException): String? =
+        try {
+            ex.getResponseBodyAs(ErrorResponse::class.java)?.error?.code
+        } catch (ignored: Exception) {
+            null
+        }
+}
