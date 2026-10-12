@@ -28,6 +28,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.MvcResult
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.servlet.view.InternalResourceViewResolver
@@ -350,5 +351,97 @@ class KycControllerTest {
         val result = mvc.perform(multipart("/kyc/recto").file(photo(jpeg)).session(session)).andReturn()
 
         assertEquals("redirect:/logout", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun submit() {
+        given(case(images = listOf(front, back, selfie)))
+
+        val result = mvc.perform(post("/kyc/revue").session(session)).andReturn()
+
+        verify(kycClient).submit("case-1")
+        assertEquals("redirect:/kyc?etape=confirmation", result.modelAndView?.viewName)
+        assertEquals(SubmittedKyc(caseId = "case-1"), session.getAttribute(SubmittedKyc.SESSION_ATTRIBUTE))
+    }
+
+    @Test
+    fun `submit with a missing photo - back to it`() {
+        given(case(images = listOf(front, back)))
+
+        val result = mvc.perform(post("/kyc/revue").session(session)).andReturn()
+
+        verify(kycClient, never()).submit(any())
+        assertEquals("redirect:/kyc?etape=selfie", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun `submit twice - status`() {
+        given(case(images = listOf(front, back, selfie)))
+        doThrow(serverError(ErrorCode.KYC_CASE_NOT_PENDING)).whenever(kycClient).submit(any())
+
+        val result = mvc.perform(post("/kyc/revue").session(session)).andReturn()
+
+        assertEquals("redirect:/kyc", result.modelAndView?.viewName)
+        assertNull(session.getAttribute(SubmittedKyc.SESSION_ATTRIBUTE))
+    }
+
+    @Test
+    fun `submit a case that is no longer pending - status`() {
+        given(case(status = KycStatus.SUBMITTED, images = listOf(front, back, selfie)))
+
+        val result = mvc.perform(post("/kyc/revue").session(session)).andReturn()
+
+        verify(kycClient, never()).submit(any())
+        assertEquals("redirect:/kyc", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun `server says a photo is missing - error on the review`() {
+        given(case(images = listOf(front, back, selfie)))
+        doThrow(serverError(ErrorCode.KYC_CASE_MISSING_IDENTIFICATION_IMAGE)).whenever(kycClient).submit(any())
+
+        val result = mvc.perform(post("/kyc/revue").session(session)).andReturn()
+
+        assertEquals("revue", model(result)["step"])
+        assertEquals(
+            "Il manque une ou plusieurs photos. Ajoutez-les pour pouvoir envoyer votre dossier.",
+            model(result)["error"],
+        )
+    }
+
+    @Test
+    fun `restart a rejected case - new case`() {
+        given(case(status = KycStatus.REJECTED))
+
+        val result = mvc.perform(post("/kyc/recommencer").session(session)).andReturn()
+
+        verify(kycClient).create(PARTY_ID)
+        assertEquals("redirect:/kyc", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun `restart a pending case - nothing created`() {
+        given(case(status = KycStatus.PENDING))
+
+        mvc.perform(post("/kyc/recommencer").session(session)).andReturn()
+
+        verify(kycClient, never()).create(any())
+    }
+
+    @Test
+    fun `restart a verified case - nothing created`() {
+        given(case(status = KycStatus.VERIFIED))
+
+        mvc.perform(post("/kyc/recommencer").session(session)).andReturn()
+
+        verify(kycClient, never()).create(any())
+    }
+
+    @Test
+    fun `submit without party - signed out`() {
+        doReturn(null).whenever(currentParty).get()
+
+        assertEquals("redirect:/logout", mvc.perform(post("/kyc/revue").session(session)).andReturn().modelAndView?.viewName)
+        assertEquals("redirect:/logout", mvc.perform(post("/kyc/recommencer").session(session)).andReturn().modelAndView?.viewName)
     }
 }

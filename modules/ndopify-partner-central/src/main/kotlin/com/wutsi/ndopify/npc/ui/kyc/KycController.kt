@@ -123,6 +123,40 @@ class KycController(
         return redirect(minOf(next, KycRules.firstIncompleteStep(done), compareBy { STEPS.indexOf(it) }))
     }
 
+    @PostMapping("/$STEP_REVIEW")
+    fun submit(session: HttpSession, model: Model): String {
+        val party = currentParty.get() ?: return SIGN_OUT
+        val case = kycClient.current(party.id)
+        if (case?.status != KycStatus.PENDING) return "redirect:/kyc"
+
+        val photos = KycRules.photos(case)
+        val firstIncomplete = KycRules.firstIncompleteStep(photos.keys)
+        if (firstIncomplete != STEP_REVIEW) return redirect(firstIncomplete)
+
+        try {
+            kycClient.submit(case.id)
+        } catch (ex: HttpClientErrorException) {
+            LOGGER.error("Server error: ${ex.statusCode} ${ex.responseBodyAsString}", ex)
+
+            val code = errorCode(ex)
+            if (code == ErrorCode.KYC_CASE_NOT_PENDING) return "redirect:/kyc"
+            return wizard(party, STEP_REVIEW, photos, null, toMessage(code), model)
+        }
+
+        session.setAttribute(SubmittedKyc.SESSION_ATTRIBUTE, SubmittedKyc(caseId = case.id))
+        return redirect(STEP_CONFIRMATION)
+    }
+
+    /** "Soumettre de nouveaux documents" on a rejected case: a new case, and the wizard starts over empty. */
+    @PostMapping("/recommencer")
+    fun restart(): String {
+        val party = currentParty.get() ?: return SIGN_OUT
+        if (kycClient.current(party.id)?.status == KycStatus.REJECTED) {
+            kycClient.create(party.id)
+        }
+        return "redirect:/kyc"
+    }
+
     /**
      * The PENDING case photos go to: the current one, or a new one when the agent has none yet (or it was
      * cancelled). Null once the current case has been submitted, since its photos can't change any more.
@@ -138,6 +172,8 @@ class KycController(
 
     private fun toMessage(code: String?): String = when (code) {
         ErrorCode.IDENTIFICATION_IMAGE_INVALID_MIME_TYPE -> "Format non accepté. Utilisez une photo JPG, PNG ou WEBP."
+        ErrorCode.KYC_CASE_MISSING_IDENTIFICATION_IMAGE ->
+            "Il manque une ou plusieurs photos. Ajoutez-les pour pouvoir envoyer votre dossier."
         else -> "Envoi impossible pour le moment. Réessayez dans quelques instants."
     }
 
