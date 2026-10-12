@@ -2,10 +2,15 @@ package com.wutsi.ndopify.npc.ui.kyc
 
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.doThrow
+import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.error.dto.Error
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.service.security.CurrentParty
 import com.wutsi.ndopify.party.dto.KycCase
@@ -16,11 +21,15 @@ import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.http.HttpStatus
 import org.springframework.mock.web.MockHttpSession
+import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.MvcResult
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
+import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.servlet.view.InternalResourceViewResolver
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -194,6 +203,151 @@ class KycControllerTest {
         doReturn(null).whenever(currentParty).get()
 
         val result = mvc.perform(get("/kyc").session(session)).andReturn()
+
+        assertEquals("redirect:/logout", result.modelAndView?.viewName)
+    }
+
+    // Magic numbers are enough for Tika to tell the type from the bytes.
+    private val jpeg = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xE0.toByte(), 0, 0x10) + ByteArray(64)
+    private val pdf = "%PDF-1.4\n".toByteArray() + ByteArray(64)
+
+    private fun photo(bytes: ByteArray, contentType: String = "image/jpeg") =
+        MockMultipartFile("photo", "photo.jpg", contentType, bytes)
+
+    private fun serverError(code: String): HttpClientErrorException {
+        val ex = HttpClientErrorException(HttpStatus.BAD_REQUEST)
+        ex.setBodyConvertFunction { ErrorResponse(Error(code = code)) }
+        return ex
+    }
+
+    @Test
+    fun `upload front - next step`() {
+        given(case())
+
+        val result = mvc.perform(multipart("/kyc/recto").file(photo(jpeg)).session(session)).andReturn()
+
+        verify(kycClient).upload(eq("case-1"), eq(KycImageType.FRONT), eq(jpeg), eq("image/jpeg"))
+        assertEquals("redirect:/kyc?etape=verso", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun `upload selfie - review`() {
+        given(case(images = listOf(front, back)))
+
+        val result = mvc.perform(multipart("/kyc/selfie").file(photo(jpeg)).session(session)).andReturn()
+
+        verify(kycClient).upload(eq("case-1"), eq(KycImageType.SELFIE), any(), eq("image/jpeg"))
+        assertEquals("redirect:/kyc?etape=revue", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun `replace a photo from the review - back to the review`() {
+        given(case(images = listOf(front, back, selfie)))
+
+        val result = mvc.perform(multipart("/kyc/recto").file(photo(jpeg)).param("retour", "revue").session(session)).andReturn()
+
+        assertEquals("redirect:/kyc?etape=revue", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun `no new file but the photo is already in - next step, nothing uploaded`() {
+        given(case(images = listOf(front)))
+
+        val result = mvc.perform(multipart("/kyc/recto").session(session)).andReturn()
+
+        verify(kycClient, never()).upload(any(), any(), any(), any())
+        assertEquals("redirect:/kyc?etape=verso", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun `no file - error`() {
+        given(case())
+
+        val result = mvc.perform(multipart("/kyc/recto").session(session)).andReturn()
+
+        assertEquals("recto", model(result)["step"])
+        assertEquals("Ajoutez une photo pour continuer.", model(result)["error"])
+    }
+
+    @Test
+    fun `pdf sent as a jpeg - format error, nothing uploaded`() {
+        given(case())
+
+        val result = mvc.perform(multipart("/kyc/recto").file(photo(pdf, "image/jpeg")).session(session)).andReturn()
+
+        verify(kycClient, never()).upload(any(), any(), any(), any())
+        assertEquals("Format non accepté. Utilisez une photo JPG, PNG ou WEBP.", model(result)["error"])
+    }
+
+    @Test
+    fun `photo over 5 MB - size error`() {
+        given(case())
+        val big = jpeg + ByteArray(KycRules.MAX_PHOTO_BYTES.toInt())
+
+        val result = mvc.perform(multipart("/kyc/recto").file(photo(big)).session(session)).andReturn()
+
+        verify(kycClient, never()).upload(any(), any(), any(), any())
+        assertEquals("Cette photo pèse 5,0 Mo. La taille maximale est de 5 Mo.", model(result)["error"])
+    }
+
+    @Test
+    fun `upload a step ahead of a missing photo - back to the missing one`() {
+        given(case())
+
+        val result = mvc.perform(multipart("/kyc/selfie").file(photo(jpeg)).session(session)).andReturn()
+
+        verify(kycClient, never()).upload(any(), any(), any(), any())
+        assertEquals("redirect:/kyc", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun `no case yet - one is opened`() {
+        given(null)
+        doReturn("case-new").whenever(kycClient).create(PARTY_ID)
+        doReturn(KycCase(id = "case-new", status = KycStatus.PENDING)).whenever(kycClient).get("case-new")
+
+        mvc.perform(multipart("/kyc/recto").file(photo(jpeg)).session(session)).andReturn()
+
+        verify(kycClient).upload(eq("case-new"), eq(KycImageType.FRONT), any(), any())
+    }
+
+    @Test
+    fun `case already submitted - status, nothing uploaded`() {
+        given(case(status = KycStatus.SUBMITTED))
+
+        val result = mvc.perform(multipart("/kyc/recto").file(photo(jpeg)).session(session)).andReturn()
+
+        verify(kycClient, never()).upload(any(), any(), any(), any())
+        verify(kycClient, never()).create(any())
+        assertEquals("redirect:/kyc", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun `case submitted meanwhile (other tab) - status`() {
+        given(case())
+        doThrow(serverError(ErrorCode.KYC_CASE_NOT_PENDING)).whenever(kycClient).upload(any(), any(), any(), any())
+
+        val result = mvc.perform(multipart("/kyc/recto").file(photo(jpeg)).session(session)).andReturn()
+
+        assertEquals("redirect:/kyc", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun `server error - generic error on the step`() {
+        given(case())
+        doThrow(serverError("unexpected")).whenever(kycClient).upload(any(), any(), any(), any())
+
+        val result = mvc.perform(multipart("/kyc/recto").file(photo(jpeg)).session(session)).andReturn()
+
+        assertEquals("recto", model(result)["step"])
+        assertEquals("Envoi impossible pour le moment. Réessayez dans quelques instants.", model(result)["error"])
+    }
+
+    @Test
+    fun `upload without party - signed out`() {
+        doReturn(null).whenever(currentParty).get()
+
+        val result = mvc.perform(multipart("/kyc/recto").file(photo(jpeg)).session(session)).andReturn()
 
         assertEquals("redirect:/logout", result.modelAndView?.viewName)
     }

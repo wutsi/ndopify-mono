@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.kyc
 
+import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.service.security.CurrentParty
@@ -11,15 +12,20 @@ import com.wutsi.ndopify.npc.ui.kyc.KycRules.STEP_REVIEW
 import com.wutsi.ndopify.party.dto.KycCase
 import com.wutsi.ndopify.party.dto.KycImage
 import com.wutsi.ndopify.party.dto.KycImageType
+import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.Party
 import jakarta.servlet.http.HttpSession
+import org.apache.tika.Tika
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.multipart.MultipartFile
 
 /**
  * The agent's identity verification, on a single page (`kyc.html`), in three views:
@@ -41,6 +47,7 @@ class KycController(
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(KycController::class.java)
+        private val TIKA = Tika()
 
         const val VIEW = "kyc"
         const val RETURN_TO_REVIEW = "revue"
@@ -74,6 +81,64 @@ class KycController(
         val requested = STEPS.indexOf(etape).coerceAtLeast(0)
         val allowed = STEPS.indexOf(KycRules.firstIncompleteStep(photos.keys))
         return wizard(party, STEPS[minOf(requested, allowed)], photos, retour, null, model)
+    }
+
+    @PostMapping("/{step:recto|verso|selfie}")
+    fun upload(
+        @PathVariable step: String,
+        @RequestParam(required = false) photo: MultipartFile?,
+        @RequestParam(required = false) retour: String?,
+        model: Model,
+    ): String {
+        val party = currentParty.get() ?: return SIGN_OUT
+        val case = openCase(party.id) ?: return "redirect:/kyc"
+        val photos = KycRules.photos(case)
+        val firstIncomplete = KycRules.firstIncompleteStep(photos.keys)
+        if (STEPS.indexOf(step) > STEPS.indexOf(firstIncomplete)) return redirect(firstIncomplete)
+
+        val imageType = PHOTOS.getValue(step)
+        if (photo == null || photo.isEmpty) {
+            // "Suivant" on a step whose photo is already in the case just moves on.
+            if (imageType !in photos) {
+                return wizard(party, step, photos, retour, "Ajoutez une photo pour continuer.", model)
+            }
+        } else {
+            val content = photo.bytes
+            // The browser's content type is a claim; the bytes are the truth.
+            val mimeType = TIKA.detect(content)
+            KycRules.photo(photo.size, mimeType)?.let { error -> return wizard(party, step, photos, retour, error, model) }
+            try {
+                kycClient.upload(case.id, imageType, content, mimeType)
+            } catch (ex: HttpClientErrorException) {
+                LOGGER.error("Server error: ${ex.statusCode} ${ex.responseBodyAsString}", ex)
+
+                val code = errorCode(ex)
+                if (code == ErrorCode.KYC_CASE_NOT_PENDING) return "redirect:/kyc"
+                return wizard(party, step, photos, retour, toMessage(code), model)
+            }
+        }
+
+        val done = photos.keys + imageType
+        val next = if (retour == RETURN_TO_REVIEW) STEP_REVIEW else STEPS[STEPS.indexOf(step) + 1]
+        return redirect(minOf(next, KycRules.firstIncompleteStep(done), compareBy { STEPS.indexOf(it) }))
+    }
+
+    /**
+     * The PENDING case photos go to: the current one, or a new one when the agent has none yet (or it was
+     * cancelled). Null once the current case has been submitted, since its photos can't change any more.
+     */
+    private fun openCase(partyId: Long): KycCase? {
+        val case = kycClient.current(partyId)
+        return when (case?.status) {
+            KycStatus.PENDING -> case
+            null, KycStatus.CANCELLED -> kycClient.get(kycClient.create(partyId))
+            else -> null
+        }
+    }
+
+    private fun toMessage(code: String?): String = when (code) {
+        ErrorCode.IDENTIFICATION_IMAGE_INVALID_MIME_TYPE -> "Format non accepté. Utilisez une photo JPG, PNG ou WEBP."
+        else -> "Envoi impossible pour le moment. Réessayez dans quelques instants."
     }
 
     private fun status(party: Party, status: String, case: KycCase, model: Model): String {
