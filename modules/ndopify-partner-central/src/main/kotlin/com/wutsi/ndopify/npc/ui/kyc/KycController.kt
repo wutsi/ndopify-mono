@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.client.RestClientException
 import org.springframework.web.multipart.MultipartFile
 
 /**
@@ -113,10 +114,8 @@ class KycController(
             KycRules.photo(photo.size, mimeType)?.let { error -> return wizard(party, step, photos, retour, error, model) }
             try {
                 kycClient.upload(case.id, imageType, content, mimeType)
-            } catch (ex: HttpClientErrorException) {
-                LOGGER.error("Server error: ${ex.statusCode} ${ex.responseBodyAsString}", ex)
-
-                val code = errorCode(ex)
+            } catch (ex: RestClientException) {
+                val code = failureCode(ex)
                 if (code == ErrorCode.KYC_CASE_NOT_PENDING) return "redirect:/kyc"
                 return wizard(party, step, photos, retour, toMessage(code), model)
             }
@@ -139,10 +138,8 @@ class KycController(
 
         try {
             kycClient.submit(case.id)
-        } catch (ex: HttpClientErrorException) {
-            LOGGER.error("Server error: ${ex.statusCode} ${ex.responseBodyAsString}", ex)
-
-            val code = errorCode(ex)
+        } catch (ex: RestClientException) {
+            val code = failureCode(ex)
             if (code == ErrorCode.KYC_CASE_NOT_PENDING) return "redirect:/kyc"
             return wizard(party, STEP_REVIEW, photos, null, toMessage(code), model)
         }
@@ -213,7 +210,11 @@ class KycController(
 
         // Photos already in the case: an upload step previews its own, the review shows all three.
         val shown = if (step == STEP_REVIEW) photos.values else listOfNotNull(photos[PHOTOS[step]])
-        model.addAttribute("photoUrls", shown.associate { image -> image.imageType.name to kycClient.imageUrl(image.id) })
+        // A photo whose URL can't be had is left out (the page still works without its preview).
+        model.addAttribute(
+            "photoUrls",
+            shown.mapNotNull { image -> imageUrl(image)?.let { url -> image.imageType.name to url } }.toMap(),
+        )
         return VIEW
     }
 
@@ -224,6 +225,25 @@ class KycController(
 
     private fun redirect(step: String): String =
         if (step == STEP_FRONT) "redirect:/kyc" else "redirect:/kyc?etape=$step"
+
+    private fun imageUrl(image: KycImage): String? =
+        try {
+            kycClient.imageUrl(image.id)
+        } catch (ex: RestClientException) {
+            LOGGER.warn("No URL for KYC image ${image.id}: ${ex.message}")
+            null
+        }
+
+    /** The server's error code, if it sent one; null for a 5xx or an unreachable server (logged with its stack). */
+    private fun failureCode(ex: RestClientException): String? {
+        val code = (ex as? HttpClientErrorException)?.let { errorCode(it) }
+        if (code == ErrorCode.KYC_CASE_NOT_PENDING) {
+            LOGGER.warn("KYC case no longer pending: ${ex.message}")
+        } else {
+            LOGGER.error("Server error: ${ex.message}", ex)
+        }
+        return code
+    }
 
     private fun errorCode(ex: HttpClientErrorException): String? =
         try {

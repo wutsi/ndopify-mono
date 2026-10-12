@@ -1,7 +1,7 @@
 /*
- * Ndopify Partner Central — shared behaviour (static prototype).
+ * Ndopify Partner Central — shared behaviour, served with the Thymeleaf pages.
  * Each page sets <body data-page="..."> and gets its own initialiser below.
- * Server calls are simulated; every simulation is marked "PROTOTYPE".
+ * Progressive enhancement only: the server renders and validates every page, and every form posts without this.
  */
 (function () {
     "use strict";
@@ -180,7 +180,7 @@
                 input.focus();
                 return;
             }
-            // PROTOTYPE: the KYC pages still read the email from sessionStorage for the header menu.
+            // Kept for the pages that don't render the agent's email themselves (the header menu falls back to it); kyc.html does.
             store.set(KEYS.email, input.value.trim().toLowerCase());
         });
 

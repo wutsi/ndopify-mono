@@ -145,8 +145,9 @@ Current domains:
   /v1/kyc/cases/{id}/submit` → `SUBMITTED` (requires FRONT, plus BACK for two-sided documents: `NATIONAL_ID`,
   `DRIVER_LICENSE`, `RESIDENT_CARD`; SELFIE optional server-side, Partner Central requires it; images frozen) →
   `POST .../verify` → `IN_PROGRESS` → `VERIFIED` / `REJECTED`. `GET /v1/kyc/cases` returns the newest case first.
-  Verification is meant to run offline (a future cron job), never from a UI. `KycStatus` is persisted by ordinal: inserting or reordering values needs a migration that renumbers
-  existing rows (as `V4_1__party-kyc-status-submitted.sql` does). Tenant-scoped (see Multi-Tenancy below).
+  Verification is meant to run offline (a future cron job), never from a UI. `KycStatus` is persisted by ordinal:
+  inserting or reordering values needs a migration that renumbers existing rows (as
+  `V4_1__party-kyc-status-submitted.sql` does). Tenant-scoped (see Multi-Tenancy below).
 - **agent** — mobile-money agents (`AgentEntity`; `/v1/agents`: get, search, create, update). `WelcomeMailet` sends
   a welcome e-mail on registration when the tenant has a `partnerCentralUrl`. Tenant-scoped.
 - **error** — shared exception types (`WutsiException` subclasses: `BadRequestException`, `NotFoundException`,

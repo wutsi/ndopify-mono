@@ -31,6 +31,8 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multi
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.client.HttpServerErrorException
+import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.servlet.view.InternalResourceViewResolver
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -114,6 +116,17 @@ class KycControllerTest {
         val result = mvc.perform(get("/kyc?etape=recto").session(session)).andReturn()
 
         assertEquals(mapOf("FRONT" to "https://s3/img-front.jpg"), model(result)["photoUrls"])
+    }
+
+    @Test
+    fun `photo preview unavailable - step still shown without it`() {
+        given(case(images = listOf(front)))
+        whenever(kycClient.imageUrl(any())).thenThrow(ResourceAccessException("timeout"))
+
+        val result = mvc.perform(get("/kyc?etape=recto").session(session)).andReturn()
+
+        assertEquals("recto", model(result)["step"])
+        assertEquals(emptyMap<String, String>(), model(result)["photoUrls"])
     }
 
     @Test
@@ -342,6 +355,40 @@ class KycControllerTest {
 
         assertEquals("recto", model(result)["step"])
         assertEquals("Envoi impossible pour le moment. Réessayez dans quelques instants.", model(result)["error"])
+    }
+
+    @Test
+    fun `server failure (5xx) on upload - generic error on the step`() {
+        given(case())
+        doThrow(HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR)).whenever(kycClient).upload(any(), any(), any(), any())
+
+        val result = mvc.perform(multipart("/kyc/recto").file(photo(jpeg)).session(session)).andReturn()
+
+        assertEquals("recto", model(result)["step"])
+        assertEquals("Envoi impossible pour le moment. Réessayez dans quelques instants.", model(result)["error"])
+    }
+
+    @Test
+    fun `server unreachable on upload - generic error on the step`() {
+        given(case())
+        doThrow(ResourceAccessException("timeout")).whenever(kycClient).upload(any(), any(), any(), any())
+
+        val result = mvc.perform(multipart("/kyc/recto").file(photo(jpeg)).session(session)).andReturn()
+
+        assertEquals("recto", model(result)["step"])
+        assertEquals("Envoi impossible pour le moment. Réessayez dans quelques instants.", model(result)["error"])
+    }
+
+    @Test
+    fun `server failure (5xx) on submit - generic error on the review, nothing submitted`() {
+        given(case(images = listOf(front, back, selfie)))
+        doThrow(HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR)).whenever(kycClient).submit(any())
+
+        val result = mvc.perform(post("/kyc/revue").session(session)).andReturn()
+
+        assertEquals("revue", model(result)["step"])
+        assertEquals("Envoi impossible pour le moment. Réessayez dans quelques instants.", model(result)["error"])
+        assertNull(session.getAttribute(SubmittedKyc.SESSION_ATTRIBUTE))
     }
 
     @Test
