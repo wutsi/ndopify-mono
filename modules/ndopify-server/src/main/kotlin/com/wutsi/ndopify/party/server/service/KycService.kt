@@ -83,7 +83,8 @@ class KycService(
             cb.and(*predicates.toTypedArray())
         }
 
-        return dao.findAll(spec, Sort.by("id"))
+        // Newest first: a party's current case is the one it opened last (a rejected case is followed by a new one).
+        return dao.findAll(spec, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")))
             .drop(request.offset)
             .take(request.limit)
     }
