@@ -3,6 +3,27 @@
 Sources: *Ndopify Partner Central* (structure du site), *Ndopify — Pitch*, *Ndopify Vision + Mission*.
 Supersedes `agent-onboarding.md` and the previous revision of this file wherever they differ.
 
+**Revision 2026-10-11 — KYC on a single page.** Like `login.html` and `rejoindre.html`, the whole KYC journey now
+lives in `kyc.html`, next to `login.html` (login lands there). It has three views:
+
+- **Wizard** (no dossier submitted): four slides (recto, `?etape=verso`, `?etape=selfie`, `?etape=revue`), each a
+  history entry. The selfie is taken with the live front camera in the page (mirrored preview, oval face guide,
+  « Activer la caméra » → « Prendre la photo » → « Reprendre la photo »); if the camera can't be used (refused, none,
+  not HTTPS) the slide says why and falls back to the phone's own camera app (`capture="user"`). A
+  slide only opens once every earlier photo is in, whatever the URL says; « Modifier » on the review opens the slide
+  in-page and « Revenir à la revue » goes back. The wizard is the start of the journey, so the recto has no
+  « Précédent » (except when editing from the review).
+- **Confirmation**, right after sending, shown in place with no URL of its own; « Voir le statut de mon dossier »
+  switches to the status.
+- **Status** (dossier submitted): only the content of the former `kyc/index.html`, *en attente* / *vérifié* /
+  *rejeté*, whatever the URL asks for. *Soumission requise* is the wizard itself. A rejected dossier always lands on
+  its status (motif + « Soumettre de nouveaux documents »); that button reopens the wizard to start the KYC again. A
+  reload keeps the wizard, but coming back to the page later shows the rejected status again until the new documents
+  are sent, after which the dossier is *en attente*.
+
+`kyc/index.html`, `kyc/verification.html`, `kyc/revue.html` and `kyc/confirmation.html` are superseded. Wherever the
+sections below link to them, read the matching view of `kyc.html`.
+
 **Revision 2026-10-10 (c) — NIU step removed for now.** The KYC process does not collect or verify the NIU yet:
 `kyc/niu.html` is gone and the wizard is 3 steps (**1 sur 3** recto, **2 sur 3** verso, **3 sur 3** revue). The
 review page no longer shows a NIU row, and `kyc/index.html` no longer asks agents to prepare their NIU. Wherever the

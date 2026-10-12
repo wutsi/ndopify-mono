@@ -22,10 +22,12 @@
         otpExpiry: "npc.otpExpiry",
         otpAttempts: "npc.otpAttempts",
         front: "npc.kyc.front",
-        frontName: "npc.kyc.frontName",
         back: "npc.kyc.back",
-        backName: "npc.kyc.backName",
-        submitted: "npc.kyc.submitted"
+        // Status of the submitted dossier: attente, verifie or rejete.
+        selfie: "npc.kyc.selfie",
+        submitted: "npc.kyc.submitted",
+        // Set while a rejected dossier's documents are being sent again.
+        resubmit: "npc.kyc.resubmit"
     };
 
     /* ---------- Storage (fails soft: private mode, quota) ---------- */
@@ -344,7 +346,7 @@
 
             store.remove(KEYS.otpExpiry);
             store.remove(KEYS.otpAttempts);
-            window.location.href = "kyc/index.html";
+            window.location.href = "kyc.html";
         });
 
         resend.addEventListener("click", function () {
@@ -435,15 +437,6 @@
         settle(false);
     }
 
-    /* ---------- kyc/index.html ---------- */
-    function initKycStatus() {
-        var params = new URLSearchParams(window.location.search);
-        // PROTOTYPE: the real status comes from the API. ?statut= lets each state be reviewed.
-        var statusKey = params.get("statut") || (store.get(KEYS.submitted) ? "attente" : "soumission");
-        var panel = $('[data-status="' + statusKey + '"]') || $('[data-status="soumission"]');
-        panel.hidden = false;
-    }
-
     /* ---------- Wizard progress ---------- */
     function focusStep(step) {
         step.focus({ preventScroll: true });
@@ -461,7 +454,7 @@
         $("[data-progress-bar]").style.transform = "scaleX(" + step / total + ")";
     }
 
-    /* ---------- Image downscale for the review page ---------- */
+    /* ---------- Image downscale for the review slide ---------- */
     function toThumbnail(file, callback) {
         var reader = new FileReader();
         reader.onload = function () {
@@ -486,175 +479,458 @@
         reader.readAsDataURL(file);
     }
 
-    /* ---------- kyc/verification.html ---------- */
-    function initKycDocuments() {
-        var params = new URLSearchParams(window.location.search);
-        var returnToReview = params.get("retour") === "revue";
-        var steps = $all("[data-step]");
-        var current = params.get("etape") === "verso" ? 1 : 0;
+    /*
+     * kyc.html — the whole identity verification on one page, in three views:
+     *   - wizard: recto → verso → selfie → revue as slides. Each slide is a history entry (?etape=verso, ?etape=revue)
+     *     so the Back button works, but the URL is never trusted: a slide only opens once every earlier photo
+     *     is in this session;
+     *   - confirmation: right after the dossier is sent; it has no URL of its own, and a reload shows it again;
+     *   - status: once a dossier has been submitted, the page shows only its status (en attente, vérifié, rejeté),
+     *     whatever the URL says. A rejected dossier lands on its status, whose button reopens the wizard to send
+     *     new documents; reloading keeps that wizard, but coming back to the page later shows the status again.
+     */
+    var KYC_STEPS = ["recto", "verso", "selfie", "revue"];
+    var KYC_SELFIE = 2;
+    var KYC_REVIEW = 3;
+    // Photos of the dossier, in the order of their slides.
+    var KYC_PHOTOS = ["front", "back", "selfie"];
+    var KYC_STATUSES = ["attente", "verifie", "rejete"];
 
-        function setupUpload(step) {
-            var side = step.getAttribute("data-step");
-            var input = $(".upload__input", step);
-            var error = $(".field__error", step);
-            var preview = $("[data-preview]", step);
-            var placeholder = $("[data-placeholder]", step);
-            var filename = $("[data-filename]", step);
-            var next = $("[data-next]", step);
-            var buttonLabel = $("[data-upload-label]", step);
-            var dataKey = KEYS[side];
-            var nameKey = KEYS[side + "Name"];
+    // Photo uploader of one slide (front / back / selfie). onChange runs once a photo is stored.
+    function kycUpload(step, onChange) {
+        var side = step.getAttribute("data-side");
+        var input = $(".upload__input", step);
+        var error = $(".field__error", step);
+        var preview = $("[data-preview]", step);
+        var placeholder = $("[data-placeholder]", step);
+        var status = $("[data-upload-status]", step);
+        var buttonLabel = $("[data-upload-label]", step);
+        var dataKey = KEYS[side];
 
-            function showPreview(src, name) {
-                placeImage(preview, src);
-                placeholder.hidden = true;
-                filename.textContent = name ? "Photo ajoutée : " + name : "Photo ajoutée.";
-                filename.hidden = false;
-                buttonLabel.textContent = "Changer la photo";
-                setActive(next, true);
+        // The preview shows the photo; no file name is displayed.
+        function showPreview(src) {
+            placeImage(preview, src);
+            placeholder.hidden = true;
+            buttonLabel.textContent = "Changer la photo";
+        }
+
+        var saved = store.get(dataKey);
+        if (saved) showPreview(saved);
+
+        input.addEventListener("change", function () {
+            var file = input.files && input.files[0];
+            if (!file) return;
+
+            if (ACCEPTED_TYPES.indexOf(file.type) === -1) {
+                setFieldError(input, error, "Format non accepté. Utilisez une photo JPG, PNG ou WEBP.");
+                input.value = "";
+                return;
+            }
+            if (file.size > MAX_FILE_BYTES) {
+                var size = (file.size / (1024 * 1024)).toFixed(1).replace(".", ",");
+                setFieldError(input, error, "Cette photo pèse " + size + " Mo. La taille maximale est de 5 Mo.");
+                input.value = "";
+                return;
             }
 
-            var saved = store.get(dataKey);
-            if (saved) showPreview(saved, store.get(nameKey));
-            else setActive(next, false);
-
-            input.addEventListener("change", function () {
-                var file = input.files && input.files[0];
-                if (!file) return;
-
-                if (ACCEPTED_TYPES.indexOf(file.type) === -1) {
-                    setFieldError(input, error, "Format non accepté. Utilisez une photo JPG, PNG ou WEBP.");
-                    input.value = "";
+            setFieldError(input, error, "");
+            toThumbnail(file, function (thumb) {
+                if (!thumb) {
+                    setFieldError(input, error, "Impossible de lire cette photo. Essayez avec une autre image.");
                     return;
                 }
-                if (file.size > MAX_FILE_BYTES) {
-                    var size = (file.size / (1024 * 1024)).toFixed(1).replace(".", ",");
-                    setFieldError(input, error, "Cette photo pèse " + size + " Mo. La taille maximale est de 5 Mo.");
-                    input.value = "";
-                    return;
-                }
+                use(thumb);
+            });
+        });
 
-                setFieldError(input, error, "");
-                toThumbnail(file, function (thumb) {
-                    if (!thumb) {
-                        setFieldError(input, error, "Impossible de lire cette photo. Essayez avec une autre image.");
+        // Keeps a photo (data URL), whether it comes from a file or from the camera.
+        function use(src) {
+            setFieldError(input, error, "");
+            // If storage is unavailable the preview still shows; the review slide then reports the gap.
+            store.set(dataKey, src);
+            showPreview(src);
+            // Screen readers don't see the preview: say the photo is in.
+            announce(status, preview.getAttribute("data-alt").replace("Aperçu", "Photo") + " ajoutée.");
+            onChange();
+        }
+
+        return {
+            input: input,
+            use: use,
+            done: function () {
+                return !!store.get(dataKey);
+            }
+        };
+    }
+
+    /*
+     * Selfie: live front camera in the page (getUserMedia), mirrored under an oval guide, captured to a canvas.
+     * When the camera can't be used — no support, not HTTPS/localhost, permission refused, no camera — the
+     * slide falls back to <input type="file" capture="user">, which opens the phone's own camera app.
+     */
+    var SELFIE_MAX_HEIGHT = 1000;
+
+    function kycCamera(step, upload) {
+        var preview = $("[data-preview]", step);
+        var placeholder = $("[data-placeholder]", step);
+        var video = $("[data-camera-video]", step);
+        var guide = $("[data-camera-guide]", step);
+        var start = $("[data-camera-start]", step);
+        var shoot = $("[data-camera-shoot]", step);
+        var fallback = $("[data-camera-fallback]", step);
+        var problem = $("[data-camera-problem]", step);
+        var stream = null;
+        // Bumped on every stop: a camera that opens after the agent has left the slide is closed at once.
+        var session = 0;
+
+        function supported() {
+            return !!(window.isSecureContext && navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+        }
+
+        function setLive(on) {
+            var photo = $("img", preview);
+            video.hidden = !on;
+            guide.hidden = !on;
+            shoot.hidden = !on;
+            start.hidden = on || !fallback.hidden;
+            if (photo) photo.hidden = on;
+            placeholder.hidden = on || !!photo;
+        }
+
+        function stop() {
+            session++;
+            if (stream) {
+                stream.getTracks().forEach(function (track) {
+                    track.stop();
+                });
+            }
+            stream = null;
+            video.srcObject = null;
+            setLive(false);
+        }
+
+        function useFallback(message) {
+            stop();
+            fallback.hidden = false;
+            start.hidden = true;
+            if (message) {
+                $("[data-camera-problem-text]", problem).textContent = message;
+                problem.hidden = false;
+            }
+        }
+
+        function failure(error) {
+            var name = error && error.name;
+            if (name === "NotAllowedError" || name === "SecurityError") {
+                return "Vous n'avez pas autorisé l'accès à la caméra. Autorisez-le dans les réglages de votre " +
+                    "navigateur, ou prenez votre selfie avec l'appareil photo de votre téléphone.";
+            }
+            if (name === "NotFoundError" || name === "OverconstrainedError") {
+                return "Aucune caméra n'a été trouvée. Prenez votre selfie avec l'appareil photo de votre téléphone.";
+            }
+            if (name === "NotReadableError") {
+                return "La caméra est utilisée par une autre application. Fermez-la et réessayez, ou prenez votre " +
+                    "selfie avec l'appareil photo de votre téléphone.";
+            }
+            return "La caméra n'a pas pu démarrer. Prenez votre selfie avec l'appareil photo de votre téléphone.";
+        }
+
+        start.addEventListener("click", function () {
+            if (!isActive(start)) return; // already asking for the camera
+            var mine = ++session;
+            problem.hidden = true;
+            setActive(start, false);
+            navigator.mediaDevices
+                .getUserMedia({ video: { facingMode: "user", width: { ideal: 1280 }, height: { ideal: 960 } }, audio: false })
+                .then(function (opened) {
+                    setActive(start, true);
+                    if (mine !== session) {
+                        opened.getTracks().forEach(function (track) {
+                            track.stop();
+                        });
                         return;
                     }
-                    // If storage is unavailable the preview still shows; the review page then reports the gap.
-                    store.set(dataKey, thumb);
-                    store.set(nameKey, file.name);
-                    showPreview(thumb, file.name);
+                    stream = opened;
+                    video.srcObject = opened;
+                    setLive(true);
+                    video.play().catch(function () {
+                        /* autoplay attribute covers it */
+                    });
+                    shoot.focus();
+                })
+                .catch(function (error) {
+                    setActive(start, true);
+                    if (mine === session) useFallback(failure(error));
                 });
+        });
+
+        shoot.addEventListener("click", function () {
+            var vw = video.videoWidth;
+            var vh = video.videoHeight;
+            if (!vw || !vh) return;
+            // Crop the centre of the frame to the 3:4 portrait shown in the preview (object-fit: cover).
+            var sw = Math.min(vw, vh * 3 / 4);
+            var sh = sw * 4 / 3;
+            var scale = Math.min(1, SELFIE_MAX_HEIGHT / sh);
+            var canvas = document.createElement("canvas");
+            canvas.width = Math.round(sw * scale);
+            canvas.height = Math.round(sh * scale);
+            // Drawn as the camera sees it, not mirrored: only the live preview is flipped.
+            canvas.getContext("2d").drawImage(video, (vw - sw) / 2, (vh - sh) / 2, sw, sh, 0, 0, canvas.width, canvas.height);
+            stop();
+            upload.use(canvas.toDataURL("image/jpeg", 0.8));
+            start.textContent = "Reprendre la photo";
+            $("[data-next]", step).focus();
+        });
+
+        if (!supported()) useFallback("");
+        else if (upload.done()) start.textContent = "Reprendre la photo";
+
+        // Never leave the camera on when the agent leaves the page.
+        window.addEventListener("pagehide", stop);
+
+        return {
+            leave: stop,
+            // Where to send the agent who presses Suivant without a selfie.
+            focus: function () {
+                (fallback.hidden ? start : upload.input).focus();
+            }
+        };
+    }
+
+    function initKycWizard() {
+        var form = $("[data-kyc-form]");
+        var slides = KYC_STEPS.map(function (key) {
+            return $('[data-step="' + key + '"]', form);
+        });
+        var views = $all("[data-view]");
+        var confirmation = $('[data-view="confirmation"]');
+        var heading = $("h1");
+        var submit = $("[data-submit]", form);
+        var current = 0;
+
+        var uploads = slides.slice(0, KYC_REVIEW).map(function (slide) {
+            return kycUpload(slide, function () {
+                sync();
+            });
+        });
+        var camera = kycCamera(slides[KYC_SELFIE], uploads[KYC_SELFIE]);
+
+        // Shows the elements of one view; data-view lists every view an element belongs to.
+        function setView(name) {
+            if (name !== "wizard") camera.leave();
+            views.forEach(function (el) {
+                el.hidden = el.getAttribute("data-view").split(" ").indexOf(name) === -1;
             });
         }
 
-        function stepUrl(index) {
-            var query = [];
-            if (index === 1) query.push("etape=verso");
-            if (returnToReview) query.push("retour=revue");
-            return window.location.pathname + (query.length ? "?" + query.join("&") : "");
+        // PROTOTYPE: the real status comes from the API. ?statut= sets the status of this session, so each
+        // state can be reviewed (?statut=soumission starts over with no dossier).
+        function submittedStatus() {
+            var requested = new URLSearchParams(window.location.search).get("statut");
+            if (requested === "soumission") {
+                store.remove(KEYS.submitted);
+                store.remove(KEYS.resubmit);
+            } else if (KYC_STATUSES.indexOf(requested) !== -1) {
+                store.set(KEYS.submitted, requested);
+                store.remove(KEYS.resubmit);
+            }
+            var saved = store.get(KEYS.submitted);
+            return KYC_STATUSES.indexOf(saved) !== -1 ? saved : null;
+        }
+
+        function showStatus(key, moveFocus) {
+            setView("status");
+            $all("[data-status]").forEach(function (panel) {
+                panel.hidden = panel.getAttribute("data-status") !== key;
+            });
+            if (moveFocus) heading.focus();
+        }
+
+        function firstIncomplete() {
+            for (var i = 0; i < uploads.length; i++) {
+                if (!uploads[i].done()) return i;
+            }
+            return KYC_REVIEW;
+        }
+
+        function sync() {
+            if (current === KYC_REVIEW) setActive(submit, firstIncomplete() === KYC_REVIEW);
+            else setActive($("[data-next]", slides[current]), uploads[current].done());
+        }
+
+        /* History: each slide is an entry; state = { step, returning, depth } or { done, depth }. */
+        function state() {
+            return window.history.state || {};
+        }
+
+        function urlFor(index) {
+            return window.location.pathname + (index > 0 ? "?etape=" + KYC_STEPS[index] : "");
+        }
+
+        function requestedStep() {
+            if (typeof state().step === "number") return state().step;
+            var index = KYC_STEPS.indexOf(new URLSearchParams(window.location.search).get("etape"));
+            return index === -1 ? 0 : index;
+        }
+
+        // Never open a slide whose predecessors aren't complete, whatever the URL or history entry says.
+        function allowed(index) {
+            return Math.min(index, firstIncomplete());
+        }
+
+        function renderReview() {
+            KYC_PHOTOS.forEach(function (side) {
+                var src = store.get(KEYS[side]);
+                var slot = $('[data-review-image="' + side + '"]', form);
+                if (src) placeImage(slot, src, side === "selfie" ? "review__thumb review__thumb--portrait" : "review__thumb");
+                $('[data-review-missing="' + side + '"]', form).hidden = !!src;
+            });
+            $("[data-incomplete]", form).hidden = firstIncomplete() === KYC_REVIEW;
         }
 
         function show(index, moveFocus) {
-            steps.forEach(function (step, i) {
-                step.hidden = i !== index;
+            setView("wizard");
+            slides.forEach(function (slide, i) {
+                slide.hidden = i !== index;
             });
             current = index;
-            setProgress(index + 1, 3);
-            if (moveFocus) focusStep(steps[index]);
+            if (index !== KYC_SELFIE) camera.leave();
+            setProgress(index + 1, KYC_STEPS.length);
+
+            var next = $("[data-next]", slides[index]);
+            if (next) next.textContent = state().returning ? "Revenir à la revue" : "Suivant";
+            // The wizard is the start of the page: the recto has nowhere to go back to, unless editing from the review.
+            $("[data-prev]", slides[0]).hidden = !state().returning;
+            if (index === KYC_REVIEW) renderReview();
+            sync();
+
+            if (moveFocus) focusStep(slides[index]);
         }
 
-        // Each slide is a history entry, so the Android Back button moves between recto and verso.
-        function go(index) {
-            window.history.pushState({ step: index }, "", stepUrl(index));
+        function go(index, returning) {
+            window.history.pushState(
+                { step: index, returning: !!returning, depth: (state().depth || 0) + 1 },
+                "",
+                urlFor(index)
+            );
             show(index, true);
         }
 
-        window.addEventListener("popstate", function (event) {
-            var index = event.state && typeof event.state.step === "number"
-                ? event.state.step
-                : new URLSearchParams(window.location.search).get("etape") === "verso" ? 1 : 0;
-            show(index, true);
-        });
-
-        steps.forEach(function (step, index) {
-            setupUpload(step);
-            var next = $("[data-next]", step);
-            var prev = $("[data-prev]", step);
-            if (returnToReview) next.textContent = "Revenir à la revue";
-
-            next.addEventListener("click", function () {
-                if (!isActive(next)) {
-                    $(".upload__input", step).focus();
-                    return;
-                }
-                if (returnToReview) {
-                    window.location.href = "revue.html";
-                } else if (index < steps.length - 1) {
-                    go(index + 1);
-                } else {
-                    window.location.href = "revue.html";
-                }
-            });
-
-            if (prev) {
-                prev.addEventListener("click", function () {
-                    if (returnToReview) window.location.href = "revue.html";
-                    else if (index > 0) window.history.back();
-                    else window.location.href = "index.html";
-                });
-            }
-        });
-
-        window.history.replaceState({ step: current }, "", stepUrl(current));
-        show(current, false);
-    }
-
-    /* ---------- kyc/revue.html ---------- */
-    function initKycReview() {
-        setProgress(3, 3);
-        var submit = $("[data-submit]");
-        var complete = true;
-
-        ["front", "back"].forEach(function (side) {
-            var src = store.get(KEYS[side]);
-            var slot = $('[data-review-image="' + side + '"]');
-            var missing = $('[data-review-missing="' + side + '"]');
-            if (src) {
-                placeImage(slot, src, "review__thumb");
-                missing.hidden = true;
+        // Step back one history entry when there is one from this wizard, otherwise replace in place.
+        function back(index) {
+            if (state().depth > 0) {
+                window.history.back();
             } else {
-                missing.hidden = false;
-                complete = false;
+                window.history.replaceState({ step: index, returning: false, depth: 0 }, "", urlFor(index));
+                show(index, true);
             }
-        });
+        }
 
-        setActive(submit, complete);
-        $("[data-incomplete]").hidden = complete;
+        function next(index) {
+            if (!uploads[index].done()) {
+                if (index === KYC_SELFIE) camera.focus();
+                else uploads[index].input.focus();
+                return;
+            }
+            if (state().returning) back(KYC_REVIEW);
+            else go(index + 1);
+        }
 
-        $("[data-review-form]").addEventListener("submit", function (event) {
-            event.preventDefault();
-            if (!complete || !isActive(submit)) return;
+        function showConfirmation() {
+            setView("confirmation");
+            confirmation.focus({ preventScroll: true });
+            window.scrollTo(0, 0);
+        }
+
+        function submitFile() {
+            if (!isActive(submit) || firstIncomplete() !== KYC_REVIEW) return;
             setActive(submit, false);
             submit.textContent = "Envoi en cours…";
-            announce($("[data-sending]"), "Envoi de votre dossier en cours.");
-            // PROTOTYPE: the real page uploads both images, then redirects on success.
+            announce($("[data-sending]", form), "Envoi de votre dossier en cours.");
+            // PROTOTYPE: the real page uploads the three photos, then shows the confirmation on success.
             window.setTimeout(function () {
-                store.set(KEYS.submitted, "1");
-                ["front", "frontName", "back", "backName"].forEach(function (k) {
+                store.set(KEYS.submitted, "attente");
+                store.remove(KEYS.resubmit);
+                KYC_PHOTOS.forEach(function (k) {
                     store.remove(KEYS[k]);
                 });
-                window.location.href = "confirmation.html";
+                submit.textContent = "Envoyer mon dossier";
+                // The confirmation replaces the review entry: it has no URL, and a reload shows it again.
+                window.history.replaceState({ done: true, depth: state().depth || 0 }, "", window.location.pathname);
+                showConfirmation();
             }, 600);
+        }
+
+        slides.forEach(function (slide, index) {
+            var nextButton = $("[data-next]", slide);
+            if (nextButton) {
+                nextButton.addEventListener("click", function () {
+                    next(index);
+                });
+            }
+            $("[data-prev]", slide).addEventListener("click", function () {
+                if (state().returning) back(KYC_REVIEW);
+                else back(index - 1);
+            });
         });
+
+        $all("[data-edit]", form).forEach(function (button) {
+            button.addEventListener("click", function () {
+                go(KYC_STEPS.indexOf(button.getAttribute("data-edit")), true);
+            });
+        });
+
+        // The confirmation's entry becomes the status: Back from the status doesn't bring the confirmation back.
+        $("[data-show-status]").addEventListener("click", function () {
+            window.history.replaceState({ depth: state().depth || 0 }, "", window.location.pathname);
+            showStatus(submittedStatus(), true);
+        });
+
+        // A rejected dossier: the status invites the agent to send new documents, which reopens the wizard.
+        $("[data-restart]").addEventListener("click", function () {
+            store.set(KEYS.resubmit, "1");
+            window.history.pushState({ step: 0, returning: false, depth: (state().depth || 0) + 1 }, "", urlFor(0));
+            show(0, true);
+        });
+
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            if (current === KYC_REVIEW) submitFile();
+            else next(current);
+        });
+
+        function settle(moveFocus) {
+            if (state().done && store.get(KEYS.submitted)) {
+                showConfirmation();
+                return;
+            }
+            var status = submittedStatus();
+            // Only a wizard entry opened from the rejected status (or its reload) shows the wizard again.
+            var resubmitting = status === "rejete" && store.get(KEYS.resubmit) && typeof state().step === "number";
+            if (status && !resubmitting) {
+                // The status is the page itself: drop ?etape= / ?statut= from the URL.
+                window.history.replaceState({ status: true, depth: state().depth || 0 }, "", window.location.pathname);
+                showStatus(status, moveFocus);
+                return;
+            }
+            var requested = requestedStep();
+            var index = allowed(requested);
+            var returning = index === requested && !!state().returning;
+            window.history.replaceState({ step: index, returning: returning, depth: state().depth || 0 }, "", urlFor(index));
+            show(index, moveFocus);
+        }
+
+        window.addEventListener("popstate", function () {
+            settle(true);
+        });
+        settle(false);
     }
 
     /* ---------- Boot ---------- */
     var pages = {
         login: initLogin,
-        "kyc-status": initKycStatus,
-        "kyc-documents": initKycDocuments,
-        "kyc-review": initKycReview
+        "kyc-wizard": initKycWizard
     };
 
     document.addEventListener("DOMContentLoaded", function () {

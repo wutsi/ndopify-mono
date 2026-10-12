@@ -682,6 +682,39 @@ a.user-menu__item:hover {
     outline-offset: 2px;
 }
 
+/* Selfie (kyc.html): portrait frame for the live camera and the photo. */
+.upload__preview--portrait {
+    position: relative;
+    aspect-ratio: 3 / 4;
+    width: 100%;
+    max-width: 20rem;
+    margin-inline: auto;
+}
+
+/* Fills the frame like the photo will be cropped; mirrored, as people expect to see themselves. */
+.selfie__video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transform: scaleX(-1);
+}
+
+/* Oval face guide; the shadow dims everything outside it. */
+.selfie__guide {
+    position: absolute;
+    inset: 10% 17% 18%;
+    border: 3px solid var(--color-bg);
+    border-radius: 50%;
+    box-shadow: 0 0 0 100vmax color-mix(in srgb, var(--color-fg) 45%, transparent);
+    pointer-events: none;
+}
+
+/* Doubled class: wins over .review__thumb, which comes later in this file. */
+.review__thumb.review__thumb--portrait {
+    max-width: 12rem;
+    aspect-ratio: 3 / 4;
+}
+
 .upload__filename {
     overflow-wrap: anywhere;
 }
@@ -726,6 +759,37 @@ a.user-menu__item:hover {
     gap: var(--space-2);
     color: var(--color-error-fg);
     font-weight: 600;
+}
+
+/*
+ * Review of photos (kyc.html): "Modifier" sits at the right of the item's title, above the photo, so the list
+ * stays short. On phones it stays where the markup puts it, below the photo, under the thumb.
+ */
+@media (min-width: 640px) {
+    .review--media .review__item {
+        grid-template-columns: minmax(0, 1fr) auto;
+        column-gap: var(--space-3);
+        align-items: center;
+    }
+
+    .review--media .review__term {
+        grid-column: 1;
+        grid-row: 1;
+    }
+
+    .review--media .review__value {
+        grid-column: 1 / -1;
+    }
+
+    .review--media .review__value:has(.review__edit) {
+        grid-column: 2;
+        grid-row: 1;
+    }
+
+    /* Keeps its 44px tap target without making the title row taller. */
+    .review--media .review__edit {
+        margin-block: calc((1.25em - var(--target)) / 2);
+    }
 }
 
 /* Status steps (dossier en attente) */
