@@ -19,9 +19,11 @@ import com.wutsi.ndopify.party.server.domain.KycVerificationEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.party.server.service.KycInfoExtractor
 import com.wutsi.ndopify.party.server.service.KycInfoExtractorProvider
+import com.wutsi.ndopify.platform.logger.DefaultKVLogger
 import com.wutsi.ndopify.platform.storage.StorageService
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
@@ -41,7 +43,8 @@ class KycCaseVerifierSelfieTest {
     private val storage = mock<StorageService>()
     private val infoExtractorProvider = mock<KycInfoExtractorProvider>()
     private val infoExtractor = mock<KycInfoExtractor>()
-    private val verifier = KycCaseVerifierSelfie(dao, clock, storageProvider, infoExtractorProvider)
+    private val logger = DefaultKVLogger()
+    private val verifier = KycCaseVerifierSelfie(dao, clock, storageProvider, infoExtractorProvider, logger)
 
     private val now = 1_700_000_000_000L
 
@@ -85,6 +88,11 @@ class KycCaseVerifierSelfieTest {
         doAnswer { it.arguments[0] }.whenever(dao).save(any<KycVerificationEntity>())
         doReturn(storage).whenever(storageProvider).get()
         doReturn(infoExtractor).whenever(infoExtractorProvider).get(KycVerificationType.SELFIE)
+    }
+
+    @AfterEach
+    fun tearDown() {
+        logger.log()
     }
 
     private fun setUpExtraction(info: KycInfo) {

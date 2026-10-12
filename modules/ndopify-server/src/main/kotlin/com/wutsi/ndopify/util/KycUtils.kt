@@ -12,10 +12,24 @@ object KycUtils {
         val normInput = normalize(inputName)
         val normDb = normalize(dbName)
 
+        if (normInput.isEmpty() || normDb.isEmpty()) return 0.0
+
+        // 1. Exact match shortcut
+        if (normInput == normDb) return 1.0
+
+        val inputTokens = normInput.split("\\s+".toRegex()).filter { it.isNotBlank() }.toSet()
+        val dbTokens = normDb.split("\\s+".toRegex()).filter { it.isNotBlank() }.toSet()
+
+        // 2. Subset / Missing Middle Name Check (e.g., input is subset of ID with at least 2 tokens)
+        if (dbTokens.containsAll(inputTokens) && inputTokens.size >= 2) {
+            return 0.95
+        }
+
         val directScore = jaroWinkler(normInput, normDb)
         val sortedScore = tokenSortMatch(normInput, normDb)
+        val setScore = tokenSetMatch(normInput, normDb)
 
-        return max(directScore, sortedScore)
+        return maxOf(directScore, sortedScore, setScore)
     }
 
     /**
@@ -90,5 +104,29 @@ object KycUtils {
         val tokens1 = normalize(name1).split(" ").sorted().joinToString(" ")
         val tokens2 = normalize(name2).split(" ").sorted().joinToString(" ")
         return jaroWinkler(tokens1, tokens2)
+    }
+
+    /**
+     * Token Set Matching: Handles missing middle names or extra tokens gracefully using set intersections.
+     */
+    private fun tokenSetMatch(str1: String, str2: String): Double {
+        val tokens1 = str1.split("\\s+".toRegex()).filter { it.isNotBlank() }.toSet()
+        val tokens2 = str2.split("\\s+".toRegex()).filter { it.isNotBlank() }.toSet()
+
+        if (tokens1.isEmpty() && tokens2.isEmpty()) return 1.0
+        if (tokens1.isEmpty() || tokens2.isEmpty()) return 0.0
+
+        val intersection = tokens1.intersect(tokens2).sorted().joinToString(" ")
+        val difference1 = tokens1.subtract(tokens2).sorted().joinToString(" ")
+        val difference2 = tokens2.subtract(tokens1).sorted().joinToString(" ")
+
+        val combined1 = if (difference1.isBlank()) intersection else "$intersection $difference1"
+        val combined2 = if (difference2.isBlank()) intersection else "$intersection $difference2"
+
+        val score1 = jaroWinkler(intersection, combined1)
+        val score2 = jaroWinkler(intersection, combined2)
+        val score3 = jaroWinkler(combined1, combined2)
+
+        return maxOf(score1, score2, score3)
     }
 }

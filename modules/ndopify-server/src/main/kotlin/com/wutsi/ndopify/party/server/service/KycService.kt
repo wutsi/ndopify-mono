@@ -24,6 +24,7 @@ import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.util.MimeUtils
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
@@ -46,6 +47,10 @@ class KycService(
     private val clock: Clock,
     private val logger: KVLogger,
 ) {
+    companion object {
+        private val LOGGER = LoggerFactory.getLogger(KycService::class.java)
+    }
+
     fun findById(id: String): KycCaseEntity {
         return dao.findById(id).orElseThrow {
             NotFoundException(
@@ -207,6 +212,7 @@ class KycService(
 
     private fun verifyIdentification(case: KycCaseEntity): KycCaseEntity {
         // ID
+        LOGGER.info(">>> KYC#${case.id} - Verifying identification")
         val idVerification = verify(case, KycVerificationType.IDENTIFICATION).firstOrNull()
             ?: throw ConflictException(
                 error = Error(
@@ -214,13 +220,10 @@ class KycService(
                     message = "No identification verification could be performed for case#${case.id}"
                 )
             )
-        logger.add("kyc_id_status", idVerification.status)
-        logger.add("kyc_id_score", idVerification.score)
 
         // Selfie
+        LOGGER.info(">>> KYC#${case.id} - Verifying selfie")
         val selfieVerification = verify(case, KycVerificationType.SELFIE).firstOrNull()
-        logger.add("kyc_selfie_status", selfieVerification?.status)
-        logger.add("kyc_selfie_score", selfieVerification?.score)
 
         // KYC status
         val status =
@@ -236,6 +239,7 @@ class KycService(
         }
         logger.add("kyc_case_status", status)
         logger.add("kyc_case_score", score)
+        logger.add("kyc_case_full_name", case.party.fullName())
         val updatedCase = dao.save(
             case.copy(
                 status = status,
@@ -246,12 +250,14 @@ class KycService(
         )
 
         // Update party KYC status
+        LOGGER.info(">>> KYC#${case.id} - Updating party KYC status to $status")
         partyService.updateKyStatus(case.party, status)
 
         return updatedCase
     }
 
     private fun verifyPaymentMethods(case: KycCaseEntity): KycCaseEntity {
+        LOGGER.info(">>> KYC case#${case.id} - Verifying payment methods")
         val paymentVerifications = verify(case, KycVerificationType.PAYMENT_METHOD)
 
         // Update the payment methods KYC status
@@ -276,6 +282,7 @@ class KycService(
     }
 
     private fun startVerification(case: KycCaseEntity) {
+        LOGGER.info(">>> KYC#${case.id} - Starting verification")
         dao.save(
             case.copy(
                 status = KycStatus.IN_PROGRESS,
@@ -311,7 +318,7 @@ class KycService(
         IdentificationType.NATIONAL_ID,
         IdentificationType.DRIVER_LICENSE,
         IdentificationType.RESIDENT_CARD,
-        -> listOf(KycImageType.FRONT, KycImageType.BACK)
+            -> listOf(KycImageType.FRONT, KycImageType.BACK)
 
         else -> listOf(KycImageType.FRONT)
     }

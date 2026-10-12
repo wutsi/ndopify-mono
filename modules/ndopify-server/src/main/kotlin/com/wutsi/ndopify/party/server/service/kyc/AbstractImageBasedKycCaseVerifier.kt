@@ -2,13 +2,12 @@ package com.wutsi.ndopify.party.server.service.kyc
 
 import com.wutsi.ndopify.party.dto.KycImageType
 import com.wutsi.ndopify.party.dto.KycStatus
-import com.wutsi.ndopify.party.dto.KycVerificationType
 import com.wutsi.ndopify.party.server.dao.KycVerificationRepository
 import com.wutsi.ndopify.party.server.domain.KycCaseEntity
 import com.wutsi.ndopify.party.server.domain.KycImageEntity
 import com.wutsi.ndopify.party.server.domain.KycVerificationEntity
-import com.wutsi.ndopify.party.server.service.KycCaseVerifier
 import com.wutsi.ndopify.party.server.service.KycInfoExtractorProvider
+import com.wutsi.ndopify.platform.logger.KVLogger
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.util.MimeUtils
 import jakarta.transaction.Transactional
@@ -24,8 +23,8 @@ abstract class AbstractImageBasedKycCaseVerifier(
     protected val clock: Clock,
     protected val storageProvider: StorageServiceProvider,
     protected val infoExtractorProvider: KycInfoExtractorProvider,
-) : KycCaseVerifier {
-    abstract fun getVerificationType(): KycVerificationType
+    logger: KVLogger,
+) : AbstractKycCaseVerifier(logger) {
     abstract fun getImageTypes(): List<KycImageType>
     abstract fun match(verification: KycVerificationEntity, info: KycInfo): KycVerificationEntity
 
@@ -38,7 +37,11 @@ abstract class AbstractImageBasedKycCaseVerifier(
 
         val verification = start(case)
         val info = extractInformations(files)
-        return listOf(match(verification, info))
+
+        val xverification = match(verification, info)
+        addToLogger(xverification)
+
+        return listOf(xverification)
     }
 
     private fun start(case: KycCaseEntity): KycVerificationEntity {
@@ -57,7 +60,10 @@ abstract class AbstractImageBasedKycCaseVerifier(
 
     private fun extractInformations(files: List<File>): KycInfo {
         val infoExtractor = infoExtractorProvider.get(getVerificationType())
-        return infoExtractor.extract(files)
+        val info = infoExtractor.extract(files)
+
+        addToLogger(info)
+        return info
     }
 
     private fun getFiles(case: KycCaseEntity): List<File> {

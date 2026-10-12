@@ -36,7 +36,7 @@ class MoMoGatewayMtn(
 
         return MoMoKycMatchResponse(
             holderName = holderName,
-            holderNameScore = KycUtils.verifyName(holderName, request.holderName),
+            holderNameScore = KycUtils.verifyName(request.holderName, holderName),
             countryCodeScore = if (countryCode.equals(request.countryCode, true)) 1.0 else 0.0,
             active = info.status == MtnUserStatus.ACTIVE,
         )

@@ -19,9 +19,11 @@ import com.wutsi.ndopify.party.server.domain.KycVerificationEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.party.server.service.KycInfoExtractor
 import com.wutsi.ndopify.party.server.service.KycInfoExtractorProvider
+import com.wutsi.ndopify.platform.logger.DefaultKVLogger
 import com.wutsi.ndopify.platform.storage.StorageService
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
@@ -43,7 +45,8 @@ class KycCaseVerifierIdentificationTest {
     private val storage = mock<StorageService>()
     private val infoExtractorProvider = mock<KycInfoExtractorProvider>()
     private val infoExtractor = mock<KycInfoExtractor>()
-    private val verifier = KycCaseVerifierIdentification(dao, clock, storageProvider, infoExtractorProvider)
+    private val logger = DefaultKVLogger()
+    private val verifier = KycCaseVerifierIdentification(dao, clock, storageProvider, infoExtractorProvider, logger)
     private val fmt = SimpleDateFormat("yyyy-MM-dd")
 
     private val now = 1_700_000_000_000L
@@ -91,6 +94,11 @@ class KycCaseVerifierIdentificationTest {
         doReturn(infoExtractor).whenever(infoExtractorProvider).get(KycVerificationType.IDENTIFICATION)
     }
 
+    @AfterEach
+    fun tearDown() {
+        logger.log()
+    }
+
     private fun setUpExtraction(info: KycInfo) {
         doReturn(info).whenever(infoExtractor).extract(any())
     }
@@ -103,6 +111,7 @@ class KycCaseVerifierIdentificationTest {
         invalidityReason: String? = null,
         expiryDate: Date? = null,
         confidence: Double = 1.0,
+        number: String = "454A-409-AA",
     ) = KycInfo(
         type = type,
         firstName = firstName,
@@ -111,6 +120,7 @@ class KycCaseVerifierIdentificationTest {
         invalidityReason = invalidityReason,
         expiryDate = expiryDate,
         confidence = confidence,
+        number = number,
     )
 
     @Test

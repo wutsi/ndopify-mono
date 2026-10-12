@@ -7,6 +7,7 @@ import com.wutsi.ndopify.party.server.dao.KycVerificationRepository
 import com.wutsi.ndopify.party.server.domain.KycVerificationEntity
 import com.wutsi.ndopify.party.server.service.KycCaseVerifier.Companion.LOW_SCORE_THRESHOLD
 import com.wutsi.ndopify.party.server.service.KycInfoExtractorProvider
+import com.wutsi.ndopify.platform.logger.KVLogger
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
 import com.wutsi.ndopify.util.KycUtils
@@ -20,7 +21,8 @@ class KycCaseVerifierIdentification(
     clock: Clock,
     storageProvider: StorageServiceProvider,
     infoExtractorProvider: KycInfoExtractorProvider,
-) : AbstractImageBasedKycCaseVerifier(verificationDao, clock, storageProvider, infoExtractorProvider) {
+    logger: KVLogger,
+) : AbstractImageBasedKycCaseVerifier(verificationDao, clock, storageProvider, infoExtractorProvider, logger) {
     override fun getVerificationType(): KycVerificationType = KycVerificationType.IDENTIFICATION
 
     override fun getImageTypes(): List<KycImageType> = listOf(KycImageType.FRONT, KycImageType.BACK)
@@ -33,7 +35,7 @@ class KycCaseVerifierIdentification(
         val partyName = case.party.fullName()
         val infoName = "${info.firstName} ${info.lastName}"
         val today = Date(clock.millis())
-        val score = 100.0 * KycUtils.verifyName(partyName, infoName)
+        val score = 100.0 * KycUtils.verifyName(infoName, partyName)
         var status = KycStatus.REJECTED
         var errorCode: String? = null
         var errorMessage: String? = null

@@ -9,8 +9,8 @@ import com.wutsi.ndopify.party.server.dao.PaymentMethodRepository
 import com.wutsi.ndopify.party.server.domain.KycCaseEntity
 import com.wutsi.ndopify.party.server.domain.KycVerificationEntity
 import com.wutsi.ndopify.party.server.domain.PaymentMethodEntity
-import com.wutsi.ndopify.party.server.service.KycCaseVerifier
 import com.wutsi.ndopify.party.server.service.KycCaseVerifier.Companion.LOW_SCORE_THRESHOLD
+import com.wutsi.ndopify.platform.logger.KVLogger
 import com.wutsi.ndopify.platform.momo.MoMoGatewayProvider
 import com.wutsi.ndopify.platform.momo.model.MoMoKycMatchRequest
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
@@ -26,7 +26,10 @@ class KycCaseVerifierMoMo(
     private val paymentMethodDao: PaymentMethodRepository,
     private val clock: Clock,
     private val gatewayProvider: MoMoGatewayProvider,
-) : KycCaseVerifier {
+    logger: KVLogger,
+) : AbstractKycCaseVerifier(logger) {
+    override fun getVerificationType(): KycVerificationType = KycVerificationType.PAYMENT_METHOD
+
     @Transactional
     override fun verify(case: KycCaseEntity): List<KycVerificationEntity> {
         val paymentMethods = getPaymentMethods(case)
@@ -34,7 +37,19 @@ class KycCaseVerifierMoMo(
             return emptyList()
         }
 
-        return paymentMethods.map { method -> verify(method, case) }
+        var i = 0
+        return paymentMethods.map { paymentMethod ->
+            i++
+
+            val suffix = i.toString()
+            addToLogger(paymentMethod, suffix)
+            verify(paymentMethod, case, suffix)
+        }
+    }
+
+    private fun addToLogger(paymentMethod: PaymentMethodEntity, suffix: String? = null) {
+        addToLogger("type", paymentMethod.type.name, suffix)
+        addToLogger("number", paymentMethod.number, suffix)
     }
 
     private fun getPaymentMethods(case: KycCaseEntity): List<PaymentMethodEntity> {
@@ -43,8 +58,9 @@ class KycCaseVerifierMoMo(
             .filter { method -> method.type == PaymentMethodType.MOBILE_MONEY }
     }
 
-    private fun verify(paymentMethod: PaymentMethodEntity, case: KycCaseEntity): KycVerificationEntity {
+    private fun verify(paymentMethod: PaymentMethodEntity, case: KycCaseEntity, suffix: String): KycVerificationEntity {
         val verification = start(paymentMethod, case)
+        addToLogger(verification, suffix)
         return match(paymentMethod, verification)
     }
 

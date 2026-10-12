@@ -17,11 +17,13 @@ import com.wutsi.ndopify.party.server.domain.KycCaseEntity
 import com.wutsi.ndopify.party.server.domain.KycVerificationEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.party.server.domain.PaymentMethodEntity
+import com.wutsi.ndopify.platform.logger.DefaultKVLogger
 import com.wutsi.ndopify.platform.momo.MoMoGateway
 import com.wutsi.ndopify.platform.momo.MoMoGatewayProvider
 import com.wutsi.ndopify.platform.momo.model.MoMoKycMatchRequest
 import com.wutsi.ndopify.platform.momo.model.MoMoKycMatchResponse
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.mockito.Mockito.mock
 import org.mockito.Mockito.verify
@@ -39,7 +41,8 @@ class KycCaseVerifierMoMoTest {
     private val clock = mock<Clock>()
     private val gatewayProvider = mock<MoMoGatewayProvider>()
     private val gateway = mock<MoMoGateway>()
-    private val verifier = KycCaseVerifierMoMo(dao, paymentMethodDao, clock, gatewayProvider)
+    private val logger = DefaultKVLogger()
+    private val verifier = KycCaseVerifierMoMo(dao, paymentMethodDao, clock, gatewayProvider, logger)
 
     private val now = 1_700_000_000_000L
 
@@ -67,6 +70,11 @@ class KycCaseVerifierMoMoTest {
         doReturn(now).whenever(clock).millis()
         doAnswer { it.arguments[0] }.whenever(dao).save(any<KycVerificationEntity>())
         doReturn(gateway).whenever(gatewayProvider).getByPhoneNumber(any())
+    }
+
+    @AfterEach
+    fun tearDown() {
+        logger.log()
     }
 
     private fun setUpPaymentMethods(vararg methods: PaymentMethodEntity) {
