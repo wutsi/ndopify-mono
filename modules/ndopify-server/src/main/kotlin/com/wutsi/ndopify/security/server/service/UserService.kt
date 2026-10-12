@@ -4,6 +4,7 @@ import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.party.server.domain.PartyEntity
+import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.server.service.ApplicationService
 import com.wutsi.ndopify.security.server.dao.UserApplicationRepository
 import com.wutsi.ndopify.security.server.dao.UserRepository
@@ -18,6 +19,30 @@ class UserService(
     private val userApplicationDao: UserApplicationRepository,
     private val applicationService: ApplicationService,
 ) {
+    /**
+     * Users aren't @TenantId-filtered (see [UserEntity.tenantId]), so a user whose home tenant isn't the current
+     * one is reported as not found, like any tenant-scoped entity. Cross-tenant users (no home tenant) are visible.
+     */
+    fun findById(id: Long): UserEntity {
+        val user = findByIdOrNull(id)
+        return user
+            ?: throw NotFoundException(
+                error = Error(
+                    code = ErrorCode.USER_NOT_FOUND,
+                    message = "User not found: $id",
+                )
+            )
+    }
+
+    fun findByIdOrNull(id: Long): UserEntity? {
+        val tenantId = TenantContext.get()
+        return if (dao.isVisible(id, tenantId)) {
+            dao.findById(id).orElse(null)
+        } else {
+            null
+        }
+    }
+
     fun findByPartyIdOrNull(partyId: Long): UserEntity? {
         val user = dao.findByPartyId(partyId)
         if (user == null || user.deleted) {
