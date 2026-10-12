@@ -90,4 +90,15 @@ class SearchKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(HttpStatus.OK, response.statusCode)
         assertTrue(response.body!!.cases.isEmpty())
     }
+
+    @Test
+    fun `newest case first`() {
+        val response = rest.getForEntity(
+            "/v1/kyc/cases?partyId=100&limit=1",
+            SearchKycCaseResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(listOf("kyc-case-100-b"), response.body!!.cases.map { it.id })
+    }
 }

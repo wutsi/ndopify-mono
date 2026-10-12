@@ -12,11 +12,16 @@ spring:
 
     servlet:
         multipart:
-            max-file-size: 5MB
-            max-request-size: 5MB
+            # Same as ndopify-server. Photos over 5 MB are refused by KycController with a proper message;
+            # beyond this limit KycUploadErrorHandler does.
+            max-file-size: 10MB
+            max-request-size: 10MB
 
 server:
     port: 8081
+    tomcat:
+        # Lets Tomcat read past the multipart limit so the redirect reaches the browser instead of a reset connection.
+        max-swallow-size: 20MB
     error:
         whitelabel:
             enabled: false

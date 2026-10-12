@@ -1,22 +1,15 @@
 /*
- * Ndopify Partner Central — shared behaviour (static prototype).
+ * Ndopify Partner Central — shared behaviour, served with the Thymeleaf pages.
  * Each page sets <body data-page="..."> and gets its own initialiser below.
- * Server calls are simulated; every simulation is marked "PROTOTYPE".
+ * Progressive enhancement only: the server renders and validates every page, and every form posts without this.
  */
 (function () {
     "use strict";
 
-    var MAX_FILE_BYTES = 5 * 1024 * 1024;
-    var ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
     var EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
     var KEYS = {
-        email: "npc.email",
-        front: "npc.kyc.front",
-        frontName: "npc.kyc.frontName",
-        back: "npc.kyc.back",
-        backName: "npc.kyc.backName",
-        submitted: "npc.kyc.submitted"
+        email: "npc.email"
     };
 
     /* ---------- Storage (fails soft: private mode, quota) ---------- */
@@ -80,25 +73,6 @@
         else button.setAttribute("aria-disabled", "true");
     }
 
-    function isActive(button) {
-        return button.getAttribute("aria-disabled") !== "true";
-    }
-
-    // Images are created only once there is a photo, so the markup never carries an empty <img>.
-    function placeImage(container, src, className) {
-        var img = $("img", container);
-        if (!img) {
-            img = document.createElement("img");
-            img.width = 856;
-            img.height = 540;
-            img.alt = container.getAttribute("data-alt") || "";
-            if (className) img.className = className;
-            container.appendChild(img);
-        }
-        img.src = src;
-        return img;
-    }
-
     function formatTime(ms) {
         var d = new Date(ms);
         var h = d.getHours();
@@ -120,15 +94,14 @@
         var list = $("[data-user-menu-list]");
         if (!toggle || !list) return;
 
-        var email = store.get(KEYS.email);
-        var initials = initialsFromEmail(email);
-        $("[data-user-initials]").textContent = initials;
         var emailEl = $("[data-user-email]");
-        if (emailEl) {
-            if (email) {
-                emailEl.textContent = email;
-            } else {
-                emailEl.hidden = true;
+        // Pages that know the agent (kyc.html) render the email and initials; the others still use the login's copy.
+        if (!emailEl || !emailEl.textContent.trim()) {
+            var email = store.get(KEYS.email);
+            $("[data-user-initials]").textContent = initialsFromEmail(email);
+            if (emailEl) {
+                if (email) emailEl.textContent = email;
+                else emailEl.hidden = true;
             }
         }
 
@@ -207,7 +180,7 @@
                 input.focus();
                 return;
             }
-            // PROTOTYPE: the KYC pages still read the email from sessionStorage for the header menu.
+            // Kept for the pages that don't render the agent's email themselves (the header menu falls back to it); kyc.html does.
             store.set(KEYS.email, input.value.trim().toLowerCase());
         });
 
@@ -290,226 +263,9 @@
         if (codeStep) initLoginCode(codeStep);
     }
 
-    /* ---------- kyc/index.html ---------- */
-    function initKycStatus() {
-        var params = new URLSearchParams(window.location.search);
-        // PROTOTYPE: the real status comes from the API. ?statut= lets each state be reviewed.
-        var statusKey = params.get("statut") || (store.get(KEYS.submitted) ? "attente" : "soumission");
-        var panel = $('[data-status="' + statusKey + '"]') || $('[data-status="soumission"]');
-        panel.hidden = false;
-    }
-
-    /* ---------- Wizard progress ---------- */
-    function focusStep(step) {
-        step.focus({ preventScroll: true });
-        var progress = $(".progress");
-        if (progress) progress.scrollIntoView({ block: "start" });
-    }
-
-    function setProgress(step, total) {
-        var bar = $("[data-progress]");
-        if (!bar) return;
-        var text = "Étape " + step + " sur " + total;
-        bar.setAttribute("aria-valuenow", String(step));
-        bar.setAttribute("aria-valuetext", text);
-        $("[data-progress-label]").textContent = text;
-        $("[data-progress-bar]").style.transform = "scaleX(" + step / total + ")";
-    }
-
-    /* ---------- Image downscale for the review page ---------- */
-    function toThumbnail(file, callback) {
-        var reader = new FileReader();
-        reader.onload = function () {
-            var img = new Image();
-            img.onload = function () {
-                var max = 1000;
-                var scale = Math.min(1, max / Math.max(img.width, img.height));
-                var canvas = document.createElement("canvas");
-                canvas.width = Math.round(img.width * scale);
-                canvas.height = Math.round(img.height * scale);
-                canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-                callback(canvas.toDataURL("image/jpeg", 0.8));
-            };
-            img.onerror = function () {
-                callback(null);
-            };
-            img.src = reader.result;
-        };
-        reader.onerror = function () {
-            callback(null);
-        };
-        reader.readAsDataURL(file);
-    }
-
-    /* ---------- kyc/verification.html ---------- */
-    function initKycDocuments() {
-        var params = new URLSearchParams(window.location.search);
-        var returnToReview = params.get("retour") === "revue";
-        var steps = $all("[data-step]");
-        var current = params.get("etape") === "verso" ? 1 : 0;
-
-        function setupUpload(step) {
-            var side = step.getAttribute("data-step");
-            var input = $(".upload__input", step);
-            var error = $(".field__error", step);
-            var preview = $("[data-preview]", step);
-            var placeholder = $("[data-placeholder]", step);
-            var filename = $("[data-filename]", step);
-            var next = $("[data-next]", step);
-            var buttonLabel = $("[data-upload-label]", step);
-            var dataKey = KEYS[side];
-            var nameKey = KEYS[side + "Name"];
-
-            function showPreview(src, name) {
-                placeImage(preview, src);
-                placeholder.hidden = true;
-                filename.textContent = name ? "Photo ajoutée : " + name : "Photo ajoutée.";
-                filename.hidden = false;
-                buttonLabel.textContent = "Changer la photo";
-                setActive(next, true);
-            }
-
-            var saved = store.get(dataKey);
-            if (saved) showPreview(saved, store.get(nameKey));
-            else setActive(next, false);
-
-            input.addEventListener("change", function () {
-                var file = input.files && input.files[0];
-                if (!file) return;
-
-                if (ACCEPTED_TYPES.indexOf(file.type) === -1) {
-                    setFieldError(input, error, "Format non accepté. Utilisez une photo JPG, PNG ou WEBP.");
-                    input.value = "";
-                    return;
-                }
-                if (file.size > MAX_FILE_BYTES) {
-                    var size = (file.size / (1024 * 1024)).toFixed(1).replace(".", ",");
-                    setFieldError(input, error, "Cette photo pèse " + size + " Mo. La taille maximale est de 5 Mo.");
-                    input.value = "";
-                    return;
-                }
-
-                setFieldError(input, error, "");
-                toThumbnail(file, function (thumb) {
-                    if (!thumb) {
-                        setFieldError(input, error, "Impossible de lire cette photo. Essayez avec une autre image.");
-                        return;
-                    }
-                    // If storage is unavailable the preview still shows; the review page then reports the gap.
-                    store.set(dataKey, thumb);
-                    store.set(nameKey, file.name);
-                    showPreview(thumb, file.name);
-                });
-            });
-        }
-
-        function stepUrl(index) {
-            var query = [];
-            if (index === 1) query.push("etape=verso");
-            if (returnToReview) query.push("retour=revue");
-            return window.location.pathname + (query.length ? "?" + query.join("&") : "");
-        }
-
-        function show(index, moveFocus) {
-            steps.forEach(function (step, i) {
-                step.hidden = i !== index;
-            });
-            current = index;
-            setProgress(index + 1, 3);
-            if (moveFocus) focusStep(steps[index]);
-        }
-
-        // Each slide is a history entry, so the Android Back button moves between recto and verso.
-        function go(index) {
-            window.history.pushState({ step: index }, "", stepUrl(index));
-            show(index, true);
-        }
-
-        window.addEventListener("popstate", function (event) {
-            var index = event.state && typeof event.state.step === "number"
-                ? event.state.step
-                : new URLSearchParams(window.location.search).get("etape") === "verso" ? 1 : 0;
-            show(index, true);
-        });
-
-        steps.forEach(function (step, index) {
-            setupUpload(step);
-            var next = $("[data-next]", step);
-            var prev = $("[data-prev]", step);
-            if (returnToReview) next.textContent = "Revenir à la revue";
-
-            next.addEventListener("click", function () {
-                if (!isActive(next)) {
-                    $(".upload__input", step).focus();
-                    return;
-                }
-                if (returnToReview) {
-                    window.location.href = "revue.html";
-                } else if (index < steps.length - 1) {
-                    go(index + 1);
-                } else {
-                    window.location.href = "revue.html";
-                }
-            });
-
-            if (prev) {
-                prev.addEventListener("click", function () {
-                    if (returnToReview) window.location.href = "revue.html";
-                    else if (index > 0) window.history.back();
-                    else window.location.href = "index.html";
-                });
-            }
-        });
-
-        window.history.replaceState({ step: current }, "", stepUrl(current));
-        show(current, false);
-    }
-
-    /* ---------- kyc/revue.html ---------- */
-    function initKycReview() {
-        setProgress(3, 3);
-        var submit = $("[data-submit]");
-        var complete = true;
-
-        ["front", "back"].forEach(function (side) {
-            var src = store.get(KEYS[side]);
-            var slot = $('[data-review-image="' + side + '"]');
-            var missing = $('[data-review-missing="' + side + '"]');
-            if (src) {
-                placeImage(slot, src, "review__thumb");
-                missing.hidden = true;
-            } else {
-                missing.hidden = false;
-                complete = false;
-            }
-        });
-
-        setActive(submit, complete);
-        $("[data-incomplete]").hidden = complete;
-
-        $("[data-review-form]").addEventListener("submit", function (event) {
-            event.preventDefault();
-            if (!complete || !isActive(submit)) return;
-            setActive(submit, false);
-            submit.textContent = "Envoi en cours…";
-            announce($("[data-sending]"), "Envoi de votre dossier en cours.");
-            // PROTOTYPE: the real page uploads both images, then redirects on success.
-            window.setTimeout(function () {
-                store.set(KEYS.submitted, "1");
-                ["front", "frontName", "back", "backName"].forEach(function (k) {
-                    store.remove(KEYS[k]);
-                });
-                window.location.href = "confirmation.html";
-            }, 600);
-        });
-    }
-
     /* ---------- Boot ---------- */
     var pages = {
-        login: initLogin,
-        "kyc-status": initKycStatus,
-        "kyc-documents": initKycDocuments,
-        "kyc-review": initKycReview
+        login: initLogin
     };
 
     document.addEventListener("DOMContentLoaded", function () {

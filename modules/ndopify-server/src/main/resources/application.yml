@@ -134,11 +134,14 @@ springdoc:
                 - /v1/locations
                 - /v1/locations/**
                 - /v1/tenants
+                - /v1/tenants/**
 
         -   group: security
             display-name: Security API
             paths-to-match:
                 - /v1/auth
+                - /v1/users
+                - /v1/users/**
 
 management:
     endpoint:
