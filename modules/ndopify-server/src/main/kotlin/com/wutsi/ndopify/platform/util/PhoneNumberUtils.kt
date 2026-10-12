@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.util
+package com.wutsi.ndopify.platform.util
 
 import com.google.i18n.phonenumbers.PhoneNumberUtil
 import java.net.URLEncoder

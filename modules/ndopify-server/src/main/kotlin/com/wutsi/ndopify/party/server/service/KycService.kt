@@ -4,7 +4,6 @@ import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
 import com.wutsi.ndopify.error.server.exception.BadRequestException
-import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.party.dto.CreateKycCaseRequest
 import com.wutsi.ndopify.party.dto.IdentificationType
@@ -21,7 +20,8 @@ import com.wutsi.ndopify.party.server.domain.KycVerificationEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.logger.KVLogger
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
-import com.wutsi.ndopify.util.MimeUtils
+import com.wutsi.ndopify.platform.util.MimeUtils
+import com.wutsi.ndopify.refdata.dto.KycErrorCode
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
 import org.slf4j.LoggerFactory
@@ -44,11 +44,13 @@ class KycService(
     private val verifierProvider: KycCaseVerifierProvider,
     private val storageProvider: StorageServiceProvider,
     private val paymentMethodService: PaymentMethodService,
+    private val mailet: KycMailet,
     private val clock: Clock,
     private val logger: KVLogger,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(KycService::class.java)
+        private val MAX_RETRIES = 3
     }
 
     fun findById(id: String): KycCaseEntity {
@@ -202,24 +204,35 @@ class KycService(
     @Transactional
     fun verify(case: KycCaseEntity): KycCaseEntity {
         ensureStatusIsSubmitted(case)
+        try {
+            startVerification(case)
+            val updatedCase = verifyIdentification(case)
+            verifyPaymentMethods(updatedCase)
 
-        startVerification(case)
-        val updatedCase = verifyIdentification(case)
-        verifyPaymentMethods(updatedCase)
+            return updatedCase
+        } catch (ex: Exception) {
+            LOGGER.error(">>> KYC#${case.id} - Verification failed", ex)
+            val retries = (case.retries ?: 0) + 1
+            return dao.save(
+                case.copy(
+                    status = if (retries < MAX_RETRIES) KycStatus.PENDING else KycStatus.REQUIRES_MANUAL_REVIEW,
+                    retries = retries,
+                    errorCode = KycErrorCode.GATEWAY_ERROR,
+                    errorMessage = ex.message,
+                    modifiedAt = Date(clock.millis()),
+                )
+            )
+        }
+    }
 
-        return updatedCase
+    fun sendStatusEmail(case: KycCaseEntity) {
+        mailet.send(case)
     }
 
     private fun verifyIdentification(case: KycCaseEntity): KycCaseEntity {
         // ID
         LOGGER.info(">>> KYC#${case.id} - Verifying identification")
-        val idVerification = verify(case, KycVerificationType.IDENTIFICATION).firstOrNull()
-            ?: throw ConflictException(
-                error = Error(
-                    code = ErrorCode.KYC_IMAGE_NO_IDENTIFICATION_VERIFICATION,
-                    message = "No identification verification could be performed for case#${case.id}"
-                )
-            )
+        val idVerification = verify(case, KycVerificationType.IDENTIFICATION).first()
 
         // Selfie
         LOGGER.info(">>> KYC#${case.id} - Verifying selfie")
@@ -237,6 +250,13 @@ class KycService(
         } else {
             idVerification.score
         }
+        val errorCode = if (idVerification.status != KycStatus.VERIFIED) {
+            KycErrorCode.IDENTIFICATION_REJECTED
+        } else if (selfieVerification != null && selfieVerification.status != KycStatus.VERIFIED) {
+            KycErrorCode.SELFIE_REJECTED
+        } else {
+            null
+        }
         logger.add("kyc_case_status", status)
         logger.add("kyc_case_score", score)
         logger.add("kyc_case_full_name", case.party.fullName())
@@ -244,7 +264,7 @@ class KycService(
             case.copy(
                 status = status,
                 score = score,
-                errorCode = idVerification.errorCode ?: selfieVerification?.errorCode,
+                errorCode = errorCode,
                 modifiedAt = Date(clock.millis()),
             )
         )
@@ -286,6 +306,8 @@ class KycService(
         dao.save(
             case.copy(
                 status = KycStatus.IN_PROGRESS,
+                errorCode = null,
+                errorMessage = null,
                 modifiedAt = Date(clock.millis()),
             )
         )
@@ -336,7 +358,7 @@ class KycService(
         if (mimeType?.startsWith("image/") != true) {
             throw BadRequestException(
                 error = Error(
-                    code = ErrorCode.IDENTIFICATION_IMAGE_INVALID_MIME_TYPE,
+                    code = ErrorCode.KYC_IMAGE_INVALID_MIME_TYPE,
                     message = "${file.originalFilename} is a $mimeType - This is not an image file.",
                 )
             )

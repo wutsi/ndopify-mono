@@ -3,6 +3,7 @@ package com.wutsi.ndopify.party.endpoint
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.argThat
 import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
@@ -21,6 +22,8 @@ import com.wutsi.ndopify.party.server.service.KycCaseVerifier
 import com.wutsi.ndopify.party.server.service.kyc.KycCaseVerifierIdentification
 import com.wutsi.ndopify.party.server.service.kyc.KycCaseVerifierMoMo
 import com.wutsi.ndopify.party.server.service.kyc.KycCaseVerifierSelfie
+import com.wutsi.ndopify.refdata.dto.KycErrorCode
+import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -29,6 +32,7 @@ import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /**
  * The verifiers are unit-tested on their own, so they're mocked here: this test only covers how the endpoint
@@ -44,6 +48,9 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
 
     @Autowired
     private lateinit var paymentMethodDao: PaymentMethodRepository
+
+    @Autowired
+    private lateinit var tenantService: TenantService
 
     @MockitoBean
     private lateinit var idVerifier: KycCaseVerifierIdentification
@@ -93,10 +100,22 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
     private fun verifyWithError(id: String) =
         rest.postForEntity("/v1/kyc/cases/$id/verify", null, ErrorResponse::class.java)
 
-    private fun assertCase(status: KycStatus, score: Int?, id: String = "kyc-case-submitted") {
+    private fun assertCase(
+        status: KycStatus,
+        score: Int?,
+        id: String = "kyc-case-submitted",
+        errorCode: String? = null
+    ) {
         val case = dao.findById(id).orElseThrow()
         assertEquals(status, case.status)
         assertEquals(score, case.score)
+        assertEquals(errorCode, case.errorCode)
+    }
+
+    private fun assertRetry(retries: Int, errorMessage: String?, id: String = "kyc-case-submitted") {
+        val case = dao.findById(id).orElseThrow()
+        assertEquals(retries, case.retries)
+        assertEquals(errorMessage, case.errorMessage)
     }
 
     private fun assertPartyKycStatus(status: KycStatus, partyId: Long = 100L) {
@@ -107,6 +126,35 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
     private fun assertPaymentMethodStatus(status: PaymentMethodStatus, id: String = "payment-method-pending") {
         val paymentMethod = paymentMethodDao.findById(id).orElseThrow()
         assertEquals(status, paymentMethod.status)
+    }
+
+    /** The single status e-mail sent to the case's party ("Pending Party", tenant 1), and its body. */
+    private fun assertStatusEmail(subject: String, link: String) {
+        val tenant = tenantService.findById(1L)
+        val messages = smtp.receivedMessages
+        assertEquals(1, messages.size)
+        assertEquals(subject, messages[0].subject)
+        assertEquals("Pending Party <pending@gmail.com>", messages[0].allRecipients.single().toString())
+
+        val body = messages[0].content.toString()
+        assertTrue(body.contains(tenant.name))
+        assertTrue(body.contains(tenant.logoUrl!!))
+        assertTrue(body.contains("Pending Party"))
+        assertTrue(body.contains(link))
+    }
+
+    private fun assertVerifiedEmail() = assertStatusEmail(
+        "Ndopify: Votre vérification KYC a réussi",
+        "http://localhost:8081/partner-central",
+    )
+
+    private fun assertRejectedEmail() = assertStatusEmail(
+        "Ndopify: Mise à jour concernant votre vérification KYC",
+        "http://localhost:8081/partner-central/kyc",
+    )
+
+    private fun assertNoEmail() {
+        assertEquals(0, smtp.receivedMessages.size)
     }
 
     private fun assertNoVerifierCalled() {
@@ -126,6 +174,7 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertCase(KycStatus.VERIFIED, 95)
         assertPartyKycStatus(KycStatus.VERIFIED)
         assertPaymentMethodStatus(PaymentMethodStatus.VERIFIED)
+        assertVerifiedEmail()
 
         val isSubmittedCase = { c: KycCaseEntity -> c.id == "kyc-case-submitted" }
         verify(idVerifier).verify(argThat(isSubmittedCase))
@@ -141,8 +190,9 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         val response = verify()
 
         assertEquals(HttpStatus.OK, response.statusCode)
-        assertCase(KycStatus.REJECTED, 70)
+        assertCase(KycStatus.REJECTED, 70, errorCode = KycErrorCode.IDENTIFICATION_REJECTED)
         assertPartyKycStatus(KycStatus.REJECTED)
+        assertRejectedEmail()
     }
 
     @Test
@@ -153,8 +203,9 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         val response = verify()
 
         assertEquals(HttpStatus.OK, response.statusCode)
-        assertCase(KycStatus.REJECTED, 60)
+        assertCase(KycStatus.REJECTED, 60, errorCode = KycErrorCode.SELFIE_REJECTED)
         assertPartyKycStatus(KycStatus.REJECTED)
+        assertRejectedEmail()
     }
 
     @Test
@@ -202,7 +253,7 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         val response = verify()
 
         assertEquals(HttpStatus.OK, response.statusCode)
-        assertCase(KycStatus.REJECTED, 70)
+        assertCase(KycStatus.REJECTED, 70, errorCode = KycErrorCode.IDENTIFICATION_REJECTED)
         assertPaymentMethodStatus(PaymentMethodStatus.VERIFIED)
     }
 
@@ -233,21 +284,84 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
-    fun `no identification verification - conflict and case left submitted`() {
-        setUpNoVerification(idVerifier)
+    fun `verifier failure - case back to pending, retry counted`() {
+        doThrow(RuntimeException("Gateway down")).whenever(idVerifier).verify(any())
 
-        val response = verifyWithError("kyc-case-submitted")
+        val response = verify()
 
-        assertEquals(HttpStatus.CONFLICT, response.statusCode)
-        assertEquals(ErrorCode.KYC_IMAGE_NO_IDENTIFICATION_VERIFICATION, response.body?.error?.code)
-
-        // The transaction is rolled back: the case doesn't stay IN_PROGRESS
-        assertCase(KycStatus.SUBMITTED, null)
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertCase(KycStatus.PENDING, null, errorCode = KycErrorCode.GATEWAY_ERROR)
+        assertRetry(1, "Gateway down")
         assertPartyKycStatus(KycStatus.PENDING)
         assertPaymentMethodStatus(PaymentMethodStatus.PENDING_VERIFICATION)
 
         verify(selfieVerifier, never()).verify(any())
         verify(paymentMethodVerifier, never()).verify(any())
+    }
+
+    @Test
+    fun `no identification verification - case back to pending, retry counted`() {
+        setUpNoVerification(idVerifier)
+
+        val response = verify()
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertCase(KycStatus.PENDING, null, errorCode = KycErrorCode.GATEWAY_ERROR)
+        assertEquals(1, dao.findById("kyc-case-submitted").orElseThrow().retries)
+        assertPartyKycStatus(KycStatus.PENDING)
+
+        verify(selfieVerifier, never()).verify(any())
+        verify(paymentMethodVerifier, never()).verify(any())
+    }
+
+    @Test
+    fun `verifier failure on a retried case - retries incremented`() {
+        doThrow(RuntimeException("Gateway down")).whenever(idVerifier).verify(any())
+
+        val response = verify("kyc-case-retried")
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertCase(KycStatus.PENDING, null, "kyc-case-retried", KycErrorCode.GATEWAY_ERROR)
+        assertRetry(2, "Gateway down", "kyc-case-retried")
+    }
+
+    @Test
+    fun `verifier failure on the last retry - case requires manual review`() {
+        doThrow(RuntimeException("Gateway down")).whenever(idVerifier).verify(any())
+
+        val response = verify("kyc-case-last-retry")
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertCase(KycStatus.REQUIRES_MANUAL_REVIEW, null, "kyc-case-last-retry", KycErrorCode.GATEWAY_ERROR)
+        assertRetry(3, "Gateway down", "kyc-case-last-retry")
+        assertPartyKycStatus(KycStatus.PENDING)
+    }
+
+    @Test
+    fun `retried case verified - previous error cleared, retries kept`() {
+        setUpVerifier(idVerifier, KycVerificationType.IDENTIFICATION, KycStatus.VERIFIED, 90)
+        setUpVerifier(selfieVerifier, KycVerificationType.SELFIE, KycStatus.VERIFIED, 100)
+
+        val response = verify("kyc-case-retried")
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertCase(KycStatus.VERIFIED, 95, "kyc-case-retried")
+        assertRetry(1, null, "kyc-case-retried")
+        assertPartyKycStatus(KycStatus.VERIFIED)
+        assertVerifiedEmail()
+    }
+
+    @Test
+    fun `email delivery failure - case still verified`() {
+        smtp.stop()
+        setUpVerifier(idVerifier, KycVerificationType.IDENTIFICATION, KycStatus.VERIFIED, 90)
+        setUpVerifier(selfieVerifier, KycVerificationType.SELFIE, KycStatus.VERIFIED, 100)
+
+        val response = verify()
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertCase(KycStatus.VERIFIED, 95)
+        assertPartyKycStatus(KycStatus.VERIFIED)
     }
 
     @Test
@@ -259,6 +373,7 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
 
         assertCase(KycStatus.PENDING, null, "kyc-case-pending")
         assertNoVerifierCalled()
+        assertNoEmail()
     }
 
     @Test
@@ -270,6 +385,7 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
 
         assertCase(KycStatus.VERIFIED, 95, "kyc-case-already-verified")
         assertNoVerifierCalled()
+        assertNoEmail()
     }
 
     @Test
@@ -281,6 +397,7 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertNull(response.body?.error?.data)
 
         assertNoVerifierCalled()
+        assertNoEmail()
     }
 
     @Test
@@ -291,5 +408,6 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(ErrorCode.KYC_CASE_NOT_FOUND, response.body?.error?.code)
 
         assertNoVerifierCalled()
+        assertNoEmail()
     }
 }

@@ -4,7 +4,6 @@ import com.wutsi.ndopify.refdata.dto.AuthType
 import com.wutsi.ndopify.security.dto.CreateOtpRequest
 import com.wutsi.ndopify.security.server.domain.AuthFactorEntity
 import jakarta.transaction.Transactional
-import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.util.UUID
 
@@ -17,8 +16,6 @@ open class OtpService(
     private val mailet: OtpMailet,
 ) {
     companion object {
-        private val LOGGER = LoggerFactory.getLogger(OtpService::class.java)
-
         const val SUBJECT = "Votre code de vérification {{tenant_name}}"
     }
 

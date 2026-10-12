@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.platform.storage.local
 
-import com.wutsi.ndopify.util.MimeUtils
+import com.wutsi.ndopify.platform.util.MimeUtils
 import jakarta.servlet.http.HttpServlet
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse

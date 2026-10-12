@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.util
+package com.wutsi.ndopify.platform.util
 
 import kotlin.test.Test
 import kotlin.test.assertEquals

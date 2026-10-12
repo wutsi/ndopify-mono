@@ -177,7 +177,7 @@ class UploadKycImageEndpointTest : TenantAwareEndpointIntegrationTest() {
         )
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
-        assertEquals(ErrorCode.IDENTIFICATION_IMAGE_INVALID_MIME_TYPE, response.body?.error?.code)
+        assertEquals(ErrorCode.KYC_IMAGE_INVALID_MIME_TYPE, response.body?.error?.code)
         verify(storage, never()).store(any(), any(), any())
         assertEquals(1, imageDao.findAll().count())
     }

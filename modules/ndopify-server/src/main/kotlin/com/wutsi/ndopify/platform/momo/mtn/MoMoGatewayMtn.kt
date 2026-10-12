@@ -7,8 +7,8 @@ import com.wutsi.ndopify.platform.momo.MoMoGateway
 import com.wutsi.ndopify.platform.momo.model.MoMoKycMatchRequest
 import com.wutsi.ndopify.platform.momo.model.MoMoKycMatchResponse
 import com.wutsi.ndopify.platform.momo.mtn.model.MtnUserStatus
-import com.wutsi.ndopify.util.KycUtils
-import com.wutsi.ndopify.util.PhoneNumberUtils
+import com.wutsi.ndopify.platform.util.KycUtils
+import com.wutsi.ndopify.platform.util.PhoneNumberUtils
 
 class MoMoGatewayMtn(
     val collection: MtnCollectionProduct,

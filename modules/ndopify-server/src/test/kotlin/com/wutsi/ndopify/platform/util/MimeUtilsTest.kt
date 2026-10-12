@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.util
+package com.wutsi.ndopify.platform.util
 
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals

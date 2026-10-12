@@ -63,11 +63,8 @@ object KycRules {
 
     /** Ends "Motif : …" on the rejected status, from the case's error code (set by the ID / selfie verification). */
     fun rejectionReason(errorCode: String?): String = when (errorCode) {
-        KycErrorCode.EXPIRED -> "votre carte d'identité n'est plus valide."
-        KycErrorCode.TYPE_MISMATCH -> "le document envoyé n'est pas une carte nationale d'identité."
-        KycErrorCode.INVALID -> "les informations de votre carte n'ont pas pu être lues."
-        KycErrorCode.LOW_SCORE ->
-            "vos photos ne sont pas assez nettes, ou votre selfie ne correspond pas à la photo de votre carte."
+        KycErrorCode.IDENTIFICATION_REJECTED -> "votre pièce d'identité n'a pas pu être validée."
+        KycErrorCode.SELFIE_REJECTED -> "votre selfie ne correspond pas à la photo de votre pièce d'identité."
         else -> "vos documents n'ont pas pu être vérifiés."
     }
 

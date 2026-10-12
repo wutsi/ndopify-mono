@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.platform.momo.mtn.impl
 
-import com.wutsi.ndopify.util.http.Http
+import com.wutsi.ndopify.platform.util.http.Http
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest

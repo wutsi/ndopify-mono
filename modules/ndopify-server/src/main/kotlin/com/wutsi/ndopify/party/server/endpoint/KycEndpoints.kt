@@ -11,6 +11,7 @@ import com.wutsi.ndopify.party.dto.SearchKycCaseResponse
 import com.wutsi.ndopify.party.server.mapper.KycCaseMapper
 import com.wutsi.ndopify.party.server.service.KycService
 import jakarta.validation.Valid
+import org.slf4j.LoggerFactory
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PathVariable
@@ -27,6 +28,10 @@ class KycEndpoints(
     private val service: KycService,
     private val mapper: KycCaseMapper,
 ) {
+    companion object {
+        private val LOGGER = LoggerFactory.getLogger(KycEndpoints::class.java)
+    }
+
     @PostMapping
     fun create(@RequestBody @Valid request: CreateKycCaseRequest): CreateKycCaseResponse {
         val case = service.create(request)
@@ -54,7 +59,12 @@ class KycEndpoints(
 
     @PostMapping("/{id}/verify")
     fun verify(@PathVariable id: String) {
-        service.verify(id)
+        val case = service.verify(id)
+        try {
+            service.sendStatusEmail(case)
+        } catch (ex: Exception) {
+            LOGGER.error(">>> KYC#${case.id} - Failed to send status email", ex)
+        }
     }
 
     @PostMapping("/{id}/images/upload")

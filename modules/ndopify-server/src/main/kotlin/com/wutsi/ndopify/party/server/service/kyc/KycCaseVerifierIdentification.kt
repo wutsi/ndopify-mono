@@ -9,8 +9,8 @@ import com.wutsi.ndopify.party.server.service.KycCaseVerifier.Companion.LOW_SCOR
 import com.wutsi.ndopify.party.server.service.KycInfoExtractorProvider
 import com.wutsi.ndopify.platform.logger.KVLogger
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
+import com.wutsi.ndopify.platform.util.KycUtils
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
-import com.wutsi.ndopify.util.KycUtils
 import org.springframework.stereotype.Service
 import java.time.Clock
 import java.util.Date

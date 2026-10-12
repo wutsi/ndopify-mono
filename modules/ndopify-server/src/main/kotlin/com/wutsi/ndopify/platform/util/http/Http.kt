@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.util.http
+package com.wutsi.ndopify.platform.util.http
 
 import tools.jackson.databind.json.JsonMapper
 import java.net.URI

@@ -84,7 +84,8 @@ class KycController(
         val requested = STEPS.indexOf(etape).coerceAtLeast(0)
         val allowed = STEPS.indexOf(KycRules.firstIncompleteStep(photos.keys))
         val shown = STEPS[minOf(requested, allowed)]
-        val error = if (erreur == ERROR_TOO_LARGE && shown == etape) "Cette photo dépasse la taille maximale de 5 Mo." else null
+        val error =
+            if (erreur == ERROR_TOO_LARGE && shown == etape) "Cette photo dépasse la taille maximale de 5 Mo." else null
         return wizard(party, shown, photos, retour, error, model)
     }
 
@@ -111,7 +112,8 @@ class KycController(
             val content = photo.bytes
             // The browser's content type is a claim; the bytes are the truth.
             val mimeType = TIKA.detect(content)
-            KycRules.photo(photo.size, mimeType)?.let { error -> return wizard(party, step, photos, retour, error, model) }
+            KycRules.photo(photo.size, mimeType)
+                ?.let { error -> return wizard(party, step, photos, retour, error, model) }
             try {
                 kycClient.upload(case.id, imageType, content, mimeType)
             } catch (ex: RestClientException) {
@@ -172,9 +174,10 @@ class KycController(
     }
 
     private fun toMessage(code: String?): String = when (code) {
-        ErrorCode.IDENTIFICATION_IMAGE_INVALID_MIME_TYPE -> "Format non accepté. Utilisez une photo JPG, PNG ou WEBP."
+        ErrorCode.KYC_IMAGE_INVALID_MIME_TYPE -> "Format non accepté. Utilisez une photo JPG, PNG ou WEBP."
         ErrorCode.KYC_CASE_MISSING_IDENTIFICATION_IMAGE ->
             "Il manque une ou plusieurs photos. Ajoutez-les pour pouvoir envoyer votre dossier."
+
         else -> "Envoi impossible pour le moment. Réessayez dans quelques instants."
     }
 

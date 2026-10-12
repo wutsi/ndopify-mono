@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.util.jpa
+package com.wutsi.ndopify.platform.util.jpa
 
 import io.hypersistence.utils.hibernate.naming.CamelCaseToSnakeCaseNamingStrategy
 import org.hibernate.boot.model.naming.Identifier

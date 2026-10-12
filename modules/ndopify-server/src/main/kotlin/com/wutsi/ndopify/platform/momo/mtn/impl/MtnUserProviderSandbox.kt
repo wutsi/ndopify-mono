@@ -4,7 +4,7 @@ import com.wutsi.ndopify.platform.momo.mtn.MtnUserProvider
 import com.wutsi.ndopify.platform.momo.mtn.model.MtnApiKeyResponse
 import com.wutsi.ndopify.platform.momo.mtn.model.MtnEnvironment
 import com.wutsi.ndopify.platform.momo.mtn.model.MtnUser
-import com.wutsi.ndopify.util.http.Http
+import com.wutsi.ndopify.platform.util.http.Http
 import java.net.URL
 import java.util.UUID
 

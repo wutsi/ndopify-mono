@@ -8,7 +8,7 @@ import com.wutsi.ndopify.platform.momo.mtn.MtnUserProvider
 import com.wutsi.ndopify.platform.momo.mtn.impl.MtnUserProviderProduction
 import com.wutsi.ndopify.platform.momo.mtn.impl.MtnUserProviderSandbox
 import com.wutsi.ndopify.platform.momo.mtn.model.MtnEnvironment
-import com.wutsi.ndopify.util.http.Http
+import com.wutsi.ndopify.platform.util.http.Http
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration

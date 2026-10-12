@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.util.jpa
+package com.wutsi.ndopify.platform.util.jpa
 
 import com.nhaarman.mockitokotlin2.mock
 import org.hibernate.boot.model.naming.Identifier

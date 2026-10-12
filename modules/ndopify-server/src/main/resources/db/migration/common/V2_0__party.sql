@@ -76,7 +76,9 @@ CREATE TABLE T_KYC_CASE(
   identification_type     INT NOT NULL DEFAULT 0,
   score                   INT,
   status                  INT NOT NULL DEFAULT 0,
-  error_code              VARCHAR(100),
+  retries                 INT DEFAULT NULL,
+  error_code              VARCHAR(100) DEFAULT NULL,
+  error_message           TEXT DEFAULT NULL,
 
   created_at              DATETIME DEFAULT NOW(),
   modified_at             DATETIME NOT NULL DEFAULT now() ON UPDATE now(),

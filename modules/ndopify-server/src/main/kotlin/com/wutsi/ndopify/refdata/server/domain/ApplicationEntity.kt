@@ -1,7 +1,7 @@
 package com.wutsi.ndopify.refdata.server.domain
 
+import com.wutsi.ndopify.platform.util.jpa.AuthTypeListConverter
 import com.wutsi.ndopify.refdata.dto.AuthType
-import com.wutsi.ndopify.util.jpa.AuthTypeListConverter
 import jakarta.persistence.Convert
 import jakarta.persistence.Entity
 import jakarta.persistence.Id

@@ -18,6 +18,8 @@ class KycCaseMapper {
             score = entity.score,
             status = entity.status,
             errorCode = entity.errorCode,
+            errorMessage = entity.errorMessage,
+            retries = entity.retries,
             verifications = entity.verifications.map { verification -> toKycVerification(verification) },
             images = entity.images.map { image -> toKycImage(image) },
             createdAt = entity.createdAt,

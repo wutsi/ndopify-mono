@@ -1,0 +1,49 @@
+<mjml>
+    <mj-head>
+        <mj-style>
+            {{__css__}}
+        </mj-style>
+    </mj-head>
+    <mj-body css-class="body">
+        <mj-section css-class="main-content">
+            <mj-column>
+                <!-- Logo -->
+                <mj-image align="center" css-class="logo" src="{{tenant_logo_url}}" alt="Logo"/>
+
+                <!-- Divider with class for CSS injection -->
+                <mj-divider css-class="divider"/>
+
+                <!-- Body Text -->
+                <mj-text>
+                    Bonjour <strong>{{recipient_name}}</strong>,
+                </mj-text>
+                <mj-text>
+                    Nous avons le plaisir de vous informer que votre vérification KYC pour {{tenant_name}} a été
+                    effectuée et validée avec succès !
+                </mj-text>
+                <mj-text>
+                    Votre compte est désormais entièrement actif et vous pouvez profiter de toutes les fonctionnalités
+                    de notre plateforme immobilière.
+                </mj-text>
+                <mj-text>
+                    Si vous avez des questions ou besoin d'assistance, n'hésitez pas à nous contacter.
+                </mj-text>
+
+                <!-- Button with class for CSS injection -->
+                <mj-spacer/>
+                <mj-button href="{{portal_url}}" css-class="btn-primary" align="center">
+                    Accéder à mon compte
+                </mj-button>
+                <mj-spacer/>
+
+                <!-- Sign-off -->
+                <mj-spacer/>
+                <mj-text>
+                    Cordialement,
+                    <br/>
+                    L'équipe {{tenant_name}}
+                </mj-text>
+            </mj-column>
+        </mj-section>
+    </mj-body>
+</mjml>

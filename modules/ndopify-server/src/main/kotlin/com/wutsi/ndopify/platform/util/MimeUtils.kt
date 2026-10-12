@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.util
+package com.wutsi.ndopify.platform.util
 
 object MimeUtils {
     fun getExtensionFromMimeType(contentType: String?): String {

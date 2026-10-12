@@ -185,12 +185,12 @@ class KycControllerTest {
 
     @Test
     fun `rejected status with its reason`() {
-        given(case(status = KycStatus.REJECTED, errorCode = KycErrorCode.EXPIRED))
+        given(case(status = KycStatus.REJECTED, errorCode = KycErrorCode.IDENTIFICATION_REJECTED))
 
         val result = mvc.perform(get("/kyc").session(session)).andReturn()
 
         assertEquals("rejete", model(result)["status"])
-        assertEquals("votre carte d'identité n'est plus valide.", model(result)["rejectionReason"])
+        assertEquals("votre pièce d'identité n'a pas pu être validée.", model(result)["rejectionReason"])
     }
 
     @Test

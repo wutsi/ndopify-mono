@@ -2,7 +2,7 @@ package com.wutsi.ndopify.party.server.service.kyc
 
 import com.wutsi.ndopify.party.dto.IdentificationType
 import com.wutsi.ndopify.party.server.service.KycInfoExtractor
-import com.wutsi.ndopify.util.MimeUtils
+import com.wutsi.ndopify.platform.util.MimeUtils
 import org.springframework.ai.chat.client.ChatClient
 import org.springframework.core.io.FileSystemResource
 import org.springframework.http.MediaType

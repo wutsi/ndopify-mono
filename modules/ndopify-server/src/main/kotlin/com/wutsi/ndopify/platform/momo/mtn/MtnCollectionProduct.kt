@@ -2,7 +2,7 @@ package com.wutsi.ndopify.platform.momo.mtn
 
 import com.wutsi.ndopify.platform.momo.mtn.impl.AbstractMtnProduct
 import com.wutsi.ndopify.platform.momo.mtn.model.MtnEnvironment
-import com.wutsi.ndopify.util.http.Http
+import com.wutsi.ndopify.platform.util.http.Http
 
 open class MtnCollectionProduct(
     environment: MtnEnvironment,

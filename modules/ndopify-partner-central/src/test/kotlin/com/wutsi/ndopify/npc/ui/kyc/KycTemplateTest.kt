@@ -208,12 +208,12 @@ class KycTemplateTest {
 
     @Test
     fun `rejected status`() {
-        given(case(status = KycStatus.REJECTED, errorCode = KycErrorCode.LOW_SCORE))
+        given(case(status = KycStatus.REJECTED, errorCode = KycErrorCode.SELFIE_REJECTED))
 
         val page = render(get("/kyc"))
 
         val panel = page.selectFirst("[data-status=rejete]")!!
-        assertTrue(panel.text().contains("Motif : vos photos ne sont pas assez nettes"))
+        assertTrue(panel.text().contains("Motif : votre selfie ne correspond pas à la photo de votre pièce d'identité."))
         assertEquals("/kyc/recommencer", panel.selectFirst("form")?.attr("action"))
     }
 }

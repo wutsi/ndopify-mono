@@ -1,7 +1,7 @@
 package com.wutsi.ndopify.platform.momo
 
+import com.wutsi.ndopify.platform.util.PhoneNumberUtils
 import com.wutsi.ndopify.refdata.dto.MoMoGatewayType
-import com.wutsi.ndopify.util.PhoneNumberUtils
 
 class MoMoGatewayProvider(
     private val mtn: MoMoGateway,

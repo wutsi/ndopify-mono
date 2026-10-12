@@ -60,7 +60,15 @@ class KycRulesTest {
 
     @Test
     fun rejectionReason() {
-        assertEquals("votre carte d'identité n'est plus valide.", KycRules.rejectionReason(KycErrorCode.EXPIRED))
+        assertEquals(
+            "votre pièce d'identité n'a pas pu être validée.",
+            KycRules.rejectionReason(KycErrorCode.IDENTIFICATION_REJECTED),
+        )
+        assertEquals(
+            "votre selfie ne correspond pas à la photo de votre pièce d'identité.",
+            KycRules.rejectionReason(KycErrorCode.SELFIE_REJECTED),
+        )
+        assertEquals("vos documents n'ont pas pu être vérifiés.", KycRules.rejectionReason(KycErrorCode.EXPIRED))
         assertEquals("vos documents n'ont pas pu être vérifiés.", KycRules.rejectionReason(null))
         assertEquals("vos documents n'ont pas pu être vérifiés.", KycRules.rejectionReason("SOMETHING_NEW"))
     }

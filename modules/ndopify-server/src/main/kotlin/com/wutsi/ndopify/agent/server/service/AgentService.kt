@@ -39,7 +39,7 @@ class AgentService(
     private val kycService: KycService,
     private val paymentMethodService: PaymentMethodService,
     private val userService: UserService,
-    private val welcomeMailet: WelcomeMailet,
+    private val mailet: WelcomeMailet,
 ) {
     fun search(request: SearchAgentRequest): List<AgentEntity> {
         val spec = Specification<AgentEntity> { root, query, cb ->
@@ -169,7 +169,7 @@ class AgentService(
         ).firstOrNull()
 
         kyc?.let {
-            welcomeMailet.send(kyc)
+            mailet.send(kyc)
         }
     }
 

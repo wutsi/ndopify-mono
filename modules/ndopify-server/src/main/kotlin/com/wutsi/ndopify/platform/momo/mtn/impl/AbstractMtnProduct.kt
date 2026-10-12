@@ -5,8 +5,8 @@ import com.wutsi.ndopify.platform.momo.mtn.MtnUserProvider
 import com.wutsi.ndopify.platform.momo.mtn.model.MtnBasicUserInfoResponse
 import com.wutsi.ndopify.platform.momo.mtn.model.MtnEnvironment
 import com.wutsi.ndopify.platform.momo.mtn.model.MtnTokenResponse
-import com.wutsi.ndopify.util.PhoneNumberUtils
-import com.wutsi.ndopify.util.http.Http
+import com.wutsi.ndopify.platform.util.PhoneNumberUtils
+import com.wutsi.ndopify.platform.util.http.Http
 import java.util.Base64
 import java.util.UUID
 

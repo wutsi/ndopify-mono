@@ -38,6 +38,8 @@ data class KycCaseEntity(
     val score: Int? = null,
     val status: KycStatus = KycStatus.UNKNOWN,
     val errorCode: String? = null,
+    val errorMessage: String? = null,
+    val retries: Int? = null,
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
 )

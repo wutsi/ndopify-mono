@@ -9,7 +9,7 @@ import com.wutsi.ndopify.party.server.domain.KycVerificationEntity
 import com.wutsi.ndopify.party.server.service.KycInfoExtractorProvider
 import com.wutsi.ndopify.platform.logger.KVLogger
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
-import com.wutsi.ndopify.util.MimeUtils
+import com.wutsi.ndopify.platform.util.MimeUtils
 import jakarta.transaction.Transactional
 import java.io.File
 import java.io.FileOutputStream
