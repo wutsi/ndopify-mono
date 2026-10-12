@@ -168,12 +168,14 @@ class KycService(
 
     /**
      * Sends a case for review: PENDING → SUBMITTED. Its documents are frozen from then on, and the offline
-     * verification (see [verify]) picks it up. Requires the front and back of the identification document.
+     * verification (see [verify]) picks it up. Requires the document's front, and its back for two-sided
+     * documents (see [requiredImages]). The selfie is optional.
      */
     @Transactional
     fun submit(id: String): KycCaseEntity {
         val case = findById(id)
         ensureStatusIsPending(case)
+        ensureIdentificationImages(case)
 
         return dao.save(
             case.copy(
@@ -288,6 +290,30 @@ class KycService(
                 error = Error(code = ErrorCode.KYC_CASE_NOT_PENDING)
             )
         }
+    }
+
+    /** The sides of the identification document must be uploaded before submitting. The selfie is optional. */
+    private fun ensureIdentificationImages(case: KycCaseEntity) {
+        val uploaded = case.images.filter { image -> image.path != null }.map { image -> image.imageType }
+        val missing = requiredImages(case.identificationType).filter { type -> type !in uploaded }
+        if (missing.isNotEmpty()) {
+            throw BadRequestException(
+                error = Error(
+                    code = ErrorCode.KYC_CASE_MISSING_IDENTIFICATION_IMAGE,
+                    message = "Case#${case.id} (${case.identificationType}) is missing: ${missing.joinToString()}",
+                )
+            )
+        }
+    }
+
+    /** Two-sided documents need their front and back; the others (e.g. a passport) only their front. */
+    private fun requiredImages(type: IdentificationType): List<KycImageType> = when (type) {
+        IdentificationType.NATIONAL_ID,
+        IdentificationType.DRIVER_LICENSE,
+        IdentificationType.RESIDENT_CARD,
+        -> listOf(KycImageType.FRONT, KycImageType.BACK)
+
+        else -> listOf(KycImageType.FRONT)
     }
 
     private fun ensureStatusIsSubmitted(case: KycCaseEntity) {

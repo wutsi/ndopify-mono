@@ -79,6 +79,41 @@ class SubmitKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `national ID without back - bad request`() {
+        val response = submitWithError("kyc-case-missing-back")
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.KYC_CASE_MISSING_IDENTIFICATION_IMAGE, response.body?.error?.code)
+        assertStatus(KycStatus.PENDING, "kyc-case-missing-back")
+    }
+
+    @Test
+    fun `national ID whose back has no content - bad request`() {
+        val response = submitWithError("kyc-case-back-no-content")
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.KYC_CASE_MISSING_IDENTIFICATION_IMAGE, response.body?.error?.code)
+        assertStatus(KycStatus.PENDING, "kyc-case-back-no-content")
+    }
+
+    @Test
+    fun `passport with front only - submitted, a passport has no back`() {
+        val response = submit("kyc-case-passport")
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertStatus(KycStatus.SUBMITTED, "kyc-case-passport")
+    }
+
+    @Test
+    fun `passport without front - bad request`() {
+        val response = submitWithError("kyc-case-passport-no-front")
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.KYC_CASE_MISSING_IDENTIFICATION_IMAGE, response.body?.error?.code)
+        assertStatus(KycStatus.PENDING, "kyc-case-passport-no-front")
+    }
+
+    @Test
     fun `case already submitted - bad request`() {
         val response = submitWithError("kyc-case-submitted")
 
