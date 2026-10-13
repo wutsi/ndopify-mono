@@ -39,6 +39,8 @@ object ErrorCode {
     val LOCATION_NOT_FOUND = "$PREFIX:location:not-found"
     val LOCATION_FEED_NOT_FOUND = "$PREFIX:location:feed-not-found"
 
+    val MANDATE_NOT_FOUND = "$PREFIX:mandate:not-found"
+
     val PARTY_NOT_FOUND = "$PREFIX:party:not-found"
     val PARTY_EMAIL_ALREADY_EXISTS = "$PREFIX:party:email-already-exists"
 

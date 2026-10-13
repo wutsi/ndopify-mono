@@ -3,9 +3,12 @@ package com.wutsi.ndopify.mandate.dto
 import com.wutsi.koki.listing.dto.ListingType
 import com.wutsi.koki.listing.dto.PropertyType
 import com.wutsi.koki.listing.dto.RoadAccessType
+import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.ElectricityAccessType
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.WaterAccessType
+import com.wutsi.ndopify.refdata.dto.Money
+import java.util.Date
 
 data class Mandate(
     val id: Long = -1,
@@ -32,10 +35,13 @@ data class Mandate(
     val securedFenced: Boolean = false,
     val securityGuard: Boolean = false,
     val videoSurveillance: Boolean = false,
-    val price: Long = -1,
-    val currencyCode: String = "",
+    val price: Money = Money(),
     val securityDeposit: Int? = null,
     val advanceRent: Int? = null,
     val leaseTerm: Int? = null,
     val noticePeriod: Int? = null,
+    val preferredContactPeriod: ContactPeriodType? = null,
+    val comments: String? = null,
+    val createdAt: Date = Date(),
+    val modifiedAt: Date = Date(),
 )
