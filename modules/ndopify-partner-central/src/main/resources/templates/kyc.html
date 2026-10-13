@@ -64,8 +64,8 @@
             <h2 class="visually-hidden" th:if="${view == 'wizard'}">Étapes du formulaire</h2>
             <form class="form" method="post" enctype="multipart/form-data" novalidate data-kyc-form
                   th:if="${view == 'wizard'}" th:action="@{/kyc/{step}(step=${step})}">
-                <input type="hidden" name="retour" value="revue" th:if="${returning}">
-                <fieldset class="step" tabindex="-1" th:if="${step == 'recto'}" data-step="recto" data-side="front">
+                <input type="hidden" name="returnTo" value="review" th:if="${returning}">
+                <fieldset class="step" tabindex="-1" th:if="${step == 'front'}" data-step="front" data-side="front">
                     <legend class="visually-hidden">Étape 1 sur 4 : Recto de votre carte</legend>
                     <h3 aria-hidden="true">Recto de votre carte</h3>
                     <p>Photographiez la face avant de votre carte nationale d'identité, celle avec votre photo.</p>
@@ -102,12 +102,12 @@
                     </div>
 
                     <div class="form__actions">
-                        <a class="btn btn--outline" data-prev th:if="${returning}" th:href="@{/kyc(etape='revue')}">Précédent</a>
+                        <a class="btn btn--outline" data-prev th:if="${returning}" th:href="@{/kyc(step='review')}">Précédent</a>
                         <button class="btn btn--primary" type="submit"
                                 aria-describedby="front-hint" data-next th:text="${returning} ? 'Revenir à la revue' : 'Suivant'">Suivant</button>
                     </div>
                 </fieldset>
-                <fieldset class="step" tabindex="-1" th:if="${step == 'verso'}" data-step="verso" data-side="back">
+                <fieldset class="step" tabindex="-1" th:if="${step == 'back'}" data-step="back" data-side="back">
                     <legend class="visually-hidden">Étape 2 sur 4 : Verso de votre carte</legend>
                     <h3 aria-hidden="true">Verso de votre carte</h3>
                     <p>Retournez la carte et photographiez la face arrière.</p>
@@ -144,7 +144,7 @@
                     </div>
 
                     <div class="form__actions">
-                        <a class="btn btn--outline" data-prev th:href="${returning} ? @{/kyc(etape='revue')} : @{/kyc}">Précédent</a>
+                        <a class="btn btn--outline" data-prev th:href="${returning} ? @{/kyc(step='review')} : @{/kyc}">Précédent</a>
                         <button class="btn btn--primary" type="submit"
                                 aria-describedby="back-hint" data-next th:text="${returning} ? 'Revenir à la revue' : 'Suivant'">Suivant</button>
                     </div>
@@ -201,12 +201,12 @@
                     </div>
 
                     <div class="form__actions">
-                        <a class="btn btn--outline" data-prev th:href="${returning} ? @{/kyc(etape='revue')} : @{/kyc(etape='verso')}">Précédent</a>
+                        <a class="btn btn--outline" data-prev th:href="${returning} ? @{/kyc(step='review')} : @{/kyc(step='back')}">Précédent</a>
                         <button class="btn btn--primary" type="submit"
                                 aria-describedby="selfie-hint" data-next th:text="${returning} ? 'Revenir à la revue' : 'Suivant'">Suivant</button>
                     </div>
                 </fieldset>
-                <fieldset class="step" tabindex="-1" th:if="${step == 'revue'}" data-step="revue">
+                <fieldset class="step" tabindex="-1" th:if="${step == 'review'}" data-step="review">
                     <legend class="visually-hidden">Étape 4 sur 4 : revue de votre dossier</legend>
                     <h3 aria-hidden="true">Vérifiez votre dossier</h3>
                     <p>Relisez avant d'envoyer. Vous pouvez modifier chaque élément.</p>
@@ -220,7 +220,7 @@
                                 </div>
                             </dd>
                             <dd class="review__value">
-                                <a class="link-button review__edit" data-edit="recto" th:href="@{/kyc(etape='recto',retour='revue')}">Modifier<span class="visually-hidden"> le recto</span></a>
+                                <a class="link-button review__edit" data-edit="front" th:href="@{/kyc(step='front',returnTo='review')}">Modifier<span class="visually-hidden"> le recto</span></a>
                             </dd>
                         </div>
                         <div class="review__item">
@@ -231,7 +231,7 @@
                                 </div>
                             </dd>
                             <dd class="review__value">
-                                <a class="link-button review__edit" data-edit="verso" th:href="@{/kyc(etape='verso',retour='revue')}">Modifier<span class="visually-hidden"> le verso</span></a>
+                                <a class="link-button review__edit" data-edit="back" th:href="@{/kyc(step='back',returnTo='review')}">Modifier<span class="visually-hidden"> le verso</span></a>
                             </dd>
                         </div>
                         <div class="review__item">
@@ -242,7 +242,7 @@
                                 </div>
                             </dd>
                             <dd class="review__value">
-                                <a class="link-button review__edit" data-edit="selfie" th:href="@{/kyc(etape='selfie',retour='revue')}">Modifier<span class="visually-hidden"> le selfie</span></a>
+                                <a class="link-button review__edit" data-edit="selfie" th:href="@{/kyc(step='selfie',returnTo='review')}">Modifier<span class="visually-hidden"> le selfie</span></a>
                             </dd>
                         </div>
                     </dl>
@@ -263,7 +263,7 @@
                     </div>
 
                     <div class="form__actions">
-                        <a class="btn btn--outline" data-prev th:href="@{/kyc(etape='selfie')}">Précédent</a>
+                        <a class="btn btn--outline" data-prev th:href="@{/kyc(step='selfie')}">Précédent</a>
                         <button class="btn btn--primary" type="submit"
                                 aria-describedby="review-hint" data-submit>Envoyer mon dossier</button>
                     </div>
@@ -284,7 +284,7 @@
 
             <!-- Shown instead of the wizard once the dossier has been submitted. -->
             <div th:if="${view == 'status'}">
-                <div class="stack" data-status="attente" th:if="${status == 'attente'}">
+                <div class="stack" data-status="pending" th:if="${status == 'pending'}">
                     <h2>Votre dossier est en cours d'analyse</h2>
                     <div class="alert alert--info">
                         <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 5.5V10l3 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -302,7 +302,7 @@
                     <p>Vous recevrez une notification par email et par SMS dès que l'examen sera terminé.</p>
                 </div>
 
-                <div class="stack" data-status="verifie" th:if="${status == 'verifie'}">
+                <div class="stack" data-status="verified" th:if="${status == 'verified'}">
                     <h2>Votre identité est vérifiée</h2>
                     <div class="alert alert--success">
                         <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -316,7 +316,7 @@
                     </div>
                 </div>
 
-                <div class="stack" data-status="rejete" th:if="${status == 'rejete'}">
+                <div class="stack" data-status="rejected" th:if="${status == 'rejected'}">
                     <h2>Votre dossier n'a pas pu être validé</h2>
                     <div class="alert alert--error">
                         <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
@@ -328,7 +328,7 @@
                     <p>Reprenez la photo concernée dans un endroit bien éclairé, sans flash, puis soumettez à nouveau
                         votre dossier.</p>
                     <div class="cta-row">
-                        <form method="post" th:action="@{/kyc/recommencer}">
+                        <form method="post" th:action="@{/kyc/restart}">
                             <button class="btn btn--primary" type="submit">Soumettre de nouveaux documents</button>
                         </form>
                     </div>

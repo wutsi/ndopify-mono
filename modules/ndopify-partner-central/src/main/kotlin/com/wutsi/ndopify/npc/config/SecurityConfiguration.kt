@@ -25,8 +25,7 @@ class SecurityConfiguration(
                     .requestMatchers("/assets/**").permitAll()
                     .requestMatchers("/login", "/login/**").permitAll()
                     .requestMatchers("/error").permitAll()
-                    // The "Rejoindre Ndopify" sign-up wizard, and the public reference data its dropdowns need
-                    .requestMatchers("/rejoindre", "/rejoindre/**").permitAll()
+                    .requestMatchers("/join", "/join/**").permitAll()
                     .requestMatchers("/locations", "/locations/**").permitAll()
                     .anyRequest().authenticated()
             }

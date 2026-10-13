@@ -27,7 +27,7 @@ import java.time.Duration
  * Email + one-time-code sign-in, on a single page (`login.html`) with two steps:
  * 1. E-mail: `GET /login` asks for it, `POST /login` has ndopify-server e-mail a code and records a [PendingLogin] in
  *    the HTTP session. `POST /login` with `resend=true` sends a new code to the pending address.
- * 2. Code: `GET /login?etape=code` asks for it, `POST /login/verify` exchanges it for an access token.
+ * 2. Code: `GET /login?step=code` asks for it, `POST /login/verify` exchanges it for an access token.
  *
  * The URL is never trusted: the code step is only shown while a [PendingLogin] is in the session, otherwise the
  * e-mail step is. The e-mail lives in the session, never in the URL or a form field, so it doesn't end up in logs or
@@ -59,9 +59,9 @@ class LoginController(
     }
 
     @GetMapping
-    fun show(@RequestParam(required = false) etape: String?, session: HttpSession, model: Model): String {
+    fun show(@RequestParam(name = "step", required = false) requestedStep: String?, session: HttpSession, model: Model): String {
         val pending = pending(session)
-        return if (etape == STEP_CODE && pending != null) {
+        return if (requestedStep == STEP_CODE && pending != null) {
             codeStep(pending, model)
         } else {
             emailStep(pending?.email, model)
@@ -70,7 +70,7 @@ class LoginController(
 
     /** Kept for links to the former two-page flow. */
     @GetMapping("/connection")
-    fun connection(): String = "redirect:/login?etape=$STEP_CODE"
+    fun connection(): String = "redirect:/login?step=$STEP_CODE"
 
     @PostMapping
     fun submit(
@@ -101,7 +101,7 @@ class LoginController(
             PendingLogin(email = email, expiresAt = clock.millis() + OTP_TTL.toMillis()),
         )
         redirect.addFlashAttribute("resent", form.resend)
-        return "redirect:/login?etape=$STEP_CODE"
+        return "redirect:/login?step=$STEP_CODE"
     }
 
     @PostMapping("/verify")

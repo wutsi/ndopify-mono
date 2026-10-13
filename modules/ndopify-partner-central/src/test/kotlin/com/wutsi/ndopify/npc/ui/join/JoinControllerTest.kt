@@ -85,21 +85,21 @@ class JoinControllerTest {
         }
 
         val controller = JoinController(agentClient, locationClient, tenantContext)
-        // The view is named after its URL ("rejoindre" at /rejoindre); the default resolver would take that for a loop.
+        // The view is named after its URL ("join" at /join); the default resolver would take that for a loop.
         mvc = MockMvcBuilders.standaloneSetup(controller)
             .setViewResolvers(InternalResourceViewResolver("/templates/", ".html"))
             .build()
         session = MockHttpSession()
     }
 
-    // GET /rejoindre
+    // GET /join
 
     @Test
     fun show() {
-        val result = mvc.perform(get("/rejoindre").session(session)).andReturn()
+        val result = mvc.perform(get("/join").session(session)).andReturn()
 
-        assertEquals("rejoindre", result.modelAndView?.viewName)
-        assertEquals("identite", model(result)["step"])
+        assertEquals("join", result.modelAndView?.viewName)
+        assertEquals("identity", model(result)["step"])
         assertEquals(1, model(result)["stepNumber"])
         assertEquals(5, model(result)["stepCount"])
         assertEquals(PendingJoin(), model(result)["answers"])
@@ -111,7 +111,7 @@ class JoinControllerTest {
     fun showNeverSkipsAnIncompleteStep() {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete.copy(experienceLevel = null))
 
-        val result = mvc.perform(get("/rejoindre?etape=paiement").session(session)).andReturn()
+        val result = mvc.perform(get("/join?step=payment").session(session)).andReturn()
 
         assertEquals("experience", model(result)["step"])
     }
@@ -120,16 +120,16 @@ class JoinControllerTest {
     fun showUnknownStep() {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete)
 
-        val result = mvc.perform(get("/rejoindre?etape=nimportequoi").session(session)).andReturn()
+        val result = mvc.perform(get("/join?step=nimportequoi").session(session)).andReturn()
 
-        assertEquals("identite", model(result)["step"])
+        assertEquals("identity", model(result)["step"])
     }
 
     @Test
     fun showEarlierStep() {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete)
 
-        val result = mvc.perform(get("/rejoindre?etape=experience").session(session)).andReturn()
+        val result = mvc.perform(get("/join?step=experience").session(session)).andReturn()
 
         assertEquals("experience", model(result)["step"])
         assertEquals(2, model(result)["stepNumber"])
@@ -140,9 +140,9 @@ class JoinControllerTest {
     fun showSector() {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete)
 
-        val result = mvc.perform(get("/rejoindre?etape=secteur").session(session)).andReturn()
+        val result = mvc.perform(get("/join?step=area").session(session)).andReturn()
 
-        assertEquals("secteur", model(result)["step"])
+        assertEquals("area", model(result)["step"])
         assertEquals("Yaoundé", (model(result)["city"] as Location).name)
         assertEquals(listOf("Bastos", "Essos"), names(model(result)["neighborhoods"]))
     }
@@ -151,9 +151,9 @@ class JoinControllerTest {
     fun showSectorWithoutAnswers() {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete.copy(cityId = null, neighborhoodIds = emptyList()))
 
-        val result = mvc.perform(get("/rejoindre?etape=secteur").session(session)).andReturn()
+        val result = mvc.perform(get("/join?step=area").session(session)).andReturn()
 
-        assertEquals("secteur", model(result)["step"])
+        assertEquals("area", model(result)["step"])
         assertNull(model(result)["city"])
         assertEquals(emptyList<Location>(), model(result)["neighborhoods"])
         verify(locationClient, never()).search(any())
@@ -163,9 +163,9 @@ class JoinControllerTest {
     fun showPayment() {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete)
 
-        val result = mvc.perform(get("/rejoindre?etape=paiement").session(session)).andReturn()
+        val result = mvc.perform(get("/join?step=payment").session(session)).andReturn()
 
-        assertEquals("paiement", model(result)["step"])
+        assertEquals("payment", model(result)["step"])
         assertEquals(true, model(result)["canUseWhatsapp"])
     }
 
@@ -173,7 +173,7 @@ class JoinControllerTest {
     fun showPaymentWithForeignWhatsapp() {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete.copy(whatsappNumber = "+15145550000"))
 
-        val result = mvc.perform(get("/rejoindre?etape=paiement").session(session)).andReturn()
+        val result = mvc.perform(get("/join?step=payment").session(session)).andReturn()
 
         assertEquals(false, model(result)["canUseWhatsapp"])
     }
@@ -182,9 +182,9 @@ class JoinControllerTest {
     fun showReview() {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete)
 
-        val result = mvc.perform(get("/rejoindre?etape=revue").session(session)).andReturn()
+        val result = mvc.perform(get("/join?step=review").session(session)).andReturn()
 
-        assertEquals("revue", model(result)["step"])
+        assertEquals("review", model(result)["step"])
         assertEquals(5, model(result)["stepNumber"])
         assertEquals("1 à 3 ans", model(result)["experienceLabel"])
         assertEquals("Indépendant", model(result)["agentTypeLabel"])
@@ -197,9 +197,9 @@ class JoinControllerTest {
     fun showReturningToReview() {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete)
 
-        val result = mvc.perform(get("/rejoindre?etape=identite&retour=revue").session(session)).andReturn()
+        val result = mvc.perform(get("/join?step=identity&returnTo=review").session(session)).andReturn()
 
-        assertEquals("identite", model(result)["step"])
+        assertEquals("identity", model(result)["step"])
         assertEquals(true, model(result)["returning"])
     }
 
@@ -207,7 +207,7 @@ class JoinControllerTest {
     fun showReturningToIncompleteReview() {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete.copy(mobileMoneyNumber = null))
 
-        val result = mvc.perform(get("/rejoindre?etape=identite&retour=revue").session(session)).andReturn()
+        val result = mvc.perform(get("/join?step=identity&returnTo=review").session(session)).andReturn()
 
         assertEquals(false, model(result)["returning"])
     }
@@ -216,26 +216,26 @@ class JoinControllerTest {
     fun showConfirmation() {
         session.setAttribute(JoinedAgent.SESSION_ATTRIBUTE, JoinedAgent(email = "ray@gmail.com"))
 
-        val result = mvc.perform(get("/rejoindre?etape=confirmation").session(session)).andReturn()
+        val result = mvc.perform(get("/join?step=confirmation").session(session)).andReturn()
 
-        assertEquals("rejoindre", result.modelAndView?.viewName)
+        assertEquals("join", result.modelAndView?.viewName)
         assertEquals("confirmation", model(result)["step"])
         assertEquals("ra•••@gmail.com", model(result)["maskedEmail"])
     }
 
     @Test
     fun showConfirmationWithoutApplication() {
-        val result = mvc.perform(get("/rejoindre?etape=confirmation").session(session)).andReturn()
+        val result = mvc.perform(get("/join?step=confirmation").session(session)).andReturn()
 
-        assertEquals("identite", model(result)["step"])
+        assertEquals("identity", model(result)["step"])
     }
 
-    // POST /rejoindre/identite
+    // POST /join/identity
 
     @Test
     fun identity() {
         val result = mvc.perform(
-            post("/rejoindre/identite")
+            post("/join/identity")
                 .session(session)
                 .param("firstName", " Ray ")
                 .param("lastName", "N'Diaye-Mbappé")
@@ -243,7 +243,7 @@ class JoinControllerTest {
                 .param("whatsappNumber", "00237 6 70-00.00 01"),
         ).andReturn()
 
-        assertEquals("redirect:/rejoindre?etape=experience", result.modelAndView?.viewName)
+        assertEquals("redirect:/join?step=experience", result.modelAndView?.viewName)
         assertEquals(
             PendingJoin(
                 firstName = "Ray",
@@ -260,7 +260,7 @@ class JoinControllerTest {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete)
 
         val result = mvc.perform(
-            post("/rejoindre/identite")
+            post("/join/identity")
                 .session(session)
                 .param("firstName", "Roger")
                 .param("lastName", "Sponsible")
@@ -268,14 +268,14 @@ class JoinControllerTest {
                 .param("whatsappNumber", "+237670000001"),
         ).andReturn()
 
-        assertEquals("redirect:/rejoindre?etape=experience", result.modelAndView?.viewName)
+        assertEquals("redirect:/join?step=experience", result.modelAndView?.viewName)
         assertEquals(complete.copy(firstName = "Roger"), pending())
     }
 
     @Test
     fun identityInvalid() {
         val result = mvc.perform(
-            post("/rejoindre/identite")
+            post("/join/identity")
                 .session(session)
                 .param("firstName", "")
                 .param("lastName", "R2D2")
@@ -283,8 +283,8 @@ class JoinControllerTest {
                 .param("whatsappNumber", "6 70"),
         ).andReturn()
 
-        assertEquals("rejoindre", result.modelAndView?.viewName)
-        assertEquals("identite", model(result)["step"])
+        assertEquals("join", result.modelAndView?.viewName)
+        assertEquals("identity", model(result)["step"])
         assertEquals(
             mapOf(
                 "firstName" to "Saisissez votre prénom.",
@@ -301,7 +301,7 @@ class JoinControllerTest {
 
     @Test
     fun identityMissingEverything() {
-        val result = mvc.perform(post("/rejoindre/identite").session(session)).andReturn()
+        val result = mvc.perform(post("/join/identity").session(session)).andReturn()
 
         assertEquals(
             mapOf(
@@ -319,32 +319,32 @@ class JoinControllerTest {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete)
 
         val result = mvc.perform(
-            post("/rejoindre/identite")
+            post("/join/identity")
                 .session(session)
-                .param("retour", "revue")
+                .param("returnTo", "review")
                 .param("firstName", "Ray")
                 .param("lastName", "Sponsible")
                 .param("email", "ray@gmail.com")
                 .param("whatsappNumber", "+237670000009"),
         ).andReturn()
 
-        assertEquals("redirect:/rejoindre?etape=revue", result.modelAndView?.viewName)
+        assertEquals("redirect:/join?step=review", result.modelAndView?.viewName)
         assertEquals("+237670000009", pending()?.whatsappNumber)
     }
 
     @Test
     fun identityReturningToIncompleteReview() {
         val result = mvc.perform(
-            post("/rejoindre/identite")
+            post("/join/identity")
                 .session(session)
-                .param("retour", "revue")
+                .param("returnTo", "review")
                 .param("firstName", "Ray")
                 .param("lastName", "Sponsible")
                 .param("email", "ray@gmail.com")
                 .param("whatsappNumber", "+237670000001"),
         ).andReturn()
 
-        assertEquals("redirect:/rejoindre?etape=experience", result.modelAndView?.viewName)
+        assertEquals("redirect:/join?step=experience", result.modelAndView?.viewName)
     }
 
     @Test
@@ -352,7 +352,7 @@ class JoinControllerTest {
         session.setAttribute(JoinedAgent.SESSION_ATTRIBUTE, JoinedAgent(email = "old@gmail.com"))
 
         mvc.perform(
-            post("/rejoindre/identite")
+            post("/join/identity")
                 .session(session)
                 .param("firstName", "Ray")
                 .param("lastName", "Sponsible")
@@ -363,20 +363,20 @@ class JoinControllerTest {
         assertNull(session.getAttribute(JoinedAgent.SESSION_ATTRIBUTE))
     }
 
-    // POST /rejoindre/experience
+    // POST /join/experience
 
     @Test
     fun experience() {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, identityOnly())
 
         val result = mvc.perform(
-            post("/rejoindre/experience")
+            post("/join/experience")
                 .session(session)
                 .param("experienceLevel", "SENIOR")
                 .param("agentType", "REAL_ESTATE_AGENT"),
         ).andReturn()
 
-        assertEquals("redirect:/rejoindre?etape=secteur", result.modelAndView?.viewName)
+        assertEquals("redirect:/join?step=area", result.modelAndView?.viewName)
         assertEquals(ExperienceLevel.SENIOR, pending()?.experienceLevel)
         assertEquals(AgentType.REAL_ESTATE_AGENT, pending()?.agentType)
     }
@@ -386,7 +386,7 @@ class JoinControllerTest {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, identityOnly())
 
         val result = mvc.perform(
-            post("/rejoindre/experience")
+            post("/join/experience")
                 .session(session)
                 .param("experienceLevel", "UNKNOWN"),
         ).andReturn()
@@ -405,30 +405,30 @@ class JoinControllerTest {
     @Test
     fun experienceBeforeIdentity() {
         val result = mvc.perform(
-            post("/rejoindre/experience")
+            post("/join/experience")
                 .session(session)
                 .param("experienceLevel", "SENIOR")
                 .param("agentType", "INDEPENDANT"),
         ).andReturn()
 
-        assertEquals("redirect:/rejoindre", result.modelAndView?.viewName)
+        assertEquals("redirect:/join", result.modelAndView?.viewName)
         assertNull(session.getAttribute(PendingJoin.SESSION_ATTRIBUTE))
     }
 
-    // POST /rejoindre/secteur
+    // POST /join/area
 
     @Test
     fun sector() {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete.copy(cityId = null, neighborhoodIds = emptyList()))
 
         val result = mvc.perform(
-            post("/rejoindre/secteur")
+            post("/join/area")
                 .session(session)
                 .param("cityId", YAOUNDE.toString())
                 .param("neighborhoodIds", "1003", "1004", "1003"),
         ).andReturn()
 
-        assertEquals("redirect:/rejoindre?etape=paiement", result.modelAndView?.viewName)
+        assertEquals("redirect:/join?step=payment", result.modelAndView?.viewName)
         assertEquals(YAOUNDE, pending()?.cityId)
         assertEquals(listOf(1003L, 1004L), pending()?.neighborhoodIds)
     }
@@ -437,9 +437,9 @@ class JoinControllerTest {
     fun sectorMissing() {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete)
 
-        val result = mvc.perform(post("/rejoindre/secteur").session(session)).andReturn()
+        val result = mvc.perform(post("/join/area").session(session)).andReturn()
 
-        assertEquals("secteur", model(result)["step"])
+        assertEquals("area", model(result)["step"])
         assertEquals(
             mapOf(
                 "cityId" to "Choisissez votre ville principale d'intervention.",
@@ -455,7 +455,7 @@ class JoinControllerTest {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete)
 
         val result = mvc.perform(
-            post("/rejoindre/secteur")
+            post("/join/area")
                 .session(session)
                 .param("cityId", YAOUNDE.toString())
                 .param("neighborhoodIds", "1001", "1002", "1003", "1004"),
@@ -488,7 +488,7 @@ class JoinControllerTest {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete)
 
         val result = mvc.perform(
-            post("/rejoindre/secteur")
+            post("/join/area")
                 .session(session)
                 .param("cityId", YAOUNDE.toString())
                 .param("neighborhoodIds", "1001", "2001"),
@@ -506,7 +506,7 @@ class JoinControllerTest {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete)
 
         val result = mvc.perform(
-            post("/rejoindre/secteur")
+            post("/join/area")
                 .session(session)
                 .param("cityId", YAOUNDE.toString())
                 .param("neighborhoodIds", "999"),
@@ -523,7 +523,7 @@ class JoinControllerTest {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete)
 
         val result = mvc.perform(
-            post("/rejoindre/secteur")
+            post("/join/area")
                 .session(session)
                 .param("cityId", YAOUNDE.toString())
                 .param("neighborhoodIds", DOUALA.toString()),
@@ -540,29 +540,29 @@ class JoinControllerTest {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, identityOnly())
 
         val result = mvc.perform(
-            post("/rejoindre/secteur")
+            post("/join/area")
                 .session(session)
                 .param("cityId", YAOUNDE.toString())
                 .param("neighborhoodIds", "1001"),
         ).andReturn()
 
-        assertEquals("redirect:/rejoindre?etape=experience", result.modelAndView?.viewName)
+        assertEquals("redirect:/join?step=experience", result.modelAndView?.viewName)
         assertEquals(identityOnly(), pending())
     }
 
-    // POST /rejoindre/paiement
+    // POST /join/payment
 
     @Test
     fun payment() {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete.copy(mobileMoneyNumber = null))
 
         val result = mvc.perform(
-            post("/rejoindre/paiement")
+            post("/join/payment")
                 .session(session)
                 .param("mobileMoneyNumber", "+237 6 70 00 00 05"),
         ).andReturn()
 
-        assertEquals("redirect:/rejoindre?etape=revue", result.modelAndView?.viewName)
+        assertEquals("redirect:/join?step=review", result.modelAndView?.viewName)
         assertEquals("+237670000005", pending()?.mobileMoneyNumber)
     }
 
@@ -571,13 +571,13 @@ class JoinControllerTest {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete.copy(mobileMoneyNumber = null))
 
         val result = mvc.perform(
-            post("/rejoindre/paiement")
+            post("/join/payment")
                 .session(session)
                 .param("sameAsWhatsapp", "true")
                 .param("mobileMoneyNumber", "+237699999999"),
         ).andReturn()
 
-        assertEquals("redirect:/rejoindre?etape=revue", result.modelAndView?.viewName)
+        assertEquals("redirect:/join?step=review", result.modelAndView?.viewName)
         assertEquals("+237670000001", pending()?.mobileMoneyNumber)
     }
 
@@ -587,12 +587,12 @@ class JoinControllerTest {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, pending)
 
         val result = mvc.perform(
-            post("/rejoindre/paiement")
+            post("/join/payment")
                 .session(session)
                 .param("sameAsWhatsapp", "true"),
         ).andReturn()
 
-        assertEquals("paiement", model(result)["step"])
+        assertEquals("payment", model(result)["step"])
         assertEquals(
             mapOf("mobileMoneyNumber" to "Saisissez un numéro Mobile Money camerounais. Exemple : 6 77 12 34 56"),
             model(result)["errors"],
@@ -604,7 +604,7 @@ class JoinControllerTest {
     fun paymentMissing() {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete.copy(mobileMoneyNumber = null))
 
-        val result = mvc.perform(post("/rejoindre/paiement").session(session)).andReturn()
+        val result = mvc.perform(post("/join/payment").session(session)).andReturn()
 
         assertEquals(mapOf("mobileMoneyNumber" to "Saisissez votre numéro Mobile Money."), model(result)["errors"])
     }
@@ -614,24 +614,24 @@ class JoinControllerTest {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete.copy(neighborhoodIds = emptyList()))
 
         val result = mvc.perform(
-            post("/rejoindre/paiement")
+            post("/join/payment")
                 .session(session)
                 .param("mobileMoneyNumber", "+237670000005"),
         ).andReturn()
 
-        assertEquals("redirect:/rejoindre?etape=secteur", result.modelAndView?.viewName)
+        assertEquals("redirect:/join?step=area", result.modelAndView?.viewName)
     }
 
-    // POST /rejoindre/revue
+    // POST /join/review
 
     @Test
     fun submit() {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete)
         doReturn(CreateAgentResponse(agentId = 42)).whenever(agentClient).create(any())
 
-        val result = mvc.perform(post("/rejoindre/revue").session(session)).andReturn()
+        val result = mvc.perform(post("/join/review").session(session)).andReturn()
 
-        assertEquals("redirect:/rejoindre?etape=confirmation", result.modelAndView?.viewName)
+        assertEquals("redirect:/join?step=confirmation", result.modelAndView?.viewName)
         val request = argumentCaptor<CreateAgentRequest>()
         verify(agentClient).create(request.capture())
         assertEquals(
@@ -656,9 +656,9 @@ class JoinControllerTest {
     fun submitIncomplete() {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete.copy(agentType = null))
 
-        val result = mvc.perform(post("/rejoindre/revue").session(session)).andReturn()
+        val result = mvc.perform(post("/join/review").session(session)).andReturn()
 
-        assertEquals("redirect:/rejoindre?etape=experience", result.modelAndView?.viewName)
+        assertEquals("redirect:/join?step=experience", result.modelAndView?.viewName)
         verify(agentClient, never()).create(any())
     }
 
@@ -667,9 +667,9 @@ class JoinControllerTest {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete)
         doThrow(conflict(ErrorCode.AGENT_ALREADY_EXISTS)).whenever(agentClient).create(any())
 
-        val result = mvc.perform(post("/rejoindre/revue").session(session)).andReturn()
+        val result = mvc.perform(post("/join/review").session(session)).andReturn()
 
-        assertEquals("revue", model(result)["step"])
+        assertEquals("review", model(result)["step"])
         assertEquals(true, model(result)["existingAccount"])
         assertEquals("Un compte utilise déjà cette adresse email.", model(result)["error"])
         assertEquals(complete, pending())
@@ -682,9 +682,9 @@ class JoinControllerTest {
         // No readable error body: the generic message.
         doThrow(HttpClientErrorException(HttpStatus.CONFLICT)).whenever(agentClient).create(any())
 
-        val result = mvc.perform(post("/rejoindre/revue").session(session)).andReturn()
+        val result = mvc.perform(post("/join/review").session(session)).andReturn()
 
-        assertEquals("revue", model(result)["step"])
+        assertEquals("review", model(result)["step"])
         assertEquals(false, model(result)["existingAccount"])
         assertEquals("Envoi impossible pour le moment. Réessayez dans quelques instants.", model(result)["error"])
         assertEquals(complete, pending())
@@ -694,13 +694,13 @@ class JoinControllerTest {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete)
 
         val result = mvc.perform(
-            post("/rejoindre/secteur")
+            post("/join/area")
                 .session(session)
                 .param("cityId", cityId.toString())
                 .param("neighborhoodIds", "1001"),
         ).andReturn()
 
-        assertEquals("secteur", model(result)["step"])
+        assertEquals("area", model(result)["step"])
         assertEquals(
             mapOf("cityId" to "Cette ville n'est pas proposée. Choisissez-en une dans la liste."),
             model(result)["errors"],

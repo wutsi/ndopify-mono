@@ -81,7 +81,7 @@ class KycControllerTest {
 
         assertEquals("kyc", result.modelAndView?.viewName)
         assertEquals("wizard", model(result)["view"])
-        assertEquals("recto", model(result)["step"])
+        assertEquals("front", model(result)["step"])
         assertEquals(1, model(result)["stepNumber"])
         assertEquals(4, model(result)["stepCount"])
         assertEquals(false, model(result)["returning"])
@@ -95,25 +95,25 @@ class KycControllerTest {
     fun `never skips a missing photo`() {
         given(case(images = listOf(front)))
 
-        val result = mvc.perform(get("/kyc?etape=revue").session(session)).andReturn()
+        val result = mvc.perform(get("/kyc?step=review").session(session)).andReturn()
 
-        assertEquals("verso", model(result)["step"])
+        assertEquals("back", model(result)["step"])
     }
 
     @Test
     fun `unknown step - first step`() {
         given(case(images = listOf(front, back, selfie)))
 
-        val result = mvc.perform(get("/kyc?etape=hack").session(session)).andReturn()
+        val result = mvc.perform(get("/kyc?step=hack").session(session)).andReturn()
 
-        assertEquals("recto", model(result)["step"])
+        assertEquals("front", model(result)["step"])
     }
 
     @Test
     fun `upload step shows its photo`() {
         given(case(images = listOf(front)))
 
-        val result = mvc.perform(get("/kyc?etape=recto").session(session)).andReturn()
+        val result = mvc.perform(get("/kyc?step=front").session(session)).andReturn()
 
         assertEquals(mapOf("FRONT" to "https://s3/img-front.jpg"), model(result)["photoUrls"])
     }
@@ -123,9 +123,9 @@ class KycControllerTest {
         given(case(images = listOf(front)))
         whenever(kycClient.imageUrl(any())).thenThrow(ResourceAccessException("timeout"))
 
-        val result = mvc.perform(get("/kyc?etape=recto").session(session)).andReturn()
+        val result = mvc.perform(get("/kyc?step=front").session(session)).andReturn()
 
-        assertEquals("recto", model(result)["step"])
+        assertEquals("front", model(result)["step"])
         assertEquals(emptyMap<String, String>(), model(result)["photoUrls"])
     }
 
@@ -133,9 +133,9 @@ class KycControllerTest {
     fun review() {
         given(case(images = listOf(front, back, selfie)))
 
-        val result = mvc.perform(get("/kyc?etape=revue").session(session)).andReturn()
+        val result = mvc.perform(get("/kyc?step=review").session(session)).andReturn()
 
-        assertEquals("revue", model(result)["step"])
+        assertEquals("review", model(result)["step"])
         assertEquals(4, model(result)["stepNumber"])
         assertEquals(
             mapOf("FRONT" to "https://s3/img-front.jpg", "BACK" to "https://s3/img-back.jpg", "SELFIE" to "https://s3/img-selfie.jpg"),
@@ -147,9 +147,9 @@ class KycControllerTest {
     fun `returning to the review`() {
         given(case(images = listOf(front, back, selfie)))
 
-        val result = mvc.perform(get("/kyc?etape=verso&retour=revue").session(session)).andReturn()
+        val result = mvc.perform(get("/kyc?step=back&returnTo=review").session(session)).andReturn()
 
-        assertEquals("verso", model(result)["step"])
+        assertEquals("back", model(result)["step"])
         assertEquals(true, model(result)["returning"])
     }
 
@@ -159,7 +159,7 @@ class KycControllerTest {
 
         val result = mvc.perform(get("/kyc").session(session)).andReturn()
 
-        assertEquals("recto", model(result)["step"])
+        assertEquals("front", model(result)["step"])
         verify(kycClient, never()).create(any())
     }
 
@@ -167,10 +167,10 @@ class KycControllerTest {
     fun `submitted - pending status`() {
         given(case(status = KycStatus.SUBMITTED, images = listOf(front, back, selfie)))
 
-        val result = mvc.perform(get("/kyc?etape=recto").session(session)).andReturn()
+        val result = mvc.perform(get("/kyc?step=front").session(session)).andReturn()
 
         assertEquals("status", model(result)["view"])
-        assertEquals("attente", model(result)["status"])
+        assertEquals("pending", model(result)["status"])
         verify(kycClient, never()).imageUrl(any())
     }
 
@@ -180,7 +180,7 @@ class KycControllerTest {
 
         val result = mvc.perform(get("/kyc").session(session)).andReturn()
 
-        assertEquals("verifie", model(result)["status"])
+        assertEquals("verified", model(result)["status"])
     }
 
     @Test
@@ -189,7 +189,7 @@ class KycControllerTest {
 
         val result = mvc.perform(get("/kyc").session(session)).andReturn()
 
-        assertEquals("rejete", model(result)["status"])
+        assertEquals("rejected", model(result)["status"])
         assertEquals("votre pièce d'identité n'a pas pu être validée.", model(result)["rejectionReason"])
     }
 
@@ -198,7 +198,7 @@ class KycControllerTest {
         given(case(status = KycStatus.SUBMITTED))
         session.setAttribute(SubmittedKyc.SESSION_ATTRIBUTE, SubmittedKyc(caseId = "case-1"))
 
-        val result = mvc.perform(get("/kyc?etape=confirmation").session(session)).andReturn()
+        val result = mvc.perform(get("/kyc?step=confirmation").session(session)).andReturn()
 
         assertEquals("confirmation", model(result)["view"])
     }
@@ -207,7 +207,7 @@ class KycControllerTest {
     fun `confirmation without a submission - status`() {
         given(case(status = KycStatus.SUBMITTED))
 
-        val result = mvc.perform(get("/kyc?etape=confirmation").session(session)).andReturn()
+        val result = mvc.perform(get("/kyc?step=confirmation").session(session)).andReturn()
 
         assertEquals("status", model(result)["view"])
     }
@@ -238,10 +238,10 @@ class KycControllerTest {
     fun `upload front - next step`() {
         given(case())
 
-        val result = mvc.perform(multipart("/kyc/recto").file(photo(jpeg)).session(session)).andReturn()
+        val result = mvc.perform(multipart("/kyc/front").file(photo(jpeg)).session(session)).andReturn()
 
         verify(kycClient).upload(eq("case-1"), eq(KycImageType.FRONT), eq(jpeg), eq("image/jpeg"))
-        assertEquals("redirect:/kyc?etape=verso", result.modelAndView?.viewName)
+        assertEquals("redirect:/kyc?step=back", result.modelAndView?.viewName)
     }
 
     @Test
@@ -251,35 +251,35 @@ class KycControllerTest {
         val result = mvc.perform(multipart("/kyc/selfie").file(photo(jpeg)).session(session)).andReturn()
 
         verify(kycClient).upload(eq("case-1"), eq(KycImageType.SELFIE), any(), eq("image/jpeg"))
-        assertEquals("redirect:/kyc?etape=revue", result.modelAndView?.viewName)
+        assertEquals("redirect:/kyc?step=review", result.modelAndView?.viewName)
     }
 
     @Test
     fun `replace a photo from the review - back to the review`() {
         given(case(images = listOf(front, back, selfie)))
 
-        val result = mvc.perform(multipart("/kyc/recto").file(photo(jpeg)).param("retour", "revue").session(session)).andReturn()
+        val result = mvc.perform(multipart("/kyc/front").file(photo(jpeg)).param("returnTo", "review").session(session)).andReturn()
 
-        assertEquals("redirect:/kyc?etape=revue", result.modelAndView?.viewName)
+        assertEquals("redirect:/kyc?step=review", result.modelAndView?.viewName)
     }
 
     @Test
     fun `no new file but the photo is already in - next step, nothing uploaded`() {
         given(case(images = listOf(front)))
 
-        val result = mvc.perform(multipart("/kyc/recto").session(session)).andReturn()
+        val result = mvc.perform(multipart("/kyc/front").session(session)).andReturn()
 
         verify(kycClient, never()).upload(any(), any(), any(), any())
-        assertEquals("redirect:/kyc?etape=verso", result.modelAndView?.viewName)
+        assertEquals("redirect:/kyc?step=back", result.modelAndView?.viewName)
     }
 
     @Test
     fun `no file - error`() {
         given(case())
 
-        val result = mvc.perform(multipart("/kyc/recto").session(session)).andReturn()
+        val result = mvc.perform(multipart("/kyc/front").session(session)).andReturn()
 
-        assertEquals("recto", model(result)["step"])
+        assertEquals("front", model(result)["step"])
         assertEquals("Ajoutez une photo pour continuer.", model(result)["error"])
     }
 
@@ -287,7 +287,7 @@ class KycControllerTest {
     fun `pdf sent as a jpeg - format error, nothing uploaded`() {
         given(case())
 
-        val result = mvc.perform(multipart("/kyc/recto").file(photo(pdf, "image/jpeg")).session(session)).andReturn()
+        val result = mvc.perform(multipart("/kyc/front").file(photo(pdf, "image/jpeg")).session(session)).andReturn()
 
         verify(kycClient, never()).upload(any(), any(), any(), any())
         assertEquals("Format non accepté. Utilisez une photo JPG, PNG ou WEBP.", model(result)["error"])
@@ -298,7 +298,7 @@ class KycControllerTest {
         given(case())
         val big = jpeg + ByteArray(KycRules.MAX_PHOTO_BYTES.toInt())
 
-        val result = mvc.perform(multipart("/kyc/recto").file(photo(big)).session(session)).andReturn()
+        val result = mvc.perform(multipart("/kyc/front").file(photo(big)).session(session)).andReturn()
 
         verify(kycClient, never()).upload(any(), any(), any(), any())
         assertEquals("Cette photo pèse 5,0 Mo. La taille maximale est de 5 Mo.", model(result)["error"])
@@ -320,7 +320,7 @@ class KycControllerTest {
         doReturn("case-new").whenever(kycClient).create(PARTY_ID)
         doReturn(KycCase(id = "case-new", status = KycStatus.PENDING)).whenever(kycClient).get("case-new")
 
-        mvc.perform(multipart("/kyc/recto").file(photo(jpeg)).session(session)).andReturn()
+        mvc.perform(multipart("/kyc/front").file(photo(jpeg)).session(session)).andReturn()
 
         verify(kycClient).upload(eq("case-new"), eq(KycImageType.FRONT), any(), any())
     }
@@ -329,7 +329,7 @@ class KycControllerTest {
     fun `case already submitted - status, nothing uploaded`() {
         given(case(status = KycStatus.SUBMITTED))
 
-        val result = mvc.perform(multipart("/kyc/recto").file(photo(jpeg)).session(session)).andReturn()
+        val result = mvc.perform(multipart("/kyc/front").file(photo(jpeg)).session(session)).andReturn()
 
         verify(kycClient, never()).upload(any(), any(), any(), any())
         verify(kycClient, never()).create(any())
@@ -341,7 +341,7 @@ class KycControllerTest {
         given(case())
         doThrow(serverError(ErrorCode.KYC_CASE_NOT_PENDING)).whenever(kycClient).upload(any(), any(), any(), any())
 
-        val result = mvc.perform(multipart("/kyc/recto").file(photo(jpeg)).session(session)).andReturn()
+        val result = mvc.perform(multipart("/kyc/front").file(photo(jpeg)).session(session)).andReturn()
 
         assertEquals("redirect:/kyc", result.modelAndView?.viewName)
     }
@@ -351,9 +351,9 @@ class KycControllerTest {
         given(case())
         doThrow(serverError("unexpected")).whenever(kycClient).upload(any(), any(), any(), any())
 
-        val result = mvc.perform(multipart("/kyc/recto").file(photo(jpeg)).session(session)).andReturn()
+        val result = mvc.perform(multipart("/kyc/front").file(photo(jpeg)).session(session)).andReturn()
 
-        assertEquals("recto", model(result)["step"])
+        assertEquals("front", model(result)["step"])
         assertEquals("Envoi impossible pour le moment. Réessayez dans quelques instants.", model(result)["error"])
     }
 
@@ -362,9 +362,9 @@ class KycControllerTest {
         given(case())
         doThrow(HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR)).whenever(kycClient).upload(any(), any(), any(), any())
 
-        val result = mvc.perform(multipart("/kyc/recto").file(photo(jpeg)).session(session)).andReturn()
+        val result = mvc.perform(multipart("/kyc/front").file(photo(jpeg)).session(session)).andReturn()
 
-        assertEquals("recto", model(result)["step"])
+        assertEquals("front", model(result)["step"])
         assertEquals("Envoi impossible pour le moment. Réessayez dans quelques instants.", model(result)["error"])
     }
 
@@ -373,9 +373,9 @@ class KycControllerTest {
         given(case())
         doThrow(ResourceAccessException("timeout")).whenever(kycClient).upload(any(), any(), any(), any())
 
-        val result = mvc.perform(multipart("/kyc/recto").file(photo(jpeg)).session(session)).andReturn()
+        val result = mvc.perform(multipart("/kyc/front").file(photo(jpeg)).session(session)).andReturn()
 
-        assertEquals("recto", model(result)["step"])
+        assertEquals("front", model(result)["step"])
         assertEquals("Envoi impossible pour le moment. Réessayez dans quelques instants.", model(result)["error"])
     }
 
@@ -384,9 +384,9 @@ class KycControllerTest {
         given(case(images = listOf(front, back, selfie)))
         doThrow(HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR)).whenever(kycClient).submit(any())
 
-        val result = mvc.perform(post("/kyc/revue").session(session)).andReturn()
+        val result = mvc.perform(post("/kyc/review").session(session)).andReturn()
 
-        assertEquals("revue", model(result)["step"])
+        assertEquals("review", model(result)["step"])
         assertEquals("Envoi impossible pour le moment. Réessayez dans quelques instants.", model(result)["error"])
         assertNull(session.getAttribute(SubmittedKyc.SESSION_ATTRIBUTE))
     }
@@ -395,7 +395,7 @@ class KycControllerTest {
     fun `upload without party - signed out`() {
         doReturn(null).whenever(currentParty).get()
 
-        val result = mvc.perform(multipart("/kyc/recto").file(photo(jpeg)).session(session)).andReturn()
+        val result = mvc.perform(multipart("/kyc/front").file(photo(jpeg)).session(session)).andReturn()
 
         assertEquals("redirect:/logout", result.modelAndView?.viewName)
     }
@@ -404,10 +404,10 @@ class KycControllerTest {
     fun submit() {
         given(case(images = listOf(front, back, selfie)))
 
-        val result = mvc.perform(post("/kyc/revue").session(session)).andReturn()
+        val result = mvc.perform(post("/kyc/review").session(session)).andReturn()
 
         verify(kycClient).submit("case-1")
-        assertEquals("redirect:/kyc?etape=confirmation", result.modelAndView?.viewName)
+        assertEquals("redirect:/kyc?step=confirmation", result.modelAndView?.viewName)
         assertEquals(SubmittedKyc(caseId = "case-1"), session.getAttribute(SubmittedKyc.SESSION_ATTRIBUTE))
     }
 
@@ -415,10 +415,10 @@ class KycControllerTest {
     fun `submit with a missing photo - back to it`() {
         given(case(images = listOf(front, back)))
 
-        val result = mvc.perform(post("/kyc/revue").session(session)).andReturn()
+        val result = mvc.perform(post("/kyc/review").session(session)).andReturn()
 
         verify(kycClient, never()).submit(any())
-        assertEquals("redirect:/kyc?etape=selfie", result.modelAndView?.viewName)
+        assertEquals("redirect:/kyc?step=selfie", result.modelAndView?.viewName)
     }
 
     @Test
@@ -426,7 +426,7 @@ class KycControllerTest {
         given(case(images = listOf(front, back, selfie)))
         doThrow(serverError(ErrorCode.KYC_CASE_NOT_PENDING)).whenever(kycClient).submit(any())
 
-        val result = mvc.perform(post("/kyc/revue").session(session)).andReturn()
+        val result = mvc.perform(post("/kyc/review").session(session)).andReturn()
 
         assertEquals("redirect:/kyc", result.modelAndView?.viewName)
         assertNull(session.getAttribute(SubmittedKyc.SESSION_ATTRIBUTE))
@@ -436,7 +436,7 @@ class KycControllerTest {
     fun `submit a case that is no longer pending - status`() {
         given(case(status = KycStatus.SUBMITTED, images = listOf(front, back, selfie)))
 
-        val result = mvc.perform(post("/kyc/revue").session(session)).andReturn()
+        val result = mvc.perform(post("/kyc/review").session(session)).andReturn()
 
         verify(kycClient, never()).submit(any())
         assertEquals("redirect:/kyc", result.modelAndView?.viewName)
@@ -447,9 +447,9 @@ class KycControllerTest {
         given(case(images = listOf(front, back, selfie)))
         doThrow(serverError(ErrorCode.KYC_CASE_MISSING_IDENTIFICATION_IMAGE)).whenever(kycClient).submit(any())
 
-        val result = mvc.perform(post("/kyc/revue").session(session)).andReturn()
+        val result = mvc.perform(post("/kyc/review").session(session)).andReturn()
 
-        assertEquals("revue", model(result)["step"])
+        assertEquals("review", model(result)["step"])
         assertEquals(
             "Il manque une ou plusieurs photos. Ajoutez-les pour pouvoir envoyer votre dossier.",
             model(result)["error"],
@@ -460,7 +460,7 @@ class KycControllerTest {
     fun `restart a rejected case - new case`() {
         given(case(status = KycStatus.REJECTED))
 
-        val result = mvc.perform(post("/kyc/recommencer").session(session)).andReturn()
+        val result = mvc.perform(post("/kyc/restart").session(session)).andReturn()
 
         verify(kycClient).create(PARTY_ID)
         assertEquals("redirect:/kyc", result.modelAndView?.viewName)
@@ -470,7 +470,7 @@ class KycControllerTest {
     fun `restart a pending case - nothing created`() {
         given(case(status = KycStatus.PENDING))
 
-        mvc.perform(post("/kyc/recommencer").session(session)).andReturn()
+        mvc.perform(post("/kyc/restart").session(session)).andReturn()
 
         verify(kycClient, never()).create(any())
     }
@@ -479,7 +479,7 @@ class KycControllerTest {
     fun `restart a verified case - nothing created`() {
         given(case(status = KycStatus.VERIFIED))
 
-        mvc.perform(post("/kyc/recommencer").session(session)).andReturn()
+        mvc.perform(post("/kyc/restart").session(session)).andReturn()
 
         verify(kycClient, never()).create(any())
     }
@@ -488,17 +488,17 @@ class KycControllerTest {
     fun `submit without party - signed out`() {
         doReturn(null).whenever(currentParty).get()
 
-        assertEquals("redirect:/logout", mvc.perform(post("/kyc/revue").session(session)).andReturn().modelAndView?.viewName)
-        assertEquals("redirect:/logout", mvc.perform(post("/kyc/recommencer").session(session)).andReturn().modelAndView?.viewName)
+        assertEquals("redirect:/logout", mvc.perform(post("/kyc/review").session(session)).andReturn().modelAndView?.viewName)
+        assertEquals("redirect:/logout", mvc.perform(post("/kyc/restart").session(session)).andReturn().modelAndView?.viewName)
     }
 
     @Test
     fun `photo over the upload limit - size error on its step`() {
         given(case(images = listOf(front)))
 
-        val result = mvc.perform(get("/kyc?etape=verso&erreur=taille").session(session)).andReturn()
+        val result = mvc.perform(get("/kyc?step=back&error=too-large").session(session)).andReturn()
 
-        assertEquals("verso", model(result)["step"])
+        assertEquals("back", model(result)["step"])
         assertEquals("Cette photo dépasse la taille maximale de 5 Mo.", model(result)["error"])
     }
 }

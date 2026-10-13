@@ -19,12 +19,12 @@ class KycRulesTest {
         assertNull(KycRules.status(null))
         assertNull(KycRules.status(KycCase(status = KycStatus.PENDING)))
         assertNull(KycRules.status(KycCase(status = KycStatus.CANCELLED)))
-        assertEquals("attente", KycRules.status(KycCase(status = KycStatus.SUBMITTED)))
-        assertEquals("attente", KycRules.status(KycCase(status = KycStatus.IN_PROGRESS)))
-        assertEquals("attente", KycRules.status(KycCase(status = KycStatus.REQUIRES_MANUAL_REVIEW)))
-        assertEquals("attente", KycRules.status(KycCase(status = KycStatus.UNKNOWN)))
-        assertEquals("verifie", KycRules.status(KycCase(status = KycStatus.VERIFIED)))
-        assertEquals("rejete", KycRules.status(KycCase(status = KycStatus.REJECTED)))
+        assertEquals("pending", KycRules.status(KycCase(status = KycStatus.SUBMITTED)))
+        assertEquals("pending", KycRules.status(KycCase(status = KycStatus.IN_PROGRESS)))
+        assertEquals("pending", KycRules.status(KycCase(status = KycStatus.REQUIRES_MANUAL_REVIEW)))
+        assertEquals("pending", KycRules.status(KycCase(status = KycStatus.UNKNOWN)))
+        assertEquals("verified", KycRules.status(KycCase(status = KycStatus.VERIFIED)))
+        assertEquals("rejected", KycRules.status(KycCase(status = KycStatus.REJECTED)))
     }
 
     @Test
@@ -38,11 +38,11 @@ class KycRulesTest {
 
     @Test
     fun firstIncompleteStep() {
-        assertEquals("recto", KycRules.firstIncompleteStep(emptySet()))
-        assertEquals("verso", KycRules.firstIncompleteStep(setOf(KycImageType.FRONT)))
-        assertEquals("recto", KycRules.firstIncompleteStep(setOf(KycImageType.BACK, KycImageType.SELFIE)))
+        assertEquals("front", KycRules.firstIncompleteStep(emptySet()))
+        assertEquals("back", KycRules.firstIncompleteStep(setOf(KycImageType.FRONT)))
+        assertEquals("front", KycRules.firstIncompleteStep(setOf(KycImageType.BACK, KycImageType.SELFIE)))
         assertEquals("selfie", KycRules.firstIncompleteStep(setOf(KycImageType.FRONT, KycImageType.BACK)))
-        assertEquals("revue", KycRules.firstIncompleteStep(setOf(KycImageType.FRONT, KycImageType.BACK, KycImageType.SELFIE)))
+        assertEquals("review", KycRules.firstIncompleteStep(setOf(KycImageType.FRONT, KycImageType.BACK, KycImageType.SELFIE)))
     }
 
     @Test

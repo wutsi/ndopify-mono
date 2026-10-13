@@ -18,17 +18,17 @@
     <link href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/css/intlTelInput.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/rejoindre.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/join.css}">
     <script defer src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/js/intlTelInput.min.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.iife.js"></script>
     <script defer th:src="@{/assets/js/util.js}"></script>
-    <script defer th:src="@{/assets/js/rejoindre.js}"></script>
+    <script defer th:src="@{/assets/js/join.js}"></script>
 </head>
 <!--/*
   One page, five steps then the confirmation: JoinController picks the step (model attribute "step") and only renders
-  that one. Each step is its own form, posted to /rejoindre/{step}; the answers live in the HTTP session, so a step's
+  that one. Each step is its own form, posted to /join/{step}; the answers live in the HTTP session, so a step's
   fields are pre-filled from "answers" and its errors come from "errors" (field name → message).
-  Without JavaScript every step still works, except that the neighbourhoods of a city are loaded by rejoindre.js
+  Without JavaScript every step still works, except that the neighbourhoods of a city are loaded by join.js
   (slim-select, GET /locations) — see data-locations-url.
 */-->
 <body data-page="join">
@@ -60,11 +60,11 @@
 
             <h2 class="visually-hidden" data-steps-title>Étapes du formulaire</h2>
 
-            <!--/* Step 1: identite (POST /rejoindre/identite) */-->
-            <form class="form" data-join-form method="post" novalidate th:action="@{/rejoindre/identite}"
-                  th:if="${step == 'identite'}">
-                <input name="retour" th:if="${returning}" type="hidden" value="revue">
-                <fieldset class="step" data-step="identite" tabindex="-1">
+            <!--/* Step 1: identity (POST /join/identity) */-->
+            <form class="form" data-join-form method="post" novalidate th:action="@{/join/identity}"
+                  th:if="${step == 'identity'}">
+                <input name="returnTo" th:if="${returning}" type="hidden" value="review">
+                <fieldset class="step" data-step="identity" tabindex="-1">
                     <legend class="visually-hidden" th:text="|Étape ${stepNumber} sur ${stepCount} : vos coordonnées|">
                         Étape 1 sur 5 : vos coordonnées</legend>
                     <h3 aria-hidden="true">Parlez-nous de vous</h3>
@@ -114,7 +114,7 @@
                     </div>
                     <div class="field">
                         <label class="field__label" for="whatsappNumber">Numéro WhatsApp</label>
-                        <!--/* E.164 ("+237677123456"): rejoindre.js (intl-tel-input) formats and converts it. */-->
+                        <!--/* E.164 ("+237677123456"): join.js (intl-tel-input) formats and converts it. */-->
                         <input aria-describedby="whatsappNumber-error" autocomplete="tel" class="input"
                                id="whatsappNumber" name="whatsappNumber" required
                                th:attr="aria-invalid=${errors['whatsappNumber'] != null ? 'true' : null}"
@@ -157,7 +157,7 @@
                     </div>
                     <div class="form__actions">
                         <a class="btn btn--outline" data-prev
-                           th:href="${returning} ? @{/rejoindre(etape='revue')} : @{/login}">Précédent</a>
+                           th:href="${returning} ? @{/join(step='review')} : @{/login}">Précédent</a>
                         <button aria-describedby="identity-hint" class="btn btn--primary" data-next
                                 th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
                         </button>
@@ -165,10 +165,10 @@
                 </fieldset>
             </form>
 
-            <!--/* Step 2: experience (POST /rejoindre/experience) */-->
-            <form class="form" data-join-form method="post" novalidate th:action="@{/rejoindre/experience}"
+            <!--/* Step 2: experience (POST /join/experience) */-->
+            <form class="form" data-join-form method="post" novalidate th:action="@{/join/experience}"
                   th:if="${step == 'experience'}">
-                <input name="retour" th:if="${returning}" type="hidden" value="revue">
+                <input name="returnTo" th:if="${returning}" type="hidden" value="review">
                 <fieldset class="step" data-step="experience" tabindex="-1">
                     <legend class="visually-hidden"
                             th:text="|Étape ${stepNumber} sur ${stepCount} : votre expérience|">
@@ -236,7 +236,7 @@
                     </div>
                     <div class="form__actions">
                         <a class="btn btn--outline" data-prev
-                           th:href="${returning} ? @{/rejoindre(etape='revue')} : @{/rejoindre}">Précédent</a>
+                           th:href="${returning} ? @{/join(step='review')} : @{/join}">Précédent</a>
                         <button aria-describedby="experience-hint" class="btn btn--primary" data-next
                                 th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
                         </button>
@@ -244,11 +244,11 @@
                 </fieldset>
             </form>
 
-            <!--/* Step 3: secteur (POST /rejoindre/secteur) */-->
-            <form class="form" data-join-form method="post" novalidate th:action="@{/rejoindre/secteur}"
-                  th:attr="data-locations-url=@{/locations}" th:if="${step == 'secteur'}">
-                <input name="retour" th:if="${returning}" type="hidden" value="revue">
-                <fieldset class="step" data-step="secteur" tabindex="-1">
+            <!--/* Step 3: area (POST /join/area) */-->
+            <form class="form" data-join-form method="post" novalidate th:action="@{/join/area}"
+                  th:attr="data-locations-url=@{/locations}" th:if="${step == 'area'}">
+                <input name="returnTo" th:if="${returning}" type="hidden" value="review">
+                <fieldset class="step" data-step="area" tabindex="-1">
                     <legend class="visually-hidden"
                             th:text="|Étape ${stepNumber} sur ${stepCount} : votre zone d'intervention|">
                         Étape 3 sur 5 : votre zone d'intervention</legend>
@@ -256,7 +256,7 @@
                     <p>Les visites vous sont proposées dans les quartiers que vous connaissez.</p>
                     <div class="field">
                         <label class="field__label" for="cityId">Ville principale d'intervention</label>
-                        <!--/* Only the chosen city is rendered: rejoindre.js searches the others (GET /locations?q=). */-->
+                        <!--/* Only the chosen city is rendered: join.js searches the others (GET /locations?q=). */-->
                         <select aria-describedby="cityId-error" class="input select" id="cityId" name="cityId" required
                                 th:attr="aria-invalid=${errors['cityId'] != null ? 'true' : null}">
                             <option data-placeholder="true" value="">Choisissez une ville</option>
@@ -276,7 +276,7 @@
                     <div class="field" data-group="neighborhoodIds" th:hidden="${city == null}">
                         <label class="field__label" for="neighborhoodIds">Quartiers que vous connaissez le mieux
                             <span class="field__optional">(1&nbsp;à&nbsp;3)</span></label>
-                        <!--/* Only the chosen neighbourhoods are rendered: rejoindre.js loads the city's others. */-->
+                        <!--/* Only the chosen neighbourhoods are rendered: join.js loads the city's others. */-->
                         <select aria-describedby="neighborhood-counter neighborhoodIds-error" class="input select"
                                 id="neighborhoodIds" multiple name="neighborhoodIds"
                                 th:attr="aria-invalid=${errors['neighborhoodIds'] != null ? 'true' : null}">
@@ -311,7 +311,7 @@
                     </div>
                     <div class="form__actions">
                         <a class="btn btn--outline" data-prev
-                           th:href="${returning} ? @{/rejoindre(etape='revue')} : @{/rejoindre(etape='experience')}">Précédent</a>
+                           th:href="${returning} ? @{/join(step='review')} : @{/join(step='experience')}">Précédent</a>
                         <button aria-describedby="sector-hint" class="btn btn--primary" data-next
                                 th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
                         </button>
@@ -319,11 +319,11 @@
                 </fieldset>
             </form>
 
-            <!--/* Step 4: paiement (POST /rejoindre/paiement) */-->
-            <form class="form" data-join-form method="post" novalidate th:action="@{/rejoindre/paiement}"
-                  th:if="${step == 'paiement'}">
-                <input name="retour" th:if="${returning}" type="hidden" value="revue">
-                <fieldset class="step" data-step="paiement" tabindex="-1">
+            <!--/* Step 4: payment (POST /join/payment) */-->
+            <form class="form" data-join-form method="post" novalidate th:action="@{/join/payment}"
+                  th:if="${step == 'payment'}">
+                <input name="returnTo" th:if="${returning}" type="hidden" value="review">
+                <fieldset class="step" data-step="payment" tabindex="-1">
                     <legend class="visually-hidden"
                             th:text="|Étape ${stepNumber} sur ${stepCount} : votre numéro Mobile Money|">
                         Étape 4 sur 5 : votre numéro Mobile Money</legend>
@@ -331,7 +331,7 @@
                     <p>Ndopify vous paie directement sur votre compte Mobile Money.</p>
                     <div class="field">
                         <label class="field__label" for="mobileMoneyNumber">Numéro Mobile Money</label>
-                        <!--/* E.164, Cameroonian only (+237): rejoindre.js locks intl-tel-input to Cameroon. */-->
+                        <!--/* E.164, Cameroonian only (+237): join.js locks intl-tel-input to Cameroon. */-->
                         <input aria-describedby="mobileMoneyNumber-error" autocomplete="tel" class="input"
                                id="mobileMoneyNumber" name="mobileMoneyNumber" required
                                th:attr="aria-invalid=${errors['mobileMoneyNumber'] != null ? 'true' : null}"
@@ -381,7 +381,7 @@
                     </div>
                     <div class="form__actions">
                         <a class="btn btn--outline" data-prev
-                           th:href="${returning} ? @{/rejoindre(etape='revue')} : @{/rejoindre(etape='secteur')}">Précédent</a>
+                           th:href="${returning} ? @{/join(step='review')} : @{/join(step='area')}">Précédent</a>
                         <button aria-describedby="payment-hint" class="btn btn--primary" data-next
                                 th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
                         </button>
@@ -389,10 +389,10 @@
                 </fieldset>
             </form>
 
-            <!--/* Step 5: revue (POST /rejoindre/revue) — only reachable once every answer is in the session */-->
-            <form class="form" data-join-form method="post" novalidate th:action="@{/rejoindre/revue}"
-                  th:if="${step == 'revue'}">
-                <fieldset class="step" data-step="revue" tabindex="-1">
+            <!--/* Step 5: review (POST /join/review) — only reachable once every answer is in the session */-->
+            <form class="form" data-join-form method="post" novalidate th:action="@{/join/review}"
+                  th:if="${step == 'review'}">
+                <fieldset class="step" data-step="review" tabindex="-1">
                     <legend class="visually-hidden"
                             th:text="|Étape ${stepNumber} sur ${stepCount} : revue de votre candidature|">
                         Étape 5 sur 5 : revue de votre candidature</legend>
@@ -408,7 +408,7 @@
                             </dd>
                             <dd class="review__value">
                                 <a class="link-button review__edit"
-                                   th:href="@{/rejoindre(etape='identite', retour='revue')}">Modifier<span
+                                   th:href="@{/join(step='identity', returnTo='review')}">Modifier<span
                                         class="visually-hidden"> votre nom</span></a>
                             </dd>
                         </div>
@@ -419,7 +419,7 @@
                             </dd>
                             <dd class="review__value">
                                 <a class="link-button review__edit"
-                                   th:href="@{/rejoindre(etape='identite', retour='revue')}">Modifier<span
+                                   th:href="@{/join(step='identity', returnTo='review')}">Modifier<span
                                         class="visually-hidden"> votre adresse email</span></a>
                             </dd>
                         </div>
@@ -431,7 +431,7 @@
                             </dd>
                             <dd class="review__value">
                                 <a class="link-button review__edit"
-                                   th:href="@{/rejoindre(etape='identite', retour='revue')}">Modifier<span
+                                   th:href="@{/join(step='identity', returnTo='review')}">Modifier<span
                                         class="visually-hidden"> votre numéro WhatsApp</span></a>
                             </dd>
                         </div>
@@ -442,7 +442,7 @@
                             </dd>
                             <dd class="review__value">
                                 <a class="link-button review__edit"
-                                   th:href="@{/rejoindre(etape='experience', retour='revue')}">Modifier<span
+                                   th:href="@{/join(step='experience', returnTo='review')}">Modifier<span
                                         class="visually-hidden"> votre expérience</span></a>
                             </dd>
                         </div>
@@ -453,7 +453,7 @@
                             </dd>
                             <dd class="review__value">
                                 <a class="link-button review__edit"
-                                   th:href="@{/rejoindre(etape='experience', retour='revue')}">Modifier<span
+                                   th:href="@{/join(step='experience', returnTo='review')}">Modifier<span
                                         class="visually-hidden"> votre statut</span></a>
                             </dd>
                         </div>
@@ -464,7 +464,7 @@
                             </dd>
                             <dd class="review__value">
                                 <a class="link-button review__edit"
-                                   th:href="@{/rejoindre(etape='secteur', retour='revue')}">Modifier<span
+                                   th:href="@{/join(step='area', returnTo='review')}">Modifier<span
                                         class="visually-hidden"> votre ville</span></a>
                             </dd>
                         </div>
@@ -476,7 +476,7 @@
                             </dd>
                             <dd class="review__value">
                                 <a class="link-button review__edit"
-                                   th:href="@{/rejoindre(etape='secteur', retour='revue')}">Modifier<span
+                                   th:href="@{/join(step='area', returnTo='review')}">Modifier<span
                                         class="visually-hidden"> vos quartiers</span></a>
                             </dd>
                         </div>
@@ -488,7 +488,7 @@
                             </dd>
                             <dd class="review__value">
                                 <a class="link-button review__edit"
-                                   th:href="@{/rejoindre(etape='paiement', retour='revue')}">Modifier<span
+                                   th:href="@{/join(step='payment', returnTo='review')}">Modifier<span
                                         class="visually-hidden"> votre numéro Mobile Money</span></a>
                             </dd>
                         </div>
@@ -504,7 +504,7 @@
                         <div>
                             <p class="alert__title" th:text="${error}">Envoi impossible pour le moment.</p>
                             <p th:if="${existingAccount == true}"><a th:href="@{/login}">Connectez-vous à votre
-                                espace</a>, ou <a th:href="@{/rejoindre(etape='identite', retour='revue')}">utilisez
+                                espace</a>, ou <a th:href="@{/join(step='identity', returnTo='review')}">utilisez
                                 une autre adresse email</a>.</p>
                         </div>
                     </div>
@@ -523,7 +523,7 @@
                     </div>
 
                     <div class="form__actions">
-                        <a class="btn btn--outline" data-prev th:href="@{/rejoindre(etape='paiement')}">Précédent</a>
+                        <a class="btn btn--outline" data-prev th:href="@{/join(step='payment')}">Précédent</a>
                         <button aria-describedby="review-hint" class="btn btn--primary" data-submit type="submit">
                             Envoyer ma candidature
                         </button>

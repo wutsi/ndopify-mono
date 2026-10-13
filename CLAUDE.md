@@ -172,35 +172,35 @@ Package `com.wutsi.ndopify.npc`: `ui/` (MVC controllers + Thymeleaf templates in
 `client/` (REST clients for `ndopify-server` and their interceptors), `service/` (tenant + security), `config/`.
 
 - Sign-in is e-mail + one-time code on a single page, `templates/login.html` (`LoginController`: `/login` →
-  `/login?etape=code` → `/login/verify`). The code step is only shown while a `PendingLogin` (e-mail + expiry) is in
+  `/login?step=code` → `/login/verify`). The code step is only shown while a `PendingLogin` (e-mail + expiry) is in
   the HTTP session, and verify reads the e-mail from there, not from the form. It calls
   `/v1/otp` then `/v1/auth` with `AuthType.OTP` and `ApplicationCode.PARTNER_CENTRAL`. The JWT is kept in the
   HTTP-only `__npc_access_token` cookie (`AccessTokenService`) and decoded by `JwtAuthenticationFilter`; everything
-  except `/assets/**`, `/login/**`, `/error`, `/locations/**`, `/rejoindre/**` requires authentication. `/logout` clears the cookie and session.
+  except `/assets/**`, `/login/**`, `/error`, `/locations/**`, `/join/**` requires authentication. `/logout` clears the cookie and session.
 - Tenant is resolved by `TenantContext` matching the request URL against each active tenant's `partnerCentralUrl`
   (from `GET /v1/tenants`).
 - `RestConfiguration` adds logging, `Authorization` and `X-Tenant-ID` interceptors to every Spring-built
   `RestClient`. `NdTenantClient` uses a plain `RestTemplate` instead, since tenants are global.
 - Sign-up is the *Rejoindre Ndopify* wizard (`JoinController`, `ui/join/`), built like the login: one page
-  (`rejoindre`), five steps (`identite` → `experience` → `secteur` → `paiement` → `revue`), `GET /rejoindre?etape=…`
-  shows a step and `POST /rejoindre/{step}` validates it (`JoinRules`) into the session's `PendingJoin`. A step only
+  (`join`), five steps (`identity` → `experience` → `area` → `payment` → `review`), `GET /join?step=…`
+  shows a step and `POST /join/{step}` validates it (`JoinRules`) into the session's `PendingJoin`. A step only
   opens once all earlier ones are complete; the review submits the session (`POST /v1/agents`), never the page. The
-  `templates/rejoindre.html` renders only the current step (each its own `<form>`), pre-filled from `answers`, with
-  `errors` per field; `JoinTemplateTest` renders it with a real Thymeleaf engine. `public/assets/js/rejoindre.js`
+  `templates/join.html` renders only the current step (each its own `<form>`), pre-filled from `answers`, with
+  `errors` per field; `JoinTemplateTest` renders it with a real Thymeleaf engine. `public/assets/js/join.js`
   only enhances fields (slim-select city type-ahead and neighbourhoods over `/locations`, intl-tel-input posting
   E.164 through a hidden input, "same as WhatsApp"); every step still posts without it. `src/main/html/` (pages and
   assets, incl. the client-side wizard `rejoindre.js`) is the prototype: never serve it, and never delete or "clean
-  up" anything in it. The login page links to `/rejoindre`.
+  up" anything in it. The login page links to `/join`.
 - `LocationController` (`GET /locations`) is a public JSON proxy to `GET /v1/locations` for the city/neighbourhood
   dropdowns (slim-select): same query parameters, but only `CITY`/`NEIGHBORHOOD`, country forced to the tenant's,
-  `limit` capped. Used by `rejoindre.js` on the wizard's sector step.
-- KYC is `KycController` (`ui/kyc/`), one page (`templates/kyc.html`) that login redirects to. Wizard steps `recto` →
-  `verso` → `selfie` → `revue`: `GET /kyc?etape=…` shows a step (never past the first photo the case lacks) and
+  `limit` capped. Used by `join.js` on the wizard's area step.
+- KYC is `KycController` (`ui/kyc/`), one page (`templates/kyc.html`) that login redirects to. Wizard steps `front` →
+  `back` → `selfie` → `review`: `GET /kyc?step=…` shows a step (never past the first photo the case lacks) and
   `POST /kyc/{step}` uploads that photo straight to the agent's PENDING case (`NdKycClient`), so the case is the
-  state and the session holds no photos; `POST /kyc/revue` submits it. The party is found by looking up the
+  state and the session holds no photos; `POST /kyc/review` submits it. The party is found by looking up the
   signed-in user (`CurrentParty` → `GET /v1/users/{id}`) and taking its newest case (`GET /v1/kyc/cases`, newest
-  first). Once the case is no longer PENDING the page is a status view (`?etape=confirmation` right after
-  submitting); `POST /kyc/recommencer` opens a new case after a rejection. A user with no party goes to `/logout`.
+  first). Once the case is no longer PENDING the page is a status view (`?step=confirmation` right after
+  submitting); `POST /kyc/restart` opens a new case after a rejection. A user with no party goes to `/logout`.
   Photos are sniffed with Tika (`tika-core`) and capped at 5 Mo (`KycUploadErrorHandler` catches the multipart
   limit). `public/assets/js/kyc.js` only enhances (shrinks photos, in-page selfie camera); every step posts without it.
 - `src/main/html/` holds static mockups generated by the `/init-partner-central` command; the served pages are the

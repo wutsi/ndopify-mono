@@ -157,7 +157,7 @@
 }
 
 /*
- * City and neighbourhoods: slim-select (rejoindre.js › slimSelect). The library replaces the <select> with its
+ * City and neighbourhoods: slim-select (join.js › slimSelect). The library replaces the <select> with its
  * own combobox (.ss-main) and dropdown (.ss-content); these rules give them the look of .input / .select.
  */
 .ss-main,

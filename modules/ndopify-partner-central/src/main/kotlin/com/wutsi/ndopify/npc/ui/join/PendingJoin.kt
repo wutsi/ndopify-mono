@@ -36,7 +36,7 @@ data class PendingJoin(
         JoinController.STEP_EXPERIENCE ->
             JoinRules.experienceLevel(experienceLevel) == null && JoinRules.agentType(agentType) == null
 
-        JoinController.STEP_SECTOR ->
+        JoinController.STEP_AREA ->
             JoinRules.cityId(cityId) == null && JoinRules.neighborhoodIds(neighborhoodIds) == null
 
         JoinController.STEP_PAYMENT -> JoinRules.mobileMoneyNumber(mobileMoneyNumber) == null

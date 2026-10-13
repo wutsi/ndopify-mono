@@ -9,10 +9,10 @@ import java.util.Locale
 
 /** Rules of the identity verification page (`kyc.html`), kept free of HTTP so they can be tested on their own. */
 object KycRules {
-    const val STEP_FRONT = "recto"
-    const val STEP_BACK = "verso"
+    const val STEP_FRONT = "front"
+    const val STEP_BACK = "back"
     const val STEP_SELFIE = "selfie"
-    const val STEP_REVIEW = "revue"
+    const val STEP_REVIEW = "review"
     const val STEP_CONFIRMATION = "confirmation"
 
     val STEPS = listOf(STEP_FRONT, STEP_BACK, STEP_SELFIE, STEP_REVIEW)
@@ -24,9 +24,9 @@ object KycRules {
         STEP_SELFIE to KycImageType.SELFIE,
     )
 
-    const val STATUS_PENDING = "attente"
-    const val STATUS_VERIFIED = "verifie"
-    const val STATUS_REJECTED = "rejete"
+    const val STATUS_PENDING = "pending"
+    const val STATUS_VERIFIED = "verified"
+    const val STATUS_REJECTED = "rejected"
 
     const val MAX_PHOTO_BYTES: Long = 5L * 1024 * 1024
     val ACCEPTED_TYPES = setOf("image/jpeg", "image/png", "image/webp")

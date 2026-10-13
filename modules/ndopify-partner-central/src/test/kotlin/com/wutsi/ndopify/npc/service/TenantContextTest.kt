@@ -31,7 +31,7 @@ class TenantContextTest {
 
     @Test
     fun `skips tenants without a partner-central URL`() {
-        val context = TenantContext(api, request("https", "partner.ndopify.cm", 443, "/kyc/revue"))
+        val context = TenantContext(api, request("https", "partner.ndopify.cm", 443, "/kyc/review"))
 
         assertEquals(3L, context.getTenantId())
     }

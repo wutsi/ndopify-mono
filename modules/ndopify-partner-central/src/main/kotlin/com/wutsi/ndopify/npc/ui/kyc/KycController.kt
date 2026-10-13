@@ -30,13 +30,13 @@ import org.springframework.web.multipart.MultipartFile
 
 /**
  * The agent's identity verification, on a single page (`kyc.html`), in three views:
- * - wizard: four steps, [STEPS] (recto → verso → selfie → revue). `GET /kyc?etape=…` shows a step. Each upload
+ * - wizard: four steps, [STEPS] (front → back → selfie → review). `GET /kyc?step=…` shows a step. Each upload
  *   step posts its photo to `POST /kyc/{step}`, which adds it straight to the agent's PENDING case on
- *   ndopify-server, so the case is the wizard's state and the session holds no photos. `POST /kyc/revue`
+ *   ndopify-server, so the case is the wizard's state and the session holds no photos. `POST /kyc/review`
  *   submits the case.
- * - confirmation: `?etape=confirmation`, right after submitting (while [SubmittedKyc] is in the session).
- * - status: once the case is no longer PENDING (en attente / vérifié / rejeté), whatever the URL says. A rejected
- *   case can be restarted (`POST /kyc/recommencer`), which opens a new case.
+ * - confirmation: `?step=confirmation`, right after submitting (while [SubmittedKyc] is in the session).
+ * - status: once the case is no longer PENDING (pending / verified / rejected), whatever the URL says. A rejected
+ *   case can be restarted (`POST /kyc/restart`), which opens a new case.
  *
  * The URL is never trusted: a step is only shown once the case has every photo before it.
  */
@@ -51,8 +51,8 @@ class KycController(
         private val TIKA = Tika()
 
         const val VIEW = "kyc"
-        const val RETURN_TO_REVIEW = "revue"
-        const val ERROR_TOO_LARGE = "taille"
+        const val RETURN_TO_REVIEW = "review"
+        const val ERROR_TOO_LARGE = "too-large"
 
         // No party for the signed-in user (gone, other tenant, or party-less like an admin): have them sign in again.
         const val SIGN_OUT = "redirect:/logout"
@@ -60,9 +60,9 @@ class KycController(
 
     @GetMapping
     fun show(
-        @RequestParam(required = false) etape: String?,
-        @RequestParam(required = false) retour: String?,
-        @RequestParam(required = false) erreur: String?,
+        @RequestParam(name = "step", required = false) requestedStep: String?,
+        @RequestParam(required = false) returnTo: String?,
+        @RequestParam(name = "error", required = false) uploadError: String?,
         session: HttpSession,
         model: Model,
     ): String {
@@ -71,7 +71,7 @@ class KycController(
         val status = KycRules.status(case)
 
         val submitted = session.getAttribute(SubmittedKyc.SESSION_ATTRIBUTE) as SubmittedKyc?
-        if (etape == STEP_CONFIRMATION && status != null && submitted?.caseId == case?.id) {
+        if (requestedStep == STEP_CONFIRMATION && status != null && submitted?.caseId == case?.id) {
             header(party, model)
             model.addAttribute("view", "confirmation")
             return VIEW
@@ -81,19 +81,19 @@ class KycController(
         }
 
         val photos = KycRules.photos(case)
-        val requested = STEPS.indexOf(etape).coerceAtLeast(0)
+        val requested = STEPS.indexOf(requestedStep).coerceAtLeast(0)
         val allowed = STEPS.indexOf(KycRules.firstIncompleteStep(photos.keys))
         val shown = STEPS[minOf(requested, allowed)]
         val error =
-            if (erreur == ERROR_TOO_LARGE && shown == etape) "Cette photo dépasse la taille maximale de 5 Mo." else null
-        return wizard(party, shown, photos, retour, error, model)
+            if (uploadError == ERROR_TOO_LARGE && shown == requestedStep) "Cette photo dépasse la taille maximale de 5 Mo." else null
+        return wizard(party, shown, photos, returnTo, error, model)
     }
 
-    @PostMapping("/{step:recto|verso|selfie}")
+    @PostMapping("/{step:front|back|selfie}")
     fun upload(
         @PathVariable step: String,
         @RequestParam(required = false) photo: MultipartFile?,
-        @RequestParam(required = false) retour: String?,
+        @RequestParam(required = false) returnTo: String?,
         model: Model,
     ): String {
         val party = currentParty.get() ?: return SIGN_OUT
@@ -106,25 +106,25 @@ class KycController(
         if (photo == null || photo.isEmpty) {
             // "Suivant" on a step whose photo is already in the case just moves on.
             if (imageType !in photos) {
-                return wizard(party, step, photos, retour, "Ajoutez une photo pour continuer.", model)
+                return wizard(party, step, photos, returnTo, "Ajoutez une photo pour continuer.", model)
             }
         } else {
             val content = photo.bytes
             // The browser's content type is a claim; the bytes are the truth.
             val mimeType = TIKA.detect(content)
             KycRules.photo(photo.size, mimeType)
-                ?.let { error -> return wizard(party, step, photos, retour, error, model) }
+                ?.let { error -> return wizard(party, step, photos, returnTo, error, model) }
             try {
                 kycClient.upload(case.id, imageType, content, mimeType)
             } catch (ex: RestClientException) {
                 val code = failureCode(ex)
                 if (code == ErrorCode.KYC_CASE_NOT_PENDING) return "redirect:/kyc"
-                return wizard(party, step, photos, retour, toMessage(code), model)
+                return wizard(party, step, photos, returnTo, toMessage(code), model)
             }
         }
 
         val done = photos.keys + imageType
-        val next = if (retour == RETURN_TO_REVIEW) STEP_REVIEW else STEPS[STEPS.indexOf(step) + 1]
+        val next = if (returnTo == RETURN_TO_REVIEW) STEP_REVIEW else STEPS[STEPS.indexOf(step) + 1]
         return redirect(minOf(next, KycRules.firstIncompleteStep(done), compareBy { STEPS.indexOf(it) }))
     }
 
@@ -151,7 +151,7 @@ class KycController(
     }
 
     /** "Soumettre de nouveaux documents" on a rejected case: a new case, and the wizard starts over empty. */
-    @PostMapping("/recommencer")
+    @PostMapping("/restart")
     fun restart(): String {
         val party = currentParty.get() ?: return SIGN_OUT
         if (kycClient.current(party.id)?.status == KycStatus.REJECTED) {
@@ -195,7 +195,7 @@ class KycController(
         party: Party,
         step: String,
         photos: Map<KycImageType, KycImage>,
-        retour: String?,
+        returnTo: String?,
         error: String?,
         model: Model,
     ): String {
@@ -208,7 +208,7 @@ class KycController(
         // "Revenir à la revue" instead of "Suivant": only once every photo is in.
         model.addAttribute(
             "returning",
-            retour == RETURN_TO_REVIEW && step != STEP_REVIEW && KycRules.firstIncompleteStep(photos.keys) == STEP_REVIEW,
+            returnTo == RETURN_TO_REVIEW && step != STEP_REVIEW && KycRules.firstIncompleteStep(photos.keys) == STEP_REVIEW,
         )
 
         // Photos already in the case: an upload step previews its own, the review shows all three.
@@ -227,7 +227,7 @@ class KycController(
     }
 
     private fun redirect(step: String): String =
-        if (step == STEP_FRONT) "redirect:/kyc" else "redirect:/kyc?etape=$step"
+        if (step == STEP_FRONT) "redirect:/kyc" else "redirect:/kyc?step=$step"
 
     private fun imageUrl(image: KycImage): String? =
         try {

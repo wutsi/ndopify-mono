@@ -97,9 +97,9 @@ class KycTemplateTest {
         val page = render(get("/kyc"))
 
         assertEquals("Étape 1 sur 4", page.selectFirst("[data-progress-label]")?.text())
-        assertEquals(listOf("recto"), page.select("[data-step]").map { it.attr("data-step") })
+        assertEquals(listOf("front"), page.select("[data-step]").map { it.attr("data-step") })
         val form = page.selectFirst("form[data-kyc-form]")!!
-        assertEquals("/kyc/recto", form.attr("action"))
+        assertEquals("/kyc/front", form.attr("action"))
         assertEquals("multipart/form-data", form.attr("enctype"))
         assertEquals("photo", page.selectFirst(".upload__input")?.attr("name"))
         assertNull(page.selectFirst("[data-preview] img"))
@@ -115,7 +115,7 @@ class KycTemplateTest {
     fun `back with its photo`() {
         given(case(images = listOf(front, back)))
 
-        val page = render(get("/kyc?etape=verso"))
+        val page = render(get("/kyc?step=back"))
 
         assertEquals("https://s3/img-back.jpg", page.selectFirst("[data-preview] img")?.attr("src"))
         assertTrue(page.selectFirst("[data-placeholder]")!!.hasAttr("hidden"))
@@ -127,7 +127,7 @@ class KycTemplateTest {
     fun `selfie works without JS`() {
         given(case(images = listOf(front, back)))
 
-        val page = render(get("/kyc?etape=selfie"))
+        val page = render(get("/kyc?step=selfie"))
 
         val input = page.selectFirst("#selfie-file")!!
         assertEquals("user", input.attr("capture"))
@@ -139,7 +139,7 @@ class KycTemplateTest {
     fun `step with an error`() {
         given(case())
 
-        val page = render(multipart("/kyc/recto").file(photo(pdf)))
+        val page = render(multipart("/kyc/front").file(photo(pdf)))
 
         val error = page.selectFirst(".field__error")!!
         assertTrue(!error.hasAttr("hidden"))
@@ -151,14 +151,14 @@ class KycTemplateTest {
     fun review() {
         given(case(images = listOf(front, back, selfie)))
 
-        val page = render(get("/kyc?etape=revue"))
+        val page = render(get("/kyc?step=review"))
 
-        assertEquals("/kyc/revue", page.selectFirst("form[data-kyc-form]")?.attr("action"))
+        assertEquals("/kyc/review", page.selectFirst("form[data-kyc-form]")?.attr("action"))
         assertEquals(
             listOf("https://s3/img-front.jpg", "https://s3/img-back.jpg", "https://s3/img-selfie.jpg"),
             page.select("[data-review-image] img").map { it.attr("src") },
         )
-        assertEquals("/kyc?etape=verso&retour=revue", page.selectFirst("[data-edit=verso]")?.attr("href"))
+        assertEquals("/kyc?step=back&returnTo=review", page.selectFirst("[data-edit=back]")?.attr("href"))
         assertEquals("Envoyer mon dossier", page.selectFirst("[data-submit]")?.text())
     }
 
@@ -166,11 +166,11 @@ class KycTemplateTest {
     fun `returning to the review`() {
         given(case(images = listOf(front, back, selfie)))
 
-        val page = render(get("/kyc?etape=verso&retour=revue"))
+        val page = render(get("/kyc?step=back&returnTo=review"))
 
-        assertEquals("revue", page.selectFirst("input[name=retour]")?.`val`())
+        assertEquals("review", page.selectFirst("input[name=returnTo]")?.`val`())
         assertEquals("Revenir à la revue", page.selectFirst("[data-next]")?.text())
-        assertEquals("/kyc?etape=revue", page.selectFirst("[data-prev]")?.attr("href"))
+        assertEquals("/kyc?step=review", page.selectFirst("[data-prev]")?.attr("href"))
     }
 
     @Test
@@ -178,7 +178,7 @@ class KycTemplateTest {
         given(case(status = KycStatus.SUBMITTED))
         session.setAttribute(SubmittedKyc.SESSION_ATTRIBUTE, SubmittedKyc(caseId = "case-1"))
 
-        val page = render(get("/kyc?etape=confirmation"))
+        val page = render(get("/kyc?step=confirmation"))
 
         assertEquals("Dossier envoyé", page.selectFirst("#confirmation-title")?.text())
         assertEquals("/kyc", page.selectFirst("[data-show-status]")?.attr("href"))
@@ -191,8 +191,8 @@ class KycTemplateTest {
 
         val page = render(get("/kyc"))
 
-        assertNotNull(page.selectFirst("[data-status=attente]"))
-        assertNull(page.selectFirst("[data-status=verifie]"))
+        assertNotNull(page.selectFirst("[data-status=pending]"))
+        assertNull(page.selectFirst("[data-status=verified]"))
         assertNull(page.selectFirst("form[data-kyc-form]"))
         assertNull(page.selectFirst(".progress"))
     }
@@ -203,7 +203,7 @@ class KycTemplateTest {
 
         val page = render(get("/kyc"))
 
-        assertEquals("/", page.selectFirst("[data-status=verifie] a.btn")?.attr("href"))
+        assertEquals("/", page.selectFirst("[data-status=verified] a.btn")?.attr("href"))
     }
 
     @Test
@@ -212,8 +212,8 @@ class KycTemplateTest {
 
         val page = render(get("/kyc"))
 
-        val panel = page.selectFirst("[data-status=rejete]")!!
+        val panel = page.selectFirst("[data-status=rejected]")!!
         assertTrue(panel.text().contains("Motif : votre selfie ne correspond pas à la photo de votre pièce d'identité."))
-        assertEquals("/kyc/recommencer", panel.selectFirst("form")?.attr("action"))
+        assertEquals("/kyc/restart", panel.selectFirst("form")?.attr("action"))
     }
 }

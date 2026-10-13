@@ -79,7 +79,7 @@ class LoginControllerTest {
     fun showCodeStep() {
         session.setAttribute(PendingLogin.SESSION_ATTRIBUTE, pending)
 
-        val result = mvc.perform(get("/login").param("etape", "code").session(session)).andReturn()
+        val result = mvc.perform(get("/login").param("step", "code").session(session)).andReturn()
 
         assertEquals("login", result.modelAndView?.viewName)
         assertEquals("code", model(result)["step"])
@@ -90,7 +90,7 @@ class LoginControllerTest {
 
     @Test
     fun showCodeStepWithoutPendingLogin() {
-        val result = mvc.perform(get("/login").param("etape", "code").session(session)).andReturn()
+        val result = mvc.perform(get("/login").param("step", "code").session(session)).andReturn()
 
         assertEquals("login", result.modelAndView?.viewName)
         assertEquals("email", model(result)["step"])
@@ -101,7 +101,7 @@ class LoginControllerTest {
     fun connectionRedirectsToCodeStep() {
         val result = mvc.perform(get("/login/connection")).andReturn()
 
-        assertEquals("redirect:/login?etape=code", result.modelAndView?.viewName)
+        assertEquals("redirect:/login?step=code", result.modelAndView?.viewName)
     }
 
     @Test
@@ -113,7 +113,7 @@ class LoginControllerTest {
         assertEquals("ray@gmail.com", request.firstValue.email)
         assertEquals(300, request.firstValue.ttl)
 
-        assertEquals("redirect:/login?etape=code", result.modelAndView?.viewName)
+        assertEquals("redirect:/login?step=code", result.modelAndView?.viewName)
         assertEquals(pending, session.getAttribute(PendingLogin.SESSION_ATTRIBUTE))
         assertEquals(false, result.flashMap["resent"])
         assertNull(result.flashMap["email"])
@@ -129,7 +129,7 @@ class LoginControllerTest {
         verify(otpClient).create(request.capture())
         assertEquals("ray@gmail.com", request.firstValue.email)
 
-        assertEquals("redirect:/login?etape=code", result.modelAndView?.viewName)
+        assertEquals("redirect:/login?step=code", result.modelAndView?.viewName)
         assertEquals(true, result.flashMap["resent"])
         assertEquals(pending, session.getAttribute(PendingLogin.SESSION_ATTRIBUTE))
     }

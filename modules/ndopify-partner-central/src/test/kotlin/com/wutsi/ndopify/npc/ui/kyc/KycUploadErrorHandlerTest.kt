@@ -12,7 +12,7 @@ class KycUploadErrorHandlerTest {
 
     @Test
     fun `kyc photo step - back to it with the size error`() {
-        assertEquals("redirect:/kyc?etape=verso&erreur=taille", handler.tooLarge(MockHttpServletRequest("POST", "/kyc/verso"), ex))
+        assertEquals("redirect:/kyc?step=back&error=too-large", handler.tooLarge(MockHttpServletRequest("POST", "/kyc/back"), ex))
     }
 
     @Test

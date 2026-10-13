@@ -13,19 +13,19 @@ contracts from [ndopify-dto](../ndopify-dto).
 ## Features
 
 - **Sign-up wizard, *Rejoindre Ndopify*** (`ui/join/JoinController`) — public, linked from the login page. One page,
-  `templates/rejoindre.html`, built like the sign-in: five steps, `identite` → `experience` → `secteur` →
-  `paiement` → `revue`, then a confirmation.
-    - `GET /rejoindre?etape=…` shows a step; `POST /rejoindre/{step}` validates it (`JoinRules`, French messages)
+  `templates/join.html`, built like the sign-in: five steps, `identity` → `experience` → `area` →
+  `payment` → `review`, then a confirmation.
+    - `GET /join?step=…` shows a step; `POST /join/{step}` validates it (`JoinRules`, French messages)
       and stores its answers in a `PendingJoin` in the HTTP session, then redirects to the next step — or back to
-      the review with `retour=revue`. An invalid step is shown again with its errors, and the session is left
+      the review with `returnTo=review`. An invalid step is shown again with its errors, and the session is left
       untouched.
     - A step only opens once every step before it is complete, whatever the URL says. The sector step also checks,
       through `NdLocationClient`, that the city is one of the tenant's cities and that the neighbourhoods (1 to 3)
       belong to it.
-    - `POST /rejoindre/revue` creates the agent on ndopify-server from the session's answers, never from the page,
-      then shows the confirmation (`?etape=confirmation`, while a `JoinedAgent` is in the session). An e-mail that
+    - `POST /join/review` creates the agent on ndopify-server from the session's answers, never from the page,
+      then shows the confirmation (`?step=confirmation`, while a `JoinedAgent` is in the session). An e-mail that
       already has an agent account (409 `AGENT_ALREADY_EXISTS`) is reported on the review, with a link to sign in.
-    - Every step posts without JavaScript. `public/assets/js/rejoindre.js` enhances the fields: a slim-select city
+    - Every step posts without JavaScript. `public/assets/js/join.js` enhances the fields: a slim-select city
       type-ahead and the city's neighbourhoods (over `/locations`), intl-tel-input for phone numbers (posted as
       E.164 through a hidden input), and "Utiliser mon numéro WhatsApp". Without it, the sector step only offers
       the city and neighbourhoods already chosen.
@@ -37,12 +37,12 @@ contracts from [ndopify-dto](../ndopify-dto).
     1. `GET /login` asks for the e-mail; `POST /login` has ndopify-server e-mail a 6-digit code (5-minute TTL) and
        keeps a `PendingLogin` (e-mail + expiry) in the HTTP session. `POST /login` with `resend=true` sends a new
        code to the pending address.
-    2. `GET /login?etape=code` asks for the code; `POST /login/verify` exchanges it for an access token
+    2. `GET /login?step=code` asks for the code; `POST /login/verify` exchanges it for an access token
        (`AuthType.OTP`, application `partner-central`), clears the pending sign-in and redirects to `/kyc`.
 
-  The code step is only shown while a sign-in is pending in the session; otherwise `/login?etape=code` shows the
+  The code step is only shown while a sign-in is pending in the session; otherwise `/login?step=code` shows the
   e-mail step. The e-mail is read from the session at verify time, never from the page. `/login/connection` (the
-  former code page) redirects to `/login?etape=code`.
+  former code page) redirects to `/login?step=code`.
 - **Sign-out** — `GET /logout` drops the access-token cookie and the HTTP session. ndopify-server has no revocation
   endpoint, so the token stays valid until it expires.
 - **KYC wizard** — Thymeleaf templates under `templates/kyc/` (`index`, `verification`, `revue`,
@@ -52,7 +52,7 @@ contracts from [ndopify-dto](../ndopify-dto).
 
 - **Authentication** — the access token is stored in the `__npc_access_token` HTTP-only cookie
   (`AccessTokenService`). `JwtAuthenticationFilter` decodes it on each request; everything except `/assets/**`,
-  `/login/**`, `/error`, `/rejoindre/**` and `/locations/**` requires authentication, and unauthenticated requests
+  `/login/**`, `/error`, `/join/**` and `/locations/**` requires authentication, and unauthenticated requests
   are redirected to `/login`.
   Note: tokens are decoded with `Algorithm.none()` — the same unsigned-JWT gap as ndopify-server.
 - **Tenant resolution** — `TenantContext` loads the active tenants from ndopify-server and picks
@@ -106,7 +106,7 @@ mvn test -Dtest=ClassName#methodName
 ```
 
 Tests are unit/MockMvc-level and don't need ndopify-server or a database. `JoinTemplateTest` renders
-`templates/rejoindre.html` through `JoinController` with a real Thymeleaf engine (checked with jsoup), so template
+`templates/join.html` through `JoinController` with a real Thymeleaf engine (checked with jsoup), so template
 mistakes fail the build; the other controller tests only check view names and models.
 
 ## Code Quality

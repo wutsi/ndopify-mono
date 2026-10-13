@@ -18,6 +18,6 @@ class KycUploadErrorHandler {
     @ExceptionHandler(MaxUploadSizeExceededException::class)
     fun tooLarge(request: HttpServletRequest, ex: MaxUploadSizeExceededException): String {
         val step = KYC_UPLOAD.find(request.requestURI)?.groupValues?.get(1) ?: throw ex
-        return "redirect:/kyc?etape=$step&erreur=taille"
+        return "redirect:/kyc?step=$step&error=too-large"
     }
 }

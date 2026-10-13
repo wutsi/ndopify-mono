@@ -1,6 +1,6 @@
 /*
  * Ndopify Partner Central — shared helpers, exposed as window.NdUtil.
- * Load after intlTelInput.min.js and before the page scripts that use it (e.g. rejoindre.js).
+ * Load after intlTelInput.min.js and before the page scripts that use it (e.g. join.js).
  *
  * Phone numbers (DESIGN.md › Form fields › Phone number): intl-tel-input does the work. Its utils.js
  * (libphonenumber) formats as you type, validates, and produces E.164 ("+237677123456") — the only format

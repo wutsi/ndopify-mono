@@ -1,5 +1,5 @@
 /*
- * Ndopify Partner Central — "Rejoindre Ndopify" wizard (templates/rejoindre.html).
+ * Ndopify Partner Central — "Rejoindre Ndopify" wizard (templates/join.html).
  * The server drives the wizard (JoinController): it renders one step at a time, validates what each step posts and
  * keeps the answers in the HTTP session. This script only enhances the current step's fields, and every step still
  * posts without it:
@@ -94,7 +94,7 @@
     }
 
     /*
-     * A slim-select dropdown over a native <select> (DESIGN.md › Form fields — styled in rejoindre.css).
+     * A slim-select dropdown over a native <select> (DESIGN.md › Form fields — styled in join.css).
      * The <select> stays the source of truth (it's what the form posts) and keeps firing "change"; slim-select's
      * combobox becomes the field's visible, focusable control, so it takes over the error description and state.
      */
@@ -172,7 +172,7 @@
         return PHONE_ERRORS[field.phone.validationError()] || PHONE_INVALID;
     }
 
-    /* ---------- Step: secteur ---------- */
+    /* ---------- Step: area ---------- */
     function initSector(form) {
         var url = form.getAttribute("data-locations-url");
         var citySelect = $("#cityId", form);
@@ -281,7 +281,7 @@
         });
     }
 
-    /* ---------- Step: paiement ---------- */
+    /* ---------- Step: payment ---------- */
     function initSameAsWhatsapp(form, phones) {
         var same = $("#sameAsWhatsapp", form);
         var momo = phones.filter(function (field) {

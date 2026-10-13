@@ -25,16 +25,16 @@ import org.springframework.web.client.HttpClientErrorException
 /**
  * The "Rejoindre Ndopify" sign-up wizard, on a single page (`rejoindre.html`) like `login.html`, with five steps —
  * [STEPS]: identite → experience → secteur → paiement → revue — then the confirmation.
- * - `GET /rejoindre?etape=…` shows a step; `POST /rejoindre/{step}` validates it, stores its answers in the
- *   session's [PendingJoin] and redirects to the next step (or back to the review when `retour=revue`).
- * - `POST /rejoindre/revue` creates the agent (`POST /v1/agents`) from the session's answers, then shows the
- *   confirmation (`?etape=confirmation`) while a [JoinedAgent] is in the session.
+ * - `GET /join?step=…` shows a step; `POST /join/{step}` validates it, stores its answers in the
+ *   session's [PendingJoin] and redirects to the next step (or back to the review when `returnTo=review`).
+ * - `POST /join/review` creates the agent (`POST /v1/agents`) from the session's answers, then shows the
+ *   confirmation (`?step=confirmation`) while a [JoinedAgent] is in the session.
  *
  * The URL is never trusted: a step is only shown once every step before it is complete, otherwise the first
  * incomplete one is. Answers only reach the session once validated, so the review submits the session, never the page.
  */
 @Controller
-@RequestMapping("/rejoindre")
+@RequestMapping("/join")
 class JoinController(
     private val agentClient: NdAgentClient,
     private val locationClient: NdLocationClient,
@@ -43,16 +43,16 @@ class JoinController(
     companion object {
         private val LOGGER = LoggerFactory.getLogger(JoinController::class.java)
 
-        const val VIEW = "rejoindre"
-        const val STEP_IDENTITY = "identite"
+        const val VIEW = "join"
+        const val STEP_IDENTITY = "identity"
         const val STEP_EXPERIENCE = "experience"
-        const val STEP_SECTOR = "secteur"
-        const val STEP_PAYMENT = "paiement"
-        const val STEP_REVIEW = "revue"
+        const val STEP_AREA = "area"
+        const val STEP_PAYMENT = "payment"
+        const val STEP_REVIEW = "review"
         const val STEP_CONFIRMATION = "confirmation"
-        const val RETURN_TO_REVIEW = "revue"
+        const val RETURN_TO_REVIEW = "review"
 
-        val STEPS = listOf(STEP_IDENTITY, STEP_EXPERIENCE, STEP_SECTOR, STEP_PAYMENT, STEP_REVIEW)
+        val STEPS = listOf(STEP_IDENTITY, STEP_EXPERIENCE, STEP_AREA, STEP_PAYMENT, STEP_REVIEW)
 
         private val EXPERIENCE_LABELS = mapOf(
             ExperienceLevel.NOVICE to "Moins d'un an",
@@ -69,28 +69,28 @@ class JoinController(
 
     @GetMapping
     fun show(
-        @RequestParam(required = false) etape: String?,
-        @RequestParam(required = false) retour: String?,
+        @RequestParam(name = "step", required = false) requestedStep: String?,
+        @RequestParam(required = false) returnTo: String?,
         session: HttpSession,
         model: Model,
     ): String {
         val joined = joined(session)
-        if (etape == STEP_CONFIRMATION && joined != null) {
+        if (requestedStep == STEP_CONFIRMATION && joined != null) {
             model.addAttribute("step", STEP_CONFIRMATION)
             model.addAttribute("maskedEmail", LoginController.maskEmail(joined.email))
             return VIEW
         }
 
         val pending = pending(session)
-        val requested = STEPS.indexOf(etape).coerceAtLeast(0)
+        val requested = STEPS.indexOf(requestedStep).coerceAtLeast(0)
         val allowed = STEPS.indexOf(pending.firstIncompleteStep())
-        return step(STEPS[minOf(requested, allowed)], pending, retour, emptyMap(), model)
+        return step(STEPS[minOf(requested, allowed)], pending, returnTo, emptyMap(), model)
     }
 
     @PostMapping("/$STEP_IDENTITY")
     fun identity(
         @ModelAttribute form: IdentityForm,
-        @RequestParam(required = false) retour: String?,
+        @RequestParam(required = false) returnTo: String?,
         session: HttpSession,
         model: Model,
     ): String {
@@ -106,13 +106,13 @@ class JoinController(
             "email" to JoinRules.email(answers.email),
             "whatsappNumber" to JoinRules.whatsappNumber(answers.whatsappNumber),
         )
-        return save(STEP_IDENTITY, answers, errors, retour, session, model)
+        return save(STEP_IDENTITY, answers, errors, returnTo, session, model)
     }
 
     @PostMapping("/$STEP_EXPERIENCE")
     fun experience(
         @ModelAttribute form: ExperienceForm,
-        @RequestParam(required = false) retour: String?,
+        @RequestParam(required = false) returnTo: String?,
         session: HttpSession,
         model: Model,
     ): String {
@@ -124,31 +124,31 @@ class JoinController(
             "experienceLevel" to JoinRules.experienceLevel(answers.experienceLevel),
             "agentType" to JoinRules.agentType(answers.agentType),
         )
-        return save(STEP_EXPERIENCE, answers, errors, retour, session, model)
+        return save(STEP_EXPERIENCE, answers, errors, returnTo, session, model)
     }
 
-    @PostMapping("/$STEP_SECTOR")
+    @PostMapping("/$STEP_AREA")
     fun sector(
         @ModelAttribute form: SectorForm,
-        @RequestParam(required = false) retour: String?,
+        @RequestParam(required = false) returnTo: String?,
         session: HttpSession,
         model: Model,
     ): String {
         val pending = pending(session)
-        if (!isAllowed(STEP_SECTOR, pending)) return redirect(pending.firstIncompleteStep())
+        if (!isAllowed(STEP_AREA, pending)) return redirect(pending.firstIncompleteStep())
 
         val answers = pending.copy(cityId = form.cityId, neighborhoodIds = form.neighborhoodIds.distinct())
         val errors = errors(
             "cityId" to JoinRules.cityId(answers.cityId),
             "neighborhoodIds" to JoinRules.neighborhoodIds(answers.neighborhoodIds),
         ).ifEmpty { sectorErrors(answers.cityId!!, answers.neighborhoodIds) }
-        return save(STEP_SECTOR, answers, errors, retour, session, model)
+        return save(STEP_AREA, answers, errors, returnTo, session, model)
     }
 
     @PostMapping("/$STEP_PAYMENT")
     fun payment(
         @ModelAttribute form: PaymentForm,
-        @RequestParam(required = false) retour: String?,
+        @RequestParam(required = false) returnTo: String?,
         session: HttpSession,
         model: Model,
     ): String {
@@ -158,7 +158,7 @@ class JoinController(
         val number = if (form.sameAsWhatsapp) pending.whatsappNumber else JoinRules.normalizePhone(form.mobileMoneyNumber)
         val answers = pending.copy(mobileMoneyNumber = number)
         val errors = errors("mobileMoneyNumber" to JoinRules.mobileMoneyNumber(answers.mobileMoneyNumber))
-        return save(STEP_PAYMENT, answers, errors, retour, session, model)
+        return save(STEP_PAYMENT, answers, errors, returnTo, session, model)
     }
 
     @PostMapping("/$STEP_REVIEW")
@@ -187,24 +187,24 @@ class JoinController(
         step: String,
         answers: PendingJoin,
         errors: Map<String, String>,
-        retour: String?,
+        returnTo: String?,
         session: HttpSession,
         model: Model,
     ): String {
         if (errors.isNotEmpty()) {
-            return step(step, answers, retour, errors, model)
+            return step(step, answers, returnTo, errors, model)
         }
 
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, answers)
         session.removeAttribute(JoinedAgent.SESSION_ATTRIBUTE)
-        val next = if (retour == RETURN_TO_REVIEW) STEP_REVIEW else STEPS[STEPS.indexOf(step) + 1]
+        val next = if (returnTo == RETURN_TO_REVIEW) STEP_REVIEW else STEPS[STEPS.indexOf(step) + 1]
         return redirect(minOf(next, answers.firstIncompleteStep(), compareBy { STEPS.indexOf(it) }))
     }
 
     private fun step(
         step: String,
         answers: PendingJoin,
-        retour: String?,
+        returnTo: String?,
         errors: Map<String, String>,
         model: Model,
     ): String {
@@ -216,11 +216,11 @@ class JoinController(
         // "Revenir à la revue" instead of "Suivant": only once every answer is in.
         model.addAttribute(
             "returning",
-            retour == RETURN_TO_REVIEW && step != STEP_REVIEW && answers.firstIncompleteStep() == STEP_REVIEW,
+            returnTo == RETURN_TO_REVIEW && step != STEP_REVIEW && answers.firstIncompleteStep() == STEP_REVIEW,
         )
 
         when (step) {
-            STEP_SECTOR, STEP_REVIEW -> {
+            STEP_AREA, STEP_REVIEW -> {
                 // Names of the chosen city and neighbourhoods: the selects' initial options, and the review.
                 // Capped: a step shown again with its errors may carry whatever ids were posted.
                 val neighborhoodIds = answers.neighborhoodIds.take(JoinRules.MAX_NEIGHBORHOODS)
@@ -270,7 +270,7 @@ class JoinController(
         STEPS.indexOf(step) <= STEPS.indexOf(pending.firstIncompleteStep())
 
     private fun redirect(step: String): String =
-        if (step == STEP_IDENTITY) "redirect:/rejoindre" else "redirect:/rejoindre?etape=$step"
+        if (step == STEP_IDENTITY) "redirect:/join" else "redirect:/join?step=$step"
 
     private fun errors(vararg errors: Pair<String, String?>): Map<String, String> =
         errors.mapNotNull { (field, message) -> message?.let { field to it } }.toMap()
