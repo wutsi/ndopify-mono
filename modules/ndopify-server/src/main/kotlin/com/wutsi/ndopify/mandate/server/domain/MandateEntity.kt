@@ -3,19 +3,26 @@ package com.wutsi.ndopify.mandate.server.domain
 import com.wutsi.koki.listing.dto.ListingType
 import com.wutsi.koki.listing.dto.PropertyType
 import com.wutsi.koki.listing.dto.RoadAccessType
+import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.ElectricityAccessType
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.WaterAccessType
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
-import com.wutsi.ndopify.platform.util.jpa.EnumListConverter
+import com.wutsi.ndopify.platform.util.jpa.PropertyTypeListConverter
+import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import jakarta.persistence.CollectionTable
+import jakarta.persistence.Column
 import jakarta.persistence.Convert
+import jakarta.persistence.ElementCollection
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
+import jakarta.persistence.JoinColumn
 import jakarta.persistence.Table
 import org.hibernate.annotations.TenantId
+import java.util.Date
 
 @Entity
 @Table(name = "T_MANDATE")
@@ -29,7 +36,7 @@ data class MandateEntity(
     @TenantId
     val tenantId: Long? = null,
 
-    val customerId: Long? = null,
+    val customerId: Long = -1,
     val agentId: Long? = null,
 
     val status: MandateStatus = MandateStatus.UNKNOWN,
@@ -37,9 +44,16 @@ data class MandateEntity(
     val listingType: ListingType = ListingType.UNKNOWN,
 
     val cityId: Long = -1,
-    val neighbourhoodIds: List<Long> = emptyList(),
 
-    @Convert(EnumListConverter::class)
+    @ElementCollection
+    @CollectionTable(
+        name = "T_MANDATE_NEIGHBORHOOD",
+        joinColumns = [JoinColumn(name = "mandate_id")]
+    )
+    @Column(name = "neighborhood_id")
+    val neighborhoodIds: List<Long> = emptyList(),
+
+    @Convert(PropertyTypeListConverter::class)
     val propertyTypes: List<PropertyType> = emptyList(),
 
     val furnitureType: FurnitureType? = null,
@@ -64,10 +78,15 @@ data class MandateEntity(
 
     val price: Long = -1,
     val currencyCode: String = "",
+    val pricePeriodicityType: PeriodicityType = PeriodicityType.UNKNOWN,
+
     val securityDeposit: Int? = null,
     val advanceRent: Int? = null,
     val leaseTerm: Int? = null,
     val noticePeriod: Int? = null,
 
+    val preferredContactPeriod: ContactPeriodType? = null,
     val comments: String? = null,
+    val createdAt: Date = Date(),
+    val modifiedAt: Date = Date(),
 )

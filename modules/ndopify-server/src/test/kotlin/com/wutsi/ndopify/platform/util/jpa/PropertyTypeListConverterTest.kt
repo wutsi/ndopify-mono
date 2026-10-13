@@ -1,18 +1,18 @@
 package com.wutsi.ndopify.platform.util.jpa
 
-import com.wutsi.ndopify.refdata.dto.AuthType
+import com.wutsi.koki.listing.dto.PropertyType
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-class EnumListConverterTest {
-    private val converter = EnumListConverter<AuthType>()
+class PropertyTypeListConverterTest {
+    private val converter = PropertyTypeListConverter()
 
     @Test
     fun convertToDatabaseColumn() {
         assertEquals(
-            "PASSWORD,GOOGLE_ONE_TAP",
-            converter.convertToDatabaseColumn(listOf(AuthType.PASSWORD, AuthType.GOOGLE_ONE_TAP)),
+            "ROOM,APARTMENT",
+            converter.convertToDatabaseColumn(listOf(PropertyType.ROOM, PropertyType.APARTMENT)),
         )
     }
 
@@ -29,24 +29,24 @@ class EnumListConverterTest {
     @Test
     fun convertToEntityAttribute() {
         assertEquals(
-            listOf(AuthType.PASSWORD, AuthType.GOOGLE_ONE_TAP),
-            converter.convertToEntityAttribute("PASSWORD,GOOGLE_ONE_TAP"),
+            listOf(PropertyType.ROOM, PropertyType.APARTMENT),
+            converter.convertToEntityAttribute("ROOM,APARTMENT"),
         )
     }
 
     @Test
     fun convertToEntityAttributeWithBlanks() {
         assertEquals(
-            listOf(AuthType.PASSWORD, AuthType.GOOGLE_ONE_TAP),
-            converter.convertToEntityAttribute("PASSWORD,,GOOGLE_ONE_TAP,"),
+            listOf(PropertyType.ROOM, PropertyType.APARTMENT),
+            converter.convertToEntityAttribute("ROOM,,APARTMENT,"),
         )
     }
 
     @Test
     fun convertToEntityAttributeWithInvalidValue() {
         assertEquals(
-            listOf(AuthType.PASSWORD),
-            converter.convertToEntityAttribute("PASSWORD,FOO"),
+            listOf(PropertyType.ROOM),
+            converter.convertToEntityAttribute("ROOM,FOO"),
         )
     }
 

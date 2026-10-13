@@ -93,7 +93,6 @@ spring:
                 max-pool-size: 4
                 thread-name-prefix: "ndopify-task-"
 
-
 server:
     port: 8080
     compression:
@@ -114,6 +113,18 @@ springdoc:
             paths-to-match:
                 - /v1/agents
                 - /v1/agents/**
+
+        -   group: customer
+            display-name: Customer API
+            paths-to-match:
+                - /v1/customers
+                - /v1/customers/**
+
+        -   group: mandates
+            display-name: Mandates API
+            paths-to-match:
+                - /v1/mandates
+                - /v1/mandates/**
 
         -   group: party
             display-name: Party API

@@ -87,14 +87,13 @@ class AgentService(
     @Transactional
     fun create(request: CreateAgentRequest): AgentEntity {
         // Party
-        val party = partyService.findByEmailOrNull(request.email)
-            ?: partyService.create(
-                CreatePartyRequest(
-                    firstName = request.firstName,
-                    lastName = request.lastName,
-                    email = request.email,
-                )
+        val party = partyService.findOrCreate(
+            CreatePartyRequest(
+                firstName = request.firstName,
+                lastName = request.lastName,
+                email = request.email,
             )
+        )
         ensureAgentNotAlreadyExists(party)
 
         // User

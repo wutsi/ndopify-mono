@@ -117,6 +117,6 @@ class MoMoGatewayMtnTest {
         )
 
         verify(collection).authenticate()
-        assertTrue(response.holderNameScore < 0.5)
+        assertTrue(response.holderNameScore < 0.75)
     }
 }

@@ -82,6 +82,12 @@ class PartyService(
     }
 
     @Transactional
+    fun findOrCreate(request: CreatePartyRequest): PartyEntity {
+        return findByEmailOrNull(request.email)
+            ?: create(request)
+    }
+
+    @Transactional
     fun update(party: PartyEntity, request: UpdatePartyRequest): PartyEntity {
         val email = request.email?.lowercase()
         val linkedUser = party.id?.let { userDao.findByPartyId(it) }
