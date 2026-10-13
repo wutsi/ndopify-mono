@@ -1,38 +1,43 @@
-package com.wutsi.ndopify.listing.dto
+package com.wutsi.ndopify.mandate.dto
 
 import com.wutsi.koki.listing.dto.ListingType
 import com.wutsi.koki.listing.dto.PropertyType
 import com.wutsi.koki.listing.dto.RoadAccessType
+import com.wutsi.ndopify.listing.dto.ContactPeriodType
+import com.wutsi.ndopify.listing.dto.ElectricityAccessType
+import com.wutsi.ndopify.listing.dto.FurnitureType
+import com.wutsi.ndopify.listing.dto.WaterAccessType
 import jakarta.validation.constraints.NotEmpty
 
-data class CreateCaseRequest(
+data class CreateMandateRequest(
+    val mandateType: MandateType = MandateType.UNKNOWN,
     val listingType: ListingType = ListingType.UNKNOWN,
-
-    val budget: Long = -1,
 
     val cityId: Long = -1,
     val neighbourhoodIds: List<Long> = emptyList(),
-    
-    val propertyType: PropertyType = PropertyType.UNKNOWN,
-    val furnitureType: FurnitureType = FurnitureType.UNKNOWN,
+
+    val propertyType: PropertyType? = null,
+    val furnitureType: FurnitureType? = null,
     val rooms: String? = null,
     val parkings: String? = null,
     val minArea: Int? = null,
     val maxArea: Int? = null,
 
-    val waterAccessType: WaterAccessType = WaterAccessType.UNKNOWN,
+    val waterAccessType: WaterAccessType? = null,
     val waterTank: Boolean = false,
     val waterWell: Boolean = false,
 
-    val electricityAccessType: ElectricityAccessType = ElectricityAccessType.UNKNOWN,
+    val electricityAccessType: ElectricityAccessType? = null,
     val generatorSet: Boolean = false,
     val solarPanel: Boolean = false,
 
-    val roadAccessType: RoadAccessType = RoadAccessType.UNKNOWN,
+    val roadAccessType: RoadAccessType? = null,
 
     val securedFenced: Boolean = false,
     val securityGuard: Boolean = false,
     val videoSurveillance: Boolean = false,
+
+    val price: Long = -1,
 
     @get:NotEmpty val firstName: String = "",
     @get:NotEmpty val lastName: String = "",

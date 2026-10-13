@@ -16,6 +16,8 @@ object ErrorCode {
     val AUTH_TYPE_NOT_SUPPORTED = "$PREFIX:auth:auth-type-not-supported"
     val AUTH_UNAUTHORIZED = "$PREFIX:auth:unauthorized"
 
+    val CUSTOMER_NOT_FOUND = "$PREFIX:customer:not-found"
+
     val HTTP_MISSING_PARAMETER = "$PREFIX:http:missing-parameter"
     val HTTP_INVALID_PARAMETER = "$PREFIX:http:invalid-parameter"
     val HTTP_INTERNAL = "$PREFIX:http:unexpected-error"
