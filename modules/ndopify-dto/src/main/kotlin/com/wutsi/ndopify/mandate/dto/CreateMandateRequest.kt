@@ -47,7 +47,7 @@ data class CreateMandateRequest(
     @get:NotEmpty val firstName: String = "",
     @get:NotEmpty val lastName: String = "",
     @get:NotEmpty val email: String = "",
-    @get:NotEmpty val mobileMoneyNumber: String = "",
+    @get:NotEmpty val whatsappNumber: String = "",
     val preferredContactPeriod: ContactPeriodType? = null,
 
     val comments: String? = null,
