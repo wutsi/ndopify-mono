@@ -1,15 +1,14 @@
 package com.wutsi.ndopify.mandate.server.endpoint
 
 import com.wutsi.koki.listing.dto.ListingType
+import com.wutsi.koki.listing.dto.PropertyCategory
 import com.wutsi.koki.listing.dto.PropertyType
-import com.wutsi.koki.listing.dto.RoadAccessType
 import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
-import com.wutsi.ndopify.listing.dto.ElectricityAccessType
 import com.wutsi.ndopify.listing.dto.FurnitureType
-import com.wutsi.ndopify.listing.dto.WaterAccessType
+import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.mandate.dto.GetMandateResponse
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
@@ -18,6 +17,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -33,24 +33,28 @@ class GetMandateEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(1L, mandate.id)
         assertEquals(10L, mandate.customerId)
         assertNull(mandate.agentId)
+        assertEquals(PropertyCategory.RESIDENTIAL, mandate.propertyCategory)
         assertEquals(MandateStatus.PENDING_ASSIGNMENT, mandate.status)
         assertEquals(MandateType.TENANT, mandate.mandateType)
         assertEquals(ListingType.RENTAL, mandate.listingType)
         assertEquals(2370201L, mandate.cityId)
         assertEquals(listOf(111L, 222L), mandate.neighborhoodIds.sorted())
-        assertEquals(listOf(PropertyType.APARTMENT, PropertyType.STUDIO), mandate.propertyTypes)
+        assertEquals(PropertyType.APARTMENT, mandate.propertyType)
         assertEquals(FurnitureType.entries[1], mandate.furnitureType)
         assertEquals("2", mandate.rooms)
         assertEquals("1", mandate.parkings)
-        assertEquals(50, mandate.minArea)
-        assertEquals(100, mandate.maxArea)
-        assertEquals(WaterAccessType.entries[1], mandate.waterAccessType)
+        assertEquals(75, mandate.area)
+        assertTrue(mandate.waterMeter)
+        assertTrue(mandate.dedicatedWaterMeter)
         assertTrue(mandate.waterTank)
         assertTrue(mandate.waterWell)
-        assertEquals(ElectricityAccessType.entries[1], mandate.electricityAccessType)
+        assertTrue(mandate.electricityMeter)
+        assertFalse(mandate.dedicatedElectricityMeter)
         assertTrue(mandate.generatorSet)
         assertTrue(mandate.solarPanel)
-        assertEquals(RoadAccessType.entries[1], mandate.roadAccessType)
+        assertFalse(mandate.roadPaved)
+        assertTrue(mandate.trackAccessibleByCar)
+        assertFalse(mandate.trackInaccessibleByCar)
         assertTrue(mandate.securedFenced)
         assertTrue(mandate.securityGuard)
         assertTrue(mandate.videoSurveillance)
@@ -61,6 +65,7 @@ class GetMandateEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(3, mandate.advanceRent)
         assertEquals(12, mandate.leaseTerm)
         assertEquals(1, mandate.noticePeriod)
+        assertEquals(MovingPeriod.WITHIN_3_MONTHS, mandate.movingPeriod)
         assertEquals(ContactPeriodType.entries[1], mandate.preferredContactPeriod)
         assertEquals("Close to the market", mandate.comments)
     }

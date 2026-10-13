@@ -67,9 +67,17 @@ class JoinTemplateTest {
         mobileMoneyNumber = "+237670000002",
     )
 
+    private val tenant = Tenant(
+        id = 1,
+        name = "Ndopify Cameroun",
+        countryCode = "CM",
+        logoUrl = "https://cdn.ndopify.com/tenant/1/logo.png",
+        publicPortalUrl = "https://www.ndopify.com",
+    )
+
     @BeforeEach
     fun setUp() {
-        doReturn(Tenant(id = 1, countryCode = "CM")).whenever(tenantContext).getTenant()
+        doReturn(tenant).whenever(tenantContext).getTenant()
         whenever(locationClient.search(any())).thenAnswer { invocation ->
             val request = invocation.getArgument<SearchLocationRequest>(0)
             SearchLocationResponse(locations = locations.filter { request.ids.contains(it.id) })
@@ -95,13 +103,37 @@ class JoinTemplateTest {
     }
 
     @Test
+    fun `header shows the tenant's logo and a way back to its public portal`() {
+        val page = render(get("/join"))
+
+        val logo = page.selectFirst(".site-header__brand img")!!
+        assertEquals(tenant.logoUrl, logo.attr("src"))
+        assertEquals(tenant.name, logo.attr("alt"))
+        val exit = assertNotNull(page.selectFirst("[data-exit]"))
+        assertEquals("Quitter", exit.text())
+        assertEquals(tenant.publicPortalUrl, exit.attr("href"))
+    }
+
+    @Test
+    fun `header falls back to the Ndopify logo, without Quitter, for a tenant without branding`() {
+        doReturn(Tenant(id = 1, countryCode = "CM")).whenever(tenantContext).getTenant()
+
+        val page = render(get("/join"))
+
+        val logo = page.selectFirst(".site-header__brand img")!!
+        assertEquals("/assets/images/logo.png", logo.attr("src"))
+        assertEquals("Ndopify, espace partenaires", logo.attr("alt"))
+        assertNull(page.selectFirst("[data-exit]"))
+    }
+
+    @Test
     fun identity() {
         val page = render(get("/join"))
 
         assertEquals("Étape 1 sur 5", page.selectFirst("[data-progress-label]")?.text())
         assertEquals("/join/identity", form(page).attr("action"))
         assertEquals(listOf("identity"), page.select("[data-step]").map { it.attr("data-step") })
-        assertEquals("/login", page.selectFirst("[data-prev]")?.attr("href"))
+        assertNull(page.selectFirst("[data-prev]")) // the first step has nowhere to go back to
         assertEquals("Suivant", page.selectFirst("[data-next]")?.text())
         assertNull(page.selectFirst("input[name=returnTo]"))
         assertTrue(page.select(".field__error").all { it.hasAttr("hidden") })
@@ -138,7 +170,7 @@ class JoinTemplateTest {
 
         assertEquals("review", page.selectFirst("input[name=returnTo]")?.`val`())
         assertEquals("Revenir à la revue", page.selectFirst("[data-next]")?.text())
-        assertEquals("/join?step=review", page.selectFirst("[data-prev]")?.attr("href"))
+        assertNull(page.selectFirst("[data-prev]")) // not even from the review: "Revenir à la revue" goes back
         assertEquals("ray@gmail.com", page.selectFirst("#email")?.`val`())
         assertEquals("+237670000001", page.selectFirst("#whatsappNumber")?.`val`())
     }
@@ -276,6 +308,7 @@ class JoinTemplateTest {
         assertNull(page.selectFirst("[data-progress-block]"))
         assertNull(page.selectFirst("form"))
         assertEquals("/login", page.selectFirst(".cta-row a")?.attr("href"))
+        assertEquals(tenant.publicPortalUrl, page.selectFirst("[data-exit]")?.attr("href"))
     }
 
     private fun render(request: MockHttpServletRequestBuilder): Document {

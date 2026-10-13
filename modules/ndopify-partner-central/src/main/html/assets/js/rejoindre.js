@@ -809,7 +809,7 @@
                     next(index);
                 });
             }
-            // Step 1's "Précédent" is a link out to the login page — except when editing from the review.
+            // Step 1 has no "Précédent": the wizard is the start of the page. From the review, Next returns to it.
             var prevControl = $("[data-prev]", slides[index]);
             if (prevControl) {
                 prevControl.addEventListener("click", function (event) {

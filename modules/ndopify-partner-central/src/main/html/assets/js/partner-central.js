@@ -800,8 +800,6 @@
 
             var next = $("[data-next]", slides[index]);
             if (next) next.textContent = state().returning ? "Revenir à la revue" : "Suivant";
-            // The wizard is the start of the page: the recto has nowhere to go back to, unless editing from the review.
-            $("[data-prev]", slides[0]).hidden = !state().returning;
             if (index === KYC_REVIEW) renderReview();
             sync();
 
@@ -869,10 +867,14 @@
                     next(index);
                 });
             }
-            $("[data-prev]", slide).addEventListener("click", function () {
-                if (state().returning) back(KYC_REVIEW);
-                else back(index - 1);
-            });
+            // Step 1 has no "Précédent": the wizard is the start of the page. From the review, Next returns to it.
+            var prevButton = $("[data-prev]", slide);
+            if (prevButton) {
+                prevButton.addEventListener("click", function () {
+                    if (state().returning) back(KYC_REVIEW);
+                    else back(index - 1);
+                });
+            }
         });
 
         $all("[data-edit]", form).forEach(function (button) {

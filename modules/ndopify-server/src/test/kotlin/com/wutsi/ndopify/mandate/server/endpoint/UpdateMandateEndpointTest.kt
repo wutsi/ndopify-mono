@@ -1,15 +1,14 @@
 package com.wutsi.ndopify.mandate.server.endpoint
 
 import com.wutsi.koki.listing.dto.ListingType
+import com.wutsi.koki.listing.dto.PropertyCategory
 import com.wutsi.koki.listing.dto.PropertyType
-import com.wutsi.koki.listing.dto.RoadAccessType
 import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
-import com.wutsi.ndopify.listing.dto.ElectricityAccessType
 import com.wutsi.ndopify.listing.dto.FurnitureType
-import com.wutsi.ndopify.listing.dto.WaterAccessType
+import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
@@ -33,23 +32,27 @@ class UpdateMandateEndpointTest : TenantAwareEndpointIntegrationTest() {
     private lateinit var ds: DataSource
 
     private val request = UpdateMandateRequest(
+        propertyCategory = PropertyCategory.COMMERCIAL,
         mandateType = MandateType.OWNER,
         listingType = ListingType.SALE,
         cityId = 2220957L,
         neighbourhoodIds = listOf(333L),
-        propertyTypes = listOf(PropertyType.VILLA),
+        propertyType = PropertyType.OFFICE,
         furnitureType = FurnitureType.entries.last(),
         rooms = "4",
         parkings = "2",
-        minArea = 200,
-        maxArea = 400,
-        waterAccessType = WaterAccessType.entries.last(),
+        area = 300,
+        waterMeter = true,
+        dedicatedWaterMeter = false,
         waterTank = false,
         waterWell = false,
-        electricityAccessType = ElectricityAccessType.entries.last(),
+        electricityMeter = true,
+        dedicatedElectricityMeter = true,
         generatorSet = false,
         solarPanel = false,
-        roadAccessType = RoadAccessType.entries.last(),
+        roadPaved = false,
+        trackAccessibleByCar = true,
+        trackInaccessibleByCar = false,
         securedFenced = false,
         securityGuard = false,
         videoSurveillance = false,
@@ -57,6 +60,7 @@ class UpdateMandateEndpointTest : TenantAwareEndpointIntegrationTest() {
         securityDeposit = null,
         advanceRent = null,
         leaseTerm = null,
+        movingPeriod = MovingPeriod.AFTER_3_MONTHS,
         noticePeriod = null,
         comments = "Ocean view",
     )
@@ -72,23 +76,27 @@ class UpdateMandateEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(10L, mandate.customerId)
         assertNull(mandate.agentId)
         assertEquals(MandateStatus.PENDING_ASSIGNMENT, mandate.status)
+        assertEquals(request.propertyCategory, mandate.propertyCategory)
         assertEquals(request.mandateType, mandate.mandateType)
         assertEquals(request.listingType, mandate.listingType)
         assertEquals(request.cityId, mandate.cityId)
         assertEquals(request.neighbourhoodIds, neighborhoodIds(1L))
-        assertEquals(request.propertyTypes, mandate.propertyTypes)
+        assertEquals(request.propertyType, mandate.propertyType)
         assertEquals(request.furnitureType, mandate.furnitureType)
         assertEquals(request.rooms, mandate.rooms)
         assertEquals(request.parkings, mandate.parkings)
-        assertEquals(request.minArea, mandate.minArea)
-        assertEquals(request.maxArea, mandate.maxArea)
-        assertEquals(request.waterAccessType, mandate.waterAccessType)
+        assertEquals(request.area, mandate.area)
+        assertEquals(request.waterMeter, mandate.waterMeter)
+        assertEquals(request.dedicatedWaterMeter, mandate.dedicatedWaterMeter)
         assertEquals(request.waterTank, mandate.waterTank)
         assertEquals(request.waterWell, mandate.waterWell)
-        assertEquals(request.electricityAccessType, mandate.electricityAccessType)
+        assertEquals(request.electricityMeter, mandate.electricityMeter)
+        assertEquals(request.dedicatedElectricityMeter, mandate.dedicatedElectricityMeter)
         assertEquals(request.generatorSet, mandate.generatorSet)
         assertEquals(request.solarPanel, mandate.solarPanel)
-        assertEquals(request.roadAccessType, mandate.roadAccessType)
+        assertEquals(request.roadPaved, mandate.roadPaved)
+        assertEquals(request.trackAccessibleByCar, mandate.trackAccessibleByCar)
+        assertEquals(request.trackInaccessibleByCar, mandate.trackInaccessibleByCar)
         assertEquals(request.securedFenced, mandate.securedFenced)
         assertEquals(request.securityGuard, mandate.securityGuard)
         assertEquals(request.videoSurveillance, mandate.videoSurveillance)
@@ -99,6 +107,7 @@ class UpdateMandateEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertNull(mandate.advanceRent)
         assertNull(mandate.leaseTerm)
         assertNull(mandate.noticePeriod)
+        assertEquals(request.movingPeriod, mandate.movingPeriod)
         assertEquals(ContactPeriodType.entries[1], mandate.preferredContactPeriod)
         assertEquals(request.comments, mandate.comments)
     }

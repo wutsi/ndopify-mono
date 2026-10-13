@@ -4,28 +4,32 @@ CREATE TABLE T_MANDATE(
 
   customer_id             BIGINT NOT NULL REFERENCES T_CUSTOMER(id),
   agent_id                BIGINT REFERENCES T_AGENT(id),
+  city_id                 BIGINT NOT NULL,
 
   status                  INT NOT NULL DEFAULT 0,
   mandate_type            INT NOT NULL DEFAULT 0,
   listing_type            INT NOT NULL DEFAULT 0,
 
-  city_id                 BIGINT NOT NULL,
-  property_types          TEXT,
+  property_category       INT NOT NULL DEFAULT 0,
+  property_type           INT,
   furniture_type          INT,
   rooms                   VARCHAR(10),
   parkings                VARCHAR(10),
-  min_area                INT,
-  max_area                INT,
+  area                    INT,
 
-  water_access_type       INT,
+  water_meter             BOOLEAN NOT NULL DEFAULT false,
+  dedicated_water_meter   BOOLEAN NOT NULL DEFAULT false,
   water_tank              BOOLEAN NOT NULL DEFAULT false,
   water_well              BOOLEAN NOT NULL DEFAULT false,
 
-  electricity_access_type INT,
+  electricity_meter       BOOLEAN NOT NULL DEFAULT false,
+  dedicated_electricity_meter BOOLEAN NOT NULL DEFAULT false,
   generator_set           BOOLEAN NOT NULL DEFAULT false,
   solar_panel             BOOLEAN NOT NULL DEFAULT false,
 
-  road_access_type        INT,
+  road_paved              BOOLEAN NOT NULL DEFAULT false,
+  track_accessible_by_car BOOLEAN NOT NULL DEFAULT false,
+  track_inaccessible_by_car BOOLEAN NOT NULL DEFAULT false,
 
   secured_fenced          BOOLEAN NOT NULL DEFAULT false,
   security_guard          BOOLEAN NOT NULL DEFAULT false,
@@ -38,6 +42,7 @@ CREATE TABLE T_MANDATE(
   advance_rent            INT,
   lease_term              INT,
   notice_period           INT,
+  moving_period           INT NOT NULL DEFAULT 0,
 
   preferred_contact_period INT,
   comments                TEXT,

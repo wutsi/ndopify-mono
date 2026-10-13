@@ -11,6 +11,7 @@ import com.wutsi.ndopify.npc.ui.login.LoginController
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
+import com.wutsi.ndopify.refdata.dto.Tenant
 import jakarta.servlet.http.HttpSession
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Controller
@@ -66,6 +67,10 @@ class JoinController(
             AgentType.REAL_ESTATE_AGENT to "Rattaché à une agence immobilière",
         )
     }
+
+    /** The current tenant, for the header on every step: its logo, and "Quitter" back to its public portal. */
+    @ModelAttribute("tenant")
+    fun tenant(): Tenant = tenantContext.getTenant()
 
     @GetMapping
     fun show(

@@ -35,9 +35,20 @@
 <a class="skip-link" href="#main">Aller au contenu</a>
 <header class="site-header">
     <div class="site-header__inner">
+        <!--/* The tenant's logo, falling back to Ndopify's when it has none. */-->
         <a class="site-header__brand" th:href="@{/login}">
-            <img alt="Ndopify, espace partenaires" height="40" th:src="@{/assets/images/logo.png}" width="84">
+            <img alt="Ndopify, espace partenaires" height="40"
+                 th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify, espace partenaires' : ${tenant.name}"
+                 th:src="${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}">
         </a>
+        <!--/* Back to the tenant's public site, from any step; hidden when the tenant has none. */-->
+        <a class="btn btn--outline" data-exit th:href="${tenant.publicPortalUrl}"
+           th:unless="${#strings.isEmpty(tenant.publicPortalUrl)}">
+            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                <path d="m6 6 8 8M14 6l-8 8" fill="none" stroke="currentColor" stroke-linecap="round"
+                      stroke-width="1.5"/>
+            </svg>
+            Quitter</a>
     </div>
 </header>
 <main class="page" id="main">
@@ -156,8 +167,6 @@
                         </div>
                     </div>
                     <div class="form__actions">
-                        <a class="btn btn--outline" data-prev
-                           th:href="${returning} ? @{/join(step='review')} : @{/login}">Précédent</a>
                         <button aria-describedby="identity-hint" class="btn btn--primary" data-next
                                 th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
                         </button>

@@ -122,6 +122,8 @@
 html {
     -webkit-text-size-adjust: 100%;
     caret-color: var(--color-accent);
+    /* The header is sticky: anchors, focus and scrollIntoView() stop below it instead of under it. */
+    scroll-padding-top: calc(var(--header-height) + var(--space-3));
 }
 
 ::selection {
@@ -229,7 +231,11 @@ a:hover {
 }
 
 /* ---------- Header ---------- */
+/* Sticky: the brand and the header actions (Quitter, user menu) stay reachable at every step. Below the skip link. */
 .site-header {
+    position: sticky;
+    top: 0;
+    z-index: 50;
     border-bottom: 1px solid var(--color-border);
     background: var(--color-bg);
 }

@@ -1,19 +1,16 @@
 package com.wutsi.ndopify.mandate.server.domain
 
 import com.wutsi.koki.listing.dto.ListingType
+import com.wutsi.koki.listing.dto.PropertyCategory
 import com.wutsi.koki.listing.dto.PropertyType
-import com.wutsi.koki.listing.dto.RoadAccessType
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
-import com.wutsi.ndopify.listing.dto.ElectricityAccessType
 import com.wutsi.ndopify.listing.dto.FurnitureType
-import com.wutsi.ndopify.listing.dto.WaterAccessType
+import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
-import com.wutsi.ndopify.platform.util.jpa.PropertyTypeListConverter
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import jakarta.persistence.CollectionTable
 import jakarta.persistence.Column
-import jakarta.persistence.Convert
 import jakarta.persistence.ElementCollection
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
@@ -39,6 +36,7 @@ data class MandateEntity(
     val customerId: Long = -1,
     val agentId: Long? = null,
 
+    val propertyCategory: PropertyCategory = PropertyCategory.UNKNOWN,
     val status: MandateStatus = MandateStatus.UNKNOWN,
     val mandateType: MandateType = MandateType.UNKNOWN,
     val listingType: ListingType = ListingType.UNKNOWN,
@@ -53,24 +51,25 @@ data class MandateEntity(
     @Column(name = "neighborhood_id")
     val neighborhoodIds: List<Long> = emptyList(),
 
-    @Convert(PropertyTypeListConverter::class)
-    val propertyTypes: List<PropertyType> = emptyList(),
-
+    val propertyType: PropertyType? = null,
     val furnitureType: FurnitureType? = null,
     val rooms: String? = null,
     val parkings: String? = null,
-    val minArea: Int? = null,
-    val maxArea: Int? = null,
+    val area: Int? = null,
 
-    val waterAccessType: WaterAccessType? = null,
+    val waterMeter: Boolean = false,
+    val dedicatedWaterMeter: Boolean = false,
     val waterTank: Boolean = false,
     val waterWell: Boolean = false,
 
-    val electricityAccessType: ElectricityAccessType? = null,
+    val electricityMeter: Boolean = false,
+    val dedicatedElectricityMeter: Boolean = false,
     val generatorSet: Boolean = false,
     val solarPanel: Boolean = false,
 
-    val roadAccessType: RoadAccessType? = null,
+    val roadPaved: Boolean = false,
+    val trackAccessibleByCar: Boolean = false,
+    val trackInaccessibleByCar: Boolean = false,
 
     val securedFenced: Boolean = false,
     val securityGuard: Boolean = false,
@@ -84,6 +83,7 @@ data class MandateEntity(
     val advanceRent: Int? = null,
     val leaseTerm: Int? = null,
     val noticePeriod: Int? = null,
+    val movingPeriod: MovingPeriod = MovingPeriod.UNKNOWN,
 
     val preferredContactPeriod: ContactPeriodType? = null,
     val comments: String? = null,

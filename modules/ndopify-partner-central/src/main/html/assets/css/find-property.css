@@ -1,0 +1,58 @@
+/*
+ * Ndopify Partner Central — "Trouver un bien" wizard (find-property.html).
+ * Loaded after partner-central.css and rejoindre.css (choices, phone, slim-select, review layout, next steps);
+ * uses their tier-2 semantic tokens only, no new colours.
+ */
+
+/* .choice is display:flex, which would otherwise beat the hidden attribute (property types of the other category). */
+.choice[hidden] {
+    display: none;
+}
+
+/* A choice with a one-line explanation under its label (Résidentiel / Commercial). */
+.choice--described {
+    align-items: flex-start;
+}
+
+.choice--described input {
+    margin-top: 0.125rem;
+}
+
+.choice__detail {
+    display: block;
+    margin-top: var(--space-1);
+    font-size: var(--step-hint);
+    font-weight: 400;
+}
+
+/* Amounts and surfaces: the unit sits inside the right edge of the pill. */
+.input-unit {
+    position: relative;
+}
+
+.input-unit .input {
+    padding-right: 7.5rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.input-unit__suffix {
+    position: absolute;
+    top: 50%;
+    right: var(--space-4);
+    transform: translateY(-50%);
+    font-weight: 600;
+    pointer-events: none;
+}
+
+/* Free text: the pill shape doesn't suit several lines, so it gets the rounded panel of the dropdowns. */
+.input--textarea {
+    min-height: calc(var(--target) * 2.5);
+    border-radius: calc(var(--radius-control) / 2);
+    line-height: 1.5;
+    resize: vertical;
+}
+
+/* Comments keep the line breaks the visitor typed. */
+.review__multiline {
+    white-space: pre-line;
+}

@@ -102,7 +102,6 @@
                     </div>
 
                     <div class="form__actions">
-                        <a class="btn btn--outline" data-prev th:if="${returning}" th:href="@{/kyc(step='review')}">Précédent</a>
                         <button class="btn btn--primary" type="submit"
                                 aria-describedby="front-hint" data-next th:text="${returning} ? 'Revenir à la revue' : 'Suivant'">Suivant</button>
                     </div>

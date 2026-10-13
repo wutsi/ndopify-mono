@@ -26,7 +26,7 @@ class SearchMandateEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(MandateStatus.PENDING_ASSIGNMENT, mandate.status)
         assertEquals(MandateType.TENANT, mandate.mandateType)
         assertEquals(ListingType.RENTAL, mandate.listingType)
-        assertEquals(listOf(PropertyType.APARTMENT, PropertyType.STUDIO), mandate.propertyTypes)
+        assertEquals(PropertyType.APARTMENT, mandate.propertyType)
         assertEquals(2370201L, mandate.cityId)
         assertEquals(listOf(111L, 222L), mandate.neighborhoodIds.sorted())
         assertEquals("2", mandate.rooms)
