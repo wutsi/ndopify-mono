@@ -7,6 +7,7 @@ import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.ElectricityAccessType
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.WaterAccessType
+import com.wutsi.ndopify.refdata.dto.Money
 import jakarta.validation.constraints.NotEmpty
 
 data class CreateMandateRequest(
@@ -37,8 +38,7 @@ data class CreateMandateRequest(
     val securityGuard: Boolean = false,
     val videoSurveillance: Boolean = false,
 
-    val price: Long = -1,
-    val currencyCode: String = "",
+    val price: Money = Money(),
     val securityDeposit: Int? = null,
     val advanceRent: Int? = null,
     val leaseTerm: Int? = null,
