@@ -15,8 +15,9 @@
     --background-info: #dbeafe;
     --background-warning: #fef3c7;
     --background-error: #fef2f2;
+    --background-disabled: #808080;
     --text-default: #040404;
-    --text-disabled: #808080;
+    --text-disabled: #ffffff;
     --text-success: #155724;
     --text-info: #1e3a8a;
     --text-warning: #78350f;
@@ -55,9 +56,13 @@
     --color-bg: var(--background-default);
     --color-bg-subtle: var(--background-secondary);
     --color-fg: var(--text-default);
-    --color-fg-disabled: var(--text-disabled);
+    --color-bg-disabled: var(--background-disabled);
+    --color-on-disabled: var(--text-disabled);
+    /* Gray text of a disabled choice or a placeholder, on a light background. Not --text-disabled: that's white now
+       (text on a disabled button), so it reuses the disabled gray. */
+    --color-fg-disabled: var(--background-disabled);
     --color-border: var(--border-default);
-    --color-border-strong: var(--text-disabled); /* 3.95:1 on white — control edges need ≥3:1 */
+    --color-border-strong: var(--background-disabled); /* gray, 3.95:1 on white — control edges need ≥3:1 */
     --color-accent: var(--primary);
     --color-accent-hover: var(--primary-hover);
     --color-on-accent: var(--button-primary-text);
@@ -384,7 +389,7 @@ a.user-menu__item:hover {
         transform var(--duration) var(--ease-out);
 }
 
-.btn:active:not([aria-disabled="true"]) {
+.btn:active:not([aria-disabled="true"], :disabled) {
     transform: scale(0.98);
 }
 
@@ -394,7 +399,7 @@ a.user-menu__item:hover {
     box-shadow: var(--shadow-cta);
 }
 
-.btn--primary:hover:not([aria-disabled="true"]) {
+.btn--primary:hover:not([aria-disabled="true"], :disabled) {
     background: var(--color-accent-hover);
 }
 
@@ -410,19 +415,18 @@ a.user-menu__item:hover {
 }
 
 /*
- * Disabled: the source doc requires submit buttons to stay inactive until the form is valid but DESIGN.md
- * defines no disabled variant, so this composes existing tokens (secondary background + disabled text).
+ * Disabled (DESIGN.md › button-disabled), whatever the variant: gray fill, white text, no border, no glow, no
+ * hover. White on gray is 3.95:1, accepted because WCAG exempts disabled controls.
  */
-.btn[aria-disabled="true"] {
-    background: var(--color-bg-subtle);
-    color: var(--color-fg);
-    border: 1px dashed var(--color-border-strong);
+.btn[aria-disabled="true"],
+.btn:disabled,
+.btn[aria-disabled="true"]:hover,
+.btn:disabled:hover {
+    background: var(--color-bg-disabled);
+    color: var(--color-on-disabled);
+    border-color: transparent;
     box-shadow: none;
     cursor: not-allowed;
-}
-
-.btn--primary[aria-disabled="true"]:hover {
-    background: var(--color-bg-subtle);
 }
 
 .btn--block {
@@ -517,6 +521,12 @@ a.user-menu__item:hover {
     .form__actions {
         flex-direction: row;
         justify-content: space-between;
+    }
+
+    /* The forward button ("Suivant", submit) is always last: keep it on the right even when there is no
+       "Précédent" before it (first step, or hidden). */
+    .form__actions > :last-child {
+        margin-inline-start: auto;
     }
 
     .form__actions--end {
@@ -645,7 +655,7 @@ a.user-menu__item:hover {
     justify-content: center;
     aspect-ratio: 856 / 540; /* ID-1 card format */
     background: var(--color-surface-alt);
-    border: 1px dashed var(--color-fg-disabled);
+    border: 1px dashed var(--color-border-strong);
     overflow: hidden;
 }
 

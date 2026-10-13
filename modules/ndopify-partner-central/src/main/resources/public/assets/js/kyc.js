@@ -3,7 +3,8 @@
  * - photos are checked (type, 5 MB) and shrunk in the browser before they're posted, so a 12 MP phone photo
  *   doesn't hit the upload limit, and the preview shows the chosen photo at once;
  * - the selfie step uses the front camera in the page (getUserMedia) when it can, under an oval guide; otherwise
- *   the <input type="file" capture="user"> that the page already shows is kept.
+ *   the <input type="file" capture="user"> that the page already shows is kept;
+ * - "Suivant" stays inactive until the step has its photo: one chosen here, or one the case already has.
  * Ported from the prototype (src/main/html/assets/js/partner-central.js: kycUpload, kycCamera).
  */
 (function () {
@@ -27,6 +28,32 @@
         error.hidden = !message;
         if (message) input.setAttribute("aria-invalid", "true");
         else input.removeAttribute("aria-invalid");
+    }
+
+    // Source doc: a step's button stays inactive until its required field is filled. aria-disabled (not the
+    // disabled attribute) keeps it in the tab order, so its aria-describedby hint can still be reached.
+    function setActive(button, active) {
+        if (active) button.removeAttribute("aria-disabled");
+        else button.setAttribute("aria-disabled", "true");
+    }
+
+    /* Keeps the upload step's [data-next] in sync with its photo. Returns the refresh, for the photo handlers. */
+    function initNext(step) {
+        var next = $("[data-next]", step);
+        var input = $(".upload__input", step);
+        if (!next || !input) return function () {};
+        // The server only renders a preview <img> for a photo the case already has.
+        var saved = !!$("[data-preview] img", step);
+
+        function refresh() {
+            setActive(next, saved || !!(input.files && input.files.length));
+        }
+
+        input.form.addEventListener("submit", function (event) {
+            if (next.getAttribute("aria-disabled") === "true") event.preventDefault();
+        });
+        refresh();
+        return refresh;
     }
 
     function showPreview(step, blob) {
@@ -80,15 +107,17 @@
         img.src = url;
     }
 
-    function initUpload(step) {
+    function initUpload(step, refresh) {
         var input = $(".upload__input", step);
         if (!input) return;
         input.addEventListener("change", function () {
+            refresh();
             var file = input.files && input.files[0];
             if (!file) return;
             if (ACCEPTED_TYPES.indexOf(file.type) === -1) {
                 setError(step, "Format non accepté. Utilisez une photo JPG, PNG ou WEBP.");
                 input.value = "";
+                refresh();
                 return;
             }
             setError(step, "");
@@ -99,9 +128,11 @@
                     var size = (chosen.size / (1024 * 1024)).toFixed(1).replace(".", ",");
                     setError(step, "Cette photo pèse " + size + " Mo. La taille maximale est de 5 Mo.");
                     input.value = "";
+                    refresh();
                     return;
                 }
                 showPreview(step, chosen);
+                refresh();
             });
         });
     }
@@ -122,7 +153,7 @@
         return "La caméra n'a pas pu démarrer. Prenez votre selfie avec l'appareil photo de votre téléphone.";
     }
 
-    function initCamera(step) {
+    function initCamera(step, refresh) {
         var video = $("[data-camera-video]", step);
         if (!video) return;
         var guide = $("[data-camera-guide]", step);
@@ -206,6 +237,7 @@
                     return;
                 }
                 showPreview(step, file);
+                refresh();
                 start.textContent = "Reprendre la photo";
                 $("[data-next]", step).focus();
             }, "image/jpeg", 0.85);
@@ -232,8 +264,9 @@
         var form = $("[data-kyc-form]");
         if (!form) return;
         var step = $("[data-step]", form);
-        initUpload(step);
-        initCamera(step);
+        var refresh = initNext(step);
+        initUpload(step, refresh);
+        initCamera(step, refresh);
         initSubmit(form);
     });
 })();

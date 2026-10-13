@@ -7,6 +7,7 @@
  * - city: a slim-select type-ahead over GET /locations?type=CITY&q=…;
  * - neighbourhoods: the chosen city's, loaded from GET /locations?type=NEIGHBORHOOD&parent-id=…, at most 3;
  * - "Utiliser mon numéro WhatsApp" fills the Mobile Money field and locks it;
+ * - "Suivant" stays inactive until every required field of the step is filled (the server still validates them);
  * - the review's submit button can't be pressed twice.
  */
 (function () {
@@ -128,6 +129,47 @@
         return { slim: slim, control: control };
     }
 
+    /* ---------- "Suivant" ---------- */
+    // Source doc: a step's button stays inactive until its required fields are filled. aria-disabled (not the
+    // disabled attribute) keeps it in the tab order, so its aria-describedby hint can still be reached.
+    function setActive(button, active) {
+        if (active) button.removeAttribute("aria-disabled");
+        else button.setAttribute("aria-disabled", "true");
+    }
+
+    function isFilled(form, field) {
+        if (field.type === "radio" || field.type === "checkbox") {
+            return !!form.querySelector('input[name="' + field.name + '"]:checked');
+        }
+        if (field.multiple) return field.selectedOptions.length > 0;
+        return field.value.trim() !== "";
+    }
+
+    /*
+     * Keeps the step's [data-next] in sync with its [required] fields. Returns the refresh, for the changes no
+     * input/change event reports (a value set by script, slim-select reloading its options).
+     */
+    function initNext(form) {
+        var next = $("[data-next]", form);
+        var fields = $all("[required]", form);
+        if (!next || !fields.length) return function () {};
+
+        function refresh() {
+            setActive(next, fields.every(function (field) {
+                return isFilled(form, field);
+            }));
+        }
+
+        form.addEventListener("input", refresh);
+        form.addEventListener("change", refresh);
+        // Enter in a text field submits the form too: not while the step is incomplete.
+        form.addEventListener("submit", function (event) {
+            if (next.getAttribute("aria-disabled") === "true") event.preventDefault();
+        });
+        refresh();
+        return refresh;
+    }
+
     /* ---------- Phone fields ---------- */
     /*
      * Binds intl-tel-input to every phone field of the step once its utils.js is in. The visible input gives its
@@ -173,7 +215,7 @@
     }
 
     /* ---------- Step: area ---------- */
-    function initSector(form) {
+    function initSector(form, refresh) {
         var url = form.getAttribute("data-locations-url");
         var citySelect = $("#cityId", form);
         var neighborhoodSelect = $("#neighborhoodIds", form);
@@ -245,6 +287,7 @@
             if (!cityId) {
                 neighborhoods.slim.setData([]);
                 updateCounter(false, 0);
+                refresh();
                 return;
             }
             neighborhoods.slim.disable();
@@ -256,6 +299,7 @@
                     });
                     neighborhoods.slim.setData(options);
                     neighborhoods.slim.enable();
+                    refresh();
                     updateCounter(false, options.filter(function (option) {
                         return option.selected;
                     }).length);
@@ -272,17 +316,19 @@
         loadNeighborhoods(initial);
         citySelect.addEventListener("change", function () {
             loadNeighborhoods([]);
+            refresh();
             setFieldError(neighborhoods.control, neighborhoodError, "");
             setFieldError(city.control, $("#cityId-error", form), "");
         });
         neighborhoodSelect.addEventListener("change", function () {
             updateCounter(true);
+            refresh();
             if (selected().length) setFieldError(neighborhoods.control, neighborhoodError, "");
         });
     }
 
     /* ---------- Step: payment ---------- */
-    function initSameAsWhatsapp(form, phones) {
+    function initSameAsWhatsapp(form, phones, refresh) {
         var same = $("#sameAsWhatsapp", form);
         var momo = phones.filter(function (field) {
             return field.input.id === "mobileMoneyNumber";
@@ -302,6 +348,7 @@
                 input.focus();
             }
             input.readOnly = same.checked;
+            refresh();
         }
 
         same.addEventListener("change", function () {
@@ -322,10 +369,11 @@
             }
         });
 
+        var refresh = initNext(form);
         var phones = [];
         initPhones(form).then(function (fields) {
             phones = fields;
-            initSameAsWhatsapp(form, phones);
+            initSameAsWhatsapp(form, phones, refresh);
         });
         // Shown numbers (review, "Utiliser mon numéro WhatsApp") in the international format, once utils.js is in.
         window.NdUtil.phoneReady().then(function () {
@@ -336,7 +384,7 @@
             /* E.164 stays readable */
         });
 
-        if ($("#cityId", form)) initSector(form);
+        if ($("#cityId", form)) initSector(form, refresh);
 
         form.addEventListener("submit", function (event) {
             // A number intl-tel-input can't read would reach the server empty: say why here instead.

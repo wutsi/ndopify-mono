@@ -10,8 +10,9 @@ colors:
     background-info: "#dbeafe"
     background-warning: "#fef3c7"
     background-error: "#fef2f2"
+    background-disabled: "#808080"
     text-default: "#040404"
-    text-disabled: "#808080"
+    text-disabled: "#ffffff"
     text-success: "#155724"
     text-info: "#1e3a8a"
     text-warning: "#78350f"
@@ -96,6 +97,12 @@ components:
         typography: "{typography.button}"
         rounded: "{rounded.full}"
         padding: "{spacing.lg} {spacing.xl}"
+    button-disabled:
+        backgroundColor: "{colors.background-disabled}"
+        textColor: "{colors.text-disabled}"
+        typography: "{typography.button}"
+        rounded: "{rounded.full}"
+        padding: "{spacing.lg} {spacing.xl}"
     alert-success:
         backgroundColor: "{colors.background-success}"
         textColor: "{colors.text-success}"
@@ -163,10 +170,12 @@ Logo and icon assets checked into this repo, under `src/main/html/assets/images/
   happen to share hex values with `primary` and the table's old literal gray respectively, but they're distinct
   named tokens in the source doc — don't collapse them into `primary`/`background-*`. `surface-default`
   (`#dbeafe`, incidentally identical to `background-info`) isn't consumed by any component yet.
-- **Text (`#040404` default, `#808080` disabled):** near-black for readable body/heading text; gray for disabled
-  states. `text-disabled` isn't wired into any component below — the source doc defines the color but no
-  disabled-state component variant (e.g. a disabled button) yet, so the linter flags it as orphaned; don't invent
-  a disabled button/field spec to silence that, wait for the source doc.
+- **Text (`#040404` default, `#ffffff` disabled):** near-black for readable body/heading text; white for text on a
+  disabled control. `text-disabled` was `#808080` (gray) before the source doc moved that gray to
+  `background-disabled` — it's now the *fill* of a disabled control, not a text color. Don't use `text-disabled`
+  on a light background: white on white is invisible.
+- **Disabled (`#808080` background, `#ffffff` text):** the pair for a disabled button (`button-disabled`). The
+  source doc defines them as color tokens; their use for buttons is the design owner's direction.
 - **Status colors (success / info / warning / error):** each status has a matching background, text, and border
   triad (e.g. success = `#f0fdf4` background / `#155724` text / `#dcfce7` border) used together for alerts, badges,
   and form validation — never mixed across statuses. The source doc lists a single value per status/text/border
@@ -213,10 +222,16 @@ fill to define its edge. The source doc defines no radius for tables or cards �
 | Primary   | Primary              | White        | none                       | Primary glow |
 | Secondary | Background/Secondary | Text/Default | none                       | none         |
 | Outline   | transparent          | Text/Default | `1px solid` Border/Default | none         |
+| Disabled  | Background/Disabled  | Text/Disabled | none                      | none         |
 
 All variants share button typography and `lg`/`xl` padding, and are pill-shaped. On hover, the primary variant
 darkens to `#111184` background with white text (`button-primary-hover`). The source doc does not define hover
 states for the Secondary or Outline variants — don't invent one; leave them unstyled on hover until specified.
+
+A disabled button of any variant (`disabled` attribute or `aria-disabled="true"`) takes `button-disabled`: gray
+`#808080` fill with white text, the same typography, padding and pill shape, no hover change and no glow (the
+primary glow marks the active call to action). The source doc doesn't say whether a disabled Outline button keeps
+its border; drop it, since the fill already outlines the shape. Don't fade an enabled variant with `opacity` instead.
 
 ### Alerts / status badges
 
@@ -327,7 +342,35 @@ Not a source-doc rule either, but the established implementation pattern for `re
   skips a level. The confirmation step is the exception: it uses a plain visible `<h2>` inside `.confirmation`, not
   the legend/h3 pattern, since it's the form's terminal state rather than a step.
 - **Navigation:** `btn-outline` "Précédent" / `btn-primary` "Suivant" per step; the real submit button
-  (`btn-primary`, type `submit`) appears only on the final data step, never earlier.
+  (`btn-primary`, type `submit`) appears only on the final data step, never earlier. In Partner Central's
+  server-driven wizards (Join, KYC) every step is its own `<form>`, so "Suivant" is that step's `type="submit"`
+  posting to `/{wizard}/{step}`; the final "send" button is still only on the review step.
+- **Button order and placement:** inside `.form__actions`, "Précédent" comes first and the forward button
+  ("Suivant", "Revenir à la revue", or the final submit) is always the **last** child. From 640px up the row is
+  horizontal and the forward button is pinned right (`margin-inline-start: auto` on the last child), including
+  when there is no "Précédent" (first step, or not rendered/hidden) — never let a lone "Suivant" fall to the left.
+  Below 640px the buttons are full-width and stacked, forward button on top (`flex-direction: column-reverse`).
+- **When "Suivant" is active:** it stays inactive (`button-disabled`) until every required field of the current
+  step is filled, then turns active; emptying a field turns it inactive again.
+    - "Required" is declarative: mark each required control with `required` (text inputs, `<select>`, a
+      `<select multiple>`, each radio of a group) — the script reads `[required]`, not a hand-kept list. Keep
+      `novalidate` on the form so the browser doesn't show its own bubbles.
+    - "Filled" means: a non-blank value (spaces alone don't count), at least one checked radio/checkbox in the
+      group, at least one selected option in a `<select multiple>`. For a photo step: a photo chosen on the page,
+      or one the case already has (the server rendered its preview); a file rejected in the browser (type, size)
+      doesn't count.
+    - It gates on *presence*, not format: a filled but malformed value (e-mail, phone) still enables "Suivant"; the
+      server validates and answers with the field's French message.
+    - Use `aria-disabled="true"`, never the `disabled` attribute, so the button stays focusable and its
+      `aria-describedby` hint is still read. While it's inactive, also cancel the form's `submit` (Enter in a text
+      field submits too).
+    - Re-check after changes no `input`/`change` event reports: a value set by script (e.g. "Utiliser mon numéro
+      WhatsApp"), options reloaded by slim-select, a photo taken with the in-page camera.
+    - A step re-opened with its answers already there (e.g. from the review) shows "Suivant" active at once.
+    - Progressive enhancement: the server renders "Suivant" active and only the script makes it inactive, so every
+      step still posts without JavaScript.
+    - A button with nothing to fill (the review's final submit) isn't gated; it only guards against a double
+      submit.
 - **Validation:** required fields validate inline on `next`, blocking advance until valid; focus moves to the first
   invalid field.
 
@@ -344,6 +387,9 @@ or Tabs — don't invent styling for any of these; flag them as missing if neede
   readability; don't skip the alternation, don't substitute `background-default`/`background-secondary`, and
   don't invent a third row color.
 - Don't give secondary or outline buttons a shadow — only the primary button has elevation.
+- Do keep a wizard's forward button last in `.form__actions` and on the right; don't reorder the markup to move it.
+- Don't let "Suivant" submit an incomplete step: keep it `aria-disabled` until the step's `[required]` fields are
+  filled — and don't render it inactive from the server, or the step can't be posted without JavaScript.
 - Don't mix a status's background with a different status's text or border color.
 - Don't invent new hex values, font sizes, or spacing values — extend the token tables above instead.
 - Do stack checkbox/radio option groups vertically (one option per row); don't reintroduce a horizontal/auto-fit
@@ -362,6 +408,9 @@ or Tabs — don't invent styling for any of these; flag them as missing if neede
 - Do keep every form field's `name`/`id`/`for`/`aria-labelledby`/`value` in English even on French-language pages
   (e.g. `name="city"` with label text "Ville"); don't translate the visible label and then mirror that French
   word into the identifier too — see "Form fields" above.
+- Note: white text on `background-disabled` (`#808080`) measures 3.95:1, also below AA's 4.5:1. WCAG exempts
+  disabled controls from the contrast requirement, so this is acceptable for `button-disabled` only — don't reuse
+  the pair for anything users must read.
 - Note: white text on `primary` (`#1d7edf`) measures 4.12:1 contrast, below WCAG AA's 4.5:1 minimum for normal
   text. This comes directly from the source doc's brand color and hover state — don't silently "fix" it by
   darkening `primary` or lightening the button text; flag it to design instead if AA compliance is required.

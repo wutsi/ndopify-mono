@@ -278,7 +278,7 @@
                             <span class="field__optional">(1&nbsp;à&nbsp;3)</span></label>
                         <!--/* Only the chosen neighbourhoods are rendered: join.js loads the city's others. */-->
                         <select aria-describedby="neighborhood-counter neighborhoodIds-error" class="input select"
-                                id="neighborhoodIds" multiple name="neighborhoodIds"
+                                id="neighborhoodIds" multiple name="neighborhoodIds" required
                                 th:attr="aria-invalid=${errors['neighborhoodIds'] != null ? 'true' : null}">
                             <option selected th:each="neighborhood : ${neighborhoods}" th:text="${neighborhood.name}"
                                     th:value="${neighborhood.id}">Bastos</option>
