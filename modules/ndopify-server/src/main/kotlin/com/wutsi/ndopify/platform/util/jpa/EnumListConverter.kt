@@ -1,21 +1,21 @@
 package com.wutsi.ndopify.platform.util.jpa
 
-import com.wutsi.koki.listing.dto.PropertyType
 import jakarta.persistence.AttributeConverter
 import jakarta.persistence.Converter
+import org.apache.poi.ss.formula.functions.T
 
 @Converter
-class PropertyTypeListConverter : AttributeConverter<List<PropertyType>?, String?> {
-    override fun convertToDatabaseColumn(attribute: List<PropertyType>?): String? {
+open class EnumListConverter<T : Enum<T>> : AttributeConverter<List<T>?, String?> {
+    override fun convertToDatabaseColumn(attribute: List<T>?): String? {
         return attribute?.joinToString(",") { it.name }
     }
 
-    override fun convertToEntityAttribute(dbData: String?): List<PropertyType>? {
+    override fun convertToEntityAttribute(dbData: String?): List<T>? {
         return dbData?.split(",")
             ?.filter { it.isNotBlank() }
             ?.mapNotNull {
                 try {
-                    PropertyType.valueOf(it)
+                    java.lang.Enum.valueOf(T::class.java as Class<T>, it)
                 } catch (_: IllegalArgumentException) {
                     null
                 }
