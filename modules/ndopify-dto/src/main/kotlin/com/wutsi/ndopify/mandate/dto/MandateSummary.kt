@@ -12,7 +12,7 @@ data class MandateSummary(
     val status: MandateStatus = MandateStatus.UNKNOWN,
     val mandateType: MandateType = MandateType.UNKNOWN,
     val listingType: ListingType = ListingType.UNKNOWN,
-    val propertyTypes: List<PropertyType> = emptyList(),
+    val propertyType: PropertyType? = null,
     val cityId: Long = -1,
     val neighborhoodIds: List<Long> = emptyList(),
     val rooms: String? = null,

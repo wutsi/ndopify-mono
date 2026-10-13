@@ -1,5 +1,6 @@
 package com.wutsi.koki.listing.dto
 
+@Deprecated("")
 enum class RoadAccessType {
     UNKNOWN,
     PAVED_ROAD,

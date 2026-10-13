@@ -1,38 +1,40 @@
 package com.wutsi.ndopify.mandate.dto
 
 import com.wutsi.koki.listing.dto.ListingType
+import com.wutsi.koki.listing.dto.PropertyCategory
 import com.wutsi.koki.listing.dto.PropertyType
-import com.wutsi.koki.listing.dto.RoadAccessType
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
-import com.wutsi.ndopify.listing.dto.ElectricityAccessType
 import com.wutsi.ndopify.listing.dto.FurnitureType
-import com.wutsi.ndopify.listing.dto.WaterAccessType
 import com.wutsi.ndopify.refdata.dto.Money
 import jakarta.validation.constraints.NotEmpty
 
 data class CreateMandateRequest(
+    val propertyCategory: PropertyCategory = PropertyCategory.UNKNOWN,
     val mandateType: MandateType = MandateType.UNKNOWN,
     val listingType: ListingType = ListingType.UNKNOWN,
 
     val cityId: Long = -1,
     val neighbourhoodIds: List<Long> = emptyList(),
 
-    val propertyTypes: List<PropertyType> = emptyList(),
+    val propertyType: PropertyType? = null,
     val furnitureType: FurnitureType? = null,
     val rooms: String? = null,
     val parkings: String? = null,
-    val minArea: Int? = null,
-    val maxArea: Int? = null,
+    val area: Int? = null,
 
-    val waterAccessType: WaterAccessType? = null,
+    val waterMeter: Boolean = false,
+    val dedicatedWaterMeter: Boolean = false,
     val waterTank: Boolean = false,
     val waterWell: Boolean = false,
 
-    val electricityAccessType: ElectricityAccessType? = null,
+    val electricityMeter: Boolean = false,
+    val dedicatedElectricityMeter: Boolean = false,
     val generatorSet: Boolean = false,
     val solarPanel: Boolean = false,
 
-    val roadAccessType: RoadAccessType? = null,
+    val roadPaved: Boolean = false,
+    val trackAccessibleByCar: Boolean = false,
+    val trackInaccessibleByCar: Boolean = false,
 
     val securedFenced: Boolean = false,
     val securityGuard: Boolean = false,
