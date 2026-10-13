@@ -5,6 +5,7 @@ import com.wutsi.koki.listing.dto.PropertyCategory
 import com.wutsi.koki.listing.dto.PropertyType
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.FurnitureType
+import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.refdata.dto.Money
 import java.util.Date
 
@@ -50,6 +51,7 @@ data class Mandate(
     val advanceRent: Int? = null,
     val leaseTerm: Int? = null,
     val noticePeriod: Int? = null,
+    val movingPeriod: MovingPeriod = MovingPeriod.UNKNOWN,
 
     val preferredContactPeriod: ContactPeriodType? = null,
 
