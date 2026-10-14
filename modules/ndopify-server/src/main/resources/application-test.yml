@@ -15,3 +15,10 @@ swagger:
 logging:
     level:
         com.wutsi: INFO
+
+ndopify:
+    storage:
+        default-type: s3
+        s3:
+            bucket: com-wutsi-ndopify-test
+            region: us-east-1
