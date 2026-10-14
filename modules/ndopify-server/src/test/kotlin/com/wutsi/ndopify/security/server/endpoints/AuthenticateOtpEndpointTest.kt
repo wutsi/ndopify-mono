@@ -12,8 +12,10 @@ import com.wutsi.ndopify.refdata.dto.ApplicationCode
 import com.wutsi.ndopify.refdata.dto.AuthType
 import com.wutsi.ndopify.security.dto.AuthenticateRequest
 import com.wutsi.ndopify.security.dto.AuthenticateResponse
+import com.wutsi.ndopify.security.dto.CreateOtpRequest
 import com.wutsi.ndopify.security.server.dao.AuthFactorRepository
 import com.wutsi.ndopify.security.server.service.AccessTokenService
+import com.wutsi.ndopify.security.server.service.OtpGenerator
 import com.wutsi.ndopify.security.server.service.PasswordEncryptor
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
@@ -38,6 +40,9 @@ class AuthenticateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
 
     @MockitoBean
     private lateinit var passwordEncryptor: PasswordEncryptor
+
+    @MockitoBean
+    private lateinit var otpGenerator: OtpGenerator
 
     @Autowired
     private lateinit var accessTokenService: AccessTokenService
@@ -123,6 +128,32 @@ class AuthenticateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
 
         assertEquals(HttpStatus.CONFLICT, response.statusCode)
         assertEquals(ErrorCode.AUTH_INVALID_CREDENTIALS, response.body?.error?.code)
+    }
+
+    @Test
+    fun `used code cannot be reused`() {
+        val first = login("ray.sponsible@gmail.com", CODE)
+        assertEquals(HttpStatus.OK, first.statusCode)
+        val lastLoggedInAt = authFactorRepository.findById(1L).get().lastLoggedInAt
+
+        val response = loginError("ray.sponsible@gmail.com", CODE)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.AUTH_CREDENTIALS_ALREADY_USED, response.body?.error?.code)
+        assertEquals(lastLoggedInAt, authFactorRepository.findById(1L).get().lastLoggedInAt)
+    }
+
+    @Test
+    fun `new code requested after a login can be used`() {
+        doReturn(CODE).whenever(otpGenerator).generate()
+        rest.postForEntity("/v1/otp", CreateOtpRequest(email = "flow@gmail.com"), Void::class.java)
+        assertEquals(HttpStatus.OK, login("flow@gmail.com", CODE).statusCode)
+
+        rest.postForEntity("/v1/otp", CreateOtpRequest(email = "flow@gmail.com"), Void::class.java)
+        val response = login("flow@gmail.com", CODE)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(5L, accessTokenService.decode(response.body!!.accessToken).getUserId())
     }
 
     @Test

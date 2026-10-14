@@ -27,7 +27,7 @@ open class AccessTokenService(
         userId: Long,
         roles: Array<String>,
         tenantId: Long?,
-        ttlSeconds: Int?,
+        ttlSeconds: Int,
     ): String {
         val algo = getAlgorithm()
         val now = clock.millis()
@@ -39,12 +39,10 @@ open class AccessTokenService(
             .withArrayClaim(JwtPrincipal.CLAIM_ROLE, roles)
             .withSubject(userId.toString())
             .withIssuedAt(Instant.ofEpochMilli(now))
+            .withExpiresAt(Instant.ofEpochMilli(now + ttlSeconds * 1000))
 
         if (tenantId != null) {
             builder.withClaim(JwtPrincipal.CLAIM_TENANT_ID, tenantId)
-        }
-        if (ttlSeconds != null) {
-            builder.withExpiresAt(Instant.ofEpochMilli(now + ttlSeconds * 1000))
         }
 
         return builder.sign(algo)

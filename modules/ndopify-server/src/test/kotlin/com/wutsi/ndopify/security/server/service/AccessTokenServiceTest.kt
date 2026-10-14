@@ -59,22 +59,6 @@ class AccessTokenServiceTest {
     }
 
     @Test
-    fun `token with no expiry`() {
-        val now = 1000L
-        doReturn(now).whenever(clock).millis()
-
-        val token = service.create(
-            application = ApplicationCode.ADMIN_CONSOLE,
-            userId = 111L,
-            roles = arrayOf("ADMIN", "SUPPORT_MANAGER"),
-            tenantId = 222L,
-            ttlSeconds = null
-        )
-
-        service.decode(token)
-    }
-
-    @Test
     fun `expired token`() {
         val now = 1000L
         doReturn(now).whenever(clock).millis()
@@ -84,7 +68,7 @@ class AccessTokenServiceTest {
             userId = 111L,
             roles = arrayOf("ADMIN", "SUPPORT_MANAGER"),
             tenantId = 222L,
-            ttlSeconds = 1000
+            ttlSeconds = 1
         )
 
         assertFailsWith<TokenExpiredException> { service.decode(token) }

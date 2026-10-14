@@ -134,11 +134,10 @@ class AgentService(
         val agent = findById(id)
 
         // Update party
-        if (request.firstName != null || request.lastName != null || request.email != null) {
+        if (request.firstName != null || request.lastName != null) {
             val updateParty = UpdatePartyRequest(
                 firstName = request.firstName,
                 lastName = request.lastName,
-                email = request.email,
             )
             partyService.update(agent.party, updateParty)
         }

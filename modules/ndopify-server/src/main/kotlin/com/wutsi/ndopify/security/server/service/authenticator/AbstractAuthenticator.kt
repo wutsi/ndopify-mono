@@ -49,7 +49,7 @@ abstract class AbstractAuthenticator(
             userId = user.id ?: -1,
             roles = userApplication.roles.map { role -> role.code }.toTypedArray(),
             tenantId = tenantId,
-            ttlSeconds = null
+            ttlSeconds = 60 * 60, // 1 hour
         )
     }
 

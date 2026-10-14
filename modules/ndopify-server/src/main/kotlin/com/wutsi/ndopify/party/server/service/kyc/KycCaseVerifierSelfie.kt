@@ -3,7 +3,6 @@ package com.wutsi.ndopify.party.server.service.kyc
 import com.wutsi.ndopify.party.dto.KycImageType
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.KycVerificationType
-import com.wutsi.ndopify.party.server.dao.KycVerificationRepository
 import com.wutsi.ndopify.party.server.domain.KycVerificationEntity
 import com.wutsi.ndopify.party.server.service.KycCaseVerifier.Companion.LOW_SCORE_THRESHOLD
 import com.wutsi.ndopify.party.server.service.KycInfoExtractorProvider
@@ -16,12 +15,11 @@ import java.util.Date
 
 @Service
 class KycCaseVerifierSelfie(
-    verificationDao: KycVerificationRepository,
     clock: Clock,
     storageProvider: StorageServiceProvider,
     infoExtractorProvider: KycInfoExtractorProvider,
     logger: KVLogger,
-) : AbstractImageBasedKycCaseVerifier(verificationDao, clock, storageProvider, infoExtractorProvider, logger) {
+) : AbstractImageBasedKycCaseVerifier(clock, storageProvider, infoExtractorProvider, logger) {
     override fun getVerificationType(): KycVerificationType = KycVerificationType.SELFIE
 
     override fun getImageTypes(): List<KycImageType> = listOf(KycImageType.FRONT, KycImageType.SELFIE)
@@ -47,14 +45,12 @@ class KycCaseVerifierSelfie(
             }
         }
 
-        return verificationDao.save(
-            verification.copy(
-                status = status,
-                score = score.toInt(),
-                errorCode = errorCode,
-                errorMessage = errorMessage,
-                modifiedAt = today
-            )
+        return verification.copy(
+            status = status,
+            score = score.toInt(),
+            errorCode = errorCode,
+            errorMessage = errorMessage,
+            modifiedAt = today
         )
     }
 }

@@ -14,6 +14,7 @@ import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.KycVerificationType
 import com.wutsi.ndopify.party.dto.PaymentMethodStatus
 import com.wutsi.ndopify.party.server.dao.KycCaseRepository
+import com.wutsi.ndopify.party.server.dao.KycVerificationRepository
 import com.wutsi.ndopify.party.server.dao.PartyRepository
 import com.wutsi.ndopify.party.server.dao.PaymentMethodRepository
 import com.wutsi.ndopify.party.server.domain.KycCaseEntity
@@ -29,6 +30,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.jdbc.Sql
+import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -48,6 +50,9 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
 
     @Autowired
     private lateinit var paymentMethodDao: PaymentMethodRepository
+
+    @Autowired
+    private lateinit var verificationDao: KycVerificationRepository
 
     @Autowired
     private lateinit var tenantService: TenantService
@@ -71,6 +76,7 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         doReturn(
             listOf(
                 KycVerificationEntity(
+                    id = UUID.randomUUID().toString(),
                     type = KycVerificationType.PAYMENT_METHOD,
                     paymentMethod = paymentMethod,
                     status = status,
@@ -86,7 +92,7 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         status: KycStatus,
         score: Int?,
     ) {
-        doReturn(listOf(KycVerificationEntity(type = type, status = status, score = score)))
+        doReturn(listOf(KycVerificationEntity(id = UUID.randomUUID().toString(), type = type, status = status, score = score)))
             .whenever(verifier).verify(any())
     }
 
@@ -290,7 +296,7 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         val response = verify()
 
         assertEquals(HttpStatus.OK, response.statusCode)
-        assertCase(KycStatus.PENDING, null, errorCode = KycErrorCode.GATEWAY_ERROR)
+        assertCase(KycStatus.SUBMITTED, null, errorCode = KycErrorCode.GATEWAY_ERROR)
         assertRetry(1, "Gateway down")
         assertPartyKycStatus(KycStatus.PENDING)
         assertPaymentMethodStatus(PaymentMethodStatus.PENDING_VERIFICATION)
@@ -300,13 +306,13 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
-    fun `no identification verification - case back to pending, retry counted`() {
+    fun `no identification verification - case back to submitted, retry counted`() {
         setUpNoVerification(idVerifier)
 
         val response = verify()
 
         assertEquals(HttpStatus.OK, response.statusCode)
-        assertCase(KycStatus.PENDING, null, errorCode = KycErrorCode.GATEWAY_ERROR)
+        assertCase(KycStatus.SUBMITTED, null, errorCode = KycErrorCode.GATEWAY_ERROR)
         assertEquals(1, dao.findById("kyc-case-submitted").orElseThrow().retries)
         assertPartyKycStatus(KycStatus.PENDING)
 
@@ -321,7 +327,7 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         val response = verify("kyc-case-retried")
 
         assertEquals(HttpStatus.OK, response.statusCode)
-        assertCase(KycStatus.PENDING, null, "kyc-case-retried", KycErrorCode.GATEWAY_ERROR)
+        assertCase(KycStatus.SUBMITTED, null, "kyc-case-retried", KycErrorCode.GATEWAY_ERROR)
         assertRetry(2, "Gateway down", "kyc-case-retried")
     }
 
@@ -409,5 +415,39 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
 
         assertNoVerifierCalled()
         assertNoEmail()
+    }
+
+    @Test
+    fun `verifications saved with their final status`() {
+        setUpVerifier(idVerifier, KycVerificationType.IDENTIFICATION, KycStatus.VERIFIED, 90)
+        setUpVerifier(selfieVerifier, KycVerificationType.SELFIE, KycStatus.REJECTED, 10)
+
+        val response = verify()
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val verifications = verificationDao.findAll().filter { it.case.id == "kyc-case-submitted" }
+        assertEquals(
+            mapOf(
+                KycVerificationType.IDENTIFICATION to KycStatus.VERIFIED,
+                KycVerificationType.SELFIE to KycStatus.REJECTED,
+                KycVerificationType.PAYMENT_METHOD to KycStatus.VERIFIED,
+            ),
+            verifications.associate { it.type to it.status },
+        )
+        assertEquals("payment-method-pending", verifications.single { it.paymentMethod != null }.paymentMethod?.id)
+    }
+
+    @Test
+    fun `verifier failure - no verification saved`() {
+        setUpVerifier(idVerifier, KycVerificationType.IDENTIFICATION, KycStatus.VERIFIED, 90)
+        doThrow(RuntimeException("Gateway down")).whenever(selfieVerifier).verify(any())
+
+        val response = verify()
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertCase(KycStatus.SUBMITTED, null, errorCode = KycErrorCode.GATEWAY_ERROR)
+        assertTrue(verificationDao.findAll().none { it.case.id == "kyc-case-submitted" })
+        assertPartyKycStatus(KycStatus.PENDING)
+        assertPaymentMethodStatus(PaymentMethodStatus.PENDING_VERIFICATION)
     }
 }

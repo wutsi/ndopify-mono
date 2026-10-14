@@ -3,6 +3,7 @@ package com.wutsi.ndopify.npc.service
 import com.wutsi.ndopify.npc.client.ndopify.NdTenantClient
 import com.wutsi.ndopify.refdata.dto.Tenant
 import jakarta.servlet.http.HttpServletRequest
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 
 @Service
@@ -10,6 +11,10 @@ class TenantContext(
     private val api: NdTenantClient,
     private val request: HttpServletRequest,
 ) {
+    companion object {
+        private val LOGGER = LoggerFactory.getLogger(TenantContext::class.java)
+    }
+
     private lateinit var tenants: List<Tenant>
 
     fun getTenantId(): Long = getTenant().id
@@ -25,7 +30,9 @@ class TenantContext(
 
     fun all(): List<Tenant> {
         if (!::tenants.isInitialized) {
+            LOGGER.info(">>> Loading tenants from server")
             tenants = api.search().tenants
+            LOGGER.info(">>> ${tenants.size} tenants loaded")
         }
         return tenants
     }

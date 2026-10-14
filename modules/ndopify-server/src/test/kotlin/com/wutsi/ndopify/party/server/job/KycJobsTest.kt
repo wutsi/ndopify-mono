@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.party.server.job
 
 import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.inOrder
@@ -16,14 +17,24 @@ import com.wutsi.ndopify.party.dto.SearchKycCaseRequest
 import com.wutsi.ndopify.party.server.domain.KycCaseEntity
 import com.wutsi.ndopify.party.server.service.KycMailet
 import com.wutsi.ndopify.party.server.service.KycService
+import com.wutsi.ndopify.platform.tenant.TenantContext
+import com.wutsi.ndopify.refdata.server.domain.TenantEntity
+import com.wutsi.ndopify.refdata.server.service.TenantService
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.mockito.Mockito.mock
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class KycJobsTest {
     private val service = mock<KycService>()
     private val mailet = mock<KycMailet>()
-    private val jobs = KycJobs(service, mailet)
+    private val tenantService = mock<TenantService>()
+    private val jobs = KycJobs(service, mailet, tenantService)
+
+    private val tenant1 = TenantEntity(id = 1L)
+    private val tenant2 = TenantEntity(id = 2L)
 
     private val case1 = KycCaseEntity(id = "case-1", status = KycStatus.SUBMITTED)
     private val case2 = KycCaseEntity(id = "case-2", status = KycStatus.SUBMITTED)
@@ -36,9 +47,15 @@ class KycJobsTest {
 
     @BeforeEach
     fun setUp() {
-        doReturn(verified1).whenever(service).verify(case1)
-        doReturn(verified2).whenever(service).verify(case2)
-        doReturn(verified3).whenever(service).verify(case3)
+        doReturn(listOf(tenant1)).whenever(tenantService).search(true)
+        doReturn(verified1).whenever(service).verify(case1.id)
+        doReturn(verified2).whenever(service).verify(case2.id)
+        doReturn(verified3).whenever(service).verify(case3.id)
+    }
+
+    @AfterEach
+    fun tearDown() {
+        TenantContext.remove()
     }
 
     private fun setUpSubmittedCases(vararg cases: KycCaseEntity) {
@@ -66,9 +83,9 @@ class KycJobsTest {
         jobs.verify()
 
         val order = inOrder(service)
-        order.verify(service).verify(case1)
-        order.verify(service).verify(case2)
-        order.verify(service).verify(case3)
+        order.verify(service).verify(case1.id)
+        order.verify(service).verify(case2.id)
+        order.verify(service).verify(case3.id)
     }
 
     @Test
@@ -77,7 +94,7 @@ class KycJobsTest {
 
         jobs.verify()
 
-        verify(service, never()).verify(any<KycCaseEntity>())
+        verify(service, never()).verify(any<String>())
         verify(mailet, never()).send(any())
     }
 
@@ -88,22 +105,34 @@ class KycJobsTest {
         jobs.verify()
 
         val order = inOrder(service, mailet)
-        order.verify(service).verify(case1)
+        order.verify(service).verify(case1.id)
         order.verify(mailet).send(verified1)
-        order.verify(service).verify(case2)
+        order.verify(service).verify(case2.id)
         order.verify(mailet).send(verified2)
+    }
+
+    @Test
+    fun `a case not yet resolved - not mailed`() {
+        // e.g. gateway down: the case is put back to SUBMITTED for a retry, or sent to manual review
+        setUpSubmittedCases(case1, case2)
+        doReturn(case1.copy(status = KycStatus.SUBMITTED)).whenever(service).verify(case1.id)
+        doReturn(case2.copy(status = KycStatus.REQUIRES_MANUAL_REVIEW)).whenever(service).verify(case2.id)
+
+        jobs.verify()
+
+        verify(mailet, never()).send(any())
     }
 
     @Test
     fun `a failing case doesn't stop the others`() {
         setUpSubmittedCases(case1, case2, case3)
-        doThrow(RuntimeException("LLM unavailable")).whenever(service).verify(case2)
+        doThrow(RuntimeException("LLM unavailable")).whenever(service).verify(case2.id)
 
         jobs.verify()
 
-        verify(service).verify(case1)
-        verify(service).verify(case2)
-        verify(service).verify(case3)
+        verify(service).verify(case1.id)
+        verify(service).verify(case2.id)
+        verify(service).verify(case3.id)
         verify(mailet).send(verified1)
         verify(mailet).send(verified3)
         verify(mailet, times(2)).send(any())
@@ -116,7 +145,7 @@ class KycJobsTest {
 
         jobs.verify()
 
-        verify(service).verify(case2)
+        verify(service).verify(case2.id)
         verify(mailet).send(verified2)
     }
 
@@ -125,11 +154,11 @@ class KycJobsTest {
         // e.g. picked up by a concurrent run between the search and the verification
         setUpSubmittedCases(case1, case2)
         doThrow(BadRequestException(error = Error(code = ErrorCode.KYC_CASE_NOT_SUBMITTED)))
-            .whenever(service).verify(case1)
+            .whenever(service).verify(case1.id)
 
         jobs.verify()
 
-        verify(service).verify(case2)
+        verify(service).verify(case2.id)
         verify(mailet, never()).send(case1)
         verify(mailet).send(verified2)
     }
@@ -137,11 +166,116 @@ class KycJobsTest {
     @Test
     fun `every case failing - the job itself doesn't fail`() {
         setUpSubmittedCases(case1, case2)
-        doThrow(RuntimeException("storage down")).whenever(service).verify(any<KycCaseEntity>())
+        doThrow(RuntimeException("storage down")).whenever(service).verify(any<String>())
 
         jobs.verify()
 
-        verify(service, times(2)).verify(any<KycCaseEntity>())
+        verify(service, times(2)).verify(any<String>())
         verify(mailet, never()).send(any())
+    }
+
+    @Test
+    fun `recovers the interrupted verifications before searching the submitted cases`() {
+        setUpSubmittedCases(case1)
+
+        jobs.verify()
+
+        val order = inOrder(service)
+        order.verify(service).recoverInterrupted()
+        order.verify(service).search(any())
+        order.verify(service).verify(case1.id)
+    }
+
+    @Test
+    fun `recovery failing - the submitted cases still verified`() {
+        setUpSubmittedCases(case1)
+        doThrow(RuntimeException("DB down")).whenever(service).recoverInterrupted()
+
+        jobs.verify()
+
+        verify(service).verify(case1.id)
+        verify(mailet).send(verified1)
+    }
+
+    @Test
+    fun `interrupted verifications recovered - submitted cases still verified`() {
+        doReturn(listOf(case2)).whenever(service).recoverInterrupted()
+        setUpSubmittedCases(case1, case2)
+
+        jobs.verify()
+
+        verify(service).verify(case1.id)
+        verify(service).verify(case2.id)
+    }
+
+    @Test
+    fun `only the active tenants are processed`() {
+        setUpSubmittedCases()
+
+        jobs.verify()
+
+        verify(tenantService).search(true)
+        verify(tenantService, never()).search(false)
+        verify(tenantService, never()).search(null)
+    }
+
+    @Test
+    fun `each tenant processed with its id in the tenant context`() {
+        doReturn(listOf(tenant1, tenant2)).whenever(tenantService).search(true)
+        val recoverTenants = mutableListOf<Long?>()
+        val searchTenants = mutableListOf<Long?>()
+        val verifyTenants = mutableListOf<Long?>()
+        val mailTenants = mutableListOf<Long?>()
+        doAnswer {
+            recoverTenants.add(TenantContext.get())
+            emptyList<KycCaseEntity>()
+        }.whenever(service).recoverInterrupted()
+        doAnswer {
+            searchTenants.add(TenantContext.get())
+            if (TenantContext.get() == 1L) listOf(case1) else listOf(case2)
+        }.whenever(service).search(any())
+        doAnswer {
+            verifyTenants.add(TenantContext.get())
+            if (it.getArgument<String>(0) == case1.id) verified1 else verified2
+        }.whenever(service).verify(any<String>())
+        doAnswer { mailTenants.add(TenantContext.get()) }.whenever(mailet).send(any())
+
+        jobs.verify()
+
+        assertEquals(listOf<Long?>(1L, 2L), recoverTenants)
+        assertEquals(listOf<Long?>(1L, 2L), searchTenants)
+        assertEquals(listOf<Long?>(1L, 2L), verifyTenants)
+        assertEquals(listOf<Long?>(1L, 2L), mailTenants)
+    }
+
+    @Test
+    fun `tenant context removed once done`() {
+        setUpSubmittedCases(case1)
+
+        jobs.verify()
+
+        assertNull(TenantContext.get())
+    }
+
+    @Test
+    fun `tenant context removed when a tenant fails`() {
+        doThrow(RuntimeException("DB down")).whenever(service).search(any())
+
+        jobs.verify()
+
+        assertNull(TenantContext.get())
+    }
+
+    @Test
+    fun `a failing tenant doesn't stop the others`() {
+        doReturn(listOf(tenant1, tenant2)).whenever(tenantService).search(true)
+        doAnswer {
+            if (TenantContext.get() == 1L) throw RuntimeException("DB down") else listOf(case2)
+        }.whenever(service).search(any())
+
+        jobs.verify()
+
+        verify(service).verify(case2.id)
+        verify(mailet).send(verified2)
     }
 }

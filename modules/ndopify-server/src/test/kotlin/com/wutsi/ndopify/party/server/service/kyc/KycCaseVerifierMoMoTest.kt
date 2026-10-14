@@ -1,20 +1,15 @@
 package com.wutsi.ndopify.party.server.service.kyc
 
 import com.nhaarman.mockitokotlin2.any
-import com.nhaarman.mockitokotlin2.argumentCaptor
-import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.never
-import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.KycVerificationType
 import com.wutsi.ndopify.party.dto.PaymentMethodStatus
 import com.wutsi.ndopify.party.dto.PaymentMethodType
-import com.wutsi.ndopify.party.server.dao.KycVerificationRepository
 import com.wutsi.ndopify.party.server.dao.PaymentMethodRepository
 import com.wutsi.ndopify.party.server.domain.KycCaseEntity
-import com.wutsi.ndopify.party.server.domain.KycVerificationEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.party.server.domain.PaymentMethodEntity
 import com.wutsi.ndopify.platform.logger.DefaultKVLogger
@@ -36,13 +31,12 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class KycCaseVerifierMoMoTest {
-    private val dao = mock<KycVerificationRepository>()
     private val paymentMethodDao = mock<PaymentMethodRepository>()
     private val clock = mock<Clock>()
     private val gatewayProvider = mock<MoMoGatewayProvider>()
     private val gateway = mock<MoMoGateway>()
     private val logger = DefaultKVLogger()
-    private val verifier = KycCaseVerifierMoMo(dao, paymentMethodDao, clock, gatewayProvider, logger)
+    private val verifier = KycCaseVerifierMoMo(paymentMethodDao, clock, gatewayProvider, logger)
 
     private val now = 1_700_000_000_000L
 
@@ -68,7 +62,6 @@ class KycCaseVerifierMoMoTest {
     @BeforeEach
     fun setUp() {
         doReturn(now).whenever(clock).millis()
-        doAnswer { it.arguments[0] }.whenever(dao).save(any<KycVerificationEntity>())
         doReturn(gateway).whenever(gatewayProvider).getByPhoneNumber(any())
     }
 
@@ -113,15 +106,6 @@ class KycCaseVerifierMoMoTest {
         assertNotNull(result.id)
         assertEquals(Date(now), result.createdAt)
         assertEquals(Date(now), result.modifiedAt)
-
-        val captor = argumentCaptor<KycVerificationEntity>()
-        verify(dao, times(2)).save(captor.capture())
-        val started = captor.firstValue
-        assertEquals(KycStatus.IN_PROGRESS, started.status)
-        assertEquals(KycVerificationType.PAYMENT_METHOD, started.type)
-        assertEquals(momo, started.paymentMethod)
-        assertEquals(started.id, captor.secondValue.id)
-        assertEquals(result, captor.secondValue)
     }
 
     @Test
@@ -201,7 +185,6 @@ class KycCaseVerifierMoMoTest {
         assertEquals(listOf(momo, other), results.map { it.paymentMethod })
         assertTrue(results.all { it.status == KycStatus.VERIFIED })
         assertEquals(2, results.map { it.id }.toSet().size)
-        verify(dao, times(4)).save(any<KycVerificationEntity>())
     }
 
     @Test
@@ -226,7 +209,6 @@ class KycCaseVerifierMoMoTest {
         val results = verifier.verify(case)
 
         assertTrue(results.isEmpty())
-        verify(dao, never()).save(any<KycVerificationEntity>())
         verify(gatewayProvider, never()).getByPhoneNumber(any())
     }
 
@@ -237,6 +219,5 @@ class KycCaseVerifierMoMoTest {
         val results = verifier.verify(case)
 
         assertTrue(results.isEmpty())
-        verify(dao, never()).save(any<KycVerificationEntity>())
     }
 }

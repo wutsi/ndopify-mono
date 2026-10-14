@@ -2,20 +2,16 @@ package com.wutsi.ndopify.party.server.service.kyc
 
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.argumentCaptor
-import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.never
-import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.party.dto.IdentificationType
 import com.wutsi.ndopify.party.dto.KycImageType
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.KycVerificationType
-import com.wutsi.ndopify.party.server.dao.KycVerificationRepository
 import com.wutsi.ndopify.party.server.domain.KycCaseEntity
 import com.wutsi.ndopify.party.server.domain.KycImageEntity
-import com.wutsi.ndopify.party.server.domain.KycVerificationEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.party.server.service.KycInfoExtractor
 import com.wutsi.ndopify.party.server.service.KycInfoExtractorProvider
@@ -23,6 +19,7 @@ import com.wutsi.ndopify.platform.logger.DefaultKVLogger
 import com.wutsi.ndopify.platform.storage.StorageService
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
+import com.wutsi.ndopify.refdata.dto.StorageType
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.mockito.Mockito.mock
@@ -37,14 +34,13 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class KycCaseVerifierSelfieTest {
-    private val dao = mock<KycVerificationRepository>()
     private val clock = mock<Clock>()
     private val storageProvider = mock<StorageServiceProvider>()
     private val storage = mock<StorageService>()
     private val infoExtractorProvider = mock<KycInfoExtractorProvider>()
     private val infoExtractor = mock<KycInfoExtractor>()
     private val logger = DefaultKVLogger()
-    private val verifier = KycCaseVerifierSelfie(dao, clock, storageProvider, infoExtractorProvider, logger)
+    private val verifier = KycCaseVerifierSelfie(clock, storageProvider, infoExtractorProvider, logger)
 
     private val now = 1_700_000_000_000L
 
@@ -85,8 +81,7 @@ class KycCaseVerifierSelfieTest {
     @BeforeEach
     fun setUp() {
         doReturn(now).whenever(clock).millis()
-        doAnswer { it.arguments[0] }.whenever(dao).save(any<KycVerificationEntity>())
-        doReturn(storage).whenever(storageProvider).get()
+        doReturn(storage).whenever(storageProvider).get(any<StorageType>())
         doReturn(infoExtractor).whenever(infoExtractorProvider).get(KycVerificationType.SELFIE)
     }
 
@@ -128,14 +123,6 @@ class KycCaseVerifierSelfieTest {
         assertNotNull(result.id)
         assertEquals(Date(now), result.createdAt)
         assertEquals(Date(now), result.modifiedAt)
-
-        val captor = argumentCaptor<KycVerificationEntity>()
-        verify(dao, times(2)).save(captor.capture())
-        val started = captor.firstValue
-        assertEquals(KycStatus.IN_PROGRESS, started.status)
-        assertEquals(KycVerificationType.SELFIE, started.type)
-        assertEquals(started.id, captor.secondValue.id)
-        assertEquals(result, captor.secondValue)
     }
 
     @Test
@@ -201,7 +188,6 @@ class KycCaseVerifierSelfieTest {
         val results = verifier.verify(case(listOf(back)))
 
         assertTrue(results.isEmpty())
-        verify(dao, never()).save(any<KycVerificationEntity>())
         verify(infoExtractor, never()).extract(any())
     }
 
@@ -210,7 +196,6 @@ class KycCaseVerifierSelfieTest {
         val results = verifier.verify(case(emptyList()))
 
         assertTrue(results.isEmpty())
-        verify(dao, never()).save(any<KycVerificationEntity>())
     }
 
     @Test
@@ -218,6 +203,5 @@ class KycCaseVerifierSelfieTest {
         val results = verifier.verify(case(listOf(front.copy(path = null), selfie.copy(path = null))))
 
         assertTrue(results.isEmpty())
-        verify(dao, never()).save(any<KycVerificationEntity>())
     }
 }

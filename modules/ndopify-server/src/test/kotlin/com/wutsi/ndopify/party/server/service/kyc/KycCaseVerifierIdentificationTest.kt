@@ -6,16 +6,13 @@ import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.never
-import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.party.dto.IdentificationType
 import com.wutsi.ndopify.party.dto.KycImageType
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.KycVerificationType
-import com.wutsi.ndopify.party.server.dao.KycVerificationRepository
 import com.wutsi.ndopify.party.server.domain.KycCaseEntity
 import com.wutsi.ndopify.party.server.domain.KycImageEntity
-import com.wutsi.ndopify.party.server.domain.KycVerificationEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.party.server.service.KycInfoExtractor
 import com.wutsi.ndopify.party.server.service.KycInfoExtractorProvider
@@ -23,6 +20,7 @@ import com.wutsi.ndopify.platform.logger.DefaultKVLogger
 import com.wutsi.ndopify.platform.storage.StorageService
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
+import com.wutsi.ndopify.refdata.dto.StorageType
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.mockito.Mockito.mock
@@ -34,19 +32,19 @@ import java.util.Date
 import java.util.TimeZone
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class KycCaseVerifierIdentificationTest {
-    private val dao = mock<KycVerificationRepository>()
     private val clock = mock<Clock>()
     private val storageProvider = mock<StorageServiceProvider>()
     private val storage = mock<StorageService>()
     private val infoExtractorProvider = mock<KycInfoExtractorProvider>()
     private val infoExtractor = mock<KycInfoExtractor>()
     private val logger = DefaultKVLogger()
-    private val verifier = KycCaseVerifierIdentification(dao, clock, storageProvider, infoExtractorProvider, logger)
+    private val verifier = KycCaseVerifierIdentification(clock, storageProvider, infoExtractorProvider, logger)
     private val fmt = SimpleDateFormat("yyyy-MM-dd")
 
     private val now = 1_700_000_000_000L
@@ -89,8 +87,7 @@ class KycCaseVerifierIdentificationTest {
     fun setUp() {
         fmt.timeZone = TimeZone.getTimeZone("UTC")
         doReturn(now).whenever(clock).millis()
-        doAnswer { it.arguments[0] }.whenever(dao).save(any<KycVerificationEntity>())
-        doReturn(storage).whenever(storageProvider).get()
+        doReturn(storage).whenever(storageProvider).get(any<StorageType>())
         doReturn(infoExtractor).whenever(infoExtractorProvider).get(KycVerificationType.IDENTIFICATION)
     }
 
@@ -141,14 +138,6 @@ class KycCaseVerifierIdentificationTest {
         assertNotNull(result.id)
         assertEquals(Date(now), result.createdAt)
         assertEquals(Date(now), result.modifiedAt)
-
-        val captor = argumentCaptor<KycVerificationEntity>()
-        verify(dao, times(2)).save(captor.capture())
-        val started = captor.firstValue
-        assertEquals(KycStatus.IN_PROGRESS, started.status)
-        assertEquals(KycVerificationType.IDENTIFICATION, started.type)
-        assertEquals(started.id, captor.secondValue.id)
-        assertEquals(result, captor.secondValue)
     }
 
     @Test
@@ -248,5 +237,43 @@ class KycCaseVerifierIdentificationTest {
     fun `missing image path - conflict`() {
         val results = verifier.verify(case(listOf(front.copy(path = null))))
         assertTrue(results.isEmpty())
+    }
+
+    @Test
+    fun `images are read from the storage they were stored in`() {
+        setUpExtraction(info())
+
+        verifier.verify(case(listOf(front.copy(storageType = StorageType.S3), back.copy(storageType = StorageType.LOCAL))))
+
+        verify(storageProvider).get(StorageType.S3)
+        verify(storageProvider).get(StorageType.LOCAL)
+    }
+
+    @Test
+    fun `downloaded images are deleted`() {
+        val files = mutableListOf<File>()
+        doAnswer { inv ->
+            files.addAll(inv.getArgument<List<File>>(0))
+            info()
+        }.whenever(infoExtractor).extract(any())
+
+        verifier.verify(case())
+
+        assertEquals(2, files.size)
+        assertTrue(files.none { file -> file.exists() })
+    }
+
+    @Test
+    fun `downloaded images are deleted when the extraction fails`() {
+        val files = mutableListOf<File>()
+        doAnswer { inv ->
+            files.addAll(inv.getArgument<List<File>>(0))
+            throw RuntimeException("LLM unavailable")
+        }.whenever(infoExtractor).extract(any())
+
+        assertFailsWith<RuntimeException> { verifier.verify(case()) }
+
+        assertEquals(2, files.size)
+        assertTrue(files.none { file -> file.exists() })
     }
 }

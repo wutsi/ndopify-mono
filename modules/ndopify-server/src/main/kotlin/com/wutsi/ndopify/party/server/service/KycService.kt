@@ -14,6 +14,7 @@ import com.wutsi.ndopify.party.dto.PaymentMethodStatus
 import com.wutsi.ndopify.party.dto.SearchKycCaseRequest
 import com.wutsi.ndopify.party.server.dao.KycCaseRepository
 import com.wutsi.ndopify.party.server.dao.KycImageRepository
+import com.wutsi.ndopify.party.server.dao.KycVerificationRepository
 import com.wutsi.ndopify.party.server.domain.KycCaseEntity
 import com.wutsi.ndopify.party.server.domain.KycImageEntity
 import com.wutsi.ndopify.party.server.domain.KycVerificationEntity
@@ -24,11 +25,13 @@ import com.wutsi.ndopify.platform.util.MimeUtils
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
+import org.hibernate.Hibernate
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
+import org.springframework.transaction.support.TransactionTemplate
 import org.springframework.web.multipart.MultipartFile
 import java.net.URL
 import java.time.Clock
@@ -37,6 +40,7 @@ import java.util.Date
 @Service
 class KycService(
     @param:Value("\${ndopify.party.kyc.image.url-ttl-seconds}") val imageUrlTTL: Int,
+    @param:Value("\${ndopify.party.kyc.verify.in-progress-timeout-minutes}") val inProgressTimeoutMinutes: Long,
 
     private val dao: KycCaseRepository,
     private val partyService: PartyService,
@@ -44,6 +48,8 @@ class KycService(
     private val verifierProvider: KycCaseVerifierProvider,
     private val storageProvider: StorageServiceProvider,
     private val paymentMethodService: PaymentMethodService,
+    private val verificationDao: KycVerificationRepository,
+    private val tx: TransactionTemplate,
     private val mailet: KycMailet,
     private val clock: Clock,
     private val logger: KVLogger,
@@ -118,7 +124,6 @@ class KycService(
         )
     }
 
-    @Transactional
     fun upload(
         id: String,
         identificationType: IdentificationType,
@@ -149,14 +154,16 @@ class KycService(
         val storage = storageProvider.get()
         storage.store(path, file.inputStream, mimeType)
 
-        return kycImageDao.save(
-            image.copy(
-                path = path,
-                storageType = storage.type(),
-                mimeType = mimeType,
-                modifiedAt = now,
+        return tx.execute {
+            kycImageDao.save(
+                image.copy(
+                    path = path,
+                    storageType = storage.type(),
+                    mimeType = mimeType,
+                    modifiedAt = now,
+                )
             )
-        )
+        }
     }
 
     fun getImageUrl(imageId: String): URL {
@@ -194,49 +201,114 @@ class KycService(
 
     /**
      * Verifies a SUBMITTED case. Never triggered by the UI: run offline, on the cases sent for review.
+     *
+     * Runs in 3 steps, so that no DB transaction is open during the verifiers' I/O (storage, LLM, MoMo):
+     * 1. [claim] the case (SUBMITTED → IN_PROGRESS), in a short transaction;
+     * 2. run the verifiers, outside any transaction: they return their results unsaved;
+     * 3. [complete] the case with these results in a short transaction, or [retry] it if a verifier failed.
      */
-    @Transactional
     fun verify(id: String): KycCaseEntity {
-        val case = findById(id)
-        return verify(case)
+        val case = tx.execute { claim(id) }
+
+        val verifications = try {
+            LOGGER.info(">>> KYC#$id - Verifying identification, selfie and payment methods")
+            // Checked before the other verifiers (no need to call them), and here rather than in complete(): failing
+            // there would leave the case IN_PROGRESS
+            val idVerifications = verify(case, KycVerificationType.IDENTIFICATION)
+            check(idVerifications.isNotEmpty()) { "Case#$id has no identification verification" }
+
+            idVerifications +
+                verify(case, KycVerificationType.SELFIE) +
+                verify(case, KycVerificationType.PAYMENT_METHOD)
+        } catch (ex: Exception) {
+            LOGGER.error(">>> KYC#$id - Verification failed", ex)
+            return tx.execute { retry(findById(id), KycErrorCode.GATEWAY_ERROR, ex.message) }
+        }
+
+        return tx.execute { complete(id, verifications) }
     }
 
-    @Transactional
-    fun verify(case: KycCaseEntity): KycCaseEntity {
-        ensureStatusIsSubmitted(case)
-        try {
-            startVerification(case)
-            val updatedCase = verifyIdentification(case)
-            verifyPaymentMethods(updatedCase)
+    /**
+     * Sends back for verification the cases left IN_PROGRESS for more than [inProgressTimeoutMinutes]: their
+     * verification was interrupted between [claim] and [complete] (e.g. the server stopped). Counted as a failed
+     * attempt, so a case whose verification keeps getting interrupted ends up REQUIRES_MANUAL_REVIEW.
+     */
+    fun recoverInterrupted(): List<KycCaseEntity> {
+        val cutoff = Date(clock.millis() - inProgressTimeoutMinutes * 60_000)
+        return dao.findByStatusAndModifiedAtBefore(KycStatus.IN_PROGRESS, cutoff)
+            .mapNotNull { case -> tx.execute { recoverInterrupted(case.id, cutoff) } }
+    }
 
-            return updatedCase
-        } catch (ex: Exception) {
-            LOGGER.error(">>> KYC#${case.id} - Verification failed", ex)
-            val retries = (case.retries ?: 0) + 1
-            return dao.save(
-                case.copy(
-                    status = if (retries < MAX_RETRIES) KycStatus.PENDING else KycStatus.REQUIRES_MANUAL_REVIEW,
-                    retries = retries,
-                    errorCode = KycErrorCode.GATEWAY_ERROR,
-                    errorMessage = ex.message,
-                    modifiedAt = Date(clock.millis()),
-                )
-            )
+    private fun recoverInterrupted(id: String, cutoff: Date): KycCaseEntity? {
+        // Checked again under the lock: the verification may have completed since the case was listed
+        val case = dao.findForUpdateById(id) ?: return null
+        if (case.status != KycStatus.IN_PROGRESS || !case.modifiedAt.before(cutoff)) {
+            return null
         }
+
+        LOGGER.warn(">>> KYC#$id - Verification interrupted, IN_PROGRESS since ${case.modifiedAt}")
+        return retry(case, KycErrorCode.INTERRUPTED, "Verification interrupted")
     }
 
     fun sendStatusEmail(case: KycCaseEntity) {
         mailet.send(case)
     }
 
-    private fun verifyIdentification(case: KycCaseEntity): KycCaseEntity {
-        // ID
-        LOGGER.info(">>> KYC#${case.id} - Verifying identification")
-        val idVerification = verify(case, KycVerificationType.IDENTIFICATION).first()
+    private fun claim(id: String): KycCaseEntity {
+        // Locked, so that the job and the endpoint can't both claim the case: the 2nd waits, then sees IN_PROGRESS
+        val case = dao.findForUpdateById(id)
+            ?: throw NotFoundException(
+                error = Error(
+                    code = ErrorCode.KYC_CASE_NOT_FOUND,
+                    parameter = Parameter(value = id)
+                )
+            )
+        ensureStatusIsSubmitted(case)
 
-        // Selfie
-        LOGGER.info(">>> KYC#${case.id} - Verifying selfie")
-        val selfieVerification = verify(case, KycVerificationType.SELFIE).firstOrNull()
+        LOGGER.info(">>> KYC#$id - Starting verification")
+        return dao.save(
+            case.copy(
+                status = KycStatus.IN_PROGRESS,
+                errorCode = null,
+                errorMessage = null,
+                modifiedAt = Date(clock.millis()),
+            )
+        ).also { claimed ->
+            // The verifiers read the images outside any session: load them while it's open
+            Hibernate.initialize(claimed.images)
+        }
+    }
+
+    private fun complete(id: String, verifications: List<KycVerificationEntity>): KycCaseEntity {
+        val case = findById(id) // Fresh copy: the one the verifiers worked on is detached
+        val saved = verifications.map { verification -> verificationDao.save(verification.copy(case = case)) }
+
+        val updatedCase = updateCaseStatus(case, saved)
+        updatePaymentMethodStatus(saved)
+        return updatedCase
+    }
+
+    /** [case] must be a fresh copy, loaded in the current transaction, not to overwrite it with a stale one. */
+    private fun retry(case: KycCaseEntity, errorCode: String, errorMessage: String?): KycCaseEntity {
+        val retries = (case.retries ?: 0) + 1
+        return dao.save(
+            case.copy(
+                status = if (retries < MAX_RETRIES) KycStatus.SUBMITTED else KycStatus.REQUIRES_MANUAL_REVIEW,
+                retries = retries,
+                errorCode = errorCode,
+                errorMessage = errorMessage,
+                modifiedAt = Date(clock.millis()),
+            )
+        )
+    }
+
+    private fun updateCaseStatus(case: KycCaseEntity, verifications: List<KycVerificationEntity>): KycCaseEntity {
+        val idVerification = verifications.first { verification ->
+            verification.type == KycVerificationType.IDENTIFICATION
+        }
+        val selfieVerification = verifications.firstOrNull { verification ->
+            verification.type == KycVerificationType.SELFIE
+        }
 
         // KYC status
         val status =
@@ -276,41 +348,25 @@ class KycService(
         return updatedCase
     }
 
-    private fun verifyPaymentMethods(case: KycCaseEntity): KycCaseEntity {
-        LOGGER.info(">>> KYC case#${case.id} - Verifying payment methods")
-        val paymentVerifications = verify(case, KycVerificationType.PAYMENT_METHOD)
-
-        // Update the payment methods KYC status
-        paymentVerifications.forEach { verification ->
-            val paymentMethod = verification.paymentMethod
-            if (paymentMethod != null && paymentMethod.status == PaymentMethodStatus.PENDING_VERIFICATION) {
-                val status = if (verification.status == KycStatus.VERIFIED) {
-                    PaymentMethodStatus.VERIFIED
-                } else {
-                    PaymentMethodStatus.REJECTED
+    private fun updatePaymentMethodStatus(verifications: List<KycVerificationEntity>) {
+        verifications
+            .filter { verification -> verification.type == KycVerificationType.PAYMENT_METHOD }
+            .forEach { verification ->
+                val paymentMethod = verification.paymentMethod
+                if (paymentMethod != null && paymentMethod.status == PaymentMethodStatus.PENDING_VERIFICATION) {
+                    val status = if (verification.status == KycStatus.VERIFIED) {
+                        PaymentMethodStatus.VERIFIED
+                    } else {
+                        PaymentMethodStatus.REJECTED
+                    }
+                    paymentMethodService.updateStatus(paymentMethod, status)
                 }
-                paymentMethodService.updateStatus(verification.paymentMethod, status)
             }
-        }
-
-        return case
     }
 
     private fun verify(case: KycCaseEntity, verificationType: KycVerificationType): List<KycVerificationEntity> {
         val verifier = verifierProvider.get(verificationType)
         return verifier?.verify(case) ?: emptyList()
-    }
-
-    private fun startVerification(case: KycCaseEntity) {
-        LOGGER.info(">>> KYC#${case.id} - Starting verification")
-        dao.save(
-            case.copy(
-                status = KycStatus.IN_PROGRESS,
-                errorCode = null,
-                errorMessage = null,
-                modifiedAt = Date(clock.millis()),
-            )
-        )
     }
 
     private fun ensureStatusIsPending(case: KycCaseEntity) {

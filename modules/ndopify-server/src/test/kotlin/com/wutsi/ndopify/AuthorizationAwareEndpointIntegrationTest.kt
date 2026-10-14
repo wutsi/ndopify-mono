@@ -47,7 +47,7 @@ abstract class AuthorizationAwareEndpointIntegrationTest : TenantAwareEndpointIn
             application = application,
             tenantId = TENANT_ID,
             userId = USER_ID,
-            ttlSeconds = null,
+            ttlSeconds = 60 * 60, // 1 hour
             roles = arrayOf("ROLE_USER")
         )
     }

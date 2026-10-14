@@ -45,7 +45,6 @@ class UpdateAgentEndpointTest : AbstractAgentEndpointTest() {
         val request = UpdateAgentRequest(
             firstName = "Ray",
             lastName = "Sponsible",
-            email = "Ray.Sponsible@gmail.com",
             whatsappNumber = "+237600000099",
             agentType = AgentType.REAL_ESTATE_AGENT,
             experienceLevel = ExperienceLevel.SENIOR,
@@ -71,7 +70,7 @@ class UpdateAgentEndpointTest : AbstractAgentEndpointTest() {
         val party = partyService.findById(agent.party.id!!)
         assertEquals(request.firstName, party.firstName)
         assertEquals(request.lastName, party.lastName)
-        assertEquals(request.email?.lowercase(), party.email)
+        assertEquals("roger.milla@gmail.com", party.email)
         assertEquals(agent.modifiedAt, party.modifiedAt)
     }
 
@@ -80,7 +79,6 @@ class UpdateAgentEndpointTest : AbstractAgentEndpointTest() {
         val request = UpdateAgentRequest(
             firstName = null,
             lastName = null,
-            email = null,
             whatsappNumber = "+237600000099",
             agentType = AgentType.REAL_ESTATE_AGENT,
             experienceLevel = ExperienceLevel.SENIOR,
@@ -106,7 +104,6 @@ class UpdateAgentEndpointTest : AbstractAgentEndpointTest() {
         val request = UpdateAgentRequest(
             firstName = "Ray",
             lastName = "Sponsible",
-            email = "ray.sponsible@gmail.com",
             whatsappNumber = "+237600000777",
         )
 
@@ -114,35 +111,6 @@ class UpdateAgentEndpointTest : AbstractAgentEndpointTest() {
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals(ErrorCode.AGENT_NOT_FOUND, response.body?.error?.code)
-    }
-
-    @Test
-    fun `email already used by another party`() {
-        val request = UpdateAgentRequest(
-            email = "007@gmail.com",
-        )
-
-        val response = rest.postForEntity("/v1/agents/100", request, ErrorResponse::class.java)
-
-        assertEquals(HttpStatus.CONFLICT, response.statusCode)
-        assertEquals(ErrorCode.PARTY_EMAIL_ALREADY_EXISTS, response.body?.error?.code)
-
-        val party = partyService.findById(100L)
-        assertEquals("roger.milla@gmail.com", party.email)
-    }
-
-    @Test
-    fun `update email with different case of the same email`() {
-        val request = UpdateAgentRequest(
-            email = "ROGER.MILLA@gmail.com",
-        )
-
-        val response = rest.postForEntity("/v1/agents/100", request, Void::class.java)
-
-        assertEquals(HttpStatus.OK, response.statusCode)
-
-        val party = partyService.findById(100L)
-        assertEquals("roger.milla@gmail.com", party.email)
     }
 
     @Test
