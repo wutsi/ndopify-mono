@@ -634,6 +634,22 @@ class FindPropertyControllerTest {
     }
 
     @Test
+    fun submitServerDown() {
+        // ndopify-server is down: the location names of the review can't be loaded either.
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete)
+        doThrow(ResourceAccessException("Connection refused")).whenever(mandateClient).create(any())
+        doThrow(ResourceAccessException("Connection refused")).whenever(locationClient).search(any())
+
+        val result = mvc.perform(post("/find-property/review").session(session)).andReturn()
+
+        assertEquals("review", model(result)["step"])
+        assertEquals("Envoi impossible pour le moment. Réessayez dans quelques instants.", model(result)["error"])
+        assertNull(model(result)["city"])
+        assertEquals(emptyList<Location>(), model(result)["neighborhoods"])
+        assertEquals(complete, pending())
+    }
+
+    @Test
     fun submitTwiceCreatesOneMandate() {
         session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete)
         doReturn(CreateMandateResponse(mandateId = 42)).whenever(mandateClient).create(any())

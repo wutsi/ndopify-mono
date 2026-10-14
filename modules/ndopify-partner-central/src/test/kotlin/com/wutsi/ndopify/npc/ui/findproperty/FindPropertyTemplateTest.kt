@@ -27,6 +27,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.client.HttpServerErrorException
+import org.springframework.web.client.ResourceAccessException
 import org.thymeleaf.spring6.SpringTemplateEngine
 import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
@@ -321,6 +322,18 @@ class FindPropertyTemplateTest {
 
         val alert = assertNotNull(page.selectFirst("[data-submit-error]"))
         assertTrue(alert.text().contains("Envoi impossible pour le moment"))
+    }
+
+    @Test
+    fun reviewServerDown() {
+        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete)
+        doThrow(ResourceAccessException("Connection refused")).whenever(mandateClient).create(any())
+        doThrow(ResourceAccessException("Connection refused")).whenever(locationClient).search(any())
+
+        val page = render(post("/find-property/review"))
+
+        assertTrue(page.selectFirst("[data-submit-error]")!!.text().contains("Envoi impossible pour le moment"))
+        assertEquals("Secteur choisi", value(page, "sector"))
     }
 
     @Test

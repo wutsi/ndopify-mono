@@ -360,7 +360,7 @@ class FindPropertyController(
                 // Names of the chosen city and neighbourhoods: the selects' initial options, and the review.
                 // Capped: a step shown again with its errors may carry whatever ids were posted.
                 val neighborhoodIds = answers.neighborhoodIds.take(FindPropertyRules.MAX_NEIGHBORHOODS)
-                val locations = locations(listOfNotNull(answers.cityId) + neighborhoodIds)
+                val locations = namesOrEmpty(listOfNotNull(answers.cityId) + neighborhoodIds)
                 model.addAttribute("city", answers.cityId?.let { locations[it] })
                 model.addAttribute("neighborhoods", neighborhoodIds.mapNotNull { locations[it] })
             }
@@ -417,6 +417,18 @@ class FindPropertyController(
             mapOf("neighborhoodIds" to "Choisissez des quartiers de la ville sélectionnée.")
         }
     }
+
+    /**
+     * The names to show, best effort: when ndopify-server is down, the page (and the review's "Envoi impossible")
+     * still renders, without them. Validation never uses this: it calls [locations] and fails if it fails.
+     */
+    private fun namesOrEmpty(ids: List<Long>): Map<Long, Location> =
+        try {
+            locations(ids)
+        } catch (ex: RestClientException) {
+            LOGGER.warn("Unable to load the locations $ids", ex)
+            emptyMap()
+        }
 
     private fun locations(ids: List<Long>): Map<Long, Location> {
         if (ids.isEmpty()) return emptyMap()

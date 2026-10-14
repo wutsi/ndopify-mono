@@ -531,8 +531,9 @@
                         <div class="review__item">
                             <dt class="review__term">Secteur</dt>
                             <dd class="review__value">
+                                <!--/* Without the names (ndopify-server unreachable), the edit link still works. */-->
                                 <p data-review-value="sector"
-                                   th:text="|${city?.name} — ${#strings.listJoin(neighborhoods.![name], ', ')}|">
+                                   th:text="${city != null} ? |${city.name} — ${#strings.listJoin(neighborhoods.![name], ', ')}| : 'Secteur choisi'">
                                     Yaoundé — Bastos, Essos</p>
                             </dd>
                             <dd class="review__value">
