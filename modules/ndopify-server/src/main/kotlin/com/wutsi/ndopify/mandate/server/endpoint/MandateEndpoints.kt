@@ -8,6 +8,7 @@ import com.wutsi.ndopify.mandate.dto.SearchMandateResponse
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.mandate.server.mapper.MandateMapper
 import com.wutsi.ndopify.mandate.server.service.MandateService
+import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute
@@ -25,7 +26,7 @@ class MandateEndpoints(
 ) {
     @GetMapping
     fun search(@ModelAttribute request: SearchMandateRequest): SearchMandateResponse {
-        val mandates = service.search(request)
+        val mandates = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
         return SearchMandateResponse(mandates = mandates.map { mandate -> mapper.toMandateSummary(mandate) })
     }
 

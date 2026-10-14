@@ -1,0 +1,15 @@
+# Only health is public in prod: no Swagger, no other actuator endpoint, no health details
+management:
+    endpoint:
+        health:
+            show-details: never
+    endpoints:
+        web:
+            exposure:
+                include: "health"
+
+springdoc:
+    api-docs:
+        enabled: false
+    swagger-ui:
+        enabled: false

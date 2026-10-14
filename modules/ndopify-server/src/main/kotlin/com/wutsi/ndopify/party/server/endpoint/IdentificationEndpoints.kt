@@ -6,6 +6,7 @@ import com.wutsi.ndopify.party.dto.SearchIdentificationRequest
 import com.wutsi.ndopify.party.dto.SearchIdentificationResponse
 import com.wutsi.ndopify.party.server.mapper.IdentificationMapper
 import com.wutsi.ndopify.party.server.service.IdentificationService
+import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute
@@ -32,7 +33,7 @@ class IdentificationEndpoints(
     fun search(
         @ModelAttribute request: SearchIdentificationRequest,
     ): SearchIdentificationResponse {
-        val identifications = service.search(request)
+        val identifications = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
         return SearchIdentificationResponse(
             identifications = identifications.map { identification -> mapper.toIdentificationSummary(identification) },
         )

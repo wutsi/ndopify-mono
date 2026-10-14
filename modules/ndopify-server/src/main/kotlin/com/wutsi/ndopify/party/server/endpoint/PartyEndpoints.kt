@@ -5,6 +5,7 @@ import com.wutsi.ndopify.party.dto.SearchPartyResponse
 import com.wutsi.ndopify.party.dto.UpdatePhotoRequest
 import com.wutsi.ndopify.party.server.mapper.PartyMapper
 import com.wutsi.ndopify.party.server.service.PartyService
+import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute
@@ -24,7 +25,7 @@ class PartyEndpoints(
     fun search(
         @ModelAttribute request: SearchPartyRequest,
     ): SearchPartyResponse {
-        val parties = service.search(request)
+        val parties = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
         return SearchPartyResponse(
             parties = parties.map { party -> mapper.toPartySummary(party) },
         )

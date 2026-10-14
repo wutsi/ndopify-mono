@@ -10,6 +10,7 @@ import com.wutsi.ndopify.agent.server.mapper.AgentMapper
 import com.wutsi.ndopify.agent.server.service.AgentService
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.platform.logger.KVLogger
+import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute
@@ -38,7 +39,7 @@ class AgentEndpoints(
     fun search(
         @ModelAttribute request: SearchAgentRequest,
     ): SearchAgentResponse {
-        val agents = service.search(request)
+        val agents = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
         return SearchAgentResponse(agents = agents.map { agent -> mapper.toAgentSummary(agent) })
     }
 

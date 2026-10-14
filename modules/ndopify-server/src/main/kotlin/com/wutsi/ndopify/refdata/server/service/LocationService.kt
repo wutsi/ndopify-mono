@@ -4,6 +4,7 @@ import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
 import com.wutsi.ndopify.error.server.exception.NotFoundException
+import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
 import com.wutsi.ndopify.refdata.server.dao.LocationRepository
@@ -76,9 +77,9 @@ class LocationService(
             cb.and(*predicates.toTypedArray())
         }
 
-        return dao.findAll(spec, Sort.by(Sort.Order.asc("name"), Sort.Order.desc("population")))
-            .drop(request.offset)
-            .take(request.limit)
+        // id last: paging by offset needs a total order, and names and populations repeat
+        val sort = Sort.by(Sort.Order.asc("name"), Sort.Order.desc("population"), Sort.Order.asc("id"))
+        return dao.findAll(spec, OffsetLimitPageRequest(request.offset, request.limit, sort)).content
     }
 
     fun toAscii(str: String): String {

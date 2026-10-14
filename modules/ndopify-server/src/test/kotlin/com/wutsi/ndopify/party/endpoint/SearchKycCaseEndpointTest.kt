@@ -101,4 +101,16 @@ class SearchKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(listOf("kyc-case-100-b"), response.body!!.cases.map { it.id })
     }
+
+    @Test
+    fun `limit and offset`() {
+        // 100-a and 101-a were opened at the same time: id breaks the tie
+        val response = rest.getForEntity(
+            "/v1/kyc/cases?limit=2&offset=1",
+            SearchKycCaseResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(listOf("kyc-case-100-a", "kyc-case-101-a"), response.body!!.cases.map { it.id })
+    }
 }

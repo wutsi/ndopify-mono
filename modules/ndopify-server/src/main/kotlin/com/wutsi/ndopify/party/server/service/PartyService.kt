@@ -12,6 +12,7 @@ import com.wutsi.ndopify.party.dto.UpdatePartyRequest
 import com.wutsi.ndopify.party.dto.UpdatePhotoRequest
 import com.wutsi.ndopify.party.server.dao.PartyRepository
 import com.wutsi.ndopify.party.server.domain.PartyEntity
+import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import com.wutsi.ndopify.security.server.dao.UserRepository
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
@@ -59,9 +60,7 @@ class PartyService(
             cb.and(*predicates.toTypedArray())
         }
 
-        return dao.findAll(spec, Sort.by("id"))
-            .drop(request.offset)
-            .take(request.limit)
+        return dao.findAll(spec, OffsetLimitPageRequest(request.offset, request.limit, Sort.by("id"))).content
     }
 
     @Transactional

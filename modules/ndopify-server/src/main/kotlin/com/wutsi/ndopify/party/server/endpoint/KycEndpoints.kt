@@ -11,6 +11,7 @@ import com.wutsi.ndopify.party.dto.SearchKycCaseRequest
 import com.wutsi.ndopify.party.dto.SearchKycCaseResponse
 import com.wutsi.ndopify.party.server.mapper.KycCaseMapper
 import com.wutsi.ndopify.party.server.service.KycService
+import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import jakarta.validation.Valid
 import org.slf4j.LoggerFactory
 import org.springframework.web.bind.annotation.GetMapping
@@ -47,7 +48,7 @@ class KycEndpoints(
 
     @GetMapping
     fun search(@ModelAttribute request: SearchKycCaseRequest): SearchKycCaseResponse {
-        val cases = service.search(request)
+        val cases = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
         return SearchKycCaseResponse(
             cases = cases.map { case -> mapper.toKycCaseSummary(case) },
         )

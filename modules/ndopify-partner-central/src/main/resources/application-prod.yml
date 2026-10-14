@@ -21,3 +21,13 @@ wutsi:
             type: rabbitmq
             rabbitmq:
                 url: ${CLOUDAMQP_URL}
+
+# Only health is exposed in prod, without details
+management:
+    endpoint:
+        health:
+            show-details: never
+    endpoints:
+        web:
+            exposure:
+                include: "health"

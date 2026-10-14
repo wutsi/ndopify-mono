@@ -14,6 +14,7 @@ import com.wutsi.ndopify.party.server.dao.PaymentMethodRepository
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.party.server.domain.PaymentMethodEntity
 import com.wutsi.ndopify.platform.momo.MoMoGatewayProvider
+import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
 import org.springframework.data.domain.Sort
@@ -71,9 +72,7 @@ class PaymentMethodService(
             cb.and(*predicates.toTypedArray())
         }
 
-        return dao.findAll(spec, Sort.by("id"))
-            .drop(request.offset)
-            .take(request.limit)
+        return dao.findAll(spec, OffsetLimitPageRequest(request.offset, request.limit, Sort.by("id"))).content
     }
 
     @Transactional

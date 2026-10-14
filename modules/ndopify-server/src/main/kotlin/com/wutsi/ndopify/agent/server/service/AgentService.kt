@@ -21,6 +21,7 @@ import com.wutsi.ndopify.party.server.domain.PaymentMethodEntity
 import com.wutsi.ndopify.party.server.service.KycService
 import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.party.server.service.PaymentMethodService
+import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import com.wutsi.ndopify.refdata.dto.ApplicationCode
 import com.wutsi.ndopify.security.server.service.UserService
 import jakarta.persistence.criteria.Predicate
@@ -70,9 +71,7 @@ class AgentService(
             cb.and(*predicates.toTypedArray())
         }
 
-        return dao.findAll(spec, Sort.by("id"))
-            .drop(request.offset)
-            .take(request.limit)
+        return dao.findAll(spec, OffsetLimitPageRequest(request.offset, request.limit, Sort.by("id"))).content
     }
 
     fun findByIdOrNull(id: Long): AgentEntity? {

@@ -22,6 +22,7 @@ import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.logger.KVLogger
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.platform.util.MimeUtils
+import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
@@ -97,9 +98,8 @@ class KycService(
         }
 
         // Newest first: a party's current case is the one it opened last (a rejected case is followed by a new one).
-        return dao.findAll(spec, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id")))
-            .drop(request.offset)
-            .take(request.limit)
+        val sort = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.asc("id"))
+        return dao.findAll(spec, OffsetLimitPageRequest(request.offset, request.limit, sort)).content
     }
 
     @Transactional

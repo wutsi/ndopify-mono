@@ -5,6 +5,7 @@ import com.wutsi.ndopify.customer.dto.SearchCustomerRequest
 import com.wutsi.ndopify.customer.dto.SearchCustomerResponse
 import com.wutsi.ndopify.customer.server.mapper.CustomerMapper
 import com.wutsi.ndopify.customer.server.service.CustomerService
+import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PathVariable
@@ -29,7 +30,7 @@ class CustomerEndpoints(
     fun search(
         @ModelAttribute request: SearchCustomerRequest,
     ): SearchCustomerResponse {
-        val customers = service.search(request)
+        val customers = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
         return SearchCustomerResponse(customers = customers.map { customer -> mapper.toCustomerSummary(customer) })
     }
 }

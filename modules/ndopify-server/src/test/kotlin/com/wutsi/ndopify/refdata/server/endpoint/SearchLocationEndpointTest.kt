@@ -55,4 +55,11 @@ class SearchLocationEndpointTest : BaseEndpointIntegrationTest() {
         val locations = response.body!!.locations
         assertEquals(2, locations.size)
     }
+
+    @Test
+    fun `limit and offset`() {
+        val response = rest.getForEntity("/v1/locations?limit=2&offset=3", SearchLocationResponse::class.java)
+
+        assertEquals(listOf("Bana", "Cameroon"), response.body!!.locations.map { it.name })
+    }
 }

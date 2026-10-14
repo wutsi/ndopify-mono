@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.refdata.server.endpoint
 
 import com.wutsi.ndopify.common.dto.ImportResponse
+import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import com.wutsi.ndopify.refdata.dto.GetLocationResponse
 import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
 import com.wutsi.ndopify.refdata.dto.SearchLocationResponse
@@ -49,7 +50,7 @@ class LocationEndpoints(
     fun search(
         @ModelAttribute request: SearchLocationRequest,
     ): SearchLocationResponse {
-        val locations = service.search(request)
+        val locations = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
         return SearchLocationResponse(
             locations = locations.map { location -> mapper.toLocation(location) }
         )
