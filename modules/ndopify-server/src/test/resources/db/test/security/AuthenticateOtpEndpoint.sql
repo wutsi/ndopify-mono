@@ -1,3 +1,11 @@
+INSERT INTO T_TENANT(id, active, name, domain_name, locales, country_code, number_format, currency_code, currency_symbol, monetary_format, date_format, time_format, date_time_format, logo_url)
+VALUES
+    (1, true, 'Ndopify', 'localhost', 'fr-CM, en-CM', 'CM', '#,###,##0.00', 'XAF', 'FCFA', '#,###,##0 FCFA', 'yyyy-MM-dd', 'HH:mm', 'yyyy-MM-dd HH:mm', 'https://com-wutsi-ndopify-test.s3.us-east-1.amazonaws.com/www/assets/images/logo.png');
+
+-- Tenants referenced by the tenant-scoped rows below
+INSERT INTO T_TENANT(id, name, domain_name, locales, country_code) VALUES
+    (2, 'Other', 'other.localhost', 'fr-CM, en-CM', 'CM');
+
 -- The seeded data does not allow OTP on any application: enable it on partner-central for these tests.
 -- Restored after each test by AuthenticateOtpEndpointCleanup.sql (T_APPLICATION is not reset by clean.sql).
 UPDATE T_APPLICATION SET supported_auth_types = 'PASSWORD,OTP' WHERE code = 'partner-central';
@@ -5,9 +13,6 @@ UPDATE T_APPLICATION SET supported_auth_types = 'PASSWORD,OTP' WHERE code = 'par
 INSERT INTO T_ROLE(id, application_id, code) VALUES
   (31, 3, 'AGENT');
 
-INSERT INTO T_TENANT(id, active, name, domain_name, locales, country_code, number_format, currency_code, currency_symbol, monetary_format, date_format, time_format, date_time_format, logo_url)
-VALUES
-    (1, true, 'Ndopify', 'localhost', 'fr-CM, en-CM', 'CM', '#,###,##0.00', 'XAF', 'FCFA', '#,###,##0 FCFA', 'yyyy-MM-dd', 'HH:mm', 'yyyy-MM-dd HH:mm', 'https://com-wutsi-ndopify-test.s3.us-east-1.amazonaws.com/www/assets/images/logo.png');
 
 -- 1: valid OTP ("123456")        2: expired OTP            3: password only, never asked for an OTP
 -- 4: valid OTP, no access to app 5: no factor yet (full flow)

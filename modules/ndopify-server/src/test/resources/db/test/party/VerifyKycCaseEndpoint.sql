@@ -2,6 +2,11 @@ INSERT INTO T_TENANT(id, active, name, domain_name, locales, country_code, numbe
 VALUES
     (1, true, 'Ndopify', 'localhost', 'fr-CM, en-CM', 'CM', '#,###,##0.00', 'XAF', 'FCFA', '#,###,##0 FCFA', 'yyyy-MM-dd', 'HH:mm', 'yyyy-MM-dd HH:mm', 'https://com-wutsi-ndopify-test.s3.us-east-1.amazonaws.com/www/assets/images/logo.png', 'http://localhost:8081/partner-central');
 
+-- Tenants referenced by the tenant-scoped rows below
+INSERT INTO T_TENANT(id, name, domain_name, locales, country_code) VALUES
+    (2, 'Other', 'other.localhost', 'fr-CM, en-CM', 'CM');
+
+
 INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name, kyc_status, created_at, modified_at) VALUES
     (100, 1, 'pending@gmail.com', 'Pending', 'Party', 1, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (300, 1, 'already.verified@gmail.com', 'Already', 'Verified', 4, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),

@@ -1,3 +1,7 @@
+-- Tenants referenced by the tenant-scoped rows below
+INSERT INTO T_TENANT(id, name, domain_name, locales, country_code) VALUES
+    (2, 'Other', 'other.localhost', 'fr-CM, en-CM', 'CM');
+
 INSERT INTO T_ROLE(id, application_id, code) VALUES
   (1, 1, 'ADMIN'),
   (2, 1, 'SUPPORT');
