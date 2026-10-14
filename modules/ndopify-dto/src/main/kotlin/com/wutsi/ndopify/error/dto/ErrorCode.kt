@@ -11,6 +11,7 @@ object ErrorCode {
     val AUTH_ACCESS_DENIED = "$PREFIX:auth:access-denied"
     val AUTH_CREDENTIALS_EXPIRED = "$PREFIX:auth:credentials-expired"
     val AUTH_CREDENTIALS_ALREADY_USED = "$PREFIX:auth:credentials-already-used"
+    val AUTH_FACTOR_NOT_FOUND = "$PREFIX:auth:factor-not-found"
     val AUTH_INVALID_CREDENTIALS = "$PREFIX:auth:invalid-credentials"
     val AUTH_MISSING_PAYLOAD = "$PREFIX:auth:missing-payload"
     val AUTH_MISSING_SECRET = "$PREFIX:auth:missing-secret"
