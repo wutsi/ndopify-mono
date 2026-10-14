@@ -120,6 +120,7 @@ Code is organized by domain under `com.wutsi.ndopify.<domain>.server`, each foll
     domain/     - JPA entities (*Entity.kt)
     mapper/     - Entity ↔ DTO mapping (*Mapper.kt)
     io/         - import/export (refdata only, e.g. GeonamesImporter, NeighbourhoodImporter)
+    event/      - application events + their listeners (agent, party, security so far)
 ```
 
 There are no `@Scheduled` jobs in the codebase today.
@@ -132,7 +133,9 @@ Current domains:
   (credentials), JWT issuance (`AccessTokenService`), and the `Authenticator` strategy interface with
   `PasswordAuthenticator` / `GoogleOneTapAuthenticator` / `OtpAuthenticator` implementations, selected via
   `AuthenticatorProvider` based on `AuthType`. One-time codes are created via `POST /v1/otp` (`OtpService`,
-  `OtpGenerator`) and e-mailed by `OtpMailet`; `POST /v1/auth` exchanges credentials for a JWT.
+  `OtpGenerator`) and e-mailed by `OtpMailet`, asynchronously (see *Asynchronous e-mails* below): the tenant is
+  resolved (`OtpMailet.resolveTenant`) before the hand-off, so a missing/unknown tenant still fails the request,
+  but an SMTP failure no longer does — the code is committed and the user asks for a new one; `POST /v1/auth` exchanges credentials for a JWT.
   `GET /v1/users/{id}` (`UserEndpoints`) returns the user with its party embedded. It returns 404 `USER_NOT_FOUND`
   for a user of another home tenant, which `UserService.findById` checks with `UserRepository.isVisible` before
   loading, because the eager `party` is `@TenantId`-filtered. Like the rest of the API, it isn't authorized yet
@@ -144,12 +147,14 @@ Current domains:
   KYC case lifecycle: `PENDING` (images uploaded via `/v1/kyc/cases/{id}/images/upload`) → `POST
   /v1/kyc/cases/{id}/submit` → `SUBMITTED` (requires FRONT, plus BACK for two-sided documents: `NATIONAL_ID`,
   `DRIVER_LICENSE`, `RESIDENT_CARD`; SELFIE optional server-side, Partner Central requires it; images frozen) →
-  `POST .../verify` → `IN_PROGRESS` → `VERIFIED` / `REJECTED`. `GET /v1/kyc/cases` returns the newest case first.
+  `POST .../verify` → `IN_PROGRESS` → `VERIFIED` / `REJECTED`, which publishes a `KycCaseCompletedEvent`: the
+status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint or `KycJobs` verified the case. `GET /v1/kyc/cases` returns the newest case first.
   Verification is meant to run offline (a future cron job), never from a UI. `KycStatus` is persisted by ordinal:
   inserting or reordering values needs a migration that renumbers existing rows (as
   `V4_1__party-kyc-status-submitted.sql` does). Tenant-scoped (see Multi-Tenancy below).
 - **agent** — mobile-money agents (`AgentEntity`; `/v1/agents`: get, search, create, update). `WelcomeMailet` sends
-  a welcome e-mail on registration when the tenant has a `partnerCentralUrl`. Tenant-scoped.
+  a welcome e-mail on registration when the tenant has a `partnerCentralUrl`, asynchronously (see *Asynchronous
+  e-mails* below). Tenant-scoped.
 - **customer** — people looking for a property (`CustomerEntity`, linked to a `Party`; `/v1/customers`).
   `CustomerService.findOrCreate` reuses the party and customer of an e-mail. Tenant-scoped.
 - **mandate** — a customer's search request (`MandateEntity`; `/v1/mandates`: get, search, create, update).
@@ -159,6 +164,16 @@ Current domains:
 - **error** — shared exception types (`WutsiException` subclasses: `BadRequestException`, `NotFoundException`,
   `ConflictException`, `ForbiddenException`, `UnauthorizedException`, `InternalErrorException`) and a global
   `ControllerErrorHandler`.
+
+**Asynchronous e-mails** (welcome, OTP, KYC status): the service publishes an event from its transaction
+(`AgentCreatedEvent`, `OtpCreatedEvent`, `KycCaseCompletedEvent` in `<domain>/server/event/`), carrying ids plus the `tenantId` — never entities. Its listener is
+`@Async @TransactionalEventListener(AFTER_COMMIT)`, so nothing is sent for a rolled-back transaction. The executor
+thread has no request, so the listener sets `TenantContext` and a `DefaultKVLogger` in `KVLoggerThreadLocal`
+(which the injected `KVLogger` falls back to), calls `logger.log()` in `finally` to flush it, and removes both
+(threads are reused). The work runs in a `@Transactional` service method (`AgentService.sendWelcomeEmail`,
+`OtpService.sendEmail`, `KycService.sendStatusEmail`), entered *after* `TenantContext` is set since Hibernate resolves the tenant when the session
+opens. Failures are logged, never rethrown. Tests must wait for the mail (`smtp.waitForIncomingEmail`);
+`BaseEndpointIntegrationTest.tearDown` waits for the running async tasks, so a test's mail can't reach the next one.
 
 There's also a non-domain **`platform`** package holding shared infrastructure (wired by `platform/config`):
 

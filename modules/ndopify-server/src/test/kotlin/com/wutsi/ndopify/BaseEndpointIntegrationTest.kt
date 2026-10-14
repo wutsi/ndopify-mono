@@ -14,6 +14,7 @@ import org.springframework.http.HttpRequest
 import org.springframework.http.client.ClientHttpRequestExecution
 import org.springframework.http.client.ClientHttpRequestInterceptor
 import org.springframework.http.client.ClientHttpResponse
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import java.io.File
@@ -30,6 +31,7 @@ import kotlin.test.assertEquals
 abstract class BaseEndpointIntegrationTest : ClientHttpRequestInterceptor {
     companion object {
         const val DEVICE_ID = "device-test"
+        const val ASYNC_TIMEOUT_MS = 5000L
     }
 
     @Value("\${spring.mail.username}")
@@ -42,6 +44,9 @@ abstract class BaseEndpointIntegrationTest : ClientHttpRequestInterceptor {
 
     @Autowired
     protected lateinit var rest: TestRestTemplate
+
+    @Autowired
+    private lateinit var taskExecutor: ThreadPoolTaskExecutor
 
     private val folder = File(File(System.getProperty("user.home")), "__ndopify")
 
@@ -66,8 +71,21 @@ abstract class BaseEndpointIntegrationTest : ClientHttpRequestInterceptor {
 
     @AfterTest
     fun tearDown() {
+        awaitAsyncTasks()
         if (smtp.isRunning) {
             smtp.stop()
+        }
+    }
+
+    /**
+     * E-mails are sent by @Async listeners: wait for the ones still running, or they'd be delivered to the next
+     * test's SMTP server.
+     */
+    private fun awaitAsyncTasks() {
+        val pool = taskExecutor.threadPoolExecutor
+        val deadline = System.currentTimeMillis() + ASYNC_TIMEOUT_MS
+        while ((pool.activeCount > 0 || pool.queue.isNotEmpty()) && System.currentTimeMillis() < deadline) {
+            Thread.sleep(10)
         }
     }
 

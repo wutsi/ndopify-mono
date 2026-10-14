@@ -1,5 +1,7 @@
 package com.wutsi.ndopify.security.server.service
 
+import com.wutsi.ndopify.error.dto.Error
+import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.refdata.dto.AuthType
 import com.wutsi.ndopify.security.server.dao.AuthFactorRepository
 import com.wutsi.ndopify.security.server.domain.AuthFactorEntity
@@ -13,6 +15,16 @@ open class AuthFactorService(
     private val dao: AuthFactorRepository,
     private val clock: Clock,
 ) {
+    fun findById(id: Long): AuthFactorEntity {
+        return dao.findById(id).orElseThrow {
+            NotFoundException(
+                error = Error(
+                    code = ErrorCode.AUTH_FACTOR_NOT_FOUND,
+                )
+            )
+        }
+    }
+
     fun findByIdOrNull(id: Long): AuthFactorEntity? {
         return dao.findById(id).orElse(null)
     }

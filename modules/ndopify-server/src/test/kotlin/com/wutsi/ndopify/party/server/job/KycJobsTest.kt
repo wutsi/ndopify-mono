@@ -15,7 +15,6 @@ import com.wutsi.ndopify.error.server.exception.BadRequestException
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.SearchKycCaseRequest
 import com.wutsi.ndopify.party.server.domain.KycCaseEntity
-import com.wutsi.ndopify.party.server.service.KycMailet
 import com.wutsi.ndopify.party.server.service.KycService
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
@@ -29,9 +28,8 @@ import kotlin.test.assertNull
 
 class KycJobsTest {
     private val service = mock<KycService>()
-    private val mailet = mock<KycMailet>()
     private val tenantService = mock<TenantService>()
-    private val jobs = KycJobs(service, mailet, tenantService)
+    private val jobs = KycJobs(service, tenantService)
 
     private val tenant1 = TenantEntity(id = 1L)
     private val tenant2 = TenantEntity(id = 2L)
@@ -40,7 +38,7 @@ class KycJobsTest {
     private val case2 = KycCaseEntity(id = "case-2", status = KycStatus.SUBMITTED)
     private val case3 = KycCaseEntity(id = "case-3", status = KycStatus.SUBMITTED)
 
-    // What verify() returns: the case once verified, which is the one the mail is about.
+    // What verify() returns: the case once verified
     private val verified1 = case1.copy(status = KycStatus.VERIFIED)
     private val verified2 = case2.copy(status = KycStatus.REJECTED)
     private val verified3 = case3.copy(status = KycStatus.VERIFIED)
@@ -95,32 +93,6 @@ class KycJobsTest {
         jobs.verify()
 
         verify(service, never()).verify(any<String>())
-        verify(mailet, never()).send(any())
-    }
-
-    @Test
-    fun `mails the agent the verified case, whatever the outcome`() {
-        setUpSubmittedCases(case1, case2)
-
-        jobs.verify()
-
-        val order = inOrder(service, mailet)
-        order.verify(service).verify(case1.id)
-        order.verify(mailet).send(verified1)
-        order.verify(service).verify(case2.id)
-        order.verify(mailet).send(verified2)
-    }
-
-    @Test
-    fun `a case not yet resolved - not mailed`() {
-        // e.g. gateway down: the case is put back to SUBMITTED for a retry, or sent to manual review
-        setUpSubmittedCases(case1, case2)
-        doReturn(case1.copy(status = KycStatus.SUBMITTED)).whenever(service).verify(case1.id)
-        doReturn(case2.copy(status = KycStatus.REQUIRES_MANUAL_REVIEW)).whenever(service).verify(case2.id)
-
-        jobs.verify()
-
-        verify(mailet, never()).send(any())
     }
 
     @Test
@@ -133,20 +105,6 @@ class KycJobsTest {
         verify(service).verify(case1.id)
         verify(service).verify(case2.id)
         verify(service).verify(case3.id)
-        verify(mailet).send(verified1)
-        verify(mailet).send(verified3)
-        verify(mailet, times(2)).send(any())
-    }
-
-    @Test
-    fun `a failing mail doesn't stop the others`() {
-        setUpSubmittedCases(case1, case2)
-        doThrow(RuntimeException("SMTP down")).whenever(mailet).send(verified1)
-
-        jobs.verify()
-
-        verify(service).verify(case2.id)
-        verify(mailet).send(verified2)
     }
 
     @Test
@@ -159,8 +117,6 @@ class KycJobsTest {
         jobs.verify()
 
         verify(service).verify(case2.id)
-        verify(mailet, never()).send(case1)
-        verify(mailet).send(verified2)
     }
 
     @Test
@@ -171,7 +127,6 @@ class KycJobsTest {
         jobs.verify()
 
         verify(service, times(2)).verify(any<String>())
-        verify(mailet, never()).send(any())
     }
 
     @Test
@@ -194,7 +149,6 @@ class KycJobsTest {
         jobs.verify()
 
         verify(service).verify(case1.id)
-        verify(mailet).send(verified1)
     }
 
     @Test
@@ -225,7 +179,6 @@ class KycJobsTest {
         val recoverTenants = mutableListOf<Long?>()
         val searchTenants = mutableListOf<Long?>()
         val verifyTenants = mutableListOf<Long?>()
-        val mailTenants = mutableListOf<Long?>()
         doAnswer {
             recoverTenants.add(TenantContext.get())
             emptyList<KycCaseEntity>()
@@ -238,14 +191,12 @@ class KycJobsTest {
             verifyTenants.add(TenantContext.get())
             if (it.getArgument<String>(0) == case1.id) verified1 else verified2
         }.whenever(service).verify(any<String>())
-        doAnswer { mailTenants.add(TenantContext.get()) }.whenever(mailet).send(any())
 
         jobs.verify()
 
         assertEquals(listOf<Long?>(1L, 2L), recoverTenants)
         assertEquals(listOf<Long?>(1L, 2L), searchTenants)
         assertEquals(listOf<Long?>(1L, 2L), verifyTenants)
-        assertEquals(listOf<Long?>(1L, 2L), mailTenants)
     }
 
     @Test
@@ -276,6 +227,5 @@ class KycJobsTest {
         jobs.verify()
 
         verify(service).verify(case2.id)
-        verify(mailet).send(verified2)
     }
 }

@@ -19,6 +19,7 @@ import com.wutsi.ndopify.party.server.domain.KycCaseEntity
 import com.wutsi.ndopify.party.server.domain.KycImageEntity
 import com.wutsi.ndopify.party.server.domain.KycVerificationEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
+import com.wutsi.ndopify.party.server.event.KycCaseCompletedEvent
 import com.wutsi.ndopify.platform.logger.KVLogger
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.platform.util.MimeUtils
@@ -29,6 +30,7 @@ import jakarta.transaction.Transactional
 import org.hibernate.Hibernate
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
@@ -54,6 +56,7 @@ class KycService(
     private val mailet: KycMailet,
     private val clock: Clock,
     private val logger: KVLogger,
+    private val eventPublisher: ApplicationEventPublisher,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(KycService::class.java)
@@ -250,8 +253,16 @@ class KycService(
         return retry(case, KycErrorCode.INTERRUPTED, "Verification interrupted")
     }
 
-    fun sendStatusEmail(case: KycCaseEntity) {
-        mailet.send(case)
+    /**
+     * Sends the status email of a resolved case. Called by `KycEventListener` on its own thread, with
+     * `TenantContext` set: the transaction gives the mailet a session to load the case's party.
+     */
+    @Transactional
+    fun sendStatusEmail(id: String) {
+        val case = findById(id)
+        if (case.status == KycStatus.VERIFIED || case.status == KycStatus.REJECTED) {
+            mailet.send(case)
+        }
     }
 
     private fun claim(id: String): KycCaseEntity {
@@ -345,6 +356,8 @@ class KycService(
         LOGGER.info(">>> KYC#${case.id} - Updating party KYC status to $status")
         partyService.updateKyStatus(case.party, status)
 
+        // Listeners run after commit (see KycEventListener)
+        eventPublisher.publishEvent(KycCaseCompletedEvent(caseId = case.id, tenantId = case.tenantId!!))
         return updatedCase
     }
 

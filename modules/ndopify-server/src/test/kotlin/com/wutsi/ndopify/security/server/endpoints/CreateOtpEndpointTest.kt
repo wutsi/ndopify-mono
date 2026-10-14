@@ -125,7 +125,7 @@ class CreateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
 
         val user = userRepository.findById(1L).get()
         assertNotNull(authFactorRepository.findByUserAndAuthType(user, AuthType.OTP).orElse(null))
-        assertEquals(1, smtp.receivedMessages.size)
+        receivedMessage()
     }
 
     @Test
@@ -171,7 +171,6 @@ class CreateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(passwordEncryptor.encrypt(CODE, otp.salt), otp.data)
         assertExpiresIn(300L, before, after, otp.expiresAt?.time) // was expired since 2020
 
-        assertEquals(1, smtp.receivedMessages.size)
         assertEquals("has-otp@gmail.com", recipient(receivedMessage()).address)
     }
 
@@ -244,12 +243,14 @@ class CreateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
 
         val response = rest.postForEntity(
             "/v1/otp",
-            CreateOtpRequest(email = "ray.sponsible@gmail.com"),
-            ErrorResponse::class.java
+            CreateOtpRequest(email = "has-otp@gmail.com"),
+            Void::class.java
         )
 
-        // The caller must know the code was not sent...
-        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.statusCode)
+        // The email is sent asynchronously, once the code is committed: the request no longer knows it failed,
+        // and the user asks for a new code
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertNotEquals("old-otp-hash", authFactorRepository.findById(22L).get().data)
     }
 
     @Test

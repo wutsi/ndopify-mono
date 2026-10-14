@@ -11,8 +11,10 @@ import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.Receipient
 import com.wutsi.ndopify.platform.tenant.TenantContext
+import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.security.server.domain.AuthFactorEntity
+import com.wutsi.ndopify.security.server.domain.UserEntity
 import com.wutsi.ndopify.security.server.service.OtpService.Companion.SUBJECT
 import org.springframework.stereotype.Service
 
@@ -24,17 +26,7 @@ class OtpMailet(
 ) {
     fun send(code: String, authFactor: AuthFactorEntity) {
         val user = authFactor.user
-
-        // The tenant of the request wins; fall back to the user's home tenant.
-        val tenantId = TenantContext.get()
-            ?: user.tenantId
-            ?: throw BadRequestException(
-                Error(
-                    code = ErrorCode.HTTP_MISSING_PARAMETER,
-                    parameter = Parameter(name = HttpHeader.TENANT_ID, type = ParameterType.PARAMETER_TYPE_HEADER),
-                )
-            )
-        val tenant = tenantService.findById(tenantId)
+        val tenant = resolveTenant(user)
 
         val expiresAt = requireNotNull(authFactor.expiresAt) { "An OTP must have an expiry" }
         val ttlMinutes = (expiresAt.time - authFactor.modifiedAt.time) / 60_000 // rounded down: never overstates
@@ -56,5 +48,21 @@ class OtpMailet(
                 )
             )
         )
+    }
+
+    /**
+     * The tenant of the request wins; fall back to the user's home tenant. Public so that `OtpService` can fail the
+     * request (400/404) before the email is handed off to another thread.
+     */
+    fun resolveTenant(user: UserEntity): TenantEntity {
+        val tenantId = TenantContext.get()
+            ?: user.tenantId
+            ?: throw BadRequestException(
+                Error(
+                    code = ErrorCode.HTTP_MISSING_PARAMETER,
+                    parameter = Parameter(name = HttpHeader.TENANT_ID, type = ParameterType.PARAMETER_TYPE_HEADER),
+                )
+            )
+        return tenantService.findById(tenantId)
     }
 }

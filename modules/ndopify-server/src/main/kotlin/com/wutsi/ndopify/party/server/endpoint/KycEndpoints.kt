@@ -6,14 +6,12 @@ import com.wutsi.ndopify.party.dto.GetKycCaseResponse
 import com.wutsi.ndopify.party.dto.GetKycImageUrlResponse
 import com.wutsi.ndopify.party.dto.IdentificationType
 import com.wutsi.ndopify.party.dto.KycImageType
-import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.SearchKycCaseRequest
 import com.wutsi.ndopify.party.dto.SearchKycCaseResponse
 import com.wutsi.ndopify.party.server.mapper.KycCaseMapper
 import com.wutsi.ndopify.party.server.service.KycService
 import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import jakarta.validation.Valid
-import org.slf4j.LoggerFactory
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PathVariable
@@ -30,10 +28,6 @@ class KycEndpoints(
     private val service: KycService,
     private val mapper: KycCaseMapper,
 ) {
-    companion object {
-        private val LOGGER = LoggerFactory.getLogger(KycEndpoints::class.java)
-    }
-
     @PostMapping
     fun create(@RequestBody @Valid request: CreateKycCaseRequest): CreateKycCaseResponse {
         val case = service.create(request)
@@ -61,14 +55,7 @@ class KycEndpoints(
 
     @PostMapping("/{id}/verify")
     fun verify(@PathVariable id: String) {
-        val case = service.verify(id)
-        if (case.status == KycStatus.VERIFIED || case.status == KycStatus.REJECTED) {
-            try {
-                service.sendStatusEmail(case)
-            } catch (ex: Exception) {
-                LOGGER.error(">>> KYC#${case.id} - Failed to send status email", ex)
-            }
-        }
+        service.verify(id)
     }
 
     @PostMapping("/{id}/images/upload")

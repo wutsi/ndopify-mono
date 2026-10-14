@@ -33,6 +33,7 @@ import org.springframework.test.context.jdbc.Sql
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -136,6 +137,7 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
 
     /** The single status e-mail sent to the case's party ("Pending Party", tenant 1), and its body. */
     private fun assertStatusEmail(subject: String, link: String) {
+        assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received") // sent asynchronously
         val tenant = tenantService.findById(1L)
         val messages = smtp.receivedMessages
         assertEquals(1, messages.size)
@@ -160,7 +162,8 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
     )
 
     private fun assertNoEmail() {
-        assertEquals(0, smtp.receivedMessages.size)
+        // The email is sent asynchronously: give a wrongly sent one the time to arrive
+        assertFalse(smtp.waitForIncomingEmail(1000, 1), "no email expected")
     }
 
     private fun assertNoVerifierCalled() {

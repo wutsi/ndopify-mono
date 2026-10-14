@@ -2,7 +2,6 @@ package com.wutsi.ndopify.party.server.job
 
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.SearchKycCaseRequest
-import com.wutsi.ndopify.party.server.service.KycMailet
 import com.wutsi.ndopify.party.server.service.KycService
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.server.service.TenantService
@@ -13,7 +12,6 @@ import org.springframework.stereotype.Service
 @Service
 class KycJobs(
     private val service: KycService,
-    private val mailet: KycMailet,
     private val tenantService: TenantService,
 ) {
     companion object {
@@ -66,11 +64,9 @@ class KycJobs(
         var errors = 0
         cases.forEach { case ->
             try {
-                val xcase = service.verify(case.id)
+                // The status email is sent by KycEventListener, once the case is resolved
+                service.verify(case.id)
                 verified++
-                if (xcase.status == KycStatus.VERIFIED || xcase.status == KycStatus.REJECTED) {
-                    mailet.send(xcase)
-                }
             } catch (ex: Exception) {
                 LOGGER.warn("Tenant#$tenantId - Unable to verify KYC case ${case.id}", ex)
                 errors++

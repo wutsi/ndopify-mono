@@ -26,6 +26,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/agent/CreateAgentEndpoint.sql"])
 class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
@@ -114,7 +115,7 @@ class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
         val app = applicationService.findByCode(ApplicationCode.PARTNER_CENTRAL)
         assertNotNull(userApplicationDao.findByUserAndApplication(user!!, app))
 
-        Thread.sleep(1000) // Wait for email to be sent
+        assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received") // sent asynchronously
         val tenant = tenantService.findById(TENANT_ID)
         val messages = smtp.receivedMessages
         assertEquals(1, messages.size)
@@ -266,6 +267,8 @@ class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
         )
         val response = rest.postForEntity("/v1/agents", request, CreateAgentResponse::class.java)
 
+        // The email is sent once the agent is committed: its failure doesn't undo the registration
         assertEquals(HttpStatus.OK, response.statusCode)
+        assertTrue(dao.findById(response.body!!.agentId).isPresent)
     }
 }

@@ -5,6 +5,7 @@ import com.wutsi.ndopify.agent.dto.SearchAgentRequest
 import com.wutsi.ndopify.agent.dto.UpdateAgentRequest
 import com.wutsi.ndopify.agent.server.dao.AgentRepository
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
+import com.wutsi.ndopify.agent.server.event.AgentCreatedEvent
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.ConflictException
@@ -26,6 +27,7 @@ import com.wutsi.ndopify.refdata.dto.ApplicationCode
 import com.wutsi.ndopify.security.server.service.UserService
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
@@ -41,6 +43,7 @@ class AgentService(
     private val paymentMethodService: PaymentMethodService,
     private val userService: UserService,
     private val mailet: WelcomeMailet,
+    private val eventPublisher: ApplicationEventPublisher,
 ) {
     fun search(request: SearchAgentRequest): List<AgentEntity> {
         val spec = Specification<AgentEntity> { root, query, cb ->
@@ -113,7 +116,7 @@ class AgentService(
 
         // Agent
         val now = Date(clock.millis())
-        return dao.save(
+        val agent = dao.save(
             AgentEntity(
                 party = party,
                 whatsappNumber = request.whatsappNumber,
@@ -126,6 +129,10 @@ class AgentService(
                 modifiedAt = now,
             )
         )
+
+        // Listeners run after commit (see AgentEventListener)
+        eventPublisher.publishEvent(AgentCreatedEvent(agentId = agent.id!!, tenantId = agent.tenantId!!))
+        return agent
     }
 
     @Transactional
@@ -156,7 +163,17 @@ class AgentService(
         )
     }
 
-    fun sendWelcomeEmail(agent: AgentEntity) {
+    /**
+     * Sends the welcome email of an agent whose KYC is still pending. Called by `AgentEventListener` on its own
+     * thread, with `TenantContext` set: the transaction gives the mailet a session to load the case's party.
+     */
+    @Transactional
+    fun sendWelcomeEmail(agentId: Long) {
+        val agent = findById(agentId)
+        if (agent.party.kycStatus != KycStatus.PENDING) {
+            return
+        }
+
         val kyc = kycService.search(
             SearchKycCaseRequest(
                 partyId = agent.party.id,
