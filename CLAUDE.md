@@ -150,6 +150,12 @@ Current domains:
   `V4_1__party-kyc-status-submitted.sql` does). Tenant-scoped (see Multi-Tenancy below).
 - **agent** — mobile-money agents (`AgentEntity`; `/v1/agents`: get, search, create, update). `WelcomeMailet` sends
   a welcome e-mail on registration when the tenant has a `partnerCentralUrl`. Tenant-scoped.
+- **customer** — people looking for a property (`CustomerEntity`, linked to a `Party`; `/v1/customers`).
+  `CustomerService.findOrCreate` reuses the party and customer of an e-mail. Tenant-scoped.
+- **mandate** — a customer's search request (`MandateEntity`; `/v1/mandates`: get, search, create, update).
+  `MandateService.create` finds or creates the customer from the request's contact fields and starts the mandate
+  as `PENDING_ASSIGNMENT`. It only checks that the contact fields aren't empty (`@NotEmpty`): categories, cities,
+  neighbourhoods, prices and enums aren't validated server-side yet. Tenant-scoped.
 - **error** — shared exception types (`WutsiException` subclasses: `BadRequestException`, `NotFoundException`,
   `ConflictException`, `ForbiddenException`, `UnauthorizedException`, `InternalErrorException`) and a global
   `ControllerErrorHandler`.
@@ -176,7 +182,7 @@ Package `com.wutsi.ndopify.npc`: `ui/` (MVC controllers + Thymeleaf templates in
   the HTTP session, and verify reads the e-mail from there, not from the form. It calls
   `/v1/otp` then `/v1/auth` with `AuthType.OTP` and `ApplicationCode.PARTNER_CENTRAL`. The JWT is kept in the
   HTTP-only `__npc_access_token` cookie (`AccessTokenService`) and decoded by `JwtAuthenticationFilter`; everything
-  except `/assets/**`, `/login/**`, `/error`, `/locations/**`, `/join/**` requires authentication. `/logout` clears the cookie and session.
+  except `/assets/**`, `/login/**`, `/error`, `/locations/**`, `/join/**`, `/find-property/**` requires authentication. `/logout` clears the cookie and session.
 - Tenant is resolved by `TenantContext` matching the request URL against each active tenant's `partnerCentralUrl`
   (from `GET /v1/tenants`).
 - `RestConfiguration` adds logging, `Authorization` and `X-Tenant-ID` interceptors to every Spring-built
@@ -193,7 +199,17 @@ Package `com.wutsi.ndopify.npc`: `ui/` (MVC controllers + Thymeleaf templates in
   up" anything in it. The login page links to `/join`.
 - `LocationController` (`GET /locations`) is a public JSON proxy to `GET /v1/locations` for the city/neighbourhood
   dropdowns (slim-select): same query parameters, but only `CITY`/`NEIGHBORHOOD`, country forced to the tenant's,
-  `limit` capped. Used by `join.js` on the wizard's area step.
+  `limit` capped. Used by `join.js` and `find-property.js` on the wizards' area steps.
+- *Trouver un bien* is `FindPropertyController` (`ui/findproperty/`), a **public** wizard for people looking for a
+  rental, built like the join wizard: one page (`templates/find-property.html`), seven steps (`need` → `area` →
+  `property` → `amenities` → `budget` → `contact` → `review`), `POST /find-property/{step}` validates
+  (`FindPropertyRules`) into the session's `PendingMandate`, and the review submits the session as a TENANT/RENTAL
+  mandate (`NdMandateClient` → `POST /v1/mandates`, price in the tenant's currency), then shows the confirmation while
+  a `SubmittedMandate` is in the session. Since ndopify-server doesn't validate mandates yet, these rules and the
+  city/neighbourhood checks are the only validation a mandate gets. "Indifférent" (`ANY`) is a UI-only answer, sent
+  as `null`. Without JS the property step shows every follow-up question of the category and the server ignores
+  those that don't apply to the type; `public/assets/js/find-property.js` hides them. Prototype:
+  `src/main/html/find-property.html`.
 - KYC is `KycController` (`ui/kyc/`), one page (`templates/kyc.html`) that login redirects to. Wizard steps `front` →
   `back` → `selfie` → `review`: `GET /kyc?step=…` shows a step (never past the first photo the case lacks) and
   `POST /kyc/{step}` uploads that photo straight to the agent's PENDING case (`NdKycClient`), so the case is the
@@ -223,7 +239,7 @@ Tenancy is enforced via **Hibernate's built-in multi-tenancy mechanism**, not ha
 - Any JPA entity annotated `org.hibernate.annotations.@TenantId` is automatically filtered by Hibernate for every
   query against it — no `CriteriaBuilder` predicate, repository override, or service-level check needed. Today
   that's `PartyEntity`, `PaymentMethodEntity`, `IdentificationEntity`, `IdentificationImageEntity`, `KycCaseEntity`,
-  and `AgentEntity`. Leave the field `null` on construction (see the comment on any of them) so Hibernate's
+  `AgentEntity`, `CustomerEntity` and `MandateEntity`. Leave the field `null` on construction (see the comment on any of them) so Hibernate's
   `TenantIdGeneration` populates it from `TenantContext` on insert — setting a non-null value yourself makes
   Hibernate treat it as caller-assigned and throw if it doesn't match the resolved tenant.
 - `KycVerificationEntity` is deliberately **not** `@TenantId`-annotated: it's never loaded by its own id anywhere in

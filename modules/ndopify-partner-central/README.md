@@ -29,6 +29,16 @@ contracts from [ndopify-dto](../ndopify-dto).
       type-ahead and the city's neighbourhoods (over `/locations`), intl-tel-input for phone numbers (posted as
       E.164 through a hidden input), and "Utiliser mon numéro WhatsApp". Without it, the sector step only offers
       the city and neighbourhoods already chosen.
+- **Property search wizard, *Trouver un bien*** (`ui/findproperty/FindPropertyController`) — public, for people
+  looking for a rental. One page, `templates/find-property.html`, built like *Rejoindre Ndopify*: seven steps,
+  `need` → `area` → `property` → `amenities` → `budget` → `contact` → `review`, then a confirmation.
+    - `POST /find-property/{step}` validates a step (`FindPropertyRules`) into a `PendingMandate` in the HTTP
+      session. A step only opens once every earlier one is complete.
+    - `POST /find-property/review` creates a TENANT rental mandate on ndopify-server (`POST /v1/mandates`) from the
+      session's answers, then shows the confirmation while a `SubmittedMandate` is in the session.
+    - Every step posts without JavaScript. `public/assets/js/find-property.js` hides the follow-up questions that
+      don't apply to the chosen property type, formats amounts, and adds the city/neighbourhood dropdowns and
+      intl-tel-input.
 - **Location search for dropdowns** (`ui/location/LocationController`) — `GET /locations`, a public JSON proxy to
   ndopify-server's location search, used by the wizard's city and neighbourhood dropdowns. Because it's public, it
   only searches cities and neighbourhoods, always in the tenant's country, with a capped page size; responses are
