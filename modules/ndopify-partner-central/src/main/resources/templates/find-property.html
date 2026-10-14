@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title th:text="${step == 'confirmation'} ? 'Demande envoyée — Ndopify' : 'Trouver un bien — Ndopify'">
+        Trouver un bien — Ndopify</title>
+    <meta content="Décrivez le bien que vous cherchez : un Agent Vérifié Ndopify de votre secteur vous accompagne. 3 à 5 minutes, aucun document requis."
+          name="description">
+    <meta content="noindex, nofollow" name="robots">
+    <meta content="#ffffff" name="theme-color">
+    <link rel="icon" th:href="@{/assets/images/icon.png}" type="image/png">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
+    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap"
+          rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/css/intlTelInput.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.css" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/join.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/find-property.css}">
+    <script defer src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/js/intlTelInput.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.iife.js"></script>
+    <script defer th:src="@{/assets/js/util.js}"></script>
+    <script defer th:src="@{/assets/js/find-property.js}"></script>
+</head>
+<!--/*
+  One page, seven steps then the confirmation: FindPropertyController picks the step (model attribute "step") and
+  only renders that one. Each step is its own form, posted to /find-property/{step}; the answers live in the HTTP
+  session, so a step's fields are pre-filled from "answers" and its errors come from "errors" (field name → message).
+  Without JavaScript every step still works: the property step then shows every follow-up question of the category
+  (the server ignores those that don't apply to the chosen type), and the neighbourhoods of a city are only loaded
+  by find-property.js (slim-select, GET /locations) — see data-locations-url.
+*/-->
+<body data-page="find-property">
+<a class="skip-link" href="#main">Aller au contenu</a>
+<header class="site-header">
+    <div class="site-header__inner">
+        <!--/* The tenant's logo, falling back to Ndopify's when it has none. Visitors have no account: no /login. */-->
+        <a class="site-header__brand"
+           th:href="${#strings.isEmpty(tenant.publicPortalUrl)} ? @{/find-property} : ${tenant.publicPortalUrl}">
+            <img alt="Ndopify, accueil" height="40"
+                 th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify, accueil' : ${tenant.name}"
+                 th:src="${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}">
+        </a>
+        <!--/* Back to the tenant's public site, from any step; hidden when the tenant has none. */-->
+        <a class="btn btn--outline" data-exit th:href="${tenant.publicPortalUrl}"
+           th:unless="${#strings.isEmpty(tenant.publicPortalUrl)}">
+            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                <path d="m6 6 8 8M14 6l-8 8" fill="none" stroke="currentColor" stroke-linecap="round"
+                      stroke-width="1.5"/>
+            </svg>
+            Quitter</a>
+    </div>
+</header>
+<main class="page" id="main">
+    <div class="column">
+        <!--/* Steps 1 to 7 */-->
+        <th:block th:if="${step != 'confirmation'}">
+            <div class="page-intro">
+                <h1>Trouver un bien</h1>
+            </div>
+            <div class="progress" data-progress-block>
+                <p class="progress__label" data-progress-label id="progress-label"
+                   th:text="|Étape ${stepNumber} sur ${stepCount}|">Étape 1 sur 7</p>
+                <div aria-labelledby="progress-label" class="progress__track" data-progress role="progressbar"
+                     th:attr="aria-valuemin=1, aria-valuemax=${stepCount}, aria-valuenow=${stepNumber},
+                              aria-valuetext=|Étape ${stepNumber} sur ${stepCount}|">
+                    <div class="progress__bar" data-progress-bar
+                         th:style="|transform: scaleX(${stepNumber * 1.0 / stepCount})|"></div>
+                </div>
+            </div>
+
+            <h2 class="visually-hidden" data-steps-title>Étapes du formulaire</h2>
+
+            <!--/* Step 1: need (POST /find-property/need) */-->
+            <form class="form" data-find-form method="post" novalidate th:action="@{/find-property/need}"
+                  th:if="${step == 'need'}">
+                <input name="returnTo" th:if="${returning}" type="hidden" value="review">
+                <fieldset class="step" data-step="need" tabindex="-1">
+                    <legend class="visually-hidden" th:text="|Étape ${stepNumber} sur ${stepCount} : votre projet|">
+                        Étape 1 sur 7 : votre projet</legend>
+                    <h3 aria-hidden="true">Que souhaitez-vous louer&nbsp;?</h3>
+                    <p>Décrivez le bien que vous cherchez à louer&nbsp;: un Agent Vérifié de votre secteur vous
+                        accompagne jusqu'à la signature. Comptez 3 à 5&nbsp;minutes, aucun document n'est demandé.</p>
+                    <fieldset aria-describedby="propertyCategory-error" class="choices" data-group="propertyCategory"
+                              th:attr="aria-invalid=${errors['propertyCategory'] != null ? 'true' : null}">
+                        <legend class="choices__legend">Pour quel usage&nbsp;?</legend>
+                        <div class="choices__grid">
+                            <label class="choice choice--described">
+                                <input name="propertyCategory" required
+                                       th:checked="${#strings.equals(answers.propertyCategory, 'RESIDENTIAL')}"
+                                       type="radio" value="RESIDENTIAL">
+                                <span>Résidentiel <span class="choice__detail">Pour y habiter&nbsp;: chambre,
+                                    studio, appartement, maison…</span></span></label>
+                            <label class="choice choice--described">
+                                <input name="propertyCategory" required
+                                       th:checked="${#strings.equals(answers.propertyCategory, 'COMMERCIAL')}"
+                                       type="radio" value="COMMERCIAL">
+                                <span>Commercial <span class="choice__detail">Pour une activité&nbsp;: boutique,
+                                    bureau, entrepôt…</span></span></label>
+                        </div>
+                        <p th:replace="~{:: error('propertyCategory')}"></p>
+                    </fieldset>
+                    <div class="form__actions">
+                        <button class="btn btn--primary" data-next
+                                th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
+                        </button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <!--/* Step 2: area (POST /find-property/area) */-->
+            <form class="form" data-find-form method="post" novalidate th:action="@{/find-property/area}"
+                  th:attr="data-locations-url=@{/locations}" th:if="${step == 'area'}">
+                <input name="returnTo" th:if="${returning}" type="hidden" value="review">
+                <fieldset class="step" data-step="area" tabindex="-1">
+                    <legend class="visually-hidden"
+                            th:text="|Étape ${stepNumber} sur ${stepCount} : le secteur recherché|">
+                        Étape 2 sur 7 : le secteur recherché</legend>
+                    <h3 aria-hidden="true">Dans quel secteur&nbsp;?</h3>
+                    <p>Nous désignons un agent qui connaît bien ces quartiers.</p>
+                    <div class="field">
+                        <label class="field__label" for="cityId">Ville</label>
+                        <!--/* Only the chosen city is rendered: find-property.js searches the others. */-->
+                        <select aria-describedby="cityId-error" class="input select" id="cityId" name="cityId" required
+                                th:attr="aria-invalid=${errors['cityId'] != null ? 'true' : null}">
+                            <option data-placeholder="true" value="">Choisissez une ville</option>
+                            <option selected th:if="${city != null}" th:text="${city.name}"
+                                    th:value="${city.id}">Yaoundé</option>
+                        </select>
+                        <p th:replace="~{:: error('cityId')}"></p>
+                    </div>
+                    <p data-neighborhoods-empty th:hidden="${city != null}">Choisissez d'abord la ville pour voir ses
+                        quartiers.</p>
+                    <div class="field" data-group="neighborhoodIds" th:hidden="${city == null}">
+                        <label class="field__label" for="neighborhoodIds">Quartiers souhaités
+                            <span class="field__optional">(1&nbsp;à&nbsp;3)</span></label>
+                        <!--/* Only the chosen neighbourhoods are rendered: find-property.js loads the city's others. */-->
+                        <select aria-describedby="neighborhood-counter neighborhoodIds-error" class="input select"
+                                id="neighborhoodIds" multiple name="neighborhoodIds" required
+                                th:attr="aria-invalid=${errors['neighborhoodIds'] != null ? 'true' : null}">
+                            <option selected th:each="neighborhood : ${neighborhoods}" th:text="${neighborhood.name}"
+                                    th:value="${neighborhood.id}">Bastos</option>
+                        </select>
+                        <p class="field__counter" data-neighborhood-counter id="neighborhood-counter"
+                           th:text="|${#lists.size(neighborhoods)} sur 3 sélectionné${#lists.size(neighborhoods) > 1 ? 's' : ''}|">
+                            0 sur 3 sélectionné</p>
+                        <p th:replace="~{:: error('neighborhoodIds')}"></p>
+                        <p class="visually-hidden" data-neighborhood-status role="status"></p>
+                    </div>
+                    <div class="hint" id="sector-hint">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                            <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
+                        </svg>
+                        <div>
+                            <p>Choisissez de 1 à 3&nbsp;quartiers, par ordre de préférence. Une fois les 3 choisis,
+                                retirez-en un pour en prendre un autre.</p>
+                        </div>
+                    </div>
+                    <div class="form__actions">
+                        <a class="btn btn--outline" data-prev
+                           th:href="${returning} ? @{/find-property(step='review')} : @{/find-property}">Précédent</a>
+                        <button aria-describedby="sector-hint" class="btn btn--primary" data-next
+                                th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
+                        </button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <!--/* Step 3: property (POST /find-property/property) */-->
+            <form class="form" data-find-form method="post" novalidate th:action="@{/find-property/property}"
+                  th:if="${step == 'property'}">
+                <input name="returnTo" th:if="${returning}" type="hidden" value="review">
+                <fieldset class="step" data-step="property" tabindex="-1">
+                    <legend class="visually-hidden"
+                            th:text="|Étape ${stepNumber} sur ${stepCount} : le bien recherché|">
+                        Étape 3 sur 7 : le bien recherché</legend>
+                    <h3 aria-hidden="true">Décrivez le bien idéal</h3>
+                    <!--/* Only the types of the category chosen at step 1, then "Indifférent". */-->
+                    <fieldset aria-describedby="propertyType-error" class="choices" data-group="propertyType"
+                              th:attr="aria-invalid=${errors['propertyType'] != null ? 'true' : null}">
+                        <legend class="choices__legend">Type de bien <span class="field__optional">(facultatif)</span>
+                        </legend>
+                        <div class="choices__grid">
+                            <label class="choice" th:each="type : ${propertyTypes}"><input name="propertyType"
+                                    th:checked="${answers.propertyType == type.name()}" th:value="${type.name()}"
+                                    type="radio" value="APARTMENT"> <th:block th:text="${propertyTypeLabels.get(type)}">Appartement</th:block></label>
+                            <label class="choice"><input name="propertyType" th:checked="${answers.propertyType == 'ANY'}"
+                                                         type="radio" value="ANY"> Indifférent</label>
+                        </div>
+                        <p th:replace="~{:: error('propertyType')}"></p>
+                    </fieldset>
+
+                    <!--/* The follow-up questions: find-property.js hides those that don't apply to the type. */-->
+                    <fieldset aria-describedby="rooms-error" class="choices" data-group="rooms"
+                              th:attr="aria-invalid=${errors['rooms'] != null ? 'true' : null}"
+                              th:if="${#strings.equals(answers.propertyCategory, 'RESIDENTIAL')}">
+                        <legend class="choices__legend">Nombre de chambres</legend>
+                        <div class="choices__grid">
+                            <label class="choice" th:each="rooms : ${ {'1', '2', '3', '4'} }"><input name="rooms"
+                                    th:checked="${answers.rooms == rooms}" th:value="${rooms}" type="radio" value="1">
+                                <th:block th:text="${rooms}">1</th:block></label>
+                            <label class="choice"><input name="rooms" th:checked="${answers.rooms == '5+'}" type="radio"
+                                                         value="5+"> 5&nbsp;et&nbsp;+</label>
+                        </div>
+                        <p th:replace="~{:: error('rooms')}"></p>
+                    </fieldset>
+
+                    <fieldset aria-describedby="furnitureType-error" class="choices" data-group="furnitureType"
+                              th:attr="aria-invalid=${errors['furnitureType'] != null ? 'true' : null}">
+                        <legend class="choices__legend">Meublé&nbsp;?</legend>
+                        <div class="choices__grid">
+                            <label class="choice"><input name="furnitureType"
+                                                         th:checked="${answers.furnitureType == 'FULLY_FURNISHED'}"
+                                                         type="radio" value="FULLY_FURNISHED"> Meublé</label>
+                            <label class="choice"><input name="furnitureType"
+                                                         th:checked="${answers.furnitureType == 'UNFURNISHED'}"
+                                                         type="radio" value="UNFURNISHED"> Non meublé</label>
+                            <label class="choice"><input name="furnitureType"
+                                                         th:checked="${answers.furnitureType == 'ANY'}"
+                                                         type="radio" value="ANY"> Indifférent</label>
+                        </div>
+                        <p th:replace="~{:: error('furnitureType')}"></p>
+                    </fieldset>
+
+                    <fieldset aria-describedby="parkings-error" class="choices" data-group="parkings"
+                              th:attr="aria-invalid=${errors['parkings'] != null ? 'true' : null}">
+                        <legend class="choices__legend">Places de parking <span
+                                class="field__optional">(facultatif)</span></legend>
+                        <div class="choices__grid">
+                            <label class="choice"><input name="parkings" th:checked="${answers.parkings == '0'}"
+                                                         type="radio" value="0"> Aucune</label>
+                            <label class="choice"><input name="parkings" th:checked="${answers.parkings == '1'}"
+                                                         type="radio" value="1"> 1</label>
+                            <label class="choice"><input name="parkings" th:checked="${answers.parkings == '2'}"
+                                                         type="radio" value="2"> 2</label>
+                            <label class="choice"><input name="parkings" th:checked="${answers.parkings == '3+'}"
+                                                         type="radio" value="3+"> 3&nbsp;et&nbsp;+</label>
+                            <label class="choice"><input name="parkings" th:checked="${answers.parkings == 'ANY'}"
+                                                         type="radio" value="ANY"> Indifférent</label>
+                        </div>
+                        <p th:replace="~{:: error('parkings')}"></p>
+                    </fieldset>
+
+                    <div class="field" data-group="area">
+                        <label class="field__label" for="area"><span data-area-label
+                                th:text="${answers.propertyType == 'LAND'} ? 'Surface du terrain minimale' : 'Surface minimale'">Surface
+                            minimale</span> <span class="field__optional">(facultatif)</span></label>
+                        <div class="input-unit">
+                            <input aria-describedby="area-error" class="input" id="area" inputmode="numeric" name="area"
+                                   th:attr="aria-invalid=${errors['area'] != null ? 'true' : null}"
+                                   th:value="${answers.area != null} ? ${#numbers.formatInteger(answers.area, 1, 'WHITESPACE')} : ''"
+                                   type="text">
+                            <span aria-hidden="true" class="input-unit__suffix">m²</span>
+                        </div>
+                        <p th:replace="~{:: error('area')}"></p>
+                    </div>
+
+                    <div class="form__actions">
+                        <a class="btn btn--outline" data-prev
+                           th:href="${returning} ? @{/find-property(step='review')} : @{/find-property(step='area')}">Précédent</a>
+                        <button class="btn btn--primary" data-next
+                                th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
+                        </button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <!--/* Step 4: amenities (POST /find-property/amenities) — every box posts amenities=<field name> */-->
+            <form class="form" data-find-form method="post" novalidate th:action="@{/find-property/amenities}"
+                  th:if="${step == 'amenities'}">
+                <input name="returnTo" th:if="${returning}" type="hidden" value="review">
+                <fieldset class="step" data-step="amenities" tabindex="-1">
+                    <legend class="visually-hidden"
+                            th:text="|Étape ${stepNumber} sur ${stepCount} : vos critères indispensables|">
+                        Étape 4 sur 7 : vos critères indispensables</legend>
+                    <h3 aria-hidden="true">Qu'est-ce qui est indispensable&nbsp;?</h3>
+                    <p>Cochez seulement ce dont vous ne pouvez pas vous passer&nbsp;: chaque critère réduit le nombre
+                        de biens proposés. Tout est facultatif.</p>
+                    <fieldset class="choices">
+                        <legend class="choices__legend">Eau</legend>
+                        <div class="choices__grid">
+                            <label class="choice"
+                                   th:each="name : ${ {'waterMeter', 'dedicatedWaterMeter', 'waterTank', 'waterWell'} }"><input
+                                    name="amenities" th:checked="${answers.has(name)}" th:value="${name}"
+                                    type="checkbox"> <th:block th:text="${amenityLabels.get(name)}">Compteur
+                                d'eau</th:block></label>
+                        </div>
+                    </fieldset>
+                    <fieldset class="choices">
+                        <legend class="choices__legend">Électricité</legend>
+                        <div class="choices__grid">
+                            <label class="choice"
+                                   th:each="name : ${ {'electricityMeter', 'dedicatedElectricityMeter', 'generatorSet', 'solarPanel'} }"><input
+                                    name="amenities" th:checked="${answers.has(name)}" th:value="${name}"
+                                    type="checkbox"> <th:block th:text="${amenityLabels.get(name)}">Compteur
+                                électrique</th:block></label>
+                        </div>
+                    </fieldset>
+                    <fieldset class="choices">
+                        <legend class="choices__legend">Accès</legend>
+                        <div class="choices__grid">
+                            <label class="choice"
+                                   th:each="name : ${ {'roadPaved', 'trackAccessibleByCar', 'trackInaccessibleByCar'} }"><input
+                                    name="amenities" th:checked="${answers.has(name)}" th:value="${name}"
+                                    type="checkbox"> <th:block th:text="${amenityLabels.get(name)}">Route
+                                bitumée</th:block></label>
+                        </div>
+                    </fieldset>
+                    <fieldset class="choices">
+                        <legend class="choices__legend">Sécurité</legend>
+                        <div class="choices__grid">
+                            <label class="choice"
+                                   th:each="name : ${ {'securedFenced', 'securityGuard', 'videoSurveillance'} }"><input
+                                    name="amenities" th:checked="${answers.has(name)}" th:value="${name}"
+                                    type="checkbox"> <th:block th:text="${amenityLabels.get(name)}">Gardien</th:block></label>
+                        </div>
+                    </fieldset>
+                    <div class="form__actions">
+                        <a class="btn btn--outline" data-prev
+                           th:href="${returning} ? @{/find-property(step='review')} : @{/find-property(step='property')}">Précédent</a>
+                        <button class="btn btn--primary" data-next
+                                th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
+                        </button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <!--/* Step 5: budget (POST /find-property/budget) */-->
+            <form class="form" data-find-form method="post" novalidate th:action="@{/find-property/budget}"
+                  th:if="${step == 'budget'}"
+                  th:with="commercial=${#strings.equals(answers.propertyCategory, 'COMMERCIAL')}">
+                <input name="returnTo" th:if="${returning}" type="hidden" value="review">
+                <fieldset class="step" data-step="budget" tabindex="-1">
+                    <legend class="visually-hidden"
+                            th:text="|Étape ${stepNumber} sur ${stepCount} : votre budget et votre date d'emménagement|">
+                        Étape 5 sur 7 : votre budget et votre date d'emménagement</legend>
+                    <h3 aria-hidden="true">Votre budget et votre date</h3>
+                    <p data-budget-intro>Le montant maximal que vous êtes prêt à payer, et le moment où vous voulez
+                        vous installer.</p>
+                    <div class="field">
+                        <label class="field__label" for="priceAmount">Budget mensuel</label>
+                        <div class="input-unit">
+                            <input aria-describedby="priceAmount-error price-hint" class="input" id="priceAmount"
+                                   inputmode="numeric" name="priceAmount" required
+                                   th:attr="aria-invalid=${errors['priceAmount'] != null ? 'true' : null}"
+                                   th:value="${answers.priceAmount != null} ? ${#numbers.formatInteger(answers.priceAmount, 1, 'WHITESPACE')} : ''"
+                                   type="text">
+                            <span aria-hidden="true" class="input-unit__suffix">FCFA / mois</span>
+                        </div>
+                        <p th:replace="~{:: error('priceAmount')}"></p>
+                    </div>
+                    <fieldset aria-describedby="movingPeriod-error" class="choices" data-group="movingPeriod"
+                              th:attr="aria-invalid=${errors['movingPeriod'] != null ? 'true' : null}">
+                        <!--/* A shop or an office is moved into too, but "s'installer" reads better for an activity. */-->
+                        <legend class="choices__legend" data-move-in-label
+                                th:text="${commercial} ? 'Date d\'installation souhaitée' : 'Date d\'emménagement souhaitée'">
+                            Date d'emménagement souhaitée</legend>
+                        <div class="choices__grid">
+                            <label class="choice"><input name="movingPeriod" required
+                                                         th:checked="${#strings.equals(answers.movingPeriod, 'WITHIN_1_MONTH')}"
+                                                         type="radio" value="WITHIN_1_MONTH"> Dans moins
+                                d'1&nbsp;mois</label>
+                            <label class="choice"><input name="movingPeriod" required
+                                                         th:checked="${#strings.equals(answers.movingPeriod, 'WITHIN_3_MONTHS')}"
+                                                         type="radio" value="WITHIN_3_MONTHS"> Dans 1 à
+                                3&nbsp;mois</label>
+                            <label class="choice"><input name="movingPeriod" required
+                                                         th:checked="${#strings.equals(answers.movingPeriod, 'AFTER_3_MONTHS')}"
+                                                         type="radio" value="AFTER_3_MONTHS"> Dans plus de
+                                3&nbsp;mois</label>
+                        </div>
+                        <p th:replace="~{:: error('movingPeriod')}"></p>
+                    </fieldset>
+                    <div class="hint" id="price-hint">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                            <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
+                        </svg>
+                        <div>
+                            <p>Votre agent ne vous propose que des biens dans ce budget. La caution et les mois
+                                d'avance se discutent avec le bailleur, lors de la visite.</p>
+                        </div>
+                    </div>
+                    <div class="form__actions">
+                        <a class="btn btn--outline" data-prev
+                           th:href="${returning} ? @{/find-property(step='review')} : @{/find-property(step='amenities')}">Précédent</a>
+                        <button aria-describedby="price-hint" class="btn btn--primary" data-next
+                                th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
+                        </button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <!--/* Step 6: contact (POST /find-property/contact) */-->
+            <form class="form" data-find-form method="post" novalidate th:action="@{/find-property/contact}"
+                  th:if="${step == 'contact'}">
+                <input name="returnTo" th:if="${returning}" type="hidden" value="review">
+                <fieldset class="step" data-step="contact" tabindex="-1">
+                    <legend class="visually-hidden" th:text="|Étape ${stepNumber} sur ${stepCount} : vos coordonnées|">
+                        Étape 6 sur 7 : vos coordonnées</legend>
+                    <h3 aria-hidden="true">Comment votre agent peut-il vous joindre&nbsp;?</h3>
+                    <div class="field">
+                        <label class="field__label" for="firstName">Prénom</label>
+                        <input aria-describedby="firstName-error" autocapitalize="words" autocomplete="given-name"
+                               class="input" id="firstName" name="firstName" required
+                               th:attr="aria-invalid=${errors['firstName'] != null ? 'true' : null}"
+                               th:value="${answers.firstName}" type="text">
+                        <p th:replace="~{:: error('firstName')}"></p>
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="lastName">Nom</label>
+                        <input aria-describedby="lastName-error" autocapitalize="words" autocomplete="family-name"
+                               class="input" id="lastName" name="lastName" required
+                               th:attr="aria-invalid=${errors['lastName'] != null ? 'true' : null}"
+                               th:value="${answers.lastName}" type="text">
+                        <p th:replace="~{:: error('lastName')}"></p>
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="email">Adresse email</label>
+                        <input aria-describedby="email-error" autocapitalize="off" autocomplete="email" class="input"
+                               id="email" inputmode="email" name="email" required spellcheck="false"
+                               th:attr="aria-invalid=${errors['email'] != null ? 'true' : null}"
+                               th:value="${answers.email}" type="email">
+                        <p th:replace="~{:: error('email')}"></p>
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="whatsappNumber">Numéro WhatsApp</label>
+                        <!--/* E.164 ("+237677123456"): find-property.js (intl-tel-input) formats and converts it. */-->
+                        <input aria-describedby="whatsappNumber-error" autocomplete="tel" class="input"
+                               id="whatsappNumber" name="whatsappNumber" required
+                               th:attr="aria-invalid=${errors['whatsappNumber'] != null ? 'true' : null}"
+                               th:value="${answers.whatsappNumber}" type="tel">
+                        <p th:replace="~{:: error('whatsappNumber')}"></p>
+                    </div>
+                    <fieldset aria-describedby="preferredContactPeriod-error" class="choices"
+                              data-group="preferredContactPeriod"
+                              th:attr="aria-invalid=${errors['preferredContactPeriod'] != null ? 'true' : null}">
+                        <legend class="choices__legend">Quand préférez-vous être contacté&nbsp;?</legend>
+                        <div class="choices__grid">
+                            <label class="choice"><input name="preferredContactPeriod" required
+                                                         th:checked="${#strings.equals(answers.preferredContactPeriod, 'MORNING')}"
+                                                         type="radio" value="MORNING"> Le matin</label>
+                            <label class="choice"><input name="preferredContactPeriod" required
+                                                         th:checked="${#strings.equals(answers.preferredContactPeriod, 'AFTERNOON')}"
+                                                         type="radio" value="AFTERNOON"> L'après-midi</label>
+                            <label class="choice"><input name="preferredContactPeriod" required
+                                                         th:checked="${#strings.equals(answers.preferredContactPeriod, 'EVENING')}"
+                                                         type="radio" value="EVENING"> Le soir</label>
+                        </div>
+                        <p th:replace="~{:: error('preferredContactPeriod')}"></p>
+                    </fieldset>
+                    <div class="field">
+                        <label class="field__label" for="comments">Autres précisions <span
+                                class="field__optional">(facultatif)</span></label>
+                        <textarea aria-describedby="comments-counter comments-error" class="input input--textarea"
+                                  id="comments" maxlength="500" name="comments"
+                                  placeholder="Ex. proche d'une école, rez-de-chaussée, accès handicapé…" rows="4"
+                                  th:attr="aria-invalid=${errors['comments'] != null ? 'true' : null}"
+                                  th:text="${answers.comments}"></textarea>
+                        <p class="field__counter" data-comments-counter id="comments-counter"
+                           th:text="|${#strings.length(answers.comments ?: '')} sur 500 caractères|">0 sur 500
+                            caractères</p>
+                        <p th:replace="~{:: error('comments')}"></p>
+                    </div>
+                    <div class="hint" id="contact-hint">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                            <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
+                        </svg>
+                        <div>
+                            <p>Votre agent vous écrit sur WhatsApp. Votre email sert à vous envoyer le suivi de votre
+                                demande&nbsp;; il n'est jamais communiqué aux bailleurs.</p>
+                        </div>
+                    </div>
+                    <div class="alert alert--warning" data-phone-unavailable hidden>
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-linejoin="round"
+                                  stroke-width="1.5"/>
+                            <path d="M10 8v4" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                            <circle cx="10" cy="14.5" fill="currentColor" r="1"/>
+                        </svg>
+                        <div>
+                            <p class="alert__title">Nous ne pouvons pas vérifier votre numéro pour l'instant</p>
+                            <p>Vérifiez votre connexion internet, puis rechargez la page.</p>
+                        </div>
+                    </div>
+                    <div class="form__actions">
+                        <a class="btn btn--outline" data-prev
+                           th:href="${returning} ? @{/find-property(step='review')} : @{/find-property(step='budget')}">Précédent</a>
+                        <button aria-describedby="contact-hint" class="btn btn--primary" data-next
+                                th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
+                        </button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <!--/* Step 7: review (POST /find-property/review) — only reachable once every answer is in the session */-->
+            <form class="form" data-find-form method="post" novalidate th:action="@{/find-property/review}"
+                  th:if="${step == 'review'}"
+                  th:with="commercial=${#strings.equals(answers.propertyCategory, 'COMMERCIAL')}">
+                <fieldset class="step" data-step="review" tabindex="-1">
+                    <legend class="visually-hidden"
+                            th:text="|Étape ${stepNumber} sur ${stepCount} : revue de votre demande|">
+                        Étape 7 sur 7 : revue de votre demande</legend>
+                    <h3 aria-hidden="true">Vérifiez votre demande</h3>
+                    <p>Relisez avant d'envoyer. Vous pouvez modifier chaque élément.</p>
+
+                    <dl class="review">
+                        <div class="review__item">
+                            <dt class="review__term">Projet</dt>
+                            <dd class="review__value">
+                                <p data-review-value="project" th:text="${categoryLabel}">Location, usage résidentiel</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/find-property(step='need', returnTo='review')}">Modifier<span
+                                        class="visually-hidden"> votre projet</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Secteur</dt>
+                            <dd class="review__value">
+                                <p data-review-value="sector"
+                                   th:text="|${city?.name} — ${#strings.listJoin(neighborhoods.![name], ', ')}|">
+                                    Yaoundé — Bastos, Essos</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/find-property(step='area', returnTo='review')}">Modifier<span
+                                        class="visually-hidden"> le secteur</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Bien recherché</dt>
+                            <dd class="review__value">
+                                <p data-review-value="property" th:text="${propertyLabel}">Appartement · 3 chambres</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/find-property(step='property', returnTo='review')}">Modifier<span
+                                        class="visually-hidden"> le bien recherché</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Indispensable</dt>
+                            <dd class="review__value">
+                                <!--/* Optional answers are never "missing", only empty. */-->
+                                <p data-review-value="amenities"
+                                   th:text="${#lists.isEmpty(amenityLabels)} ? 'Aucun critère' : ${#strings.listJoin(amenityLabels, ', ')}">
+                                    Compteur d'eau, Gardien</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/find-property(step='amenities', returnTo='review')}">Modifier<span
+                                        class="visually-hidden"> vos critères indispensables</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Budget mensuel</dt>
+                            <dd class="review__value">
+                                <p data-review-value="price" th:text="${priceLabel}">150 000 FCFA par mois</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/find-property(step='budget', returnTo='review')}">Modifier<span
+                                        class="visually-hidden"> votre budget</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term" data-review-move-in-term
+                                th:text="${commercial} ? 'Date d\'installation' : 'Date d\'emménagement'">Date
+                                d'emménagement</dt>
+                            <dd class="review__value">
+                                <p data-review-value="movingPeriod" th:text="${movingPeriodLabel}">Dans moins d'1 mois</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/find-property(step='budget', returnTo='review')}">Modifier<span
+                                        class="visually-hidden"> votre date d'emménagement</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Vos coordonnées</dt>
+                            <dd class="review__value">
+                                <p data-review-value="contact"><span
+                                        th:text="|${answers.firstName} ${answers.lastName}|">Ray Sponsible</span><br><span
+                                        th:text="${answers.email}">ray@gmail.com</span><br><span data-phone
+                                        th:text="${answers.whatsappNumber}">+237677123456</span><br><span
+                                        th:text="|Contact ${contactPeriodLabel}|">Contact le soir</span></p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/find-property(step='contact', returnTo='review')}">Modifier<span
+                                        class="visually-hidden"> vos coordonnées</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Autres précisions</dt>
+                            <dd class="review__value">
+                                <p class="review__multiline" data-review-value="comments"
+                                   th:text="${#strings.isEmpty(answers.comments)} ? 'Aucune' : ${answers.comments}">
+                                    Aucune</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/find-property(step='contact', returnTo='review')}">Modifier<span
+                                        class="visually-hidden"> vos précisions</span></a>
+                            </dd>
+                        </div>
+                    </dl>
+
+                    <!--/* The submission failed: the answers are still in the session, ready to be sent again. */-->
+                    <div class="alert alert--error" data-submit-error role="alert" th:if="${error != null}">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <div>
+                            <p class="alert__title" th:text="${error}">Envoi impossible pour le moment.</p>
+                        </div>
+                    </div>
+
+                    <div class="hint" id="review-hint">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                            <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
+                        </svg>
+                        <div>
+                            <p>L'envoi de votre demande est gratuit et ne vous engage à rien.</p>
+                        </div>
+                    </div>
+
+                    <div class="form__actions">
+                        <a class="btn btn--outline" data-prev th:href="@{/find-property(step='contact')}">Précédent</a>
+                        <button aria-describedby="review-hint" class="btn btn--primary" data-submit type="submit">
+                            Envoyer ma demande
+                        </button>
+                    </div>
+                    <p class="visually-hidden" data-sending role="status"></p>
+                </fieldset>
+            </form>
+        </th:block>
+
+        <!--/* Confirmation — only rendered while a sent request is in the session */-->
+        <section aria-labelledby="confirmation-title" class="confirmation stack" data-confirmation tabindex="-1"
+                 th:if="${step == 'confirmation'}">
+            <span class="confirmation__mark"><svg aria-hidden="true" class="confirmation__icon" focusable="false"
+                                                  viewBox="0 0 20 20"><circle cx="10" cy="10" fill="none" r="8.25"
+                                                                            stroke="currentColor" stroke-width="1.5"/><path
+                d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-linecap="round"
+                stroke-linejoin="round" stroke-width="1.5"/></svg></span>
+            <h2 id="confirmation-title">Demande envoyée</h2>
+            <p>Merci&nbsp;! Votre demande est enregistrée. Voici la suite&nbsp;:</p>
+            <ol class="next-steps">
+                <li>
+                    <div>
+                        <p class="next-steps__title">Un agent vous est attribué</p>
+                        <p>Nous choisissons un Agent Vérifié qui connaît le secteur demandé.</p>
+                    </div>
+                </li>
+                <li>
+                    <div>
+                        <p class="next-steps__title">Il vous contacte sous 24&nbsp;heures</p>
+                        <p>Sur WhatsApp, au <strong data-done-whatsapp data-phone th:text="${whatsappNumber}">numéro
+                            indiqué</strong>, <span data-done-period
+                                                    th:text="${contactPeriodLabel} ?: 'au moment choisi'">au moment
+                            choisi</span>. Le suivi arrive aussi à <strong data-done-email th:text="${maskedEmail}">votre
+                            adresse email</strong>.</p>
+                    </div>
+                </li>
+                <li>
+                    <div>
+                        <p class="next-steps__title">Vous visitez des biens vérifiés</p>
+                        <p>Votre agent vous propose des biens qui correspondent à vos critères et vous accompagne
+                            jusqu'à la signature.</p>
+                    </div>
+                </li>
+            </ol>
+            <div class="cta-row">
+                <a class="btn btn--primary"
+                   th:href="${#strings.isEmpty(tenant.publicPortalUrl)} ? @{/find-property} : ${tenant.publicPortalUrl}">Retour
+                    à l'accueil</a>
+            </div>
+        </section>
+    </div>
+</main>
+
+<!--/* A field's error, shown when "errors" has a message for it: th:replace="~{:: error('field')}". */-->
+<th:block th:remove="all">
+    <p class="field__error" th:fragment="error(field)" th:hidden="${errors.get(field) == null}" th:id="|${field}-error|">
+        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                  stroke-width="1.5"/>
+        </svg>
+        <span data-error-text th:text="${errors.get(field)}"></span></p>
+</th:block>
+</body>
+</html>
