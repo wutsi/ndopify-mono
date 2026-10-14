@@ -109,6 +109,25 @@ class AuthenticateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `expired code, unused since a previous login`() {
+        val response = loginError("expired-after-login@gmail.com", CODE)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.AUTH_CREDENTIALS_EXPIRED, response.body?.error?.code)
+    }
+
+    @Test
+    fun `wrong code replayed after a login - still a wrong code`() {
+        assertEquals(HttpStatus.OK, login("ray.sponsible@gmail.com", CODE).statusCode)
+
+        val response = loginError("ray.sponsible@gmail.com", "654321")
+
+        // Only the right code tells it was used: the wrong one must not reveal anything
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.AUTH_INVALID_CREDENTIALS, response.body?.error?.code)
+    }
+
+    @Test
     fun `unknown user gets the same error as a wrong code`() {
         val response = loginError("nobody@gmail.com", CODE)
 
@@ -142,7 +161,7 @@ class AuthenticateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
         val response = loginError("ray.sponsible@gmail.com", CODE)
 
         assertEquals(HttpStatus.CONFLICT, response.statusCode)
-        assertEquals(ErrorCode.AUTH_CREDENTIALS_EXPIRED, response.body?.error?.code)
+        assertEquals(ErrorCode.AUTH_CREDENTIALS_ALREADY_USED, response.body?.error?.code)
         assertEquals(lastLoggedInAt, authFactorRepository.findById(1L).get().lastLoggedInAt)
     }
 

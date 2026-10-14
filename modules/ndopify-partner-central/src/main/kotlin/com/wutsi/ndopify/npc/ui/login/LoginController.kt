@@ -153,6 +153,7 @@ class LoginController(
         }
         return when (code) {
             ErrorCode.AUTH_CREDENTIALS_EXPIRED -> "Ce code a expiré. Demandez un nouveau code ci-dessous."
+            ErrorCode.AUTH_CREDENTIALS_ALREADY_USED -> "Ce code a déjà été utilisé. Demandez un nouveau code ci-dessous."
             ErrorCode.AUTH_INVALID_CREDENTIALS -> "Code incorrect. Vérifiez les 6 chiffres reçus par email."
             ErrorCode.AUTH_ACCESS_DENIED ->
                 "Aucun compte partenaire n'utilise cette adresse. Vérifiez-la, ou rejoignez Ndopify."

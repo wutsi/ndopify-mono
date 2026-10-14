@@ -34,4 +34,12 @@ data class AuthFactorEntity(
     fun hasExpired(clock: Clock): Boolean {
         return expiresAt != null && expiresAt.time < clock.millis()
     }
+
+    /**
+     * Whether this one-time code was already used to log in: [AuthFactorService.consume] expires it as it's used, so
+     * it expired no later than the last login. A code issued since then expires after that login, so is not consumed.
+     */
+    fun isConsumed(): Boolean {
+        return lastLoggedInAt != null && expiresAt != null && !lastLoggedInAt.before(expiresAt)
+    }
 }

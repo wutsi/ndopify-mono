@@ -211,6 +211,14 @@ class LoginControllerTest {
     }
 
     @Test
+    fun verifyCodeAlreadyUsed() {
+        assertVerifyError(
+            ErrorCode.AUTH_CREDENTIALS_ALREADY_USED,
+            "Ce code a déjà été utilisé. Demandez un nouveau code ci-dessous."
+        )
+    }
+
+    @Test
     fun verifyNotAPartner() {
         assertVerifyError(
             ErrorCode.AUTH_ACCESS_DENIED,
