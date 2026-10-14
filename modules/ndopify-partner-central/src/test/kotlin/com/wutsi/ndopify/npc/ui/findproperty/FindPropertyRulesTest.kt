@@ -1,8 +1,8 @@
 package com.wutsi.ndopify.npc.ui.findproperty
 
-import com.wutsi.koki.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
+import com.wutsi.ndopify.listing.dto.PropertyCategory
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

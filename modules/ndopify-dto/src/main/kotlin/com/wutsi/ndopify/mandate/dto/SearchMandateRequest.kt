@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.mandate.dto
 
-import com.wutsi.koki.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.ListingType
 import org.springframework.web.bind.annotation.BindParam
 
 data class SearchMandateRequest(

@@ -5,8 +5,8 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
-import com.wutsi.koki.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
+import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantContext
@@ -238,7 +238,10 @@ class FindPropertyTemplateTest {
         val page = render(post("/find-property/budget").param("priceAmount", "100"))
 
         assertEquals("100", page.selectFirst("#priceAmount")?.attr("value"))
-        assertEquals("Indiquez un loyer d'au moins 5 000 FCFA par mois.", page.selectFirst("#priceAmount-error")?.text())
+        assertEquals(
+            "Indiquez un loyer d'au moins 5 000 FCFA par mois.",
+            page.selectFirst("#priceAmount-error")?.text()
+        )
         assertEquals("true", page.selectFirst("#priceAmount")?.attr("aria-invalid"))
     }
 

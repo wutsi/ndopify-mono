@@ -9,10 +9,10 @@ import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
-import com.wutsi.koki.listing.dto.PropertyCategory
-import com.wutsi.koki.listing.dto.PropertyType
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
+import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateResponse
 import com.wutsi.ndopify.mandate.dto.MandateType
@@ -128,13 +128,22 @@ class FindPropertyControllerTest {
 
     @Test
     fun propertyTypesFilteredByCategory() {
-        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete.copy(propertyCategory = PropertyCategory.COMMERCIAL))
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(propertyCategory = PropertyCategory.COMMERCIAL)
+        )
 
         val result = mvc.perform(get("/find-property?step=property").session(session)).andReturn()
 
         assertEquals("property", model(result)["step"])
         assertEquals(
-            listOf(PropertyType.RETAIL, PropertyType.OFFICE, PropertyType.INDUSTRIAL, PropertyType.BUILDING, PropertyType.LAND),
+            listOf(
+                PropertyType.RETAIL,
+                PropertyType.OFFICE,
+                PropertyType.INDUSTRIAL,
+                PropertyType.BUILDING,
+                PropertyType.LAND
+            ),
             model(result)["propertyTypes"],
         )
     }
@@ -171,7 +180,13 @@ class FindPropertyControllerTest {
     fun reviewLabelForAnyType() {
         session.setAttribute(
             PendingMandate.SESSION_ATTRIBUTE,
-            complete.copy(propertyType = "ANY", rooms = null, parkings = null, area = null, furnitureType = "UNFURNISHED"),
+            complete.copy(
+                propertyType = "ANY",
+                rooms = null,
+                parkings = null,
+                area = null,
+                furnitureType = "UNFURNISHED"
+            ),
         )
 
         val result = mvc.perform(get("/find-property?step=review").session(session)).andReturn()
@@ -202,7 +217,10 @@ class FindPropertyControllerTest {
 
     @Test
     fun needClearsAnOldConfirmation() {
-        session.setAttribute(SubmittedMandate.SESSION_ATTRIBUTE, SubmittedMandate("ray@gmail.com", "+237670000001", null))
+        session.setAttribute(
+            SubmittedMandate.SESSION_ATTRIBUTE,
+            SubmittedMandate("ray@gmail.com", "+237670000001", null)
+        )
 
         mvc.perform(post("/find-property/need").session(session).param("propertyCategory", "COMMERCIAL")).andReturn()
 
@@ -213,7 +231,10 @@ class FindPropertyControllerTest {
 
     @Test
     fun area() {
-        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, PendingMandate(propertyCategory = PropertyCategory.RESIDENTIAL))
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            PendingMandate(propertyCategory = PropertyCategory.RESIDENTIAL)
+        )
 
         val result = mvc.perform(
             post("/find-property/area").session(session)
@@ -238,7 +259,10 @@ class FindPropertyControllerTest {
 
     @Test
     fun areaRejectsForeignCity() {
-        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, PendingMandate(propertyCategory = PropertyCategory.RESIDENTIAL))
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            PendingMandate(propertyCategory = PropertyCategory.RESIDENTIAL)
+        )
 
         val result = mvc.perform(
             post("/find-property/area").session(session).param("cityId", "$MONTREAL").param("neighborhoodIds", "1001"),
@@ -251,10 +275,14 @@ class FindPropertyControllerTest {
 
     @Test
     fun areaRejectsNeighbourhoodOfOtherCity() {
-        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, PendingMandate(propertyCategory = PropertyCategory.RESIDENTIAL))
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            PendingMandate(propertyCategory = PropertyCategory.RESIDENTIAL)
+        )
 
         val result = mvc.perform(
-            post("/find-property/area").session(session).param("cityId", "$YAOUNDE").param("neighborhoodIds", "1001", "2001"),
+            post("/find-property/area").session(session).param("cityId", "$YAOUNDE")
+                .param("neighborhoodIds", "1001", "2001"),
         ).andReturn()
 
         assertEquals("Choisissez des quartiers de la ville sélectionnée.", errors(result)["neighborhoodIds"])
@@ -262,7 +290,10 @@ class FindPropertyControllerTest {
 
     @Test
     fun areaRejectsTooManyNeighbourhoods() {
-        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, PendingMandate(propertyCategory = PropertyCategory.RESIDENTIAL))
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            PendingMandate(propertyCategory = PropertyCategory.RESIDENTIAL)
+        )
 
         val result = mvc.perform(
             post("/find-property/area").session(session)
@@ -276,7 +307,10 @@ class FindPropertyControllerTest {
 
     @Test
     fun areaMissingCity() {
-        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, PendingMandate(propertyCategory = PropertyCategory.RESIDENTIAL))
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            PendingMandate(propertyCategory = PropertyCategory.RESIDENTIAL)
+        )
 
         val result = mvc.perform(post("/find-property/area").session(session)).andReturn()
 
@@ -312,7 +346,8 @@ class FindPropertyControllerTest {
         session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete.copy(propertyType = null, rooms = null))
 
         val result = mvc.perform(
-            post("/find-property/property").session(session).param("propertyType", "OFFICE").param("furnitureType", "ANY"),
+            post("/find-property/property").session(session).param("propertyType", "OFFICE")
+                .param("furnitureType", "ANY"),
         ).andReturn()
 
         assertEquals("find-property", result.modelAndView?.viewName)
@@ -501,7 +536,8 @@ class FindPropertyControllerTest {
     fun budgetMissingMovingPeriod() {
         session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete.copy(movingPeriod = null))
 
-        val result = mvc.perform(post("/find-property/budget").session(session).param("priceAmount", "50000")).andReturn()
+        val result =
+            mvc.perform(post("/find-property/budget").session(session).param("priceAmount", "50000")).andReturn()
 
         assertEquals("Indiquez quand vous souhaitez emménager.", errors(result)["movingPeriod"])
     }
@@ -542,7 +578,10 @@ class FindPropertyControllerTest {
         assertEquals("Saisissez votre prénom.", errors(result)["firstName"])
         assertEquals("Saisissez votre nom.", errors(result)["lastName"])
         assertEquals("Cette adresse email semble incomplète. Exemple : nom@exemple.com", errors(result)["email"])
-        assertEquals("Ce numéro n'est pas un numéro mobile valide. Exemple : 6 77 12 34 56", errors(result)["whatsappNumber"])
+        assertEquals(
+            "Ce numéro n'est pas un numéro mobile valide. Exemple : 6 77 12 34 56",
+            errors(result)["whatsappNumber"]
+        )
         assertEquals("Indiquez quand votre agent peut vous contacter.", errors(result)["preferredContactPeriod"])
     }
 

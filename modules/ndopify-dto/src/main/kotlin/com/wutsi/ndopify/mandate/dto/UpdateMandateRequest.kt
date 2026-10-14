@@ -1,10 +1,10 @@
 package com.wutsi.ndopify.mandate.dto
 
-import com.wutsi.koki.listing.dto.ListingType
-import com.wutsi.koki.listing.dto.PropertyCategory
-import com.wutsi.koki.listing.dto.PropertyType
 import com.wutsi.ndopify.listing.dto.FurnitureType
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
+import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.refdata.dto.Money
 
 data class UpdateMandateRequest(

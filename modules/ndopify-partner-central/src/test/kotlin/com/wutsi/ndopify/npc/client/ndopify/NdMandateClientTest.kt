@@ -1,7 +1,7 @@
 package com.wutsi.ndopify.npc.client.ndopify
 
-import com.wutsi.koki.listing.dto.ListingType
-import com.wutsi.koki.listing.dto.PropertyCategory
+import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateType
 import org.junit.jupiter.api.BeforeEach

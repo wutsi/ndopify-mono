@@ -1,12 +1,13 @@
 package com.wutsi.ndopify.npc.ui.findproperty
 
-import com.wutsi.koki.listing.dto.PropertyCategory
-import com.wutsi.koki.listing.dto.PropertyType
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
+import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantContext
+import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyController.Companion.STEPS
 import com.wutsi.ndopify.npc.ui.join.JoinRules
 import com.wutsi.ndopify.npc.ui.login.LoginController
 import com.wutsi.ndopify.refdata.dto.Location
@@ -222,7 +223,9 @@ class FindPropertyController(
                 if (FindPropertyRules.needsFurniture(type)) FindPropertyRules.furnitureType(answers.furnitureType) else null,
             "parkings" to FindPropertyRules.parkings(answers.parkings),
             // Something typed that isn't a usable number is an error too, not a silent "no area".
-            "area" to if (areaText.isNotEmpty() && area == null) FindPropertyRules.area(0) else FindPropertyRules.area(area),
+            "area" to if (areaText.isNotEmpty() && area == null) FindPropertyRules.area(0) else FindPropertyRules.area(
+                area
+            ),
         )
         return save(STEP_PROPERTY, answers, errors, returnTo, session, model)
     }

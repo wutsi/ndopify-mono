@@ -1,14 +1,14 @@
 package com.wutsi.ndopify.mandate.server.endpoint
 
-import com.wutsi.koki.listing.dto.ListingType
-import com.wutsi.koki.listing.dto.PropertyCategory
-import com.wutsi.koki.listing.dto.PropertyType
 import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.FurnitureType
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
+import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest

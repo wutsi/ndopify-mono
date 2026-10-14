@@ -1,8 +1,8 @@
 package com.wutsi.ndopify.mandate.server.endpoint
 
-import com.wutsi.koki.listing.dto.ListingType
-import com.wutsi.koki.listing.dto.PropertyType
 import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
+import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.dto.SearchMandateResponse

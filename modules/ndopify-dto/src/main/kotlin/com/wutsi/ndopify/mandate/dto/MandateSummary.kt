@@ -1,7 +1,7 @@
 package com.wutsi.ndopify.mandate.dto
 
-import com.wutsi.koki.listing.dto.ListingType
-import com.wutsi.koki.listing.dto.PropertyType
+import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.refdata.dto.Money
 import java.util.Date
 

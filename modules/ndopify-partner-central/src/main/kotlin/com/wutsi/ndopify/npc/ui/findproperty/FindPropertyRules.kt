@@ -1,10 +1,10 @@
 package com.wutsi.ndopify.npc.ui.findproperty
 
-import com.wutsi.koki.listing.dto.PropertyCategory
-import com.wutsi.koki.listing.dto.PropertyType
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
+import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.listing.dto.PropertyType
 
 /**
  * Field rules of the "Trouver un bien" wizard, shared by [FindPropertyController] (to validate what a step posts)
@@ -117,7 +117,9 @@ object FindPropertyRules {
         }
 
     fun comments(value: String?): String? =
-        if ((value?.length ?: 0) > MAX_COMMENTS) "Votre message ne doit pas dépasser $MAX_COMMENTS caractères." else null
+        if ((value?.length
+                ?: 0) > MAX_COMMENTS
+        ) "Votre message ne doit pas dépasser $MAX_COMMENTS caractères." else null
 
     /** "150 000", "150 000" or "150.000" → 150000. Blank, non-numeric or out-of-range → null. */
     fun parseAmount(value: String?): Long? =
