@@ -40,8 +40,7 @@ abstract class AbstractAuthenticator(
             )
         }
 
-        // Timestamps
-        authFactorService.saveLastLoggedIn(authFactor)
+        onAuthenticated(authFactor)
 
         // Token
         return tokenService.create(
@@ -51,6 +50,11 @@ abstract class AbstractAuthenticator(
             tenantId = tenantId,
             ttlSeconds = 60 * 60, // 1 hour
         )
+    }
+
+    /** Called once the credentials are checked, before the token is issued. */
+    protected open fun onAuthenticated(authFactor: AuthFactorEntity) {
+        authFactorService.saveLastLoggedIn(authFactor)
     }
 
     protected abstract fun getAuthType(): AuthType

@@ -77,6 +77,9 @@ class AuthenticateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
         val authFactor = authFactorRepository.findById(1L).get()
         assertNotNull(authFactor.lastLoggedInAt)
         assertTrue(authFactor.lastLoggedInAt.time >= now - 1000) // DATETIME has second precision
+
+        // Consumed: the code expires as it's used
+        assertTrue(authFactor.expiresAt!!.time < now)
     }
 
     @Test
@@ -139,17 +142,18 @@ class AuthenticateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
         val response = loginError("ray.sponsible@gmail.com", CODE)
 
         assertEquals(HttpStatus.CONFLICT, response.statusCode)
-        assertEquals(ErrorCode.AUTH_CREDENTIALS_ALREADY_USED, response.body?.error?.code)
+        assertEquals(ErrorCode.AUTH_CREDENTIALS_EXPIRED, response.body?.error?.code)
         assertEquals(lastLoggedInAt, authFactorRepository.findById(1L).get().lastLoggedInAt)
     }
 
     @Test
     fun `new code requested after a login can be used`() {
         doReturn(CODE).whenever(otpGenerator).generate()
-        rest.postForEntity("/v1/otp", CreateOtpRequest(email = "flow@gmail.com"), Void::class.java)
+        doReturn("hashed-code").whenever(passwordEncryptor).encrypt(any(), anyOrNull()) // mocked: would be null
+        assertEquals(HttpStatus.OK, createOtp("flow@gmail.com").statusCode)
         assertEquals(HttpStatus.OK, login("flow@gmail.com", CODE).statusCode)
 
-        rest.postForEntity("/v1/otp", CreateOtpRequest(email = "flow@gmail.com"), Void::class.java)
+        assertEquals(HttpStatus.OK, createOtp("flow@gmail.com").statusCode)
         val response = login("flow@gmail.com", CODE)
 
         assertEquals(HttpStatus.OK, response.statusCode)
@@ -188,6 +192,9 @@ class AuthenticateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
         assertEquals(ErrorCode.AUTH_MISSING_SECRET, response.body?.error?.code)
     }
+
+    private fun createOtp(email: String) =
+        rest.postForEntity("/v1/otp", CreateOtpRequest(email = email), Void::class.java)
 
     private fun login(
         email: String,

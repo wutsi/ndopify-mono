@@ -62,4 +62,17 @@ open class AuthFactorService(
             )
         )
     }
+
+    /** One-time codes can only be used once: expires the code as it's used to log in. */
+    fun consume(authFactor: AuthFactorEntity): AuthFactorEntity {
+        val millis = clock.millis()
+        return dao.save(
+            authFactor.copy(
+                lastLoggedInAt = Date(millis),
+                // Start of the previous second: DATETIME has no fractional seconds and MySQL rounds them, so `now`
+                // could be stored up to 0.5s in the future, leaving the code usable until then.
+                expiresAt = Date((millis / 1000 - 1) * 1000),
+            )
+        )
+    }
 }
