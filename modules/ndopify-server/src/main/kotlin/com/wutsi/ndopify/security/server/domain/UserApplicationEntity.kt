@@ -21,8 +21,8 @@ data class UserApplicationEntity(
     val id: Long? = null,
 
     @ManyToOne
-    @JoinColumn(name = "user_id")
-    val user: UserEntity = UserEntity(),
+    @JoinColumn(name = "membership_id")
+    val membership: MembershipEntity = MembershipEntity(),
 
     @ManyToOne
     @JoinColumn(name = "application_id")

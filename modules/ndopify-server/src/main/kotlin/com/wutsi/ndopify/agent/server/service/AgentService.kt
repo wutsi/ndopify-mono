@@ -24,6 +24,7 @@ import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.party.server.service.PaymentMethodService
 import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import com.wutsi.ndopify.refdata.dto.ApplicationCode
+import com.wutsi.ndopify.security.server.service.MembershipService
 import com.wutsi.ndopify.security.server.service.UserService
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
@@ -42,6 +43,7 @@ class AgentService(
     private val kycService: KycService,
     private val paymentMethodService: PaymentMethodService,
     private val userService: UserService,
+    private val membershipService: MembershipService,
     private val mailet: WelcomeMailet,
     private val eventPublisher: ApplicationEventPublisher,
 ) {
@@ -98,9 +100,10 @@ class AgentService(
         )
         ensureAgentNotAlreadyExists(party)
 
-        // User
-        val user = userService.create(party)
-        userService.grantAccess(user, ApplicationCode.PARTNER_CENTRAL)
+        // User: global, so reused if the person is already a member of another tenant
+        val user = userService.findByEmailOrCreate(party.email)
+        val membership = membershipService.findOrCreate(user, party)
+        membershipService.grantAccess(membership, ApplicationCode.PARTNER_CENTRAL)
 
         // Payment method
         paymentMethodService.create(

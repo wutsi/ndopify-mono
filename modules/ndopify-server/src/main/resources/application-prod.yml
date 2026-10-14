@@ -8,8 +8,19 @@ management:
             exposure:
                 include: "health"
 
+spring:
+    flyway:
+        clean-disabled: false
+
 springdoc:
     api-docs:
         enabled: false
     swagger-ui:
         enabled: false
+
+ndopify:
+    storage:
+        default-type: s3
+        s3:
+            bucket: com-wutsi-ndopify-prod
+            region: us-east-1

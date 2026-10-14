@@ -129,17 +129,23 @@ Current domains:
 
 - **refdata** — `Tenant`, `Location` (countries/regions/cities/neighbourhoods, imported from GeoNames), `Application`,
   `Role`. This is shared reference data, not tenant-scoped.
-- **security** — `User`, `UserApplication` (a user's membership + roles in a given `Application`), `AuthFactor`
-  (credentials), JWT issuance (`AccessTokenService`), and the `Authenticator` strategy interface with
+- **security** — `User` (a global identity, e-mail unique), `Membership` (the user's membership of a tenant, with
+  its party there), `UserApplication` (a membership's access + roles in a given `Application`), `AuthFactor`
+  (credentials, global), JWT issuance (`AccessTokenService`), and the `Authenticator` strategy interface with
   `PasswordAuthenticator` / `GoogleOneTapAuthenticator` / `OtpAuthenticator` implementations, selected via
   `AuthenticatorProvider` based on `AuthType`. One-time codes are created via `POST /v1/otp` (`OtpService`,
   `OtpGenerator`) and e-mailed by `OtpMailet`, asynchronously (see *Asynchronous e-mails* below): the tenant is
   resolved (`OtpMailet.resolveTenant`) before the hand-off, so a missing/unknown tenant still fails the request,
-  but an SMTP failure no longer does — the code is committed and the user asks for a new one; `POST /v1/auth` exchanges credentials for a JWT.
-  `GET /v1/users/{id}` (`UserEndpoints`) returns the user with its party embedded. It returns 404 `USER_NOT_FOUND`
-  for a user of another home tenant, which `UserService.findById` checks with `UserRepository.isVisible` before
-  loading, because the eager `party` is `@TenantId`-filtered. Like the rest of the API, it isn't authorized yet
-  (`permitAll`).
+  but an SMTP failure no longer does — the code is committed and the user asks for a new one; a user who isn't a
+  member of the tenant gets 404 `USER_NOT_FOUND`. `POST /v1/auth` exchanges credentials for a JWT:
+  `AbstractAuthenticator` requires a tenant (400 `HTTP_MISSING_PARAMETER` otherwise), finds the user by e-mail
+  (global), then its membership of the tenant (`AUTH_ACCESS_DENIED` without one), whose roles go in the token. A
+  person in two tenants has one user, one set of credentials, and a membership (party, roles) in each. Nothing
+  creates a membership on sign-in (not even Google One Tap): only registration (`AgentService.create`) does.
+  `GET /v1/users/{id}` (`UserEndpoints`) returns the user with its party in the current tenant embedded, and 404
+  `USER_NOT_FOUND` for a user who isn't a member of it. Like the rest of the API, it isn't authorized yet
+  (`permitAll`). A party's e-mail is its contact e-mail in the tenant, not synced to the user's (global) login
+  e-mail.
 - **party** — `Party`, `Identification` (+ uploaded `IdentificationImage`s), `KycCase` / `KycVerification`, and
   `PaymentMethod`. KYC cases are verified by pluggable `KycVerifier` strategies (`KycVerifierIdentification`,
   `KycVerifierMoMo`, `KycVerifierManual`) selected via `KycVerifierProvider`. Identity-document data is extracted
@@ -254,18 +260,20 @@ Tenancy is enforced via **Hibernate's built-in multi-tenancy mechanism**, not ha
 - Any JPA entity annotated `org.hibernate.annotations.@TenantId` is automatically filtered by Hibernate for every
   query against it — no `CriteriaBuilder` predicate, repository override, or service-level check needed. Today
   that's `PartyEntity`, `PaymentMethodEntity`, `IdentificationEntity`, `IdentificationImageEntity`, `KycCaseEntity`,
-  `AgentEntity`, `CustomerEntity` and `MandateEntity`. Leave the field `null` on construction (see the comment on any of them) so Hibernate's
+  `AgentEntity`, `CustomerEntity`, `MandateEntity` and `MembershipEntity`. Leave the field `null` on construction (see the comment on any of them) so Hibernate's
   `TenantIdGeneration` populates it from `TenantContext` on insert — setting a non-null value yourself makes
   Hibernate treat it as caller-assigned and throw if it doesn't match the resolved tenant.
 - `KycVerificationEntity` is deliberately **not** `@TenantId`-annotated: it's never loaded by its own id anywhere in
-  the codebase, only reached via the already-tenant-filtered `KycCaseEntity.verifications` association.
+  the codebase, only reached via the already-tenant-filtered `KycCaseEntity.verifications` association. Same for
+  `UserApplicationEntity`, only looked up through an already-filtered `MembershipEntity`.
 - If you add tenant-scoped data to a new or existing domain, add `@TenantId` to the entity — don't write a manual
   predicate; that duplicates enforcement and can silently drift from what Hibernate actually filters.
 - refdata entities are still global: `TenantEntity`, `LocationEntity`, `ApplicationEntity`, `RoleEntity` have no
-  `tenantId` and are not filtered. `UserEntity`, `UserApplicationEntity`, `AuthFactorEntity` in the `security`
-  domain are not filtered either. `UserEntity.tenantId` exists but is the user's *home* tenant, deliberately not
-  `@TenantId`: it's looked up by e-mail before `TenantContext` is known (see `AbstractAuthenticator`), and is null
-  for cross-tenant users (e.g. a super-admin on `admin-console`).
+  `tenantId` and are not filtered. `UserEntity` and `AuthFactorEntity` in the `security` domain are global too: a
+  user is looked up by e-mail before its membership of the tenant is checked (see `AbstractAuthenticator`). There
+  are no cross-tenant users: a user only sees the tenants it has a membership of. `T_USER.tenant_id`,
+  `T_USER.party_id` and `T_USER_APPLICATION.user_id` are left over from before memberships (`V7_0`), no longer
+  mapped or written, and still to be dropped.
 - **Known, not-yet-closed gap**: tenant *resolution* itself isn't trustworthy yet. JWTs are issued via
   `Algorithm.none()` (unsigned, in `AccessTokenService` — and `ndopify-partner-central`'s `JwtDecoder` decodes them the
   same way), and `SecurityConfiguration` currently `permitAll()`s every

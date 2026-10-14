@@ -18,6 +18,7 @@ import com.wutsi.ndopify.refdata.dto.ApplicationCode
 import com.wutsi.ndopify.refdata.server.service.ApplicationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.security.server.dao.UserApplicationRepository
+import com.wutsi.ndopify.security.server.service.MembershipService
 import com.wutsi.ndopify.security.server.service.UserService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -53,6 +54,9 @@ class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
 
     @Autowired
     private lateinit var userApplicationDao: UserApplicationRepository
+
+    @Autowired
+    private lateinit var membershipService: MembershipService
 
     @Test
     fun create() {
@@ -109,11 +113,14 @@ class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
         assertEquals(IdentificationType.NATIONAL_ID, case.identificationType)
 
         val user = userService.findByPartyIdOrNull(party.id!!)
-        assertEquals(TENANT_ID, user?.tenantId)
         assertEquals(request.email.lowercase(), user?.email)
 
+        val membership = membershipService.findByUserOrNull(user!!)
+        assertEquals(TENANT_ID, membership?.tenantId)
+        assertEquals(party.id, membership?.party?.id)
+
         val app = applicationService.findByCode(ApplicationCode.PARTNER_CENTRAL)
-        assertNotNull(userApplicationDao.findByUserAndApplication(user!!, app))
+        assertTrue(userApplicationDao.findByMembershipAndApplication(membership!!, app).isPresent)
 
         assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received") // sent asynchronously
         val tenant = tenantService.findById(TENANT_ID)
@@ -148,6 +155,32 @@ class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
 
         val agent = dao.findById(agentId).get()
         assertEquals(101L, agent.party.id)
+    }
+
+    @Test
+    fun `create for a user of another tenant`() {
+        val request = CreateAgentRequest(
+            firstName = "Samuel",
+            lastName = "Eto'o",
+            email = "samuel.etoo@gmail.com",
+            mobileMoneyNumber = "+237650000002",
+            whatsappNumber = "+237650000002",
+
+            cityId = 2370201L,
+        )
+
+        val response = rest.postForEntity("/v1/agents", request, CreateAgentResponse::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+
+        // The global user is reused, and becomes a member of this tenant too
+        val agent = dao.findById(response.body!!.agentId).get()
+        val user = userService.findByPartyIdOrNull(agent.party.id!!)
+        assertEquals(200L, user?.id)
+
+        val membership = membershipService.findByUserOrNull(user!!)
+        assertEquals(TENANT_ID, membership?.tenantId)
+        assertEquals(agent.party.id, membership?.party?.id)
     }
 
     @Test

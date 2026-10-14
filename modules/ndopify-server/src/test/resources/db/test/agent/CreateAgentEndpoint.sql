@@ -22,3 +22,13 @@ INSERT INTO T_PARTY(id, email, first_name, last_name) VALUES
 INSERT INTO T_AGENT(id, party_id) VALUES
     (102, 102);
 
+
+-- A user who is already a member of another tenant
+INSERT INTO T_TENANT(id, name, domain_name, locales, country_code) VALUES
+    (2, 'Other', 'other.localhost', 'fr-CM, en-CM', 'CM');
+
+INSERT INTO T_USER(id, email) VALUES
+    (200, 'samuel.etoo@gmail.com');
+
+INSERT INTO T_MEMBERSHIP(id, tenant_id, user_id) VALUES
+    (200, 2, 200);

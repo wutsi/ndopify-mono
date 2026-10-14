@@ -1,5 +1,8 @@
 package com.wutsi.ndopify.security.server.service
 
+import com.wutsi.ndopify.error.dto.Error
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.refdata.dto.AuthType
 import com.wutsi.ndopify.security.dto.CreateOtpRequest
 import com.wutsi.ndopify.security.server.domain.AuthFactorEntity
@@ -14,6 +17,7 @@ open class OtpService(
     private val otpGenerator: OtpGenerator,
     private val userService: UserService,
     private val authFactorService: AuthFactorService,
+    private val membershipService: MembershipService,
     private val passwordEncryptor: PasswordEncryptor,
     private val mailet: OtpMailet,
     private val eventPublisher: ApplicationEventPublisher,
@@ -27,12 +31,21 @@ open class OtpService(
      * persisted). `OtpEventListener` emails it asynchronously once committed, so an email that cannot be delivered
      * no longer fails the request: the user asks for a new code. The tenant is resolved here, before the hand-off,
      * so a missing or unknown tenant still fails the request (and rolls back) instead of failing silently later.
+     * A user who isn't a member of the tenant is not found: it can't get a code branded by another tenant.
      * `rollbackOn` is needed because jakarta's @Transactional does not roll back on checked exceptions by default.
      */
     @Transactional(rollbackOn = [Exception::class])
     fun create(request: CreateOtpRequest): AuthFactorEntity {
+        val tenant = mailet.resolveTenant()
         val user = userService.findByEmail(request.email)
-        val tenant = mailet.resolveTenant(user)
+        if (membershipService.findByUserOrNull(user) == null) {
+            throw NotFoundException(
+                error = Error(
+                    code = ErrorCode.USER_NOT_FOUND,
+                    message = "User not found: ${request.email}",
+                )
+            )
+        }
         val salt = UUID.randomUUID().toString()
         val code = otpGenerator.generate()
         val data = passwordEncryptor.encrypt(code, salt)
@@ -52,7 +65,7 @@ open class OtpService(
 
     /**
      * Emails the code of an OTP. Called by `OtpEventListener` on its own thread, with `TenantContext` set: the
-     * transaction gives the mailet a session to load the user and its party.
+     * transaction gives the mailet a session to load the user and its membership's party.
      */
     @Transactional
     fun sendEmail(authFactorId: Long, code: String) {

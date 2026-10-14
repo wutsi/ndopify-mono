@@ -119,7 +119,11 @@ object FindPropertyRules {
     fun comments(value: String?): String? =
         if ((value?.length
                 ?: 0) > MAX_COMMENTS
-        ) "Votre message ne doit pas dépasser $MAX_COMMENTS caractères." else null
+        ) {
+            "Votre message ne doit pas dépasser $MAX_COMMENTS caractères."
+        } else {
+            null
+        }
 
     /** "150 000", "150 000" or "150.000" → 150000. Blank, non-numeric or out-of-range → null. */
     fun parseAmount(value: String?): Long? =

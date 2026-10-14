@@ -165,6 +165,43 @@ class AuthenticatePasswordEndpointTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `member of two tenants gets the roles of the tenant it logs into`() {
+        overrideTenantId = 2L
+
+        val request = AuthenticateRequest(
+            email = "ray.sponsible@gmail.com",
+            secret = "secret",
+            applicationCode = ApplicationCode.PUBLIC_PORTAL,
+            authType = AuthType.PASSWORD
+        )
+        val response = rest.postForEntity("/v1/auth", request, AuthenticateResponse::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+
+        val principal = accessTokenService.decode(response.body!!.accessToken)
+        assertEquals(1L, principal.getUserId())
+        assertEquals(2L, principal.getTenantId())
+        assertEquals(listOf("SUPPORT"), principal.getRoles().toList())
+    }
+
+    @Test
+    fun `no tenant`() {
+        ignoreTenantIdHeader = true
+
+        val request = AuthenticateRequest(
+            email = "ray.sponsible@gmail.com",
+            secret = "secret",
+            applicationCode = ApplicationCode.PUBLIC_PORTAL,
+            authType = AuthType.PASSWORD
+        )
+        val response = rest.postForEntity("/v1/auth", request, ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.HTTP_MISSING_PARAMETER, response.body?.error?.code)
+        assertNull(authFactorService.findByIdOrNull(1L)?.lastLoggedInAt)
+    }
+
+    @Test
     fun `invalid app`() {
         val request = AuthenticateRequest(
             email = "ray.sponsible@gmail.com",

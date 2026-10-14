@@ -78,20 +78,17 @@ spring:
     mvc:
         pathmatch:
             matching-strategy: ANT_PATH_MATCHER
+
     servlet:
         multipart:
             max-file-size: 10240KB
             max-request-size: 10240KB
+
     task:
         scheduling:
             thread-name-prefix: "ndopify-job-"
             pool:
                 size: 4
-        task:
-            executor:
-                core-pool-size: 4
-                max-pool-size: 4
-                thread-name-prefix: "ndopify-task-"
 
 server:
     port: 8080
@@ -198,7 +195,7 @@ ndopify:
             directory: /${user.home}/ndopify
             servlet-path: /storage
         s3:
-            bucket: com-wutsi-ndopify-test
+            bucket: com-wutsi-ndopify-local
             region: us-east-1
 
     mobile-money:

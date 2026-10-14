@@ -10,6 +10,7 @@ import com.wutsi.ndopify.security.server.domain.AuthFactorEntity
 import com.wutsi.ndopify.security.server.domain.UserEntity
 import com.wutsi.ndopify.security.server.service.AccessTokenService
 import com.wutsi.ndopify.security.server.service.AuthFactorService
+import com.wutsi.ndopify.security.server.service.MembershipService
 import com.wutsi.ndopify.security.server.service.PasswordEncryptor
 import com.wutsi.ndopify.security.server.service.UserApplicationService
 import com.wutsi.ndopify.security.server.service.UserService
@@ -20,11 +21,19 @@ abstract class AbstractPasswordAuthenticator(
     applicationService: ApplicationService,
     tokenService: AccessTokenService,
     authFactorService: AuthFactorService,
+    membershipService: MembershipService,
     clock: Clock,
 
     private val userService: UserService,
     private val passwordEncryptor: PasswordEncryptor,
-) : AbstractAuthenticator(userApplicationService, applicationService, tokenService, authFactorService, clock) {
+) : AbstractAuthenticator(
+    userApplicationService,
+    applicationService,
+    tokenService,
+    authFactorService,
+    membershipService,
+    clock
+) {
     override fun validateRequest(request: AuthenticateRequest) {
         if (request.secret == null) {
             throw BadRequestException(

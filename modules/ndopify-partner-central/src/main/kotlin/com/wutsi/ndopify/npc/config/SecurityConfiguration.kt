@@ -34,6 +34,7 @@ class SecurityConfiguration(
             .exceptionHandling { it.authenticationEntryPoint(LoginUrlAuthenticationEntryPoint("/login")) }
             .csrf { customizer -> customizer.disable() }
             .httpBasic { customizer -> customizer.disable() }
+            .logout { customizer -> customizer.disable() } // Disable spring logout, we handle it in our own controller
             .build()
     }
 

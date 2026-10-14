@@ -3,7 +3,6 @@ package com.wutsi.ndopify.npc.ui.logout
 import com.wutsi.ndopify.npc.service.security.AccessTokenService
 import com.wutsi.ndopify.npc.ui.login.LoginController
 import jakarta.servlet.http.HttpServletRequest
-import jakarta.servlet.http.HttpServletResponse
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestMapping
@@ -19,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 @RequestMapping("/logout")
 class LogoutController(private val accessTokenHolder: AccessTokenService) {
     @GetMapping
-    fun logout(request: HttpServletRequest, response: HttpServletResponse): String {
+    fun logout(request: HttpServletRequest): String {
         request.getSession(false)?.invalidate()
         accessTokenHolder.remove()
 

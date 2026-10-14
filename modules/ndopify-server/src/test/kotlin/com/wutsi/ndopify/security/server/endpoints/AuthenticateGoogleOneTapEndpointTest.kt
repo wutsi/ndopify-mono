@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/security/AuthenticateGoogleOneTapEndpoint.sql"])
@@ -99,7 +100,7 @@ class AuthenticateGoogleOneTapEndpointTest : TenantAwareEndpointIntegrationTest(
     }
 
     @Test
-    fun `user not found`() {
+    fun `new user does not join the tenant`() {
         val request = AuthenticateRequest(
             email = "user-not-found@gmail.com",
             applicationCode = ApplicationCode.PUBLIC_PORTAL,
@@ -109,20 +110,31 @@ class AuthenticateGoogleOneTapEndpointTest : TenantAwareEndpointIntegrationTest(
                 sub = "sub-5555555",
             )
         )
-        val response = rest.postForEntity("/v1/auth", request, AuthenticateResponse::class.java)
+        val response = rest.postForEntity("/v1/auth", request, ErrorResponse::class.java)
 
-        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.AUTH_ACCESS_DENIED, response.body?.error?.code)
 
-        val principal = accessTokenService.decode(response.body!!.accessToken)
-        val user = userService.findByEmailOrNull(request.email)
-        assertEquals(user?.id, principal.getUserId())
-        assertEquals(user?.id.toString(), principal.getSubject())
-        assertEquals(request.applicationCode, principal.getApplication())
-        assertEquals(TENANT_ID, principal.getTenantId())
-        assertEquals(listOf(), principal.getRoles().toList())
+        // Rolled back: the user isn't created either
+        assertNull(userService.findByEmailOrNull(request.email))
+    }
 
-        val authFactor = authFactorService.findByUserAndAuthTypeOrNull(user!!, AuthType.GOOGLE_ONE_TAP)
-        assertEquals(request.googleOneTapPayload?.sub, authFactor?.data)
+    @Test
+    fun `user of another tenant`() {
+        val request = AuthenticateRequest(
+            email = "other-tenant@gmail.com",
+            applicationCode = ApplicationCode.PUBLIC_PORTAL,
+            authType = AuthType.GOOGLE_ONE_TAP,
+            googleOneTapPayload = GoogleOneTapPayload(
+                email = "other-tenant@gmail.com",
+                sub = "sub-5555555",
+            )
+        )
+        val response = rest.postForEntity("/v1/auth", request, ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.AUTH_ACCESS_DENIED, response.body?.error?.code)
+        assertNull(authFactorService.findByUserAndAuthTypeOrNull(userService.findByEmail(request.email), AuthType.GOOGLE_ONE_TAP))
     }
 
     @Test
