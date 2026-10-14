@@ -2,7 +2,7 @@ CREATE TABLE T_AGENT(
   id                      BIGINT NOT NULL AUTO_INCREMENT,
   tenant_id               BIGINT NOT NULL DEFAULT 1,
 
-  party_id                BIGINT NOT NULL REFERENCES T_PARTY(id),
+  party_id                BIGINT NOT NULL,
 
   whatsapp_number         VARCHAR(20),
   agent_type              INT NOT NULL DEFAULT 0,
@@ -14,6 +14,8 @@ CREATE TABLE T_AGENT(
   modified_at             DATETIME NOT NULL DEFAULT now() ON UPDATE now(),
 
   UNIQUE (party_id),
+
+  CONSTRAINT FK_AGENT_party FOREIGN KEY(party_id) REFERENCES T_PARTY(id),
   PRIMARY KEY(id)
 ) ENGINE = InnoDB;
 
@@ -22,8 +24,10 @@ CREATE INDEX I_AGENT_tenant ON T_AGENT(tenant_id);
 
 
 CREATE TABLE T_AGENT_NEIGHBORHOOD(
-  agent_id                BIGINT NOT NULL REFERENCES T_AGENT(id) ON DELETE CASCADE,
+  agent_id                BIGINT NOT NULL,
   neighborhood_id         BIGINT NOT NULL,
 
+
+  CONSTRAINT FK_AGENT_NEIGHBORHOOD_agent FOREIGN KEY(agent_id) REFERENCES T_AGENT(id) ON DELETE CASCADE,
   PRIMARY KEY(agent_id, neighborhood_id)
 ) ENGINE = InnoDB;

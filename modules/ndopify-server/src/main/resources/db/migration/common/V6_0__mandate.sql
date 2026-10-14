@@ -2,8 +2,8 @@ CREATE TABLE T_MANDATE(
   id                      BIGINT NOT NULL AUTO_INCREMENT,
   tenant_id               BIGINT NOT NULL DEFAULT 1,
 
-  customer_id             BIGINT NOT NULL REFERENCES T_CUSTOMER(id),
-  agent_id                BIGINT REFERENCES T_AGENT(id),
+  customer_id             BIGINT NOT NULL,
+  agent_id                BIGINT,
   city_id                 BIGINT NOT NULL,
 
   status                  INT NOT NULL DEFAULT 0,
@@ -49,6 +49,9 @@ CREATE TABLE T_MANDATE(
   created_at              DATETIME DEFAULT NOW(),
   modified_at             DATETIME NOT NULL DEFAULT now() ON UPDATE now(),
 
+
+  CONSTRAINT FK_MANDATE_customer FOREIGN KEY(customer_id) REFERENCES T_CUSTOMER(id),
+  CONSTRAINT FK_MANDATE_agent FOREIGN KEY(agent_id) REFERENCES T_AGENT(id),
   PRIMARY KEY(id)
 ) ENGINE = InnoDB;
 
@@ -58,8 +61,10 @@ CREATE INDEX I_MANDATE_city ON T_MANDATE(city_id);
 
 
 CREATE TABLE T_MANDATE_NEIGHBORHOOD(
-  mandate_id              BIGINT NOT NULL REFERENCES T_MANDATE(id) ON DELETE CASCADE,
+  mandate_id              BIGINT NOT NULL,
   neighborhood_id         BIGINT NOT NULL,
 
+
+  CONSTRAINT FK_MANDATE_NEIGHBORHOOD_mandate FOREIGN KEY(mandate_id) REFERENCES T_MANDATE(id) ON DELETE CASCADE,
   PRIMARY KEY(mandate_id, neighborhood_id)
 ) ENGINE = InnoDB;

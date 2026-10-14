@@ -12,12 +12,14 @@ CREATE TABLE T_APPLICATION(
 CREATE TABLE T_ROLE(
   id                      BIGINT  NOT NULL AUTO_INCREMENT,
 
-  application_id          BIGINT NOT NULL REFERENCES T_APPLICATION(id),
+  application_id          BIGINT NOT NULL,
 
   code                    VARCHAR(50) NOT NULL,
   active                  BOOLEAN NOT NULL DEFAULT TRUE,
 
   UNIQUE(application_id, code),
+
+  CONSTRAINT FK_ROLE_application FOREIGN KEY(application_id) REFERENCES T_APPLICATION(id),
   PRIMARY KEY(id)
 ) ENGINE = InnoDB;
 
