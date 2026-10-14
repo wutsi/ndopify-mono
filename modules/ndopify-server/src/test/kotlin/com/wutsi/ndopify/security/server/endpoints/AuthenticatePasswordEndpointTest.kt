@@ -21,6 +21,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/security/AuthenticatePasswordEndpoint.sql"])
@@ -145,6 +146,22 @@ class AuthenticatePasswordEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(HttpStatus.CONFLICT, response.statusCode)
 
         assertEquals(ErrorCode.AUTH_ACCESS_DENIED, response.body?.error?.code)
+    }
+
+    @Test
+    fun `user of another tenant`() {
+        val request = AuthenticateRequest(
+            email = "other-tenant@gmail.com",
+            secret = "secret",
+            applicationCode = ApplicationCode.PUBLIC_PORTAL,
+            authType = AuthType.PASSWORD
+        )
+        val response = rest.postForEntity("/v1/auth", request, ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+
+        assertEquals(ErrorCode.AUTH_ACCESS_DENIED, response.body?.error?.code)
+        assertNull(authFactorService.findByIdOrNull(4L)?.lastLoggedInAt)
     }
 
     @Test

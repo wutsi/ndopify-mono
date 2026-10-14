@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.npc.service.security
 
-import com.auth0.jwt.exceptions.TokenExpiredException
+import com.auth0.jwt.exceptions.JWTVerificationException
 import jakarta.servlet.FilterChain
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -32,8 +32,8 @@ class JwtAuthenticationFilter(
                 auth.isAuthenticated = true
                 SecurityContextHolder.setContext(SecurityContextImpl(auth))
             }
-        } catch (ex: TokenExpiredException) {
-            LOGGER.warn("Token expired", ex)
+        } catch (ex: JWTVerificationException) {
+            LOGGER.warn("Token error", ex)
             SecurityContextHolder.clearContext()
         } finally {
             filterChain.doFilter(request, response)

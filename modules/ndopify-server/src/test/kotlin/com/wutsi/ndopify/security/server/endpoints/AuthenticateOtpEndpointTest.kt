@@ -189,6 +189,64 @@ class AuthenticateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `user of another tenant`() {
+        val response = loginError("other-tenant@gmail.com", CODE)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.AUTH_ACCESS_DENIED, response.body?.error?.code)
+
+        // Not consumed: the code can still be used on the user's own tenant
+        val authFactor = authFactorRepository.findById(7L).get()
+        assertNull(authFactor.lastLoggedInAt)
+        assertTrue(authFactor.expiresAt!!.time > System.currentTimeMillis())
+    }
+
+    @Test
+    fun `user logs into the home tenant`() {
+        overrideTenantId = 2L
+
+        val response = login("other-tenant@gmail.com", CODE)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val principal = accessTokenService.decode(response.body!!.accessToken)
+        assertEquals(7L, principal.getUserId())
+        assertEquals(2L, principal.getTenantId())
+    }
+
+    @Test
+    fun `user with a home tenant, without tenant`() {
+        ignoreTenantIdHeader = true
+
+        val response = loginError("ray.sponsible@gmail.com", CODE)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.AUTH_ACCESS_DENIED, response.body?.error?.code)
+        assertNull(authFactorRepository.findById(1L).get().lastLoggedInAt)
+    }
+
+    @Test
+    fun `user without home tenant logs into any tenant`() {
+        overrideTenantId = 2L
+
+        val response = login("all-tenants@gmail.com", CODE)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val principal = accessTokenService.decode(response.body!!.accessToken)
+        assertEquals(8L, principal.getUserId())
+        assertEquals(2L, principal.getTenantId())
+    }
+
+    @Test
+    fun `user without home tenant, without tenant`() {
+        ignoreTenantIdHeader = true
+
+        val response = login("all-tenants@gmail.com", CODE)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertNull(accessTokenService.decode(response.body!!.accessToken).getTenantId())
+    }
+
+    @Test
     fun `application that does not accept OTP`() {
         val response = loginError("ray.sponsible@gmail.com", CODE, ApplicationCode.PUBLIC_PORTAL)
 

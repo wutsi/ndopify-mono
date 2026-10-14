@@ -3,6 +3,7 @@ package com.wutsi.ndopify.security.server.service.authenticator
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.ConflictException
+import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.dto.AuthType
 import com.wutsi.ndopify.refdata.server.domain.ApplicationEntity
 import com.wutsi.ndopify.refdata.server.service.ApplicationService
@@ -23,10 +24,12 @@ abstract class AbstractAuthenticator(
     protected val authFactorService: AuthFactorService,
     protected val clock: Clock,
 ) : Authenticator {
-    override fun authenticate(request: AuthenticateRequest, tenantId: Long?): String {
+    override fun authenticate(request: AuthenticateRequest): String {
         validateRequest(request)
 
         val user = findUser(request.email)
+        ensureTenantValid(user)
+
         val application = findApplication(request.applicationCode)
         val userApplication = checkApplicationAccess(user, application)
 
@@ -47,7 +50,7 @@ abstract class AbstractAuthenticator(
             application = request.applicationCode,
             userId = user.id ?: -1,
             roles = userApplication.roles.map { role -> role.code }.toTypedArray(),
-            tenantId = tenantId,
+            tenantId = TenantContext.get(),
             ttlSeconds = 60 * 60, // 1 hour
         )
     }
@@ -95,5 +98,17 @@ abstract class AbstractAuthenticator(
                 )
             )
         return userApplication
+    }
+
+    private fun ensureTenantValid(user: UserEntity) {
+        val tenantId = user.tenantId ?: return // No tenant, this is user who can access all tenants
+        if (tenantId != TenantContext.get()) {
+            throw ConflictException(
+                error = Error(
+                    code = ErrorCode.AUTH_ACCESS_DENIED,
+                    message = "User ${user.email} does not belong to tenant ${TenantContext.get()}"
+                )
+            )
+        }
     }
 }

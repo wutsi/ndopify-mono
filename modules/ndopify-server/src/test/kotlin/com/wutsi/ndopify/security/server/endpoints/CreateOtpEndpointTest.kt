@@ -16,7 +16,6 @@ import jakarta.mail.internet.InternetAddress
 import jakarta.mail.internet.MimeMessage
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.jdbc.Sql
@@ -36,12 +35,6 @@ class CreateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
         const val TOLERANCE_MS = 2000L
         const val MAIL_TIMEOUT_MS = 5000L
     }
-
-    @Value("\${spring.mail.username}")
-    private lateinit var username: String
-
-    @Value("\${spring.mail.password}")
-    private lateinit var password: String
 
     @MockitoBean
     private lateinit var otpGenerator: OtpGenerator

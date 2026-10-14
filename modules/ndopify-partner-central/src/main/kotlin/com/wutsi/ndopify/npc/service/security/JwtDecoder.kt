@@ -2,6 +2,8 @@ package com.wutsi.ndopify.npc.service.security
 
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
+import com.auth0.jwt.exceptions.IncorrectClaimException
+import com.wutsi.ndopify.refdata.dto.ApplicationCode
 import com.wutsi.ndopify.security.dto.JwtPrincipal
 import org.springframework.stereotype.Service
 
@@ -15,7 +17,12 @@ open class JwtDecoder {
         val verifier = JWT.require(getAlgorithm())
             .withIssuer(ISSUER)
             .build()
-        return JwtPrincipal(verifier.verify(accessToken))
+        val jwt = verifier.verify(accessToken)
+        val app = jwt.getClaim(JwtPrincipal.CLAIM_APPLICATION)
+        if (app.asString() != ApplicationCode.PARTNER_CENTRAL) {
+            throw IncorrectClaimException("Invalid application", JwtPrincipal.CLAIM_APPLICATION, app)
+        }
+        return JwtPrincipal(jwt)
     }
 
     private fun getAlgorithm(): Algorithm {
