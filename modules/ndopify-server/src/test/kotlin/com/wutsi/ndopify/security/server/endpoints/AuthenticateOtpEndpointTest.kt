@@ -202,7 +202,7 @@ class AuthenticateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
-    fun `user logs into the home tenant`() {
+    fun `user logs into its own tenant`() {
         overrideTenantId = 2L
 
         val response = login("other-tenant@gmail.com", CODE)
@@ -214,36 +214,14 @@ class AuthenticateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
-    fun `user with a home tenant, without tenant`() {
+    fun `no tenant`() {
         ignoreTenantIdHeader = true
 
         val response = loginError("ray.sponsible@gmail.com", CODE)
 
-        assertEquals(HttpStatus.CONFLICT, response.statusCode)
-        assertEquals(ErrorCode.AUTH_ACCESS_DENIED, response.body?.error?.code)
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.HTTP_MISSING_PARAMETER, response.body?.error?.code)
         assertNull(authFactorRepository.findById(1L).get().lastLoggedInAt)
-    }
-
-    @Test
-    fun `user without home tenant logs into any tenant`() {
-        overrideTenantId = 2L
-
-        val response = login("all-tenants@gmail.com", CODE)
-
-        assertEquals(HttpStatus.OK, response.statusCode)
-        val principal = accessTokenService.decode(response.body!!.accessToken)
-        assertEquals(8L, principal.getUserId())
-        assertEquals(2L, principal.getTenantId())
-    }
-
-    @Test
-    fun `user without home tenant, without tenant`() {
-        ignoreTenantIdHeader = true
-
-        val response = login("all-tenants@gmail.com", CODE)
-
-        assertEquals(HttpStatus.OK, response.statusCode)
-        assertNull(accessTokenService.decode(response.body!!.accessToken).getTenantId())
     }
 
     @Test

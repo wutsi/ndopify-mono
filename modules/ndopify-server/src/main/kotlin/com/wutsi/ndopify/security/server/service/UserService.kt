@@ -3,12 +3,8 @@ package com.wutsi.ndopify.security.server.service
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.NotFoundException
-import com.wutsi.ndopify.party.server.domain.PartyEntity
-import com.wutsi.ndopify.platform.tenant.TenantContext
-import com.wutsi.ndopify.refdata.server.service.ApplicationService
-import com.wutsi.ndopify.security.server.dao.UserApplicationRepository
+import com.wutsi.ndopify.security.server.dao.MembershipRepository
 import com.wutsi.ndopify.security.server.dao.UserRepository
-import com.wutsi.ndopify.security.server.domain.UserApplicationEntity
 import com.wutsi.ndopify.security.server.domain.UserEntity
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
@@ -16,12 +12,11 @@ import org.springframework.stereotype.Service
 @Service
 class UserService(
     private val dao: UserRepository,
-    private val userApplicationDao: UserApplicationRepository,
-    private val applicationService: ApplicationService,
+    private val membershipDao: MembershipRepository,
 ) {
     /**
-     * Users aren't @TenantId-filtered (see [UserEntity.tenantId]), so a user whose home tenant isn't the current
-     * one is reported as not found, like any tenant-scoped entity. Cross-tenant users (no home tenant) are visible.
+     * Users are global, so a user who isn't a member of the current tenant is reported as not found, like any
+     * tenant-scoped entity (memberships are @TenantId-filtered).
      */
     fun findById(id: Long): UserEntity {
         val user = findByIdOrNull(id)
@@ -35,20 +30,20 @@ class UserService(
     }
 
     fun findByIdOrNull(id: Long): UserEntity? {
-        val tenantId = TenantContext.get()
-        return if (dao.isVisible(id, tenantId)) {
-            dao.findById(id).orElse(null)
-        } else {
-            null
-        }
-    }
-
-    fun findByPartyIdOrNull(partyId: Long): UserEntity? {
-        val user = dao.findByPartyId(partyId)
+        val user = dao.findById(id).orElse(null)
         if (user == null || user.deleted) {
             return null
         }
-        return user
+        val membership = membershipDao.findByUser(user)
+        return if (membership == null || membership.deleted) null else user
+    }
+
+    fun findByPartyIdOrNull(partyId: Long): UserEntity? {
+        val membership = membershipDao.findByPartyId(partyId)
+        if (membership == null || membership.deleted || membership.user.deleted) {
+            return null
+        }
+        return membership.user
     }
 
     fun findByEmail(email: String): UserEntity {
@@ -61,6 +56,7 @@ class UserService(
             )
     }
 
+    /** Global lookup: doesn't check that the user is a member of the current tenant. */
     fun findByEmailOrNull(email: String): UserEntity? {
         val user = dao.findByEmailIgnoreCase(email).orElse(null)
         if (user == null || user.deleted) {
@@ -77,27 +73,5 @@ class UserService(
         } else {
             user
         }
-    }
-
-    @Transactional
-    fun create(party: PartyEntity): UserEntity {
-        return dao.save(
-            UserEntity(
-                tenantId = party.tenantId,
-                email = party.email.lowercase(),
-                party = party
-            )
-        )
-    }
-
-    @Transactional
-    fun grantAccess(user: UserEntity, applicationCode: String) {
-        val application = applicationService.findByCode(applicationCode)
-        userApplicationDao.save(
-            UserApplicationEntity(
-                user = user,
-                application = application,
-            )
-        )
     }
 }

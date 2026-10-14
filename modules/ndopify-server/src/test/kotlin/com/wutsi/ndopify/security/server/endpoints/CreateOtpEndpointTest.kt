@@ -186,11 +186,11 @@ class CreateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
-    fun `tenant falls back to the home tenant of the user`() {
-        ignoreTenantIdHeader = true
+    fun `email is branded by the tenant of the request`() {
+        overrideTenantId = 2L
 
         val response =
-            rest.postForEntity("/v1/otp", CreateOtpRequest(email = "home-tenant@gmail.com"), Void::class.java)
+            rest.postForEntity("/v1/otp", CreateOtpRequest(email = "other-tenant@gmail.com"), Void::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
 
@@ -202,11 +202,26 @@ class CreateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
-    fun `request tenant wins over the home tenant of the user`() {
-        // header says tenant 1 (default), the user's home tenant is 2
-        rest.postForEntity("/v1/otp", CreateOtpRequest(email = "home-tenant@gmail.com"), Void::class.java)
+    fun `member of two tenants gets the email of the tenant of the request`() {
+        overrideTenantId = 2L
 
-        assertEquals("Votre code de vérification Ndopify", receivedMessage().subject)
+        rest.postForEntity("/v1/otp", CreateOtpRequest(email = "has-otp@gmail.com"), Void::class.java)
+
+        assertEquals("Votre code de vérification Autre Marque", receivedMessage().subject)
+    }
+
+    @Test
+    fun `user who is not a member of the tenant is not found`() {
+        // header says tenant 1 (default), the user is only a member of tenant 2
+        val response =
+            rest.postForEntity("/v1/otp", CreateOtpRequest(email = "other-tenant@gmail.com"), ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
+        assertEquals(ErrorCode.USER_NOT_FOUND, response.body?.error?.code)
+
+        val user = userRepository.findById(3L).get()
+        assertNull(authFactorRepository.findByUserAndAuthType(user, AuthType.OTP).orElse(null))
+        assertEquals(0, smtp.receivedMessages.size)
     }
 
     @Test

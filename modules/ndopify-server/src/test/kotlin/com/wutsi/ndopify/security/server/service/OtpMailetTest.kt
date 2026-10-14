@@ -3,26 +3,27 @@ package com.wutsi.ndopify.security.server.service
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
-import com.wutsi.ndopify.common.dto.HttpHeader
+import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.BadRequestException
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
-import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.dto.AuthType
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.security.server.domain.AuthFactorEntity
+import com.wutsi.ndopify.security.server.domain.MembershipEntity
 import com.wutsi.ndopify.security.server.domain.UserEntity
 import java.util.Date
-import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -32,7 +33,8 @@ class OtpMailetTest {
     private val tenantService = mock<TenantService>()
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
-    private val mailet = OtpMailet(tenantService, mailService, mailBodyResolver)
+    private val membershipService = mock<MembershipService>()
+    private val mailet = OtpMailet(tenantService, mailService, mailBodyResolver, membershipService)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -43,7 +45,12 @@ class OtpMailetTest {
     private val user = UserEntity(
         id = 11L,
         email = "john.doe@wutsi.com",
-        tenantId = 2L,
+    )
+
+    private val membership = MembershipEntity(
+        id = 1L,
+        tenantId = 1L,
+        user = user,
         party = PartyEntity(id = 111L, firstName = "John", lastName = "Doe"),
     )
 
@@ -56,14 +63,14 @@ class OtpMailetTest {
         expiresAt = Date(now.time + 5 * 60_000 + 30_000), // 5min30s
     )
 
-    @AfterTest
-    fun tearDown() {
-        TenantContext.remove()
+    @BeforeTest
+    fun setUp() {
+        doReturn(1L).whenever(membershipService).currentTenantId()
+        doReturn(membership).whenever(membershipService).findByUserOrNull(user)
     }
 
     @Test
     fun `send otp email`() {
-        TenantContext.set(1L)
         doReturn(tenant).whenever(tenantService).findById(1L)
         doReturn("<html>otp</html>").whenever(mailBodyResolver).resolve(any(), any())
 
@@ -91,23 +98,13 @@ class OtpMailetTest {
     }
 
     @Test
-    fun `fall back to user home tenant when no tenant in context`() {
-        doReturn(tenant.copy(id = 2L)).whenever(tenantService).findById(2L)
-        doReturn("<html>otp</html>").whenever(mailBodyResolver).resolve(any(), any())
-
-        mailet.send("123456", authFactor)
-
-        verify(tenantService).findById(2L)
-        verify(mailService).send(any())
-    }
-
-    @Test
     fun `user without party`() {
-        TenantContext.set(1L)
         doReturn(tenant).whenever(tenantService).findById(1L)
         doReturn("<html>otp</html>").whenever(mailBodyResolver).resolve(any(), any())
 
-        mailet.send("123456", authFactor.copy(user = user.copy(party = null)))
+        doReturn(membership.copy(party = null)).whenever(membershipService).findByUserOrNull(user)
+
+        mailet.send("123456", authFactor)
 
         val context = argumentCaptor<Map<String, Any?>>()
         verify(mailBodyResolver).resolve(any(), context.capture())
@@ -120,11 +117,12 @@ class OtpMailetTest {
 
     @Test
     fun `user with blank name`() {
-        TenantContext.set(1L)
         doReturn(tenant).whenever(tenantService).findById(1L)
         doReturn("<html>otp</html>").whenever(mailBodyResolver).resolve(any(), any())
 
-        mailet.send("123456", authFactor.copy(user = user.copy(party = PartyEntity(id = 111L))))
+        doReturn(membership.copy(party = PartyEntity(id = 111L))).whenever(membershipService).findByUserOrNull(user)
+
+        mailet.send("123456", authFactor)
 
         val context = argumentCaptor<Map<String, Any?>>()
         verify(mailBodyResolver).resolve(any(), context.capture())
@@ -137,18 +135,32 @@ class OtpMailetTest {
 
     @Test
     fun `no tenant`() {
+        val error = BadRequestException(Error(code = ErrorCode.HTTP_MISSING_PARAMETER))
+        doThrow(error).whenever(membershipService).currentTenantId()
+
         val ex = assertFailsWith<BadRequestException> {
-            mailet.send("123456", authFactor.copy(user = user.copy(tenantId = null)))
+            mailet.send("123456", authFactor)
         }
 
         assertEquals(ErrorCode.HTTP_MISSING_PARAMETER, ex.error.code)
-        assertEquals(HttpHeader.TENANT_ID, ex.error.parameter?.name)
         verify(mailService, never()).send(any())
     }
 
     @Test
+    fun `user who is no longer a member`() {
+        doReturn(tenant).whenever(tenantService).findById(1L)
+        doReturn("<html>otp</html>").whenever(mailBodyResolver).resolve(any(), any())
+        doReturn(null).whenever(membershipService).findByUserOrNull(user)
+
+        mailet.send("123456", authFactor)
+
+        val email = argumentCaptor<Email>()
+        verify(mailService).send(email.capture())
+        assertNull(email.firstValue.recipient.displayName)
+    }
+
+    @Test
     fun `otp without expiry`() {
-        TenantContext.set(1L)
         doReturn(tenant).whenever(tenantService).findById(1L)
 
         assertFailsWith<IllegalArgumentException> {

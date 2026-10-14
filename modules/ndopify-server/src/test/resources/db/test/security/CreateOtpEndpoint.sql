@@ -6,13 +6,19 @@ VALUES
 INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name, created_at, modified_at) VALUES
   (100, 1, 'ray.sponsible@gmail.com', 'Ray', 'Sponsible', NOW(), NOW());
 
--- user 1: has a party (display name), no home tenant
--- user 2: already has an OTP and a password
--- user 3: home tenant 2
-INSERT INTO T_USER (id, tenant_id, party_id, email, deleted, created_at, deleted_at) VALUES
-  (1, NULL, 100, 'ray.sponsible@gmail.com', false, NOW(), NULL),
-  (2, NULL, NULL, 'has-otp@gmail.com', false, NOW(), NULL),
-  (3, 2, NULL, 'home-tenant@gmail.com', false, NOW(), NULL);
+-- user 1: has a party (display name)
+-- user 2: already has an OTP and a password, member of tenants 1 and 2
+-- user 3: member of tenant 2 only
+INSERT INTO T_USER (id, email, deleted, created_at, deleted_at) VALUES
+  (1, 'ray.sponsible@gmail.com', false, NOW(), NULL),
+  (2, 'has-otp@gmail.com', false, NOW(), NULL),
+  (3, 'other-tenant@gmail.com', false, NOW(), NULL);
+
+INSERT INTO T_MEMBERSHIP (id, tenant_id, user_id, party_id) VALUES
+  (1, 1, 1, 100),
+  (2, 1, 2, NULL),
+  (3, 2, 3, NULL),
+  (4, 2, 2, NULL);
 
 -- auth_type: 1=PASSWORD, 3=OTP
 INSERT INTO T_AUTH_FACTOR (id, user_id, auth_type, data, salt, created_at, modified_at, expires_at) VALUES

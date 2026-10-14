@@ -29,6 +29,18 @@ class GetUserEndpointTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `party of the tenant of the request`() {
+        overrideTenantId = 2L
+
+        val response = rest.getForEntity("/v1/users/1", GetUserResponse::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(1L, response.body!!.user.id)
+        assertEquals(901L, response.body!!.user.party?.id)
+        assertEquals("Raymond", response.body!!.user.party?.firstName)
+    }
+
+    @Test
     fun `user without party`() {
         val response = rest.getForEntity("/v1/users/2", GetUserResponse::class.java)
 
@@ -50,6 +62,11 @@ class GetUserEndpointTest : TenantAwareEndpointIntegrationTest() {
     @Test
     fun `user from another tenant is not found`() {
         assertNotFound("/v1/users/4")
+    }
+
+    @Test
+    fun `user whose membership is deleted is not found`() {
+        assertNotFound("/v1/users/5")
     }
 
     private fun assertNotFound(url: String) {

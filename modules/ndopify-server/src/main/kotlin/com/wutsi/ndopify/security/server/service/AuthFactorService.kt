@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.security.server.service
 
 import com.wutsi.ndopify.error.dto.Error
+import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.refdata.dto.AuthType
 import com.wutsi.ndopify.security.server.dao.AuthFactorRepository

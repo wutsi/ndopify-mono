@@ -10,6 +10,7 @@ import com.wutsi.ndopify.security.server.domain.AuthFactorEntity
 import com.wutsi.ndopify.security.server.domain.UserEntity
 import com.wutsi.ndopify.security.server.service.AccessTokenService
 import com.wutsi.ndopify.security.server.service.AuthFactorService
+import com.wutsi.ndopify.security.server.service.MembershipService
 import com.wutsi.ndopify.security.server.service.PasswordEncryptor
 import com.wutsi.ndopify.security.server.service.UserApplicationService
 import com.wutsi.ndopify.security.server.service.UserService
@@ -22,6 +23,7 @@ class OtpAuthenticator(
     applicationService: ApplicationService,
     tokenService: AccessTokenService,
     authFactorService: AuthFactorService,
+    membershipService: MembershipService,
     clock: Clock,
     userService: UserService,
     passwordEncryptor: PasswordEncryptor,
@@ -30,6 +32,7 @@ class OtpAuthenticator(
     applicationService,
     tokenService,
     authFactorService,
+    membershipService,
     clock,
     userService,
     passwordEncryptor
