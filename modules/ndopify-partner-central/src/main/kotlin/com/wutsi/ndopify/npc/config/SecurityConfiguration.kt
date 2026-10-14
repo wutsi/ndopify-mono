@@ -26,6 +26,7 @@ class SecurityConfiguration(
                     .requestMatchers("/login", "/login/**").permitAll()
                     .requestMatchers("/error").permitAll()
                     .requestMatchers("/join", "/join/**").permitAll()
+                    .requestMatchers("/find-property", "/find-property/**").permitAll()
                     .requestMatchers("/locations", "/locations/**").permitAll()
                     .anyRequest().authenticated()
             }
