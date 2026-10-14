@@ -7,8 +7,10 @@ import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
+import com.wutsi.ndopify.refdata.dto.SearchNearestLocationRequest
 import com.wutsi.ndopify.refdata.server.dao.LocationRepository
 import com.wutsi.ndopify.refdata.server.domain.LocationEntity
+import jakarta.persistence.EntityManager
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
 import org.springframework.data.domain.Sort
@@ -19,9 +21,25 @@ import java.text.Normalizer
 @Service
 class LocationService(
     private val dao: LocationRepository,
+    private val em: EntityManager,
 ) {
     companion object {
         private val REGEX_UNACCENT = "\\p{InCombiningDiacriticalMarks}+".toRegex()
+        const val MAX_RADIUS_KM = 100.0
+
+        // Distance to the nearest origin. ST_Distance_Sphere returns meters; POINT takes (longitude, latitude).
+        // id last in ORDER BY: paging by offset needs a total order
+        private const val SQL_NEAREST = """
+            SELECT l.id, MIN(ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(o.longitude, o.latitude))) AS distance
+            FROM T_LOCATION l
+            JOIN T_LOCATION o ON o.id IN (:originIds) AND o.country = l.country
+            WHERE l.type IN (:types)
+              AND l.id NOT IN (:excludedIds)
+              AND l.latitude IS NOT NULL AND l.longitude IS NOT NULL
+            GROUP BY l.id
+            HAVING distance <= :radius
+            ORDER BY distance, l.id
+        """
     }
 
     fun findById(id: Long): LocationEntity {
@@ -80,6 +98,40 @@ class LocationService(
         // id last: paging by offset needs a total order, and names and populations repeat
         val sort = Sort.by(Sort.Order.asc("name"), Sort.Order.desc("population"), Sort.Order.asc("id"))
         return dao.findAll(spec, OffsetLimitPageRequest(request.offset, request.limit, sort)).content
+    }
+
+    /**
+     * Returns the locations within [SearchNearestLocationRequest.radius] km of any of the locations
+     * [SearchNearestLocationRequest.ids], in the same country, nearest first, with their distance in km to the nearest
+     * of them. The locations searched around, and locations without coordinates, are excluded.
+     */
+    fun searchNearest(request: SearchNearestLocationRequest): List<Pair<LocationEntity, Double>> {
+        val radius = request.radius.coerceAtMost(MAX_RADIUS_KM)
+        val origins = if (request.ids.isEmpty() || radius <= 0) {
+            emptyList()
+        } else {
+            dao.findAllById(request.ids).filter { it.latitude != null && it.longitude != null }
+        }
+        if (origins.isEmpty()) {
+            return emptyList()
+        }
+
+        val types = request.type?.let { listOf(it) } ?: origins.map { it.type }.distinct()
+        val query = em.createNativeQuery(SQL_NEAREST)
+            .setParameter("originIds", origins.map { it.id })
+            .setParameter("excludedIds", request.ids)
+            .setParameter("types", types.map { it.ordinal })
+            .setParameter("radius", radius * 1000)
+            .setFirstResult(request.offset.coerceAtLeast(0))
+            .setMaxResults(OffsetLimitPageRequest.limit(request.limit))
+
+        val distances = query.resultList
+            .map { row -> row as Array<*> }
+            .associate { row -> (row[0] as Number).toLong() to (row[1] as Number).toDouble() / 1000 }
+        val locations = dao.findAllById(distances.keys).associateBy { it.id }
+        return distances.mapNotNull { (locationId, distance) ->
+            locations[locationId]?.let { it to distance }
+        }
     }
 
     fun toAscii(str: String): String {

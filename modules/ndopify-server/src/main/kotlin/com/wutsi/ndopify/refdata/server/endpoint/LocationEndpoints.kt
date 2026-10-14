@@ -3,8 +3,11 @@ package com.wutsi.ndopify.refdata.server.endpoint
 import com.wutsi.ndopify.common.dto.ImportResponse
 import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import com.wutsi.ndopify.refdata.dto.GetLocationResponse
+import com.wutsi.ndopify.refdata.dto.NearestLocation
 import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
 import com.wutsi.ndopify.refdata.dto.SearchLocationResponse
+import com.wutsi.ndopify.refdata.dto.SearchNearestLocationRequest
+import com.wutsi.ndopify.refdata.dto.SearchNearestLocationResponse
 import com.wutsi.ndopify.refdata.server.io.GeonamesImporter
 import com.wutsi.ndopify.refdata.server.io.NeighbourhoodImporter
 import com.wutsi.ndopify.refdata.server.mapper.LocationMapper
@@ -53,6 +56,18 @@ class LocationEndpoints(
         val locations = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
         return SearchLocationResponse(
             locations = locations.map { location -> mapper.toLocation(location) }
+        )
+    }
+
+    @GetMapping("/nearest")
+    fun nearest(
+        @ModelAttribute request: SearchNearestLocationRequest,
+    ): SearchNearestLocationResponse {
+        val locations = service.searchNearest(request)
+        return SearchNearestLocationResponse(
+            locations = locations.map { (location, distance) ->
+                NearestLocation(location = mapper.toLocation(location), distance = distance)
+            }
         )
     }
 }

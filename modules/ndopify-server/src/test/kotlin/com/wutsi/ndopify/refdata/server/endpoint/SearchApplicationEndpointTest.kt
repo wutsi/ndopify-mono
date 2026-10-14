@@ -35,6 +35,6 @@ class SearchApplicationEndpointTest : BaseEndpointIntegrationTest() {
         assertEquals(3L, applications[2].id)
         assertEquals(ApplicationCode.PARTNER_CENTRAL, applications[2].code)
         assertEquals(0, applications[2].roles.size)
-        assertEquals(listOf(AuthType.PASSWORD), applications[2].supportedAuthTypes)
+        assertEquals(listOf(AuthType.OTP), applications[2].supportedAuthTypes)
     }
 }
