@@ -223,9 +223,13 @@ class FindPropertyController(
                 if (FindPropertyRules.needsFurniture(type)) FindPropertyRules.furnitureType(answers.furnitureType) else null,
             "parkings" to FindPropertyRules.parkings(answers.parkings),
             // Something typed that isn't a usable number is an error too, not a silent "no area".
-            "area" to if (areaText.isNotEmpty() && area == null) FindPropertyRules.area(0) else FindPropertyRules.area(
+            "area" to if (areaText.isNotEmpty() && area == null) {
+                FindPropertyRules.area(0)
+            } else {
+                FindPropertyRules.area(
                 area
-            ),
+            )
+            },
         )
         return save(STEP_PROPERTY, answers, errors, returnTo, session, model)
     }
