@@ -8,6 +8,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import org.hibernate.annotations.TenantId
 import java.util.Date
 
@@ -33,4 +34,9 @@ data class AssignmentEntity(
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
     val expiresAt: Date = Date(),
+
+    // Optimistic locking: of 2 concurrent transitions of the same offer (double-click accept/decline, accept vs
+    // expire), the 2nd write fails instead of silently overwriting the 1st
+    @Version
+    val version: Long? = null,
 )

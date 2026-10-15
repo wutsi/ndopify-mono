@@ -169,6 +169,12 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `MandateService.create` finds or creates the customer from the request's contact fields and starts the mandate
   as `PENDING_ASSIGNMENT`. It only checks that the contact fields aren't empty (`@NotEmpty`): categories, cities,
   neighbourhoods, prices and enums aren't validated server-side yet. Tenant-scoped.
+  Offers of a mandate to agents are `AssignmentEntity` (`T_ASSIGNMENT`, `@Version`-ed; `/v1/assignments`: search
+  (newest first), get, `POST /{id}/accept`, `POST /{id}/decline`), see `docs/superpowers/plans/2026-10-14-mandate-dispatch.md`.
+  Accept/decline are only for the assigned agent (JWT user → membership → party = agent's party: 401 / 403
+  `ASSIGNMENT_ACCESS_DENIED`), then 409 `ASSIGNMENT_NOT_PENDING` if not PENDING or past `expiresAt`. Accept sets the
+  mandate's agent and `ASSIGNED`; decline publishes `AssignmentClosedEvent` (no listener yet). The dispatch itself
+  (`MandateDispatcher`) is still a skeleton.
 - **error** — shared exception types (`WutsiException` subclasses: `BadRequestException`, `NotFoundException`,
   `ConflictException`, `ForbiddenException`, `UnauthorizedException`, `InternalErrorException`) and a global
   `ControllerErrorHandler`.
@@ -262,7 +268,7 @@ Tenancy is enforced via **Hibernate's built-in multi-tenancy mechanism**, not ha
 - Any JPA entity annotated `org.hibernate.annotations.@TenantId` is automatically filtered by Hibernate for every
   query against it — no `CriteriaBuilder` predicate, repository override, or service-level check needed. Today
   that's `PartyEntity`, `PaymentMethodEntity`, `IdentificationEntity`, `IdentificationImageEntity`, `KycCaseEntity`,
-  `AgentEntity`, `CustomerEntity`, `MandateEntity` and `MembershipEntity`. Leave the field `null` on construction (see the comment on any of them) so Hibernate's
+  `AgentEntity`, `CustomerEntity`, `MandateEntity`, `AssignmentEntity` and `MembershipEntity`. Leave the field `null` on construction (see the comment on any of them) so Hibernate's
   `TenantIdGeneration` populates it from `TenantContext` on insert — setting a non-null value yourself makes
   Hibernate treat it as caller-assigned and throw if it doesn't match the resolved tenant.
 - `KycVerificationEntity` is deliberately **not** `@TenantId`-annotated: it's never loaded by its own id anywhere in
