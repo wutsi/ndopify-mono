@@ -15,4 +15,5 @@ data class Agent(
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
     val lastAssignedAt: Date? = null,
+    val joinedAt: Date? = null,
 )
