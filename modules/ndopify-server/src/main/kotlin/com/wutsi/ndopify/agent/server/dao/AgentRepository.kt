@@ -9,4 +9,6 @@ import org.springframework.stereotype.Repository
 @Repository
 interface AgentRepository : CrudRepository<AgentEntity, Long>, JpaSpecificationExecutor<AgentEntity> {
     fun findByParty(party: PartyEntity): AgentEntity?
+
+    fun findByPartyId(partyId: Long): AgentEntity?
 }

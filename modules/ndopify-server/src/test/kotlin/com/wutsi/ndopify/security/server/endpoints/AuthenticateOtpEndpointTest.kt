@@ -29,10 +29,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/security/AuthenticateOtpEndpoint.sql"])
-@Sql(
-    value = ["/db/test/security/AuthenticateOtpEndpointCleanup.sql"],
-    executionPhase = Sql.ExecutionPhase.AFTER_TEST_METHOD
-)
 class AuthenticateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
     companion object {
         const val CODE = "123456"

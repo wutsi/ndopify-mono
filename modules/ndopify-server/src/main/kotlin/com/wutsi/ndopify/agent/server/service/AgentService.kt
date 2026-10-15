@@ -181,6 +181,19 @@ class AgentService(
         }
     }
 
+    /**
+     * The agent joins the platform on its first verified KYC. Called by `AgentKycEventListener`, inside the KYC
+     * transaction. Parties that aren't agents (ex: customers) have nothing to update.
+     */
+    @Transactional
+    fun onKycVerified(partyId: Long) {
+        val agent = dao.findByPartyId(partyId) ?: return
+        if (agent.joinedAt == null) {
+            val now = Date(clock.millis())
+            dao.save(agent.copy(joinedAt = now, modifiedAt = now))
+        }
+    }
+
     private fun ensureAgentNotAlreadyExists(party: PartyEntity) {
         val agent = dao.findByParty(party)
         if (agent != null) {
