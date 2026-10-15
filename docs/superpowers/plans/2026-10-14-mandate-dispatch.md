@@ -4,17 +4,24 @@
 
 `MandateService.create` starts a mandate as `PENDING_ASSIGNMENT`, but nothing assigns it to an agent yet.
 
-Already on `main`:
+Already on `main` (not repeated below):
 
-- `T_ASSIGNMENT` (`V6_1`, incl. `expires_at`), `AssignmentEntity` (with a `score` and a non-null `expiresAt`),
-  `AssignmentStatus` (`PENDING`, `ACCEPTED`, `DECLINED`, `EXPIRED`), the assignment DTOs (`Assignment`,
-  `AssignmentSummary`, `Get/SearchAssignment*`), `db/test/clean.sql` deleting `T_ASSIGNMENT`.
-- `AgentEntity.lastAssignedAt` / `Agent.lastAssignedAt`, `SearchAgentRequest.kycStatus`, and a `MandateDispatcher`
-  skeleton that already finds the candidates.
-- `AgentEntity.joinedAt` / `Agent.joinedAt`: set once, on the agent's first VERIFIED KYC case, by
-  `AgentKycEventListener` (`KycCaseCompletedEvent` now carries `partyId` + `status`). Not used by the dispatch.
-- `TenantEntity.timeZone` / `Tenant.timeZone` (IANA id; `T_TENANT.time_zone` in `V1_2`, default `Africa/Douala`):
-  the night hours below are computed in it.
+- `T_ASSIGNMENT` (`V6_1`: `expires_at`, `version`, the 3 indexes), `AssignmentEntity` (`score`, `expiresAt`,
+  `@Version`), `AssignmentStatus`, the assignment DTOs (incl. `AssignmentSummary.expiresAt`), `AssignmentMapper`.
+- `ErrorCode.ASSIGNMENT_NOT_FOUND` / `ASSIGNMENT_NOT_PENDING` / `ASSIGNMENT_ACCESS_DENIED`;
+  `ControllerErrorHandler` maps `ObjectOptimisticLockingFailureException` to 409 `ASSIGNMENT_NOT_PENDING`.
+- `AssignmentService` + `AssignmentEndpoints`: `GET /v1/assignments` (newest first), `GET /{id}`, `POST /{id}/accept`,
+  `POST /{id}/decline`, accept/decline restricted to the assigned agent (401 / 403, then 409 if not PENDING or past
+  its TTL). Decline publishes `AssignmentClosedEvent` — **no listener yet**. Tested by `Get/Search/Accept/Decline
+  AssignmentEndpointTest` and `AssignmentRepositoryTest` (concurrent transitions).
+- `AgentEntity.lastAssignedAt`, `AgentEntity.joinedAt`, `SearchAgentRequest.kycStatus`, `TenantEntity.timeZone`
+  (IANA id, default `Africa/Douala`: the night hours below are computed in it).
+- A `MandateDispatcher` skeleton that finds the candidates: KYC `VERIFIED` in the mandate's city, not the customer's
+  own party, not `DECLINED` / `EXPIRED` for this mandate.
+- `ndopify-dto` released as `0.0.38` with the above.
+
+What's left: the scoring + offer itself, expiry, night & manual assignment, the jobs, dispatch on creation and
+re-dispatch after a decline / expiry, the agent notification.
 
 ## Decision
 
@@ -33,9 +40,9 @@ and it needs an atomic claim. Revisit only if acceptance latency becomes a probl
 
 ### 1. Hard filters (candidates)
 
-- KYC `VERIFIED`, in the mandate's `cityId` *(done)* — always: no agent of another city is ever a candidate
-- Not the customer's own party *(done)*
-- Not `DECLINED` / `EXPIRED` for this mandate *(done)*
+- KYC `VERIFIED`, in the mandate's `cityId` — always: no agent of another city is ever a candidate
+- Not the customer's own party
+- Not `DECLINED` / `EXPIRED` for this mandate
 - Nothing is dispatched if the mandate already has a `PENDING` assignment (mandate row locked)
 - Not at capacity: mandates being worked on (`ASSIGNED`, `PENDING_APPROVAL`) < `max-load` — not `APPROVED` /
   `PUBLISHED`, which can last weeks
@@ -179,18 +186,8 @@ older than `manual-after-days` goes to `MANUAL_ASSIGNMENT` on the first job run 
 
 ## 2. Migration — amend `V6_1__mandate-assignment.sql`
 
-Committed, but no database is deployed yet, so it's amended rather than followed by a new migration (drop and
-recreate the local schema). `expires_at` is already there (`NOT NULL`, like `AssignmentEntity.expiresAt`); it adds:
-
-```sql
-    version                 BIGINT NOT NULL DEFAULT 0,
-    ...
-    INDEX IDX_ASSIGNMENT_mandate_status (mandate_id, status),
-    INDEX IDX_ASSIGNMENT_agent_status (agent_id, status),
-    INDEX IDX_ASSIGNMENT_status_expires (status, expires_at),
-```
-
-Next to the `last_assigned_at` it already adds to `T_AGENT`:
+No database is deployed yet, so it's amended rather than followed by a new migration (drop and recreate the local
+schema). Next to the `last_assigned_at` it already adds to `T_AGENT`:
 
 ```sql
 -- 1..5 stars; 3 = unrated (neutral in the dispatch score)
@@ -199,21 +196,7 @@ ALTER TABLE T_AGENT ADD COLUMN rating DOUBLE NOT NULL DEFAULT 3.0;
 
 Defaulted, so every existing agent and the test fixtures inserting into `T_AGENT` without it get 3.0.
 
-`AssignmentStatus` is persisted by ordinal (like `KycStatus`): only ever append new values.
-
-## 3. Entities — `AssignmentEntity`, `AgentEntity`
-
-`AssignmentEntity` (`expiresAt` already exists, non-null):
-
-```kotlin
-    // Optimistic locking: of 2 concurrent transitions of the same offer (double-click accept/decline, accept vs
-    // expire), the 2nd write fails instead of silently overwriting the 1st
-    @Version
-    val version: Long? = null,
-```
-
-`ControllerErrorHandler` maps Spring's `ObjectOptimisticLockingFailureException` to 409 `ASSIGNMENT_NOT_PENDING`
-(the offer changed under the caller: it's no longer the PENDING one it read).
+## 3. Entities — `AgentEntity`, `MandateStatus`
 
 `AgentEntity` (+ `Agent` DTO in `ndopify-dto`, + `AgentMapper`; **not** in `UpdateAgentRequest`):
 
@@ -250,21 +233,17 @@ interface AgentAssignmentCount {
     val total: Long
 }
 
-@Repository
-interface AssignmentRepository : CrudRepository<AssignmentEntity, Long>, JpaSpecificationExecutor<AssignmentEntity> {
-    fun findByMandateAndStatusIn(mandate: MandateEntity, status: List<AssignmentStatus>): List<AssignmentEntity>
+// AssignmentRepository (findByMandateAndStatusIn already exists)
+fun existsByMandateAndStatus(mandate: MandateEntity, status: AssignmentStatus): Boolean
 
-    fun existsByMandateAndStatus(mandate: MandateEntity, status: AssignmentStatus): Boolean
+fun findByStatusAndExpiresAtBefore(status: AssignmentStatus, date: Date, page: Pageable): List<AssignmentEntity>
 
-    fun findByStatusAndExpiresAtBefore(status: AssignmentStatus, date: Date, page: Pageable): List<AssignmentEntity>
-
-    // One query for all the candidates, instead of one per agent
-    @Query(
-        "SELECT a.agentId AS agentId, a.status AS status, COUNT(a) AS total FROM AssignmentEntity a " +
-            "WHERE a.agentId IN :agentIds GROUP BY a.agentId, a.status"
-    )
-    fun countByAgentIds(agentIds: Collection<Long>): List<AgentAssignmentCount>
-}
+// One query for all the candidates, instead of one per agent
+@Query(
+    "SELECT a.agentId AS agentId, a.status AS status, COUNT(a) AS total FROM AssignmentEntity a " +
+        "WHERE a.agentId IN :agentIds GROUP BY a.agentId, a.status"
+)
+fun countByAgentIds(agentIds: Collection<Long>): List<AgentAssignmentCount>
 ```
 
 ```kotlin
@@ -607,54 +586,11 @@ fun markAssigned(agent: AgentEntity, date: Date): AgentEntity =
     dao.save(agent.copy(lastAssignedAt = date, modifiedAt = date))
 ```
 
-## 6. `AssignmentService` — dispatch / expire / accept / decline
+## 6. `AssignmentService` — dispatch / expire
+
+Added to the existing service (+ `MandateService`, `MandateDispatcher` injected, and a `LOGGER`):
 
 ```kotlin
-@Service
-class AssignmentService(
-    private val dao: AssignmentRepository,
-    private val mandateDao: MandateRepository,
-    private val mandateService: MandateService,
-    private val dispatcher: MandateDispatcher,
-    private val agentService: AgentService,
-    private val userService: UserService,
-    private val membershipService: MembershipService,
-    private val accessTokenService: AccessTokenService,
-    private val eventPublisher: ApplicationEventPublisher,
-    private val clock: Clock,
-) {
-    companion object {
-        private val LOGGER = LoggerFactory.getLogger(AssignmentService::class.java)
-    }
-
-    fun findById(id: Long): AssignmentEntity =
-        dao.findById(id).orElseThrow { NotFoundException(Error(code = ErrorCode.ASSIGNMENT_NOT_FOUND)) }
-
-    /** Newest first: an agent's inbox shows its latest offers on top. */
-    fun search(request: SearchAssignmentRequest): List<AssignmentEntity> {
-        val spec = Specification<AssignmentEntity> { root, _, cb ->
-            val predicates = mutableListOf<Predicate>()
-
-            if (request.ids.isNotEmpty()) {
-                predicates.add(root.get<Long>("id").`in`(request.ids))
-            }
-            if (request.agentIds.isNotEmpty()) {
-                predicates.add(root.get<Long>("agentId").`in`(request.agentIds))
-            }
-            if (request.mandateIds.isNotEmpty()) {
-                predicates.add(root.get<MandateEntity>("mandate").get<Long>("id").`in`(request.mandateIds))
-            }
-            if (request.statuses.isNotEmpty()) {
-                predicates.add(root.get<Any>("status").`in`(request.statuses))
-            }
-
-            cb.and(*predicates.toTypedArray())
-        }
-
-        val sort = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))
-        return dao.findAll(spec, OffsetLimitPageRequest(request.offset, request.limit, sort)).content
-    }
-
     /** Dispatches one mandate now. Returns the PENDING assignment, or null if nothing was offered. */
     fun dispatch(mandateId: Long): AssignmentEntity? {
         mandateService.findById(mandateId) // 404 MANDATE_NOT_FOUND, rather than a silent null
@@ -662,22 +598,8 @@ class AssignmentService(
     }
 
     @Transactional
-    fun accept(id: Long): AssignmentEntity {
-        val assignment = findPendingForAssignee(id)
-        val now = Date(clock.millis())
-        mandateDao.save(
-            assignment.mandate.copy(
-                agentId = assignment.agentId,
-                status = MandateStatus.ASSIGNED,
-                modifiedAt = now,
-            )
-        )
-        return dao.save(assignment.copy(status = AssignmentStatus.ACCEPTED, modifiedAt = now))
-    }
-
-    @Transactional
     fun decline(id: Long): AssignmentEntity =
-        close(findPendingForAssignee(id), AssignmentStatus.DECLINED)
+        close(findPendingForAssignee(id), AssignmentStatus.DECLINED) // Refactored: the event moves into close()
 
     /** Expires a PENDING offer now, even before its TTL; its mandate is re-dispatched after commit. */
     @Transactional
@@ -734,74 +656,17 @@ class AssignmentService(
         return closed
     }
 
-    // 404 → 403 → 409: someone else's offer is refused before its status is revealed
-    private fun findPendingForAssignee(id: Long): AssignmentEntity {
-        val assignment = findById(id)
-        ensureAssignee(assignment)
-        return ensurePending(assignment)
-    }
-
-    /**
-     * Only the agent the mandate is offered to can answer the offer: the caller's user (JWT), through its membership
-     * of the current tenant, must have the agent's party. 401 without a token, 403 otherwise.
-     */
-    private fun ensureAssignee(assignment: AssignmentEntity) {
-        val principal = accessTokenService.getPrincipal() // 401 AUTH_UNAUTHORIZED without a token
-        val partyId = userService.findByIdOrNull(principal.getUserId())
-            ?.let { user -> membershipService.findByUserOrNull(user) } // Tenant-filtered (@TenantId)
-            ?.party?.id
-        val agent = agentService.findById(assignment.agentId)
-        if (partyId == null || agent.party.id != partyId) {
-            throw ForbiddenException(Error(code = ErrorCode.ASSIGNMENT_ACCESS_DENIED))
-        }
-    }
-
-    private fun ensurePending(assignment: AssignmentEntity, ignoreTtl: Boolean = false): AssignmentEntity {
-        // Accepted / declined late (after the TTL) counts as expired, even if the job didn't run yet
-        val late = !ignoreTtl && assignment.expiresAt.before(Date(clock.millis()))
-        if (assignment.status != AssignmentStatus.PENDING || late) {
-            throw ConflictException(Error(code = ErrorCode.ASSIGNMENT_NOT_PENDING))
-        }
-        return assignment
-    }
-}
+    // ensurePending gets an `ignoreTtl: Boolean = false` parameter, for expire()
 ```
 
 `dispatch` isn't `@Transactional` itself: `MandateDispatcher.dispatch` is, on another bean, so its proxy applies.
 
-## 6b. `AssignmentEndpoints` — `/v1/assignments`
+`dispatchPending` lives here rather than in `MandateDispatcher`: calling `dispatch` from the same bean would bypass
+its `@Transactional` proxy.
+
+## 6b. `AssignmentOpsEndpoints` — `/v1/assignments`
 
 ```kotlin
-@RestController
-@RequestMapping("/v1/assignments")
-class AssignmentEndpoints(
-    private val service: AssignmentService,
-    private val mapper: AssignmentMapper,
-) {
-    // Ex: an agent's pending offers: GET /v1/assignments?agent-id=12&status=PENDING
-    @GetMapping
-    fun search(@ModelAttribute request: SearchAssignmentRequest): SearchAssignmentResponse {
-        val assignments = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
-        return SearchAssignmentResponse(assignments = assignments.map { mapper.toAssignmentSummary(it) })
-    }
-
-    @GetMapping("/{id}")
-    fun get(@PathVariable id: Long): GetAssignmentResponse {
-        val assignment = service.findById(id)
-        return GetAssignmentResponse(assignment = mapper.toAssignment(assignment))
-    }
-
-    @PostMapping("/{id}/accept")
-    fun accept(@PathVariable id: Long) {
-        service.accept(id)
-    }
-
-    @PostMapping("/{id}/decline")
-    fun decline(@PathVariable id: Long) {
-        service.decline(id)
-    }
-}
-
 /**
  * Ops endpoints, off unless `ndopify.mandate.assignment.ops-endpoints.enabled`: they're unauthenticated, and every
  * expiry excludes that agent from the mandate forever — open in prod, a script could exhaust a city's agents in
@@ -829,47 +694,10 @@ class AssignmentOpsEndpoints(
 }
 ```
 
-| Endpoint                            | Errors                                                                                                                                                                 |
-|-------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `GET /v1/assignments`               | — (`id`, `agent-id`, `mandate-id`, `status`, `limit`, `offset`)                                                                                                        |
-| `GET /v1/assignments/{id}`          | 404 `ASSIGNMENT_NOT_FOUND`                                                                                                                                             |
-| `POST /v1/assignments/dispatch` *(ops)* | 404 `MANDATE_NOT_FOUND`                                                                                                                                                |
-| `POST /v1/assignments/{id}/expire` *(ops)* | 404 `ASSIGNMENT_NOT_FOUND`, 409 `ASSIGNMENT_NOT_PENDING`                                                                                                               |
-| `POST /v1/assignments/{id}/accept`  | 404 `ASSIGNMENT_NOT_FOUND`, 401 `AUTH_UNAUTHORIZED` (no token), 403 `ASSIGNMENT_ACCESS_DENIED` (not the assigned agent), 409 `ASSIGNMENT_NOT_PENDING` (incl. past TTL) |
-| `POST /v1/assignments/{id}/decline` | same as accept                                                                                                                                                         |
-
-`Assignment`, `AssignmentSummary`, `GetAssignmentResponse`, `SearchAssignmentRequest`, `SearchAssignmentResponse` are
-already drafted. One change: add `expiresAt` to `AssignmentSummary` — an agent's list of PENDING offers needs each
-one's deadline, without a `GET` per offer.
-
-`AssignmentMapper`:
-
-```kotlin
-@Service
-class AssignmentMapper {
-    fun toAssignment(entity: AssignmentEntity) = Assignment(
-        id = entity.id ?: -1,
-        mandateId = entity.mandate.id ?: -1,
-        agentId = entity.agentId,
-        status = entity.status,
-        score = entity.score,
-        createdAt = entity.createdAt,
-        modifiedAt = entity.modifiedAt,
-        expiresAt = entity.expiresAt,
-    )
-
-    fun toAssignmentSummary(entity: AssignmentEntity) = AssignmentSummary(
-        id = entity.id ?: -1,
-        mandateId = entity.mandate.id ?: -1,
-        agentId = entity.agentId,
-        status = entity.status,
-        score = entity.score,
-        createdAt = entity.createdAt,
-        modifiedAt = entity.modifiedAt,
-        expiresAt = entity.expiresAt,
-    )
-}
-```
+| Endpoint                                   | Errors                                                   |
+|--------------------------------------------|----------------------------------------------------------|
+| `POST /v1/assignments/dispatch` *(ops)*    | 404 `MANDATE_NOT_FOUND`                                  |
+| `POST /v1/assignments/{id}/expire` *(ops)* | 404 `ASSIGNMENT_NOT_FOUND`, 409 `ASSIGNMENT_NOT_PENDING` |
 
 New DTOs (`ndopify-dto`, `mandate.dto`):
 
@@ -883,22 +711,9 @@ data class DispatchMandateResponse(
 )
 ```
 
-**Accept / decline are restricted to the assigned agent** (`AssignmentService.ensureAssignee`): the JWT's user →
-its membership of the current tenant → its party, which must be the assignment's agent's party. Checked in the
-service (not the endpoint), after the 404 and before the 409, so a caller learns nothing about someone else's offer.
-
-Caveat: JWTs are still unsigned (`Algorithm.none()`, see CLAUDE.md), so a caller can forge another user's token.
-The check is the right authorization logic, but only becomes a real protection once tokens are signed — that's part
-of the authentication work, out of scope here. `dispatch`, `expire`, `get` and `search` stay open (`permitAll`) for
-now; `dispatch` / `expire` are off in prod (`AssignmentOpsEndpoints`, `ops-endpoints.enabled`) until admin roles
-exist.
-
 The `Clock` is the existing bean already injected in `PartyService` (`Date(clock.millis())`), so tests can mock
 `clock.millis()` to cross the TTL boundary, as `UpdateAgentEndpointTest` does. `MandateDispatcher` uses it
 too, so night / manual-assignment tests pin the time (`DispatchHours` takes the instant as a parameter).
-
-`dispatchPending` lives here rather than in `MandateDispatcher`: calling `dispatch` from the same bean would bypass
-its `@Transactional` proxy.
 
 ## 7. `MandateJobs` — mirrors `KycJobs`
 
@@ -944,9 +759,9 @@ class MandateJobs(
   `@Async @TransactionalEventListener(AFTER_COMMIT)` listener calls `dispatcher.dispatch(event.mandateId)` (setting
   `TenantContext` + `KVLogger` like the mail listeners), so a dispatch failure never rolls back the customer's mandate.
   Gated by `ndopify.mandate.assignment.enabled`.
-- `AssignmentClosedEvent(assignmentId, mandateId, tenantId)`, published by `AssignmentService.close` (decline,
-  expire); `AssignmentEventListener`, `@Async @TransactionalEventListener(AFTER_COMMIT, fallbackExecution = true)`,
-  calls `dispatcher.dispatch(event.mandateId)` (same `TenantContext` / `KVLogger` handling, failures logged).
+- `AssignmentEventListener` on the existing `AssignmentClosedEvent` (decline, expire):
+  `@Async @TransactionalEventListener(AFTER_COMMIT, fallbackExecution = true)`, calls
+  `dispatcher.dispatch(event.mandateId)` (same `TenantContext` / `KVLogger` handling, failures logged).
   `fallbackExecution = true` because `expireDue` isn't transactional: without it, Spring silently drops an event
   published outside a transaction. Gated by `enabled`.
 - `AssignmentCreatedEvent` + listener notifying the agent (e-mail for now, `AssignmentMailet`, MJML template).
@@ -966,10 +781,6 @@ class MandateJobs(
 
   Listeners must be `@TransactionalEventListener(AFTER_COMMIT)` (+ `@Async`), so nothing fires for a rolled-back
   dispatch. None in this plan: alerting (ops, customer) comes later and plugs into this event.
-- New error codes: `ASSIGNMENT_NOT_FOUND`, `ASSIGNMENT_NOT_PENDING`, `ASSIGNMENT_ACCESS_DENIED`.
-- New endpoints (`AssignmentEndpoints`, §6b): `GET /v1/assignments` (search, DTOs already drafted),
-  `GET /v1/assignments/{id}`, `POST /v1/assignments/dispatch`, `POST /v1/assignments/{id}/expire`,
-  `POST /v1/assignments/{id}/accept`, `POST /v1/assignments/{id}/decline`.
 
 ## 9. Tests & docs
 
@@ -992,17 +803,8 @@ class MandateJobs(
   exactly `manual-after-days` after creation → manual (boundary); with a PENDING offer → untouched even if overdue;
   `expiresAt`
   from `addDaytime`; the tenant's `timeZone` is the one passed to `DispatchHours`.
-- `AcceptAssignmentEndpointTest` / `DeclineAssignmentEndpointTest` (extend `AuthorizationAwareEndpointIntegrationTest`:
-  user `11`, tenant `1`; fixture: the assigned agent's party is user 11's membership party): happy path, unknown →
-  404, no token (`anonymousUser = true`) → 401, another agent's offer → 403 (and its status unchanged), user without
-  a membership / party in the tenant → 403, someone else's offer that's no longer PENDING → 403 (not 409), not
-  PENDING → 409, past TTL → 409, decline re-dispatches to the next agent (after commit: wait for the async
-  listener), a failing re-dispatch still declines (200), 2 concurrent accepts / accept + decline → one wins, the other
-  409 (`@Version`). Fixtures under `db/test/mandate/`.
-- `GetAssignmentEndpointTest`: every field mapped (incl. `mandateId`, `expiresAt`); unknown → 404; an assignment of
-  another tenant → 404 (`@TenantId`).
-- `SearchAssignmentEndpointTest`: by `id`, `agent-id`, `mandate-id`, `status` (several values), combined; newest
-  first; `limit` / `offset`; another tenant's assignments never returned.
+- `DeclineAssignmentEndpointTest` (existing): + decline re-dispatches to the next agent (after commit: wait for the
+  async listener), a failing re-dispatch still declines (200).
 - `AssignmentOpsEndpointsTest`: with `ops-endpoints.enabled=false`, `dispatch` / `expire` → 404 (no bean).
 - `ExpireAssignmentEndpointTest`: a PENDING offer before its TTL → EXPIRED + re-dispatched to the next agent; past
   its TTL → also expired (not 409); unknown → 404; not PENDING → 409.
@@ -1015,7 +817,7 @@ class MandateJobs(
 - `CreateMandateEndpointTest`: a mandate is dispatched after creation; with `enabled=false`, it isn't.
 - `SearchAgentEndpointTest` / `AgentService`: `SORT_LEAST_RECENTLY_ASSIGNED` puts never-offered agents first, then
   oldest `lastAssignedAt`.
-- Update `CLAUDE.md`: mandate dispatch, `T_ASSIGNMENT`, and fix "There are no `@Scheduled` jobs" (`KycJobs` and
+- Update `CLAUDE.md`: mandate dispatch, and fix "There are no `@Scheduled` jobs" (`KycJobs` and
   `MandateJobs` exist).
 
 ## Implementation steps
@@ -1026,14 +828,11 @@ Each step ends green (`mvn test -Dtest=…` on what it touches); tests are writt
 ### Step 1 — DTOs (`ndopify-dto`)
 
 - `SearchNearestLocationRequest.parentId` (`@BindParam("parent-id")`).
-- `ErrorCode.ASSIGNMENT_NOT_FOUND`, `ErrorCode.ASSIGNMENT_NOT_PENDING`, `ErrorCode.ASSIGNMENT_ACCESS_DENIED`.
-- `DispatchMandateRequest`, `DispatchMandateResponse` (§6b); `AssignmentSummary.expiresAt`.
+- `DispatchMandateRequest`, `DispatchMandateResponse` (§6b).
 - `MandateStatus.MANUAL_ASSIGNMENT`, appended last.
 - `Agent.rating` (read-only: not in `UpdateAgentRequest`).
-- Review the drafted assignment DTOs (`Assignment`, `AssignmentSummary`, `Get/SearchAssignment*`) against §8's
-  endpoints.
-- The root `pom.xml` pins the released `ndopify-dto.version` (`0.0.37`): point it at the DTO module's current
-  snapshot and `mvn install` the DTO module so the server builds against it.
+- Point the root `pom.xml`'s `ndopify-dto.version` (`0.0.38`) at the DTO module's current snapshot and
+  `mvn install` the DTO module so the server builds against it.
 
 **Verify:** `cd modules/ndopify-dto && mvn install`
 
@@ -1045,17 +844,13 @@ Each step ends green (`mvn test -Dtest=…` on what it touches); tests are writt
 
 **Verify:** `mvn test -Dtest=SearchNearestLocationEndpointTest`
 
-### Step 3 — Schema & entity
+### Step 3 — Agent rating
 
-- Amend `V6_1__mandate-assignment.sql`: `version` + the 3 indexes (§2). Drop and recreate the local schema, since
-  `V6_1` is already applied locally.
-- `AssignmentEntity.version` (`@Version`); `ControllerErrorHandler`:
-  `ObjectOptimisticLockingFailureException` → 409 `ASSIGNMENT_NOT_PENDING`.
-- `V6_1` also adds `T_AGENT.rating` (default 3.0); `AgentEntity.rating`, `Agent.rating`, `AgentMapper`;
-  `GetAgentEndpointTest` asserts it (3.0 for a fixture without it); `UpdateAgentEndpointTest` checks the rating is
-  left unchanged.
+- Amend `V6_1`: `T_AGENT.rating` (default 3.0); drop and recreate the local schema.
+- `AgentEntity.rating`, `Agent.rating`, `AgentMapper`; `GetAgentEndpointTest` asserts it (3.0 for a fixture without
+  it); `UpdateAgentEndpointTest` checks the rating is left unchanged.
 
-**Verify:** any existing endpoint test boots (Flyway migrates): `mvn test -Dtest=SearchAgentEndpointTest`
+**Verify:** `mvn test -Dtest='GetAgentEndpointTest,UpdateAgentEndpointTest'`
 
 ### Step 4 — Repositories & agent
 
@@ -1087,13 +882,13 @@ No tests of their own: they're exercised by steps 5–7.
 
 **Verify:** `mvn test -Dtest=MandateDispatcherTest`
 
-### Step 6 — Assignment endpoints (`AssignmentService` + `AssignmentEndpoints`)
+### Step 6 — Ops endpoints & re-dispatch (`AssignmentService` + `AssignmentOpsEndpoints`)
 
-- Test first: `DispatchMandateEndpointTest`, `ExpireAssignmentEndpointTest`, `AcceptAssignmentEndpointTest`,
-  `DeclineAssignmentEndpointTest`, `GetAssignmentEndpointTest`, `SearchAssignmentEndpointTest`, fixtures under
-  `db/test/mandate/`; TTL and night crossed with a mocked `Clock` (as in `UpdateAgentEndpointTest`).
-- `AssignmentService` (§6), `AssignmentMapper`, `AssignmentEndpoints` + `AssignmentOpsEndpoints` (§6b),
-  `AssignmentClosedEvent` + `AssignmentEventListener` (§8).
+- Test first: `DispatchMandateEndpointTest`, `ExpireAssignmentEndpointTest`, `AssignmentOpsEndpointsTest`, the new
+  `DeclineAssignmentEndpointTest` cases; fixtures under `db/test/mandate/`; TTL and night crossed with a mocked
+  `Clock` (as in `UpdateAgentEndpointTest`).
+- `AssignmentService.dispatch` / `expire` / `close` (§6), `AssignmentOpsEndpoints` (§6b), `AssignmentEventListener`
+  (§8).
 
 **Verify:** `mvn test -Dtest='*AssignmentEndpointTest,DispatchMandateEndpointTest,AssignmentOpsEndpointsTest'`
 
@@ -1126,16 +921,17 @@ No tests of their own: they're exercised by steps 5–7.
 
 ### Step 10 — Docs & gates
 
-- `CLAUDE.md`: mandate dispatch (algorithm, `T_ASSIGNMENT`, config), assignment endpoints, `@TenantId` list
-  (+ `AssignmentEntity`), and fix "There are no `@Scheduled` jobs" (`KycJobs`, `MandateJobs`).
+- `CLAUDE.md`: mandate dispatch (algorithm, config, jobs), the ops endpoints, and fix "There are no `@Scheduled`
+  jobs" (`KycJobs`, `MandateJobs`).
 - `mvn antrun:run@ktlint-format`, then the full module build with the coverage gate.
 
 **Verify:** `cd modules/ndopify-server && mvn verify`
 
 ### PR slices
 
-1. **PR 1** — Steps 1–2: `parentId` on nearest locations (independent, small).
-2. **PR 2** — Steps 3–8: dispatch (incl. night & manual assignment), accept/decline, jobs, dispatch on creation.
+1. **PR 1** — Steps 1–2: DTOs + `parentId` on nearest locations (small).
+2. **PR 2** — Steps 3–8: rating, dispatch (incl. night & manual assignment), expiry and re-dispatch, jobs, dispatch on
+   creation.
    Ships **dark**: `ndopify.mandate.assignment.enabled=false` in prod.
 3. **PR 3** — Steps 9–10: agent notification + docs.
 4. **Enable** (config only) once PR 3 is live and the notification channel is decided (WhatsApp, see Open
