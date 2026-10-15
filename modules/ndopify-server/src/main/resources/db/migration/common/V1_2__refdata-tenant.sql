@@ -12,6 +12,7 @@ CREATE TABLE T_TENANT(
   date_format             VARCHAR(20) NOT NULL DEFAULT 'yyyy-MM-dd',
   time_format             VARCHAR(20) NOT NULL DEFAULT 'HH:mm',
   date_time_format        VARCHAR(20) NOT NULL DEFAULT 'yyyy-MM-dd HH:mm',
+  time_zone               VARCHAR(64) NOT NULL DEFAULT 'Africa/Douala',
   active                  BOOLEAN NOT NULL DEFAULT true,
   logo_url                TEXT,
   icon_url                TEXT,

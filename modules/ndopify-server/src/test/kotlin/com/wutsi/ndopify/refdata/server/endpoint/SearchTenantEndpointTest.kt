@@ -18,6 +18,8 @@ class SearchTenantEndpointTest : BaseEndpointIntegrationTest() {
         val tenants = result.body!!.tenants
         assertEquals(5, tenants.size)
         assertEquals(listOf(1L, 2L, 3L, 4L, 5L), tenants.map { it.id })
+        assertEquals("America/Toronto", tenants[0].timeZone)
+        assertEquals("Africa/Douala", tenants[4].timeZone) // Default
     }
 
     @Test

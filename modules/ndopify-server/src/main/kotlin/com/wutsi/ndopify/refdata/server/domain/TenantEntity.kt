@@ -27,6 +27,7 @@ data class TenantEntity(
     val dateTimeFormat: String = "",
     val dateFormat: String = "",
     val timeFormat: String = "",
+    val timeZone: String = "", // IANA id, ex: Africa/Douala
     val iconUrl: String? = null,
     val logoUrl: String? = null,
     val active: Boolean = true,

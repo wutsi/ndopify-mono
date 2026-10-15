@@ -6,3 +6,6 @@ INSERT INTO T_TENANT(id, active, name, domain_name, locales, number_format, curr
         (4, false, 'C',    'test.fr',   'fr_FR',       '#,###,###.#0', 'EUR', '€',    '€ #,###,###.#0',   'yyyy-MM-dd', 'HH:mm',   'yyyy-MM-dd HH:mm', null, null, 'FR'),
         (5, true,  'D',    'test.cm',   'fr_CM',       '#,###,###',    'XAF', 'FCFA', '#,###,### FCFA',   'yyyy-MM-dd', 'HH:mm',   'yyyy-MM-dd HH:mm', null, null, 'CM')
 ;
+
+-- The others keep the default time zone (Africa/Douala)
+UPDATE T_TENANT SET time_zone = 'America/Toronto' WHERE id = 1;

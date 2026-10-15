@@ -18,6 +18,7 @@ class TenantMapper {
             createdAt = entity.createdAt,
             dateFormat = entity.dateFormat,
             timeFormat = entity.timeFormat,
+            timeZone = entity.timeZone,
             currencySymbol = entity.currencySymbol,
             dateTimeFormat = entity.dateTimeFormat,
             monetaryFormat = entity.monetaryFormat,
