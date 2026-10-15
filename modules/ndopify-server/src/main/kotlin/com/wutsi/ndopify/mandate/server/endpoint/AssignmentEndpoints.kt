@@ -1,15 +1,19 @@
 package com.wutsi.ndopify.mandate.server.endpoint
 
+import com.wutsi.ndopify.mandate.dto.DispatchMandateRequest
+import com.wutsi.ndopify.mandate.dto.DispatchMandateResponse
 import com.wutsi.ndopify.mandate.dto.GetAssignmentResponse
 import com.wutsi.ndopify.mandate.dto.SearchAssignmentRequest
 import com.wutsi.ndopify.mandate.dto.SearchAssignmentResponse
 import com.wutsi.ndopify.mandate.server.mapper.AssignmentMapper
 import com.wutsi.ndopify.mandate.server.service.AssignmentService
+import com.wutsi.ndopify.platform.endpoint.OpsEndpoint
 import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
@@ -42,5 +46,21 @@ class AssignmentEndpoints(
     @PostMapping("/{id}/decline")
     fun decline(@PathVariable id: Long) {
         service.decline(id)
+    }
+
+    // Offers the mandate now. The same rules apply: nothing offered at night, MANUAL_ASSIGNMENT if overdue, nothing if
+    // it already has a PENDING offer
+    @OpsEndpoint
+    @PostMapping("/dispatch")
+    fun dispatch(@RequestBody request: DispatchMandateRequest): DispatchMandateResponse {
+        val assignment = service.dispatch(request.mandateId)
+        return DispatchMandateResponse(assignmentId = assignment?.id)
+    }
+
+    // Expires the offer now, even before its TTL; the mandate goes to the next agent after commit
+    @OpsEndpoint
+    @PostMapping("/{id}/expire")
+    fun expire(@PathVariable id: Long) {
+        service.expire(id)
     }
 }

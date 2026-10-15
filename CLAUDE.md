@@ -162,8 +162,8 @@ Current domains:
   `DRIVER_LICENSE`, `RESIDENT_CARD`; SELFIE optional server-side, Partner Central requires it; images frozen) →
   `POST .../verify` → `IN_PROGRESS` → `VERIFIED` / `REJECTED`, which publishes a `KycCaseCompletedEvent`: the
 status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint or `KycJobs` verified the case. `GET /v1/kyc/cases` returns the newest case first.
-  Verification is meant to run offline (a future cron job), never from a UI. `KycStatus` is persisted by ordinal:
-  inserting or reordering values needs a migration that renumbers existing rows (as
+  Verification runs offline (`KycJobs`), never from a UI: `POST .../verify` is an `@OpsEndpoint`, off in prod.
+  `KycStatus` is persisted by ordinal: inserting or reordering values needs a migration that renumbers existing rows (as
   `V4_1__party-kyc-status-submitted.sql` does). Tenant-scoped (see Multi-Tenancy below).
 - **agent** — mobile-money agents (`AgentEntity`; `/v1/agents`: get, search, create, update). `WelcomeMailet` sends
   a welcome e-mail on registration when the tenant has a `partnerCentralUrl`, asynchronously (see *Asynchronous
@@ -195,9 +195,11 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   offers past `expiresAt` → EXPIRED, re-dispatched) and `dispatch` (mandates waiting without a PENDING offer: came at
   night, had no candidate, or their re-dispatch failed). Each offer publishes `AssignmentCreatedEvent`:
   `MandateOfferMailet` e-mails the agent the mandate and its deadline (`mail/mandate/offer.mjml`). The dispatch always
-  runs: there's no switch to turn it off. The ops endpoints of the plan (`POST /v1/assignments/dispatch`,
-  `/{id}/expire`) aren't implemented. Config: `ndopify.mandate.assignment.*`. `MandateDispatcherTest` covers every
-  case of the algorithm — keep it that way when changing it; `MandateDispatchFlowTest` covers the wiring end to end.
+  runs: there's no switch to turn it off. Two ops endpoints (`@OpsEndpoint`, see `platform/endpoint`): `POST
+  /v1/assignments/dispatch` (offers a mandate now, same rules) and `POST /{id}/expire` (expires an offer now). Config:
+  `ndopify.mandate.assignment.*`. `MandateDispatcherTest` covers every case of the algorithm — keep it that way when
+  changing it. The wiring is covered by the endpoint tests (`CreateMandateEndpointTest`, `Decline` / `Dispatch` /
+  `ExpireAssignmentEndpointTest`) and the listener / job unit tests.
 - **error** — shared exception types (`WutsiException` subclasses: `BadRequestException`, `NotFoundException`,
   `ConflictException`, `ForbiddenException`, `UnauthorizedException`, `InternalErrorException`) and a global
   `ControllerErrorHandler`.
@@ -225,6 +227,11 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
   `src/main/resources/mail/`.
 - `platform/logger` — key-value request logging (`KVLogger`, `KVLoggerFilter`).
 - `platform/tenant` — tenant resolution (see Multi-Tenancy below).
+- `platform/endpoint` — `@OpsEndpoint`: marks an operational endpoint method (ex: dispatching a mandate by hand).
+  `OpsEndpointHandlerMapping` (wired by `EndpointConfiguration`) doesn't map them unless `ndopify.endpoints.ops` is
+  `true` (default config; `false` in `application-prod.yml`, and when missing): the route doesn't exist, and
+  `ControllerErrorHandler` answers 404 `HTTP_NOT_FOUND` for an unknown path (`NoResourceFoundException`). They're
+  unauthenticated, like the rest of the API for now: mark any endpoint that mustn't be open in prod with it.
 
 ### `ndopify-partner-central`
 
@@ -335,12 +342,13 @@ Base classes (`src/test/kotlin/com/wutsi/ndopify/`):
 Mock Spring beans in `@SpringBootTest` tests with `@MockitoBean`
 (`org.springframework.test.context.bean.override.mockito.MockitoBean`), not the removed `@MockBean`.
 
-To pin the time, mock the `Clock` bean (only `clock.millis()` is used). With `AuthorizationAwareEndpointIntegrationTest`
-the JWT's expiry then comes from the mock while its check uses the real time: mint the token with the real time
-(override `createAccessToken`, as `MandateDispatchFlowTest` does). Every test instance registers itself as an
-interceptor on the shared `TestRestTemplate`, so the interceptors of earlier instances run too: state they read must
-be shared (companion), not per instance. In the `qa` profile the `MandateJobs` crons are off (`-`): tests call the
-jobs directly.
+The mandate dispatch in the `qa` profile has no night (`night.start == night.end`) and no cron (`-`), so its
+endpoint tests don't depend on when they run: their fixtures date mandates `NOW()` and offer deadlines in 2099 / 2020.
+The night is unit tested (`DispatchHoursTest`, `MandateDispatcherTest`), and so are the jobs (`MandateJobsTest`, with
+the batch methods in `AssignmentServiceTest`). If a test has to mock the `Clock` bean (only `clock.millis()` is
+used), mind that the JWT of `AuthorizationAwareEndpointIntegrationTest` then gets its expiry from the mock while it's
+checked against the real time; and that every test instance registers itself as an interceptor on the shared
+`TestRestTemplate`, so the interceptors of earlier instances still run.
 
 SQL test fixtures live under `modules/ndopify-server/src/test/resources/db/test/<domain>/`, named after the test
 class per convention (`FooEndpointTest.kt` → `FooEndpoint.sql`). `ResetDBTest`/Flyway config in

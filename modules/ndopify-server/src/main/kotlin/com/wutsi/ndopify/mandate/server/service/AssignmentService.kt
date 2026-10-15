@@ -48,6 +48,7 @@ class AssignmentService(
     private val mailet: MandateAssignedMailet,
     private val offerMailet: MandateOfferMailet,
     private val dispatcher: MandateDispatcher,
+    private val mandateService: MandateService,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(AssignmentService::class.java)
@@ -126,6 +127,20 @@ class AssignmentService(
     @Transactional
     fun decline(id: Long): AssignmentEntity =
         close(findPendingForAssignee(id), AssignmentStatus.DECLINED)
+
+    /**
+     * Dispatches one mandate now. Returns the PENDING assignment, or null if nothing was offered. Not @Transactional:
+     * [MandateDispatcher.dispatch] is, on another bean, so its proxy applies.
+     */
+    fun dispatch(mandateId: Long): AssignmentEntity? {
+        mandateService.findById(mandateId) // 404 MANDATE_NOT_FOUND, rather than a silent null
+        return dispatcher.dispatch(mandateId)
+    }
+
+    /** Expires a PENDING offer now, even before its TTL; its mandate is re-dispatched after commit. */
+    @Transactional
+    fun expire(id: Long): AssignmentEntity =
+        close(ensurePending(findById(id), ignoreTtl = true), AssignmentStatus.EXPIRED)
 
     /**
      * Expires the PENDING offers past their TTL; their mandates are re-dispatched after commit. Not @Transactional:
@@ -219,9 +234,9 @@ class AssignmentService(
         }
     }
 
-    private fun ensurePending(assignment: AssignmentEntity): AssignmentEntity {
+    private fun ensurePending(assignment: AssignmentEntity, ignoreTtl: Boolean = false): AssignmentEntity {
         // Accepted / declined late (after the TTL) counts as expired, even if the expiry job didn't run yet
-        val late = assignment.expiresAt.before(Date(clock.millis()))
+        val late = !ignoreTtl && assignment.expiresAt.before(Date(clock.millis()))
         if (assignment.status != AssignmentStatus.PENDING || late) {
             throw ConflictException(error = Error(code = ErrorCode.ASSIGNMENT_NOT_PENDING))
         }

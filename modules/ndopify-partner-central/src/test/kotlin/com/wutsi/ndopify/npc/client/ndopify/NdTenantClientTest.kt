@@ -75,6 +75,7 @@ class NdTenantClientTest {
             "dateFormat": "dd/MM/yyyy",
             "timeFormat": "HH:mm",
             "active": $active,
+            "timeZone": "Africa/Douala",
             "createdAt": "2026-01-01T00:00:00.000+00:00"
         }
     """.trimIndent()

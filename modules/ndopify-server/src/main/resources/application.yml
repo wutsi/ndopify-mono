@@ -181,6 +181,9 @@ logging:
         file: "%d Type=%level Logger=%c Thread=%thread %m%n"
 
 ndopify:
+    endpoints:
+        ops: true                          # @OpsEndpoint endpoints (unauthenticated): off in prod
+
     mandate:
         assignment:
             jitter: 0.01                   # Random tie-break; 0 in tests, so scores are deterministic

@@ -10,6 +10,7 @@ import com.wutsi.ndopify.party.dto.SearchKycCaseRequest
 import com.wutsi.ndopify.party.dto.SearchKycCaseResponse
 import com.wutsi.ndopify.party.server.mapper.KycCaseMapper
 import com.wutsi.ndopify.party.server.service.KycService
+import com.wutsi.ndopify.platform.endpoint.OpsEndpoint
 import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.GetMapping
@@ -53,6 +54,8 @@ class KycEndpoints(
         service.submit(id)
     }
 
+    // Cases are verified offline, by KycJobs: by hand only outside prod
+    @OpsEndpoint
     @PostMapping("/{id}/verify")
     fun verify(@PathVariable id: String) {
         service.verify(id)
