@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.security.server.service
+package com.wutsi.ndopify.security.server.mail
 
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
@@ -7,7 +7,8 @@ import com.wutsi.ndopify.platform.mail.Receipient
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.security.server.domain.AuthFactorEntity
-import com.wutsi.ndopify.security.server.service.OtpService.Companion.SUBJECT
+import com.wutsi.ndopify.security.server.service.MembershipService
+import com.wutsi.ndopify.security.server.service.OtpService
 import org.springframework.stereotype.Service
 
 @Service
@@ -29,9 +30,9 @@ class OtpMailet(
         mailService.send(
             Email(
                 recipient = Receipient(email = user.email, displayName = fullName),
-                subject = SUBJECT.replace("{{tenant_name}}", tenant.name),
+                subject = OtpService.Companion.SUBJECT.replace("{{tenant_name}}", tenant.name),
                 body = mailBodyResolver.resolve(
-                    path = "/mail/auth/otp.mjml",
+                    path = "/mail/security/otp.mjml",
                     context = mapOf(
                         "tenant_logo_url" to tenant.logoUrl,
                         "tenant_name" to tenant.name,

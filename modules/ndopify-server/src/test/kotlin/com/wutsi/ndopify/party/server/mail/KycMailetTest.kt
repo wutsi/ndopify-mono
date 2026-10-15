@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.party.server.service
+package com.wutsi.ndopify.party.server.mail
 
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.argumentCaptor

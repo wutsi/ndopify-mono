@@ -1,0 +1,87 @@
+package com.wutsi.ndopify.mandate.server.mail
+
+import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.argumentCaptor
+import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.eq
+import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.verify
+import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.agent.server.domain.AgentEntity
+import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.party.server.domain.PartyEntity
+import com.wutsi.ndopify.platform.mail.Email
+import com.wutsi.ndopify.platform.mail.MailBodyResolver
+import com.wutsi.ndopify.platform.mail.MailService
+import com.wutsi.ndopify.refdata.server.domain.TenantEntity
+import com.wutsi.ndopify.refdata.server.service.TenantService
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
+
+class MandateAssignedMailetTest {
+    private val tenantService = mock<TenantService>()
+    private val mailService = mock<MailService>()
+    private val mailBodyResolver = mock<MailBodyResolver>()
+    private val mailet = MandateAssignedMailet(tenantService, mailService, mailBodyResolver)
+
+    private val tenant = TenantEntity(
+        id = 1L,
+        name = "Ndopify",
+        logoUrl = "https://cdn.ndopify.com/logo.png",
+    )
+    private val mandate = MandateEntity(id = 1L, tenantId = 1L, customerId = 10L, agentId = 20L)
+    private val customer = CustomerEntity(
+        id = 10L,
+        party = PartyEntity(id = 100L, firstName = "Ray", lastName = "Sponsible", email = "ray.sponsible@gmail.com"),
+    )
+    private val agent = AgentEntity(
+        id = 20L,
+        party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible", email = "kim.possible@gmail.com"),
+        whatsappNumber = "+237670000020",
+        biography = "Agent immobilier à Yaoundé",
+    )
+
+    @BeforeTest
+    fun setUp() {
+        doReturn(tenant).whenever(tenantService).findById(1L)
+        doReturn("<html>assigned</html>").whenever(mailBodyResolver).resolve(any(), any())
+    }
+
+    @Test
+    fun `send assigned email to the customer`() {
+        mailet.send(mandate, customer, agent)
+
+        val context = argumentCaptor<Map<String, Any?>>()
+        verify(mailBodyResolver).resolve(eq("/mail/mandate/assigned.mjml"), context.capture())
+        assertEquals(
+            mapOf(
+                "tenant_logo_url" to "https://cdn.ndopify.com/logo.png",
+                "tenant_name" to "Ndopify",
+                "recipient_name" to "Ray Sponsible",
+                "agent_full_name" to "Kim Possible",
+                "agent_phone" to "+237670000020",
+                "agent_presentation" to "Agent immobilier à Yaoundé",
+            ),
+            context.firstValue,
+        )
+
+        val email = argumentCaptor<Email>()
+        verify(mailService).send(email.capture())
+        assertEquals("ray.sponsible@gmail.com", email.firstValue.recipient.email)
+        assertEquals("Ray Sponsible", email.firstValue.recipient.displayName)
+        assertEquals("Ndopify: Un agent a été assigné à votre mandat", email.firstValue.subject)
+        assertEquals("<html>assigned</html>", email.firstValue.body)
+    }
+
+    @Test
+    fun `blank biography is not presented`() {
+        mailet.send(mandate, customer, agent.copy(biography = "  "))
+
+        val context = argumentCaptor<Map<String, Any?>>()
+        verify(mailBodyResolver).resolve(any(), context.capture())
+        assertNull(context.firstValue["agent_presentation"])
+    }
+}

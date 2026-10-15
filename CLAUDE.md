@@ -120,8 +120,14 @@ Code is organized by domain under `com.wutsi.ndopify.<domain>.server`, each foll
     domain/     - JPA entities (*Entity.kt)
     mapper/     - Entity ↔ DTO mapping (*Mapper.kt)
     io/         - import/export (refdata only, e.g. GeonamesImporter, NeighbourhoodImporter)
-    event/      - application events + their listeners (agent, party, security so far)
+    event/      - application events + their listeners (agent, party, security, mandate so far)
+    mail/       - the domain's e-mails (*Mailet.kt: recipient, subject, template context), e.g. WelcomeMailet
 ```
+
+All of a domain's mail-related classes go in its `mail/` package, never in `service/`: a mailet builds the `Email`
+and hands it to `platform/mail`'s `MailService`; its MJML template lives under `src/main/resources/mail/<domain>/`
+(e.g. `mail/agent/welcome.mjml`). The service method that triggers it (see *Asynchronous e-mails*) stays in
+`service/`. Mailet unit tests mirror the package (`<domain>/server/mail/*MailetTest.kt`).
 
 There are no `@Scheduled` jobs in the codebase today.
 
@@ -173,19 +179,21 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   (newest first), get, `POST /{id}/accept`, `POST /{id}/decline`), see `docs/superpowers/plans/2026-10-14-mandate-dispatch.md`.
   Accept/decline are only for the assigned agent (JWT user → membership → party = agent's party: 401 / 403
   `ASSIGNMENT_ACCESS_DENIED`), then 409 `ASSIGNMENT_NOT_PENDING` if not PENDING or past `expiresAt`. Accept sets the
-  mandate's agent and `ASSIGNED`; decline publishes `AssignmentClosedEvent` (no listener yet). The dispatch itself
-  (`MandateDispatcher`) is still a skeleton.
+  mandate's agent and `ASSIGNED`, and publishes `AssignmentAcceptedEvent`: `MandateAssignedMailet` e-mails the
+  customer its agent's name, WhatsApp number and biography (`mail/mandate/assigned.mjml`); decline publishes
+  `AssignmentClosedEvent` (no listener yet). The dispatch itself (`MandateDispatcher`) is still a skeleton.
 - **error** — shared exception types (`WutsiException` subclasses: `BadRequestException`, `NotFoundException`,
   `ConflictException`, `ForbiddenException`, `UnauthorizedException`, `InternalErrorException`) and a global
   `ControllerErrorHandler`.
 
-**Asynchronous e-mails** (welcome, OTP, KYC status): the service publishes an event from its transaction
-(`AgentCreatedEvent`, `OtpCreatedEvent`, `KycCaseCompletedEvent` in `<domain>/server/event/`), carrying ids plus the `tenantId` — never entities. Its listener is
+**Asynchronous e-mails** (welcome, OTP, KYC status, mandate assigned): the service publishes an event from its transaction
+(`AgentCreatedEvent`, `OtpCreatedEvent`, `KycCaseCompletedEvent`, `AssignmentAcceptedEvent` in
+`<domain>/server/event/`), carrying ids plus the `tenantId` — never entities. Its listener is
 `@Async @TransactionalEventListener(AFTER_COMMIT)`, so nothing is sent for a rolled-back transaction. The executor
 thread has no request, so the listener sets `TenantContext` and a `DefaultKVLogger` in `KVLoggerThreadLocal`
 (which the injected `KVLogger` falls back to), calls `logger.log()` in `finally` to flush it, and removes both
 (threads are reused). The work runs in a `@Transactional` service method (`AgentService.sendWelcomeEmail`,
-`OtpService.sendEmail`, `KycService.sendStatusEmail`), entered *after* `TenantContext` is set since Hibernate resolves the tenant when the session
+`OtpService.sendEmail`, `KycService.sendStatusEmail`, `AssignmentService.sendAssignedEmail`), entered *after* `TenantContext` is set since Hibernate resolves the tenant when the session
 opens. Failures are logged, never rethrown. Tests must wait for the mail (`smtp.waitForIncomingEmail`);
 `BaseEndpointIntegrationTest.tearDown` waits for the running async tasks, so a test's mail can't reach the next one.
 

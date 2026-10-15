@@ -11,6 +11,8 @@ import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/AcceptAssignmentEndpoint.sql"])
 class AcceptAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
@@ -26,6 +28,19 @@ class AcceptAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest()
         val mandate = rest.getForEntity("/v1/mandates/1", GetMandateResponse::class.java).body!!.mandate
         assertEquals(20L, mandate.agentId)
         assertEquals(MandateStatus.ASSIGNED, mandate.status)
+
+        // The customer is told who its agent is, asynchronously
+        assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received")
+        val messages = smtp.receivedMessages
+        assertEquals(1, messages.size)
+        assertEquals("Ndopify: Un agent a été assigné à votre mandat", messages[0].subject)
+        assertEquals("Ray Sponsible <ray.sponsible@gmail.com>", messages[0].allRecipients.single().toString())
+
+        val body = messages[0].content.toString()
+        assertTrue(body.contains("Ray Sponsible"))
+        assertTrue(body.contains("Kim Possible"))
+        assertTrue(body.contains("+237670000020"))
+        assertTrue(body.contains("10 ans"))
     }
 
     @Test
@@ -62,6 +77,7 @@ class AcceptAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest()
         assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
         assertEquals(ErrorCode.ASSIGNMENT_ACCESS_DENIED, response.body?.error?.code)
         assertStatus(2, AssignmentStatus.PENDING)
+        assertNoEmail()
     }
 
     @Test
@@ -92,6 +108,7 @@ class AcceptAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest()
         assertEquals(HttpStatus.CONFLICT, response.statusCode)
         assertEquals(ErrorCode.ASSIGNMENT_NOT_PENDING, response.body?.error?.code)
         assertStatus(3, AssignmentStatus.ACCEPTED)
+        assertNoEmail()
     }
 
     @Test
@@ -101,6 +118,11 @@ class AcceptAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest()
         assertEquals(HttpStatus.CONFLICT, response.statusCode)
         assertEquals(ErrorCode.ASSIGNMENT_NOT_PENDING, response.body?.error?.code)
         assertStatus(4, AssignmentStatus.PENDING)
+    }
+
+    private fun assertNoEmail() {
+        // The email is sent asynchronously: give a wrongly sent one the time to arrive
+        assertFalse(smtp.waitForIncomingEmail(1000, 1), "no email expected")
     }
 
     private fun assertStatus(id: Long, status: AssignmentStatus) {

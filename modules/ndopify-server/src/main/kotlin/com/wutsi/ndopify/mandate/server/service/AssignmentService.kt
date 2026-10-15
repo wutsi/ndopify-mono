@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.mandate.server.service
 
 import com.wutsi.ndopify.agent.server.service.AgentService
+import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.ConflictException
@@ -13,7 +14,9 @@ import com.wutsi.ndopify.mandate.server.dao.AssignmentRepository
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.mandate.server.domain.AssignmentEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.mandate.server.event.AssignmentAcceptedEvent
 import com.wutsi.ndopify.mandate.server.event.AssignmentClosedEvent
+import com.wutsi.ndopify.mandate.server.mail.MandateAssignedMailet
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import com.wutsi.ndopify.security.server.service.AccessTokenService
@@ -33,11 +36,13 @@ class AssignmentService(
     private val dao: AssignmentRepository,
     private val mandateDao: MandateRepository,
     private val agentService: AgentService,
+    private val customerService: CustomerService,
     private val userService: UserService,
     private val membershipService: MembershipService,
     private val accessTokenService: AccessTokenService,
     private val eventPublisher: ApplicationEventPublisher,
     private val clock: Clock,
+    private val mailet: MandateAssignedMailet,
 ) {
     fun findById(id: Long): AssignmentEntity {
         return dao.findById(id).orElse(null)
@@ -80,7 +85,32 @@ class AssignmentService(
                 modifiedAt = now,
             )
         )
-        return dao.save(assignment.copy(status = AssignmentStatus.ACCEPTED, modifiedAt = now))
+        val accepted = dao.save(assignment.copy(status = AssignmentStatus.ACCEPTED, modifiedAt = now))
+
+        // The customer is told who its agent is, after commit, by a listener of this event
+        eventPublisher.publishEvent(
+            AssignmentAcceptedEvent(assignmentId = accepted.id!!, tenantId = TenantContext.get()!!)
+        )
+        return accepted
+    }
+
+    /**
+     * E-mails the customer the agent its mandate is assigned to. Called by `AssignmentEventListener` on its own
+     * thread, with `TenantContext` set: the transaction gives the mailet a session to load the parties.
+     */
+    @Transactional
+    fun sendAssignedEmail(id: Long) {
+        val assignment = findById(id)
+        if (assignment.status != AssignmentStatus.ACCEPTED) {
+            return
+        }
+
+        val mandate = assignment.mandate
+        mailet.send(
+            mandate = mandate,
+            customer = customerService.findById(mandate.customerId),
+            agent = agentService.findById(assignment.agentId),
+        )
     }
 
     @Transactional

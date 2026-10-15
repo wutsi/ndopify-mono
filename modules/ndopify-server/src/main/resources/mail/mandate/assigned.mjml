@@ -1,0 +1,60 @@
+<mjml>
+    <mj-head>
+        <mj-style>
+            {{__css__}}
+        </mj-style>
+    </mj-head>
+    <mj-body css-class="body">
+        <mj-section css-class="main-content">
+            <mj-column>
+                <!-- Logo -->
+                <mj-image align="center" css-class="logo" src="{{tenant_logo_url}}" alt="Logo"/>
+
+                <!-- Divider with class for CSS injection -->
+                <mj-divider css-class="divider"/>
+
+                <!-- Body Text -->
+                <mj-text>
+                    Bonjour <strong>{{recipient_name}}</strong>,
+                </mj-text>
+                <mj-text>
+                    Nous vous remercions d'avoir fait confiance à Ndopify pour votre recherche immobilière. Nous avons
+                    le plaisir de vous informer qu'un agent a été officiellement assigné à votre mandat.
+                </mj-text>
+                <mj-text>
+                    Voici les coordonnées de votre agent dédié :
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        <li>
+                            <b>Nom</b>: {{agent_full_name}}
+                        </li>
+                        <li>
+                            <b>Téléphone</b>: {{agent_phone}}
+                        </li>
+                        {{#agent_presentation}}
+                        <li>
+                            <b>Présentation</b>: {{agent_presentation}}
+                        </li>
+                        {{/agent_presentation}}
+                    </ul>
+                </mj-text>
+                <mj-text font-weight="bold" font-size="18px">
+                    Prochaine étape:
+                </mj-text>
+                <mj-text font-weight="bold">
+                    Votre agent prendra contact avec vous très prochainement par téléphone afin de faire le point,
+                    affiner vos critères de recherche et répondre à vos premières questions.
+                </mj-text>
+
+                <!-- Sign-off -->
+                <mj-spacer/>
+                <mj-text>
+                    Cordialement,
+                    <br/>
+                    L'équipe {{tenant_name}}
+                </mj-text>
+            </mj-column>
+        </mj-section>
+    </mj-body>
+</mjml>

@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.party.server.service
+package com.wutsi.ndopify.party.server.mail
 
 import com.wutsi.ndopify.common.dto.HttpHeader
 import com.wutsi.ndopify.error.dto.Error

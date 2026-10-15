@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.security.server.service
+package com.wutsi.ndopify.security.server.mail
 
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.argumentCaptor
@@ -22,6 +22,7 @@ import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.security.server.domain.AuthFactorEntity
 import com.wutsi.ndopify.security.server.domain.MembershipEntity
 import com.wutsi.ndopify.security.server.domain.UserEntity
+import com.wutsi.ndopify.security.server.service.MembershipService
 import java.util.Date
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -77,7 +78,7 @@ class OtpMailetTest {
         mailet.send("123456", authFactor)
 
         val context = argumentCaptor<Map<String, Any?>>()
-        verify(mailBodyResolver).resolve(eq("/mail/auth/otp.mjml"), context.capture())
+        verify(mailBodyResolver).resolve(eq("/mail/security/otp.mjml"), context.capture())
         assertEquals(
             mapOf(
                 "tenant_logo_url" to "https://cdn.ndopify.com/logo.png",

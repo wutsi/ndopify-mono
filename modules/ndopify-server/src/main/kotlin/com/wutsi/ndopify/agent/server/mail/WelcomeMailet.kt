@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.agent.server.service
+package com.wutsi.ndopify.agent.server.mail
 
 import com.wutsi.ndopify.party.server.domain.KycCaseEntity
 import com.wutsi.ndopify.platform.mail.Email

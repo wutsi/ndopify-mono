@@ -7,6 +7,7 @@ import com.wutsi.ndopify.refdata.dto.AuthType
 import com.wutsi.ndopify.security.dto.CreateOtpRequest
 import com.wutsi.ndopify.security.server.domain.AuthFactorEntity
 import com.wutsi.ndopify.security.server.event.OtpCreatedEvent
+import com.wutsi.ndopify.security.server.mail.OtpMailet
 import jakarta.transaction.Transactional
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service

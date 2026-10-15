@@ -25,10 +25,10 @@ INSERT INTO T_CUSTOMER(id, tenant_id, party_id) VALUES
     (10, 1, 100),
     (90, 2, 900);
 
-INSERT INTO T_AGENT(id, tenant_id, party_id, city_id) VALUES
-    (20, 1, 200, 2370201),
-    (30, 1, 300, 2370201),
-    (90, 2, 900, 2370201);
+INSERT INTO T_AGENT(id, tenant_id, party_id, city_id, whatsapp_number, biography) VALUES
+    (20, 1, 200, 2370201, '+237670000020', 'Agent immobilier à Yaoundé depuis 10 ans'),
+    (30, 1, 300, 2370201, null, null),
+    (90, 2, 900, 2370201, null, null);
 
 -- status: 1=PENDING_ASSIGNMENT
 INSERT INTO T_MANDATE(
