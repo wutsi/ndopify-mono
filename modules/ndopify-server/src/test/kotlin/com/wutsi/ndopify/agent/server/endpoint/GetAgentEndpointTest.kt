@@ -7,6 +7,7 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
+import java.text.SimpleDateFormat
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -26,6 +27,7 @@ class GetAgentEndpointTest : AbstractAgentEndpointTest() {
         assertEquals(2370201L, agent.cityId)
         assertEquals("+23761111111", agent.whatsappNumber)
         assertEquals(listOf(111L, 222L), agent.neighborhoodIds.sorted())
+        assertEquals("2024-06-11", SimpleDateFormat("yyyy-MM-dd").format(agent.joinedAt!!))
 
         val party = agent.party
         assertEquals(100L, party.id)

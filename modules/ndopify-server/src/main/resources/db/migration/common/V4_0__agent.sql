@@ -12,6 +12,7 @@ CREATE TABLE T_AGENT(
   photo_url               TEXT,
   created_at              DATETIME DEFAULT NOW(),
   modified_at             DATETIME NOT NULL DEFAULT now() ON UPDATE now(),
+  joined_at               DATETIME,
 
   UNIQUE (party_id),
 

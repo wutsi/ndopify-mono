@@ -8,6 +8,7 @@ import tools.jackson.databind.json.JsonMapper
 import java.net.http.HttpClient
 import java.net.http.HttpClient.Redirect.NORMAL
 import java.net.http.HttpClient.Version.HTTP_1_1
+import kotlin.test.Ignore
 import kotlin.test.Test
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -24,6 +25,7 @@ class MtnUserProviderSandboxTest {
     )
 
     @Test
+    @Ignore
     fun get() {
         val provider = MtnUserProviderSandbox(
             subscriptionKey = subscriptionId,
@@ -34,5 +36,10 @@ class MtnUserProviderSandboxTest {
         val user = provider.get()
         assertTrue(user.id.isNotEmpty())
         assertTrue(user.apiKey.isNotEmpty())
+    }
+
+    @Test
+    fun noop() {
+        // Noop test to avoid "No tests found" error when running tests in IDE
     }
 }

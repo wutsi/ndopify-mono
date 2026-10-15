@@ -160,7 +160,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `V4_1__party-kyc-status-submitted.sql` does). Tenant-scoped (see Multi-Tenancy below).
 - **agent** — mobile-money agents (`AgentEntity`; `/v1/agents`: get, search, create, update). `WelcomeMailet` sends
   a welcome e-mail on registration when the tenant has a `partnerCentralUrl`, asynchronously (see *Asynchronous
-  e-mails* below). Tenant-scoped.
+  e-mails* below). `joinedAt` is set by `KycService.updateCaseStatus` on the agent's first VERIFIED case,
+  through `AgentRepository` (not `AgentService`, which depends on `KycService`). Tenant-scoped.
 - **customer** — people looking for a property (`CustomerEntity`, linked to a `Party`; `/v1/customers`).
   `CustomerService.findOrCreate` reuses the party and customer of an e-mail. Tenant-scoped.
 - **mandate** — a customer's search request (`MandateEntity`; `/v1/mandates`: get, search, create, update).

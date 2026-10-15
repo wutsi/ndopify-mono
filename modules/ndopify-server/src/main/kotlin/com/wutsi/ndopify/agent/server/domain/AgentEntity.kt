@@ -48,4 +48,7 @@ data class AgentEntity(
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
     val lastAssignedAt: Date? = null,
+
+    // Set when the agent's KYC is first verified (see KycService.updateCaseStatus)
+    val joinedAt: Date? = null,
 )

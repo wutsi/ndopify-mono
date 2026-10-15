@@ -8,6 +8,7 @@ import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
+import com.wutsi.ndopify.agent.server.dao.AgentRepository
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.dto.KycStatus
@@ -30,10 +31,12 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.jdbc.Sql
+import java.text.SimpleDateFormat
 import java.util.UUID
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -57,6 +60,9 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
 
     @Autowired
     private lateinit var tenantService: TenantService
+
+    @Autowired
+    private lateinit var agentDao: AgentRepository
 
     @MockitoBean
     private lateinit var idVerifier: KycCaseVerifierIdentification
@@ -130,6 +136,8 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(status, party.kycStatus)
     }
 
+    private fun joinedAt(agentId: Long = 100L) = agentDao.findById(agentId).orElseThrow().joinedAt
+
     private fun assertPaymentMethodStatus(status: PaymentMethodStatus, id: String = "payment-method-pending") {
         val paymentMethod = paymentMethodDao.findById(id).orElseThrow()
         assertEquals(status, paymentMethod.status)
@@ -177,6 +185,7 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         setUpVerifier(idVerifier, KycVerificationType.IDENTIFICATION, KycStatus.VERIFIED, 90)
         setUpVerifier(selfieVerifier, KycVerificationType.SELFIE, KycStatus.VERIFIED, 100)
 
+        val start = System.currentTimeMillis()
         val response = verify()
 
         assertEquals(HttpStatus.OK, response.statusCode)
@@ -184,6 +193,10 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertPartyKycStatus(KycStatus.VERIFIED)
         assertPaymentMethodStatus(PaymentMethodStatus.VERIFIED)
         assertVerifiedEmail()
+
+        val joinedAt = joinedAt()
+        assertNotNull(joinedAt)
+        assertTrue(joinedAt.time >= start - 1000) // DATETIME drops the milliseconds
 
         val isSubmittedCase = { c: KycCaseEntity -> c.id == "kyc-case-submitted" }
         verify(idVerifier).verify(argThat(isSubmittedCase))
@@ -202,6 +215,7 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertCase(KycStatus.REJECTED, 70, errorCode = KycErrorCode.IDENTIFICATION_REJECTED)
         assertPartyKycStatus(KycStatus.REJECTED)
         assertRejectedEmail()
+        assertNull(joinedAt())
     }
 
     @Test
@@ -358,6 +372,31 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertRetry(1, null, "kyc-case-retried")
         assertPartyKycStatus(KycStatus.VERIFIED)
         assertVerifiedEmail()
+    }
+
+    @Test
+    fun `agent already joined - joinedAt kept`() {
+        setUpVerifier(idVerifier, KycVerificationType.IDENTIFICATION, KycStatus.VERIFIED, 90)
+        setUpVerifier(selfieVerifier, KycVerificationType.SELFIE, KycStatus.VERIFIED, 100)
+
+        val response = verify("kyc-case-already-joined")
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertCase(KycStatus.VERIFIED, 95, "kyc-case-already-joined")
+        assertEquals("2024-06-11", SimpleDateFormat("yyyy-MM-dd").format(joinedAt(400L)!!))
+    }
+
+    @Test
+    fun `party not an agent - case verified, no agent created`() {
+        setUpVerifier(idVerifier, KycVerificationType.IDENTIFICATION, KycStatus.VERIFIED, 90)
+        setUpVerifier(selfieVerifier, KycVerificationType.SELFIE, KycStatus.VERIFIED, 100)
+
+        val response = verify("kyc-case-not-an-agent")
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertCase(KycStatus.VERIFIED, 95, "kyc-case-not-an-agent")
+        assertPartyKycStatus(KycStatus.VERIFIED, 500L)
+        assertNull(agentDao.findByParty(partyDao.findById(500L).orElseThrow()))
     }
 
     @Test

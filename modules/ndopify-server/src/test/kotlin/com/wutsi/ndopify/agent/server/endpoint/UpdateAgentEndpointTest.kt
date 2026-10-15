@@ -9,7 +9,6 @@ import com.wutsi.ndopify.agent.server.dao.AgentRepository
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.server.service.PartyService
-import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -18,6 +17,7 @@ import org.springframework.test.context.jdbc.Sql
 import java.time.Clock
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/agent/UpdateAgentEndpoint.sql"])
 class UpdateAgentEndpointTest : AbstractAgentEndpointTest() {
@@ -43,8 +43,6 @@ class UpdateAgentEndpointTest : AbstractAgentEndpointTest() {
     fun update() {
         Thread.sleep(100)
         val request = UpdateAgentRequest(
-            firstName = "Ray",
-            lastName = "Sponsible",
             whatsappNumber = "+237600000099",
             agentType = AgentType.REAL_ESTATE_AGENT,
             experienceLevel = ExperienceLevel.SENIOR,
@@ -67,43 +65,17 @@ class UpdateAgentEndpointTest : AbstractAgentEndpointTest() {
         assertTrue(agent.createdAt.time < now)
         assertTrue(agent.modifiedAt.time >= agent.createdAt.time)
 
+        // Names are verified by KYC: the party is never updated
         val party = partyService.findById(agent.party.id!!)
-        assertEquals(request.firstName, party.firstName)
-        assertEquals(request.lastName, party.lastName)
+        assertEquals("Roger", party.firstName)
+        assertEquals("Milla", party.lastName)
         assertEquals("roger.milla@gmail.com", party.email)
-        assertEquals(agent.modifiedAt, party.modifiedAt)
-    }
-
-    @Test
-    fun `do not update the party`() {
-        val request = UpdateAgentRequest(
-            firstName = null,
-            lastName = null,
-            whatsappNumber = "+237600000099",
-            agentType = AgentType.REAL_ESTATE_AGENT,
-            experienceLevel = ExperienceLevel.SENIOR,
-            cityId = 2370201L,
-            neighborhoodIds = listOf(333L, 444L),
-            biography = "Updated bio",
-        )
-
-        val response = rest.postForEntity("/v1/agents/101", request, Void::class.java)
-
-        assertEquals(HttpStatus.OK, response.statusCode)
-
-        val agent = dao.findById(101L).get()
-        val party = partyService.findById(agent.party.id!!)
-        assertEquals("J", party.firstName)
-        assertEquals("Bond", party.lastName)
-        assertEquals("007@gmail.com", party.email)
         assertTrue(party.modifiedAt.time < now)
     }
 
     @Test
     fun `agent not found`() {
         val request = UpdateAgentRequest(
-            firstName = "Ray",
-            lastName = "Sponsible",
             whatsappNumber = "+237600000777",
         )
 

@@ -21,6 +21,7 @@ class AgentMapper(private val partyMapper: PartyMapper) {
             createdAt = entity.createdAt,
             modifiedAt = entity.modifiedAt,
             lastAssignedAt = entity.lastAssignedAt,
+            joinedAt = entity.joinedAt,
         )
     }
 

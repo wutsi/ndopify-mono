@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.party.server.service
 
+import com.wutsi.ndopify.agent.server.dao.AgentRepository
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
@@ -57,6 +58,7 @@ class KycService(
     private val clock: Clock,
     private val logger: KVLogger,
     private val eventPublisher: ApplicationEventPublisher,
+    private val agentDao: AgentRepository,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(KycService::class.java)
@@ -356,9 +358,26 @@ class KycService(
         LOGGER.info(">>> KYC#${case.id} - Updating party KYC status to $status")
         partyService.updateKyStatus(case.party, status)
 
+        // The agent joins the platform on its first verified KYC
+        if (status == KycStatus.VERIFIED) {
+            updateAgentJoinedAt(case.party)
+        }
+
         // Listeners run after commit (see KycEventListener)
         eventPublisher.publishEvent(KycCaseCompletedEvent(caseId = case.id, tenantId = case.tenantId!!))
         return updatedCase
+    }
+
+    /**
+     * Uses the repository rather than `AgentService`, which already depends on this service. Parties that aren't
+     * agents (e.g. customers) have nothing to update.
+     */
+    private fun updateAgentJoinedAt(party: PartyEntity) {
+        val agent = agentDao.findByParty(party) ?: return
+        if (agent.joinedAt == null) {
+            val now = Date(clock.millis())
+            agentDao.save(agent.copy(joinedAt = now, modifiedAt = now))
+        }
     }
 
     private fun updatePaymentMethodStatus(verifications: List<KycVerificationEntity>) {

@@ -16,7 +16,6 @@ import com.wutsi.ndopify.party.dto.IdentificationType
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.PaymentMethodType
 import com.wutsi.ndopify.party.dto.SearchKycCaseRequest
-import com.wutsi.ndopify.party.dto.UpdatePartyRequest
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.party.server.domain.PaymentMethodEntity
 import com.wutsi.ndopify.party.server.service.KycService
@@ -144,17 +143,6 @@ class AgentService(
     @Transactional
     fun update(id: Long, request: UpdateAgentRequest): AgentEntity {
         val agent = findById(id)
-
-        // Update party
-        if (request.firstName != null || request.lastName != null) {
-            val updateParty = UpdatePartyRequest(
-                firstName = request.firstName,
-                lastName = request.lastName,
-            )
-            partyService.update(agent.party, updateParty)
-        }
-
-        // Update agent
         val now = Date(clock.millis())
         return dao.save(
             agent.copy(
