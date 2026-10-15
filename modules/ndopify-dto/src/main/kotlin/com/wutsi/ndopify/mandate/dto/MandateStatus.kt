@@ -9,4 +9,5 @@ enum class MandateStatus {
     PUBLISHED,
     CLOSED,
     CANCELLED,
+    MANUAL_ASSIGNMENT, // Without an agent for too long: assigned by a human. Persisted by ordinal: append only
 }
