@@ -20,6 +20,7 @@ class AgentMapper(private val partyMapper: PartyMapper) {
             whatsappNumber = entity.whatsappNumber,
             createdAt = entity.createdAt,
             modifiedAt = entity.modifiedAt,
+            lastAssignedAt = entity.lastAssignedAt,
         )
     }
 

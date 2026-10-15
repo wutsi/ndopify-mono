@@ -20,7 +20,7 @@ class SearchAgentEndpointTest : AbstractAgentEndpointTest() {
 
     @Test
     fun `by ids`() {
-        val response = rest.getForEntity("/v1/agents?ids=1&ids=3", SearchAgentResponse::class.java)
+        val response = rest.getForEntity("/v1/agents?id=1&id=3", SearchAgentResponse::class.java)
 
         val agents = response.body!!.agents
         assertEquals(2, agents.size)
@@ -29,7 +29,7 @@ class SearchAgentEndpointTest : AbstractAgentEndpointTest() {
 
     @Test
     fun `by party id`() {
-        val response = rest.getForEntity("/v1/agents?partyIds=101", SearchAgentResponse::class.java)
+        val response = rest.getForEntity("/v1/agents?party-id=101", SearchAgentResponse::class.java)
 
         val agents = response.body!!.agents
         assertEquals(1, agents.size)
@@ -39,7 +39,7 @@ class SearchAgentEndpointTest : AbstractAgentEndpointTest() {
 
     @Test
     fun `by city id`() {
-        val response = rest.getForEntity("/v1/agents?cityId=2370201", SearchAgentResponse::class.java)
+        val response = rest.getForEntity("/v1/agents?city-id=2370201", SearchAgentResponse::class.java)
 
         val agents = response.body!!.agents
         assertEquals(2, agents.size)
@@ -48,7 +48,7 @@ class SearchAgentEndpointTest : AbstractAgentEndpointTest() {
 
     @Test
     fun `by neighborhood id`() {
-        val response = rest.getForEntity("/v1/agents?neighborhoodIds=333", SearchAgentResponse::class.java)
+        val response = rest.getForEntity("/v1/agents?neighborhood-id=333", SearchAgentResponse::class.java)
 
         val agents = response.body!!.agents
         assertEquals(1, agents.size)
@@ -58,7 +58,7 @@ class SearchAgentEndpointTest : AbstractAgentEndpointTest() {
     @Test
     fun `agent with multiple matching neighborhoods is not duplicated`() {
         val response =
-            rest.getForEntity("/v1/agents?neighborhoodIds=111&neighborhoodIds=222", SearchAgentResponse::class.java)
+            rest.getForEntity("/v1/agents?neighborhood-id=111&neighborhood-id=222", SearchAgentResponse::class.java)
 
         val agents = response.body!!.agents
         assertEquals(1, agents.size)
@@ -67,7 +67,7 @@ class SearchAgentEndpointTest : AbstractAgentEndpointTest() {
 
     @Test
     fun `by mobile money number`() {
-        val uri = URI.create("/v1/agents?mobileMoneyNumber=%2B237600000000")
+        val uri = URI.create("/v1/agents?mobile-money-number=%2B237600000000")
         val response = rest.getForEntity(uri, SearchAgentResponse::class.java)
 
         val agents = response.body!!.agents
@@ -76,8 +76,23 @@ class SearchAgentEndpointTest : AbstractAgentEndpointTest() {
     }
 
     @Test
+    fun `by kyc status`() {
+        val response = rest.getForEntity("/v1/agents?kyc-status=VERIFIED", SearchAgentResponse::class.java)
+
+        assertEquals(listOf(1L), response.body!!.agents.map { it.id })
+    }
+
+    @Test
+    fun `by multiple kyc statuses`() {
+        val response =
+            rest.getForEntity("/v1/agents?kyc-status=VERIFIED&kyc-status=REJECTED", SearchAgentResponse::class.java)
+
+        assertEquals(listOf(1L, 2L), response.body!!.agents.map { it.id })
+    }
+
+    @Test
     fun `no match`() {
-        val response = rest.getForEntity("/v1/agents?ids=999", SearchAgentResponse::class.java)
+        val response = rest.getForEntity("/v1/agents?id=999", SearchAgentResponse::class.java)
 
         assertEquals(0, response.body!!.agents.size)
     }

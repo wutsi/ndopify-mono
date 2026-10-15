@@ -14,4 +14,5 @@ data class Agent(
     val whatsappNumber: String? = null,
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
+    val lastAssignedAt: Date? = null,
 )

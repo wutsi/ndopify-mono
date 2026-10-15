@@ -65,6 +65,9 @@ class AgentService(
             if (request.neighborhoodIds.isNotEmpty()) {
                 predicates.add(root.join<AgentEntity, Long>("neighborhoodIds").`in`(request.neighborhoodIds))
             }
+            if (request.kycStatus.isNotEmpty()) {
+                predicates.add(root.get<PartyEntity>("party").get<KycStatus>("kycStatus").`in`(request.kycStatus))
+            }
             request.mobileMoneyNumber?.let { mobileMoneyNumber ->
                 val subquery = query.subquery(Long::class.java)
                 val paymentMethod = subquery.from(PaymentMethodEntity::class.java)

@@ -47,4 +47,5 @@ data class AgentEntity(
     val biography: String? = null,
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
+    val lastAssignedAt: Date? = null,
 )
