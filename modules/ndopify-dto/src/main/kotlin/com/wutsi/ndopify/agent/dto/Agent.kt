@@ -16,4 +16,5 @@ data class Agent(
     val modifiedAt: Date = Date(),
     val lastAssignedAt: Date? = null,
     val joinedAt: Date? = null,
+    val rating: Double = 3.0, // 1..5 stars, 3 = unrated. Read-only: never in UpdateAgentRequest
 )
