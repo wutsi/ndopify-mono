@@ -6,6 +6,7 @@ import com.wutsi.ndopify.agent.dto.AgentType
 import com.wutsi.ndopify.agent.dto.ExperienceLevel
 import com.wutsi.ndopify.agent.dto.UpdateAgentRequest
 import com.wutsi.ndopify.agent.server.dao.AgentRepository
+import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.server.service.PartyService
@@ -62,6 +63,7 @@ class UpdateAgentEndpointTest : AbstractAgentEndpointTest() {
         assertEquals(request.cityId, agent.cityId)
         assertNeighborhoods(agent.id!!, request.neighborhoodIds!!)
         assertEquals(request.whatsappNumber, agent.whatsappNumber)
+        assertEquals(AgentEntity.DEFAULT_RATING, agent.rating) // Read-only: an agent can't rate itself
         assertTrue(agent.createdAt.time < now)
         assertTrue(agent.modifiedAt.time >= agent.createdAt.time)
 

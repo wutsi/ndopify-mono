@@ -42,7 +42,7 @@ abstract class AuthorizationAwareEndpointIntegrationTest : TenantAwareEndpointIn
         return super.intercept(request, body, execution)
     }
 
-    protected fun createAccessToken(application: String = ApplicationCode.ADMIN_CONSOLE): String {
+    protected open fun createAccessToken(application: String = ApplicationCode.ADMIN_CONSOLE): String {
         return accessTokenService.create(
             application = application,
             tenantId = TENANT_ID,

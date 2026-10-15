@@ -15,3 +15,12 @@ spring:
                     starttls:
                         enable: false
                         required: false
+
+ndopify:
+    mandate:
+        assignment:
+            jitter: 0 # Deterministic scores
+            expire:
+                cron: "-" # Never on its own: a run mid-suite would expire the fixtures' offers. Tests call MandateJobs
+            dispatch:
+                cron: "-"

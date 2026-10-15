@@ -36,6 +36,7 @@ class LocationService(
             WHERE l.type IN (:types)
               AND l.id NOT IN (:excludedIds)
               AND l.latitude IS NOT NULL AND l.longitude IS NOT NULL
+              %s
             GROUP BY l.id
             HAVING distance <= :radius
             ORDER BY distance, l.id
@@ -117,13 +118,16 @@ class LocationService(
         }
 
         val types = request.type?.let { listOf(it) } ?: origins.map { it.type }.distinct()
-        val query = em.createNativeQuery(SQL_NEAREST)
+        // The parent filter is only in the SQL when set
+        val sql = SQL_NEAREST.format(if (request.parentId == null) "" else "AND l.parent_fk = :parentId")
+        val query = em.createNativeQuery(sql)
             .setParameter("originIds", origins.map { it.id })
             .setParameter("excludedIds", request.ids)
             .setParameter("types", types.map { it.ordinal })
             .setParameter("radius", radius * 1000)
             .setFirstResult(request.offset.coerceAtLeast(0))
             .setMaxResults(OffsetLimitPageRequest.limit(request.limit))
+        request.parentId?.let { parentId -> query.setParameter("parentId", parentId) }
 
         val distances = query.resultList
             .map { row -> row as Array<*> }

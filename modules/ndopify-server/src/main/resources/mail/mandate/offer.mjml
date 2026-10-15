@@ -1,0 +1,74 @@
+<mjml>
+    <mj-head>
+        <mj-style>
+            {{__css__}}
+        </mj-style>
+    </mj-head>
+    <mj-body css-class="body">
+        <mj-section css-class="main-content">
+            <mj-column>
+                <!-- Logo -->
+                <mj-image align="center" css-class="logo" src="{{tenant_logo_url}}" alt="Logo"/>
+
+                <!-- Divider with class for CSS injection -->
+                <mj-divider css-class="divider"/>
+
+                <!-- Body Text -->
+                <mj-text>
+                    Bonjour <strong>{{recipient_name}}</strong>,
+                </mj-text>
+                <mj-text>
+                    Un client recherche un bien à <strong>{{city}}</strong>, et nous vous proposons son mandat en
+                    exclusivité.
+                </mj-text>
+
+                <!-- In an mj-text: MJML drops raw HTML outside of it -->
+                <mj-text>
+                    <ul>
+                        <li>
+                            <b>Recherche</b>: {{listing_type}}{{#property_type}} - {{property_type}}{{/property_type}}
+                        </li>
+                        {{#rooms}}
+                        <li>
+                            <b>Pièces</b>: {{rooms}}
+                        </li>
+                        {{/rooms}}
+                        <li>
+                            <b>Ville</b>: {{city}}
+                        </li>
+                        {{#neighbourhoods}}
+                        <li>
+                            <b>Quartiers</b>: {{neighbourhoods}}
+                        </li>
+                        {{/neighbourhoods}}
+                        <li>
+                            <b>Budget</b>: {{budget}}
+                        </li>
+                    </ul>
+                </mj-text>
+
+                <mj-text font-weight="bold">
+                    Vous avez jusqu'au {{deadline}} pour accepter ce mandat. Passé ce délai, il sera proposé à un autre
+                    agent.
+                </mj-text>
+
+                {{#offer_url}}
+                <!-- Button with class for CSS injection -->
+                <mj-spacer/>
+                <mj-button href="{{offer_url}}" css-class="btn-primary" align="center">
+                    Voir le mandat
+                </mj-button>
+                <mj-spacer/>
+                {{/offer_url}}
+
+                <!-- Sign-off -->
+                <mj-spacer/>
+                <mj-text>
+                    Cordialement,
+                    <br/>
+                    L'équipe {{tenant_name}}
+                </mj-text>
+            </mj-column>
+        </mj-section>
+    </mj-body>
+</mjml>

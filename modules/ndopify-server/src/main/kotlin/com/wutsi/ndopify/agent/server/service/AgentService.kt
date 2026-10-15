@@ -47,7 +47,12 @@ class AgentService(
     private val mailet: WelcomeMailet,
     private val eventPublisher: ApplicationEventPublisher,
 ) {
-    fun search(request: SearchAgentRequest): List<AgentEntity> {
+    companion object {
+        // Used by the mandate dispatch. MySQL sorts NULL first in ASC: never-assigned agents come first
+        val SORT_LEAST_RECENTLY_ASSIGNED: Sort = Sort.by(Sort.Order.asc("lastAssignedAt"), Sort.Order.asc("id"))
+    }
+
+    fun search(request: SearchAgentRequest, sort: Sort = Sort.by("id")): List<AgentEntity> {
         val spec = Specification<AgentEntity> { root, query, cb ->
             query.distinct(true)
 
@@ -79,8 +84,13 @@ class AgentService(
             cb.and(*predicates.toTypedArray())
         }
 
-        return dao.findAll(spec, OffsetLimitPageRequest(request.offset, request.limit, Sort.by("id"))).content
+        return dao.findAll(spec, OffsetLimitPageRequest(request.offset, request.limit, sort)).content
     }
+
+    /** The agent was just offered a mandate: it moves down the dispatch rotation. */
+    @Transactional
+    fun markAssigned(agent: AgentEntity, date: Date): AgentEntity =
+        dao.save(agent.copy(lastAssignedAt = date, modifiedAt = date))
 
     fun findByIdOrNull(id: Long): AgentEntity? {
         return dao.findById(id).orElse(null)

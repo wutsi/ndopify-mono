@@ -31,11 +31,13 @@ INSERT INTO T_AGENT(id, tenant_id, party_id, city_id) VALUES
     (90, 2, 900, 2370201);
 
 -- status: 1=PENDING_ASSIGNMENT
+-- 1 is created now: declining it re-dispatches it (no verified agent here, so nothing is offered), and an older one
+-- would go MANUAL_ASSIGNMENT
 INSERT INTO T_MANDATE(
     id, tenant_id, customer_id, agent_id, status, mandate_type, listing_type, city_id, property_type,
     rooms, price, price_periodicity_type, currency_code, created_at, modified_at
 ) VALUES
-    (1, 1, 10, null, 1, 1, 2, 2370201, 3, '2', 150000, 4, 'XAF', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (1, 1, 10, null, 1, 1, 2, 2370201, 3, '2', 150000, 4, 'XAF', NOW(), NOW()),
     (2, 1, 10, null, 1, 1, 2, 2370201, 3, '2', 150000, 4, 'XAF', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (3, 1, 10, null, 1, 1, 2, 2370201, 3, '2', 150000, 4, 'XAF', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (4, 1, 10, null, 1, 1, 2, 2370201, 3, '2', 150000, 4, 'XAF', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),

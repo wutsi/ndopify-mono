@@ -181,6 +181,22 @@ logging:
         file: "%d Type=%level Logger=%c Thread=%thread %m%n"
 
 ndopify:
+    mandate:
+        assignment:
+            jitter: 0.01                   # Random tie-break; 0 in tests, so scores are deterministic
+            ttl-minutes: 60                # An agent has 1h (of daytime) to accept an offer
+            max-load: 5                    # Max mandates an agent can work on at the same time
+            nearby-radius-km: 3            # Neighbourhoods this close to the mandate's are "nearby"
+            nearby-max-neighborhoods: 20   # Only the nearest ones (searchNearest returns them nearest first)
+            manual-after-days: 3           # Without an agent after 3 days, the mandate goes to MANUAL_ASSIGNMENT
+            night: # No offer, and the TTL is paused, from start to end (tenant's local time)
+                start: "21:00"
+                end: "07:00"
+            expire:
+                cron: "0 */15 * * * ?"     # Every 15 minutes: offers past their TTL go to the next agent
+            dispatch:
+                cron: "0 */30 * * * ?"     # Every 30 minutes: mandates that came at night, or had no candidate
+
     party:
         kyc:
             image:

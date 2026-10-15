@@ -24,7 +24,8 @@ class DeclineAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest(
         val assignment = rest.getForEntity("/v1/assignments/1", GetAssignmentResponse::class.java).body!!.assignment
         assertEquals(AssignmentStatus.DECLINED, assignment.status)
 
-        // The mandate is still waiting for an agent
+        // The mandate is still waiting for an agent, once re-dispatched
+        awaitAsyncTasks()
         val mandate = rest.getForEntity("/v1/mandates/1", GetMandateResponse::class.java).body!!.mandate
         assertNull(mandate.agentId)
         assertEquals(MandateStatus.PENDING_ASSIGNMENT, mandate.status)

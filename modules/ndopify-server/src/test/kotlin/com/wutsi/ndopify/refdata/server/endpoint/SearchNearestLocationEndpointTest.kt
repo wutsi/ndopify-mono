@@ -88,6 +88,45 @@ class SearchNearestLocationEndpointTest : BaseEndpointIntegrationTest() {
     }
 
     @Test
+    @Sql(
+        scripts = ["/db/test/clean.sql", "/db/test/refdata/SearchNearestLocationEndpoint.sql"],
+        statements = [
+            "INSERT INTO T_LOCATION (id, parent_fk, type, country, name, ascii_name, latitude, longitude) VALUES " +
+                "(2370102, 237, 3, 'CM', 'Soa', 'Soa', 3.97, 11.59), " +
+                "(237800, 2370102, 4, 'CM', 'Soa Bastos', 'Soa-Bastos', 3.8900, 11.5110)", // 0.3 km, another city
+        ],
+    )
+    fun `parent - only the children of the location`() {
+        val response = rest.getForEntity(
+            "/v1/locations/nearest?id=237002&radius=5&parent-id=2370101",
+            SearchNearestLocationResponse::class.java
+        )
+
+        assertEquals(
+            listOf(237034L, 237001L, 237072L, 237091L, 237093L),
+            response.body!!.locations.map { it.location.id }
+        )
+    }
+
+    @Test
+    @Sql(
+        scripts = ["/db/test/clean.sql", "/db/test/refdata/SearchNearestLocationEndpoint.sql"],
+        statements = [
+            "INSERT INTO T_LOCATION (id, parent_fk, type, country, name, ascii_name, latitude, longitude) VALUES " +
+                "(2370102, 237, 3, 'CM', 'Soa', 'Soa', 3.97, 11.59), " +
+                "(237800, 2370102, 4, 'CM', 'Soa Bastos', 'Soa-Bastos', 3.8900, 11.5110)",
+        ],
+    )
+    fun `no parent - children of every location`() {
+        val response = rest.getForEntity(
+            "/v1/locations/nearest?id=237002&radius=5",
+            SearchNearestLocationResponse::class.java
+        )
+
+        assertEquals(237800L, response.body!!.locations.first().location.id)
+    }
+
+    @Test
     fun `limit and offset`() {
         val response = rest.getForEntity(
             "/v1/locations/nearest?id=237002&radius=5&limit=2&offset=1",

@@ -17,6 +17,7 @@ import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.mandate.server.event.AssignmentAcceptedEvent
 import com.wutsi.ndopify.mandate.server.event.AssignmentClosedEvent
 import com.wutsi.ndopify.mandate.server.mail.MandateAssignedMailet
+import com.wutsi.ndopify.mandate.server.mail.MandateOfferMailet
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import com.wutsi.ndopify.security.server.service.AccessTokenService
@@ -24,7 +25,9 @@ import com.wutsi.ndopify.security.server.service.MembershipService
 import com.wutsi.ndopify.security.server.service.UserService
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
+import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.data.domain.PageRequest
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
@@ -43,7 +46,14 @@ class AssignmentService(
     private val eventPublisher: ApplicationEventPublisher,
     private val clock: Clock,
     private val mailet: MandateAssignedMailet,
+    private val offerMailet: MandateOfferMailet,
+    private val dispatcher: MandateDispatcher,
 ) {
+    companion object {
+        private val LOGGER = LoggerFactory.getLogger(AssignmentService::class.java)
+        const val BATCH_SIZE = 100
+    }
+
     fun findById(id: Long): AssignmentEntity {
         return dao.findById(id).orElse(null)
             ?: throw NotFoundException(error = Error(code = ErrorCode.ASSIGNMENT_NOT_FOUND))
@@ -114,21 +124,77 @@ class AssignmentService(
     }
 
     @Transactional
-    fun decline(id: Long): AssignmentEntity {
-        val assignment = findPendingForAssignee(id)
-        val declined = dao.save(
-            assignment.copy(status = AssignmentStatus.DECLINED, modifiedAt = Date(clock.millis()))
-        )
+    fun decline(id: Long): AssignmentEntity =
+        close(findPendingForAssignee(id), AssignmentStatus.DECLINED)
 
-        // The mandate is free to be offered to the next agent, after commit, by a listener of this event
+    /**
+     * Expires the PENDING offers past their TTL; their mandates are re-dispatched after commit. Not @Transactional:
+     * each save commits on its own, so one failing offer doesn't roll back the others.
+     */
+    fun expireDue(): Int {
+        val now = Date(clock.millis())
+        val due = dao.findByStatusAndExpiresAtBefore(AssignmentStatus.PENDING, now, PageRequest.of(0, BATCH_SIZE))
+        var expired = 0
+        due.forEach { assignment ->
+            try {
+                close(assignment, AssignmentStatus.EXPIRED)
+                expired++
+            } catch (ex: Exception) {
+                LOGGER.warn("Unable to expire Assignment#${assignment.id}", ex)
+            }
+        }
+        return expired
+    }
+
+    /**
+     * Dispatches the mandates waiting for an agent without a PENDING offer: came at night, had no candidate, or their
+     * re-dispatch failed. Not @Transactional: each [MandateDispatcher.dispatch] runs (and commits) in its own
+     * transaction, so one failing mandate doesn't roll back the others.
+     * Known limit: the oldest [BATCH_SIZE] are taken each run; if more have no candidate, they fill every run (until
+     * they go MANUAL_ASSIGNMENT) and newer ones wait. Fine at today's volume; a `lastDispatchedAt` fixes it later.
+     */
+    fun dispatchPending(): Int {
+        val ids = mandateDao.findIdsWithoutAssignment(
+            MandateStatus.PENDING_ASSIGNMENT,
+            AssignmentStatus.PENDING,
+            PageRequest.of(0, BATCH_SIZE),
+        )
+        var dispatched = 0
+        ids.forEach { id ->
+            try {
+                dispatcher.dispatch(id)?.let { dispatched++ }
+            } catch (ex: Exception) {
+                LOGGER.warn("Unable to dispatch Mandate#$id", ex)
+            }
+        }
+        return dispatched
+    }
+
+    /**
+     * E-mails the agent the mandate it's offered. Called by `AssignmentEventListener` on its own thread, with
+     * `TenantContext` set: the transaction gives the mailet a session to load the parties.
+     */
+    @Transactional
+    fun sendOfferEmail(id: Long) {
+        val assignment = findById(id)
+        if (assignment.status != AssignmentStatus.PENDING) {
+            return // Already answered or expired: nothing to offer anymore
+        }
+        offerMailet.send(assignment, agentService.findById(assignment.agentId))
+    }
+
+    // DECLINED or EXPIRED. The mandate is offered to the next agent AFTER COMMIT (AssignmentEventListener): a failing
+    // re-dispatch never fails, nor rolls back, the decline / expiry. MandateJobs.dispatch catches any it missed
+    private fun close(assignment: AssignmentEntity, status: AssignmentStatus): AssignmentEntity {
+        val closed = dao.save(assignment.copy(status = status, modifiedAt = Date(clock.millis())))
         eventPublisher.publishEvent(
             AssignmentClosedEvent(
-                assignmentId = declined.id!!,
-                mandateId = declined.mandate.id!!,
+                assignmentId = closed.id!!,
+                mandateId = closed.mandate.id!!,
                 tenantId = TenantContext.get()!!,
             )
         )
-        return declined
+        return closed
     }
 
     // 404 → 401/403 → 409: someone else's offer is refused before its status is revealed
