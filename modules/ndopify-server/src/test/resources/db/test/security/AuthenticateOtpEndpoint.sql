@@ -6,10 +6,6 @@ VALUES
 INSERT INTO T_TENANT(id, name, domain_name, locales, country_code) VALUES
     (2, 'Other', 'other.localhost', 'fr-CM, en-CM', 'CM');
 
--- The seeded data does not allow OTP on any application: enable it on partner-central for these tests.
--- Restored after each test by AuthenticateOtpEndpointCleanup.sql (T_APPLICATION is not reset by clean.sql).
-UPDATE T_APPLICATION SET supported_auth_types = 'PASSWORD,OTP' WHERE code = 'partner-central';
-
 INSERT INTO T_ROLE(id, application_id, code) VALUES
   (31, 3, 'AGENT');
 

@@ -8,7 +8,6 @@
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>4.1.1</version>
     </parent>
-
     <name>ndopify-mono</name>
     <artifactId>ndopify-mono</artifactId>
     <groupId>com.wutsi.ndopify</groupId>
