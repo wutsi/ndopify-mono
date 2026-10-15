@@ -13,10 +13,12 @@ import com.wutsi.ndopify.platform.logger.KVLogger
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
 import org.springframework.http.HttpStatus.BAD_REQUEST
+import org.springframework.http.HttpStatus.CONFLICT
 import org.springframework.http.HttpStatus.FORBIDDEN
 import org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR
 import org.springframework.http.HttpStatus.UNAUTHORIZED
 import org.springframework.http.ResponseEntity
+import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.security.access.AccessDeniedException
 import org.springframework.security.core.AuthenticationException
 import org.springframework.web.HttpRequestMethodNotSupportedException
@@ -52,6 +54,21 @@ class ControllerErrorHandler(private val logger: KVLogger) {
             request,
             code = ErrorCode.HTTP_ACCESS_DENIED,
             status = FORBIDDEN,
+            e = e,
+            message = e.message,
+        )
+
+    // Only AssignmentEntity is @Version-ed today: the offer changed under the caller, it's no longer the PENDING one
+    // it read
+    @ExceptionHandler(ObjectOptimisticLockingFailureException::class)
+    fun onObjectOptimisticLockingFailureException(
+        request: HttpServletRequest,
+        e: ObjectOptimisticLockingFailureException,
+    ): ResponseEntity<ErrorResponse> =
+        handleException(
+            request,
+            code = ErrorCode.ASSIGNMENT_NOT_PENDING,
+            status = CONFLICT,
             e = e,
             message = e.message,
         )

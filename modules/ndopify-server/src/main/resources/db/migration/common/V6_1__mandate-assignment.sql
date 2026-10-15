@@ -11,6 +11,11 @@ CREATE TABLE T_ASSIGNMENT(
     created_at              DATETIME DEFAULT NOW(),
     modified_at             DATETIME NOT NULL DEFAULT now() ON UPDATE now(),
     expires_at              DATETIME NOT NULL,
+    version                 BIGINT NOT NULL DEFAULT 0,
+
+    INDEX IDX_ASSIGNMENT_mandate_status (mandate_id, status),
+    INDEX IDX_ASSIGNMENT_agent_status (agent_id, status),
+    INDEX IDX_ASSIGNMENT_status_expires (status, expires_at),
 
     CONSTRAINT FK_ASSIGNMENT_mandate FOREIGN KEY(mandate_id) REFERENCES T_MANDATE(id),
     CONSTRAINT FK_ASSIGNMENT_agent FOREIGN KEY(agent_id) REFERENCES T_AGENT(id),
