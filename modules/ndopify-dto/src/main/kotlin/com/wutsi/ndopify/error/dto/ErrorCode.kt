@@ -8,6 +8,10 @@ object ErrorCode {
 
     val APPLICATION_NOT_FOUND = "$PREFIX:application:not-found"
 
+    val ASSIGNMENT_NOT_FOUND = "$PREFIX:assignment:not-found"
+    val ASSIGNMENT_NOT_PENDING = "$PREFIX:assignment:not-pending"
+    val ASSIGNMENT_ACCESS_DENIED = "$PREFIX:assignment:access-denied"
+
     val AUTH_ACCESS_DENIED = "$PREFIX:auth:access-denied"
     val AUTH_CREDENTIALS_EXPIRED = "$PREFIX:auth:credentials-expired"
     val AUTH_CREDENTIALS_ALREADY_USED = "$PREFIX:auth:credentials-already-used"

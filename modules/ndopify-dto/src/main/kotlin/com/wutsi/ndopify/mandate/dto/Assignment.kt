@@ -10,5 +10,5 @@ data class Assignment(
     val score: Double = 0.0,
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
-    val expiresAt: Date? = null,
+    val expiresAt: Date = Date(),
 )

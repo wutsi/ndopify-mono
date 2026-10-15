@@ -27,7 +27,7 @@ data class TenantEntity(
     val dateTimeFormat: String = "",
     val dateFormat: String = "",
     val timeFormat: String = "",
-    val timeZone: String = "", // IANA id, ex: Africa/Douala
+    val timeZone: String = "Africa/Douala", // IANA id; same default as T_TENANT.time_zone
     val iconUrl: String? = null,
     val logoUrl: String? = null,
     val active: Boolean = true,
