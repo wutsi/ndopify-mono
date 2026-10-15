@@ -51,4 +51,11 @@ data class AgentEntity(
 
     // Set when the agent's KYC is first verified (see AgentKycEventListener)
     val joinedAt: Date? = null,
-)
+
+    // 1..5 stars, used by the mandate dispatch. Read-only in the API: an agent mustn't rate itself
+    val rating: Double = DEFAULT_RATING,
+) {
+    companion object {
+        const val DEFAULT_RATING = 3.0 // Unrated: neutral in the dispatch score
+    }
+}

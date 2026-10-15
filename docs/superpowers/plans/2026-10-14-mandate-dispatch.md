@@ -20,6 +20,11 @@ Already on `main` (not repeated below):
   own party, not `DECLINED` / `EXPIRED` for this mandate.
 - `ndopify-dto` released as `0.0.38` with the above.
 
+**Status:** Steps 1–10 are done on `feature/mandate-dispatch`. The ops endpoints (§6b) were built differently from
+the plan: they're in `AssignmentEndpoints`, marked `@OpsEndpoint` (`platform/endpoint`), and toggled by the global
+`ndopify.endpoints.ops` (off in prod) instead of a separate `AssignmentOpsEndpoints` + `ops-endpoints.enabled`. Next:
+the open questions below.
+
 What's left: the scoring + offer itself, expiry, night & manual assignment, the jobs, dispatch on creation and
 re-dispatch after a decline / expiry, the agent notification.
 
@@ -155,7 +160,6 @@ it spreads concurrent offers across agents (no need to count PENDING offers in t
 ndopify:
     mandate:
         assignment:
-            enabled: false                 # Master switch: creation listener + both jobs. true only once agents are notified (PR 3)
             ops-endpoints:
                 enabled: false             # POST /v1/assignments/dispatch and /{id}/expire: unauthenticated, off in prod
             jitter: 0.01                   # Random tie-break; 0 in tests, so scores are deterministic
@@ -175,14 +179,12 @@ ndopify:
 
 Scoring weights stay constants in `MandateDispatcher` for now.
 
-`src/test/resources/application-qa.yml` (the tests' profile) sets `enabled: true`, `ops-endpoints.enabled: true` and
+`src/test/resources/application-qa.yml` (the tests' profile) sets `ops-endpoints.enabled: true` and
 `jitter: 0`. Local dev turns them on in its own config when needed.
 
-**`enabled: false`** gates `MandateEventListener` (dispatch on creation, §8), `AssignmentEventListener` (re-dispatch
-after decline / expiry) and both `MandateJobs`. It must stay off until agents are notified (PR 3): an offer nobody
-hears about expires, and an expired agent is excluded from that mandate **forever**, so running dispatch without
-notification burns through a city's agents. It's also checked on first enable: every `PENDING_ASSIGNMENT` mandate
-older than `manual-after-days` goes to `MANUAL_ASSIGNMENT` on the first job run (one event each).
+**No master switch** (decided after the implementation): the dispatch always runs, wherever the server is
+deployed. Every `PENDING_ASSIGNMENT` mandate older than `manual-after-days` goes to `MANUAL_ASSIGNMENT` on the first
+job run after the deployment (one event each).
 
 ## 2. Migration — amend `V6_1__mandate-assignment.sql`
 
@@ -719,7 +721,6 @@ too, so night / manual-assignment tests pin the time (`DispatchHours` takes the 
 
 ```kotlin
 @Service
-@ConditionalOnProperty("ndopify.mandate.assignment.enabled", havingValue = "true")
 class MandateJobs(
     private val service: AssignmentService,
     private val tenantService: TenantService,
@@ -758,12 +759,11 @@ class MandateJobs(
 - `MandateService.create` publishes a `MandateCreatedEvent(mandateId, tenantId)`; an
   `@Async @TransactionalEventListener(AFTER_COMMIT)` listener calls `dispatcher.dispatch(event.mandateId)` (setting
   `TenantContext` + `KVLogger` like the mail listeners), so a dispatch failure never rolls back the customer's mandate.
-  Gated by `ndopify.mandate.assignment.enabled`.
 - `AssignmentEventListener` on the existing `AssignmentClosedEvent` (decline, expire):
   `@Async @TransactionalEventListener(AFTER_COMMIT, fallbackExecution = true)`, calls
   `dispatcher.dispatch(event.mandateId)` (same `TenantContext` / `KVLogger` handling, failures logged).
   `fallbackExecution = true` because `expireDue` isn't transactional: without it, Spring silently drops an event
-  published outside a transaction. Gated by `enabled`.
+  published outside a transaction.
 - `AssignmentCreatedEvent` + listener notifying the agent (e-mail for now, `AssignmentMailet`, MJML template).
 - `MandateManualAssignmentEvent`, in `mandate/server/event/`, like `AgentCreatedEvent`:
 
@@ -814,7 +814,7 @@ class MandateJobs(
   re-dispatch doesn't stop the others, the `AssignmentClosedEvent` published outside a transaction is still handled
   (`fallbackExecution`); `dispatch()` offers the mandates without a
   PENDING offer (oldest first), skips the ones with one, and one failing mandate doesn't stop the others.
-- `CreateMandateEndpointTest`: a mandate is dispatched after creation; with `enabled=false`, it isn't.
+- `CreateMandateEndpointTest`: a mandate is dispatched after creation.
 - `SearchAgentEndpointTest` / `AgentService`: `SORT_LEAST_RECENTLY_ASSIGNED` puts never-offered agents first, then
   oldest `lastAssignedAt`.
 - Update `CLAUDE.md`: mandate dispatch, and fix "There are no `@Scheduled` jobs" (`KycJobs` and
@@ -860,7 +860,7 @@ Each step ends green (`mvn test -Dtest=…` on what it touches); tests are writt
   `findIdsWithoutAssignment`.
 - `AgentService.markAssigned`, `AgentService.search(request, sort)` + `SORT_LEAST_RECENTLY_ASSIGNED` (test in
   `SearchAgentEndpointTest`).
-- `application.yml`: the `ndopify.mandate.assignment.*` block (§1), `enabled` / `ops-endpoints.enabled` false;
+- `application.yml`: the `ndopify.mandate.assignment.*` block (§1), `ops-endpoints.enabled` false;
   `application-qa.yml`: both true, `jitter: 0`.
 
 No tests of their own: they're exercised by steps 5–7.
@@ -932,11 +932,9 @@ No tests of their own: they're exercised by steps 5–7.
 1. **PR 1** — Steps 1–2: DTOs + `parentId` on nearest locations (small).
 2. **PR 2** — Steps 3–8: rating, dispatch (incl. night & manual assignment), expiry and re-dispatch, jobs, dispatch on
    creation.
-   Ships **dark**: `ndopify.mandate.assignment.enabled=false` in prod.
 3. **PR 3** — Steps 9–10: agent notification + docs.
-4. **Enable** (config only) once PR 3 is live and the notification channel is decided (WhatsApp, see Open
-   questions). Expect every `PENDING_ASSIGNMENT` mandate older than 3 days to go `MANUAL_ASSIGNMENT` on the first
-   run.
+   No switch: the dispatch runs as soon as it's deployed. Expect every `PENDING_ASSIGNMENT` mandate older than 3
+   days to go `MANUAL_ASSIGNMENT` on the first job run.
 
 ## Decisions
 
@@ -959,8 +957,8 @@ No tests of their own: they're exercised by steps 5–7.
 - Mandates without a PENDING offer (night, no candidate) are retried by `MandateJobs.dispatch` every 15 min.
 - `@Version` on `AssignmentEntity`: concurrent transitions of one offer → one wins, the other 409.
 - Re-dispatch after a decline / expiry happens after commit (`AssignmentClosedEvent`), never inside it.
-- Shipped dark behind `ndopify.mandate.assignment.enabled`; ops endpoints (`dispatch`, `expire`) behind
-  `ops-endpoints.enabled`, off in prod.
+- No switch for the dispatch: it always runs. Ops endpoints (`dispatch`, `expire`) behind `ops-endpoints.enabled`,
+  off in prod.
 - Candidates ordered least recently offered first, so the 100-agent cut never starves newer agents.
 - Capacity counts `ASSIGNED` / `PENDING_APPROVAL` only, not `APPROVED` / `PUBLISHED`.
 - Tie-break jitter is config (`jitter`), 0 in tests.

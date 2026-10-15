@@ -21,15 +21,15 @@ INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name, created_at, mod
 
 INSERT INTO T_AGENT (
     id, tenant_id, party_id, agent_type, biography,
-    city_id, whatsapp_number, experience_level, joined_at
+    city_id, whatsapp_number, experience_level, joined_at, rating
 ) VALUES
     (
         1, 1, 100, 1, 'Top agent in town',
-        2370201, '+23761111111', 1, '2024-06-11 12:00:00'
+        2370201, '+23761111111', 1, '2024-06-11 12:00:00', 4.5
     ),
     (
         2, 2, 900, 1, 'Agent in another tenant',
-        2370201, '+23762222222', 1, NULL
+        2370201, '+23762222222', 1, NULL, 3.0
     );
 
 INSERT INTO T_AGENT_NEIGHBORHOOD (agent_id, neighborhood_id) VALUES

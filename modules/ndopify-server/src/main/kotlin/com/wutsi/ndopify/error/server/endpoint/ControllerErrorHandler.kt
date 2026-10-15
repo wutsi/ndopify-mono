@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
+import org.springframework.web.servlet.resource.NoResourceFoundException
 
 @RestControllerAdvice
 class ControllerErrorHandler(private val logger: KVLogger) {
@@ -94,6 +95,20 @@ class ControllerErrorHandler(private val logger: KVLogger) {
         handleException(
             request,
             code = ErrorCode.HTTP_METHOD_NOT_SUPPORTED,
+            status = HttpStatus.NOT_FOUND,
+            e = e,
+            message = e.message,
+        )
+
+    // No endpoint at this path (ex: an @OpsEndpoint, when they're disabled): 404, not an unexpected error
+    @ExceptionHandler(NoResourceFoundException::class)
+    fun onNoResourceFoundException(
+        request: HttpServletRequest,
+        e: NoResourceFoundException,
+    ): ResponseEntity<ErrorResponse> =
+        handleException(
+            request,
+            code = ErrorCode.HTTP_NOT_FOUND,
             status = HttpStatus.NOT_FOUND,
             e = e,
             message = e.message,

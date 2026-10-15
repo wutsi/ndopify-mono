@@ -129,7 +129,8 @@ and hands it to `platform/mail`'s `MailService`; its MJML template lives under `
 (e.g. `mail/agent/welcome.mjml`). The service method that triggers it (see *Asynchronous e-mails*) stays in
 `service/`. Mailet unit tests mirror the package (`<domain>/server/mail/*MailetTest.kt`).
 
-There are no `@Scheduled` jobs in the codebase today.
+Scheduled jobs live in `<domain>/server/job/`: `KycJobs` (party) and `MandateJobs` (mandate). They loop over the
+active tenants, setting `TenantContext` for each.
 
 Current domains:
 
@@ -161,8 +162,8 @@ Current domains:
   `DRIVER_LICENSE`, `RESIDENT_CARD`; SELFIE optional server-side, Partner Central requires it; images frozen) →
   `POST .../verify` → `IN_PROGRESS` → `VERIFIED` / `REJECTED`, which publishes a `KycCaseCompletedEvent`: the
 status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint or `KycJobs` verified the case. `GET /v1/kyc/cases` returns the newest case first.
-  Verification is meant to run offline (a future cron job), never from a UI. `KycStatus` is persisted by ordinal:
-  inserting or reordering values needs a migration that renumbers existing rows (as
+  Verification runs offline (`KycJobs`), never from a UI: `POST .../verify` is an `@OpsEndpoint`, off in prod.
+  `KycStatus` is persisted by ordinal: inserting or reordering values needs a migration that renumbers existing rows (as
   `V4_1__party-kyc-status-submitted.sql` does). Tenant-scoped (see Multi-Tenancy below).
 - **agent** — mobile-money agents (`AgentEntity`; `/v1/agents`: get, search, create, update). `WelcomeMailet` sends
   a welcome e-mail on registration when the tenant has a `partnerCentralUrl`, asynchronously (see *Asynchronous
@@ -181,20 +182,38 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `ASSIGNMENT_ACCESS_DENIED`), then 409 `ASSIGNMENT_NOT_PENDING` if not PENDING or past `expiresAt`. Accept sets the
   mandate's agent and `ASSIGNED`, and publishes `AssignmentAcceptedEvent`: `MandateAssignedMailet` e-mails the
   customer its agent's name, WhatsApp number and biography (`mail/mandate/assigned.mjml`); decline publishes
-  `AssignmentClosedEvent` (no listener yet). The dispatch itself (`MandateDispatcher`) is still a skeleton.
+  `AssignmentClosedEvent`.
+
+  **Dispatch.** `MandateDispatcher.dispatch(mandateId)` offers a `PENDING_ASSIGNMENT` mandate, exclusively and for
+  `ttl-minutes`, to its best-scoring candidate (verified agents of its city; not the customer; not an agent who
+  declined / ignored it; under `max-load`), scored on neighbourhood match (incl. nearby ones of the same city, via
+  `searchNearest(parentId)`), rotation (`lastAssignedAt`, set on offer), `AgentEntity.rating`, acceptance rate and
+  load. No offer at night (`DispatchHours`, tenant's `timeZone`), whose hours also pause the TTL; past
+  `manual-after-days` it moves the mandate to `MANUAL_ASSIGNMENT` instead (`MandateManualAssignmentEvent`, no listener
+  yet). It's called after commit by `MandateEventListener` on `MandateCreatedEvent` (creation) and
+  `AssignmentEventListener` on `AssignmentClosedEvent` (decline, expiry), and by `MandateJobs`: `expire` (PENDING
+  offers past `expiresAt` → EXPIRED, re-dispatched) and `dispatch` (mandates waiting without a PENDING offer: came at
+  night, had no candidate, or their re-dispatch failed). Each offer publishes `AssignmentCreatedEvent`:
+  `MandateOfferMailet` e-mails the agent the mandate and its deadline (`mail/mandate/offer.mjml`). The dispatch always
+  runs: there's no switch to turn it off. Two ops endpoints (`@OpsEndpoint`, see `platform/endpoint`): `POST
+  /v1/assignments/dispatch` (offers a mandate now, same rules) and `POST /{id}/expire` (expires an offer now). Config:
+  `ndopify.mandate.assignment.*`. `MandateDispatcherTest` covers every case of the algorithm — keep it that way when
+  changing it. The wiring is covered by the endpoint tests (`CreateMandateEndpointTest`, `Decline` / `Dispatch` /
+  `ExpireAssignmentEndpointTest`) and the listener / job unit tests.
 - **error** — shared exception types (`WutsiException` subclasses: `BadRequestException`, `NotFoundException`,
   `ConflictException`, `ForbiddenException`, `UnauthorizedException`, `InternalErrorException`) and a global
   `ControllerErrorHandler`.
 
-**Asynchronous e-mails** (welcome, OTP, KYC status, mandate assigned): the service publishes an event from its transaction
-(`AgentCreatedEvent`, `OtpCreatedEvent`, `KycCaseCompletedEvent`, `AssignmentAcceptedEvent` in
-`<domain>/server/event/`), carrying ids plus the `tenantId` — never entities. Its listener is
-`@Async @TransactionalEventListener(AFTER_COMMIT)`, so nothing is sent for a rolled-back transaction. The executor
-thread has no request, so the listener sets `TenantContext` and a `DefaultKVLogger` in `KVLoggerThreadLocal`
+**Asynchronous e-mails** (welcome, OTP, KYC status, mandate offered, mandate assigned): the service publishes an event
+from its transaction (`AgentCreatedEvent`, `OtpCreatedEvent`, `KycCaseCompletedEvent`, `AssignmentCreatedEvent`,
+`AssignmentAcceptedEvent` in `<domain>/server/event/`), carrying ids plus the `tenantId` — never entities. Its
+listener is `@Async @TransactionalEventListener(AFTER_COMMIT)`, so nothing is sent for a rolled-back transaction. The
+executor thread has no request, so the listener sets `TenantContext` and a `DefaultKVLogger` in `KVLoggerThreadLocal`
 (which the injected `KVLogger` falls back to), calls `logger.log()` in `finally` to flush it, and removes both
 (threads are reused). The work runs in a `@Transactional` service method (`AgentService.sendWelcomeEmail`,
-`OtpService.sendEmail`, `KycService.sendStatusEmail`, `AssignmentService.sendAssignedEmail`), entered *after* `TenantContext` is set since Hibernate resolves the tenant when the session
-opens. Failures are logged, never rethrown. Tests must wait for the mail (`smtp.waitForIncomingEmail`);
+`OtpService.sendEmail`, `KycService.sendStatusEmail`, `AssignmentService.sendOfferEmail` / `sendAssignedEmail`),
+entered *after* `TenantContext` is set since Hibernate resolves the tenant when the session opens. Failures are
+logged, never rethrown. Tests must wait for the mail (`smtp.waitForIncomingEmail`);
 `BaseEndpointIntegrationTest.tearDown` waits for the running async tasks, so a test's mail can't reach the next one.
 
 There's also a non-domain **`platform`** package holding shared infrastructure (wired by `platform/config`):
@@ -208,6 +227,11 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
   `src/main/resources/mail/`.
 - `platform/logger` — key-value request logging (`KVLogger`, `KVLoggerFilter`).
 - `platform/tenant` — tenant resolution (see Multi-Tenancy below).
+- `platform/endpoint` — `@OpsEndpoint`: marks an operational endpoint method (ex: dispatching a mandate by hand).
+  `OpsEndpointHandlerMapping` (wired by `EndpointConfiguration`) doesn't map them unless `ndopify.endpoints.ops` is
+  `true` (default config; `false` in `application-prod.yml`, and when missing): the route doesn't exist, and
+  `ControllerErrorHandler` answers 404 `HTTP_NOT_FOUND` for an unknown path (`NoResourceFoundException`). They're
+  unauthenticated, like the rest of the API for now: mark any endpoint that mustn't be open in prod with it.
 
 ### `ndopify-partner-central`
 
@@ -317,6 +341,14 @@ Base classes (`src/test/kotlin/com/wutsi/ndopify/`):
 
 Mock Spring beans in `@SpringBootTest` tests with `@MockitoBean`
 (`org.springframework.test.context.bean.override.mockito.MockitoBean`), not the removed `@MockBean`.
+
+The mandate dispatch in the `qa` profile has no night (`night.start == night.end`) and no cron (`-`), so its
+endpoint tests don't depend on when they run: their fixtures date mandates `NOW()` and offer deadlines in 2099 / 2020.
+The night is unit tested (`DispatchHoursTest`, `MandateDispatcherTest`), and so are the jobs (`MandateJobsTest`, with
+the batch methods in `AssignmentServiceTest`). If a test has to mock the `Clock` bean (only `clock.millis()` is
+used), mind that the JWT of `AuthorizationAwareEndpointIntegrationTest` then gets its expiry from the mock while it's
+checked against the real time; and that every test instance registers itself as an interceptor on the shared
+`TestRestTemplate`, so the interceptors of earlier instances still run.
 
 SQL test fixtures live under `modules/ndopify-server/src/test/resources/db/test/<domain>/`, named after the test
 class per convention (`FooEndpointTest.kt` → `FooEndpoint.sql`). `ResetDBTest`/Flyway config in

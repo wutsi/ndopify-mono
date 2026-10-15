@@ -28,6 +28,7 @@ object ErrorCode {
     val HTTP_INVALID_PARAMETER = "$PREFIX:http:invalid-parameter"
     val HTTP_INTERNAL = "$PREFIX:http:unexpected-error"
     val HTTP_METHOD_NOT_SUPPORTED = "$PREFIX:http:method-not-supported"
+    val HTTP_NOT_FOUND = "$PREFIX:http:not-found"
     val HTTP_ACCESS_DENIED = "$PREFIX:http:access-denied"
     val HTTP_AUTHENTICATION_FAILED = "$PREFIX:http:authentication-failed"
     val HTTP_DOWNSTREAM_ERROR = "$PREFIX:http:downstream-error"

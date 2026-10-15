@@ -15,3 +15,15 @@ spring:
                     starttls:
                         enable: false
                         required: false
+
+ndopify:
+    mandate:
+        assignment:
+            jitter: 0 # Deterministic scores
+            night: # No night: the endpoint tests don't depend on the time they run. The night is unit tested
+                start: "00:00"
+                end: "00:00"
+            expire:
+                cron: "-" # Never on its own: a run mid-suite would expire the fixtures' offers. Tests call MandateJobs
+            dispatch:
+                cron: "-"

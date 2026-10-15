@@ -19,6 +19,9 @@ springdoc:
         enabled: false
 
 ndopify:
+    endpoints:
+        ops: false                         # The @OpsEndpoint endpoints are unauthenticated
+
     storage:
         default-type: s3
         s3:

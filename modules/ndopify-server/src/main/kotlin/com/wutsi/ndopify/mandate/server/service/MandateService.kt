@@ -11,9 +11,12 @@ import com.wutsi.ndopify.mandate.dto.SearchMandateRequest
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.mandate.server.event.MandateCreatedEvent
+import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
@@ -25,6 +28,7 @@ class MandateService(
     private val dao: MandateRepository,
     private val clock: Clock,
     private val customerService: CustomerService,
+    private val eventPublisher: ApplicationEventPublisher,
 ) {
     fun search(request: SearchMandateRequest): List<MandateEntity> {
         val spec = Specification<MandateEntity> { root, query, cb ->
@@ -84,7 +88,7 @@ class MandateService(
         )
 
         val now = Date(clock.millis())
-        return dao.save(
+        val mandate = dao.save(
             MandateEntity(
                 customerId = customer.id ?: -1,
                 status = MandateStatus.PENDING_ASSIGNMENT,
@@ -126,6 +130,10 @@ class MandateService(
                 modifiedAt = now,
             )
         )
+
+        // Offered to an agent after commit, by a listener of this event
+        eventPublisher.publishEvent(MandateCreatedEvent(mandateId = mandate.id!!, tenantId = TenantContext.get()!!))
+        return mandate
     }
 
     @Transactional

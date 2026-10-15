@@ -9,10 +9,12 @@ import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.mandate.dto.AssignmentStatus
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateResponse
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.SearchAssignmentResponse
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.refdata.dto.Money
@@ -132,6 +134,26 @@ class CreateMandateEndpointTest : TenantAwareEndpointIntegrationTest() {
         val customer = customerDao.findById(mandate.customerId).get()
         assertEquals(TENANT_ID, customer.tenantId)
         assertEquals(party.id, customer.party.id)
+    }
+
+    @Test
+    @Sql(
+        scripts = ["/db/test/clean.sql", "/db/test/mandate/CreateMandateEndpoint.sql"],
+        statements = [
+            "INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name, kyc_status) VALUES " +
+                "(200, 1, 'kim.possible@gmail.com', 'Kim', 'Possible', 4)", // 4=VERIFIED
+            "INSERT INTO T_AGENT(id, tenant_id, party_id, city_id) VALUES (20, 1, 200, 2370201)",
+        ],
+    )
+    fun `the new mandate is offered to an agent`() {
+        val response = rest.postForEntity("/v1/mandates", request, CreateMandateResponse::class.java)
+        awaitAsyncTasks() // Dispatched after commit
+
+        val mandateId = response.body!!.mandateId
+        val assignments = rest.getForEntity("/v1/assignments?mandate-id=$mandateId", SearchAssignmentResponse::class.java)
+            .body!!.assignments
+        assertEquals(20L, assignments.single().agentId)
+        assertEquals(AssignmentStatus.PENDING, assignments.single().status)
     }
 
     @Test

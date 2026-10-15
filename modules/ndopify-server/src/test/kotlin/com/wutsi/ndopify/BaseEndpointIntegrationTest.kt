@@ -81,7 +81,7 @@ abstract class BaseEndpointIntegrationTest : ClientHttpRequestInterceptor {
      * E-mails are sent by @Async listeners: wait for the ones still running, or they'd be delivered to the next
      * test's SMTP server.
      */
-    private fun awaitAsyncTasks() {
+    protected fun awaitAsyncTasks() {
         val pool = taskExecutor.threadPoolExecutor
         val deadline = System.currentTimeMillis() + ASYNC_TIMEOUT_MS
         while ((pool.activeCount > 0 || pool.queue.isNotEmpty()) && System.currentTimeMillis() < deadline) {

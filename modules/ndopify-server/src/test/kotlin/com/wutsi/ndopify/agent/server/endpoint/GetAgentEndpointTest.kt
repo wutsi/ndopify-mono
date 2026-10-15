@@ -28,12 +28,27 @@ class GetAgentEndpointTest : AbstractAgentEndpointTest() {
         assertEquals("+23761111111", agent.whatsappNumber)
         assertEquals(listOf(111L, 222L), agent.neighborhoodIds.sorted())
         assertEquals("2024-06-11", SimpleDateFormat("yyyy-MM-dd").format(agent.joinedAt!!))
+        assertEquals(4.5, agent.rating)
 
         val party = agent.party
         assertEquals(100L, party.id)
         assertEquals("Ray", party.firstName)
         assertEquals("Sponsible", party.lastName)
         assertEquals("ray.sponsible@gmail.com", party.email)
+    }
+
+    @Test
+    @Sql(
+        scripts = ["/db/test/clean.sql", "/db/test/agent/GetAgentEndpoint.sql"],
+        statements = [
+            "INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name) VALUES (101, 1, 'u@x.com', 'Un', 'Rated')",
+            "INSERT INTO T_AGENT (id, tenant_id, party_id, city_id) VALUES (3, 1, 101, 2370201)",
+        ],
+    )
+    fun `unrated agent`() {
+        val response = rest.getForEntity("/v1/agents/3", GetAgentResponse::class.java)
+
+        assertEquals(3.0, response.body!!.agent.rating)
     }
 
     @Test

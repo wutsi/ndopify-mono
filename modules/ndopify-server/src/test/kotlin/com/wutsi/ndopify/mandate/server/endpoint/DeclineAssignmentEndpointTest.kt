@@ -7,11 +7,13 @@ import com.wutsi.ndopify.mandate.dto.AssignmentStatus
 import com.wutsi.ndopify.mandate.dto.GetAssignmentResponse
 import com.wutsi.ndopify.mandate.dto.GetMandateResponse
 import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.mandate.dto.SearchAssignmentResponse
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/DeclineAssignmentEndpoint.sql"])
 class DeclineAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
@@ -24,10 +26,28 @@ class DeclineAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest(
         val assignment = rest.getForEntity("/v1/assignments/1", GetAssignmentResponse::class.java).body!!.assignment
         assertEquals(AssignmentStatus.DECLINED, assignment.status)
 
-        // The mandate is still waiting for an agent
+        // The mandate is still waiting for an agent, once re-dispatched
+        awaitAsyncTasks()
         val mandate = rest.getForEntity("/v1/mandates/1", GetMandateResponse::class.java).body!!.mandate
         assertNull(mandate.agentId)
         assertEquals(MandateStatus.PENDING_ASSIGNMENT, mandate.status)
+    }
+
+    @Test
+    @Sql(
+        scripts = ["/db/test/clean.sql", "/db/test/mandate/DeclineAssignmentEndpoint.sql"],
+        statements = ["UPDATE T_PARTY SET kyc_status = 4 WHERE id IN (200, 300)"], // 4=VERIFIED
+    )
+    fun `the mandate goes to the next agent`() {
+        rest.postForEntity("/v1/assignments/1/decline", null, Any::class.java)
+        awaitAsyncTasks() // Re-dispatched after commit
+
+        // Agent 20 declined it: never offered it again
+        val pending = rest.getForEntity("/v1/assignments?mandate-id=1&status=PENDING", SearchAssignmentResponse::class.java)
+            .body!!.assignments
+        assertEquals(30L, pending.single().agentId)
+        assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received")
+        assertEquals("John Doe <john.doe@gmail.com>", smtp.receivedMessages.single().allRecipients.single().toString())
     }
 
     @Test
