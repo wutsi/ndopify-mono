@@ -3,9 +3,18 @@
 ## Context
 
 `MandateService.create` starts a mandate as `PENDING_ASSIGNMENT`, but nothing assigns it to an agent yet.
-Work in progress (uncommitted): `T_ASSIGNMENT` (`V6_1`), `AssignmentEntity` (with a `score`), `AssignmentStatus`
-(`PENDING`, `ACCEPTED`, `DECLINED`, `EXPIRED`), `AgentEntity.lastAssignedAt`, `SearchAgentRequest.kycStatus`, and a
-`MandateDispatcher` skeleton that already finds the candidates.
+
+Already on `main`:
+
+- `T_ASSIGNMENT` (`V6_1`, incl. `expires_at`), `AssignmentEntity` (with a `score` and a non-null `expiresAt`),
+  `AssignmentStatus` (`PENDING`, `ACCEPTED`, `DECLINED`, `EXPIRED`), the assignment DTOs (`Assignment`,
+  `AssignmentSummary`, `Get/SearchAssignment*`), `db/test/clean.sql` deleting `T_ASSIGNMENT`.
+- `AgentEntity.lastAssignedAt` / `Agent.lastAssignedAt`, `SearchAgentRequest.kycStatus`, and a `MandateDispatcher`
+  skeleton that already finds the candidates.
+- `AgentEntity.joinedAt` / `Agent.joinedAt`: set once, on the agent's first VERIFIED KYC case, by
+  `AgentKycEventListener` (`KycCaseCompletedEvent` now carries `partyId` + `status`). Not used by the dispatch.
+- `TenantEntity.timeZone` / `Tenant.timeZone` (IANA id; `T_TENANT.time_zone` in `V1_2`, default `Africa/Douala`):
+  the night hours below are computed in it.
 
 ## Decision
 
@@ -115,7 +124,8 @@ it spreads concurrent offers across agents (no need to count PENDING offers in t
 ### 4. Night & manual assignment
 
 - **Night** = `[night.start, night.end)` (default `21:00` → `07:00`) in the **tenant's time zone**
-  (`TenantEntity.timeZone`, see *Tenant time zone* below); it may span midnight. `night.start == night.end` means no
+  (`TenantEntity.timeZone`); it may span midnight. The night hours stay global config: "night" is 21:00 → 07:00
+  local time for every tenant, wherever it is. `night.start == night.end` means no
   night.
 - **No offer at night**: `dispatch` returns without offering, the mandate stays `PENDING_ASSIGNMENT`.
   `MandateJobs.dispatch` (every 15 min) dispatches the mandates waiting without a PENDING offer: the ones that came in
@@ -129,8 +139,6 @@ it spreads concurrent offers across agents (no need to count PENDING offers in t
   `MandateManualAssignmentEvent`. It's checked in `dispatch`, so it happens on every path: the job, a decline, an
   expiry. A PENDING offer is never interrupted: the mandate only moves once it has expired or been declined, so an
   offer can't be accepted on a `MANUAL_ASSIGNMENT` mandate.
-- **Tenant time zone**: new `T_TENANT.time_zone` (IANA id, ex: `Africa/Douala`), on `TenantEntity` and the `Tenant`
-  DTO. The night hours stay global config: "night" is 21:00 → 07:00 local time for every tenant, wherever it is.
 - `MANUAL_ASSIGNMENT` is appended to `MandateStatus` (persisted by ordinal: never inserted before existing values).
   How a human then assigns it (admin console) is out of scope.
 
@@ -171,10 +179,10 @@ older than `manual-after-days` goes to `MANUAL_ASSIGNMENT` on the first job run 
 
 ## 2. Migration — amend `V6_1__mandate-assignment.sql`
 
-Still uncommitted, so it can be amended; once committed, this goes in a new migration instead.
+Committed, but no database is deployed yet, so it's amended rather than followed by a new migration (drop and
+recreate the local schema). `expires_at` is already there (`NOT NULL`, like `AssignmentEntity.expiresAt`); it adds:
 
 ```sql
-    expires_at              DATETIME,
     version                 BIGINT NOT NULL DEFAULT 0,
     ...
     INDEX IDX_ASSIGNMENT_mandate_status (mandate_id, status),
@@ -193,20 +201,11 @@ Defaulted, so every existing agent and the test fixtures inserting into `T_AGENT
 
 `AssignmentStatus` is persisted by ordinal (like `KycStatus`): only ever append new values.
 
-### `V6_2__refdata-tenant-time-zone.sql` — new
+## 3. Entities — `AssignmentEntity`, `AgentEntity`
 
-```sql
--- Every tenant so far is in Cameroon (WAT, UTC+1): the default sets them right, new tenants pass their own
-ALTER TABLE T_TENANT ADD COLUMN time_zone VARCHAR(64) NOT NULL DEFAULT 'Africa/Douala';
-```
-
-Defaulted, so the existing rows and the test fixtures inserting into `T_TENANT` without it keep working.
-
-## 3. Entities — `AssignmentEntity`, `TenantEntity`, `AgentEntity`
+`AssignmentEntity` (`expiresAt` already exists, non-null):
 
 ```kotlin
-    val expiresAt: Date? = null,
-
     // Optimistic locking: of 2 concurrent transitions of the same offer (double-click accept/decline, accept vs
     // expire), the 2nd write fails instead of silently overwriting the 1st
     @Version
@@ -224,12 +223,6 @@ Defaulted, so the existing rows and the test fixtures inserting into `T_TENANT` 
     companion object {
         const val DEFAULT_RATING = 3.0
     }
-```
-
-`TenantEntity` (+ `Tenant` DTO in `ndopify-dto`, + `TenantMapper`):
-
-```kotlin
-    val timeZone: String = "Africa/Douala", // IANA id, ex: Africa/Douala
 ```
 
 `MandateStatus` (`ndopify-dto`) — appended, never inserted (persisted by ordinal):
@@ -765,7 +758,7 @@ class AssignmentService(
 
     private fun ensurePending(assignment: AssignmentEntity, ignoreTtl: Boolean = false): AssignmentEntity {
         // Accepted / declined late (after the TTL) counts as expired, even if the job didn't run yet
-        val late = !ignoreTtl && assignment.expiresAt?.before(Date(clock.millis())) == true
+        val late = !ignoreTtl && assignment.expiresAt.before(Date(clock.millis()))
         if (assignment.status != AssignmentStatus.PENDING || late) {
             throw ConflictException(Error(code = ErrorCode.ASSIGNMENT_NOT_PENDING))
         }
@@ -1036,12 +1029,11 @@ Each step ends green (`mvn test -Dtest=…` on what it touches); tests are writt
 - `ErrorCode.ASSIGNMENT_NOT_FOUND`, `ErrorCode.ASSIGNMENT_NOT_PENDING`, `ErrorCode.ASSIGNMENT_ACCESS_DENIED`.
 - `DispatchMandateRequest`, `DispatchMandateResponse` (§6b); `AssignmentSummary.expiresAt`.
 - `MandateStatus.MANUAL_ASSIGNMENT`, appended last.
-- `Tenant.timeZone`.
 - `Agent.rating` (read-only: not in `UpdateAgentRequest`).
 - Review the drafted assignment DTOs (`Assignment`, `AssignmentSummary`, `Get/SearchAssignment*`) against §8's
   endpoints.
-- The root `pom.xml` is already on `ndopify-dto` `0.0.36-SNAPSHOT`: `mvn install` the DTO module so the server
-  builds against it.
+- The root `pom.xml` pins the released `ndopify-dto.version` (`0.0.37`): point it at the DTO module's current
+  snapshot and `mvn install` the DTO module so the server builds against it.
 
 **Verify:** `cd modules/ndopify-dto && mvn install`
 
@@ -1055,16 +1047,13 @@ Each step ends green (`mvn test -Dtest=…` on what it touches); tests are writt
 
 ### Step 3 — Schema & entity
 
-- Amend `V6_1__mandate-assignment.sql`: `expires_at` + the 3 indexes (§2). Drop and recreate the local schema, since
-  `V6_1` may already be applied locally.
-- `AssignmentEntity.expiresAt`, `AssignmentEntity.version` (`@Version`); `ControllerErrorHandler`:
+- Amend `V6_1__mandate-assignment.sql`: `version` + the 3 indexes (§2). Drop and recreate the local schema, since
+  `V6_1` is already applied locally.
+- `AssignmentEntity.version` (`@Version`); `ControllerErrorHandler`:
   `ObjectOptimisticLockingFailureException` → 409 `ASSIGNMENT_NOT_PENDING`.
 - `V6_1` also adds `T_AGENT.rating` (default 3.0); `AgentEntity.rating`, `Agent.rating`, `AgentMapper`;
   `GetAgentEndpointTest` asserts it (3.0 for a fixture without it); `UpdateAgentEndpointTest` checks the rating is
   left unchanged.
-- `V6_2__refdata-tenant-time-zone.sql`; `TenantEntity.timeZone`, `TenantMapper`; `SearchTenantEndpointTest` asserts
-  it.
-- `db/test/clean.sql`: delete `T_ASSIGNMENT` rows before `T_MANDATE` / `T_AGENT` (FKs).
 
 **Verify:** any existing endpoint test boots (Flyway migrates): `mvn test -Dtest=SearchAgentEndpointTest`
 
@@ -1075,8 +1064,7 @@ Each step ends green (`mvn test -Dtest=…` on what it touches); tests are writt
 - `MandateRepository`: `findByIdForUpdate`, `countByAgentIdsAndStatusIn` + `AgentMandateCount`,
   `findIdsWithoutAssignment`.
 - `AgentService.markAssigned`, `AgentService.search(request, sort)` + `SORT_LEAST_RECENTLY_ASSIGNED` (test in
-  `SearchAgentEndpointTest`). `Agent` / `AgentMapper` are already modified (uncommitted): check whether they expose
-  `lastAssignedAt`.
+  `SearchAgentEndpointTest`).
 - `application.yml`: the `ndopify.mandate.assignment.*` block (§1), `enabled` / `ops-endpoints.enabled` false;
   `application-qa.yml`: both true, `jitter: 0`.
 
@@ -1168,8 +1156,8 @@ No tests of their own: they're exercised by steps 5–7.
   mandate's city**: neither the nearby neighbourhoods nor the candidates ever come from another city.
 - Locations are assumed always imported and geocoded.
 - Accept / decline only by the assigned agent (JWT user → membership → party = agent's party): 401 / 403.
-- No offer at night (`21:00` → `07:00`, configurable), in the **tenant's time zone** (`T_TENANT.time_zone`, default
-  `Africa/Douala`); the TTL only runs during the day.
+- No offer at night (`21:00` → `07:00`, configurable), in the **tenant's time zone** (`TenantEntity.timeZone`); the
+  TTL only runs during the day.
 - `MANUAL_ASSIGNMENT` after `manual-after-days` (3) **calendar days** since creation (nights and week-ends included),
   checked on every dispatch; a PENDING offer is never interrupted. A `MandateManualAssignmentEvent` is fired.
 - Mandates without a PENDING offer (night, no candidate) are retried by `MandateJobs.dispatch` every 15 min.

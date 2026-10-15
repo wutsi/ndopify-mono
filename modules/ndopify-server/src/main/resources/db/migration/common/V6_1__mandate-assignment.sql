@@ -10,7 +10,7 @@ CREATE TABLE T_ASSIGNMENT(
 
     created_at              DATETIME DEFAULT NOW(),
     modified_at             DATETIME NOT NULL DEFAULT now() ON UPDATE now(),
-    expires_at              DATETIME,
+    expires_at              DATETIME NOT NULL,
 
     CONSTRAINT FK_ASSIGNMENT_mandate FOREIGN KEY(mandate_id) REFERENCES T_MANDATE(id),
     CONSTRAINT FK_ASSIGNMENT_agent FOREIGN KEY(agent_id) REFERENCES T_AGENT(id),

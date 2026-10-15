@@ -15,7 +15,7 @@ data class Tenant(
     val dateTimeFormat: String = "",
     val dateFormat: String = "",
     val timeFormat: String = "",
-    val timeZone: String = "",
+    val timeZone: String = "Africa/Douala", // IANA id
     val iconUrl: String? = null,
     val logoUrl: String? = null,
     val active: Boolean = true,
