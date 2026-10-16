@@ -46,7 +46,6 @@ class AssignmentServiceTest {
         mailet = mock(),
         offerMailet = mock(),
         dispatcher = dispatcher,
-        mandateService = mock(),
     )
 
     private val now = 1_800_000_000_000L

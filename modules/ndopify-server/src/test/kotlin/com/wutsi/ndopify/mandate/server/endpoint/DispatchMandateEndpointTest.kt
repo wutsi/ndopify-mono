@@ -4,7 +4,6 @@ import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
-import com.wutsi.ndopify.mandate.dto.DispatchMandateRequest
 import com.wutsi.ndopify.mandate.dto.DispatchMandateResponse
 import com.wutsi.ndopify.mandate.dto.GetAssignmentResponse
 import com.wutsi.ndopify.mandate.dto.GetMandateResponse
@@ -18,10 +17,10 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-@Sql(value = ["/db/test/clean.sql", "/db/test/mandate/DispatchAssignmentEndpoint.sql"])
-class DispatchAssignmentEndpointTest : TenantAwareEndpointIntegrationTest() {
+@Sql(value = ["/db/test/clean.sql", "/db/test/mandate/DispatchMandateEndpoint.sql"])
+class DispatchMandateEndpointTest : TenantAwareEndpointIntegrationTest() {
     private fun dispatch(mandateId: Long) =
-        rest.postForEntity("/v1/assignments/dispatch", DispatchMandateRequest(mandateId), DispatchMandateResponse::class.java)
+        rest.postForEntity("/v1/mandates/$mandateId/dispatch", null, DispatchMandateResponse::class.java)
 
     private fun assignments(mandateId: Long) =
         rest.getForEntity("/v1/assignments?mandate-id=$mandateId", SearchAssignmentResponse::class.java)
@@ -94,11 +93,7 @@ class DispatchAssignmentEndpointTest : TenantAwareEndpointIntegrationTest() {
 
     @Test
     fun `mandate not found`() {
-        val response = rest.postForEntity(
-            "/v1/assignments/dispatch",
-            DispatchMandateRequest(999),
-            ErrorResponse::class.java,
-        )
+        val response = rest.postForEntity("/v1/mandates/999/dispatch", null, ErrorResponse::class.java)
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals(ErrorCode.MANDATE_NOT_FOUND, response.body?.error?.code)
@@ -106,11 +101,7 @@ class DispatchAssignmentEndpointTest : TenantAwareEndpointIntegrationTest() {
 
     @Test
     fun `mandate from another tenant is not found`() {
-        val response = rest.postForEntity(
-            "/v1/assignments/dispatch",
-            DispatchMandateRequest(9),
-            ErrorResponse::class.java,
-        )
+        val response = rest.postForEntity("/v1/mandates/9/dispatch", null, ErrorResponse::class.java)
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals(ErrorCode.MANDATE_NOT_FOUND, response.body?.error?.code)

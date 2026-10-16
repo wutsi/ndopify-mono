@@ -21,7 +21,8 @@ Already on `main` (not repeated below):
 - `ndopify-dto` released as `0.0.38` with the above.
 
 **Status:** Steps 1–10 are done on `feature/mandate-dispatch`. The ops endpoints (§6b) were built differently from
-the plan: they're in `AssignmentEndpoints`, marked `@OpsEndpoint` (`platform/endpoint`), and toggled by the global
+the plan: dispatch is `POST /v1/mandates/{id}/dispatch` (`MandateEndpoints`, no request body) and expire is in
+`AssignmentEndpoints`, both marked `@OpsEndpoint` (`platform/endpoint`), and toggled by the global
 `ndopify.endpoints.ops` (off in prod) instead of a separate `AssignmentOpsEndpoints` + `ops-endpoints.enabled`. Next:
 the open questions below.
 

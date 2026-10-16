@@ -386,8 +386,13 @@ class KycService(
     }
 
     private fun verify(case: KycCaseEntity, verificationType: KycVerificationType): List<KycVerificationEntity> {
-        val verifier = verifierProvider.get(verificationType)
-        return verifier?.verify(case) ?: emptyList()
+        try {
+            val verifier = verifierProvider.get(verificationType)
+            return verifier?.verify(case) ?: emptyList()
+        } catch (ex: Exception) {
+            LOGGER.warn(">>> KYC#${case.id} - ${verificationType.name} verification failed", ex)
+            return emptyList()
+        }
     }
 
     private fun ensureStatusIsPending(case: KycCaseEntity) {

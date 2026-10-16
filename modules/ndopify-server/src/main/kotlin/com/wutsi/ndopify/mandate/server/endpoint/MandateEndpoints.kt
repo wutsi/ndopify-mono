@@ -2,12 +2,14 @@ package com.wutsi.ndopify.mandate.server.endpoint
 
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateResponse
+import com.wutsi.ndopify.mandate.dto.DispatchMandateResponse
 import com.wutsi.ndopify.mandate.dto.GetMandateResponse
 import com.wutsi.ndopify.mandate.dto.SearchMandateRequest
 import com.wutsi.ndopify.mandate.dto.SearchMandateResponse
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.mandate.server.mapper.MandateMapper
 import com.wutsi.ndopify.mandate.server.service.MandateService
+import com.wutsi.ndopify.platform.endpoint.OpsEndpoint
 import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.GetMapping
@@ -50,5 +52,14 @@ class MandateEndpoints(
         @RequestBody @Valid request: UpdateMandateRequest,
     ) {
         service.update(id, request)
+    }
+
+    // Offers the mandate now. The same rules apply: nothing offered at night, MANUAL_ASSIGNMENT if overdue, nothing if
+    // it already has a PENDING offer
+    @OpsEndpoint
+    @PostMapping("/{id}/dispatch")
+    fun dispatch(@PathVariable id: Long): DispatchMandateResponse {
+        val assignment = service.dispatch(id)
+        return DispatchMandateResponse(assignmentId = assignment?.id)
     }
 }

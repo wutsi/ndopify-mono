@@ -10,6 +10,7 @@ import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.SearchMandateRequest
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
+import com.wutsi.ndopify.mandate.server.domain.AssignmentEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.mandate.server.event.MandateCreatedEvent
 import com.wutsi.ndopify.platform.tenant.TenantContext
@@ -29,6 +30,7 @@ class MandateService(
     private val clock: Clock,
     private val customerService: CustomerService,
     private val eventPublisher: ApplicationEventPublisher,
+    private val dispatcher: MandateDispatcher,
 ) {
     fun search(request: SearchMandateRequest): List<MandateEntity> {
         val spec = Specification<MandateEntity> { root, query, cb ->
@@ -134,6 +136,15 @@ class MandateService(
         // Offered to an agent after commit, by a listener of this event
         eventPublisher.publishEvent(MandateCreatedEvent(mandateId = mandate.id!!, tenantId = TenantContext.get()!!))
         return mandate
+    }
+
+    /**
+     * Dispatches the mandate now. Returns the PENDING assignment, or null if nothing was offered. Not @Transactional:
+     * [MandateDispatcher.dispatch] is, on another bean, so its proxy applies.
+     */
+    fun dispatch(id: Long): AssignmentEntity? {
+        findById(id) // 404 MANDATE_NOT_FOUND, rather than a silent null
+        return dispatcher.dispatch(id)
     }
 
     @Transactional

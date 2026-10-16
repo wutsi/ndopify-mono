@@ -43,3 +43,7 @@ div {
     width: auto !important;
     margin: 0 auto;
 }
+
+.text-primary{
+    color: #1d7edf !important;
+}

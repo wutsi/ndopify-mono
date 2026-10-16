@@ -122,6 +122,8 @@ springdoc:
             paths-to-match:
                 - /v1/mandates
                 - /v1/mandates/**
+                - /v1/assignments
+                - /v1/assignments/**
 
         -   group: party
             display-name: Party API

@@ -48,7 +48,6 @@ class AssignmentService(
     private val mailet: MandateAssignedMailet,
     private val offerMailet: MandateOfferMailet,
     private val dispatcher: MandateDispatcher,
-    private val mandateService: MandateService,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(AssignmentService::class.java)
@@ -127,15 +126,6 @@ class AssignmentService(
     @Transactional
     fun decline(id: Long): AssignmentEntity =
         close(findPendingForAssignee(id), AssignmentStatus.DECLINED)
-
-    /**
-     * Dispatches one mandate now. Returns the PENDING assignment, or null if nothing was offered. Not @Transactional:
-     * [MandateDispatcher.dispatch] is, on another bean, so its proxy applies.
-     */
-    fun dispatch(mandateId: Long): AssignmentEntity? {
-        mandateService.findById(mandateId) // 404 MANDATE_NOT_FOUND, rather than a silent null
-        return dispatcher.dispatch(mandateId)
-    }
 
     /** Expires a PENDING offer now, even before its TTL; its mandate is re-dispatched after commit. */
     @Transactional

@@ -196,10 +196,10 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   night, had no candidate, or their re-dispatch failed). Each offer publishes `AssignmentCreatedEvent`:
   `MandateOfferMailet` e-mails the agent the mandate and its deadline (`mail/mandate/offer.mjml`). The dispatch always
   runs: there's no switch to turn it off. Two ops endpoints (`@OpsEndpoint`, see `platform/endpoint`): `POST
-  /v1/assignments/dispatch` (offers a mandate now, same rules) and `POST /{id}/expire` (expires an offer now). Config:
-  `ndopify.mandate.assignment.*`. `MandateDispatcherTest` covers every case of the algorithm — keep it that way when
-  changing it. The wiring is covered by the endpoint tests (`CreateMandateEndpointTest`, `Decline` / `Dispatch` /
-  `ExpireAssignmentEndpointTest`) and the listener / job unit tests.
+  /v1/mandates/{id}/dispatch` (offers a mandate now, same rules) and `POST /v1/assignments/{id}/expire` (expires an
+  offer now). Config: `ndopify.mandate.assignment.*`. `MandateDispatcherTest` covers every case of the algorithm —
+  keep it that way when changing it. The wiring is covered by the endpoint tests (`CreateMandateEndpointTest`,
+  `DispatchMandateEndpointTest`, `Decline` / `ExpireAssignmentEndpointTest`) and the listener / job unit tests.
 - **error** — shared exception types (`WutsiException` subclasses: `BadRequestException`, `NotFoundException`,
   `ConflictException`, `ForbiddenException`, `UnauthorizedException`, `InternalErrorException`) and a global
   `ControllerErrorHandler`.
