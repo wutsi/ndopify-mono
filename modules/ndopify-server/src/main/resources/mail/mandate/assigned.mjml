@@ -5,60 +5,70 @@
         </mj-style>
     </mj-head>
     <mj-body css-class="body">
-        <mj-section css-class="main-content">
-            <mj-column>
-                <!-- Logo -->
-                <mj-image align="center" css-class="logo" src="{{tenant_logo_url}}" alt="Logo"/>
+        <!-- The styles of .main-content, set here since mjml-java drops the css-class of an mj-wrapper -->
+        <mj-wrapper background-color="#ffffff" border-radius="30px" padding="20px">
+            <mj-section padding="0">
+                <mj-column>
+                    <!-- Logo -->
+                    <mj-image align="center" css-class="logo" src="{{tenant_logo_url}}" alt="Logo"/>
 
-                <!-- Divider with class for CSS injection -->
-                <mj-divider css-class="divider"/>
+                    <!-- Divider with class for CSS injection -->
+                    <mj-divider css-class="divider"/>
 
-                <!-- Body Text -->
-                <mj-text>
-                    Bonjour <strong>{{recipient_name}}</strong>,
-                </mj-text>
-                <mj-text>
-                    Nous vous remercions d'avoir fait confiance à Ndopify pour votre recherche immobilière. Nous avons
-                    le plaisir de vous informer qu'un agent a été officiellement assigné à votre mandat.
-                </mj-text>
-                <mj-text>
-                    Voici les coordonnées de votre agent dédié :
-                </mj-text>
+                    <!-- Body Text -->
+                    <mj-text>
+                        Bonjour <strong>{{recipient_name}}</strong>,
+                    </mj-text>
+                    <mj-text>
+                        Nous vous remercions d'avoir fait confiance à Ndopify pour votre recherche immobilière. Nous
+                        avons le plaisir de vous informer qu'un agent a été officiellement assigné à votre mandat.
+                    </mj-text>
+                    <mj-text>
+                        Voici les coordonnées de votre agent dédié :
+                    </mj-text>
+                </mj-column>
+            </mj-section>
+
+            <!-- Agent: photo | details -->
+            <mj-section padding="0">
                 {{#agent_photo_url}}
-                <mj-image align="left" width="96px" height="96px" border-radius="48px" src="{{agent_photo_url}}"
-                          alt="Photo de {{agent_full_name}}"/>
+                <mj-column width="25%" vertical-align="top">
+                    <mj-image align="center" width="96px" height="96px" border-radius="48px" padding="10px 0"
+                              src="{{agent_photo_url}}" alt="Photo de {{agent_full_name}}"/>
+                </mj-column>
                 {{/agent_photo_url}}
-                <mj-text>
-                    <ul>
-                        <li>
-                            <b>Nom</b>: {{agent_full_name}}
-                        </li>
-                        <li>
-                            <b>Téléphone</b>: {{agent_phone}}
-                        </li>
-                        {{#agent_presentation}}
-                        <li>
-                            <b>Présentation</b>: {{agent_presentation}}
-                        </li>
-                        {{/agent_presentation}}
-                    </ul>
-                </mj-text>
-                <mj-text font-weight="bold" font-size="18px">
-                    Prochaine étape:
-                </mj-text>
-                <mj-text font-weight="bold">
-                    Votre agent prendra contact avec vous très prochainement par téléphone afin de faire le point,
-                    affiner vos critères de recherche et répondre à vos premières questions.
-                </mj-text>
+                <mj-column width="{{#agent_photo_url}}75%{{/agent_photo_url}}{{^agent_photo_url}}100%{{/agent_photo_url}}"
+                           vertical-align="top">
+                    <mj-text font-weight="bold" font-size="18px">
+                        {{agent_full_name}}
+                    </mj-text>
+                    {{#agent_presentation}}
+                    <mj-text>
+                        {{agent_presentation}}
+                    </mj-text>
+                    {{/agent_presentation}}
+                </mj-column>
+            </mj-section>
 
-                <!-- Sign-off -->
-                <mj-spacer/>
-                <mj-text>
-                    Cordialement,
-                    <br/>
-                    L'équipe {{tenant_name}}
-                </mj-text>
-            </mj-column>
-        </mj-section>
+            <mj-section padding="0">
+                <mj-column>
+                    <mj-text font-weight="bold" font-size="18px">
+                        Prochaine étape:
+                    </mj-text>
+                    <mj-text font-weight="bold">
+                        Votre agent prendra contact avec vous très prochainement par téléphone afin de faire le point,
+                        affiner vos critères de recherche et répondre à vos premières questions.
+                    </mj-text>
+
+                    <!-- Sign-off -->
+                    <mj-spacer/>
+                    <mj-text>
+                        Cordialement,
+                        <br/>
+                        L'équipe {{tenant_name}}
+                    </mj-text>
+                </mj-column>
+            </mj-section>
+        </mj-wrapper>
     </mj-body>
 </mjml>

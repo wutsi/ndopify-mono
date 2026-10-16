@@ -69,7 +69,6 @@ class MandateAssignedMailetTest {
                 "recipient_name" to "Ray Sponsible",
                 "agent_full_name" to "Kim Possible",
                 "agent_photo_url" to "https://cdn.ndopify.com/agents/200.jpg",
-                "agent_phone" to "+237670000020",
                 "agent_presentation" to "Agent immobilier à Yaoundé",
             ),
             context.firstValue,

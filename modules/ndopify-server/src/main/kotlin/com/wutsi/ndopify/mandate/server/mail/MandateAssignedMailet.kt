@@ -37,7 +37,6 @@ class MandateAssignedMailet(
                         "recipient_name" to fullName,
                         "agent_full_name" to agent.party.fullName(),
                         "agent_photo_url" to agent.party.photoUrl?.ifBlank { null },
-                        "agent_phone" to agent.whatsappNumber,
                         "agent_presentation" to agent.biography?.ifBlank { null },
                     )
                 )
