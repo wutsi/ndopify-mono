@@ -13,6 +13,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
     <link rel="stylesheet" href="assets/css/partner-central.css">
+    <link rel="stylesheet" href="assets/css/home.css">
     <script src="assets/js/partner-central.js" defer></script>
 </head>
 <body data-page="agent-home">
@@ -30,20 +31,295 @@
                 </button>
                 <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
                     <li class="user-menu__email" data-user-email></li>
-                    <li>
-                        <span class="user-menu__item" aria-disabled="true">
-                            Profil <span class="user-menu__soon">(bientôt disponible)</span>
-                        </span>
-                    </li>
+                    <li><a class="user-menu__item" href="profile/edit.html">Profil</a></li>
                     <li><a class="user-menu__item" href="login.html" data-logout>Déconnexion</a></li>
                 </ul>
             </nav>
         </div>
     </header>
     <main id="main" class="page">
-        <!-- Espace agent: empty for now, per the Partner Central source doc. -->
-        <div class="column">
-            <h1>Espace agent</h1>
+        <div class="column column--wide">
+            <h1 class="visually-hidden">Espace agent</h1>
+
+            <!--
+                Section Profile (source doc): photo, name, bio summary. Invites the agent to complete the profile
+                while the photo or the biography is missing. PROTOTYPE: shows the profile saved by profile/edit.html
+                and profile/photo.html; until then, ?profile=complete or ?profile=empty shows the other states (the
+                default is a profile without photo).
+            -->
+            <section class="home-section" aria-labelledby="profile-title" data-profile>
+                <h2 id="profile-title" class="visually-hidden">Mon profil</h2>
+                <div class="alert alert--success" role="status" hidden data-profile-saved>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <p data-profile-saved-text></p>
+                </div>
+                <div class="profile">
+                    <div class="profile__photo" data-profile-photo>
+                        <span class="profile__initials" aria-hidden="true" data-profile-initials>SN</span>
+                    </div>
+                    <div class="profile__body">
+                        <p class="profile__name" data-profile-name>Serge Ngono</p>
+                        <p class="profile__area" data-profile-area>
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                 aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+                            <span><span class="visually-hidden">Quartiers : </span><span data-profile-area-text>Bonapriso, Akwa, Bonanjo — Douala</span></span>
+                        </p>
+                        <p class="profile__bio" data-profile-bio>
+                            Démarcheur à Douala depuis 6 ans, je connais Bonapriso, Akwa et Bonanjo rue par rue.
+                            J'accompagne familles et jeunes actifs jusqu'à la signature du bail, avec des visites
+                            organisées et des biens vérifiés.
+                        </p>
+                        <p class="profile__bio profile__bio--missing" hidden data-profile-bio-missing>
+                            Aucune biographie pour le moment.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="hint" data-profile-incomplete>
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                    <div>
+                        <p><strong>Complétez votre profil.</strong> Les clients voient votre photo et votre biographie
+                            lorsque vous acceptez leur mandat : un profil complet inspire confiance.</p>
+                        <ul class="profile__todo">
+                            <li data-profile-todo="photo">
+                                <a href="profile/photo.html">Ajouter une photo professionnelle</a>
+                            </li>
+                            <li data-profile-todo="bio" hidden>
+                                <a href="profile/edit.html">Rédiger votre biographie</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <!--
+                Section Assignments (source doc): the active mandates offered to the agent, each to accept or
+                decline before its deadline. Anti-bypass: no client information, and the neighbourhood is the only
+                location given, until the agent accepts: mandate.html?id=… then shows the whole mandate. PROTOTYPE: deadlines are relative to the page load (data-expires-in, in minutes).
+            -->
+            <section class="home-section" aria-labelledby="assignments-title">
+                <h2 id="assignments-title">Mandats proposés</h2>
+                <p>Chaque mandat vous est proposé en exclusivité. Acceptez-le ou refusez-le avant la fin du délai :
+                    passé ce délai, il est proposé à un autre agent.</p>
+                <p class="visually-hidden" role="status" data-assignments-status></p>
+
+                <ul class="assignments" data-assignments>
+                    <li class="assignment" data-assignment data-mandate-id="101" data-expires-in="52">
+                        <article aria-labelledby="assignment-101-title">
+                            <div class="assignment__head">
+                                <h3 id="assignment-101-title" class="assignment__type">Locataire · Appartement</h3>
+                                <p class="assignment__timer" data-timer>
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                         stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                    <span>Il reste <strong data-timer-value>52 min</strong></span>
+                                </p>
+                            </div>
+                            <dl class="assignment__facts">
+                                <div>
+                                    <dt>Secteur</dt>
+                                    <dd>Bonapriso, Akwa — Douala</dd>
+                                </div>
+                                <div>
+                                    <dt>Budget</dt>
+                                    <dd>150 000 FCFA / mois</dd>
+                                </div>
+                                <div>
+                                    <dt>Emménagement</dt>
+                                    <dd>Dans moins de 1 mois</dd>
+                                </div>
+                            </dl>
+
+                            <details class="assignment__details">
+                                <summary>Voir les détails</summary>
+                                <div class="assignment__details-body">
+                                    <p class="assignment__countdown" data-timer>
+                                        Temps restant pour décider : <strong data-timer-value>52 min</strong>
+                                    </p>
+                                    <dl class="review">
+                                        <div class="review__item"><dt class="review__term">Catégorie</dt><dd class="review__value">Résidentiel</dd></div>
+                                        <div class="review__item"><dt class="review__term">Type de propriété</dt><dd class="review__value">Appartement</dd></div>
+                                        <div class="review__item"><dt class="review__term">Meublé</dt><dd class="review__value">Non</dd></div>
+                                        <div class="review__item"><dt class="review__term">Chambres</dt><dd class="review__value">2</dd></div>
+                                        <div class="review__item"><dt class="review__term">Parking</dt><dd class="review__value">1</dd></div>
+                                        <div class="review__item"><dt class="review__term">Surface souhaitée</dt><dd class="review__value">80 m²</dd></div>
+                                        <div class="review__item"><dt class="review__term">Accès à l'eau</dt><dd class="review__value">Compteur dédié, Forage</dd></div>
+                                        <div class="review__item"><dt class="review__term">Accès à l'électricité</dt><dd class="review__value">Compteur dédié, Groupe électrogène</dd></div>
+                                        <div class="review__item"><dt class="review__term">Accès routier</dt><dd class="review__value">Route bitumée</dd></div>
+                                        <div class="review__item"><dt class="review__term">Sécurité</dt><dd class="review__value">Gardien 24h/24h</dd></div>
+                                    </dl>
+                                    <div class="hint">
+                                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                             stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                                        <p>Seuls les quartiers sont indiqués. Une fois le mandat accepté, le client
+                                            est prévenu et ses coordonnées vous sont dévoilées ici.</p>
+                                    </div>
+                                </div>
+                            </details>
+
+                            <div class="assignment__actions" data-actions>
+                                <button type="button" class="btn btn--primary" data-accept>Accepter</button>
+                                <button type="button" class="btn btn--outline" data-decline>Refuser</button>
+                            </div>
+                            <div class="alert alert--warning assignment__confirm" hidden data-decline-confirm>
+                                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                                <div>
+                                    <p class="alert__title">Refuser ce mandat ?</p>
+                                    <p>Il sera proposé à un autre agent et ne vous sera plus proposé.</p>
+                                    <div class="assignment__actions">
+                                        <button type="button" class="btn btn--primary" data-decline-confirmed>Confirmer le refus</button>
+                                        <button type="button" class="btn btn--outline" data-decline-cancel>Annuler</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+                    </li>
+
+                    <li class="assignment" data-assignment data-mandate-id="102" data-expires-in="9">
+                        <article aria-labelledby="assignment-102-title">
+                            <div class="assignment__head">
+                                <h3 id="assignment-102-title" class="assignment__type">Bailleur · Studio</h3>
+                                <p class="assignment__timer" data-timer>
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                         stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                    <span>Il reste <strong data-timer-value>9 min</strong></span>
+                                </p>
+                            </div>
+                            <dl class="assignment__facts">
+                                <div>
+                                    <dt>Secteur</dt>
+                                    <dd>Bonanjo — Douala</dd>
+                                </div>
+                                <div>
+                                    <dt>Loyer</dt>
+                                    <dd>75 000 FCFA / mois</dd>
+                                </div>
+                                <div>
+                                    <dt>Disponibilité</dt>
+                                    <dd>Dans 1 à 3 mois</dd>
+                                </div>
+                            </dl>
+
+                            <details class="assignment__details">
+                                <summary>Voir les détails</summary>
+                                <div class="assignment__details-body">
+                                    <p class="assignment__countdown" data-timer>
+                                        Temps restant pour décider : <strong data-timer-value>9 min</strong>
+                                    </p>
+                                    <dl class="review">
+                                        <div class="review__item"><dt class="review__term">Catégorie</dt><dd class="review__value">Résidentiel</dd></div>
+                                        <div class="review__item"><dt class="review__term">Type de propriété</dt><dd class="review__value">Studio</dd></div>
+                                        <div class="review__item"><dt class="review__term">Meublé</dt><dd class="review__value">Oui</dd></div>
+                                        <div class="review__item"><dt class="review__term">Chambres</dt><dd class="review__value">1</dd></div>
+                                        <div class="review__item"><dt class="review__term">Parking</dt><dd class="review__value">Aucune</dd></div>
+                                        <div class="review__item"><dt class="review__term">Surface</dt><dd class="review__value">30 m²</dd></div>
+                                        <div class="review__item"><dt class="review__term">Accès à l'eau</dt><dd class="review__value">Compteur d'eau</dd></div>
+                                        <div class="review__item"><dt class="review__term">Accès à l'électricité</dt><dd class="review__value">Compteur électrique</dd></div>
+                                        <div class="review__item"><dt class="review__term">Accès routier</dt><dd class="review__value">Piste accessible en voiture</dd></div>
+                                        <div class="review__item"><dt class="review__term">Sécurité</dt><dd class="review__value">Barrière sécurisée</dd></div>
+                                    </dl>
+                                    <div class="hint">
+                                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                             stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                                        <p>Seul le quartier est indiqué. Une fois le mandat accepté, le bailleur
+                                            est prévenu et ses coordonnées vous sont dévoilées ici.</p>
+                                    </div>
+                                </div>
+                            </details>
+
+                            <div class="assignment__actions" data-actions>
+                                <button type="button" class="btn btn--primary" data-accept>Accepter</button>
+                                <button type="button" class="btn btn--outline" data-decline>Refuser</button>
+                            </div>
+                            <div class="alert alert--warning assignment__confirm" hidden data-decline-confirm>
+                                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                                <div>
+                                    <p class="alert__title">Refuser ce mandat ?</p>
+                                    <p>Il sera proposé à un autre agent et ne vous sera plus proposé.</p>
+                                    <div class="assignment__actions">
+                                        <button type="button" class="btn btn--primary" data-decline-confirmed>Confirmer le refus</button>
+                                        <button type="button" class="btn btn--outline" data-decline-cancel>Annuler</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+                    </li>
+
+                    <li class="assignment" data-assignment data-mandate-id="103" data-expires-in="38">
+                        <article aria-labelledby="assignment-103-title">
+                            <div class="assignment__head">
+                                <h3 id="assignment-103-title" class="assignment__type">Locataire · Bureau</h3>
+                                <p class="assignment__timer" data-timer>
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                         stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                    <span>Il reste <strong data-timer-value>38 min</strong></span>
+                                </p>
+                            </div>
+                            <dl class="assignment__facts">
+                                <div>
+                                    <dt>Secteurs</dt>
+                                    <dd>Akwa, Bonanjo, Deïdo — Douala</dd>
+                                </div>
+                                <div>
+                                    <dt>Budget</dt>
+                                    <dd>400 000 FCFA / mois</dd>
+                                </div>
+                                <div>
+                                    <dt>Emménagement</dt>
+                                    <dd>Dans plus de 3 mois</dd>
+                                </div>
+                            </dl>
+
+                            <details class="assignment__details">
+                                <summary>Voir les détails</summary>
+                                <div class="assignment__details-body">
+                                    <p class="assignment__countdown" data-timer>
+                                        Temps restant pour décider : <strong data-timer-value>38 min</strong>
+                                    </p>
+                                    <dl class="review">
+                                        <div class="review__item"><dt class="review__term">Catégorie</dt><dd class="review__value">Commercial</dd></div>
+                                        <div class="review__item"><dt class="review__term">Type de propriété</dt><dd class="review__value">Bureau</dd></div>
+                                        <div class="review__item"><dt class="review__term">Meublé</dt><dd class="review__value">Indifférent</dd></div>
+                                        <div class="review__item"><dt class="review__term">Parking</dt><dd class="review__value">3+</dd></div>
+                                        <div class="review__item"><dt class="review__term">Surface souhaitée</dt><dd class="review__value">150 m²</dd></div>
+                                        <div class="review__item"><dt class="review__term">Accès à l'eau</dt><dd class="review__value">Compteur dédié</dd></div>
+                                        <div class="review__item"><dt class="review__term">Accès à l'électricité</dt><dd class="review__value">Compteur dédié, Panneau solaire</dd></div>
+                                        <div class="review__item"><dt class="review__term">Accès routier</dt><dd class="review__value">Route bitumée</dd></div>
+                                        <div class="review__item"><dt class="review__term">Sécurité</dt><dd class="review__value">Vidéo surveillance, Gardien 24h/24h</dd></div>
+                                    </dl>
+                                    <div class="hint">
+                                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                             stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                                        <p>Seuls les quartiers sont indiqués. Une fois le mandat accepté, le client
+                                            est prévenu et ses coordonnées vous sont dévoilées ici.</p>
+                                    </div>
+                                </div>
+                            </details>
+
+                            <div class="assignment__actions" data-actions>
+                                <button type="button" class="btn btn--primary" data-accept>Accepter</button>
+                                <button type="button" class="btn btn--outline" data-decline>Refuser</button>
+                            </div>
+                            <div class="alert alert--warning assignment__confirm" hidden data-decline-confirm>
+                                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                                <div>
+                                    <p class="alert__title">Refuser ce mandat ?</p>
+                                    <p>Il sera proposé à un autre agent et ne vous sera plus proposé.</p>
+                                    <div class="assignment__actions">
+                                        <button type="button" class="btn btn--primary" data-decline-confirmed>Confirmer le refus</button>
+                                        <button type="button" class="btn btn--outline" data-decline-cancel>Annuler</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </article>
+                    </li>
+                </ul>
+
+                <p class="assignments__empty" hidden data-assignments-empty>
+                    Aucun mandat ne vous est proposé pour le moment. Vous recevrez un e-mail dès qu'un client de
+                    votre secteur vous est attribué.
+                </p>
+            </section>
         </div>
     </main>
 </body>

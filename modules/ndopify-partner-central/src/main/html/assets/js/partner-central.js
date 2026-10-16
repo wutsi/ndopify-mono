@@ -27,7 +27,11 @@
         selfie: "npc.kyc.selfie",
         submitted: "npc.kyc.submitted",
         // Set while a rejected dossier's documents are being sent again.
-        resubmit: "npc.kyc.resubmit"
+        resubmit: "npc.kyc.resubmit",
+        // The agent's profile, as saved by profile/edit.html and profile/photo.html (see profile.js).
+        profile: "npc.profile",
+        // Ids of the mandates the agent accepted: their details (mandate.html) are unlocked.
+        accepted: "npc.mandates.accepted"
     };
 
     /* ---------- Storage (fails soft: private mode, quota) ---------- */
@@ -929,10 +933,361 @@
         settle(false);
     }
 
+    /* ---------- index.html — Espace agent ---------- */
+    var URGENT_MS = 15 * 60 * 1000;
+
+    var PROFILE_SAVED = {
+        profile: "Votre profil a été mis à jour.",
+        photo: "Votre photo de profil a été enregistrée."
+    };
+
+    function savedProfile() {
+        try {
+            return JSON.parse(store.get(KEYS.profile));
+        } catch (e) {
+            return null;
+        }
+    }
+
+    // PROTOTYPE: shows the profile saved by the profile pages; until then, ?profile=complete or ?profile=empty
+    // shows the other states of the section.
+    function initProfile() {
+        var section = $("[data-profile]");
+        if (!section) return;
+        var params = new URLSearchParams(window.location.search);
+        var saved = savedProfile();
+        var state = params.get("profile");
+        var photoSrc = saved ? saved.photo : (state === "complete" ? "assets/images/icon.png" : null);
+        var hasBio = saved ? !!saved.biography : state !== "empty";
+
+        if (photoSrc) {
+            var img = document.createElement("img");
+            img.src = photoSrc;
+            img.alt = "";
+            img.width = 80;
+            img.height = 80;
+            var photo = $("[data-profile-photo]", section);
+            photo.textContent = "";
+            photo.appendChild(img);
+        }
+        if (saved) {
+            if (saved.biography) $("[data-profile-bio]", section).textContent = saved.biography;
+            if (saved.cityName) {
+                $("[data-profile-area-text]", section).textContent =
+                    (saved.neighborhoodNames || []).join(", ") + " — " + saved.cityName;
+            }
+        }
+        $("[data-profile-bio]", section).hidden = !hasBio;
+        $("[data-profile-bio-missing]", section).hidden = hasBio;
+        $("[data-profile-todo=photo]", section).hidden = !!photoSrc;
+        $("[data-profile-todo=bio]", section).hidden = hasBio;
+        $("[data-profile-incomplete]", section).hidden = !!photoSrc && hasBio;
+
+        // Back from a profile page: confirm the save once, then drop the parameter so a reload doesn't repeat it.
+        var message = PROFILE_SAVED[params.get("saved")];
+        if (message) {
+            $("[data-profile-saved-text]", section).textContent = message;
+            $("[data-profile-saved]", section).hidden = false;
+            params.delete("saved");
+            var query = params.toString();
+            window.history.replaceState(null, "", window.location.pathname + (query ? "?" + query : ""));
+        }
+    }
+
+    function formatRemaining(ms) {
+        var total = Math.max(0, Math.floor(ms / 1000));
+        var h = Math.floor(total / 3600);
+        var m = Math.floor((total % 3600) / 60);
+        var s = total % 60;
+        if (h > 0) return h + " h " + String(m).padStart(2, "0") + " min";
+        if (m > 0) return m + " min " + String(s).padStart(2, "0") + " s";
+        return s + " s";
+    }
+
+    function acceptedMandates() {
+        try {
+            return JSON.parse(store.get(KEYS.accepted)) || [];
+        } catch (e) {
+            return [];
+        }
+    }
+
+    function initAssignments() {
+        var list = $("[data-assignments]");
+        if (!list) return;
+        var status = $("[data-assignments-status]");
+        var empty = $("[data-assignments-empty]");
+        var heading = $("#assignments-title");
+        heading.setAttribute("tabindex", "-1");
+
+        function pending() {
+            return $all("[data-assignment]:not([data-closed])", list);
+        }
+
+        function syncEmpty() {
+            var none = $all("[data-assignment]", list).length === 0;
+            list.hidden = none;
+            empty.hidden = !none;
+        }
+
+        // Replaces the card's actions (and the details' timer) by an outcome message, with an optional link.
+        function close(item, kind, title, text, link) {
+            item.setAttribute("data-closed", kind);
+            item.removeAttribute("data-urgent");
+            $("[data-actions]", item).hidden = true;
+            $("[data-decline-confirm]", item).hidden = true;
+            $all("[data-timer]", item).forEach(function (el) {
+                el.hidden = true;
+            });
+            var alert = document.createElement("div");
+            alert.className = "alert alert--" + kind;
+            var body = document.createElement("div");
+            var strong = document.createElement("p");
+            strong.className = "alert__title";
+            strong.textContent = title;
+            var p = document.createElement("p");
+            p.textContent = text;
+            body.appendChild(strong);
+            body.appendChild(p);
+            if (link) {
+                var a = document.createElement("a");
+                a.href = link.href;
+                a.textContent = link.text;
+                a.className = "alert__link";
+                var row = document.createElement("p");
+                row.appendChild(a);
+                body.appendChild(row);
+            }
+            alert.appendChild(body);
+            $("article", item).appendChild(alert);
+        }
+
+        function remove(item) {
+            var items = $all("[data-assignment]", list);
+            var next = items[items.indexOf(item) + 1] || items[items.indexOf(item) - 1];
+            item.remove();
+            syncEmpty();
+            var target = next ? $("h3", next) : heading;
+            if (next) target.setAttribute("tabindex", "-1");
+            target.focus();
+        }
+
+        function closeAccepted(item) {
+            var id = item.getAttribute("data-mandate-id");
+            close(item, "success", "Mandat accepté",
+                "Le client est prévenu. Ses coordonnées et le détail du mandat sont maintenant débloqués : " +
+                "contactez-le rapidement.",
+                { href: "mandate.html?id=" + id, text: "Voir le mandat et contacter le client" });
+        }
+
+        $all("[data-assignment]", list).forEach(function (item) {
+            var minutes = parseFloat(item.getAttribute("data-expires-in")) || 0;
+            item.expiresAt = Date.now() + minutes * 60 * 1000;
+            // PROTOTYPE: an offer accepted earlier in this session stays accepted after a reload.
+            if (acceptedMandates().indexOf(item.getAttribute("data-mandate-id")) !== -1) closeAccepted(item);
+
+            var actions = $("[data-actions]", item);
+            var confirm = $("[data-decline-confirm]", item);
+            var accept = $("[data-accept]", item);
+
+            accept.addEventListener("click", function () {
+                if (!isActive(accept)) return;
+                setActive(accept, false);
+                accept.textContent = "Acceptation…";
+                // PROTOTYPE: simulates POST /v1/assignments/{id}/accept.
+                window.setTimeout(function () {
+                    var ids = acceptedMandates();
+                    ids.push(item.getAttribute("data-mandate-id"));
+                    store.set(KEYS.accepted, JSON.stringify(ids));
+                    closeAccepted(item);
+                    announce(status, "Mandat accepté. Les coordonnées du client sont débloquées.");
+                    $("h3", item).setAttribute("tabindex", "-1");
+                    $("h3", item).focus();
+                }, 600);
+            });
+
+            $("[data-decline]", item).addEventListener("click", function () {
+                actions.hidden = true;
+                confirm.hidden = false;
+                $("[data-decline-cancel]", item).focus();
+            });
+
+            $("[data-decline-cancel]", item).addEventListener("click", function () {
+                confirm.hidden = true;
+                actions.hidden = false;
+                $("[data-decline]", item).focus();
+            });
+
+            $("[data-decline-confirmed]", item).addEventListener("click", function () {
+                // PROTOTYPE: simulates POST /v1/assignments/{id}/decline.
+                announce(status, "Mandat refusé. Il sera proposé à un autre agent.");
+                remove(item);
+            });
+        });
+
+        function tick() {
+            var now = Date.now();
+            pending().forEach(function (item) {
+                var left = item.expiresAt - now;
+                if (left <= 0) {
+                    close(item, "warning", "Délai expiré", "Ce mandat a été proposé à un autre agent.");
+                    announce(status, "Un mandat a expiré.");
+                    return;
+                }
+                $all("[data-timer-value]", item).forEach(function (el) {
+                    el.textContent = formatRemaining(left);
+                });
+                if (left < URGENT_MS) item.setAttribute("data-urgent", "");
+            });
+        }
+
+        syncEmpty();
+        tick();
+        window.setInterval(tick, 1000);
+    }
+
+    function initAgentHome() {
+        initProfile();
+        initAssignments();
+    }
+
+    /* ---------- mandate.html — an accepted mandate ---------- */
+
+    // PROTOTYPE: the mandates offered on index.html, as GET /v1/mandates/{id} (+ its customer) would return them.
+    var MANDATES = {
+        101: {
+            title: "Locataire · Appartement",
+            party: "client",
+            contact: {
+                name: "Aïcha Mbarga",
+                whatsapp: "+237699123456",
+                email: "aicha.mbarga@example.com",
+                period: "Matin"
+            },
+            criteria: [
+                ["Secteur", "Bonapriso, Akwa — Douala"],
+                ["Budget", "150 000 FCFA / mois"],
+                ["Emménagement", "Dans moins de 1 mois"],
+                ["Catégorie", "Résidentiel"],
+                ["Type de propriété", "Appartement"],
+                ["Meublé", "Non"],
+                ["Chambres", "2"],
+                ["Parking", "1"],
+                ["Surface souhaitée", "80 m²"],
+                ["Accès à l'eau", "Compteur dédié, Forage"],
+                ["Accès à l'électricité", "Compteur dédié, Groupe électrogène"],
+                ["Accès routier", "Route bitumée"],
+                ["Sécurité", "Gardien 24h/24h"],
+                ["Autres précisions", "Proche d'une école pour mes deux enfants.\nRez-de-chaussée ou premier étage."]
+            ]
+        },
+        102: {
+            title: "Bailleur · Studio",
+            party: "bailleur",
+            contact: {
+                name: "Paul Ekwalla",
+                whatsapp: "+237677987654",
+                email: "paul.ekwalla@example.com",
+                period: "Après-midi"
+            },
+            criteria: [
+                ["Secteur", "Bonanjo — Douala"],
+                ["Loyer", "75 000 FCFA / mois"],
+                ["Disponibilité", "Dans 1 à 3 mois"],
+                ["Catégorie", "Résidentiel"],
+                ["Type de propriété", "Studio"],
+                ["Meublé", "Oui"],
+                ["Chambres", "1"],
+                ["Parking", "Aucune"],
+                ["Surface", "30 m²"],
+                ["Accès à l'eau", "Compteur d'eau"],
+                ["Accès à l'électricité", "Compteur électrique"],
+                ["Accès routier", "Piste accessible en voiture"],
+                ["Sécurité", "Barrière sécurisée"]
+            ]
+        },
+        103: {
+            title: "Locataire · Bureau",
+            party: "client",
+            contact: {
+                name: "Marie-Claire Ndjock",
+                whatsapp: "+237655443322",
+                email: "mc.ndjock@example.com",
+                period: "Soirée"
+            },
+            criteria: [
+                ["Secteurs", "Akwa, Bonanjo, Deïdo — Douala"],
+                ["Budget", "400 000 FCFA / mois"],
+                ["Emménagement", "Dans plus de 3 mois"],
+                ["Catégorie", "Commercial"],
+                ["Type de propriété", "Bureau"],
+                ["Meublé", "Indifférent"],
+                ["Parking", "3+"],
+                ["Surface souhaitée", "150 m²"],
+                ["Accès à l'eau", "Compteur dédié"],
+                ["Accès à l'électricité", "Compteur dédié, Panneau solaire"],
+                ["Accès routier", "Route bitumée"],
+                ["Sécurité", "Vidéo surveillance, Gardien 24h/24h"]
+            ]
+        }
+    };
+
+    // "+237699123456" → "+237 6 99 12 34 56" (Cameroon numbers; others are shown as they are).
+    function displayPhone(e164) {
+        var m = /^\+237(\d)(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(e164);
+        return m ? "+237 " + m.slice(1).join(" ") : e164;
+    }
+
+    function initMandate() {
+        var id = new URLSearchParams(window.location.search).get("id");
+        var mandate = MANDATES[id];
+        // Anti-bypass: the details only unlock once the agent accepted the mandate.
+        if (!mandate || acceptedMandates().indexOf(id) === -1) {
+            $("[data-mandate-locked]").hidden = false;
+            return;
+        }
+        var owner = mandate.party === "bailleur";
+        var c = mandate.contact;
+        document.title = mandate.title + " — Ndopify Partner Central";
+        $("[data-mandate-title]").textContent = mandate.title;
+        $("[data-party-label-cap]").textContent = owner ? "Le bailleur" : "Le client";
+        $("[data-contact-title]").textContent = owner ? "Le bailleur" : "Le client";
+        $("[data-search-title]").textContent = owner ? "Son bien" : "Sa recherche";
+
+        $('[data-contact="name"]').textContent = c.name;
+        var wa = $('[data-contact="whatsapp"]');
+        wa.textContent = displayPhone(c.whatsapp);
+        wa.href = "https://wa.me/" + c.whatsapp.replace("+", "");
+        var email = $('[data-contact="email"]');
+        email.textContent = c.email;
+        email.href = "mailto:" + c.email;
+        $('[data-contact="period"]').textContent = c.period;
+        $("[data-contact-whatsapp]").href = wa.href;
+        $("[data-contact-call]").href = "tel:" + c.whatsapp;
+
+        var list = $("[data-mandate-criteria]");
+        mandate.criteria.forEach(function (row) {
+            var item = document.createElement("div");
+            item.className = "review__item";
+            var dt = document.createElement("dt");
+            dt.className = "review__term";
+            dt.textContent = row[0];
+            var dd = document.createElement("dd");
+            dd.className = "review__value review__multiline";
+            dd.textContent = row[1];
+            item.appendChild(dt);
+            item.appendChild(dd);
+            list.appendChild(item);
+        });
+        $("[data-mandate]").hidden = false;
+    }
+
     /* ---------- Boot ---------- */
     var pages = {
         login: initLogin,
-        "kyc-wizard": initKycWizard
+        "kyc-wizard": initKycWizard,
+        "agent-home": initAgentHome,
+        mandate: initMandate
     };
 
     document.addEventListener("DOMContentLoaded", function () {

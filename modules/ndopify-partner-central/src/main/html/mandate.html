@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mandat — Ndopify Partner Central</title>
+    <meta name="description" content="Détail d'un mandat accepté et coordonnées du client.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="assets/images/icon.png">
+    <link rel="apple-touch-icon" href="assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="assets/css/partner-central.css">
+    <link rel="stylesheet" href="assets/css/home.css">
+    <script src="assets/js/partner-central.js" defer></script>
+</head>
+<!--
+    Detail of a mandate the agent accepted: unlocked by the acceptance (anti-bypass), so it shows the client's
+    contact details and the whole search. PROTOTYPE: ?id=101, 102 or 103, once accepted on index.html; any other
+    mandate shows the locked view.
+-->
+<body data-page="mandate">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" href="index.html">
+                <img src="assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <span aria-hidden="true" data-user-initials>NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li class="user-menu__email" data-user-email></li>
+                    <li><a class="user-menu__item" href="profile/edit.html">Profil</a></li>
+                    <li><a class="user-menu__item" href="login.html" data-logout>Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column column--wide">
+            <p class="back-link"><a href="index.html">← Retour à l'espace agent</a></p>
+
+            <!-- Locked: not accepted (yet), or not offered to this agent. -->
+            <div class="alert alert--warning" hidden data-mandate-locked>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <h1 class="alert__title">Ce mandat n'est pas disponible</h1>
+                    <p>Le détail d'un mandat et les coordonnées du client se débloquent lorsque vous acceptez le
+                        mandat depuis votre espace agent.</p>
+                </div>
+            </div>
+
+            <div hidden data-mandate>
+                <div class="page-intro">
+                    <h1 data-mandate-title></h1>
+                    <p class="mandate__status">
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <span>Mandat accepté. <span data-party-label-cap>Le client</span> a été prévenu&nbsp;:
+                            contactez-le rapidement.</span>
+                    </p>
+                </div>
+
+                <section class="home-section" aria-labelledby="contact-title">
+                    <h2 id="contact-title" data-contact-title>Le client</h2>
+                    <dl class="review">
+                        <div class="review__item"><dt class="review__term">Nom</dt><dd class="review__value" data-contact="name"></dd></div>
+                        <div class="review__item"><dt class="review__term">Numéro WhatsApp</dt><dd class="review__value"><a data-contact="whatsapp"></a></dd></div>
+                        <div class="review__item"><dt class="review__term">Adresse e-mail</dt><dd class="review__value"><a data-contact="email"></a></dd></div>
+                        <div class="review__item"><dt class="review__term">Moment idéal pour l'appeler</dt><dd class="review__value" data-contact="period"></dd></div>
+                    </dl>
+                    <div class="cta-row mandate__cta">
+                        <a class="btn btn--primary" target="_blank" rel="noopener" data-contact-whatsapp>Écrire sur WhatsApp</a>
+                        <a class="btn btn--outline" data-contact-call>Appeler</a>
+                    </div>
+                </section>
+
+                <section class="home-section" aria-labelledby="search-title">
+                    <h2 id="search-title" data-search-title>Sa recherche</h2>
+                    <dl class="review" data-mandate-criteria></dl>
+                </section>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
