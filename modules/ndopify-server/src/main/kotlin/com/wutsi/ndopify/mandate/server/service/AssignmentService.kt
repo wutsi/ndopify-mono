@@ -19,10 +19,10 @@ import com.wutsi.ndopify.mandate.server.event.AssignmentClosedEvent
 import com.wutsi.ndopify.mandate.server.mail.MandateAssignedMailet
 import com.wutsi.ndopify.mandate.server.mail.MandateOfferMailet
 import com.wutsi.ndopify.platform.tenant.TenantContext
-import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import com.wutsi.ndopify.security.server.service.AccessTokenService
 import com.wutsi.ndopify.security.server.service.MembershipService
 import com.wutsi.ndopify.security.server.service.UserService
+import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
 import org.slf4j.LoggerFactory

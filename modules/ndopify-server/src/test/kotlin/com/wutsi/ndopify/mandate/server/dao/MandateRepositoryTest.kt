@@ -14,11 +14,10 @@ import kotlin.test.assertNull
 @Sql(
     scripts = ["/db/test/clean.sql", "/db/test/mandate/AcceptAssignmentEndpoint.sql"],
     statements = [
-        // status: 2=ASSIGNED, 3=PENDING_APPROVAL, 5=PUBLISHED
-        "UPDATE T_MANDATE SET agent_id = 20, status = 2 WHERE id IN (1, 2)",
-        "UPDATE T_MANDATE SET agent_id = 20, status = 5 WHERE id = 3",
-        "UPDATE T_MANDATE SET agent_id = 30, status = 3 WHERE id = 4",
-        "UPDATE T_MANDATE SET agent_id = 90, status = 2 WHERE id = 9",
+        "UPDATE T_MANDATE SET agent_id = 20, status = 'ASSIGNED' WHERE id IN (1, 2)",
+        "UPDATE T_MANDATE SET agent_id = 20, status = 'PUBLISHED' WHERE id = 3",
+        "UPDATE T_MANDATE SET agent_id = 30, status = 'PENDING_APPROVAL' WHERE id = 4",
+        "UPDATE T_MANDATE SET agent_id = 90, status = 'ASSIGNED' WHERE id = 9",
     ],
 )
 class MandateRepositoryTest : TenantAwareEndpointIntegrationTest() {

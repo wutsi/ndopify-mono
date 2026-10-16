@@ -5,7 +5,7 @@ CREATE TABLE T_ASSIGNMENT(
     mandate_id              BIGINT NOT NULL,
     agent_id                BIGINT NOT NULL,
 
-    status                  INT NOT NULL DEFAULT 0,
+    status                  VARCHAR(30) DEFAULT NULL,
     score                   DOUBLE NOT NULL DEFAULT 0.0,
 
     created_at              DATETIME DEFAULT NOW(),

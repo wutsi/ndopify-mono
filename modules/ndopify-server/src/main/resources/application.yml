@@ -42,7 +42,7 @@ spring:
         hibernate:
             ddl-auto: none
             naming:
-                physical-strategy: com.wutsi.ndopify.platform.util.jpa.CustomPhysicalNamingStrategy
+                physical-strategy: com.wutsi.ndopify.util.jpa.CustomPhysicalNamingStrategy
         properties:
             hibernate:
                 dialect: org.hibernate.dialect.MySQLDialect

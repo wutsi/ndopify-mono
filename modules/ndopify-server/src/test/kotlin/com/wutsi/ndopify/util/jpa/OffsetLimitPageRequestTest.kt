@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.platform.util.jpa
+package com.wutsi.ndopify.util.jpa
 
 import org.springframework.data.domain.Sort
 import kotlin.test.Test

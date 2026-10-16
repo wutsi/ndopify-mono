@@ -141,7 +141,7 @@ class CreateMandateEndpointTest : TenantAwareEndpointIntegrationTest() {
         scripts = ["/db/test/clean.sql", "/db/test/mandate/CreateMandateEndpoint.sql"],
         statements = [
             "INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name, kyc_status) VALUES " +
-                "(200, 1, 'kim.possible@gmail.com', 'Kim', 'Possible', 4)", // 4=VERIFIED
+                "(200, 1, 'kim.possible@gmail.com', 'Kim', 'Possible', 'VERIFIED')",
             "INSERT INTO T_AGENT(id, tenant_id, party_id, city_id) VALUES (20, 1, 200, 2370201)",
         ],
     )

@@ -24,8 +24,8 @@ import com.wutsi.ndopify.party.server.mail.KycMailet
 import com.wutsi.ndopify.platform.logger.KVLogger
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.platform.util.MimeUtils
-import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
+import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
 import org.hibernate.Hibernate
@@ -223,7 +223,13 @@ class KycService(
 
             idVerifications +
                 verify(case, KycVerificationType.SELFIE) +
-                verify(case, KycVerificationType.PAYMENT_METHOD)
+                try { // Payment method failure should not break the KYC since its not used for assessing the party's status
+                    // TODO: Remove this from KYC?
+                    verify(case, KycVerificationType.PAYMENT_METHOD)
+                } catch (ex: Exception) {
+                    LOGGER.warn(">>> KYC#$id - PaymentMethod verification failed", ex)
+                    emptyList()
+                }
         } catch (ex: Exception) {
             LOGGER.error(">>> KYC#$id - Verification failed", ex)
             return tx.execute { retry(findById(id), KycErrorCode.GATEWAY_ERROR, ex.message) }
@@ -386,13 +392,8 @@ class KycService(
     }
 
     private fun verify(case: KycCaseEntity, verificationType: KycVerificationType): List<KycVerificationEntity> {
-        try {
-            val verifier = verifierProvider.get(verificationType)
-            return verifier?.verify(case) ?: emptyList()
-        } catch (ex: Exception) {
-            LOGGER.warn(">>> KYC#${case.id} - ${verificationType.name} verification failed", ex)
-            return emptyList()
-        }
+        val verifier = verifierProvider.get(verificationType)
+        return verifier?.verify(case) ?: emptyList()
     }
 
     private fun ensureStatusIsPending(case: KycCaseEntity) {

@@ -11,7 +11,7 @@ import com.wutsi.ndopify.party.dto.SearchKycCaseResponse
 import com.wutsi.ndopify.party.server.mapper.KycCaseMapper
 import com.wutsi.ndopify.party.server.service.KycService
 import com.wutsi.ndopify.platform.endpoint.OpsEndpoint
-import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
+import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute

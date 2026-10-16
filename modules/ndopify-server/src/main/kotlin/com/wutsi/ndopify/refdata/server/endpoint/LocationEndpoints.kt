@@ -1,7 +1,6 @@
 package com.wutsi.ndopify.refdata.server.endpoint
 
 import com.wutsi.ndopify.common.dto.ImportResponse
-import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import com.wutsi.ndopify.refdata.dto.GetLocationResponse
 import com.wutsi.ndopify.refdata.dto.NearestLocation
 import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
@@ -12,6 +11,7 @@ import com.wutsi.ndopify.refdata.server.io.GeonamesImporter
 import com.wutsi.ndopify.refdata.server.io.NeighbourhoodImporter
 import com.wutsi.ndopify.refdata.server.mapper.LocationMapper
 import com.wutsi.ndopify.refdata.server.service.LocationService
+import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PathVariable

@@ -4,12 +4,12 @@ import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
 import com.wutsi.ndopify.error.server.exception.NotFoundException
-import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
 import com.wutsi.ndopify.refdata.dto.SearchNearestLocationRequest
 import com.wutsi.ndopify.refdata.server.dao.LocationRepository
 import com.wutsi.ndopify.refdata.server.domain.LocationEntity
+import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.EntityManager
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
@@ -123,7 +123,7 @@ class LocationService(
         val query = em.createNativeQuery(sql)
             .setParameter("originIds", origins.map { it.id })
             .setParameter("excludedIds", request.ids)
-            .setParameter("types", types.map { it.ordinal })
+            .setParameter("types", types.map { it.name })
             .setParameter("radius", radius * 1000)
             .setFirstResult(request.offset.coerceAtLeast(0))
             .setMaxResults(OffsetLimitPageRequest.limit(request.limit))

@@ -36,7 +36,7 @@ class DeclineAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest(
     @Test
     @Sql(
         scripts = ["/db/test/clean.sql", "/db/test/mandate/DeclineAssignmentEndpoint.sql"],
-        statements = ["UPDATE T_PARTY SET kyc_status = 4 WHERE id IN (200, 300)"], // 4=VERIFIED
+        statements = ["UPDATE T_PARTY SET kyc_status = 'VERIFIED' WHERE id IN (200, 300)"],
     )
     fun `the mandate goes to the next agent`() {
         rest.postForEntity("/v1/assignments/1/decline", null, Any::class.java)

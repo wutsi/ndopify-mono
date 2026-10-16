@@ -5,7 +5,7 @@ import com.wutsi.ndopify.party.dto.SearchPartyResponse
 import com.wutsi.ndopify.party.dto.UpdatePhotoRequest
 import com.wutsi.ndopify.party.server.mapper.PartyMapper
 import com.wutsi.ndopify.party.server.service.PartyService
-import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
+import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute

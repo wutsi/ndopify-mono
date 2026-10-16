@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.EnableTransactionManagement
         "com.wutsi.ndopify.party.server.domain",
         "com.wutsi.ndopify.refdata.server.domain",
         "com.wutsi.ndopify.security.server.domain",
+        "com.wutsi.ndopify.util.jpa",
     ],
 )
 @EnableJpaRepositories(

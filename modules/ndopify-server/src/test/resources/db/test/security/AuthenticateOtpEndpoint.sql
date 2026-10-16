@@ -32,14 +32,14 @@ INSERT INTO T_MEMBERSHIP (id, tenant_id, user_id) VALUES
   (6, 1, 6),
   (7, 2, 7);
 
--- auth_type: 1=PASSWORD, 3=OTP. data = md5("<code>-<salt>"), same as PasswordEncryptor.
+-- data = md5("<code>-<salt>"), same as PasswordEncryptor.
 INSERT INTO T_AUTH_FACTOR (id, user_id, auth_type, data, salt, created_at, modified_at, expires_at, last_logged_in_at) VALUES
-  (1, 1, 3, '123456-test-salt', 'test-salt', NOW(), NOW(), '2099-01-01 00:00:00', NULL),
-  (2, 2, 3, '123456-test-salt', 'test-salt', '2019-01-01 00:00:00', '2019-01-01 00:00:00', '2020-01-01 00:00:00', NULL),
-  (3, 3, 1, 'secret-password', NULL, NOW(), NOW(), NULL, NULL),
-  (4, 4, 3, '123456-test-salt', 'test-salt', NOW(), NOW(), '2099-01-01 00:00:00', NULL),
-  (6, 6, 3, '123456-test-salt', 'test-salt', '2019-06-01 00:00:00', '2019-06-01 00:00:00', '2020-01-01 00:00:00', '2019-01-01 00:00:00'),
-  (7, 7, 3, '123456-test-salt', 'test-salt', NOW(), NOW(), '2099-01-01 00:00:00', NULL);
+  (1, 1, 'OTP', '123456-test-salt', 'test-salt', NOW(), NOW(), '2099-01-01 00:00:00', NULL),
+  (2, 2, 'OTP', '123456-test-salt', 'test-salt', '2019-01-01 00:00:00', '2019-01-01 00:00:00', '2020-01-01 00:00:00', NULL),
+  (3, 3, 'PASSWORD', 'secret-password', NULL, NOW(), NOW(), NULL, NULL),
+  (4, 4, 'OTP', '123456-test-salt', 'test-salt', NOW(), NOW(), '2099-01-01 00:00:00', NULL),
+  (6, 6, 'OTP', '123456-test-salt', 'test-salt', '2019-06-01 00:00:00', '2019-06-01 00:00:00', '2020-01-01 00:00:00', '2019-01-01 00:00:00'),
+  (7, 7, 'OTP', '123456-test-salt', 'test-salt', NOW(), NOW(), '2099-01-01 00:00:00', NULL);
 
 INSERT INTO T_USER_APPLICATION (id, membership_id, application_id) VALUES
   (11, 1, 3),

@@ -5,8 +5,8 @@ CREATE TABLE T_AGENT(
   party_id                BIGINT NOT NULL,
 
   whatsapp_number         VARCHAR(20),
-  agent_type              INT NOT NULL DEFAULT 0,
-  experience_level        INT NOT NULL DEFAULT 0,
+  agent_type              VARCHAR(30) DEFAULT NULL,
+  experience_level        VARCHAR(30) DEFAULT NULL,
   city_id                 BIGINT,
   biography               TEXT,
   photo_url               TEXT,

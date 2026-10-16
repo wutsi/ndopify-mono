@@ -20,7 +20,6 @@ INSERT INTO T_MEMBERSHIP (id, tenant_id, user_id, party_id) VALUES
   (3, 2, 3, NULL),
   (4, 2, 2, NULL);
 
--- auth_type: 1=PASSWORD, 3=OTP
 INSERT INTO T_AUTH_FACTOR (id, user_id, auth_type, data, salt, created_at, modified_at, expires_at) VALUES
-  (21, 2, 1, 'secret-password', NULL, '2019-01-01 00:00:00', '2019-01-01 00:00:00', NULL),
-  (22, 2, 3, 'old-otp-hash', 'old-salt', '2019-01-01 00:00:00', '2019-01-01 00:00:00', '2020-01-01 00:00:00');
+  (21, 2, 'PASSWORD', 'secret-password', NULL, '2019-01-01 00:00:00', '2019-01-01 00:00:00', NULL),
+  (22, 2, 'OTP', 'old-otp-hash', 'old-salt', '2019-01-01 00:00:00', '2019-01-01 00:00:00', '2020-01-01 00:00:00');

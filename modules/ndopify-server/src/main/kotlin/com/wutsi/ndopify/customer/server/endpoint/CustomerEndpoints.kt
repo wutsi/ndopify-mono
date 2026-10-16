@@ -5,7 +5,7 @@ import com.wutsi.ndopify.customer.dto.SearchCustomerRequest
 import com.wutsi.ndopify.customer.dto.SearchCustomerResponse
 import com.wutsi.ndopify.customer.server.mapper.CustomerMapper
 import com.wutsi.ndopify.customer.server.service.CustomerService
-import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
+import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PathVariable

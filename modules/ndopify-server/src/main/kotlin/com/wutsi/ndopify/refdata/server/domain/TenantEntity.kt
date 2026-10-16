@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.refdata.server.domain
 
-import com.wutsi.ndopify.platform.util.jpa.StringListConverter
+import com.wutsi.ndopify.util.jpa.StringListConverter
 import jakarta.persistence.Convert
 import jakarta.persistence.Entity
 import jakarta.persistence.Id

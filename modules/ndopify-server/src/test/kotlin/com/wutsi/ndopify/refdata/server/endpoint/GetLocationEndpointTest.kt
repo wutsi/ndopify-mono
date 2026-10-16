@@ -30,6 +30,24 @@ class GetLocationEndpointTest : BaseEndpointIntegrationTest() {
     }
 
     @Test
+    @Sql(
+        scripts = ["/db/test/clean.sql", "/db/test/refdata/GetLocationEndpoint.sql"],
+        statements = [
+            "INSERT INTO T_LOCATION (id, parent_fk, type, country, name, ascii_name) VALUES " +
+                "(2370202, 23702, NULL, 'CM', 'Dschang', 'Dschang'), " +
+                "(2370203, 23702, 'GALAXY', 'CM', 'Mbouda', 'Mbouda')",
+        ],
+    )
+    fun `type NULL or no longer in the enum - UNKNOWN`() {
+        listOf(2370202L, 2370203L).forEach { id ->
+            val response = rest.getForEntity("/v1/locations/$id", GetLocationResponse::class.java)
+
+            assertEquals(HttpStatus.OK, response.statusCode)
+            assertEquals(LocationType.UNKNOWN, response.body!!.location.type)
+        }
+    }
+
+    @Test
     fun `location not found`() {
         val response = rest.getForEntity("/v1/locations/999", ErrorResponse::class.java)
 
