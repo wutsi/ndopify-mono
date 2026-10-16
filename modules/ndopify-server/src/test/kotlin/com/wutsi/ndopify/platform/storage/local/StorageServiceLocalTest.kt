@@ -75,6 +75,11 @@ class StorageServiceLocalTest {
     }
 
     @Test
+    fun `public url`() {
+        assertEquals("http://localhost:8080/storage/foo/bar.txt", service.publicUrl("/foo/bar.txt").toString())
+    }
+
+    @Test
     fun `presigned url`() {
         val url = service.generatePresignedUrl("foo/bar.txt", 3600)
 

@@ -41,6 +41,7 @@ class AcceptAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest()
         assertTrue(body.contains("Kim Possible"))
         assertTrue(body.contains("+237670000020"))
         assertTrue(body.contains("10 ans"))
+        assertTrue(body.contains("https://cdn.ndopify.com/agents/200.jpg"))
     }
 
     @Test

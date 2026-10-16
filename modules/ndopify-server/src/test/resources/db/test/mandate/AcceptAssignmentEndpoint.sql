@@ -7,11 +7,11 @@ INSERT INTO T_LOCATION(id, parent_fk, type, country, name, ascii_name) VALUES
     (2370201, NULL, 'CITY', 'CM', 'Yaounde', 'Yaounde');
 
 -- 100: customer   200: agent 20 (user 11, the caller)   300: agent 30 (user 12)   900: other tenant
-INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name) VALUES
-    (100, 1, 'ray.sponsible@gmail.com', 'Ray', 'Sponsible'),
-    (200, 1, 'kim.possible@gmail.com', 'Kim', 'Possible'),
-    (300, 1, 'john.doe@gmail.com', 'John', 'Doe'),
-    (900, 2, 'other.tenant@example.com', 'Other', 'Tenant');
+INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name, photo_url) VALUES
+    (100, 1, 'ray.sponsible@gmail.com', 'Ray', 'Sponsible', NULL),
+    (200, 1, 'kim.possible@gmail.com', 'Kim', 'Possible', 'https://cdn.ndopify.com/agents/200.jpg'),
+    (300, 1, 'john.doe@gmail.com', 'John', 'Doe', NULL),
+    (900, 2, 'other.tenant@example.com', 'Other', 'Tenant', NULL);
 
 INSERT INTO T_USER (id, email, deleted, created_at) VALUES
     (11, 'kim.possible@gmail.com', false, '2024-06-10 00:00:00'),

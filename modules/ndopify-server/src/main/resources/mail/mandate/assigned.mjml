@@ -24,6 +24,10 @@
                 <mj-text>
                     Voici les coordonnées de votre agent dédié :
                 </mj-text>
+                {{#agent_photo_url}}
+                <mj-image align="left" width="96px" height="96px" border-radius="48px" src="{{agent_photo_url}}"
+                          alt="Photo de {{agent_full_name}}"/>
+                {{/agent_photo_url}}
                 <mj-text>
                     <ul>
                         <li>

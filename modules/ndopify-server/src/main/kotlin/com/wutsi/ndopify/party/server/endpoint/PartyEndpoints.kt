@@ -2,18 +2,17 @@ package com.wutsi.ndopify.party.server.endpoint
 
 import com.wutsi.ndopify.party.dto.SearchPartyRequest
 import com.wutsi.ndopify.party.dto.SearchPartyResponse
-import com.wutsi.ndopify.party.dto.UpdatePhotoRequest
 import com.wutsi.ndopify.party.server.mapper.PartyMapper
 import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
-import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
+import org.springframework.web.multipart.MultipartFile
 
 @RestController
 @RequestMapping("/v1/parties")
@@ -31,11 +30,12 @@ class PartyEndpoints(
         )
     }
 
+    /** Uploads the party's profile photo (multipart, a JPEG, PNG or WEBP image), replacing its current one. */
     @PostMapping("/{id}/photo")
     fun photo(
         @PathVariable id: Long,
-        @RequestBody @Valid request: UpdatePhotoRequest,
+        @RequestParam multipartFile: MultipartFile,
     ) {
-        service.updatePhoto(id, request)
+        service.uploadPhoto(id, multipartFile)
     }
 }

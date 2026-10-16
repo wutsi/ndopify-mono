@@ -3,29 +3,39 @@ package com.wutsi.ndopify.party.server.service
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
+import com.wutsi.ndopify.error.dto.ParameterType
+import com.wutsi.ndopify.error.server.exception.BadRequestException
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.party.dto.CreatePartyRequest
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.SearchPartyRequest
 import com.wutsi.ndopify.party.dto.UpdatePartyRequest
-import com.wutsi.ndopify.party.dto.UpdatePhotoRequest
 import com.wutsi.ndopify.party.server.dao.PartyRepository
 import com.wutsi.ndopify.party.server.domain.PartyEntity
+import com.wutsi.ndopify.platform.storage.StorageServiceProvider
+import com.wutsi.ndopify.platform.util.MimeUtils
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
+import org.springframework.web.multipart.MultipartFile
 import java.time.Clock
 import java.util.Date
+import java.util.UUID
 
 @Service
 class PartyService(
     private val dao: PartyRepository,
+    private val storageProvider: StorageServiceProvider,
     private val clock: Clock,
 ) {
+    companion object {
+        val PHOTO_MIME_TYPES = listOf("image/jpeg", "image/png", "image/webp")
+    }
+
     fun findById(id: Long): PartyEntity {
         return findByIdOrNull(id)
             ?: throw NotFoundException(
@@ -106,14 +116,24 @@ class PartyService(
         )
     }
 
+    /**
+     * Stores the party's profile photo and makes it its [PartyEntity.photoUrl]. The photo is public (customers see
+     * it, ex: in the e-mail of an assigned mandate), so it gets the storage's permanent URL, not a presigned one.
+     * Each upload gets a new file name, so mail clients and caches never show a replaced photo.
+     */
     @Transactional
-    fun updatePhoto(id: Long, request: UpdatePhotoRequest): PartyEntity {
+    fun uploadPhoto(id: Long, file: MultipartFile): PartyEntity {
         val party = findById(id)
+        val mimeType = ensurePhoto(file)
+
+        val path = "party/${party.id}/photo/${UUID.randomUUID()}.${MimeUtils.getExtensionFromMimeType(mimeType)}"
+        val storage = storageProvider.get()
+        storage.store(path, file.inputStream, mimeType)
 
         val now = Date(clock.millis())
         return dao.save(
             party.copy(
-                photoUrl = request.url,
+                photoUrl = storage.publicUrl(path).toString(),
                 modifiedAt = now,
             )
         )
@@ -140,5 +160,23 @@ class PartyService(
                 )
             )
         }
+    }
+
+    private fun ensurePhoto(file: MultipartFile): String {
+        val mimeType = file.contentType?.split(";")?.first()?.trim()?.lowercase()
+        if (file.isEmpty || mimeType !in PHOTO_MIME_TYPES) {
+            throw BadRequestException(
+                error = Error(
+                    code = ErrorCode.HTTP_INVALID_PARAMETER,
+                    message = "${file.originalFilename} is a $mimeType - The photo must be a JPEG, PNG or WEBP image.",
+                    parameter = Parameter(
+                        name = "multipartFile",
+                        type = ParameterType.PARAMETER_TYPE_PAYLOAD,
+                        value = mimeType,
+                    ),
+                )
+            )
+        }
+        return mimeType!!
     }
 }

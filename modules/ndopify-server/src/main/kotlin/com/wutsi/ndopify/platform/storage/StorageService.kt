@@ -17,4 +17,10 @@ interface StorageService {
     fun get(path: String, os: OutputStream)
 
     fun generatePresignedUrl(path: String, expirationInSeconds: Int): URL
+
+    /**
+     * The file's permanent URL, for files meant to be public (ex: a profile photo shown in e-mails). It only
+     * works if the storage lets anybody read [path]: on S3, the bucket policy must allow it for that prefix.
+     */
+    fun publicUrl(path: String): URL
 }

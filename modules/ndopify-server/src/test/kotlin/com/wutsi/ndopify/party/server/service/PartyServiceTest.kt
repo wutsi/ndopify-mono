@@ -10,6 +10,7 @@ import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.party.dto.UpdatePartyRequest
 import com.wutsi.ndopify.party.server.dao.PartyRepository
 import com.wutsi.ndopify.party.server.domain.PartyEntity
+import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import org.mockito.Mockito.mock
 import java.time.Clock
 import kotlin.test.Test
@@ -19,7 +20,7 @@ import kotlin.test.assertFailsWith
 class PartyServiceTest {
     private val dao = mock<PartyRepository>()
     private val clock = mock<Clock>()
-    private val service = PartyService(dao, clock)
+    private val service = PartyService(dao, mock(StorageServiceProvider::class.java), clock)
 
     private val party = PartyEntity(
         id = 1L,

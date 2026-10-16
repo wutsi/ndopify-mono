@@ -49,4 +49,8 @@ class StorageServiceS3(
 
         return s3.generatePresignedUrl(request)
     }
+
+    override fun publicUrl(path: String): URL {
+        return s3.getUrl(bucket, path)
+    }
 }

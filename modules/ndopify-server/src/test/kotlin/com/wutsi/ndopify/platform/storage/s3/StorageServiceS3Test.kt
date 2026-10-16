@@ -69,6 +69,14 @@ class StorageServiceS3Test {
     }
 
     @Test
+    fun `public url`() {
+        val expected = URL("https://test.s3.amazonaws.com/party/1/photo/a.jpg")
+        doReturn(expected).whenever(s3).getUrl("test", "party/1/photo/a.jpg")
+
+        assertEquals(expected, storage.publicUrl("party/1/photo/a.jpg"))
+    }
+
+    @Test
     fun `presigned url`() {
         val expected =
             URL("https://s3.amazonaws.com/test/document/test.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAIOSFODNN7EXAMPLE%2F20130524%2Fus-east-1%2Fs3%")

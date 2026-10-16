@@ -7,6 +7,7 @@ import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.error.dto.Parameter
 import com.wutsi.ndopify.error.dto.ParameterType.PARAMETER_TYPE_HEADER
 import com.wutsi.ndopify.error.dto.ParameterType.PARAMETER_TYPE_PATH
+import com.wutsi.ndopify.error.dto.ParameterType.PARAMETER_TYPE_PAYLOAD
 import com.wutsi.ndopify.error.dto.ParameterType.PARAMETER_TYPE_QUERY
 import com.wutsi.ndopify.error.server.exception.WutsiException
 import com.wutsi.ndopify.platform.logger.KVLogger
@@ -30,6 +31,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler
 import org.springframework.web.bind.annotation.ResponseStatus
 import org.springframework.web.bind.annotation.RestControllerAdvice
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException
+import org.springframework.web.multipart.support.MissingServletRequestPartException
 import org.springframework.web.servlet.resource.NoResourceFoundException
 
 @RestControllerAdvice
@@ -126,6 +128,21 @@ class ControllerErrorHandler(private val logger: KVLogger) {
             parameter = Parameter(
                 name = e.parameterName,
                 type = PARAMETER_TYPE_QUERY,
+            ),
+        )
+
+    @ExceptionHandler(MissingServletRequestPartException::class)
+    fun onMissingServletRequestPartException(
+        request: HttpServletRequest,
+        e: MissingServletRequestPartException,
+    ): ResponseEntity<ErrorResponse> =
+        handleBadRequest(
+            request,
+            code = ErrorCode.HTTP_MISSING_PARAMETER,
+            e = e,
+            parameter = Parameter(
+                name = e.requestPartName,
+                type = PARAMETER_TYPE_PAYLOAD,
             ),
         )
 

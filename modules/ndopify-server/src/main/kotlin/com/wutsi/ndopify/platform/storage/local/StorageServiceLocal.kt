@@ -41,6 +41,10 @@ class StorageServiceLocal(
     }
 
     override fun generatePresignedUrl(path: String, expirationInSeconds: Int): URL {
+        return publicUrl(path)
+    }
+
+    override fun publicUrl(path: String): URL {
         return URL("http://localhost:$port/${servletPath.removePrefix("/")}/${path.removePrefix("/")}")
     }
 
