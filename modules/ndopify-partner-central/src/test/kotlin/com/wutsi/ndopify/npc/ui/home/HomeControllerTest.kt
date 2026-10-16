@@ -262,6 +262,18 @@ class HomeControllerTest {
         assertNull(model(result)["declining"])
     }
 
+    @Test
+    fun `decline confirmation - malformed id ignored`() {
+        doReturn(listOf(ASSIGNMENT)).whenever(assignmentClient).pending(AGENT.id)
+        doReturn(MANDATE).whenever(mandateClient).get(101)
+
+        val result = mvc.perform(get("/").param("decline", "abc")).andReturn()
+
+        assertEquals(200, result.response.status)
+        assertEquals("index", result.modelAndView?.viewName)
+        assertNull(model(result)["declining"])
+    }
+
     @Suppress("UNCHECKED_CAST")
     private fun assignments(result: MvcResult) = model(result)["assignments"] as List<AssignmentView>
 }

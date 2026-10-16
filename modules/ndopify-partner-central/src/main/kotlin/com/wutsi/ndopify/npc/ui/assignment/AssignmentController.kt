@@ -54,6 +54,7 @@ class AssignmentController(
                 FAILED
             }
         redirect.addFlashAttribute(OUTCOME, result)
-        return "redirect:/"
+        // The outcome shows at the top of the offers, below the profile: land there, not at the top of the page.
+        return "redirect:/#assignments-title"
     }
 }

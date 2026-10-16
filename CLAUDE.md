@@ -297,7 +297,7 @@ Package `com.wutsi.ndopify.npc`: `ui/` (MVC controllers + Thymeleaf templates in
   past `expiresAt`), each one's mandate (`GET /v1/mandates/{id}`, one call per offer, at most `max-load`; one that
   fails is left out) and the location names in one lookup, into `AssignmentView`s (`AssignmentViews`): no customer
   data (no id, no comments) before acceptance. `AssignmentController` posts `POST /assignments/{id}/accept|decline`
-  and goes back to `/` with an `assignment` flash attribute (`accepted`, `declined`, `closed` for a 403/404/409,
+  and goes back to `/#assignments-title` with an `assignment` flash attribute (`accepted`, `declined`, `closed` for a 403/404/409,
   `error`); ndopify-server checks the caller is the offer's agent. Without JS, "Refuser" opens the confirmation via
   `GET /?decline={id}`; `public/assets/js/home.js` does it in place and counts the deadline down. The mandate labels
   are shared with the find-property review in `ui/mandate/MandateLabels`.

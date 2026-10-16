@@ -51,7 +51,7 @@ class HomeController(
     private val sector = SectorValidator(locationClient, tenantContext)
 
     @GetMapping("/")
-    fun show(@RequestParam(required = false) decline: Long?, model: Model): String {
+    fun show(@RequestParam(required = false) decline: String?, model: Model): String {
         val agent = currentAgent.get() ?: return SIGN_OUT
 
         ProfileRules.header(agent, model)
@@ -64,8 +64,10 @@ class HomeController(
             val assignments = assignments(agent)
             model.addAttribute("assignments", assignments ?: emptyList<AssignmentView>())
             model.addAttribute("assignmentsUnavailable", assignments == null)
-            // GET /?decline={id}: the decline confirmation without JS, for one of the listed offers only.
-            model.addAttribute("declining", assignments?.firstOrNull { it.id == decline }?.id)
+            // GET /?decline={id}: the decline confirmation without JS, for one of the listed offers only. A String,
+            // so that a hand-edited id is ignored instead of failing the page.
+            val declineId = decline?.toLongOrNull()
+            model.addAttribute("declining", assignments?.firstOrNull { it.id == declineId }?.id)
         }
         return VIEW
     }

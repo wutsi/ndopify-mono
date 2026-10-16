@@ -33,7 +33,7 @@ class AssignmentControllerTest {
         val result = mvc.perform(post("/assignments/7/accept")).andReturn()
 
         verify(client).accept(7)
-        assertEquals("/", result.response.redirectedUrl)
+        assertEquals("/#assignments-title", result.response.redirectedUrl)
         assertEquals("accepted", outcome(result))
     }
 
@@ -42,7 +42,7 @@ class AssignmentControllerTest {
         val result = mvc.perform(post("/assignments/7/decline")).andReturn()
 
         verify(client).decline(7)
-        assertEquals("/", result.response.redirectedUrl)
+        assertEquals("/#assignments-title", result.response.redirectedUrl)
         assertEquals("declined", outcome(result))
     }
 
@@ -80,7 +80,7 @@ class AssignmentControllerTest {
 
         val result = mvc.perform(post("/assignments/7/accept")).andReturn()
 
-        assertEquals("/", result.response.redirectedUrl)
+        assertEquals("/#assignments-title", result.response.redirectedUrl)
         assertEquals("error", outcome(result))
     }
 
