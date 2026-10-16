@@ -515,6 +515,9 @@
                             <p th:if="${existingAccount == true}"><a th:href="@{/login}">Connectez-vous à votre
                                 espace</a>, ou <a th:href="@{/join(step='identity', returnTo='review')}">utilisez
                                 une autre adresse email</a>.</p>
+                            <p th:if="${invalidMobileMoneyNumber == true}"><a
+                                    th:href="@{/join(step='payment', returnTo='review')}">Modifiez votre numéro
+                                Mobile Money</a>.</p>
                         </div>
                     </div>
 
@@ -545,7 +548,7 @@
         <!--/* Confirmation — only rendered while a submitted application is in the session */-->
         <section aria-labelledby="confirmation-title" class="confirmation stack" data-confirmation tabindex="-1"
                  th:if="${step == 'confirmation'}">
-            <span class="confirmation__mark"><svg aria-hidden="true" class="icon" focusable="false"
+            <span class="confirmation__mark"><svg aria-hidden="true" class="confirmation__icon" focusable="false"
                                                   viewBox="0 0 20 20"><circle cx="10" cy="10" fill="none" r="8.25"
                                                                             stroke="currentColor" stroke-width="1.5"/><path
                 d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-linecap="round"

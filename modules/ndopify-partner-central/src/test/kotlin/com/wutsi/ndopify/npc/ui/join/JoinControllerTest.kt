@@ -677,6 +677,26 @@ class JoinControllerTest {
     }
 
     @Test
+    fun submitMobileMoneyNumberNotValid() {
+        session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete)
+        val badRequest = HttpClientErrorException(HttpStatus.BAD_REQUEST)
+        badRequest.setBodyConvertFunction { ErrorResponse(Error(code = ErrorCode.PAYMENT_METHOD_NUMBER_NOT_VALID)) }
+        doThrow(badRequest).whenever(agentClient).create(any())
+
+        val result = mvc.perform(post("/join/review").session(session)).andReturn()
+
+        assertEquals("review", model(result)["step"])
+        assertEquals(true, model(result)["invalidMobileMoneyNumber"])
+        assertEquals(false, model(result)["existingAccount"])
+        assertEquals(
+            "Ce numéro Mobile Money n'est pas valide : il n'appartient à aucun opérateur Mobile Money.",
+            model(result)["error"],
+        )
+        assertEquals(complete, pending())
+        assertNull(session.getAttribute(JoinedAgent.SESSION_ATTRIBUTE))
+    }
+
+    @Test
     fun submitRejected() {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete)
         // No readable error body: the generic message.

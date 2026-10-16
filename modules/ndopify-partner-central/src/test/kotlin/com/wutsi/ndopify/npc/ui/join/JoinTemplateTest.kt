@@ -287,6 +287,23 @@ class JoinTemplateTest {
     }
 
     @Test
+    fun reviewMobileMoneyNumberNotValid() {
+        session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete)
+        val badRequest = HttpClientErrorException(HttpStatus.BAD_REQUEST)
+        badRequest.setBodyConvertFunction { ErrorResponse(Error(code = ErrorCode.PAYMENT_METHOD_NUMBER_NOT_VALID)) }
+        doThrow(badRequest).whenever(agentClient).create(any())
+
+        val page = render(post("/join/review"))
+
+        val alert = assertNotNull(page.selectFirst("[data-submit-error]"))
+        assertEquals(
+            "Ce numéro Mobile Money n'est pas valide : il n'appartient à aucun opérateur Mobile Money.",
+            alert.selectFirst(".alert__title")?.text(),
+        )
+        assertEquals(listOf("/join?step=payment&returnTo=review"), alert.select("a").map { it.attr("href") })
+    }
+
+    @Test
     fun reviewRejected() {
         session.setAttribute(PendingJoin.SESSION_ATTRIBUTE, complete)
         doThrow(HttpClientErrorException(HttpStatus.BAD_REQUEST)).whenever(agentClient).create(any())

@@ -178,6 +178,7 @@ class JoinController(
 
             val code = errorCode(ex)
             model.addAttribute("existingAccount", code == ErrorCode.AGENT_ALREADY_EXISTS)
+            model.addAttribute("invalidMobileMoneyNumber", code == ErrorCode.PAYMENT_METHOD_NUMBER_NOT_VALID)
             model.addAttribute("error", toMessage(code))
             return step(STEP_REVIEW, pending, null, emptyMap(), model)
         }
@@ -295,6 +296,8 @@ class JoinController(
 
     private fun toMessage(code: String?): String = when (code) {
         ErrorCode.AGENT_ALREADY_EXISTS -> "Un compte utilise déjà cette adresse email."
+        ErrorCode.PAYMENT_METHOD_NUMBER_NOT_VALID ->
+            "Ce numéro Mobile Money n'est pas valide : il n'appartient à aucun opérateur Mobile Money."
         else -> "Envoi impossible pour le moment. Réessayez dans quelques instants."
     }
 }

@@ -14,6 +14,7 @@ import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.mandate.server.event.AssignmentCreatedEvent
 import com.wutsi.ndopify.mandate.server.event.MandateManualAssignmentEvent
 import com.wutsi.ndopify.party.dto.KycStatus
+import com.wutsi.ndopify.platform.logger.KVLogger
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchNearestLocationRequest
 import com.wutsi.ndopify.refdata.server.service.LocationService
@@ -44,6 +45,8 @@ class MandateDispatcher(
     private val tenantService: TenantService,
     private val eventPublisher: ApplicationEventPublisher,
     private val clock: Clock,
+    private val logger: KVLogger,
+
     @param:Value("\${ndopify.mandate.assignment.ttl-minutes}") private val ttlMinutes: Long,
     @param:Value("\${ndopify.mandate.assignment.manual-after-days}") private val manualAfterDays: Long,
     @param:Value("\${ndopify.mandate.assignment.max-load}") private val maxLoad: Int,
@@ -84,12 +87,14 @@ class MandateDispatcher(
         if (mandate.status != MandateStatus.PENDING_ASSIGNMENT ||
             assignmentDao.existsByMandateAndStatus(mandate, AssignmentStatus.PENDING)
         ) {
+            logger.add("mandate_status", mandate.status)
             return null
         }
 
         // Too long without an agent: handed over to a human. Checked before the night, so it's never delayed
         val now = Date(clock.millis())
         if (mandate.createdAt.time + manualAfterDays * DAY_MILLIS <= now.time) {
+            logger.add("mandate_expired", true)
             mandateDao.save(mandate.copy(status = MandateStatus.MANUAL_ASSIGNMENT, modifiedAt = now))
             eventPublisher.publishEvent(MandateManualAssignmentEvent(mandate.id!!, mandate.tenantId!!))
             return null
@@ -98,12 +103,19 @@ class MandateDispatcher(
         // No offer at night, in the tenant's time zone: the mandate is picked up again in the morning
         val zoneId = ZoneId.of(tenantService.findById(mandate.tenantId!!).timeZone)
         if (dispatchHours.isNight(now.toInstant(), zoneId)) {
+            logger.add("is_night", true)
             return null
         }
 
         val distances = distances(mandate)
         val best = score(mandate, findCandidates(mandate, distances), distances).maxByOrNull { it.second }
-            ?: return null
+        if (best == null) {
+            logger.add("no_candidate", true)
+            return null
+        }
+
+        logger.add("agent_id", best.first.id)
+        logger.add("agent_full_name", best.first.party.fullName())
         val assignment = assignmentDao.save(
             AssignmentEntity(
                 mandate = mandate,

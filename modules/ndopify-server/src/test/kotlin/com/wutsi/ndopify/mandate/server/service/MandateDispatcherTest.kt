@@ -26,6 +26,7 @@ import com.wutsi.ndopify.mandate.server.event.AssignmentCreatedEvent
 import com.wutsi.ndopify.mandate.server.event.MandateManualAssignmentEvent
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.server.domain.PartyEntity
+import com.wutsi.ndopify.platform.logger.DefaultKVLogger
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchNearestLocationRequest
 import com.wutsi.ndopify.refdata.server.domain.LocationEntity
@@ -103,6 +104,7 @@ class MandateDispatcherTest {
         tenantService = tenantService,
         eventPublisher = eventPublisher,
         clock = clock,
+        logger = DefaultKVLogger(),
         ttlMinutes = 60,
         manualAfterDays = 3,
         maxLoad = 5,

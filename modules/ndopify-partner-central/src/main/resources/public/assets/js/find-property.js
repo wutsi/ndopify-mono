@@ -347,6 +347,12 @@
             setFieldError(city.control, $("#cityId-error", form), "");
         });
         neighborhoodSelect.addEventListener("change", function () {
+            // The list stays open after a pick: empty its search box, so the next neighbourhood can be typed at once.
+            neighborhoods.slim.search("");
+            // Back in the search box, unless slim-select keeps the keyboard closed (phones: focusSearch is off there).
+            if (neighborhoods.slim.settings.isOpen && neighborhoods.slim.settings.focusSearch) {
+                neighborhoods.slim.render.searchFocus();
+            }
             updateCounter(true);
             refresh();
             if (selected().length) setFieldError(neighborhoods.control, neighborhoodError, "");
