@@ -99,7 +99,16 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
         status: KycStatus,
         score: Int?,
     ) {
-        doReturn(listOf(KycVerificationEntity(id = UUID.randomUUID().toString(), type = type, status = status, score = score)))
+        doReturn(
+            listOf(
+                KycVerificationEntity(
+                    id = UUID.randomUUID().toString(),
+                    type = type,
+                    status = status,
+                    score = score
+                )
+            )
+        )
             .whenever(verifier).verify(any())
     }
 
@@ -307,7 +316,7 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
-    fun `verifier failure - case back to pending, retry counted`() {
+    fun `ID verifier failure - case back to pending, retry counted`() {
         doThrow(RuntimeException("Gateway down")).whenever(idVerifier).verify(any())
 
         val response = verify()
@@ -320,6 +329,20 @@ class VerifyKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
 
         verify(selfieVerifier, never()).verify(any())
         verify(paymentMethodVerifier, never()).verify(any())
+    }
+
+    @Test
+    fun `payment verifier failure - ignore`() {
+        setUpVerifier(idVerifier, KycVerificationType.IDENTIFICATION, KycStatus.VERIFIED, 100)
+        setUpVerifier(selfieVerifier, KycVerificationType.SELFIE, KycStatus.VERIFIED, 100)
+        doThrow(RuntimeException("Gateway down")).whenever(paymentMethodVerifier).verify(any())
+
+        val response = verify()
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertCase(KycStatus.VERIFIED, 100)
+        assertPartyKycStatus(KycStatus.VERIFIED)
+        assertPaymentMethodStatus(PaymentMethodStatus.PENDING_VERIFICATION)
     }
 
     @Test
