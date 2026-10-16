@@ -8,7 +8,7 @@ import com.wutsi.ndopify.agent.dto.SearchAgentResponse
 import com.wutsi.ndopify.agent.dto.UpdateAgentRequest
 import com.wutsi.ndopify.agent.server.mapper.AgentMapper
 import com.wutsi.ndopify.agent.server.service.AgentService
-import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
+import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute

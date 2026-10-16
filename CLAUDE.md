@@ -163,8 +163,7 @@ Current domains:
   `POST .../verify` → `IN_PROGRESS` → `VERIFIED` / `REJECTED`, which publishes a `KycCaseCompletedEvent`: the
 status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint or `KycJobs` verified the case. `GET /v1/kyc/cases` returns the newest case first.
   Verification runs offline (`KycJobs`), never from a UI: `POST .../verify` is an `@OpsEndpoint`, off in prod.
-  `KycStatus` is persisted by ordinal: inserting or reordering values needs a migration that renumbers existing rows (as
-  `V4_1__party-kyc-status-submitted.sql` does). Tenant-scoped (see Multi-Tenancy below).
+  Tenant-scoped (see Multi-Tenancy below).
 - **agent** — mobile-money agents (`AgentEntity`; `/v1/agents`: get, search, create, update). `WelcomeMailet` sends
   a welcome e-mail on registration when the tenant has a `partnerCentralUrl`, asynchronously (see *Asynchronous
   e-mails* below). `joinedAt` is set on the agent's first VERIFIED case by `AgentKycEventListener`, a
@@ -371,6 +370,16 @@ Flyway, split across two classpath locations composed in `application.yml`
 - `StringListConverter` / `AuthTypeListConverter` / `LongListConverter` — `@Convert` converters for storing
   `List<String>` / `List<AuthType>` / `List<Long>` in a single column (used e.g. by `TenantEntity.locales`,
   `AgentEntity.neighborhoodIds`)
+- `EnumConverter` / `EnumConverters` — every enum of an entity is stored by **name** in a nullable `VARCHAR(30)`
+  column, never by ordinal, through an `@Converter(autoApply = true)` subclass in `EnumConverters.kt` (so entity
+  fields need no annotation; `util.jpa` is in `@EntityScan` for that). A NULL column, or a name the enum no
+  longer has, reads as the converter's default (`UNKNOWN`, or `null` for an optional enum), so a non-null Kotlin field
+  never gets a null. A new enum stored in an entity needs its converter there. Inserting or reordering enum values is
+  safe; renaming one needs a migration updating the rows. Native SQL binds `.name`, never `.ordinal`, and SQL fixtures
+  write the names (`'VERIFIED'`).
+- `EnumListConverter` / `EnumListConverters` — base of the converters storing a `List` of enums as comma-separated
+  names (blank items and names the enum no longer has are skipped), set with `@Convert`: one line per enum in
+  `EnumListConverters.kt` (ex: `AuthTypeListConverter`).
 
 ## Key Configuration Files
 

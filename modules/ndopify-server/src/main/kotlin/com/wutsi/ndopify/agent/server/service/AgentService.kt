@@ -22,10 +22,10 @@ import com.wutsi.ndopify.party.server.domain.PaymentMethodEntity
 import com.wutsi.ndopify.party.server.service.KycService
 import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.party.server.service.PaymentMethodService
-import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import com.wutsi.ndopify.refdata.dto.ApplicationCode
 import com.wutsi.ndopify.security.server.service.MembershipService
 import com.wutsi.ndopify.security.server.service.UserService
+import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
 import org.springframework.context.ApplicationEventPublisher

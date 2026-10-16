@@ -6,7 +6,7 @@ CREATE TABLE T_PARTY(
   last_name               VARCHAR(100) NOT NULL,
   email                   VARCHAR(255) NOT NULL,
   photo_url               TEXT,
-  kyc_status              INT NOT NULL DEFAULT 0,
+  kyc_status              VARCHAR(30) DEFAULT NULL,
 
   created_at              DATETIME DEFAULT NOW(),
   modified_at             DATETIME NOT NULL DEFAULT now() ON UPDATE now(),
@@ -27,8 +27,8 @@ CREATE TABLE T_PAYMENT_METHOD(
   provider_name           VARCHAR(100),
   holder_name             VARCHAR(100),
   expires_at              DATE,
-  type                    INT NOT NULL,
-  status                  INT NOT NULL DEFAULT 0,
+  type                    VARCHAR(30) DEFAULT NULL,
+  status                  VARCHAR(30) DEFAULT NULL,
 
   created_at              DATETIME DEFAULT NOW(),
   modified_at             DATETIME NOT NULL DEFAULT now() ON UPDATE now(),
@@ -52,13 +52,13 @@ CREATE TABLE T_IDENTIFICATION(
 
   party_id                BIGINT NOT NULL,
 
-  type                    INT NOT NULL DEFAULT 0,
+  type                    VARCHAR(30) DEFAULT NULL,
   issuing_country_code    VARCHAR(2) NOT NULL,
   number                  VARCHAR(100),
   number_suffix           VARCHAR(4),
   issued_at               DATE,
   expires_at              DATE,
-  status                  INT NOT NULL DEFAULT 0,
+  status                  VARCHAR(30) DEFAULT NULL,
 
   created_at              DATETIME DEFAULT NOW(),
   modified_at             DATETIME NOT NULL DEFAULT now() ON UPDATE now(),
@@ -81,9 +81,9 @@ CREATE TABLE T_KYC_CASE(
 
   party_id                BIGINT NOT NULL,
 
-  identification_type     INT NOT NULL DEFAULT 0,
+  identification_type     VARCHAR(30) DEFAULT NULL,
   score                   INT,
-  status                  INT NOT NULL DEFAULT 0,
+  status                  VARCHAR(30) DEFAULT NULL,
   retries                 INT DEFAULT NULL,
   error_code              VARCHAR(100) DEFAULT NULL,
   error_message           TEXT DEFAULT NULL,
@@ -104,9 +104,9 @@ CREATE TABLE T_KYC_IMAGE(
 
   case_id                 VARCHAR(36) NOT NULL,
 
-  identification_type     INT NOT NULL DEFAULT 0,
-  image_type              INT NOT NULL DEFAULT 0,
-  storage_type            INT NOT NULL DEFAULT 0,
+  identification_type     VARCHAR(30) DEFAULT NULL,
+  image_type              VARCHAR(30) DEFAULT NULL,
+  storage_type            VARCHAR(30) DEFAULT NULL,
   path                    TEXT,
   mime_type               VARCHAR(100),
 
@@ -127,8 +127,8 @@ CREATE TABLE T_KYC_VERIFICATION(
   case_id                 VARCHAR(36) NOT NULL,
   payment_method_id       VARCHAR(36),
 
-  type                    INT NOT NULL DEFAULT 0,
-  status                  INT NOT NULL DEFAULT 0,
+  type                    VARCHAR(30) DEFAULT NULL,
+  status                  VARCHAR(30) DEFAULT NULL,
   score                   INT,
   error_code              VARCHAR(100),
   error_message           TEXT,

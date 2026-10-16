@@ -5,7 +5,7 @@ CREATE TABLE T_LOCATION(
 
   name        VARCHAR(200) NOT NULL,
   ascii_name  VARCHAR(200) NOT NULL,
-  type        INT NOT NULL DEFAULT 0,
+  type        VARCHAR(30) DEFAULT NULL,
   country     VARCHAR(2) NOT NULL,
   population  BIGINT,
   latitude    DOUBLE,

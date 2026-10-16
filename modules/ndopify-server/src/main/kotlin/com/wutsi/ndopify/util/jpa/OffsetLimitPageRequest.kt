@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.platform.util.jpa
+package com.wutsi.ndopify.util.jpa
 
 import org.springframework.data.domain.Pageable
 import org.springframework.data.domain.Sort

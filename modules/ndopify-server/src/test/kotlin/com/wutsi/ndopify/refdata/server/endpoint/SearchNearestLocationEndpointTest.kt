@@ -92,8 +92,8 @@ class SearchNearestLocationEndpointTest : BaseEndpointIntegrationTest() {
         scripts = ["/db/test/clean.sql", "/db/test/refdata/SearchNearestLocationEndpoint.sql"],
         statements = [
             "INSERT INTO T_LOCATION (id, parent_fk, type, country, name, ascii_name, latitude, longitude) VALUES " +
-                "(2370102, 237, 3, 'CM', 'Soa', 'Soa', 3.97, 11.59), " +
-                "(237800, 2370102, 4, 'CM', 'Soa Bastos', 'Soa-Bastos', 3.8900, 11.5110)", // 0.3 km, another city
+                "(2370102, 237, 'CITY', 'CM', 'Soa', 'Soa', 3.97, 11.59), " +
+                "(237800, 2370102, 'NEIGHBORHOOD', 'CM', 'Soa Bastos', 'Soa-Bastos', 3.8900, 11.5110)", // 0.3 km, another city
         ],
     )
     fun `parent - only the children of the location`() {
@@ -113,8 +113,8 @@ class SearchNearestLocationEndpointTest : BaseEndpointIntegrationTest() {
         scripts = ["/db/test/clean.sql", "/db/test/refdata/SearchNearestLocationEndpoint.sql"],
         statements = [
             "INSERT INTO T_LOCATION (id, parent_fk, type, country, name, ascii_name, latitude, longitude) VALUES " +
-                "(2370102, 237, 3, 'CM', 'Soa', 'Soa', 3.97, 11.59), " +
-                "(237800, 2370102, 4, 'CM', 'Soa Bastos', 'Soa-Bastos', 3.8900, 11.5110)",
+                "(2370102, 237, 'CITY', 'CM', 'Soa', 'Soa', 3.97, 11.59), " +
+                "(237800, 2370102, 'NEIGHBORHOOD', 'CM', 'Soa Bastos', 'Soa-Bastos', 3.8900, 11.5110)",
         ],
     )
     fun `no parent - children of every location`() {

@@ -5,7 +5,7 @@ import com.wutsi.ndopify.party.dto.SearchPaymentMethodRequest
 import com.wutsi.ndopify.party.dto.SearchPaymentMethodResponse
 import com.wutsi.ndopify.party.server.mapper.PaymentMethodMapper
 import com.wutsi.ndopify.party.server.service.PaymentMethodService
-import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
+import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PathVariable

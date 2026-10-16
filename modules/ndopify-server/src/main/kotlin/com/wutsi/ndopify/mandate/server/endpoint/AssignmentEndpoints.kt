@@ -6,7 +6,7 @@ import com.wutsi.ndopify.mandate.dto.SearchAssignmentResponse
 import com.wutsi.ndopify.mandate.server.mapper.AssignmentMapper
 import com.wutsi.ndopify.mandate.server.service.AssignmentService
 import com.wutsi.ndopify.platform.endpoint.OpsEndpoint
-import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
+import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PathVariable

@@ -22,9 +22,9 @@ INSERT INTO T_MEMBERSHIP (id, tenant_id, user_id) VALUES
   (5, 2, 1);
 
 INSERT INTO T_AUTH_FACTOR (id, user_id, auth_type, data, created_at, expires_at) VALUES
-  (1, 1, 1, 'secret-password', NOW(), null),
-  (3, 3, 1, 'secret-password', '2019-01-01 00:00:00', '2020-01-01 00:00:00'),
-  (4, 4, 1, 'secret-password', NOW(), null);
+  (1, 1, 'PASSWORD', 'secret-password', NOW(), null),
+  (3, 3, 'PASSWORD', 'secret-password', '2019-01-01 00:00:00', '2020-01-01 00:00:00'),
+  (4, 4, 'PASSWORD', 'secret-password', NOW(), null);
 
 INSERT INTO T_USER_APPLICATION (id, membership_id, application_id) VALUES
   (11, 1, 1),

@@ -4,13 +4,12 @@ VALUES
     (2, true, 'Other', 'other.localhost', 'fr-CM, en-CM', 'CM', '#,###,##0.00', 'XAF', 'FCFA', '#,###,##0 FCFA', 'yyyy-MM-dd', 'HH:mm', 'yyyy-MM-dd HH:mm', NULL, NULL);
 
 INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name, kyc_status, created_at, modified_at) VALUES
-    (100, 1, 'pending@gmail.com', 'Pending', 'Party', 1, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    (900, 2, 'other.tenant@gmail.com', 'Other', 'Tenant', 1, '2024-06-10 00:00:00', '2024-06-10 00:00:00');
+    (100, 1, 'pending@gmail.com', 'Pending', 'Party', 'PENDING', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (900, 2, 'other.tenant@gmail.com', 'Other', 'Tenant', 'PENDING', '2024-06-10 00:00:00', '2024-06-10 00:00:00');
 
--- status: 2=SUBMITTED, 3=IN_PROGRESS
 INSERT INTO T_KYC_CASE(id, tenant_id, party_id, identification_type, score, status, retries, error_code, error_message, created_at, modified_at) VALUES
-    ('kyc-case-interrupted', 1, 100, 1, NULL, 3, NULL, NULL, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    ('kyc-case-interrupted-last-retry', 1, 100, 1, NULL, 3, 2, 'GATEWAY_ERROR', 'Previous failure', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    ('kyc-case-in-progress', 1, 100, 1, NULL, 3, NULL, NULL, NULL, '2024-06-10 00:00:00', UTC_TIMESTAMP()), -- UTC, like the app (serverTimezone=UTC)
-    ('kyc-case-submitted', 1, 100, 1, NULL, 2, NULL, NULL, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    ('kyc-case-other-tenant', 2, 900, 1, NULL, 3, NULL, NULL, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00');
+    ('kyc-case-interrupted', 1, 100, 'NATIONAL_ID', NULL, 'IN_PROGRESS', NULL, NULL, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    ('kyc-case-interrupted-last-retry', 1, 100, 'NATIONAL_ID', NULL, 'IN_PROGRESS', 2, 'GATEWAY_ERROR', 'Previous failure', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    ('kyc-case-in-progress', 1, 100, 'NATIONAL_ID', NULL, 'IN_PROGRESS', NULL, NULL, NULL, '2024-06-10 00:00:00', UTC_TIMESTAMP()), -- UTC, like the app (serverTimezone=UTC)
+    ('kyc-case-submitted', 1, 100, 'NATIONAL_ID', NULL, 'SUBMITTED', NULL, NULL, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    ('kyc-case-other-tenant', 2, 900, 'NATIONAL_ID', NULL, 'IN_PROGRESS', NULL, NULL, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00');

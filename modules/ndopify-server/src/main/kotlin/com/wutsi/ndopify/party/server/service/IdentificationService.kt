@@ -11,7 +11,7 @@ import com.wutsi.ndopify.party.dto.SearchIdentificationRequest
 import com.wutsi.ndopify.party.server.dao.IdentificationRepository
 import com.wutsi.ndopify.party.server.domain.IdentificationEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
-import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
+import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
 import org.springframework.data.domain.Sort

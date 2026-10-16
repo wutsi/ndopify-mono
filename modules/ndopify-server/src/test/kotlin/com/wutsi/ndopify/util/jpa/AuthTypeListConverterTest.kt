@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.platform.util.jpa
+package com.wutsi.ndopify.util.jpa
 
 import com.wutsi.ndopify.refdata.dto.AuthType
 import org.junit.jupiter.api.Test

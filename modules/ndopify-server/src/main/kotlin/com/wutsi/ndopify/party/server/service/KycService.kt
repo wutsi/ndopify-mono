@@ -24,8 +24,8 @@ import com.wutsi.ndopify.party.server.mail.KycMailet
 import com.wutsi.ndopify.platform.logger.KVLogger
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.platform.util.MimeUtils
-import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
+import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
 import org.hibernate.Hibernate

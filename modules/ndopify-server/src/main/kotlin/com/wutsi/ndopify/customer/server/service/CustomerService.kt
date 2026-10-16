@@ -10,7 +10,7 @@ import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.party.dto.CreatePartyRequest
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.party.server.service.PartyService
-import com.wutsi.ndopify.platform.util.jpa.OffsetLimitPageRequest
+import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
 import org.springframework.data.domain.Sort

@@ -16,7 +16,7 @@ CREATE TABLE T_AUTH_FACTOR(
 
   user_id                BIGINT NOT NULL,
 
-  auth_type              INT NOT NULL DEFAULT 0,
+  auth_type              VARCHAR(30) DEFAULT NULL,
   data                   TEXT NOT NULL,
   salt                   VARCHAR(36),
 
