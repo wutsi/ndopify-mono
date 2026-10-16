@@ -278,6 +278,17 @@
         return n ? Number(n).toLocaleString("fr-FR") : "";
     }
 
+    // A price to read, not to type: "150K", "12M", "1,5M" (FCFA has no cents, so K and M are enough).
+    function formatPrice(n) {
+        n = Number(n) || 0;
+        var short = function (value, unit) {
+            return value.toLocaleString("fr-FR", { maximumFractionDigits: 2 }) + unit;
+        };
+        if (n >= 1000000) return short(n / 1000000, "M");
+        if (n >= 1000) return short(n / 1000, "K");
+        return String(n);
+    }
+
     function numberValue(input) {
         var digits = digitsOf(input.value);
         return digits ? Number(digits) : 0;
@@ -768,7 +779,7 @@
             },
             fields: [
                 textField(price, "Indiquez votre budget mensuel.", function () {
-                    if (numberValue(price) < MIN_RENT) return "Indiquez un loyer d'au moins " + formatNumber(MIN_RENT) + " FCFA par mois.";
+                    if (numberValue(price) < MIN_RENT) return "Indiquez un loyer d'au moins " + formatPrice(MIN_RENT) + " FCFA par mois.";
                     return "";
                 }),
                 radioField("movingPeriod", "Indiquez quand vous souhaitez emménager.")
@@ -843,7 +854,7 @@
                     : "",
                 property: describeProperty(a),
                 price: isStepComplete("budget", a)
-                    ? formatNumber(a.priceAmount) + " FCFA par mois" : "",
+                    ? formatPrice(a.priceAmount) + " FCFA par mois" : "",
                 movingPeriod: MOVE_IN_LABELS[a.movingPeriod] || "",
                 contact: isStepComplete("contact", a)
                     ? [a.firstName + " " + a.lastName, a.email, formatPhone(a.whatsappNumber),

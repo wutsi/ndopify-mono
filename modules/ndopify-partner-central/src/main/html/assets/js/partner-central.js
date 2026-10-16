@@ -1166,7 +1166,7 @@
             },
             criteria: [
                 ["Secteur", "Bonapriso, Akwa — Douala"],
-                ["Budget", "150 000 FCFA / mois"],
+                ["Budget", "150K FCFA / mois"],
                 ["Emménagement", "Dans moins de 1 mois"],
                 ["Catégorie", "Résidentiel"],
                 ["Type de propriété", "Appartement"],
@@ -1192,7 +1192,7 @@
             },
             criteria: [
                 ["Secteur", "Bonanjo — Douala"],
-                ["Loyer", "75 000 FCFA / mois"],
+                ["Loyer", "75K FCFA / mois"],
                 ["Disponibilité", "Dans 1 à 3 mois"],
                 ["Catégorie", "Résidentiel"],
                 ["Type de propriété", "Studio"],
@@ -1217,7 +1217,7 @@
             },
             criteria: [
                 ["Secteurs", "Akwa, Bonanjo, Deïdo — Douala"],
-                ["Budget", "400 000 FCFA / mois"],
+                ["Budget", "400K FCFA / mois"],
                 ["Emménagement", "Dans plus de 3 mois"],
                 ["Catégorie", "Commercial"],
                 ["Type de propriété", "Bureau"],
