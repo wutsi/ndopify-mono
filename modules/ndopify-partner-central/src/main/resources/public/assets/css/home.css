@@ -1,5 +1,5 @@
 /*
- * Ndopify Partner Central — Espace agent (templates/index.html): KYC banner and profile section.
+ * Ndopify Partner Central — Espace agent (templates/index.html): KYC banner, profile and assignments sections.
  * Ported from the prototype (src/main/html/assets/css/home.css).
  * Loaded after partner-central.css; uses its tier-2 semantic tokens only, no new colours.
  */
@@ -100,4 +100,149 @@
 .profile__todo a {
     color: inherit;
     font-weight: 600;
+}
+
+/* ---------- Assignments ---------- */
+.assignments {
+    margin: var(--space-4) 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.assignments > * + * {
+    margin-top: var(--space-4);
+}
+
+.assignment {
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+.assignment article > * + * {
+    margin-top: var(--space-3);
+}
+
+.assignment__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-3);
+}
+
+.assignment__type {
+    font: 600 var(--step-h4) / 1.3 var(--font-body);
+}
+
+.assignment__timer {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Under 15 minutes left. Text colour only: the warning fill is too light to carry the meaning on its own. */
+.assignment[data-urgent] .assignment__timer,
+.assignment[data-urgent] .assignment__countdown {
+    color: var(--color-warning-fg);
+}
+
+.assignment__facts {
+    display: grid;
+    gap: var(--space-3);
+    margin: 0;
+}
+
+.assignment__facts dt {
+    font-size: var(--step-hint);
+}
+
+.assignment__facts dd {
+    margin: 0;
+    font-weight: 600;
+}
+
+@media (min-width: 640px) {
+    .assignment__facts {
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        column-gap: var(--space-4);
+    }
+}
+
+.assignment__details summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    cursor: pointer;
+}
+
+.assignment__details-body > * + * {
+    margin-top: var(--space-3);
+}
+
+.assignment__countdown {
+    font-variant-numeric: tabular-nums;
+}
+
+/* The details are a reference table, tighter than a form review. */
+.assignment__details .review__item {
+    padding-block: var(--space-2);
+}
+
+@media (min-width: 640px) {
+    .assignment__details .review__item {
+        grid-template-columns: 12rem minmax(0, 1fr);
+    }
+}
+
+/* Accepter then Refuser, both on the right. */
+.assignment__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-3);
+}
+
+.assignment__actions .btn {
+    flex: 1 1 0;
+}
+
+@media (min-width: 640px) {
+    .assignment__actions .btn {
+        flex: 0 0 auto;
+        min-width: 10rem;
+    }
+}
+
+/* Decline confirmation: a warning box, the buttons right-aligned like the card's. */
+.assignment__confirm > div {
+    flex: 1;
+    min-width: 0;
+}
+
+.alert > div > .assignment__actions {
+    margin-top: var(--space-3);
+}
+
+.assignments__empty {
+    padding: var(--space-4);
+    background: var(--color-surface-alt);
+    text-align: center;
+}
+
+/* Link under the "Mandat accepté" message, to the unlocked mandate. */
+.alert__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    color: inherit;
+    font-weight: 600;
+}
+
+/* The accept button and "Refuser" are in a form and a link: keep them side by side. */
+.assignment__actions form {
+    display: contents;
 }
