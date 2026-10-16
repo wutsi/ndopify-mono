@@ -2,6 +2,8 @@ package com.wutsi.ndopify.npc.client.ndopify
 
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateResponse
+import com.wutsi.ndopify.mandate.dto.GetMandateResponse
+import com.wutsi.ndopify.mandate.dto.Mandate
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
@@ -29,4 +31,12 @@ class NdMandateClient(
             .retrieve()
             .body<CreateMandateResponse>()
             ?: CreateMandateResponse()
+
+    fun get(id: Long): Mandate =
+        rest.get()
+            .uri("/v1/mandates/{id}", id)
+            .retrieve()
+            .body<GetMandateResponse>()
+            ?.mandate
+            ?: Mandate()
 }
