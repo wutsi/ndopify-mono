@@ -27,10 +27,11 @@
                 <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
                         data-user-menu-toggle>
                     <span class="visually-hidden">Menu du compte</span>
-                    <span aria-hidden="true" data-user-initials th:text="${initials}">NP</span>
+                    <img class="user-menu__photo" th:if="${userPhotoUrl}" th:src="${userPhotoUrl}" alt="" width="44" height="44"
+                         data-user-photo>
+                    <span aria-hidden="true" data-user-initials th:unless="${userPhotoUrl}" th:text="${initials}">NP</span>
                 </button>
                 <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
-                    <li class="user-menu__email" data-user-email th:text="${email}" th:if="${email}"></li>
                     <li><a class="user-menu__item" th:href="@{/profile}">Profil</a></li>
                     <li><a class="user-menu__item" th:href="@{/logout}" data-logout>Déconnexion</a></li>
                 </ul>

@@ -100,8 +100,9 @@ class ProfileTemplateTest {
         assertNull(page.selectFirst("[data-profile-saved]"))
         assertNull(page.selectFirst("[data-kyc-banner]"))
         assertEquals("/profile", page.select(".user-menu__item").first()?.attr("href"))
-        assertEquals("serge@gmail.com", page.selectFirst("[data-user-email]")?.text())
-        assertEquals("SN", page.selectFirst("[data-user-initials]")?.text())
+        assertNull(page.selectFirst("[data-user-email]"))
+        assertEquals(AGENT.party.photoUrl, page.selectFirst("[data-user-photo]")?.attr("src"))
+        assertNull(page.selectFirst("[data-user-initials]"))
     }
 
     @Test
@@ -121,6 +122,8 @@ class ProfileTemplateTest {
 
         assertEquals("SN", page.selectFirst(".profile__initials")?.text())
         assertNull(page.selectFirst("[data-profile-photo] img"))
+        assertEquals("SN", page.selectFirst("[data-user-initials]")?.text())
+        assertNull(page.selectFirst("[data-user-photo]"))
         assertNotNull(page.selectFirst("[data-profile-bio-missing]"))
         assertEquals("/profile/photo", page.selectFirst("[data-profile-todo=photo] a")?.attr("href"))
         assertEquals("/profile", page.selectFirst("[data-profile-todo=bio] a")?.attr("href"))
@@ -209,6 +212,15 @@ class ProfileTemplateTest {
     }
 
     @Test
+    fun `edit - signed out`() {
+        SecurityContextHolder.clearContext()
+
+        val page = render(get("/profile"))
+
+        assertNull(page.selectFirst(".user-menu"))
+    }
+
+    @Test
     fun `edit - with errors`() {
         val page = render(
             post("/profile")
@@ -240,6 +252,15 @@ class ProfileTemplateTest {
         assertEquals("Changer la photo", page.selectFirst("[data-upload-label]")?.text())
         assertTrue(page.selectFirst("#photo-error")!!.hasAttr("hidden"))
         assertNotNull(page.selectFirst("[data-step] [data-next]"))
+    }
+
+    @Test
+    fun `photo - signed out`() {
+        SecurityContextHolder.clearContext()
+
+        val page = render(get("/profile/photo"))
+
+        assertNull(page.selectFirst(".user-menu"))
     }
 
     @Test

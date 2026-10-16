@@ -53,8 +53,8 @@ class HomeControllerTest {
         assertEquals("index", result.modelAndView?.viewName)
         assertEquals("Serge Ngono", model(result)["fullName"])
         assertEquals("SN", model(result)["initials"])
-        assertEquals("serge@gmail.com", model(result)["email"])
         assertEquals("https://cdn.ndopify.com/party/100/photo/a.jpg", model(result)["photoUrl"])
+        assertEquals("https://cdn.ndopify.com/party/100/photo/a.jpg", model(result)["userPhotoUrl"])
         assertEquals("Démarcheur à Douala depuis 6 ans.", model(result)["biography"])
         assertEquals("Bonapriso, Akwa — Douala", model(result)["area"])
         assertNull(model(result)["kyc"])
@@ -68,6 +68,7 @@ class HomeControllerTest {
         val result = mvc.perform(get("/")).andReturn()
 
         assertNull(model(result)["photoUrl"])
+        assertNull(model(result)["userPhotoUrl"])
         assertNull(model(result)["biography"])
     }
 

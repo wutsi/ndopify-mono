@@ -117,8 +117,9 @@ class KycTemplateTest {
         assertNull(page.selectFirst("[data-prev]")) // the first step has nowhere to go back to
         assertEquals("Suivant", page.selectFirst("[data-next]")?.text())
         assertTrue(page.selectFirst(".field__error")!!.hasAttr("hidden"))
-        assertEquals("ray@gmail.com", page.selectFirst("[data-user-email]")?.text())
+        assertNull(page.selectFirst("[data-user-email]"))
         assertEquals("RS", page.selectFirst("[data-user-initials]")?.text())
+        assertNull(page.selectFirst("[data-user-photo]"))
         assertNull(page.selectFirst("[data-status]"))
     }
 

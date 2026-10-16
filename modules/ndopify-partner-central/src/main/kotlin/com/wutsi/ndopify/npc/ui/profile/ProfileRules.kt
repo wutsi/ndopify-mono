@@ -29,9 +29,9 @@ object ProfileRules {
         return neighborhoods.joinToString(", ") { it.name } + " — " + city.name
     }
 
-    /** The header's account menu: e-mail and initials. */
+    /** The header's account menu: the agent's photo, or its initials without one. */
     fun header(agent: Agent, model: Model) {
-        model.addAttribute("email", agent.party.email)
+        model.addAttribute("userPhotoUrl", agent.party.photoUrl?.ifBlank { null })
         model.addAttribute("initials", KycRules.initials(agent.party.firstName, agent.party.lastName))
     }
 }

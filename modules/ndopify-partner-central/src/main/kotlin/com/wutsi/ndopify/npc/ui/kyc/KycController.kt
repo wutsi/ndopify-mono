@@ -222,7 +222,7 @@ class KycController(
     }
 
     private fun header(party: Party, model: Model) {
-        model.addAttribute("email", party.email)
+        model.addAttribute("userPhotoUrl", party.photoUrl?.ifBlank { null })
         model.addAttribute("initials", KycRules.initials(party.firstName, party.lastName))
     }
 

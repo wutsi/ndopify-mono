@@ -98,7 +98,7 @@ class ProfileControllerTest {
         assertNull(model(result)["error"])
         assertEquals("Serge Ngono", model(result)["fullName"])
         assertEquals("SN", model(result)["initials"])
-        assertEquals("serge@gmail.com", model(result)["email"])
+        assertEquals(AGENT.party.photoUrl, model(result)["userPhotoUrl"])
         assertEquals(AGENT.party.photoUrl, model(result)["photoUrl"])
         assertEquals(500, model(result)["maxBiography"])
         assertEquals("Douala", (model(result)["city"] as Location).name)
@@ -238,6 +238,7 @@ class ProfileControllerTest {
         assertEquals("profile/photo", result.modelAndView?.viewName)
         assertEquals(AGENT.party.photoUrl, model(result)["photoUrl"])
         assertEquals("SN", model(result)["initials"])
+        assertEquals(AGENT.party.photoUrl, model(result)["userPhotoUrl"])
         assertNull(model(result)["error"])
     }
 
