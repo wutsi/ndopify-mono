@@ -6,6 +6,8 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.service.security.CurrentParty
+import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
+import com.wutsi.ndopify.npc.ui.layout.SignedInAdviceTest
 import com.wutsi.ndopify.party.dto.KycCase
 import com.wutsi.ndopify.party.dto.KycImage
 import com.wutsi.ndopify.party.dto.KycImageType
@@ -14,10 +16,12 @@ import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.mock.web.MockHttpSession
 import org.springframework.mock.web.MockMultipartFile
+import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.AbstractMockHttpServletRequestBuilder
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
@@ -64,6 +68,7 @@ class KycTemplateTest {
 
     @BeforeEach
     fun setUp() {
+        SignedInAdviceTest.signIn()
         doReturn(Party(id = PARTY_ID, firstName = "Ray", lastName = "Sponsible", email = "ray@gmail.com"))
             .whenever(currentParty).get()
         whenever(kycClient.imageUrl(any())).thenAnswer { invocation -> "https://s3/${invocation.getArgument<String>(0)}.jpg" }
@@ -82,9 +87,15 @@ class KycTemplateTest {
             characterEncoding = "UTF-8"
         }
         mvc = MockMvcBuilders.standaloneSetup(KycController(kycClient, currentParty))
+            .setControllerAdvice(SignedInAdvice())
             .setViewResolvers(viewResolver)
             .build()
         session = MockHttpSession()
+    }
+
+    @AfterEach
+    fun tearDown() {
+        SecurityContextHolder.clearContext()
     }
 
     private fun render(request: AbstractMockHttpServletRequestBuilder<*>): Document =
@@ -106,9 +117,20 @@ class KycTemplateTest {
         assertNull(page.selectFirst("[data-prev]")) // the first step has nowhere to go back to
         assertEquals("Suivant", page.selectFirst("[data-next]")?.text())
         assertTrue(page.selectFirst(".field__error")!!.hasAttr("hidden"))
-        assertEquals("ray@gmail.com", page.selectFirst("[data-user-email]")?.text())
+        assertNull(page.selectFirst("[data-user-email]"))
         assertEquals("RS", page.selectFirst("[data-user-initials]")?.text())
+        assertNull(page.selectFirst("[data-user-photo]"))
         assertNull(page.selectFirst("[data-status]"))
+    }
+
+    @Test
+    fun `signed out`() {
+        given(case())
+        SecurityContextHolder.clearContext()
+
+        val page = render(get("/kyc"))
+
+        assertNull(page.selectFirst(".user-menu"))
     }
 
     @Test

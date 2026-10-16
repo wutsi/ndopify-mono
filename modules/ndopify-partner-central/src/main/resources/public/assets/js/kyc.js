@@ -5,6 +5,7 @@
  * - the selfie step uses the front camera in the page (getUserMedia) when it can, under an oval guide; otherwise
  *   the <input type="file" capture="user"> that the page already shows is kept;
  * - "Suivant" stays inactive until the step has its photo: one chosen here, or one the case already has.
+ * The profile photo page (templates/profile/photo.html) is enhanced the same way, as a one-step upload.
  * Ported from the prototype (src/main/html/assets/js/partner-central.js: kycUpload, kycCamera).
  */
 (function () {
@@ -71,7 +72,10 @@
         var label = $("[data-upload-label]", step);
         if (label) label.textContent = "Changer la photo";
         var status = $("[data-upload-status]", step);
-        if (status) status.textContent = preview.getAttribute("data-alt").replace("Aperçu", "Photo") + " ajoutée.";
+        if (status) {
+            status.textContent = preview.getAttribute("data-added") ||
+                preview.getAttribute("data-alt").replace("Aperçu", "Photo") + " ajoutée.";
+        }
     }
 
     // Puts a photo in the step's file input, so the normal form post sends it. False when the browser can't.
@@ -260,7 +264,8 @@
     }
 
     document.addEventListener("DOMContentLoaded", function () {
-        if (document.body.getAttribute("data-page") !== "kyc") return;
+        var page = document.body.getAttribute("data-page");
+        if (page !== "kyc" && page !== "profile-photo") return;
         var form = $("[data-kyc-form]");
         if (!form) return;
         var step = $("[data-step]", form);

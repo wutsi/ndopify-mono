@@ -1,15 +1,14 @@
 package com.wutsi.ndopify.npc.ui.findproperty
 
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
-import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
-import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyController.Companion.STEPS
 import com.wutsi.ndopify.npc.ui.join.JoinRules
 import com.wutsi.ndopify.npc.ui.login.LoginController
+import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
@@ -24,7 +23,6 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.client.RestClientException
-import java.util.Locale
 
 /**
  * The public "Trouver un bien" wizard, on a single page (`find-property.html`) like `/join`, with seven steps —
@@ -68,75 +66,11 @@ class FindPropertyController(
             PropertyCategory.COMMERCIAL to "usage commercial",
         )
 
-        val PROPERTY_TYPE_LABELS: Map<PropertyType, String> = linkedMapOf(
-            PropertyType.ROOM to "Chambre",
-            PropertyType.STUDIO to "Studio",
-            PropertyType.APARTMENT to "Appartement",
-            PropertyType.HOUSE to "Maison",
-            PropertyType.VILLA to "Villa",
-            PropertyType.DUPLEX to "Duplex",
-            PropertyType.RETAIL to "Boutique, local commercial",
-            PropertyType.OFFICE to "Bureau",
-            PropertyType.INDUSTRIAL to "Entrepôt, local industriel",
-            PropertyType.BUILDING to "Immeuble",
-            PropertyType.LAND to "Terrain",
-        )
-
-        private val ROOM_LABELS = mapOf(
-            "1" to "1 chambre",
-            "2" to "2 chambres",
-            "3" to "3 chambres",
-            "4" to "4 chambres",
-            "5+" to "5 chambres et +",
-        )
-
-        private val FURNITURE_LABELS = mapOf(
-            "FULLY_FURNISHED" to "Meublé",
-            "UNFURNISHED" to "Non meublé",
-            FindPropertyRules.ANY to "Meublé ou non",
-        )
-
-        private val PARKING_LABELS = mapOf(
-            "0" to "Sans parking",
-            "1" to "1 place de parking",
-            "2" to "2 places de parking",
-            "3+" to "3 places de parking et +",
-            FindPropertyRules.ANY to "Parking indifférent",
-        )
-
-        private val MOVE_IN_LABELS = mapOf(
-            MovingPeriod.WITHIN_1_MONTH to "Dans moins d'1 mois",
-            MovingPeriod.WITHIN_3_MONTHS to "Dans 1 à 3 mois",
-            MovingPeriod.AFTER_3_MONTHS to "Dans plus de 3 mois",
-        )
-
         private val CONTACT_PERIOD_LABELS = mapOf(
             ContactPeriodType.MORNING to "le matin",
             ContactPeriodType.AFTERNOON to "l'après-midi",
             ContactPeriodType.EVENING to "le soir",
         )
-
-        /** Same order and copy as the prototype's AMENITIES; keys are [PendingMandate.AMENITIES]. */
-        val AMENITY_LABELS: Map<String, String> = linkedMapOf(
-            "waterMeter" to "Compteur d'eau",
-            "dedicatedWaterMeter" to "Compteur d'eau individuel",
-            "waterTank" to "Citerne",
-            "waterWell" to "Forage",
-            "electricityMeter" to "Compteur électrique",
-            "dedicatedElectricityMeter" to "Compteur électrique individuel",
-            "generatorSet" to "Groupe électrogène",
-            "solarPanel" to "Panneaux solaires",
-            "roadPaved" to "Route bitumée",
-            "trackAccessibleByCar" to "Piste accessible en voiture",
-            "trackInaccessibleByCar" to "Piste accessible à pied seulement",
-            "securedFenced" to "Clôturé et sécurisé",
-            "securityGuard" to "Gardien",
-            "videoSurveillance" to "Vidéosurveillance",
-        )
-
-        /** "150 000", with a non-breaking space so an amount never wraps. */
-        fun formatNumber(value: Number): String =
-            String.format(Locale.FRANCE, "%,d", value.toLong()).replace(' ', ' ')
     }
 
     /** The current tenant, for the header on every step: its logo, and "Quitter" back to its public portal. */
@@ -377,18 +311,18 @@ class FindPropertyController(
                 "propertyTypes",
                 FindPropertyRules.CATEGORIES_BY_TYPE.filterValues { it.contains(answers.propertyCategory) }.keys.toList(),
             )
-            model.addAttribute("propertyTypeLabels", PROPERTY_TYPE_LABELS)
+            model.addAttribute("propertyTypeLabels", MandateLabels.PROPERTY_TYPE_LABELS)
         }
         if (step == STEP_AMENITIES) {
-            model.addAttribute("amenityLabels", AMENITY_LABELS)
+            model.addAttribute("amenityLabels", MandateLabels.AMENITY_LABELS)
         }
         if (step == STEP_REVIEW) {
             model.addAttribute("categoryLabel", CATEGORY_LABELS[answers.propertyCategory]?.let { "Location, $it" })
             model.addAttribute("propertyLabel", propertyLabel(answers))
-            model.addAttribute("priceLabel", answers.priceAmount?.let { formatNumber(it) + " FCFA par mois" })
-            model.addAttribute("movingPeriodLabel", MOVE_IN_LABELS[answers.movingPeriod])
+            model.addAttribute("priceLabel", answers.priceAmount?.let { MandateLabels.formatNumber(it) + " FCFA par mois" })
+            model.addAttribute("movingPeriodLabel", MandateLabels.MOVE_IN_LABELS[answers.movingPeriod])
             model.addAttribute("contactPeriodLabel", CONTACT_PERIOD_LABELS[answers.preferredContactPeriod])
-            model.addAttribute("amenityLabels", AMENITY_LABELS.filterKeys { answers.has(it) }.values.toList())
+            model.addAttribute("amenityLabels", MandateLabels.AMENITY_LABELS.filterKeys { answers.has(it) }.values.toList())
         }
         return VIEW
     }
@@ -397,11 +331,11 @@ class FindPropertyController(
     private fun propertyLabel(answers: PendingMandate): String {
         val type = answers.propertyType
         val parts = listOfNotNull(
-            PROPERTY_TYPE_LABELS.entries.firstOrNull { it.key.name == type }?.value ?: "Tout type de bien",
-            ROOM_LABELS[answers.rooms]?.takeIf { FindPropertyRules.needsRooms(type) },
-            FURNITURE_LABELS[answers.furnitureType]?.takeIf { FindPropertyRules.needsFurniture(type) },
-            PARKING_LABELS[answers.parkings]?.takeIf { FindPropertyRules.asksParkings(type) },
-            answers.area?.let { formatNumber(it) + " m² minimum" },
+            MandateLabels.PROPERTY_TYPE_LABELS.entries.firstOrNull { it.key.name == type }?.value ?: "Tout type de bien",
+            MandateLabels.ROOM_LABELS[answers.rooms]?.takeIf { FindPropertyRules.needsRooms(type) },
+            MandateLabels.FURNITURE_LABELS[answers.furnitureType]?.takeIf { FindPropertyRules.needsFurniture(type) },
+            MandateLabels.PARKING_LABELS[answers.parkings]?.takeIf { FindPropertyRules.asksParkings(type) },
+            answers.area?.let { MandateLabels.formatNumber(it) + " m² minimum" },
         )
         return parts.joinToString(" · ")
     }

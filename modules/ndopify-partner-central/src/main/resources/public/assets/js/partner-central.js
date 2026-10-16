@@ -94,15 +94,10 @@
         var list = $("[data-user-menu-list]");
         if (!toggle || !list) return;
 
-        var emailEl = $("[data-user-email]");
-        // Pages that know the agent (kyc.html) render the email and initials; the others still use the login's copy.
-        if (!emailEl || !emailEl.textContent.trim()) {
-            var email = store.get(KEYS.email);
-            $("[data-user-initials]").textContent = initialsFromEmail(email);
-            if (emailEl) {
-                if (email) emailEl.textContent = email;
-                else emailEl.hidden = true;
-            }
+        var initialsEl = $("[data-user-initials]");
+        // The pages render the agent's initials; without them, fall back to the login's copy of the e-mail.
+        if (initialsEl && !initialsEl.textContent.trim()) {
+            initialsEl.textContent = initialsFromEmail(store.get(KEYS.email));
         }
 
         function close(returnFocus) {

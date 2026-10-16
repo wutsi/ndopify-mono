@@ -7,10 +7,8 @@ import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.service.TenantContext
+import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.npc.ui.login.LoginController
-import com.wutsi.ndopify.refdata.dto.Location
-import com.wutsi.ndopify.refdata.dto.LocationType
-import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
 import com.wutsi.ndopify.refdata.dto.Tenant
 import jakarta.servlet.http.HttpSession
 import org.slf4j.LoggerFactory
@@ -41,6 +39,8 @@ class JoinController(
     private val locationClient: NdLocationClient,
     private val tenantContext: TenantContext,
 ) {
+    private val sector = SectorValidator(locationClient, tenantContext)
+
     companion object {
         private val LOGGER = LoggerFactory.getLogger(JoinController::class.java)
 
@@ -146,7 +146,7 @@ class JoinController(
         val errors = errors(
             "cityId" to JoinRules.cityId(answers.cityId),
             "neighborhoodIds" to JoinRules.neighborhoodIds(answers.neighborhoodIds),
-        ).ifEmpty { sectorErrors(answers.cityId!!, answers.neighborhoodIds) }
+        ).ifEmpty { sector.errors(answers.cityId!!, answers.neighborhoodIds) }
         return save(STEP_AREA, answers, errors, returnTo, session, model)
     }
 
@@ -230,7 +230,7 @@ class JoinController(
                 // Names of the chosen city and neighbourhoods: the selects' initial options, and the review.
                 // Capped: a step shown again with its errors may carry whatever ids were posted.
                 val neighborhoodIds = answers.neighborhoodIds.take(JoinRules.MAX_NEIGHBORHOODS)
-                val locations = locations(listOfNotNull(answers.cityId) + neighborhoodIds)
+                val locations = sector.locations(listOfNotNull(answers.cityId) + neighborhoodIds)
                 model.addAttribute("city", answers.cityId?.let { locations[it] })
                 model.addAttribute("neighborhoods", neighborhoodIds.mapNotNull { locations[it] })
             }
@@ -244,32 +244,6 @@ class JoinController(
             model.addAttribute("agentTypeLabel", AGENT_TYPE_LABELS[answers.agentType])
         }
         return VIEW
-    }
-
-    /** The city must be one of the tenant's cities, and every neighbourhood one of its neighbourhoods. */
-    private fun sectorErrors(cityId: Long, neighborhoodIds: List<Long>): Map<String, String> {
-        val locations = locations(listOf(cityId) + neighborhoodIds)
-        val city = locations[cityId]
-        if (city == null || city.type != LocationType.CITY || city.country != tenantContext.getTenant().countryCode) {
-            return mapOf("cityId" to "Cette ville n'est pas proposée. Choisissez-en une dans la liste.")
-        }
-
-        val valid = neighborhoodIds.all { id ->
-            val neighborhood = locations[id]
-            neighborhood != null && neighborhood.type == LocationType.NEIGHBORHOOD && neighborhood.parentId == cityId
-        }
-        return if (valid) {
-            emptyMap()
-        } else {
-            mapOf("neighborhoodIds" to "Choisissez des quartiers de la ville sélectionnée.")
-        }
-    }
-
-    private fun locations(ids: List<Long>): Map<Long, Location> {
-        if (ids.isEmpty()) return emptyMap()
-        return locationClient.search(SearchLocationRequest(ids = ids.distinct(), limit = ids.size))
-            .locations
-            .associateBy { location -> location.id }
     }
 
     private fun isAllowed(step: String, pending: PendingJoin): Boolean =

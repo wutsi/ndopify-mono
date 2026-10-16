@@ -16,6 +16,14 @@ class KycUploadErrorHandlerTest {
     }
 
     @Test
+    fun `profile photo - back to its page with the size error`() {
+        assertEquals(
+            "redirect:/profile/photo?error=too-large",
+            handler.tooLarge(MockHttpServletRequest("POST", "/profile/photo"), ex),
+        )
+    }
+
+    @Test
     fun `any other upload - not handled here`() {
         assertFailsWith<MaxUploadSizeExceededException> {
             handler.tooLarge(MockHttpServletRequest("POST", "/somewhere/else"), ex)

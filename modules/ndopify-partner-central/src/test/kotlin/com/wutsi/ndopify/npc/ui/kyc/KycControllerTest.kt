@@ -87,8 +87,8 @@ class KycControllerTest {
         assertEquals(false, model(result)["returning"])
         assertNull(model(result)["error"])
         assertEquals(emptyMap<String, String>(), model(result)["photoUrls"])
-        assertEquals("ray@gmail.com", model(result)["email"])
         assertEquals("RS", model(result)["initials"])
+        assertNull(model(result)["userPhotoUrl"])
     }
 
     @Test

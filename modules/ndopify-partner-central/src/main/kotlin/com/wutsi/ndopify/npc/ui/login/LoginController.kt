@@ -126,7 +126,8 @@ class LoginController(
 
         session.removeAttribute(PendingLogin.SESSION_ATTRIBUTE)
         accessTokenService.set(accessToken)
-        return "redirect:/kyc"
+        // The Espace agent, which sends an agent who isn't verified yet to the KYC page.
+        return "redirect:/"
     }
 
     private fun pending(session: HttpSession): PendingLogin? =

@@ -3,6 +3,8 @@ package com.wutsi.ndopify.npc.client.ndopify
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
+import com.wutsi.ndopify.mandate.dto.GetMandateResponse
+import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateType
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -17,6 +19,7 @@ import org.springframework.test.web.client.response.MockRestResponseCreators.wit
 import org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClient
+import tools.jackson.databind.json.JsonMapper
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
@@ -74,5 +77,29 @@ class NdMandateClientTest {
             .andRespond(withStatus(HttpStatus.BAD_REQUEST))
 
         assertFailsWith<HttpClientErrorException> { client.create(request) }
+    }
+
+    @Test
+    fun get() {
+        server.expect(requestTo("http://localhost:8080/v1/mandates/101"))
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(
+                // Every field, as ndopify-server sends it
+                withSuccess(
+                    JsonMapper.builder().build().writeValueAsString(
+                        GetMandateResponse(
+                            Mandate(id = 101, mandateType = MandateType.TENANT, cityId = 2232593, neighborhoodIds = listOf(3001)),
+                        ),
+                    ),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val mandate = client.get(101)
+
+        server.verify()
+        assertEquals(101L, mandate.id)
+        assertEquals(MandateType.TENANT, mandate.mandateType)
+        assertEquals(listOf(3001L), mandate.neighborhoodIds)
     }
 }

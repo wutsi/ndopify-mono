@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,43 +7,244 @@
     <meta name="description" content="Espace agent Ndopify Partner Central.">
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="#ffffff">
-    <link rel="icon" type="image/png" href="assets/images/icon.png">
-    <link rel="apple-touch-icon" href="assets/images/icon.png">
+    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
-    <link rel="stylesheet" href="assets/css/partner-central.css">
-    <script src="assets/js/partner-central.js" defer></script>
+    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/home.css}">
+    <script th:src="@{/assets/js/partner-central.js}" defer></script>
+    <script th:src="@{/assets/js/home.js}" defer></script>
 </head>
+<!--/*
+  The Espace agent (HomeController), where every agent lands. Its profile section: photo (or initials), name, area,
+  biography summary, and an invitation to add the photo or the biography while one is missing. Then the mandates
+  offered to the agent (Mandats proposés), each to accept or decline (AssignmentController).
+  "kyc" is the banner of an agent who isn't verified yet ("todo", "pending" or "rejected"), null once verified.
+  "saved" is the flash attribute the profile pages leave ("profile" or "photo").
+  "assignments" are the offers (AssignmentView), null for an agent who isn't verified (no section);
+  "assignmentsUnavailable" when they couldn't be loaded; "declining" the id of the offer whose decline confirmation
+  is open without JS (GET /?decline={id}); "assignment" the flash attribute AssignmentController leaves ("accepted",
+  "declined", "closed" or "error").
+*/-->
 <body data-page="agent-home">
     <a class="skip-link" href="#main">Aller au contenu</a>
     <header class="site-header">
         <div class="site-header__inner">
-            <a class="site-header__brand" href="index.html">
-                <img src="assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            <a class="site-header__brand" th:href="@{/}">
+                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
             </a>
-            <nav class="user-menu" aria-label="Compte">
+            <nav class="user-menu" aria-label="Compte" th:if="${signedIn}">
                 <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
                         data-user-menu-toggle>
                     <span class="visually-hidden">Menu du compte</span>
-                    <span aria-hidden="true" data-user-initials>NP</span>
+                    <img class="user-menu__photo" th:if="${userPhotoUrl}" th:src="${userPhotoUrl}" alt="" width="44" height="44"
+                         data-user-photo>
+                    <span aria-hidden="true" data-user-initials th:unless="${userPhotoUrl}" th:text="${initials}">NP</span>
                 </button>
                 <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
-                    <li class="user-menu__email" data-user-email></li>
-                    <li>
-                        <span class="user-menu__item" aria-disabled="true">
-                            Profil <span class="user-menu__soon">(bientôt disponible)</span>
-                        </span>
-                    </li>
+                    <li><a class="user-menu__item" th:href="@{/profile}">Profil</a></li>
                     <li><a class="user-menu__item" data-logout th:href="@{/logout}">Déconnexion</a></li>
                 </ul>
             </nav>
         </div>
     </header>
     <main id="main" class="page">
-        <!-- Espace agent: empty for now, per the Partner Central source doc. -->
-        <div class="column">
-            <h1>Espace agent</h1>
+        <div class="column column--wide">
+            <h1 class="visually-hidden">Espace agent</h1>
+
+            <div class="alert alert--warning" th:if="${kyc == 'todo'}" data-kyc-banner="todo">
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <p class="alert__title">Vérifiez votre identité</p>
+                    <p>Un agent non vérifié ne peut pas recevoir de mandats.
+                        <a th:href="@{/kyc}">Vérifier mon identité</a></p>
+                </div>
+            </div>
+            <div class="alert alert--info" th:if="${kyc == 'pending'}" data-kyc-banner="pending">
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 5.5V10l3 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <div>
+                    <p class="alert__title">Votre dossier est en cours d'analyse</p>
+                    <p>Vous recevrez des mandats dès que votre identité sera vérifiée.
+                        <a th:href="@{/kyc}">Voir le statut de mon dossier</a></p>
+                </div>
+            </div>
+            <div class="alert alert--error" th:if="${kyc == 'rejected'}" data-kyc-banner="rejected">
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <div>
+                    <p class="alert__title">Votre dossier n'a pas pu être validé</p>
+                    <p>Soumettez de nouveaux documents pour recevoir des mandats.
+                        <a th:href="@{/kyc}">Voir le motif</a></p>
+                </div>
+            </div>
+
+            <section class="home-section" aria-labelledby="profile-title" data-profile>
+                <h2 id="profile-title" class="visually-hidden">Mon profil</h2>
+                <div class="alert alert--success" role="status" th:if="${saved}" data-profile-saved>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <p th:text="${saved == 'photo'} ? 'Votre photo de profil a été enregistrée.' : 'Votre profil a été enregistré.'">
+                        Votre profil a été enregistré.</p>
+                </div>
+                <div class="profile">
+                    <div class="profile__photo" data-profile-photo>
+                        <img th:if="${photoUrl}" th:src="${photoUrl}" alt="Votre photo de profil" width="80" height="80">
+                        <span class="profile__initials" aria-hidden="true" th:unless="${photoUrl}" th:text="${initials}">NP</span>
+                    </div>
+                    <div class="profile__body">
+                        <p class="profile__name" data-profile-name th:text="${fullName}">Serge Ngono</p>
+                        <p class="profile__area" th:if="${area}" data-profile-area>
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                 aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+                            <span><span class="visually-hidden">Quartiers : </span><span th:text="${area}">Bonapriso, Akwa — Douala</span></span>
+                        </p>
+                        <p class="profile__bio" th:if="${biography}" th:text="${biography}" data-profile-bio></p>
+                        <p class="profile__bio profile__bio--missing" th:unless="${biography}" data-profile-bio-missing>
+                            Aucune biographie pour le moment.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="hint" th:if="${photoUrl == null or biography == null}" data-profile-incomplete>
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                    <div>
+                        <p><strong>Complétez votre profil.</strong> Les clients voient votre photo et votre biographie
+                            lorsque vous acceptez leur mandat : un profil complet inspire confiance.</p>
+                        <ul class="profile__todo">
+                            <li th:unless="${photoUrl}" data-profile-todo="photo">
+                                <a th:href="@{/profile/photo}">Ajouter une photo professionnelle</a>
+                            </li>
+                            <li th:unless="${biography}" data-profile-todo="bio">
+                                <a th:href="@{/profile}">Rédiger votre biographie</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <section class="home-section" aria-labelledby="assignments-title" th:if="${assignments != null}"
+                     data-assignments-section>
+                <h2 id="assignments-title">Mandats proposés</h2>
+                <p>Chaque mandat vous est proposé en exclusivité. Acceptez-le ou refusez-le avant la fin du délai :
+                    passé ce délai, il est proposé à un autre agent.</p>
+                <p class="visually-hidden" role="status" data-assignments-status></p>
+
+                <th:block th:switch="${assignment}">
+                    <div class="alert alert--success" role="status" th:case="'accepted'" data-assignment-outcome>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <div>
+                            <p class="alert__title">Mandat accepté</p>
+                            <p>Le client est prévenu et reçoit vos coordonnées : il va vous contacter.</p>
+                        </div>
+                    </div>
+                    <div class="alert alert--info" role="status" th:case="'declined'" data-assignment-outcome>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 5.5V10l3 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        <div>
+                            <p class="alert__title">Mandat refusé</p>
+                            <p>Il sera proposé à un autre agent.</p>
+                        </div>
+                    </div>
+                    <div class="alert alert--warning" role="status" th:case="'closed'" data-assignment-outcome>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <p class="alert__title">Ce mandat n'est plus disponible</p>
+                            <p>Son délai a expiré ou il a déjà été traité.</p>
+                        </div>
+                    </div>
+                    <div class="alert alert--error" role="alert" th:case="'error'" data-assignment-outcome>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        <div>
+                            <p class="alert__title">Action impossible pour le moment</p>
+                            <p>Réessayez dans quelques instants.</p>
+                        </div>
+                    </div>
+                </th:block>
+
+                <div class="alert alert--warning" th:if="${assignmentsUnavailable}" data-assignments-unavailable>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                    <p>Vos mandats ne peuvent pas être affichés pour le moment. Réessayez dans quelques instants.</p>
+                </div>
+
+                <ul class="assignments" data-assignments th:unless="${#lists.isEmpty(assignments)}">
+                    <li class="assignment" th:each="a : ${assignments}" th:id="|assignment-${a.id}|" data-assignment
+                        th:attr="data-assignment-id=${a.id},data-expires-at=${a.expiresAt}"
+                        th:with="confirming=${declining == a.id}">
+                        <article th:attr="aria-labelledby=|assignment-${a.id}-title|">
+                            <div class="assignment__head">
+                                <h3 th:id="|assignment-${a.id}-title|" class="assignment__type" th:text="${a.title}">
+                                    Locataire · Appartement</h3>
+                                <p class="assignment__timer" data-timer>
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                         stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                    <span>Il reste <strong data-timer-value th:text="${a.remaining}">52 min</strong></span>
+                                </p>
+                            </div>
+                            <dl class="assignment__facts">
+                                <div th:if="${a.sector}">
+                                    <dt th:text="${a.sectorTerm}">Secteur</dt>
+                                    <dd data-fact="sector" th:text="${a.sector}">Bonapriso, Akwa — Douala</dd>
+                                </div>
+                                <div>
+                                    <dt th:text="${a.priceTerm}">Budget</dt>
+                                    <dd data-fact="price" th:text="${a.price}">150 000 FCFA par mois</dd>
+                                </div>
+                                <div th:if="${a.moving}">
+                                    <dt th:text="${a.movingTerm}">Emménagement</dt>
+                                    <dd data-fact="moving" th:text="${a.moving}">Dans moins d'1 mois</dd>
+                                </div>
+                            </dl>
+
+                            <details class="assignment__details">
+                                <summary>Voir les détails</summary>
+                                <div class="assignment__details-body">
+                                    <dl class="review">
+                                        <div class="review__item" th:each="row : ${a.details}">
+                                            <dt class="review__term" th:text="${row.first}">Catégorie</dt>
+                                            <dd class="review__value" th:text="${row.second}">Résidentiel</dd>
+                                        </div>
+                                    </dl>
+                                    <div class="hint">
+                                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                             stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                                        <p>Seuls les quartiers sont indiqués. Une fois le mandat accepté, le client
+                                            est prévenu et reçoit vos coordonnées.</p>
+                                    </div>
+                                </div>
+                            </details>
+
+                            <div class="assignment__actions" data-actions th:attr="hidden=${confirming} ? 'hidden' : null">
+                                <form method="post" th:action="@{/assignments/{id}/accept(id=${a.id})}" data-accept-form>
+                                    <button type="submit" class="btn btn--primary" data-accept>Accepter</button>
+                                </form>
+                                <a class="btn btn--outline" data-decline
+                                   th:href="@{|/?decline=${a.id}#assignment-${a.id}|}">Refuser</a>
+                            </div>
+                            <div class="alert alert--warning assignment__confirm" data-decline-confirm
+                                 th:attr="hidden=${confirming} ? null : 'hidden'">
+                                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                                <div>
+                                    <p class="alert__title">Refuser ce mandat ?</p>
+                                    <p>Il sera proposé à un autre agent et ne vous sera plus proposé.</p>
+                                    <form class="assignment__actions" method="post"
+                                          th:action="@{/assignments/{id}/decline(id=${a.id})}">
+                                        <button type="submit" class="btn btn--primary" data-decline-confirmed>
+                                            Confirmer le refus</button>
+                                        <a class="btn btn--outline" data-decline-cancel
+                                           th:href="@{|/#assignment-${a.id}|}">Annuler</a>
+                                    </form>
+                                </div>
+                            </div>
+                        </article>
+                    </li>
+                </ul>
+
+                <p class="assignments__empty" data-assignments-empty
+                   th:attr="hidden=${#lists.isEmpty(assignments) and !assignmentsUnavailable} ? null : 'hidden'">
+                    Aucun mandat ne vous est proposé pour le moment. Vous recevrez un e-mail dès qu'un client de
+                    votre secteur vous est attribué.
+                </p>
+            </section>
         </div>
     </main>
 </body>

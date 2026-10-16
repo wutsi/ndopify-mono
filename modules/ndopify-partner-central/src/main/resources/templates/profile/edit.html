@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Modifier mon profil — Ndopify Partner Central</title>
+    <meta name="description" content="Modifiez votre profil d'agent Ndopify.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/css/intlTelInput.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.css">
+    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/join.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/profile.css}">
+    <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/js/intlTelInput.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.iife.js" defer></script>
+    <script th:src="@{/assets/js/util.js}" defer></script>
+    <script th:src="@{/assets/js/partner-central.js}" defer></script>
+    <script th:src="@{/assets/js/join.js}" defer></script>
+</head>
+<!--/*
+  The agent's profile (ProfileController, POST /profile), pre-filled from "answers", with "errors" per field and
+  "error" when the server couldn't save it. join.js enhances it like the join wizard's steps (intl-tel-input, the
+  city type-ahead and the neighbourhoods over GET /locations, the biography counter); without it the form still
+  posts, except that the neighbourhoods of a newly chosen city are loaded by join.js.
+*/-->
+<body data-page="profile-edit">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" th:href="@{/}">
+                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte" th:if="${signedIn}">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <img class="user-menu__photo" th:if="${userPhotoUrl}" th:src="${userPhotoUrl}" alt="" width="44" height="44"
+                         data-user-photo>
+                    <span aria-hidden="true" data-user-initials th:unless="${userPhotoUrl}" th:text="${initials}">NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li><a class="user-menu__item" th:href="@{/profile}" aria-current="page">Profil</a></li>
+                    <li><a class="user-menu__item" data-logout th:href="@{/logout}">Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <div class="page-intro">
+                <h1>Modifier mon profil</h1>
+                <p>Les clients voient ces informations lorsque vous acceptez leur mandat.</p>
+            </div>
+
+            <form class="form" method="post" novalidate data-join-form th:action="@{/profile}"
+                  th:attr="data-locations-url=@{/locations}">
+                <div class="alert alert--error" role="alert" th:if="${error}">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <p th:text="${error}">Enregistrement impossible pour le moment.</p>
+                </div>
+
+                <div class="profile-photo-row">
+                    <div class="profile-photo profile-photo--small">
+                        <img th:if="${photoUrl}" th:src="${photoUrl}" alt="Votre photo de profil" width="64" height="64">
+                        <span class="profile-photo__initials" aria-hidden="true" th:unless="${photoUrl}" th:text="${initials}">NP</span>
+                    </div>
+                    <div>
+                        <p class="field__label">Photo de profil</p>
+                        <a th:href="@{/profile/photo}" th:text="${photoUrl} ? 'Changer la photo' : 'Ajouter une photo'">Ajouter une photo</a>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <p class="field__label" id="name-label">Nom</p>
+                    <p class="readonly" aria-labelledby="name-label" th:text="${fullName}">Serge Ngono</p>
+                    <div class="hint">
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <p>Votre nom est celui de votre pièce d'identité vérifiée : il ne peut pas être modifié.</p>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="field__label" for="whatsappNumber">Numéro WhatsApp</label>
+                    <!--/* E.164 ("+237677123456"): join.js (intl-tel-input) formats and converts it. */-->
+                    <input class="input" id="whatsappNumber" name="whatsappNumber" type="tel" autocomplete="tel" required
+                           aria-describedby="whatsappNumber-error" th:value="${answers.whatsappNumber}"
+                           th:attr="aria-invalid=${errors['whatsappNumber'] != null ? 'true' : null}">
+                    <p class="field__error" id="whatsappNumber-error" th:hidden="${errors['whatsappNumber'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['whatsappNumber']}"></span></p>
+                    <p class="field__error" hidden data-phone-unavailable><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>Nous ne pouvons pas vérifier ce numéro pour l'instant. Rechargez la page.</span></p>
+                </div>
+
+                <fieldset class="choices" data-group="experienceLevel" aria-describedby="experienceLevel-error"
+                          th:attr="aria-invalid=${errors['experienceLevel'] != null ? 'true' : null}">
+                    <legend class="choices__legend">Depuis combien de temps exercez-vous comme agent ou démarcheur&nbsp;?</legend>
+                    <div class="choices__grid choices__grid--2">
+                        <label class="choice"><input type="radio" name="experienceLevel" value="NOVICE" required
+                                                     th:checked="${#strings.equals(answers.experienceLevel, 'NOVICE')}"> Moins d'un an</label>
+                        <label class="choice"><input type="radio" name="experienceLevel" value="JUNIOR" required
+                                                     th:checked="${#strings.equals(answers.experienceLevel, 'JUNIOR')}"> 1 à 3 ans</label>
+                        <label class="choice"><input type="radio" name="experienceLevel" value="INTERMEDIATE" required
+                                                     th:checked="${#strings.equals(answers.experienceLevel, 'INTERMEDIATE')}"> 3 à 5 ans</label>
+                        <label class="choice"><input type="radio" name="experienceLevel" value="SENIOR" required
+                                                     th:checked="${#strings.equals(answers.experienceLevel, 'SENIOR')}"> Plus de 5 ans</label>
+                    </div>
+                    <p class="field__error" id="experienceLevel-error" th:hidden="${errors['experienceLevel'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['experienceLevel']}"></span></p>
+                </fieldset>
+
+                <fieldset class="choices" data-group="agentType" aria-describedby="agentType-error"
+                          th:attr="aria-invalid=${errors['agentType'] != null ? 'true' : null}">
+                    <legend class="choices__legend">Comment exercez-vous&nbsp;?</legend>
+                    <div class="choices__grid">
+                        <label class="choice"><input type="radio" name="agentType" value="INDEPENDANT" required
+                                                     th:checked="${#strings.equals(answers.agentType, 'INDEPENDANT')}"> Indépendant</label>
+                        <label class="choice"><input type="radio" name="agentType" value="REAL_ESTATE_AGENT" required
+                                                     th:checked="${#strings.equals(answers.agentType, 'REAL_ESTATE_AGENT')}"> Rattaché à une agence immobilière</label>
+                    </div>
+                    <p class="field__error" id="agentType-error" th:hidden="${errors['agentType'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['agentType']}"></span></p>
+                </fieldset>
+
+                <div class="field">
+                    <label class="field__label" for="cityId">Ville principale d'intervention</label>
+                    <!--/* Only the chosen city is rendered: join.js searches the others (GET /locations?q=). */-->
+                    <select class="input select" id="cityId" name="cityId" required aria-describedby="cityId-error"
+                            th:attr="aria-invalid=${errors['cityId'] != null ? 'true' : null}">
+                        <option value="" data-placeholder="true">Choisissez une ville</option>
+                        <option selected th:if="${city != null}" th:value="${city.id}" th:text="${city.name}">Douala</option>
+                    </select>
+                    <p class="field__error" id="cityId-error" th:hidden="${errors['cityId'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['cityId']}"></span></p>
+                </div>
+
+                <p data-neighborhoods-empty th:hidden="${city != null}">Choisissez d'abord votre ville pour voir ses quartiers.</p>
+
+                <div class="field" data-group="neighborhoodIds" th:hidden="${city == null}">
+                    <label class="field__label" for="neighborhoodIds">Quartiers que vous connaissez le mieux
+                        <span class="field__optional">(1&nbsp;à&nbsp;3)</span></label>
+                    <!--/* Only the chosen neighbourhoods are rendered: join.js loads the city's others. */-->
+                    <select class="input select" id="neighborhoodIds" name="neighborhoodIds" multiple required
+                            aria-describedby="neighborhood-counter neighborhoodIds-error"
+                            th:attr="aria-invalid=${errors['neighborhoodIds'] != null ? 'true' : null}">
+                        <option selected th:each="neighborhood : ${neighborhoods}" th:value="${neighborhood.id}"
+                                th:text="${neighborhood.name}">Bonapriso</option>
+                    </select>
+                    <p class="field__counter" id="neighborhood-counter" data-neighborhood-counter
+                       th:text="|${#lists.size(neighborhoods)} sur 3 sélectionné${#lists.size(neighborhoods) > 1 ? 's' : ''}|">
+                        0 sur 3 sélectionné</p>
+                    <p class="field__error" id="neighborhoodIds-error" th:hidden="${errors['neighborhoodIds'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['neighborhoodIds']}"></span></p>
+                    <p class="visually-hidden" role="status" data-neighborhood-status></p>
+                </div>
+
+                <div class="field">
+                    <label class="field__label" for="biography">Biographie <span class="field__optional">(facultatif)</span></label>
+                    <textarea class="input input--textarea" id="biography" name="biography" rows="6"
+                              aria-describedby="biography-hint biography-counter biography-error"
+                              placeholder="Ex. Démarcheur à Douala depuis 6 ans, je connais Bonapriso et Akwa rue par rue…"
+                              th:attr="maxlength=${maxBiography}, aria-invalid=${errors['biography'] != null ? 'true' : null}"
+                              th:text="${answers.biography}" data-char-counter="biography-counter"></textarea>
+                    <p class="field__counter" id="biography-counter"
+                       th:text="|${#strings.length(answers.biography)} sur ${maxBiography} caractères|">0 sur 500 caractères</p>
+                    <p class="field__error" id="biography-error" th:hidden="${errors['biography'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['biography']}"></span></p>
+                    <div class="hint" id="biography-hint">
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <p>Quelques lignes suffisent pour rassurer un client&nbsp;:</p>
+                            <ul>
+                                <li>depuis quand vous exercez, et où&nbsp;;</li>
+                                <li>les quartiers que vous connaissez le mieux&nbsp;;</li>
+                                <li>comment vous accompagnez vos clients, de la visite au bail.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <p class="visually-hidden" role="status" data-sending></p>
+                <div class="form__actions">
+                    <a class="btn btn--outline" th:href="@{/}">Annuler</a>
+                    <button type="submit" class="btn btn--primary" data-next data-submit
+                            data-busy-label="Enregistrement…" data-busy-status="Enregistrement de votre profil en cours.">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </main>
+</body>
+</html>

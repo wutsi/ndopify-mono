@@ -9,6 +9,8 @@
  * - "Utiliser mon numéro WhatsApp" fills the Mobile Money field and locks it;
  * - "Suivant" stays inactive until every required field of the step is filled (the server still validates them);
  * - the review's submit button can't be pressed twice.
+ * The profile page (templates/profile/edit.html) is enhanced the same way: one form, the same fields, plus the
+ * biography's character counter ([data-char-counter]).
  */
 (function () {
     "use strict";
@@ -363,6 +365,19 @@
         sync(false);
     }
 
+    /* ---------- Character counters ---------- */
+    // "120 sur 500 caractères" under a textarea with a maxlength, kept in sync as the agent types.
+    function initCounters(form) {
+        $all("[data-char-counter]", form).forEach(function (field) {
+            var counter = document.getElementById(field.getAttribute("data-char-counter"));
+            var max = field.getAttribute("maxlength");
+            if (!counter || !max) return;
+            field.addEventListener("input", function () {
+                counter.textContent = field.value.length + " sur " + max + " caractères";
+            });
+        });
+    }
+
     /* ---------- Page ---------- */
     function initJoin() {
         var form = $("[data-join-form]");
@@ -391,6 +406,7 @@
         });
 
         if ($("#cityId", form)) initSector(form, refresh);
+        initCounters(form);
 
         form.addEventListener("submit", function (event) {
             // A number intl-tel-input can't read would reach the server empty: say why here instead.
@@ -413,8 +429,10 @@
                     return;
                 }
                 submit.setAttribute("aria-disabled", "true");
-                submit.textContent = "Envoi en cours…";
-                announce($("[data-sending]", form), "Envoi de votre candidature en cours.");
+                submit.setAttribute("data-label", submit.textContent);
+                submit.textContent = submit.getAttribute("data-busy-label") || "Envoi en cours…";
+                announce($("[data-sending]", form),
+                    submit.getAttribute("data-busy-status") || "Envoi de votre candidature en cours.");
             }
         });
     }
@@ -422,12 +440,13 @@
     // Back from the next page restores this one from the cache: the submit button must work again.
     window.addEventListener("pageshow", function (event) {
         var submit = $("[data-submit]");
-        if (!event.persisted || !submit) return;
+        if (!event.persisted || !submit || !submit.hasAttribute("data-label")) return;
         submit.removeAttribute("aria-disabled");
-        submit.textContent = "Envoyer ma candidature";
+        submit.textContent = submit.getAttribute("data-label");
     });
 
     document.addEventListener("DOMContentLoaded", function () {
-        if (document.body.getAttribute("data-page") === "join") initJoin();
+        var page = document.body.getAttribute("data-page");
+        if (page === "join" || page === "profile-edit") initJoin();
     });
 })();
