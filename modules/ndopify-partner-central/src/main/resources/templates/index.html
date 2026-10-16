@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -7,43 +7,114 @@
     <meta name="description" content="Espace agent Ndopify Partner Central.">
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="#ffffff">
-    <link rel="icon" type="image/png" href="assets/images/icon.png">
-    <link rel="apple-touch-icon" href="assets/images/icon.png">
+    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
-    <link rel="stylesheet" href="assets/css/partner-central.css">
-    <script src="assets/js/partner-central.js" defer></script>
+    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/home.css}">
+    <script th:src="@{/assets/js/partner-central.js}" defer></script>
 </head>
+<!--/*
+  The Espace agent (HomeController), where every agent lands. For now its profile section: photo (or initials), name,
+  area, biography summary, and an invitation to add the photo or the biography while one is missing.
+  "kyc" is the banner of an agent who isn't verified yet ("todo", "pending" or "rejected"), null once verified.
+  "saved" is the flash attribute the profile pages leave ("profile" or "photo").
+*/-->
 <body data-page="agent-home">
     <a class="skip-link" href="#main">Aller au contenu</a>
     <header class="site-header">
         <div class="site-header__inner">
-            <a class="site-header__brand" href="index.html">
-                <img src="assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            <a class="site-header__brand" th:href="@{/}">
+                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
             </a>
-            <nav class="user-menu" aria-label="Compte">
+            <nav class="user-menu" aria-label="Compte" th:if="${signedIn}">
                 <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
                         data-user-menu-toggle>
                     <span class="visually-hidden">Menu du compte</span>
-                    <span aria-hidden="true" data-user-initials>NP</span>
+                    <span aria-hidden="true" data-user-initials th:text="${initials}">NP</span>
                 </button>
                 <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
-                    <li class="user-menu__email" data-user-email></li>
-                    <li>
-                        <span class="user-menu__item" aria-disabled="true">
-                            Profil <span class="user-menu__soon">(bientôt disponible)</span>
-                        </span>
-                    </li>
+                    <li class="user-menu__email" data-user-email th:text="${email}" th:if="${email}"></li>
+                    <li><a class="user-menu__item" th:href="@{/profile}">Profil</a></li>
                     <li><a class="user-menu__item" data-logout th:href="@{/logout}">Déconnexion</a></li>
                 </ul>
             </nav>
         </div>
     </header>
     <main id="main" class="page">
-        <!-- Espace agent: empty for now, per the Partner Central source doc. -->
-        <div class="column">
-            <h1>Espace agent</h1>
+        <div class="column column--wide">
+            <h1 class="visually-hidden">Espace agent</h1>
+
+            <div class="alert alert--warning" th:if="${kyc == 'todo'}" data-kyc-banner="todo">
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <p class="alert__title">Vérifiez votre identité</p>
+                    <p>Un agent non vérifié ne peut pas recevoir de mandats.
+                        <a th:href="@{/kyc}">Vérifier mon identité</a></p>
+                </div>
+            </div>
+            <div class="alert alert--info" th:if="${kyc == 'pending'}" data-kyc-banner="pending">
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 5.5V10l3 2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <div>
+                    <p class="alert__title">Votre dossier est en cours d'analyse</p>
+                    <p>Vous recevrez des mandats dès que votre identité sera vérifiée.
+                        <a th:href="@{/kyc}">Voir le statut de mon dossier</a></p>
+                </div>
+            </div>
+            <div class="alert alert--error" th:if="${kyc == 'rejected'}" data-kyc-banner="rejected">
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <div>
+                    <p class="alert__title">Votre dossier n'a pas pu être validé</p>
+                    <p>Soumettez de nouveaux documents pour recevoir des mandats.
+                        <a th:href="@{/kyc}">Voir le motif</a></p>
+                </div>
+            </div>
+
+            <section class="home-section" aria-labelledby="profile-title" data-profile>
+                <h2 id="profile-title" class="visually-hidden">Mon profil</h2>
+                <div class="alert alert--success" role="status" th:if="${saved}" data-profile-saved>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <p th:text="${saved == 'photo'} ? 'Votre photo de profil a été enregistrée.' : 'Votre profil a été enregistré.'">
+                        Votre profil a été enregistré.</p>
+                </div>
+                <div class="profile">
+                    <div class="profile__photo" data-profile-photo>
+                        <img th:if="${photoUrl}" th:src="${photoUrl}" alt="Votre photo de profil" width="80" height="80">
+                        <span class="profile__initials" aria-hidden="true" th:unless="${photoUrl}" th:text="${initials}">NP</span>
+                    </div>
+                    <div class="profile__body">
+                        <p class="profile__name" data-profile-name th:text="${fullName}">Serge Ngono</p>
+                        <p class="profile__area" th:if="${area}" data-profile-area>
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                 aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+                            <span><span class="visually-hidden">Quartiers : </span><span th:text="${area}">Bonapriso, Akwa — Douala</span></span>
+                        </p>
+                        <p class="profile__bio" th:if="${biography}" th:text="${biography}" data-profile-bio></p>
+                        <p class="profile__bio profile__bio--missing" th:unless="${biography}" data-profile-bio-missing>
+                            Aucune biographie pour le moment.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="hint" th:if="${photoUrl == null or biography == null}" data-profile-incomplete>
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                    <div>
+                        <p><strong>Complétez votre profil.</strong> Les clients voient votre photo et votre biographie
+                            lorsque vous acceptez leur mandat : un profil complet inspire confiance.</p>
+                        <ul class="profile__todo">
+                            <li th:unless="${photoUrl}" data-profile-todo="photo">
+                                <a th:href="@{/profile/photo}">Ajouter une photo professionnelle</a>
+                            </li>
+                            <li th:unless="${biography}" data-profile-todo="bio">
+                                <a th:href="@{/profile}">Rédiger votre biographie</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
         </div>
     </main>
 </body>

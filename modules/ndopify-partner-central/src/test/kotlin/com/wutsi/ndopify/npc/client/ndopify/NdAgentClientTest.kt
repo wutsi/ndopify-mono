@@ -3,6 +3,7 @@ package com.wutsi.ndopify.npc.client.ndopify
 import com.wutsi.ndopify.agent.dto.AgentType
 import com.wutsi.ndopify.agent.dto.CreateAgentRequest
 import com.wutsi.ndopify.agent.dto.ExperienceLevel
+import com.wutsi.ndopify.agent.dto.UpdateAgentRequest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import org.junit.jupiter.api.BeforeEach
@@ -21,6 +22,7 @@ import org.springframework.web.client.HttpServerErrorException
 import org.springframework.web.client.RestClient
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 
 class NdAgentClientTest {
     private lateinit var server: MockRestServiceServer
@@ -102,5 +104,50 @@ class NdAgentClientTest {
             .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR))
 
         assertFailsWith<HttpServerErrorException> { client.create(request) }
+    }
+
+    @Test
+    fun findByPartyId() {
+        server.expect(requestTo("http://localhost:8080/v1/agents?party-id=100&limit=1"))
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(withSuccess("""{"agents":[{"id":20,"party":{"id":100,"firstName":"Ray","lastName":"Sponsible","email":"ray@gmail.com","kycStatus":"VERIFIED","createdAt":0,"modifiedAt":0},"createdAt":0,"modifiedAt":0}]}""", MediaType.APPLICATION_JSON))
+        server.expect(requestTo("http://localhost:8080/v1/agents/20"))
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(
+                withSuccess(
+                    """{"agent":{"id":20,"party":{"id":100,"firstName":"Ray","lastName":"Sponsible","email":"ray@gmail.com","kycStatus":"VERIFIED","createdAt":0,"modifiedAt":0},"agentType":"INDEPENDANT","biography":"Bio","cityId":1,""" +
+                        """"neighborhoodIds":[1,2],"experienceLevel":"SENIOR","whatsappNumber":"+237670000001",""" +
+                        """"createdAt":0,"modifiedAt":0,"rating":3.0}}""",
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val agent = client.findByPartyId(100)
+
+        assertEquals(20L, agent?.id)
+        assertEquals("Ray", agent?.party?.firstName)
+        assertEquals("Bio", agent?.biography)
+        assertEquals(listOf(1L, 2L), agent?.neighborhoodIds)
+        server.verify()
+    }
+
+    @Test
+    fun `findByPartyId - not an agent`() {
+        server.expect(requestTo("http://localhost:8080/v1/agents?party-id=100&limit=1"))
+            .andRespond(withSuccess("""{"agents":[]}""", MediaType.APPLICATION_JSON))
+
+        assertNull(client.findByPartyId(100))
+        server.verify()
+    }
+
+    @Test
+    fun update() {
+        server.expect(requestTo("http://localhost:8080/v1/agents/20"))
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(content().json("""{"whatsappNumber":"+237670000001","biography":""}"""))
+            .andRespond(withSuccess())
+
+        client.update(20, UpdateAgentRequest(whatsappNumber = "+237670000001", biography = ""))
+        server.verify()
     }
 }

@@ -183,7 +183,7 @@ class LoginControllerTest {
         assertEquals(AuthType.OTP, request.firstValue.authType)
         assertEquals("123456", request.firstValue.secret)
 
-        assertEquals("redirect:/kyc", result.modelAndView?.viewName)
+        assertEquals("redirect:/", result.modelAndView?.viewName)
         assertNull(session.getAttribute(PendingLogin.SESSION_ATTRIBUTE))
 
         verify(accessTokenService).set("token-123")

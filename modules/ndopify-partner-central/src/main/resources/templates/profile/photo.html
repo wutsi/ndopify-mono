@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Photo de profil — Ndopify Partner Central</title>
+    <meta name="description" content="Ajoutez une photo professionnelle à votre profil d'agent Ndopify.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/profile.css}">
+    <script th:src="@{/assets/js/partner-central.js}" defer></script>
+    <script th:src="@{/assets/js/kyc.js}" defer></script>
+</head>
+<!--/*
+  The profile photo (ProfileController, POST /profile/photo, multipart "photo"). kyc.js enhances it like a KYC
+  photo step (type and size checked, photo shrunk and previewed in the browser); without it the form still posts.
+  "error" is the upload's error, if any.
+*/-->
+<body data-page="profile-photo">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" th:href="@{/}">
+                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte" th:if="${signedIn}">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <span aria-hidden="true" data-user-initials th:text="${initials}">NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li class="user-menu__email" data-user-email th:text="${email}" th:if="${email}"></li>
+                    <li><a class="user-menu__item" th:href="@{/profile}">Profil</a></li>
+                    <li><a class="user-menu__item" data-logout th:href="@{/logout}">Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <div class="page-intro">
+                <h1>Photo de profil</h1>
+                <p>Les clients voient votre photo lorsque vous acceptez leur mandat. Une photo professionnelle inspire
+                    confiance.</p>
+            </div>
+
+            <form class="form" method="post" enctype="multipart/form-data" novalidate data-kyc-form
+                  th:action="@{/profile/photo}">
+                <div class="stack" data-step="photo">
+                    <div class="profile-photo" data-preview data-alt="Aperçu de votre photo de profil"
+                         data-added="Photo de profil ajoutée.">
+                        <img th:if="${photoUrl}" th:src="${photoUrl}" alt="Aperçu de votre photo de profil" width="192" height="192">
+                        <span class="profile-photo__initials" aria-hidden="true" data-placeholder
+                              th:hidden="${photoUrl != null}" th:text="${initials}">NP</span>
+                    </div>
+
+                    <div class="field">
+                        <input class="upload__input" id="photo-file" name="photo" type="file"
+                               accept="image/jpeg,image/png,image/webp" aria-describedby="photo-hint photo-error"
+                               th:attr="aria-invalid=${error != null} ? 'true' : null">
+                        <label class="btn btn--outline btn--block upload__button" for="photo-file">
+                            <span data-upload-label th:text="${photoUrl} ? 'Changer la photo' : 'Choisir une photo'">Choisir une photo</span>
+                        </label>
+                        <p class="visually-hidden" role="status" data-upload-status></p>
+                        <p class="field__error" id="photo-error" role="alert" hidden th:hidden="${error == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${error}"></span></p>
+                    </div>
+
+                    <div class="hint" id="photo-hint">
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <p>Pour une photo professionnelle&nbsp;:</p>
+                            <ul>
+                                <li>vous seul, de face, le visage bien visible et éclairé&nbsp;;</li>
+                                <li>un fond neutre et une tenue soignée&nbsp;;</li>
+                                <li>sans lunettes de soleil ni filtre.</li>
+                            </ul>
+                            <p>Formats acceptés : JPG, PNG, WEBP (5 Mo maximum).</p>
+                        </div>
+                    </div>
+
+                    <div class="form__actions">
+                        <a class="btn btn--outline" th:href="@{/}">Annuler</a>
+                        <button type="submit" class="btn btn--primary" aria-describedby="photo-hint" data-next>Enregistrer</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </main>
+</body>
+</html>
