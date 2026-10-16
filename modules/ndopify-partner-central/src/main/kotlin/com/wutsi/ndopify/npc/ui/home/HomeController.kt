@@ -1,31 +1,40 @@
 package com.wutsi.ndopify.npc.ui.home
 
 import com.wutsi.ndopify.agent.dto.Agent
+import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
+import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.kyc.KycRules
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import com.wutsi.ndopify.party.dto.KycStatus
+import com.wutsi.ndopify.refdata.dto.Location
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.client.RestClientException
+import java.time.Clock
 
 /**
- * The Espace agent (`index.html`), where every agent lands: for now its profile section (photo, name, area,
- * biography summary, and an invitation to add what's missing). An agent who isn't verified yet also gets a banner
- * leading to the KYC page, worded after its case ([kyc]).
+ * The Espace agent (`index.html`), where every agent lands: its profile section (photo, name, area, biography
+ * summary, and an invitation to add what's missing), and the mandates offered to it ([assignments]), each to accept
+ * or decline (see `AssignmentController`). An agent who isn't verified yet gets no offers, but a banner leading to
+ * the KYC page, worded after its case ([kyc]).
  */
 @Controller
 class HomeController(
     private val currentAgent: CurrentAgent,
     private val kycClient: NdKycClient,
+    private val assignmentClient: NdAssignmentClient,
+    private val mandateClient: NdMandateClient,
     locationClient: NdLocationClient,
     tenantContext: TenantContext,
+    private val clock: Clock,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(HomeController::class.java)
@@ -42,7 +51,7 @@ class HomeController(
     private val sector = SectorValidator(locationClient, tenantContext)
 
     @GetMapping("/")
-    fun show(model: Model): String {
+    fun show(@RequestParam(required = false) decline: Long?, model: Model): String {
         val agent = currentAgent.get() ?: return SIGN_OUT
 
         ProfileRules.header(agent, model)
@@ -51,8 +60,54 @@ class HomeController(
         model.addAttribute("biography", agent.biography?.trim()?.ifEmpty { null })
         model.addAttribute("area", area(agent))
         model.addAttribute("kyc", kyc(agent))
+        if (agent.party.kycStatus == KycStatus.VERIFIED) {
+            val assignments = assignments(agent)
+            model.addAttribute("assignments", assignments ?: emptyList<AssignmentView>())
+            model.addAttribute("assignmentsUnavailable", assignments == null)
+            // GET /?decline={id}: the decline confirmation without JS, for one of the listed offers only.
+            model.addAttribute("declining", assignments?.firstOrNull { it.id == decline }?.id)
+        }
         return VIEW
     }
+
+    /**
+     * The offers still open, newest first; null when they can't be had. An offer whose mandate can't be loaded is
+     * left out, so one bad mandate doesn't hide the others.
+     */
+    private fun assignments(agent: Agent): List<AssignmentView>? {
+        val now = clock.millis()
+        val open =
+            try {
+                assignmentClient.pending(agent.id).filter { AssignmentViews.isOpen(it, now) }
+            } catch (ex: RestClientException) {
+                LOGGER.warn("No offers for agent ${agent.id}: ${ex.message}")
+                return null
+            }
+
+        val mandates = open.mapNotNull { assignment ->
+            try {
+                assignment to mandateClient.get(assignment.mandateId)
+            } catch (ex: RestClientException) {
+                LOGGER.warn("No mandate ${assignment.mandateId} for offer ${assignment.id}: ${ex.message}")
+                null
+            }
+        }
+        val names = names(mandates.flatMap { (_, mandate) -> listOf(mandate.cityId) + mandate.neighborhoodIds })
+        return mandates.map { (assignment, mandate) -> AssignmentViews.of(assignment, mandate, names, now) }
+    }
+
+    /** One lookup for every card; without the names, the cards still show (no sector). */
+    private fun names(ids: List<Long>): Map<Long, Location> =
+        if (ids.isEmpty()) {
+            emptyMap()
+        } else {
+            try {
+                sector.locations(ids.distinct())
+            } catch (ex: RestClientException) {
+                LOGGER.warn("No location names for the offers: ${ex.message}")
+                emptyMap()
+            }
+        }
 
     /**
      * The KYC banner, null once verified. The party's status only changes when the case is verified or rejected,

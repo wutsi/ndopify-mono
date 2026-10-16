@@ -1,11 +1,15 @@
 package com.wutsi.ndopify.npc.ui.profile
 
+import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
+import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
+import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.client.ndopify.NdPartyClient
 import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
@@ -31,6 +35,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.thymeleaf.spring6.SpringTemplateEngine
 import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
+import java.time.Clock
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
@@ -46,6 +51,9 @@ class ProfileTemplateTest {
     private val kycClient = mock<NdKycClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
+    private val assignmentClient = mock<NdAssignmentClient>()
+    private val mandateClient = mock<NdMandateClient>()
+    private val clock = mock<Clock>()
     private lateinit var mvc: MockMvc
 
     @BeforeEach
@@ -53,6 +61,7 @@ class ProfileTemplateTest {
         SignedInAdviceTest.signIn()
         ProfileFixtures.mockLocations(locationClient, tenantContext)
         doReturn(AGENT).whenever(currentAgent).get()
+        doReturn(emptyList<AssignmentSummary>()).whenever(assignmentClient).pending(any())
 
         val engine = SpringTemplateEngine().apply {
             setTemplateResolver(
@@ -69,7 +78,7 @@ class ProfileTemplateTest {
         }
         mvc = MockMvcBuilders
             .standaloneSetup(
-                HomeController(currentAgent, kycClient, locationClient, tenantContext),
+                HomeController(currentAgent, kycClient, assignmentClient, mandateClient, locationClient, tenantContext, clock),
                 ProfileController(currentAgent, mock<NdAgentClient>(), mock<NdPartyClient>(), locationClient, tenantContext),
             )
             .setControllerAdvice(SignedInAdvice())

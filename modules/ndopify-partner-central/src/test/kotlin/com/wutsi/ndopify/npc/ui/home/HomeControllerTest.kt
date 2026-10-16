@@ -2,14 +2,20 @@ package com.wutsi.ndopify.npc.ui.home
 
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.mandate.dto.AssignmentSummary
+import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
+import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
+import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.ASSIGNMENT
+import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.MANDATE
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
 import com.wutsi.ndopify.party.dto.KycCase
@@ -18,12 +24,16 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
+import org.springframework.http.HttpStatus
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.MvcResult
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
+import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.servlet.view.InternalResourceViewResolver
+import java.time.Clock
+import java.util.Date
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
@@ -32,14 +42,21 @@ class HomeControllerTest {
     private val kycClient = mock<NdKycClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
+    private val assignmentClient = mock<NdAssignmentClient>()
+    private val mandateClient = mock<NdMandateClient>()
+    private val clock = mock<Clock>()
     private lateinit var mvc: MockMvc
 
     @BeforeEach
     fun setUp() {
         ProfileFixtures.mockLocations(locationClient, tenantContext)
         doReturn(AGENT).whenever(currentAgent).get()
+        doReturn(AssignmentViewsTest.NOW).whenever(clock).millis()
+        doReturn(emptyList<AssignmentSummary>()).whenever(assignmentClient).pending(any())
 
-        mvc = MockMvcBuilders.standaloneSetup(HomeController(currentAgent, kycClient, locationClient, tenantContext))
+        val controller =
+            HomeController(currentAgent, kycClient, assignmentClient, mandateClient, locationClient, tenantContext, clock)
+        mvc = MockMvcBuilders.standaloneSetup(controller)
             .setViewResolvers(InternalResourceViewResolver("/templates/", ".html"))
             .build()
     }
@@ -144,4 +161,107 @@ class HomeControllerTest {
 
         assertEquals("redirect:/logout", result.modelAndView?.viewName)
     }
+
+    // Mandats proposés
+
+    @Test
+    fun `offers shown`() {
+        val other = ASSIGNMENT.copy(id = 8, mandateId = 102)
+        doReturn(listOf(ASSIGNMENT, other)).whenever(assignmentClient).pending(AGENT.id)
+        doReturn(MANDATE).whenever(mandateClient).get(101)
+        doReturn(MANDATE.copy(id = 102)).whenever(mandateClient).get(102)
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        val assignments = assignments(result)
+        assertEquals(listOf(7L, 8L), assignments.map { it.id })
+        assertEquals("Bonapriso, Akwa — Douala", assignments[0].sector)
+        assertEquals(false, model(result)["assignmentsUnavailable"])
+        assertNull(model(result)["declining"])
+    }
+
+    @Test
+    fun `no offer`() {
+        val result = mvc.perform(get("/")).andReturn()
+
+        assertEquals(emptyList(), assignments(result))
+    }
+
+    @Test
+    fun `expired offer left out`() {
+        doReturn(listOf(ASSIGNMENT.copy(expiresAt = Date(AssignmentViewsTest.NOW - 1))))
+            .whenever(assignmentClient).pending(AGENT.id)
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        assertEquals(emptyList(), assignments(result))
+        verify(mandateClient, never()).get(any())
+    }
+
+    @Test
+    fun `one mandate unavailable - the other offers still show`() {
+        doReturn(listOf(ASSIGNMENT, ASSIGNMENT.copy(id = 8, mandateId = 102)))
+            .whenever(assignmentClient).pending(AGENT.id)
+        doThrow(HttpClientErrorException(HttpStatus.NOT_FOUND)).whenever(mandateClient).get(101)
+        doReturn(MANDATE.copy(id = 102)).whenever(mandateClient).get(102)
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        assertEquals(listOf(8L), assignments(result).map { it.id })
+    }
+
+    @Test
+    fun `offers unavailable - page still shown`() {
+        doThrow(ResourceAccessException("timeout")).whenever(assignmentClient).pending(any())
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        assertEquals("index", result.modelAndView?.viewName)
+        assertEquals(emptyList(), assignments(result))
+        assertEquals(true, model(result)["assignmentsUnavailable"])
+    }
+
+    @Test
+    fun `location names unavailable - offers still shown`() {
+        doReturn(listOf(ASSIGNMENT)).whenever(assignmentClient).pending(AGENT.id)
+        doReturn(MANDATE).whenever(mandateClient).get(101)
+        whenever(locationClient.search(any())).thenThrow(ResourceAccessException("timeout"))
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        assertNull(assignments(result).single().sector)
+    }
+
+    @Test
+    fun `not verified - no offers section`() {
+        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING))).whenever(currentAgent).get()
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        assertNull(model(result)["assignments"])
+        verify(assignmentClient, never()).pending(any())
+    }
+
+    @Test
+    fun `decline confirmation`() {
+        doReturn(listOf(ASSIGNMENT)).whenever(assignmentClient).pending(AGENT.id)
+        doReturn(MANDATE).whenever(mandateClient).get(101)
+
+        val result = mvc.perform(get("/").param("decline", "7")).andReturn()
+
+        assertEquals(7L, model(result)["declining"])
+    }
+
+    @Test
+    fun `decline confirmation - unknown offer ignored`() {
+        doReturn(listOf(ASSIGNMENT)).whenever(assignmentClient).pending(AGENT.id)
+        doReturn(MANDATE).whenever(mandateClient).get(101)
+
+        val result = mvc.perform(get("/").param("decline", "999")).andReturn()
+
+        assertNull(model(result)["declining"])
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun assignments(result: MvcResult) = model(result)["assignments"] as List<AssignmentView>
 }
