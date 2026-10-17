@@ -13,6 +13,7 @@ data class Mandate(
     val id: Long = -1,
     val customerId: Long = -1,
     val agentId: Long? = null,
+    val contractId: String? = null,
 
     val propertyCategory: PropertyCategory = PropertyCategory.UNKNOWN,
     val status: MandateStatus = MandateStatus.UNKNOWN,
@@ -59,4 +60,11 @@ data class Mandate(
 
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
+    val approvedAt: Date? = null,
+    val closedAt: Date? = null,
+
+    val age: Int? = null, // Age in days - age on the market from Approval to Closing.
+    val finalPrice: Long? = null,
+    val cancellationCode: MandateCancellationCode? = null,
+    val cancellationReason: String? = null,
 )

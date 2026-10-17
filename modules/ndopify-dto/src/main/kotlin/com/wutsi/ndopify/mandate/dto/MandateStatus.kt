@@ -6,7 +6,6 @@ enum class MandateStatus {
     ASSIGNED,
     PENDING_APPROVAL,
     APPROVED,
-    PUBLISHED,
     CLOSED,
     CANCELLED,
     MANUAL_ASSIGNMENT, // Without an agent for too long: assigned by a human

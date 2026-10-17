@@ -22,6 +22,15 @@ object ErrorCode {
     val AUTH_TYPE_NOT_SUPPORTED = "$PREFIX:auth:auth-type-not-supported"
     val AUTH_UNAUTHORIZED = "$PREFIX:auth:unauthorized"
 
+    val CONTRACT_NOT_FOUND = "$PREFIX:contract:not-found"
+    val CONTRACT_NOT_DRAFT = "$PREFIX:contract:not-draft"
+    val CONTRACT_NOT_PENDING = "$PREFIX:contract:not-pending"
+    val CONTRACT_CANCELLED = "$PREFIX:contract:cancelled"
+    val CONTRACT_ALREADY_SIGNED = "$PREFIX:contract:already-signed"
+    val CONTRACT_EXPIRED = "$PREFIX:contract:expired"
+    val CONTRACT_PARTY_NOT_FOUND = "$PREFIX:contract:party-not-found"
+    val CONTRACT_PARTY_ALREADY_SIGNED = "$PREFIX:contract:party-already-signed"
+
     val CUSTOMER_NOT_FOUND = "$PREFIX:customer:not-found"
 
     val HTTP_MISSING_PARAMETER = "$PREFIX:http:missing-parameter"
@@ -47,6 +56,7 @@ object ErrorCode {
     val LOCATION_FEED_NOT_FOUND = "$PREFIX:location:feed-not-found"
 
     val MANDATE_NOT_FOUND = "$PREFIX:mandate:not-found"
+    val MANDATE_NOT_ASSIGNED = "$PREFIX:mandate:not-assigned"
 
     val PARTY_NOT_FOUND = "$PREFIX:party:not-found"
     val PARTY_EMAIL_ALREADY_EXISTS = "$PREFIX:party:email-already-exists"
