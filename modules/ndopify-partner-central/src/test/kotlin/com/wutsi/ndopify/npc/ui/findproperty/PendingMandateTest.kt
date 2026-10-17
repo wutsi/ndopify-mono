@@ -95,7 +95,7 @@ class PendingMandateTest {
     fun toCreateMandateRequest() {
         val request = COMPLETE.toCreateMandateRequest("XAF")
 
-        assertEquals(MandateType.SEARCH_RENTAL, request.mandateType)
+        assertEquals(MandateType.SEARCH, request.mandateType)
         assertEquals(ListingType.RENTAL, request.listingType)
         assertEquals(PropertyCategory.RESIDENTIAL, request.propertyCategory)
         assertEquals(2220957L, request.cityId)

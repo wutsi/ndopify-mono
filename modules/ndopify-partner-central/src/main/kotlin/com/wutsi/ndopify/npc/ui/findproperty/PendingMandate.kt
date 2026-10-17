@@ -104,7 +104,7 @@ data class PendingMandate(
     fun toCreateMandateRequest(currency: String): CreateMandateRequest {
         val type = PropertyType.entries.firstOrNull { it.name == propertyType }
         return CreateMandateRequest(
-            mandateType = MandateType.SEARCH_RENTAL,
+            mandateType = MandateType.SEARCH,
             // Only rentals for now: the visitor isn't asked.
             listingType = ListingType.RENTAL,
             propertyCategory = propertyCategory ?: PropertyCategory.UNKNOWN,

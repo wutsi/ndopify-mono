@@ -40,7 +40,7 @@ class AssignmentViewsTest {
         val MANDATE = Mandate(
             id = 101,
             customerId = 555,
-            mandateType = MandateType.SEARCH_RENTAL,
+            mandateType = MandateType.SEARCH,
             propertyCategory = PropertyCategory.RESIDENTIAL,
             propertyType = PropertyType.APARTMENT,
             furnitureType = FurnitureType.UNFURNISHED,
@@ -65,7 +65,7 @@ class AssignmentViewsTest {
         val view = AssignmentViews.of(ASSIGNMENT, MANDATE, NAMES, NOW)
 
         assertEquals(7L, view.id)
-        assertEquals("Recherche de Location", view.title)
+        assertEquals("Recherche", view.title)
         assertEquals("Secteurs", view.sectorTerm)
         assertEquals("Bonapriso, Akwa", view.sector)
         assertEquals("Budget", view.priceTerm)
@@ -99,12 +99,12 @@ class AssignmentViewsTest {
     fun `owner - one neighbourhood`() {
         val view = AssignmentViews.of(
             ASSIGNMENT,
-            MANDATE.copy(mandateType = MandateType.RENTAL, neighborhoodIds = listOf(BONAPRISO)),
+            MANDATE.copy(mandateType = MandateType.LISTING, neighborhoodIds = listOf(BONAPRISO)),
             NAMES,
             NOW,
         )
 
-        assertEquals("Location", view.title)
+        assertEquals("Affichage", view.title)
         assertEquals("Secteur", view.sectorTerm)
         assertEquals("Bonapriso", view.sector)
         assertEquals("Loyer", view.priceTerm)

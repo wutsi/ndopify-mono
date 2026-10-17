@@ -2,6 +2,9 @@ package com.wutsi.ndopify.util.jpa
 
 import com.wutsi.ndopify.agent.dto.AgentType
 import com.wutsi.ndopify.agent.dto.ExperienceLevel
+import com.wutsi.ndopify.contract.dto.ContractPartyRole
+import com.wutsi.ndopify.contract.dto.ContractStatus
+import com.wutsi.ndopify.contract.dto.ContractType
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ListingType
@@ -33,6 +36,17 @@ class AgentTypeConverter : EnumConverter<AgentType>(AgentType::class.java, Agent
 
 @Converter(autoApply = true)
 class ExperienceLevelConverter : EnumConverter<ExperienceLevel>(ExperienceLevel::class.java, ExperienceLevel.UNKNOWN)
+
+// contract
+@Converter(autoApply = true)
+class ContractPartyRoleConverter :
+    EnumConverter<ContractPartyRole>(ContractPartyRole::class.java, ContractPartyRole.UNKNOWN)
+
+@Converter(autoApply = true)
+class ContractStatusConverter : EnumConverter<ContractStatus>(ContractStatus::class.java, ContractStatus.UNKNOWN)
+
+@Converter(autoApply = true)
+class ContractTypeConverter : EnumConverter<ContractType>(ContractType::class.java, ContractType.UNKNOWN)
 
 // listing. PropertyType, FurnitureType and ContactPeriodType are optional (null when not set)
 @Converter(autoApply = true)

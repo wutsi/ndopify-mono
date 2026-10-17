@@ -14,8 +14,8 @@ import kotlin.test.assertNull
 class MandateLabelsTest {
     @Test
     fun mandateType() {
-        assertEquals("Recherche de Location", MandateLabels.mandateType(MandateType.SEARCH_RENTAL))
-        assertEquals("Location", MandateLabels.mandateType(MandateType.RENTAL))
+        assertEquals("Recherche", MandateLabels.mandateType(MandateType.SEARCH))
+        assertEquals("Affichage", MandateLabels.mandateType(MandateType.LISTING))
         assertEquals("Mandat", MandateLabels.mandateType(MandateType.UNKNOWN))
     }
 

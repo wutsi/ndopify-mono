@@ -33,7 +33,7 @@ INSERT INTO T_MANDATE(
     price, price_periodicity_type, currency_code, security_deposit, advance_rent, lease_term, notice_period, moving_period,
     preferred_contact_period, comments, created_at, modified_at
 ) VALUES
-    (1, 1, 10, null, 'RESIDENTIAL', 'PENDING_ASSIGNMENT', 'TENANT', 'SEARCH_RENTAL', 2370201, 'APARTMENT',
+    (1, 1, 10, null, 'RESIDENTIAL', 'PENDING_ASSIGNMENT', 'TENANT', 'SEARCH', 2370201, 'APARTMENT',
      'UNFURNISHED', '2', '1', 75,
      true, true, true, true,
      true, false, true, true,
@@ -41,7 +41,7 @@ INSERT INTO T_MANDATE(
      true, true, true,
      150000, 'MONTHLY', 'XAF', 2, 3, 12, 1, 'WITHIN_3_MONTHS',
      'MORNING', 'Close to the market', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    (2, 2, 90, null, 'RESIDENTIAL', 'PENDING_ASSIGNMENT', 'TENANT', 'SEARCH_RENTAL', 2370201, 'APARTMENT',
+    (2, 2, 90, null, 'RESIDENTIAL', 'PENDING_ASSIGNMENT', 'TENANT', 'SEARCH', 2370201, 'APARTMENT',
      null, null, null, null,
      false, false, false, false,
      false, false, false, false,

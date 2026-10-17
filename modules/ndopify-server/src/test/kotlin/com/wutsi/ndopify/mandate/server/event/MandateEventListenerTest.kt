@@ -5,16 +5,36 @@ import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.contract.server.event.ContractSignedEvent
 import com.wutsi.ndopify.mandate.server.service.MandateDispatcher
+import com.wutsi.ndopify.mandate.server.service.MandateService
 import com.wutsi.ndopify.platform.logger.KVLoggerThreadLocal
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
 class MandateEventListenerTest {
     private val dispatcher = mock<MandateDispatcher>()
-    private val listener = MandateEventListener(dispatcher)
+    private val service = mock<MandateService>()
+    private val listener = MandateEventListener(dispatcher, service)
+
+    @Test
+    fun `contract signed - the mandate is approved`() {
+        listener.onContractSigned(ContractSignedEvent(contractId = "c-1", tenantId = 7L))
+
+        verify(service).onContractSigned("c-1")
+    }
+
+    @Test
+    fun `contract signed - a failure is rethrown, so the signature rolls back`() {
+        doThrow(IllegalStateException("boom")).whenever(service).onContractSigned("c-1")
+
+        assertFailsWith<IllegalStateException> {
+            listener.onContractSigned(ContractSignedEvent(contractId = "c-1", tenantId = 7L))
+        }
+    }
 
     @Test
     fun `created - the mandate is dispatched, in its tenant`() {

@@ -199,18 +199,32 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   offer now). Config: `ndopify.mandate.assignment.*`. `MandateDispatcherTest` covers every case of the algorithm —
   keep it that way when changing it. The wiring is covered by the endpoint tests (`CreateMandateEndpointTest`,
   `DispatchMandateEndpointTest`, `Decline` / `ExpireAssignmentEndpointTest`) and the listener / job unit tests.
+- **contract** — contracts to be signed by parties (`ContractEntity` + its `ContractPartyEntity`s, UUID ids;
+  `/v1/contracts`: create, get, `POST /{id}/request-signature`, `POST /{id}/sign`). `ContractService.create` checks the type, the parties' roles,
+  `validTo > validFrom` and that each `partyId` is a party of the tenant (404 `PARTY_NOT_FOUND`), and starts the
+  contract as `DRAFT`, numbered `<prefix>-<year>-<nnnnnn>` by `ContractNumberGenerator` (`BAIL` for a
+  `LEASE_AGREEMENT`, else `MNDT`; year in the tenant's `timeZone`): one gapless sequence per tenant, prefix and year in
+  `T_CONTRACT_SEQUENCE`, incremented last in the create transaction (row locked until commit). `request-signature` moves a DRAFT contract to
+  `PENDING_SIGNATURE` (409 `CONTRACT_NOT_DRAFT` / `CONTRACT_EXPIRED`) and publishes `ContractSignatureRequestedEvent`:
+  `ContractSignatureMailet` e-mails each unsigned party (`mail/contract/signature_request.mjml`) a single button, never
+  the document's URL: the page it opens shows the contract and signs it, `{partnerCentralUrl}/contracts/{id}/sign?party-id={contractPartyId}` (no button without a
+  `partnerCentralUrl`; that ndopify-partner-central page doesn't exist yet). Sign takes a *contract party* id (`SignContractRequest.partyId`), locks the
+  contract (`findByIdForUpdate`), then 409 `CONTRACT_NOT_PENDING` / `CONTRACT_EXPIRED` (past `validUntil`) /
+  `CONTRACT_PARTY_ALREADY_SIGNED`; the last signature makes it `SIGNED`. Nobody checks who signs yet (no JWT check).
+  Tenant-scoped.
 - **error** — shared exception types (`WutsiException` subclasses: `BadRequestException`, `NotFoundException`,
   `ConflictException`, `ForbiddenException`, `UnauthorizedException`, `InternalErrorException`) and a global
   `ControllerErrorHandler`.
 
-**Asynchronous e-mails** (welcome, OTP, KYC status, mandate offered, mandate assigned): the service publishes an event
+**Asynchronous e-mails** (welcome, OTP, KYC status, mandate offered, mandate assigned, contract to sign): the service publishes an event
 from its transaction (`AgentCreatedEvent`, `OtpCreatedEvent`, `KycCaseCompletedEvent`, `AssignmentCreatedEvent`,
-`AssignmentAcceptedEvent` in `<domain>/server/event/`), carrying ids plus the `tenantId` — never entities. Its
+`AssignmentAcceptedEvent`, `ContractSignatureRequestedEvent` in `<domain>/server/event/`), carrying ids plus the `tenantId` — never entities. Its
 listener is `@Async @TransactionalEventListener(AFTER_COMMIT)`, so nothing is sent for a rolled-back transaction. The
 executor thread has no request, so the listener sets `TenantContext` and a `DefaultKVLogger` in `KVLoggerThreadLocal`
 (which the injected `KVLogger` falls back to), calls `logger.log()` in `finally` to flush it, and removes both
 (threads are reused). The work runs in a `@Transactional` service method (`AgentService.sendWelcomeEmail`,
-`OtpService.sendEmail`, `KycService.sendStatusEmail`, `AssignmentService.sendOfferEmail` / `sendAssignedEmail`),
+`OtpService.sendEmail`, `KycService.sendStatusEmail`, `AssignmentService.sendOfferEmail` / `sendAssignedEmail`,
+`ContractService.sendSignatureRequestEmails`),
 entered *after* `TenantContext` is set since Hibernate resolves the tenant when the session opens. Failures are
 logged, never rethrown. Tests must wait for the mail (`smtp.waitForIncomingEmail`);
 `BaseEndpointIntegrationTest.tearDown` waits for the running async tasks, so a test's mail can't reach the next one.
@@ -321,7 +335,8 @@ Tenancy is enforced via **Hibernate's built-in multi-tenancy mechanism**, not ha
 - Any JPA entity annotated `org.hibernate.annotations.@TenantId` is automatically filtered by Hibernate for every
   query against it — no `CriteriaBuilder` predicate, repository override, or service-level check needed. Today
   that's `PartyEntity`, `PaymentMethodEntity`, `IdentificationEntity`, `IdentificationImageEntity`, `KycCaseEntity`,
-  `AgentEntity`, `CustomerEntity`, `MandateEntity`, `AssignmentEntity` and `MembershipEntity`. Leave the field `null` on construction (see the comment on any of them) so Hibernate's
+  `AgentEntity`, `CustomerEntity`, `MandateEntity`, `AssignmentEntity`, `ContractEntity`, `ContractPartyEntity` and
+  `MembershipEntity`. Leave the field `null` on construction (see the comment on any of them) so Hibernate's
   `TenantIdGeneration` populates it from `TenantContext` on insert — setting a non-null value yourself makes
   Hibernate treat it as caller-assigned and throw if it doesn't match the resolved tenant.
 - `KycVerificationEntity` is deliberately **not** `@TenantId`-annotated: it's never loaded by its own id anywhere in

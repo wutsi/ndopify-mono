@@ -19,6 +19,8 @@ interface AgentMandateCount {
 
 @Repository
 interface MandateRepository : CrudRepository<MandateEntity, Long>, JpaSpecificationExecutor<MandateEntity> {
+    fun findByContractId(contractId: String): MandateEntity?
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT m FROM MandateEntity m WHERE m.id = :id")
     fun findByIdForUpdate(id: Long): MandateEntity?

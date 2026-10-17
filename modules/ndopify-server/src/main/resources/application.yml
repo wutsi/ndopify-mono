@@ -201,6 +201,8 @@ ndopify:
                 cron: "0 */15 * * * ?"     # Every 15 minutes: offers past their TTL go to the next agent
             dispatch:
                 cron: "0 */30 * * * ?"     # Every 30 minutes: mandates that came at night, or had no candidate
+        contract:
+            duration-days: 180             # A contract is valid for 180 days, after which it expires
 
     party:
         kyc:

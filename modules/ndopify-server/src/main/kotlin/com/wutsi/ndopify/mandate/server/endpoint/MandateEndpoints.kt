@@ -1,5 +1,7 @@
 package com.wutsi.ndopify.mandate.server.endpoint
 
+import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
+import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateResponse
 import com.wutsi.ndopify.mandate.dto.DispatchMandateResponse
@@ -61,5 +63,20 @@ class MandateEndpoints(
     fun dispatch(@PathVariable id: Long): DispatchMandateResponse {
         val assignment = service.dispatch(id)
         return DispatchMandateResponse(assignmentId = assignment?.id)
+    }
+
+    @PostMapping("/{id}/request-approval")
+    fun requestApproval(@PathVariable id: Long) {
+        service.requestApproval(id)
+    }
+
+    @PostMapping("/{id}/cancel")
+    fun cancel(@PathVariable id: Long, @RequestBody request: CancelMandateRequest) {
+        TODO()
+    }
+
+    @PostMapping("/{id}/close")
+    fun close(@PathVariable id: Long, @RequestBody request: CloseMandateRequest) {
+        TODO()
     }
 }

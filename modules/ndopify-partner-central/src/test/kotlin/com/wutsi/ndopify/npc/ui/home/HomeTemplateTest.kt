@@ -113,7 +113,7 @@ class HomeTemplateTest {
         assertEquals("assignment-7", card.id())
         assertEquals("7", card.attr("data-assignment-id"))
         assertEquals((AssignmentViewsTest.NOW + 52 * 60_000L).toString(), card.attr("data-expires-at"))
-        assertEquals("Recherche de Location", card.selectFirst("h3")?.text())
+        assertEquals("Recherche", card.selectFirst("h3")?.text())
         assertEquals("52 min", card.selectFirst("[data-timer-value]")?.text())
         assertEquals("Secteurs", card.selectFirst("[data-fact=sector]")?.previousElementSibling()?.text())
         assertEquals("Bonapriso, Akwa", card.selectFirst("[data-fact=sector]")?.text())

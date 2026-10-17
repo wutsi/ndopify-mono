@@ -642,7 +642,7 @@ class FindPropertyControllerTest {
         assertEquals("redirect:/find-property?step=confirmation", result.modelAndView?.viewName)
         val request = argumentCaptor<CreateMandateRequest>()
         verify(mandateClient).create(request.capture())
-        assertEquals(MandateType.SEARCH_RENTAL, request.firstValue.mandateType)
+        assertEquals(MandateType.SEARCH, request.firstValue.mandateType)
         assertEquals("XAF", request.firstValue.price.currency)
         assertEquals(listOf(1001L, 1002L), request.firstValue.neighbourhoodIds)
         assertNull(pending())

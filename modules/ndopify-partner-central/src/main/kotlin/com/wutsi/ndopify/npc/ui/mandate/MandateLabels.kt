@@ -77,8 +77,8 @@ object MandateLabels {
     )
 
     private val MANDATE_TYPE_LABELS = mapOf(
-        MandateType.SEARCH_RENTAL to "Recherche de Location",
-        MandateType.RENTAL to "Location"
+        MandateType.SEARCH to "Recherche",
+        MandateType.LISTING to "Affichage"
     )
 
     private val CATEGORY_NAMES = mapOf(

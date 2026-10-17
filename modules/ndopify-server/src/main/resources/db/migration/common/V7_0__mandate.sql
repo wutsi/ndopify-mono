@@ -4,6 +4,7 @@ CREATE TABLE T_MANDATE(
 
   customer_id             BIGINT NOT NULL,
   agent_id                BIGINT,
+  contract_id             VARCHAR(36),
   city_id                 BIGINT NOT NULL,
 
   status                  VARCHAR(30) DEFAULT NULL,
@@ -48,12 +49,18 @@ CREATE TABLE T_MANDATE(
   comments                TEXT,
   created_at              DATETIME DEFAULT NOW(),
   modified_at             DATETIME NOT NULL DEFAULT now() ON UPDATE now(),
-
+  approved_at             DATETIME,
+  closed_at               DATETIME,
+  final_price             BIGINT,
+  cancellation_code       VARCHAR(30) DEFAULT NULL,
+  cancellation_reason     TEXT,
+  age                     INT,
 
   CONSTRAINT FK_MANDATE_customer FOREIGN KEY(customer_id) REFERENCES T_CUSTOMER(id),
   CONSTRAINT FK_MANDATE_agent FOREIGN KEY(agent_id) REFERENCES T_AGENT(id),
   CONSTRAINT FK_MANDATE_tenant FOREIGN KEY(tenant_id) REFERENCES T_TENANT(id),
   CONSTRAINT FK_MANDATE_city FOREIGN KEY(city_id) REFERENCES T_LOCATION(id),
+  CONSTRAINT FK_MANDATE_contract FOREIGN KEY(contract_id) REFERENCES T_CONTRACT(id),
   PRIMARY KEY(id)
 ) ENGINE = InnoDB;
 

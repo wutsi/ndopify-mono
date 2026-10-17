@@ -1,0 +1,254 @@
+<mjml>
+    <!--
+        Mandat de recherche immobilière (location). Every value is a ready-to-print string (labels, amounts and dates
+        already formatted in French); optional criteria are mustache sections, left out when the mandate doesn't set them:
+        - contract: contract_number, contract_date, valid_from, valid_until, duration_days
+        - parties: client_name, client_phone, client_email, tenant_name, tenant_logo_url, agent_name
+        - property (MandateEntity): property_category, property_type, furniture, rooms, parkings, area
+        - location: city, neighbourhoods
+        - amenities, by group (comma-separated labels): water, electricity, road_access, security
+        - terms: budget, security_deposit, advance_rent, lease_term, notice_period, moving_period
+        - contact: preferred_contact_period, comments
+    -->
+    <mj-head>
+        <mj-style>
+            {{__css__}}
+        </mj-style>
+    </mj-head>
+    <mj-body css-class="body">
+        <mj-section css-class="main-content">
+            <mj-column>
+                <!-- Logo -->
+                {{#tenant_logo_url}}
+                <mj-image align="center" css-class="logo" src="{{tenant_logo_url}}" alt="Logo"/>
+                {{/tenant_logo_url}}
+
+                <!-- Title -->
+                <mj-text align="center" font-size="20px" font-weight="bold">
+                    MANDAT DE RECHERCHE IMMOBILIÈRE (LOCATION)
+                </mj-text>
+                <mj-text align="center">
+                    Référence du contrat : <strong>{{contract_number}}</strong>
+                    <br/>
+                    Date : {{contract_date}}
+                </mj-text>
+
+                <!-- Divider with class for CSS injection -->
+                <mj-divider css-class="divider"/>
+
+                <!-- Parties -->
+                <mj-text font-weight="bold">
+                    ENTRE LES SOUSSIGNÉS :
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        <li>
+                            <b>Le Mandant (Client)</b> : {{client_name}}{{#client_phone}}, Tél : {{client_phone}}{{/client_phone}}{{#client_email}},
+                            Email : {{client_email}}{{/client_email}}
+                        </li>
+                        <li>
+                            <b>Le Mandataire</b> : {{tenant_name}}{{#agent_name}}, représenté par {{agent_name}}{{/agent_name}}
+                        </li>
+                    </ul>
+                </mj-text>
+
+                <!-- 1. Object -->
+                <mj-text font-weight="bold">
+                    1. OBJET DU MANDAT
+                </mj-text>
+                <mj-text>
+                    Le Mandant confie au Mandataire la mission de rechercher un bien immobilier à louer répondant aux
+                    critères suivants :
+                </mj-text>
+
+                <!-- The property -->
+                <mj-text font-weight="bold">
+                    Le bien
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        {{#property_category}}
+                        <li>
+                            <b>Catégorie</b> : {{property_category}}
+                        </li>
+                        {{/property_category}}
+                        <li>
+                            <b>Type de bien</b> : {{property_type}}
+                        </li>
+                        {{#furniture}}
+                        <li>
+                            <b>Meublé</b> : {{furniture}}
+                        </li>
+                        {{/furniture}}
+                        {{#rooms}}
+                        <li>
+                            <b>Chambres</b> : {{rooms}}
+                        </li>
+                        {{/rooms}}
+                        {{#parkings}}
+                        <li>
+                            <b>Parking</b> : {{parkings}}
+                        </li>
+                        {{/parkings}}
+                        {{#area}}
+                        <li>
+                            <b>Surface</b> : {{area}} m²
+                        </li>
+                        {{/area}}
+                    </ul>
+                </mj-text>
+
+                <!-- Location -->
+                <mj-text font-weight="bold">
+                    La localisation
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        <li>
+                            <b>Ville</b> : {{city}}
+                        </li>
+                        {{#neighbourhoods}}
+                        <li>
+                            <b>Quartiers ciblés</b> : {{neighbourhoods}}
+                        </li>
+                        {{/neighbourhoods}}
+                    </ul>
+                </mj-text>
+
+                <!-- Amenities: only the groups the mandate asks for -->
+                {{#has_amenities}}
+                <mj-text font-weight="bold">
+                    Les équipements souhaités
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        {{#water}}
+                        <li>
+                            <b>Accès à l'eau</b> : {{water}}
+                        </li>
+                        {{/water}}
+                        {{#electricity}}
+                        <li>
+                            <b>Accès à l'électricité</b> : {{electricity}}
+                        </li>
+                        {{/electricity}}
+                        {{#road_access}}
+                        <li>
+                            <b>Accès routier</b> : {{road_access}}
+                        </li>
+                        {{/road_access}}
+                        {{#security}}
+                        <li>
+                            <b>Sécurité</b> : {{security}}
+                        </li>
+                        {{/security}}
+                    </ul>
+                </mj-text>
+                {{/has_amenities}}
+
+                <!-- Rental terms -->
+                <mj-text font-weight="bold">
+                    Les conditions de location
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        <li>
+                            <b>Loyer maximum</b> : {{budget}}
+                        </li>
+                        {{#security_deposit}}
+                        <li>
+                            <b>Caution</b> : {{security_deposit}}
+                        </li>
+                        {{/security_deposit}}
+                        {{#advance_rent}}
+                        <li>
+                            <b>Avance sur loyer</b> : {{advance_rent}}
+                        </li>
+                        {{/advance_rent}}
+                        {{#lease_term}}
+                        <li>
+                            <b>Durée du bail</b> : {{lease_term}}
+                        </li>
+                        {{/lease_term}}
+                        {{#notice_period}}
+                        <li>
+                            <b>Préavis</b> : {{notice_period}}
+                        </li>
+                        {{/notice_period}}
+                        {{#moving_period}}
+                        <li>
+                            <b>Emménagement souhaité</b> : {{moving_period}}
+                        </li>
+                        {{/moving_period}}
+                    </ul>
+                </mj-text>
+
+                <!-- Contact and comments -->
+                {{#has_contact}}
+                <mj-text font-weight="bold">
+                    Informations complémentaires
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        {{#preferred_contact_period}}
+                        <li>
+                            <b>Disponibilité pour être contacté</b> : {{preferred_contact_period}}
+                        </li>
+                        {{/preferred_contact_period}}
+                        {{#comments}}
+                        <li>
+                            <b>Commentaires</b> : {{comments}}
+                        </li>
+                        {{/comments}}
+                    </ul>
+                </mj-text>
+                {{/has_contact}}
+
+                <!-- 2. Duration -->
+                <mj-text font-weight="bold">
+                    2. DURÉE
+                </mj-text>
+                <mj-text>
+                    Le présent mandat est conclu pour une durée de {{duration_days}} jours, du {{valid_from}} au
+                    {{valid_until}}.
+                </mj-text>
+
+                <!-- 3. Fees -->
+                <mj-text font-weight="bold">
+                    3. HONORAIRES ET FRAIS
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        <li>
+                            <b>Frais de dossiers</b> : Gratuit.
+                        </li>
+                        <li>
+                            <b>Frais de visites</b> : payable avant chaque visite.
+                        </li>
+                        <li>
+                            <b>Commission de succès</b> : 1 mois de loyer, exigible uniquement à la signature effective
+                            du contrat de bail trouvé par l'intermédiaire du Mandataire.
+                        </li>
+                    </ul>
+                </mj-text>
+
+                <!-- 4. Commitments -->
+                <mj-text font-weight="bold">
+                    4. ENGAGEMENTS DES PARTIES
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        <li>
+                            Le Mandataire s'engage à proposer des biens conformes et à accompagner le Mandant lors des
+                            visites.
+                        </li>
+                        <li>
+                            Le Mandant s'engage à verser la commission convenue si le bail est conclu avec un
+                            propriétaire présenté par {{tenant_name}}
+                        </li>
+                    </ul>
+                </mj-text>
+            </mj-column>
+        </mj-section>
+    </mj-body>
+</mjml>

@@ -17,7 +17,7 @@ object AssignmentViews {
         assignment.status == AssignmentStatus.PENDING && assignment.expiresAt.time > now
 
     fun of(assignment: AssignmentSummary, mandate: Mandate, locations: Map<Long, Location>, now: Long): AssignmentView {
-        val owner = mandate.mandateType == MandateType.RENTAL
+        val owner = mandate.mandateType == MandateType.LISTING
         val neighborhoods = mandate.neighborhoodIds.mapNotNull { locations[it] }
         return AssignmentView(
             id = assignment.id,

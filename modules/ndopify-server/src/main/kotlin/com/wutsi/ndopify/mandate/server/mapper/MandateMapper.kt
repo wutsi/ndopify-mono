@@ -13,6 +13,7 @@ class MandateMapper {
             id = entity.id ?: -1,
             customerId = entity.customerId,
             agentId = entity.agentId,
+            contractId = entity.contractId,
             propertyCategory = entity.propertyCategory,
             status = entity.status,
             mandateType = entity.mandateType,
@@ -48,6 +49,12 @@ class MandateMapper {
             comments = entity.comments,
             createdAt = entity.createdAt,
             modifiedAt = entity.modifiedAt,
+            approvedAt = entity.approvedAt,
+            closedAt = entity.closedAt,
+            age = entity.age,
+            finalPrice = entity.finalPrice,
+            cancellationCode = entity.cancellationCode,
+            cancellationReason = entity.cancellationReason
         )
     }
 

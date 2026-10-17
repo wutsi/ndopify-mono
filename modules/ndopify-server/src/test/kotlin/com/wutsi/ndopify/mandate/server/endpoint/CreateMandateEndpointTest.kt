@@ -43,7 +43,7 @@ class CreateMandateEndpointTest : TenantAwareEndpointIntegrationTest() {
 
     private val request = CreateMandateRequest(
         propertyCategory = PropertyCategory.RESIDENTIAL,
-        mandateType = MandateType.RENTAL,
+        mandateType = MandateType.LISTING,
         listingType = ListingType.RENTAL,
         cityId = 2370201L,
         neighbourhoodIds = listOf(111L, 222L),

@@ -6,6 +6,7 @@ import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
@@ -35,6 +36,7 @@ data class MandateEntity(
 
     val customerId: Long = -1,
     val agentId: Long? = null,
+    val contractId: String? = null,
 
     val propertyCategory: PropertyCategory = PropertyCategory.UNKNOWN,
     val status: MandateStatus = MandateStatus.UNKNOWN,
@@ -89,4 +91,11 @@ data class MandateEntity(
     val comments: String? = null,
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
+    val approvedAt: Date? = null,
+    val closedAt: Date? = null,
+
+    val age: Int? = null, // Age in days - age on the market from Approval to Closing.
+    val finalPrice: Long? = null,
+    val cancellationCode: MandateCancellationCode? = null,
+    val cancellationReason: String? = null,
 )

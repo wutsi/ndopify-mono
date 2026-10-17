@@ -1,12 +1,20 @@
 package com.wutsi.ndopify.mandate.server.service
 
+import com.wutsi.ndopify.contract.dto.ContractPartyRole
+import com.wutsi.ndopify.contract.dto.ContractType
+import com.wutsi.ndopify.contract.dto.CreateContractParty
+import com.wutsi.ndopify.contract.dto.CreateContractRequest
+import com.wutsi.ndopify.contract.server.domain.ContractEntity
+import com.wutsi.ndopify.contract.server.service.ContractService
 import com.wutsi.ndopify.customer.dto.CreateCustomerRequest
 import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.dto.SearchMandateRequest
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
@@ -17,6 +25,8 @@ import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
+import org.apache.commons.lang3.time.DateUtils
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
@@ -30,7 +40,10 @@ class MandateService(
     private val clock: Clock,
     private val customerService: CustomerService,
     private val eventPublisher: ApplicationEventPublisher,
+    private val contractService: ContractService,
     private val dispatcher: MandateDispatcher,
+
+    @param:Value("\${ndopify.mandate.contract.duration-days}") private val contractDurationDays: Int,
 ) {
     fun search(request: SearchMandateRequest): List<MandateEntity> {
         val spec = Specification<MandateEntity> { root, query, cb ->
@@ -185,6 +198,74 @@ class MandateService(
                 movingPeriod = request.movingPeriod,
                 comments = request.comments,
                 modifiedAt = Date(clock.millis()),
+            )
+        )
+    }
+
+    @Transactional
+    public fun requestApproval(id: Long): MandateEntity {
+        // Mandate
+        val mandate = findById(id)
+        if (mandate.status != MandateStatus.ASSIGNED) {
+            throw ConflictException(Error(ErrorCode.MANDATE_NOT_ASSIGNED))
+        }
+
+        // Create contract
+        val contract = createContract(mandate)
+        val updated = dao.save(
+            mandate.copy(
+                status = MandateStatus.PENDING_APPROVAL,
+                contractId = contract.id,
+                modifiedAt = Date(clock.millis()),
+            )
+        )
+
+        // Request signature for approval
+        contractService.requestSignature(contract.id)
+        return updated
+    }
+
+    /**
+     * Approves the PENDING_APPROVAL mandate of a contract that all its parties have signed. Does nothing for a contract
+     * that isn't a mandate's, or a mandate no longer waiting for approval (ex: cancelled in the meantime).
+     */
+    @Transactional
+    fun onContractSigned(contractId: String): MandateEntity? {
+        val mandate = dao.findByContractId(contractId)
+        if (mandate == null || mandate.status != MandateStatus.PENDING_APPROVAL) {
+            return null
+        }
+
+        val now = Date(clock.millis())
+        return dao.save(
+            mandate.copy(
+                status = MandateStatus.APPROVED,
+                modifiedAt = now,
+                approvedAt = now
+            )
+        )
+    }
+
+    private fun createContract(mandate: MandateEntity): ContractEntity {
+        val now = Date(clock.millis())
+        val customer = customerService.findById(mandate.customerId)
+        return contractService.create(
+            CreateContractRequest(
+                type = when (mandate.mandateType) {
+                    MandateType.SEARCH -> ContractType.SEARCH
+                    MandateType.LISTING -> ContractType.LISTING
+                    else -> throw IllegalArgumentException("Unsupported mandate type: ${mandate.mandateType}")
+                },
+                validFrom = now,
+                validTo = DateUtils.addDays(now, contractDurationDays),
+                parties = listOf(
+                    CreateContractParty(
+                        partyId = customer.party.id ?: -1,
+                        legalName = customer.party.fullName(),
+                        legalEmail = customer.party.email,
+                        role = ContractPartyRole.MANDATOR,
+                    )
+                )
             )
         )
     }
