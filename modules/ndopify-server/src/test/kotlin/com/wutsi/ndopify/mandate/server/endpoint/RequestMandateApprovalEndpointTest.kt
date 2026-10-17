@@ -2,8 +2,11 @@ package com.wutsi.ndopify.mandate.server.endpoint
 
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.argumentCaptor
+import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
+import com.nhaarman.mockitokotlin2.eq
+import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
@@ -12,6 +15,7 @@ import com.wutsi.ndopify.contract.dto.ContractPartyRole
 import com.wutsi.ndopify.contract.dto.ContractType
 import com.wutsi.ndopify.contract.dto.CreateContractParty
 import com.wutsi.ndopify.contract.dto.CreateContractRequest
+import com.wutsi.ndopify.contract.dto.SetContractRequest
 import com.wutsi.ndopify.contract.server.domain.ContractEntity
 import com.wutsi.ndopify.contract.server.service.ContractService
 import com.wutsi.ndopify.error.dto.Error
@@ -20,29 +24,70 @@ import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
-import org.apache.commons.lang3.time.DateUtils
+import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.mandate.server.service.MandateContractGenerator
+import com.wutsi.ndopify.platform.storage.StorageService
+import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.jdbc.Sql
+import java.io.InputStream
+import java.net.URI
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
-/** ContractService is mocked: the contracts themselves are covered by the contract endpoint tests. */
+/**
+ * ContractService, MandateContractGenerator and StorageService are mocked: the contracts, their content and the
+ * storage are covered by their own tests.
+ */
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/RequestMandateApprovalEndpoint.sql"])
 class RequestMandateApprovalEndpointTest : TenantAwareEndpointIntegrationTest() {
+    companion object {
+        private const val HTML = "<html>Mandat de recherche</html>"
+    }
+
     @Autowired
     private lateinit var dao: MandateRepository
 
     @MockitoBean
     private lateinit var contractService: ContractService
 
+    @MockitoBean
+    private lateinit var contractGenerator: MandateContractGenerator
+
+    @MockitoBean
+    private lateinit var storageProvider: StorageServiceProvider
+
+    private val storage = mock<StorageService>()
+
+    // Returned by the mocked ContractService: an entity is only equal to itself (createdAt)
+    private val contract1 = ContractEntity(id = "c-1")
+    private val contract4 = ContractEntity(id = "c-4")
+
+    // What was stored, by path
+    private val stored = mutableMapOf<String, Pair<String, String?>>()
+
     @BeforeTest
     override fun setUp() {
         super.setUp()
-        doReturn(ContractEntity(id = "c-1")).whenever(contractService).create(any())
+        stored.clear()
+
+        doReturn(storage).whenever(storageProvider).get()
+        doReturn(contract1).whenever(contractService).create(any())
+        doReturn(contract4).whenever(contractService).findById("c-4")
+        doReturn(HTML).whenever(contractGenerator).generate(any(), any())
+        doAnswer { invocation ->
+            val path = invocation.getArgument<String>(0)
+            val content = invocation.getArgument<InputStream>(1).readAllBytes().toString(Charsets.UTF_8)
+            stored[path] = content to invocation.getArgument<String?>(2)
+            null
+        }.whenever(storage).store(any(), any(), any())
+        doAnswer { invocation -> URI("https://cdn.ndopify.com/${invocation.getArgument<String>(0)}").toURL() }
+            .whenever(storage).publicUrl(any())
     }
 
     @Test
@@ -70,8 +115,17 @@ class RequestMandateApprovalEndpointTest : TenantAwareEndpointIntegrationTest() 
             ),
             request.firstValue.parties,
         )
-        // ndopify.mandate.contract.duration-days
-        assertEquals(DateUtils.addDays(request.firstValue.validFrom, 180), request.firstValue.validTo)
+        assertEquals(6, request.firstValue.durationMonths) // ndopify.mandate.contract.duration-months
+
+        // The content is generated from the mandate, stored, and set as the contract's
+        val generated = argumentCaptor<MandateEntity>()
+        verify(contractGenerator).generate(generated.capture(), eq(contract1))
+        assertEquals(1L, generated.firstValue.id)
+        val path = assertStored("mandates/1/contracts/c-1/")
+        verify(contractService).setContent(
+            contract1,
+            SetContractRequest(url = "https://cdn.ndopify.com/$path"),
+        )
 
         verify(contractService).requestSignature("c-1")
     }
@@ -91,21 +145,38 @@ class RequestMandateApprovalEndpointTest : TenantAwareEndpointIntegrationTest() 
         val request = argumentCaptor<CreateContractRequest>()
         verify(contractService).create(request.capture())
         assertEquals(ContractType.LISTING, request.firstValue.type)
+        assertStored("mandates/2/contracts/c-2/")
         verify(contractService).requestSignature("c-2")
     }
 
     @Test
-    fun `mandate not assigned`() {
-        val response = rest.postForEntity("/v1/mandates/3/request-approval", null, ErrorResponse::class.java)
+    fun `request approval again`() {
+        val response = rest.postForEntity("/v1/mandates/4/request-approval", null, Any::class.java)
 
-        assertEquals(HttpStatus.CONFLICT, response.statusCode)
-        assertEquals(ErrorCode.MANDATE_NOT_ASSIGNED, response.body?.error?.code)
+        assertEquals(HttpStatus.OK, response.statusCode)
 
-        val mandate = dao.findById(3L).get()
-        assertEquals(MandateStatus.PENDING_ASSIGNMENT, mandate.status)
-        assertNull(mandate.contractId)
+        val mandate = dao.findById(4L).get()
+        assertEquals(MandateStatus.PENDING_APPROVAL, mandate.status)
+        assertEquals("c-4", mandate.contractId)
+
+        // Its contract is reused, with a new content
         verify(contractService, never()).create(any())
-        verify(contractService, never()).requestSignature(any())
+        val path = assertStored("mandates/4/contracts/c-4/")
+        verify(contractService).setContent(
+            contract4,
+            SetContractRequest(url = "https://cdn.ndopify.com/$path"),
+        )
+        verify(contractService).requestSignature("c-4")
+    }
+
+    @Test
+    fun `mandate not assigned`() {
+        assertCannotBeApproved(3L, MandateStatus.PENDING_ASSIGNMENT)
+    }
+
+    @Test
+    fun `mandate already approved`() {
+        assertCannotBeApproved(5L, MandateStatus.APPROVED)
     }
 
     @Test
@@ -124,6 +195,21 @@ class RequestMandateApprovalEndpointTest : TenantAwareEndpointIntegrationTest() 
     }
 
     @Test
+    fun `storage failure rolls back the approval`() {
+        doThrow(IllegalStateException("storage down")).whenever(storage).store(any(), any(), any())
+
+        val response = rest.postForEntity("/v1/mandates/1/request-approval", null, ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.statusCode)
+
+        val mandate = dao.findById(1L).get()
+        assertEquals(MandateStatus.ASSIGNED, mandate.status)
+        assertNull(mandate.contractId)
+        verify(contractService, never()).setContent(any<ContractEntity>(), any())
+        verify(contractService, never()).requestSignature(any())
+    }
+
+    @Test
     fun `mandate not found`() {
         assertNotFound(999L)
     }
@@ -133,11 +219,38 @@ class RequestMandateApprovalEndpointTest : TenantAwareEndpointIntegrationTest() 
         assertNotFound(9L)
     }
 
+    // The one HTML file stored under [prefix]: the generated content. Returns its path
+    private fun assertStored(prefix: String): String {
+        val (path, file) = stored.entries.single().toPair()
+        assertTrue(path.startsWith(prefix) && path.endsWith(".html"), "path: $path")
+        assertEquals(HTML to "text/html", file)
+        return path
+    }
+
+    private fun assertCannotBeApproved(id: Long, status: MandateStatus) {
+        val response = rest.postForEntity("/v1/mandates/$id/request-approval", null, ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_CANNOT_BE_APPROVED, response.body?.error?.code)
+
+        val mandate = dao.findById(id).get()
+        assertEquals(status, mandate.status)
+        assertNull(mandate.contractId)
+        assertNothingDone()
+    }
+
     private fun assertNotFound(id: Long) {
         val response = rest.postForEntity("/v1/mandates/$id/request-approval", null, ErrorResponse::class.java)
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals(ErrorCode.MANDATE_NOT_FOUND, response.body?.error?.code)
+        assertNothingDone()
+    }
+
+    private fun assertNothingDone() {
         verify(contractService, never()).create(any())
+        verify(contractGenerator, never()).generate(any(), any())
+        verify(storage, never()).store(any(), any(), any())
+        verify(contractService, never()).requestSignature(any())
     }
 }

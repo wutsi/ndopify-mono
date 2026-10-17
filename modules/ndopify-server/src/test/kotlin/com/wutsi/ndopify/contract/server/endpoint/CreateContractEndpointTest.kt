@@ -14,7 +14,6 @@ import com.wutsi.ndopify.error.dto.ErrorResponse
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
-import java.text.SimpleDateFormat
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import kotlin.test.Test
@@ -31,16 +30,12 @@ class CreateContractEndpointTest : TenantAwareEndpointIntegrationTest() {
     @Autowired
     private lateinit var partyDao: ContractPartyRepository
 
-    private val fmt = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-
     // The tenant's time zone (T_TENANT.time_zone default)
     private val year = ZonedDateTime.now(ZoneId.of("Africa/Douala")).year
 
     private val request = CreateContractRequest(
         type = ContractType.SEARCH,
-        contentUrl = "https://cdn.ndopify.com/contracts/1.pdf",
-        validFrom = fmt.parse("2024-06-01 00:00:00"),
-        validTo = fmt.parse("2099-06-01 00:00:00"),
+        durationMonths = 6,
         parties = listOf(
             CreateContractParty(
                 partyId = 100L,
@@ -68,9 +63,11 @@ class CreateContractEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals("MNDT-$year-000001", contract.number)
         assertEquals(ContractType.SEARCH, contract.type)
         assertEquals(ContractStatus.DRAFT, contract.status)
-        assertEquals(request.contentUrl, contract.contentUrl)
-        assertEquals(request.validFrom.time, contract.validFrom.time)
-        assertEquals(request.validTo.time, contract.validUntil.time)
+        assertNull(contract.contentUrl) // Set by POST /v1/contracts/{id}/content
+        assertEquals(6, contract.durationMonths)
+        assertNull(contract.signatureDeadline) // Set when its signature is requested
+        assertNull(contract.validFrom) // Set by the last signature
+        assertNull(contract.validUntil)
         assertNull(contract.signedAt)
 
         val parties = partyDao.findByContract(contract).sortedBy { party -> party.partyId }
@@ -114,11 +111,6 @@ class CreateContractEndpointTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
-    fun `missing content url`() {
-        assertBadRequest(request.copy(contentUrl = ""), ErrorCode.HTTP_INVALID_PARAMETER)
-    }
-
-    @Test
     fun `no party`() {
         assertBadRequest(request.copy(parties = emptyList()), ErrorCode.HTTP_INVALID_PARAMETER)
     }
@@ -141,12 +133,13 @@ class CreateContractEndpointTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
-    fun `valid to before valid from`() {
-        assertBadRequest(
-            request.copy(validTo = fmt.parse("2024-05-01 00:00:00")),
-            ErrorCode.HTTP_INVALID_PARAMETER,
-            "validTo",
-        )
+    fun `no duration`() {
+        assertBadRequest(request.copy(durationMonths = 0), ErrorCode.HTTP_INVALID_PARAMETER, "durationMonths")
+    }
+
+    @Test
+    fun `negative duration`() {
+        assertBadRequest(request.copy(durationMonths = -1), ErrorCode.HTTP_INVALID_PARAMETER, "durationMonths")
     }
 
     @Test

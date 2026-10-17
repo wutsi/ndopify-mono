@@ -41,7 +41,9 @@ class MandateServiceTest {
         eventPublisher = eventPublisher,
         contractService = mock(),
         dispatcher = mock(),
-        contractDurationDays = 180,
+        contractGenerator = mock(),
+        storageProvider = mock(),
+        contractDurationMonths = 6,
     )
 
     private val day = 24L * 60 * 60 * 1000

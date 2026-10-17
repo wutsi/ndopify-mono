@@ -39,9 +39,8 @@ class ContractSignatureMailetTest {
         tenantId = 1L,
         number = "BAIL-2026-000042",
         type = ContractType.LEASE_AGREEMENT,
-        contentUrl = "https://cdn.ndopify.com/contracts/c-1.pdf",
         // 23:30 UTC: already the next day in Douala (UTC+1)
-        validUntil = Date.from(Instant.parse("2026-12-31T23:30:00Z")),
+        signatureDeadline = Date.from(Instant.parse("2026-12-31T23:30:00Z")),
     )
     private val party = ContractPartyEntity(
         id = "cp-1",

@@ -27,9 +27,11 @@ data class ContractEntity(
     val number: String = "",
     val type: ContractType = ContractType.UNKNOWN,
     val status: ContractStatus = ContractStatus.UNKNOWN,
-    val contentUrl: String = "",
-    val validFrom: Date = Date(),
-    val validUntil: Date = Date(),
+    val contentUrl: String? = null, // Set by POST /v1/contracts/{id}/content
+    val durationMonths: Int = 0,
+    val signatureDeadline: Date? = null, // Set by each request for signature
+    val validFrom: Date? = null, // Set by the last signature, with validUntil
+    val validUntil: Date? = null,
     val createdAt: Date = Date(),
     val signedAt: Date? = null,
 )

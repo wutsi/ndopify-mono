@@ -3,6 +3,7 @@ package com.wutsi.ndopify.contract.server.endpoint
 import com.wutsi.ndopify.contract.dto.CreateContractRequest
 import com.wutsi.ndopify.contract.dto.CreateContractResponse
 import com.wutsi.ndopify.contract.dto.GetContractResponse
+import com.wutsi.ndopify.contract.dto.SetContractRequest
 import com.wutsi.ndopify.contract.dto.SignContractRequest
 import com.wutsi.ndopify.contract.server.domain.ContractEntity
 import com.wutsi.ndopify.contract.server.mapper.ContractMapper
@@ -30,6 +31,15 @@ class ContractEndpoints(
     @GetMapping("/{id}")
     fun get(@PathVariable id: String): GetContractResponse {
         return toResponse(service.findById(id))
+    }
+
+    // The document's URL, while the contract is DRAFT or PENDING_SIGNATURE
+    @PostMapping("/{id}/content")
+    fun setContent(
+        @PathVariable id: String,
+        @RequestBody @Valid request: SetContractRequest,
+    ): GetContractResponse {
+        return toResponse(service.setContent(id, request))
     }
 
     // DRAFT → PENDING_SIGNATURE, and asks each party by e-mail to sign it

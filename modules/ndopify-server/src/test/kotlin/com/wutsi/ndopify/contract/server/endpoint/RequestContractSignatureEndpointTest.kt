@@ -9,6 +9,9 @@ import com.wutsi.ndopify.error.dto.ErrorResponse
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
+import java.time.Duration
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -29,7 +32,9 @@ class RequestContractSignatureEndpointTest : TenantAwareEndpointIntegrationTest(
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(ContractStatus.PENDING_SIGNATURE, response.body!!.contract.status)
-        assertEquals(ContractStatus.PENDING_SIGNATURE, dao.findById("c-1").get().status)
+        val contract = dao.findById("c-1").get()
+        assertEquals(ContractStatus.PENDING_SIGNATURE, contract.status)
+        assertDeadlineIn7Days(contract.signatureDeadline!!.time)
 
         // Each party is asked to sign, asynchronously
         assertTrue(smtp.waitForIncomingEmail(5000, 2), "no email received")
@@ -47,13 +52,14 @@ class RequestContractSignatureEndpointTest : TenantAwareEndpointIntegrationTest(
         assertTrue(body.contains("Ray Sponsible"))
         assertTrue(body.contains("Mandat de recherche"))
         assertFalse(body.contains("https://cdn.ndopify.com/contracts/c-1.pdf")) // Only reached through the sign page
-        assertTrue(body.contains("01/06/2099"))
+        val deadline = contract.signatureDeadline!!.toInstant().atZone(ZoneId.of("Africa/Douala"))
+        assertTrue(body.contains(deadline.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))))
         assertTrue(body.contains("https://partner.ndopify.com/contracts/c-1/sign?party-id=cp-11"))
         assertTrue(messages[0].content.toString().contains("https://partner.ndopify.com/contracts/c-1/sign?party-id=cp-12"))
     }
 
     @Test
-    fun `request signature again`() {
+    fun `request signature again resets the deadline`() {
         val response = rest.postForEntity(
             "/v1/contracts/c-2/request-signature",
             null,
@@ -62,7 +68,9 @@ class RequestContractSignatureEndpointTest : TenantAwareEndpointIntegrationTest(
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(ContractStatus.PENDING_SIGNATURE, response.body!!.contract.status)
-        assertEquals(ContractStatus.PENDING_SIGNATURE, dao.findById("c-2").get().status)
+        val contract = dao.findById("c-2").get()
+        assertEquals(ContractStatus.PENDING_SIGNATURE, contract.status)
+        assertDeadlineIn7Days(contract.signatureDeadline!!.time) // Was past
 
         // Only the party that hasn't signed yet is asked again
         assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received")
@@ -71,11 +79,6 @@ class RequestContractSignatureEndpointTest : TenantAwareEndpointIntegrationTest(
         assertEquals("Ray Sponsible <ray.sponsible@gmail.com>", message.allRecipients.single().toString())
         assertEquals("Ndopify: Votre contrat MNDT-2024-000002 est prêt à être signé", message.subject)
         assertTrue(message.content.toString().contains("https://partner.ndopify.com/contracts/c-2/sign?party-id=cp-21"))
-    }
-
-    @Test
-    fun `contract past its end date`() {
-        assertConflict("c-3", ErrorCode.CONTRACT_EXPIRED, ContractStatus.DRAFT)
     }
 
     @Test
@@ -101,6 +104,12 @@ class RequestContractSignatureEndpointTest : TenantAwareEndpointIntegrationTest(
     @Test
     fun `contract from another tenant is not found`() {
         assertNotFound("c-9")
+    }
+
+    // ndopify.contract.signature.ttl-days
+    private fun assertDeadlineIn7Days(deadline: Long) {
+        val expected = System.currentTimeMillis() + Duration.ofDays(7).toMillis()
+        assertTrue(Math.abs(expected - deadline) < Duration.ofMinutes(1).toMillis(), "deadline: $deadline")
     }
 
     private fun assertConflict(id: String, code: String, status: ContractStatus) {

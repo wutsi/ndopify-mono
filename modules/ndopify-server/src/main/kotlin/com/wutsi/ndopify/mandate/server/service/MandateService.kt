@@ -1,9 +1,11 @@
 package com.wutsi.ndopify.mandate.server.service
 
 import com.wutsi.ndopify.contract.dto.ContractPartyRole
+import com.wutsi.ndopify.contract.dto.ContractStatus
 import com.wutsi.ndopify.contract.dto.ContractType
 import com.wutsi.ndopify.contract.dto.CreateContractParty
 import com.wutsi.ndopify.contract.dto.CreateContractRequest
+import com.wutsi.ndopify.contract.dto.SetContractRequest
 import com.wutsi.ndopify.contract.server.domain.ContractEntity
 import com.wutsi.ndopify.contract.server.service.ContractService
 import com.wutsi.ndopify.customer.dto.CreateCustomerRequest
@@ -27,19 +29,21 @@ import com.wutsi.ndopify.mandate.server.domain.AssignmentEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.mandate.server.event.MandateClosedEvent
 import com.wutsi.ndopify.mandate.server.event.MandateCreatedEvent
+import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
-import org.apache.commons.lang3.time.DateUtils
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
+import java.io.ByteArrayInputStream
 import java.time.Clock
 import java.time.Duration
 import java.util.Date
+import java.util.UUID
 
 @Service
 class MandateService(
@@ -50,8 +54,10 @@ class MandateService(
     private val eventPublisher: ApplicationEventPublisher,
     private val contractService: ContractService,
     private val dispatcher: MandateDispatcher,
+    private val contractGenerator: MandateContractGenerator,
+    private val storageProvider: StorageServiceProvider,
 
-    @param:Value("\${ndopify.mandate.contract.duration-days}") private val contractDurationDays: Int,
+    @param:Value("\${ndopify.mandate.contract.duration-months}") private val contractDurationMonths: Int,
 ) {
     fun search(request: SearchMandateRequest): List<MandateEntity> {
         val spec = Specification<MandateEntity> { root, query, cb ->
@@ -214,12 +220,22 @@ class MandateService(
     public fun requestApproval(id: Long): MandateEntity {
         // Mandate
         val mandate = findById(id)
-        if (mandate.status != MandateStatus.ASSIGNED) {
-            throw ConflictException(Error(ErrorCode.MANDATE_NOT_ASSIGNED))
+        if (mandate.status != MandateStatus.ASSIGNED && mandate.status != MandateStatus.PENDING_APPROVAL) {
+            throw ConflictException(Error(ErrorCode.MANDATE_CANNOT_BE_APPROVED))
         }
 
-        // Create contract
-        val contract = createContract(mandate)
+        // Contract
+        var contract = mandate.contractId
+            ?.let { id -> contractService.findById(id) }
+            ?: createContract(mandate)
+        if (contract.status == ContractStatus.EXPIRED) {
+            contract = createContract(mandate) // Re-create a new contract if the previous one expired
+        }
+
+        // Contract content
+        setContractContent(contract, mandate)
+
+        // Update the mandate
         val updated = dao.save(
             mandate.copy(
                 status = MandateStatus.PENDING_APPROVAL,
@@ -323,7 +339,6 @@ class MandateService(
         Duration.ofMillis(to.time - from.time).toDays().toInt().coerceAtLeast(0)
 
     private fun createContract(mandate: MandateEntity): ContractEntity {
-        val now = Date(clock.millis())
         val customer = customerService.findById(mandate.customerId)
         return contractService.create(
             CreateContractRequest(
@@ -332,8 +347,7 @@ class MandateService(
                     MandateType.LISTING -> ContractType.LISTING
                     else -> throw IllegalArgumentException("Unsupported mandate type: ${mandate.mandateType}")
                 },
-                validFrom = now,
-                validTo = DateUtils.addDays(now, contractDurationDays),
+                durationMonths = contractDurationMonths,
                 parties = listOf(
                     CreateContractParty(
                         partyId = customer.party.id ?: -1,
@@ -342,6 +356,21 @@ class MandateService(
                         role = ContractPartyRole.MANDATOR,
                     )
                 )
+            )
+        )
+    }
+
+    private fun setContractContent(contract: ContractEntity, mandate: MandateEntity) {
+        val html = contractGenerator.generate(mandate, contract)
+        val path = "mandates/${mandate.id}/contracts/${contract.id}/${UUID.randomUUID()}.html"
+        val content = ByteArrayInputStream(html.toByteArray())
+        val storage = storageProvider.get()
+        storage.store(path, content, "text/html")
+
+        contractService.setContent(
+            contract,
+            SetContractRequest(
+                url = storage.publicUrl(path).toString()
             )
         )
     }

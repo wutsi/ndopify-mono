@@ -17,6 +17,9 @@ spring:
                         required: false
 
 ndopify:
+    contract:
+        expire:
+            cron: "-" # Never on its own: tests call ContractJobs
     mandate:
         assignment:
             jitter: 0 # Deterministic scores

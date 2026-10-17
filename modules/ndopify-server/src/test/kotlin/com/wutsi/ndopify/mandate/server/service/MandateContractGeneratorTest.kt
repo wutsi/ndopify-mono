@@ -83,8 +83,7 @@ class MandateContractGeneratorTest {
         id = "c-1",
         number = "MNDT-2026-000001",
         createdAt = Date.from(Instant.parse("2026-10-16T23:30:00Z")),
-        validFrom = Date.from(Instant.parse("2026-10-16T23:30:00Z")),
-        validUntil = Date.from(Instant.parse("2026-12-15T23:30:00Z")),
+        durationMonths = 6,
     )
 
     @BeforeTest
@@ -137,8 +136,8 @@ class MandateContractGeneratorTest {
             "Dans 1 à 3 mois",
             "Le matin",
             "Proche du marché",
-            "60 jours, du 17/10/2026 au",
-            "16/12/2026",
+            "17/10/2026", // contract_date
+            "6 mois, à compter de la date de sa",
         ).forEach { text -> assertTrue(html.contains(text), "missing: $text") }
         assertFalse(html.contains("Panneaux solaires")) // Not asked for
     }

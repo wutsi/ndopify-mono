@@ -47,8 +47,8 @@ class ContractSignatureMailet(
                         "contract_type" to (TYPES[contract.type] ?: "Contrat"),
                         "contract_number" to contract.number,
                         // The party reads it in its local time
-                        "deadline" to contract.validUntil.toInstant().atZone(ZoneId.of(tenant.timeZone))
-                            .format(DEADLINE_FORMAT),
+                        "deadline" to contract.signatureDeadline?.toInstant()?.atZone(ZoneId.of(tenant.timeZone))
+                            ?.format(DEADLINE_FORMAT),
                         // Shows the contract and signs it: the e-mail never links the document itself
                         "sign_url" to tenant.partnerCentralUrl?.let { url ->
                             "$url/contracts/${contract.id}/sign?party-id=${party.id}"

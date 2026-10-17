@@ -4,11 +4,13 @@ import com.wutsi.ndopify.contract.dto.ContractPartyRole
 import com.wutsi.ndopify.contract.dto.ContractStatus
 import com.wutsi.ndopify.contract.dto.ContractType
 import com.wutsi.ndopify.contract.dto.CreateContractRequest
+import com.wutsi.ndopify.contract.dto.SetContractRequest
 import com.wutsi.ndopify.contract.dto.SignContractRequest
 import com.wutsi.ndopify.contract.server.dao.ContractPartyRepository
 import com.wutsi.ndopify.contract.server.dao.ContractRepository
 import com.wutsi.ndopify.contract.server.domain.ContractEntity
 import com.wutsi.ndopify.contract.server.domain.ContractPartyEntity
+import com.wutsi.ndopify.contract.server.event.ContractExpiredEvent
 import com.wutsi.ndopify.contract.server.event.ContractSignatureRequestedEvent
 import com.wutsi.ndopify.contract.server.event.ContractSignedEvent
 import com.wutsi.ndopify.contract.server.mail.ContractSignatureMailet
@@ -24,9 +26,13 @@ import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import jakarta.transaction.Transactional
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.data.domain.PageRequest
 import org.springframework.stereotype.Service
+import org.springframework.transaction.support.TransactionTemplate
 import java.time.Clock
+import java.time.Duration
 import java.time.ZoneId
 import java.util.Date
 
@@ -40,9 +46,12 @@ class ContractService(
     private val signatureMailet: ContractSignatureMailet,
     private val eventPublisher: ApplicationEventPublisher,
     private val clock: Clock,
+    private val tx: TransactionTemplate,
+    @param:Value("\${ndopify.contract.signature.ttl-days}") private val signatureTtlDays: Long,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(ContractService::class.java)
+        const val BATCH_SIZE = 100
     }
 
     fun findByIdOrNull(id: String): ContractEntity? {
@@ -64,8 +73,8 @@ class ContractService(
         if (request.type == ContractType.UNKNOWN) {
             throw invalidParameter("type", request.type.name)
         }
-        if (!request.validTo.after(request.validFrom)) {
-            throw invalidParameter("validTo", request.validTo.toString())
+        if (request.durationMonths < 1) {
+            throw invalidParameter("durationMonths", request.durationMonths.toString())
         }
         request.parties.forEach { party ->
             if (party.role == ContractPartyRole.UNKNOWN) {
@@ -89,9 +98,7 @@ class ContractService(
                 number = number,
                 type = request.type,
                 status = ContractStatus.DRAFT,
-                contentUrl = request.contentUrl,
-                validFrom = request.validFrom,
-                validUntil = request.validTo,
+                durationMonths = request.durationMonths,
                 createdAt = now,
             )
         )
@@ -110,35 +117,45 @@ class ContractService(
     }
 
     /**
-     * Sends a DRAFT contract to its parties for signature: it becomes PENDING_SIGNATURE, and its parties are e-mailed
-     * after commit, by a listener of [ContractSignatureRequestedEvent].
+     * Sets the URL of the contract's document, while it can still be signed: DRAFT or PENDING_SIGNATURE. Locked like a
+     * signature, so that the last party can't sign it while its document changes.
+     */
+    @Transactional
+    fun setContent(id: String, request: SetContractRequest): ContractEntity {
+        val contract = dao.findByIdForUpdate(id)
+            ?: throw NotFoundException(error = Error(code = ErrorCode.CONTRACT_NOT_FOUND))
+        return setContent(contract, request)
+    }
+
+    @Transactional
+    fun setContent(contract: ContractEntity, request: SetContractRequest): ContractEntity {
+        ensureNotClosed(contract)
+        return dao.save(contract.copy(contentUrl = request.url.trim()))
+    }
+
+    /**
+     * Sends a DRAFT or PENDING_SIGNATURE contract to its parties for signature: it becomes PENDING_SIGNATURE, its
+     * parties have `ttl-days` from now to sign it (each request resets the deadline), and are e-mailed after commit, by
+     * a listener of [ContractSignatureRequestedEvent].
      */
     @Transactional
     fun requestSignature(id: String): ContractEntity {
-        var contract = findById(id)
+        val contract = findById(id)
 
-        if (contract.status == ContractStatus.EXPIRED || Date(clock.millis()).after(contract.validUntil)) {
-            throw ConflictException(Error(code = ErrorCode.CONTRACT_EXPIRED))
-        }
-
-        if (contract.status == ContractStatus.CANCELLED) {
-            throw ConflictException(Error(code = ErrorCode.CONTRACT_CANCELLED))
-        }
-
-        if (contract.status == ContractStatus.SIGNED) {
-            throw ConflictException(Error(code = ErrorCode.CONTRACT_ALREADY_SIGNED))
-        }
-
-        if (contract.status == ContractStatus.DRAFT) {
-            contract = dao.save(contract.copy(status = ContractStatus.PENDING_SIGNATURE))
-        }
+        ensureNotClosed(contract)
+        val pending = dao.save(
+            contract.copy(
+                status = ContractStatus.PENDING_SIGNATURE,
+                signatureDeadline = Date(clock.millis() + Duration.ofDays(signatureTtlDays).toMillis()),
+            )
+        )
         eventPublisher.publishEvent(
             ContractSignatureRequestedEvent(
-                contractId = contract.id,
+                contractId = pending.id,
                 tenantId = TenantContext.get()!!
             )
         )
-        return contract
+        return pending
     }
 
     /**
@@ -168,7 +185,8 @@ class ContractService(
 
     /**
      * Records the signature of one of the contract's parties ([SignContractRequest.partyId] is a contract party id).
-     * The contract is SIGNED once all its parties have signed, and publishes a [ContractSignedEvent].
+     * The contract is SIGNED once all its parties have signed, and publishes a [ContractSignedEvent]: it's valid from
+     * this last signature, for its `durationMonths` (added in the tenant's time zone, so a month ends on the same day).
      */
     @Transactional
     fun sign(id: String, request: SignContractRequest): ContractEntity {
@@ -179,7 +197,7 @@ class ContractService(
         }
 
         val now = Date(clock.millis())
-        if (now.after(contract.validUntil)) {
+        if (isSignatureLate(contract, now)) {
             throw ConflictException(error = Error(code = ErrorCode.CONTRACT_EXPIRED))
         }
 
@@ -201,13 +219,77 @@ class ContractService(
 
         val allSigned = parties.all { other -> other.id == party.id || other.signed }
         return if (allSigned) {
-            val signed = dao.save(contract.copy(status = ContractStatus.SIGNED, signedAt = now))
+            val zone = ZoneId.of(tenantService.findById(TenantContext.get()!!).timeZone)
+            val validUntil = now.toInstant().atZone(zone).plusMonths(contract.durationMonths.toLong()).toInstant()
+            val signed = dao.save(
+                contract.copy(
+                    status = ContractStatus.SIGNED,
+                    signedAt = now,
+                    validFrom = now,
+                    validUntil = Date.from(validUntil),
+                )
+            )
             eventPublisher.publishEvent(ContractSignedEvent(contractId = signed.id, tenantId = TenantContext.get()!!))
             signed
         } else {
             contract
         }
     }
+
+    /**
+     * Expires the contracts not signed by all their parties before their deadline, and the signed ones past their end
+     * date. Each one in its own transaction, so one failing contract doesn't roll back the others. Returns how many
+     * expired.
+     */
+    fun expireDue(): Int {
+        val ids = dao.findIdsToExpire(
+            pending = ContractStatus.PENDING_SIGNATURE,
+            signed = ContractStatus.SIGNED,
+            now = Date(clock.millis()),
+            page = PageRequest.of(0, BATCH_SIZE),
+        )
+        return ids.count { id ->
+            try {
+                tx.execute { expire(id) } == true
+            } catch (ex: Exception) {
+                LOGGER.warn("Contract#$id - Unable to expire", ex)
+                false
+            }
+        }
+    }
+
+    /**
+     * Expires a contract, locked like a signature so that it can't expire while its last party signs it. Checked
+     * again once locked: false if it was signed (or its signature requested again) in the meantime. Publishes a
+     * [ContractExpiredEvent].
+     */
+    private fun expire(id: String): Boolean {
+        val contract = dao.findByIdForUpdate(id) ?: return false
+        val now = Date(clock.millis())
+        val due = isSignatureLate(contract, now) ||
+            (contract.status == ContractStatus.SIGNED && contract.validUntil?.before(now) == true)
+        if (!due) {
+            return false
+        }
+
+        dao.save(contract.copy(status = ContractStatus.EXPIRED))
+        eventPublisher.publishEvent(ContractExpiredEvent(contractId = id, tenantId = TenantContext.get()!!))
+        return true
+    }
+
+    // Only a DRAFT or PENDING_SIGNATURE contract can still change
+    private fun ensureNotClosed(contract: ContractEntity) {
+        when (contract.status) {
+            ContractStatus.EXPIRED -> throw ConflictException(Error(code = ErrorCode.CONTRACT_EXPIRED))
+            ContractStatus.CANCELLED -> throw ConflictException(Error(code = ErrorCode.CONTRACT_CANCELLED))
+            ContractStatus.SIGNED -> throw ConflictException(Error(code = ErrorCode.CONTRACT_ALREADY_SIGNED))
+            ContractStatus.DRAFT, ContractStatus.PENDING_SIGNATURE -> {}
+            else -> throw ConflictException(Error(code = ErrorCode.CONTRACT_NOT_PENDING))
+        }
+    }
+
+    private fun isSignatureLate(contract: ContractEntity, now: Date): Boolean =
+        contract.status == ContractStatus.PENDING_SIGNATURE && contract.signatureDeadline?.before(now) == true
 
     private fun invalidParameter(name: String, value: String): BadRequestException {
         return BadRequestException(

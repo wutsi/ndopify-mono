@@ -30,6 +30,10 @@ class GetContractEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(ContractType.SEARCH, contract.type)
         assertEquals(ContractStatus.PENDING_SIGNATURE, contract.status)
         assertEquals("https://cdn.ndopify.com/contracts/c-1.pdf", contract.contentUrl)
+        assertEquals(6, contract.durationMonths)
+        assertNotNull(contract.signatureDeadline)
+        assertNull(contract.validFrom)
+        assertNull(contract.validUntil)
         assertNull(contract.signedAt)
 
         val parties = contract.parties.sortedBy { party -> party.id }

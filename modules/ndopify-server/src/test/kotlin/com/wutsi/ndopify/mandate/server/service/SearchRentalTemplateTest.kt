@@ -19,9 +19,7 @@ class SearchRentalTemplateTest {
     private val required = mapOf(
         "contract_number" to "MNDT-2026-000001",
         "contract_date" to "17/10/2026",
-        "valid_from" to "17/10/2026",
-        "valid_until" to "16/12/2026",
-        "duration_days" to "60",
+        "duration_months" to "6",
         "client_name" to "Ray Sponsible",
         "tenant_name" to "Ndopify",
         "property_type" to "Appartement",
@@ -86,8 +84,7 @@ class SearchRentalTemplateTest {
             "Dans 1 à 3 mois",
             "le matin",
             "Proche du marché",
-            "60 jours, du 17/10/2026 au",
-            "16/12/2026",
+            "6 mois, à compter de la date de sa",
         ).forEach { text -> assertTrue(html.contains(text), "missing: $text") }
     }
 

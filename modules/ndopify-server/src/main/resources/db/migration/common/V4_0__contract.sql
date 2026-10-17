@@ -5,10 +5,12 @@ CREATE TABLE T_CONTRACT(
   number                  VARCHAR(20) NOT NULL,
   type                    VARCHAR(30) DEFAULT NULL,
   status                  VARCHAR(30) DEFAULT NULL,
-  content_url             TEXT NOT NULL,
+  content_url             TEXT DEFAULT NULL,
 
-  valid_from              DATETIME NOT NULL,
-  valid_until             DATETIME NOT NULL,
+  duration_months         INT NOT NULL,
+  signature_deadline      DATETIME DEFAULT NULL,
+  valid_from              DATETIME DEFAULT NULL,
+  valid_until             DATETIME DEFAULT NULL,
   created_at              DATETIME DEFAULT NOW(),
   signed_at               DATETIME DEFAULT NULL,
 
@@ -18,6 +20,7 @@ CREATE TABLE T_CONTRACT(
 ) ENGINE = InnoDB;
 
 CREATE INDEX I_CONTRACT_tenant ON T_CONTRACT(tenant_id);
+CREATE INDEX I_CONTRACT_status ON T_CONTRACT(tenant_id, status);
 
 CREATE TABLE T_CONTRACT_PARTY(
   id                      VARCHAR(36) NOT NULL,

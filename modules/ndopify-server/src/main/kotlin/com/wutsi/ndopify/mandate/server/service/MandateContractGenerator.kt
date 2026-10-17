@@ -17,7 +17,6 @@ import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.springframework.stereotype.Service
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.temporal.ChronoUnit
 import java.util.Date
 import java.util.Locale
 
@@ -143,12 +142,8 @@ class MandateContractGenerator(
             // Contract
             "contract_number" to contract.number,
             "contract_date" to format(contract.createdAt, zone),
-            "valid_from" to format(contract.validFrom, zone),
-            "valid_until" to format(contract.validUntil, zone),
-            "duration_days" to ChronoUnit.DAYS.between(
-                contract.validFrom.toInstant().atZone(zone).toLocalDate(),
-                contract.validUntil.toInstant().atZone(zone).toLocalDate(),
-            ),
+            // Generated before the signature, from which the contract is valid: no dates yet
+            "duration_months" to contract.durationMonths,
 
             // Parties
             "tenant_name" to tenant.name,

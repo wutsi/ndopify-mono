@@ -17,6 +17,8 @@ class ContractMapper {
             contentUrl = entity.contentUrl,
             parties = parties.map { party -> toContractParty(party) },
             createdAt = entity.createdAt,
+            durationMonths = entity.durationMonths,
+            signatureDeadline = entity.signatureDeadline,
             validFrom = entity.validFrom,
             validUntil = entity.validUntil,
             signedAt = entity.signedAt,

@@ -13,6 +13,8 @@ import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
+import java.time.ZoneId
+import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -46,6 +48,8 @@ class SignContractEndpointTest : TenantAwareEndpointIntegrationTest() {
         val contract = response.body!!.contract
         assertEquals(ContractStatus.PENDING_SIGNATURE, contract.status)
         assertNull(contract.signedAt)
+        assertNull(contract.validFrom) // Only from the last signature
+        assertNull(contract.validUntil)
 
         val signer = contract.parties.first { party -> party.id == "cp-11" }
         assertTrue(signer.signed)
@@ -77,6 +81,14 @@ class SignContractEndpointTest : TenantAwareEndpointIntegrationTest() {
         val entity = dao.findById("c-2").get()
         assertEquals(ContractStatus.SIGNED, entity.status)
         assertNotNull(entity.signedAt)
+
+        // Valid from the last signature, for its 6 months (in the tenant's time zone)
+        assertEquals(entity.signedAt?.time, entity.validFrom?.time)
+        val validUntil = entity.validFrom!!.toInstant().atZone(ZoneId.of("Africa/Douala")).plusMonths(6).toInstant()
+        assertEquals(Date.from(validUntil).time, entity.validUntil?.time)
+        // DATETIME: rounded to the second when stored
+        assertTrue(Math.abs(entity.validFrom!!.time - contract.validFrom!!.time) < 1000)
+        assertTrue(Math.abs(entity.validUntil!!.time - contract.validUntil!!.time) < 1000)
         assertTrue(partyDao.findById("cp-22").get().signed)
 
         // ContractSignedEvent: its mandate is approved
@@ -117,7 +129,7 @@ class SignContractEndpointTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
-    fun `contract expired`() {
+    fun `past the signature deadline`() {
         assertConflict("c-4", "cp-41", ErrorCode.CONTRACT_EXPIRED)
     }
 

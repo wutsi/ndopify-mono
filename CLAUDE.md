@@ -129,7 +129,8 @@ and hands it to `platform/mail`'s `MailService`; its MJML template lives under `
 (e.g. `mail/agent/welcome.mjml`). The service method that triggers it (see *Asynchronous e-mails*) stays in
 `service/`. Mailet unit tests mirror the package (`<domain>/server/mail/*MailetTest.kt`).
 
-Scheduled jobs live in `<domain>/server/job/`: `KycJobs` (party) and `MandateJobs` (mandate). They loop over the
+Scheduled jobs live in `<domain>/server/job/`: `KycJobs` (party), `MandateJobs` (mandate) and `ContractJobs`
+(contract). They loop over the
 active tenants, setting `TenantContext` for each.
 
 Current domains:
@@ -206,18 +207,24 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   keep it that way when changing it. The wiring is covered by the endpoint tests (`CreateMandateEndpointTest`,
   `DispatchMandateEndpointTest`, `Decline` / `ExpireAssignmentEndpointTest`) and the listener / job unit tests.
 - **contract** — contracts to be signed by parties (`ContractEntity` + its `ContractPartyEntity`s, UUID ids;
-  `/v1/contracts`: create, get, `POST /{id}/request-signature`, `POST /{id}/sign`). `ContractService.create` checks the type, the parties' roles,
-  `validTo > validFrom` and that each `partyId` is a party of the tenant (404 `PARTY_NOT_FOUND`), and starts the
-  contract as `DRAFT`, numbered `<prefix>-<year>-<nnnnnn>` by `ContractNumberGenerator` (`BAIL` for a
+  `/v1/contracts`: create, get, `POST /{id}/content`, `POST /{id}/request-signature`, `POST /{id}/sign`). `ContractService.create` checks the type, the parties' roles,
+  `durationMonths >= 1` (persisted; the request has no dates) and that each `partyId` is a party of the tenant (404
+  `PARTY_NOT_FOUND`), and starts the contract as `DRAFT`, without dates nor document, numbered `<prefix>-<year>-<nnnnnn>` by `ContractNumberGenerator` (`BAIL` for a
   `LEASE_AGREEMENT`, else `MNDT`; year in the tenant's `timeZone`): one gapless sequence per tenant, prefix and year in
-  `T_CONTRACT_SEQUENCE`, incremented last in the create transaction (row locked until commit). `request-signature` moves a DRAFT contract to
-  `PENDING_SIGNATURE` (409 `CONTRACT_NOT_DRAFT` / `CONTRACT_EXPIRED`) and publishes `ContractSignatureRequestedEvent`:
-  `ContractSignatureMailet` e-mails each unsigned party (`mail/contract/signature_request.mjml`) a single button, never
+  `T_CONTRACT_SEQUENCE`, incremented last in the create transaction (row locked until commit). `content` (`SetContractRequest.url`) sets the
+  document's `contentUrl` of a DRAFT or PENDING_SIGNATURE contract, locked like a signature (409 `CONTRACT_EXPIRED` /
+  `CONTRACT_CANCELLED` / `CONTRACT_ALREADY_SIGNED` otherwise). `request-signature` moves a DRAFT (or
+  PENDING_SIGNATURE) contract to `PENDING_SIGNATURE` with `signatureDeadline` = now + `ndopify.contract.signature.ttl-days`
+  (7), reset by each request (409 `CONTRACT_EXPIRED` / `CONTRACT_CANCELLED` / `CONTRACT_ALREADY_SIGNED`), and publishes `ContractSignatureRequestedEvent`:
+  `ContractSignatureMailet` e-mails each unsigned party (`mail/contract/signature_request.mjml`) its deadline and a single button, never
   the document's URL: the page it opens shows the contract and signs it, `{partnerCentralUrl}/contracts/{id}/sign?party-id={contractPartyId}` (no button without a
   `partnerCentralUrl`; that ndopify-partner-central page doesn't exist yet). Sign takes a *contract party* id (`SignContractRequest.partyId`), locks the
-  contract (`findByIdForUpdate`), then 409 `CONTRACT_NOT_PENDING` / `CONTRACT_EXPIRED` (past `validUntil`) /
-  `CONTRACT_PARTY_ALREADY_SIGNED`; the last signature makes it `SIGNED`. Nobody checks who signs yet (no JWT check).
-  Tenant-scoped.
+  contract (`findByIdForUpdate`), then 409 `CONTRACT_NOT_PENDING` / `CONTRACT_EXPIRED` (past `signatureDeadline`) /
+  `CONTRACT_PARTY_ALREADY_SIGNED`; the last signature makes it `SIGNED`, valid from then (`validFrom`) for its
+  `durationMonths` (`validUntil`, months added in the tenant's `timeZone`). Nobody checks who signs yet (no JWT check).
+  `ContractJobs.expire` (daily, `ndopify.contract.expire.cron`) moves to `EXPIRED` the PENDING_SIGNATURE contracts past
+  their `signatureDeadline` and the SIGNED ones past their `validUntil` (each locked, in its own transaction), publishing
+  `ContractExpiredEvent` (no listener yet). Tenant-scoped.
 - **error** — shared exception types (`WutsiException` subclasses: `BadRequestException`, `NotFoundException`,
   `ConflictException`, `ForbiddenException`, `UnauthorizedException`, `InternalErrorException`) and a global
   `ControllerErrorHandler`.

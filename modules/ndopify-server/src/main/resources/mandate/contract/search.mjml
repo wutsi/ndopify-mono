@@ -2,7 +2,7 @@
     <!--
         Mandat de recherche immobilière (location). Every value is a ready-to-print string (labels, amounts and dates
         already formatted in French); optional criteria are mustache sections, left out when the mandate doesn't set them:
-        - contract: contract_number, contract_date, valid_from, valid_until, duration_days
+        - contract: contract_number, contract_date, duration_months
         - parties: client_name, client_phone, client_email, tenant_name, tenant_logo_url, agent_name
         - property (MandateEntity): property_category, property_type, furniture, rooms, parkings, area
         - location: city, neighbourhoods
@@ -209,8 +209,8 @@
                     2. DURÉE
                 </mj-text>
                 <mj-text>
-                    Le présent mandat est conclu pour une durée de {{duration_days}} jours, du {{valid_from}} au
-                    {{valid_until}}.
+                    Le présent mandat est conclu pour une durée de {{duration_months}} mois, à compter de la date de sa
+                    signature.
                 </mj-text>
 
                 <!-- 3. Fees -->

@@ -111,6 +111,12 @@ springdoc:
                 - /v1/agents
                 - /v1/agents/**
 
+        -   group: contract
+            display-name: Contract API
+            paths-to-match:
+                - /v1/contracts
+                - /v1/contracts/**
+
         -   group: customer
             display-name: Customer API
             paths-to-match:
@@ -141,7 +147,6 @@ springdoc:
             display-name: RefData API
             paths-to-match:
                 - /v1/applications
-                - /v1/locations/**
                 - /v1/locations
                 - /v1/locations/**
                 - /v1/tenants
@@ -186,6 +191,12 @@ ndopify:
     endpoints:
         ops: true                          # @OpsEndpoint endpoints (unauthenticated): off in prod
 
+    contract:
+        signature:
+            ttl-days: 7                    # The parties have 7 days to sign, from the last request for signature
+        expire:
+            cron: "0 0 1 * * ?"            # Every day at 01:00: contracts not signed in time, or past their end date
+
     mandate:
         assignment:
             jitter: 0.01                   # Random tie-break; 0 in tests, so scores are deterministic
@@ -202,7 +213,7 @@ ndopify:
             dispatch:
                 cron: "0 */30 * * * ?"     # Every 30 minutes: mandates that came at night, or had no candidate
         contract:
-            duration-days: 180             # A contract is valid for 180 days, after which it expires
+            duration-months: 6             # A mandate's contract is valid for 6 months from its signature
 
     party:
         kyc:
