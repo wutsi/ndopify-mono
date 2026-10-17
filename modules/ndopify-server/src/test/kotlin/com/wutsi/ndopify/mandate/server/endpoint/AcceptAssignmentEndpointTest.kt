@@ -112,6 +112,23 @@ class AcceptAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest()
     }
 
     @Test
+    @Sql(
+        scripts = ["/db/test/clean.sql", "/db/test/mandate/AcceptAssignmentEndpoint.sql"],
+        statements = ["UPDATE T_MANDATE SET status = 'CANCELLED' WHERE id = 1"],
+    )
+    fun `mandate cancelled meanwhile`() {
+        val response = rest.postForEntity("/v1/assignments/1/accept", null, ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.ASSIGNMENT_NOT_PENDING, response.body?.error?.code)
+        assertStatus(1, AssignmentStatus.PENDING)
+
+        val mandate = rest.getForEntity("/v1/mandates/1", GetMandateResponse::class.java).body!!.mandate
+        assertEquals(MandateStatus.CANCELLED, mandate.status)
+        assertNoEmail()
+    }
+
+    @Test
     fun `assignment past its TTL`() {
         val response = rest.postForEntity("/v1/assignments/4/accept", null, ErrorResponse::class.java)
 

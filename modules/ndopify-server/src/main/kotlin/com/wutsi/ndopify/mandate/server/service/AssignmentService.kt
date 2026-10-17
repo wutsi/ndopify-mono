@@ -87,6 +87,10 @@ class AssignmentService(
     @Transactional
     fun accept(id: Long): AssignmentEntity {
         val assignment = findPendingForAssignee(id)
+        if (assignment.mandate.status != MandateStatus.PENDING_ASSIGNMENT) {
+            // Ex: cancelled meanwhile. Accepting would revive it
+            throw ConflictException(error = Error(code = ErrorCode.ASSIGNMENT_NOT_PENDING))
+        }
         val now = Date(clock.millis())
         mandateDao.save(
             assignment.mandate.copy(

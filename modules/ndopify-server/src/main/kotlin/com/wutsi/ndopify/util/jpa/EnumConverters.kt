@@ -12,6 +12,7 @@ import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
+import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.party.dto.IdentificationStatus
@@ -72,6 +73,10 @@ class PropertyTypeConverter : EnumConverter<PropertyType>(PropertyType::class.ja
 @Converter(autoApply = true)
 class AssignmentStatusConverter :
     EnumConverter<AssignmentStatus>(AssignmentStatus::class.java, AssignmentStatus.UNKNOWN)
+
+@Converter(autoApply = true)
+class MandateCancellationCodeConverter :
+    EnumConverter<MandateCancellationCode>(MandateCancellationCode::class.java, null)
 
 @Converter(autoApply = true)
 class MandateStatusConverter : EnumConverter<MandateStatus>(MandateStatus::class.java, MandateStatus.UNKNOWN)

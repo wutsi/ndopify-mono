@@ -175,6 +175,12 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `MandateService.create` finds or creates the customer from the request's contact fields and starts the mandate
   as `PENDING_ASSIGNMENT`. It only checks that the contact fields aren't empty (`@NotEmpty`): categories, cities,
   neighbourhoods, prices and enums aren't validated server-side yet. Tenant-scoped.
+  `POST /{id}/close` (APPROVED only, else 409 `MANDATE_NOT_APPROVED`) → `CLOSED` with `finalPrice`, `closedAt` and
+  `age`: whole days from `approvedAt` to closing, the time a mandate takes to close. `POST /{id}/cancel` (any status but
+  CLOSED / CANCELLED: 409 `MANDATE_ALREADY_CLOSED`) → `CANCELLED` with `cancellationCode` (default `OTHER`),
+  `cancellationReason` and `closedAt` (no age), and expires its PENDING offer, without re-dispatch. Both lock the
+  mandate and publish `MandateClosedEvent` (no listener yet). Accepting an offer of a mandate that's no longer
+  `PENDING_ASSIGNMENT` is 409 `ASSIGNMENT_NOT_PENDING`.
   Offers of a mandate to agents are `AssignmentEntity` (`T_ASSIGNMENT`, `@Version`-ed; `/v1/assignments`: search
   (newest first), get, `POST /{id}/accept`, `POST /{id}/decline`), see `docs/superpowers/plans/2026-10-14-mandate-dispatch.md`.
   Accept/decline are only for the assigned agent (JWT user → membership → party = agent's party: 401 / 403

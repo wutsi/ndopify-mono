@@ -72,11 +72,11 @@ class MandateEndpoints(
 
     @PostMapping("/{id}/cancel")
     fun cancel(@PathVariable id: Long, @RequestBody request: CancelMandateRequest) {
-        TODO()
+        service.cancel(id, request)
     }
 
     @PostMapping("/{id}/close")
     fun close(@PathVariable id: Long, @RequestBody request: CloseMandateRequest) {
-        TODO()
+        service.close(id, request)
     }
 }

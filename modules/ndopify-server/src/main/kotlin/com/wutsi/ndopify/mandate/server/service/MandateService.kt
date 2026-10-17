@@ -12,14 +12,20 @@ import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
+import com.wutsi.ndopify.mandate.dto.AssignmentStatus
+import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
+import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
+import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.dto.SearchMandateRequest
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
+import com.wutsi.ndopify.mandate.server.dao.AssignmentRepository
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.mandate.server.domain.AssignmentEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.mandate.server.event.MandateClosedEvent
 import com.wutsi.ndopify.mandate.server.event.MandateCreatedEvent
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
@@ -32,11 +38,13 @@ import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
 import java.time.Clock
+import java.time.Duration
 import java.util.Date
 
 @Service
 class MandateService(
     private val dao: MandateRepository,
+    private val assignmentDao: AssignmentRepository,
     private val clock: Clock,
     private val customerService: CustomerService,
     private val eventPublisher: ApplicationEventPublisher,
@@ -245,6 +253,74 @@ class MandateService(
             )
         )
     }
+
+    /**
+     * Closes an APPROVED mandate: the deal is done, at [CloseMandateRequest.finalPrice]. Its [MandateEntity.age] is the
+     * number of days it took, from its approval to now. Locked, so it can't be cancelled meanwhile.
+     */
+    @Transactional
+    fun close(id: Long, request: CloseMandateRequest): MandateEntity {
+        val mandate = findByIdForUpdate(id)
+        ensureNotClosed(mandate)
+        if (mandate.status != MandateStatus.APPROVED) {
+            throw ConflictException(Error(ErrorCode.MANDATE_NOT_APPROVED))
+        }
+
+        val now = Date(clock.millis())
+        val closed = dao.save(
+            mandate.copy(
+                status = MandateStatus.CLOSED,
+                finalPrice = request.finalPrice.amount,
+                closedAt = now,
+                age = age(mandate.approvedAt ?: mandate.createdAt, now),
+                modifiedAt = now,
+            )
+        )
+        eventPublisher.publishEvent(MandateClosedEvent(mandateId = id, tenantId = TenantContext.get()!!))
+        return closed
+    }
+
+    /**
+     * Cancels a mandate that isn't closed yet, whatever its status. Its PENDING offer, if any, is expired so the agent
+     * can no longer accept it (not re-dispatched: no AssignmentClosedEvent). Locked, so it can't be closed meanwhile.
+     */
+    @Transactional
+    fun cancel(id: Long, request: CancelMandateRequest): MandateEntity {
+        val mandate = findByIdForUpdate(id)
+        ensureNotClosed(mandate)
+
+        val now = Date(clock.millis())
+        assignmentDao.findByMandateAndStatusIn(mandate, listOf(AssignmentStatus.PENDING)).forEach { assignment ->
+            assignmentDao.save(assignment.copy(status = AssignmentStatus.EXPIRED, modifiedAt = now))
+        }
+
+        val cancelled = dao.save(
+            mandate.copy(
+                status = MandateStatus.CANCELLED,
+                cancellationCode = request.cancellationCode ?: MandateCancellationCode.OTHER,
+                cancellationReason = request.cancellationReason?.trim()?.ifEmpty { null },
+                closedAt = now,
+                modifiedAt = now,
+            )
+        )
+        eventPublisher.publishEvent(MandateClosedEvent(mandateId = id, tenantId = TenantContext.get()!!))
+        return cancelled
+    }
+
+    private fun findByIdForUpdate(id: Long): MandateEntity {
+        return dao.findByIdForUpdate(id)
+            ?: throw NotFoundException(error = Error(code = ErrorCode.MANDATE_NOT_FOUND))
+    }
+
+    private fun ensureNotClosed(mandate: MandateEntity) {
+        if (mandate.status == MandateStatus.CLOSED || mandate.status == MandateStatus.CANCELLED) {
+            throw ConflictException(Error(ErrorCode.MANDATE_ALREADY_CLOSED))
+        }
+    }
+
+    // Whole days elapsed (a mandate closed the day it's approved is 0 day old)
+    private fun age(from: Date, to: Date): Int =
+        Duration.ofMillis(to.time - from.time).toDays().toInt().coerceAtLeast(0)
 
     private fun createContract(mandate: MandateEntity): ContractEntity {
         val now = Date(clock.millis())
