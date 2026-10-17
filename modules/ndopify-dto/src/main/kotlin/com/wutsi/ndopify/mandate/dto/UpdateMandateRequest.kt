@@ -9,7 +9,6 @@ import com.wutsi.ndopify.refdata.dto.Money
 
 data class UpdateMandateRequest(
     val propertyCategory: PropertyCategory = PropertyCategory.UNKNOWN,
-    val mandateType: MandateType = MandateType.UNKNOWN,
     val listingType: ListingType = ListingType.UNKNOWN,
 
     val cityId: Long = -1,
