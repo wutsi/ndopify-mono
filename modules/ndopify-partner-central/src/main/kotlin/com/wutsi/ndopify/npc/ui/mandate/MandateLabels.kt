@@ -9,6 +9,8 @@ import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import java.math.BigDecimal
+import java.math.RoundingMode
 import java.util.Locale
 
 /** The French wording of a mandate, shared by the find-property review and the Espace agent's offers. */
@@ -74,7 +76,10 @@ object MandateLabels {
         "videoSurveillance" to "Vidéosurveillance",
     )
 
-    private val MANDATE_TYPE_LABELS = mapOf(MandateType.TENANT to "Locataire", MandateType.OWNER to "Bailleur")
+    private val MANDATE_TYPE_LABELS = mapOf(
+        MandateType.SEARCH_RENTAL to "Recherche de Location",
+        MandateType.RENTAL to "Location"
+    )
 
     private val CATEGORY_NAMES = mapOf(
         PropertyCategory.RESIDENTIAL to "Résidentiel",
@@ -84,7 +89,12 @@ object MandateLabels {
     // The prototype's "Voir les détails" rows (index.html); keys are AMENITY_LABELS'.
     private val AMENITY_GROUPS = linkedMapOf(
         "Accès à l'eau" to listOf("waterMeter", "dedicatedWaterMeter", "waterTank", "waterWell"),
-        "Accès à l'électricité" to listOf("electricityMeter", "dedicatedElectricityMeter", "generatorSet", "solarPanel"),
+        "Accès à l'électricité" to listOf(
+            "electricityMeter",
+            "dedicatedElectricityMeter",
+            "generatorSet",
+            "solarPanel"
+        ),
         "Accès routier" to listOf("roadPaved", "trackAccessibleByCar", "trackInaccessibleByCar"),
         "Sécurité" to listOf("securedFenced", "securityGuard", "videoSurveillance"),
     )
@@ -105,12 +115,28 @@ object MandateLabels {
         else -> "Indifférent"
     }
 
-    /** "150 000 FCFA par mois". */
+    /** "150K FCFA par mois". */
     fun price(money: Money): String {
         val currency = if (money.currency == "XAF") "FCFA" else money.currency
         val period = if (money.periodicity == PeriodicityType.MONTHLY) " par mois" else ""
-        return "${formatNumber(money.amount)} $currency$period"
+        return "${formatAmount(money.amount)} $currency$period"
     }
+
+    /** An amount to read, not to type: "800K", "1.5M" (FCFA has no cents, so K and M are enough). */
+    fun formatAmount(value: Number): String {
+        val amount = value.toLong()
+        return when {
+            amount >= 1_000_000 -> short(amount, 1_000_000) + "M"
+            amount >= 1_000 -> short(amount, 1_000) + "K"
+            else -> amount.toString()
+        }
+    }
+
+    private fun short(amount: Long, unit: Long): String =
+        BigDecimal.valueOf(amount)
+            .divide(BigDecimal.valueOf(unit), 2, RoundingMode.HALF_UP)
+            .stripTrailingZeros()
+            .toPlainString()
 
     /** The mandate's criteria by group ("Accès à l'eau" → "Compteur d'eau, Forage"), only the groups it has. */
     fun amenityGroups(mandate: Mandate): List<Pair<String, String>> {

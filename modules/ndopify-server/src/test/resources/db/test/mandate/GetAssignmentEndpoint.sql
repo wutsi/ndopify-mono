@@ -23,8 +23,8 @@ INSERT INTO T_MANDATE(
     id, tenant_id, customer_id, agent_id, status, mandate_type, listing_type, city_id, property_type,
     rooms, price, price_periodicity_type, currency_code, created_at, modified_at
 ) VALUES
-    (1, 1, 10, null, 'PENDING_ASSIGNMENT', 'TENANT', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    (9, 2, 90, null, 'PENDING_ASSIGNMENT', 'TENANT', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', '2024-06-10 00:00:00', '2024-06-10 00:00:00');
+    (1, 1, 10, null, 'PENDING_ASSIGNMENT', 'TENANT', 'SEARCH_RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (9, 2, 90, null, 'PENDING_ASSIGNMENT', 'TENANT', 'SEARCH_RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', '2024-06-10 00:00:00', '2024-06-10 00:00:00');
 
 INSERT INTO T_ASSIGNMENT(id, tenant_id, mandate_id, agent_id, status, score, created_at, modified_at, expires_at) VALUES
     (1, 1, 1, 20, 'PENDING', 0.75, '2024-06-10 10:00:00', '2024-06-10 10:30:00', '2024-06-10 11:00:00'),

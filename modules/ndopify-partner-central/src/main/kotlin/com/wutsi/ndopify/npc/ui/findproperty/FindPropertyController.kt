@@ -319,7 +319,7 @@ class FindPropertyController(
         if (step == STEP_REVIEW) {
             model.addAttribute("categoryLabel", CATEGORY_LABELS[answers.propertyCategory]?.let { "Location, $it" })
             model.addAttribute("propertyLabel", propertyLabel(answers))
-            model.addAttribute("priceLabel", answers.priceAmount?.let { MandateLabels.formatNumber(it) + " FCFA par mois" })
+            model.addAttribute("priceLabel", answers.priceAmount?.let { MandateLabels.formatAmount(it) + " FCFA par mois" })
             model.addAttribute("movingPeriodLabel", MandateLabels.MOVE_IN_LABELS[answers.movingPeriod])
             model.addAttribute("contactPeriodLabel", CONTACT_PERIOD_LABELS[answers.preferredContactPeriod])
             model.addAttribute("amenityLabels", MandateLabels.AMENITY_LABELS.filterKeys { answers.has(it) }.values.toList())

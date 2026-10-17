@@ -6,7 +6,6 @@ import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
-import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import com.wutsi.ndopify.refdata.dto.Location
 
 /** Builds the offers' cards of the Espace agent (see [AssignmentView]), worded as the prototype's index.html. */
@@ -18,14 +17,14 @@ object AssignmentViews {
         assignment.status == AssignmentStatus.PENDING && assignment.expiresAt.time > now
 
     fun of(assignment: AssignmentSummary, mandate: Mandate, locations: Map<Long, Location>, now: Long): AssignmentView {
-        val owner = mandate.mandateType == MandateType.OWNER
+        val owner = mandate.mandateType == MandateType.RENTAL
         val neighborhoods = mandate.neighborhoodIds.mapNotNull { locations[it] }
         return AssignmentView(
             id = assignment.id,
-            title = MandateLabels.mandateType(mandate.mandateType) + " · " +
-                MandateLabels.propertyType(mandate.propertyType),
+            // The card shows neither the property type (it is in the details) nor the city (the agent works in one).
+            title = MandateLabels.mandateType(mandate.mandateType),
             sectorTerm = if (mandate.neighborhoodIds.size > 1) "Secteurs" else "Secteur",
-            sector = ProfileRules.area(locations[mandate.cityId], neighborhoods),
+            sector = sector(mandate, neighborhoods),
             priceTerm = if (owner) "Loyer" else "Budget",
             price = MandateLabels.price(mandate.price),
             movingTerm = if (owner) "Disponibilité" else "Emménagement",
@@ -34,6 +33,13 @@ object AssignmentViews {
             remaining = remaining(assignment.expiresAt.time - now),
             details = details(mandate, owner),
         )
+    }
+
+    /** The neighbourhoods, "Tous les quartiers" without any; null without their names (ndopify-server unreachable). */
+    private fun sector(mandate: Mandate, neighborhoods: List<Location>): String? = when {
+        mandate.neighborhoodIds.isEmpty() -> "Tous les quartiers"
+        neighborhoods.isEmpty() -> null
+        else -> neighborhoods.joinToString(", ") { it.name }
     }
 
     /** "1 h 05 min", "52 min", "moins d'1 min". */

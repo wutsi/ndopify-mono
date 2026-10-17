@@ -153,7 +153,6 @@ class MandateService(
         return dao.save(
             mandate.copy(
                 propertyCategory = request.propertyCategory,
-                mandateType = request.mandateType,
                 listingType = request.listingType,
                 cityId = request.cityId,
                 neighborhoodIds = request.neighbourhoodIds,

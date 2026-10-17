@@ -173,7 +173,7 @@
                         <article th:attr="aria-labelledby=|assignment-${a.id}-title|">
                             <div class="assignment__head">
                                 <h3 th:id="|assignment-${a.id}-title|" class="assignment__type" th:text="${a.title}">
-                                    Locataire · Appartement</h3>
+                                    Locataire</h3>
                                 <p class="assignment__timer" data-timer>
                                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                          stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
@@ -183,11 +183,11 @@
                             <dl class="assignment__facts">
                                 <div th:if="${a.sector}">
                                     <dt th:text="${a.sectorTerm}">Secteur</dt>
-                                    <dd data-fact="sector" th:text="${a.sector}">Bonapriso, Akwa — Douala</dd>
+                                    <dd data-fact="sector" th:text="${a.sector}">Bonapriso, Akwa</dd>
                                 </div>
                                 <div>
                                     <dt th:text="${a.priceTerm}">Budget</dt>
-                                    <dd data-fact="price" th:text="${a.price}">150 000 FCFA par mois</dd>
+                                    <dd data-fact="price" th:text="${a.price}">150K FCFA par mois</dd>
                                 </div>
                                 <div th:if="${a.moving}">
                                     <dt th:text="${a.movingTerm}">Emménagement</dt>

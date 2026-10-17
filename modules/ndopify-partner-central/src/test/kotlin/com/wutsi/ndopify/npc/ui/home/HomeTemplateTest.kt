@@ -81,7 +81,15 @@ class HomeTemplateTest {
         }
         mvc = MockMvcBuilders
             .standaloneSetup(
-                HomeController(currentAgent, kycClient, assignmentClient, mandateClient, locationClient, tenantContext, clock),
+                HomeController(
+                    currentAgent,
+                    kycClient,
+                    assignmentClient,
+                    mandateClient,
+                    locationClient,
+                    tenantContext,
+                    clock
+                ),
                 AssignmentController(assignmentClient),
             )
             .setControllerAdvice(SignedInAdvice())
@@ -105,11 +113,11 @@ class HomeTemplateTest {
         assertEquals("assignment-7", card.id())
         assertEquals("7", card.attr("data-assignment-id"))
         assertEquals((AssignmentViewsTest.NOW + 52 * 60_000L).toString(), card.attr("data-expires-at"))
-        assertEquals("Locataire · Appartement", card.selectFirst("h3")?.text())
+        assertEquals("Recherche de Location", card.selectFirst("h3")?.text())
         assertEquals("52 min", card.selectFirst("[data-timer-value]")?.text())
         assertEquals("Secteurs", card.selectFirst("[data-fact=sector]")?.previousElementSibling()?.text())
-        assertEquals("Bonapriso, Akwa — Douala", card.selectFirst("[data-fact=sector]")?.text())
-        assertEquals("150 000 FCFA par mois", card.selectFirst("[data-fact=price]")?.wholeText())
+        assertEquals("Bonapriso, Akwa", card.selectFirst("[data-fact=sector]")?.text())
+        assertEquals("150K FCFA par mois", card.selectFirst("[data-fact=price]")?.wholeText())
         assertEquals("Dans moins d'1 mois", card.selectFirst("[data-fact=moving]")?.text())
         assertEquals("/assignments/7/accept", card.selectFirst("form[data-accept-form]")?.attr("action"))
         assertEquals("post", card.selectFirst("form[data-accept-form]")?.attr("method"))

@@ -175,7 +175,7 @@ class HomeControllerTest {
 
         val assignments = assignments(result)
         assertEquals(listOf(7L, 8L), assignments.map { it.id })
-        assertEquals("Bonapriso, Akwa — Douala", assignments[0].sector)
+        assertEquals("Bonapriso, Akwa", assignments[0].sector)
         assertEquals(false, model(result)["assignmentsUnavailable"])
         assertNull(model(result)["declining"])
     }

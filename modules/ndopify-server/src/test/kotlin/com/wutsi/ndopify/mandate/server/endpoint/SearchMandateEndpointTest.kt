@@ -24,7 +24,7 @@ class SearchMandateEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(10L, mandate.customerId)
         assertNull(mandate.agentId)
         assertEquals(MandateStatus.PENDING_ASSIGNMENT, mandate.status)
-        assertEquals(MandateType.TENANT, mandate.mandateType)
+        assertEquals(MandateType.SEARCH_RENTAL, mandate.mandateType)
         assertEquals(ListingType.RENTAL, mandate.listingType)
         assertEquals(PropertyType.APARTMENT, mandate.propertyType)
         assertEquals(2370201L, mandate.cityId)
@@ -62,7 +62,7 @@ class SearchMandateEndpointTest : TenantAwareEndpointIntegrationTest() {
 
     @Test
     fun `by mandate type`() {
-        assertEquals(listOf(2L), search("mandate-type=OWNER").map { it.id })
+        assertEquals(listOf(2L), search("mandate-type=RENTAL").map { it.id })
     }
 
     @Test

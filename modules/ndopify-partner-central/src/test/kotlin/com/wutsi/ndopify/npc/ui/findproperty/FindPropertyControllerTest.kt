@@ -169,7 +169,7 @@ class FindPropertyControllerTest {
             "Appartement · 3 chambres · Meublé ou non · 1 place de parking · 80 m² minimum",
             model(result)["propertyLabel"],
         )
-        assertEquals("150 000 FCFA par mois", model(result)["priceLabel"])
+        assertEquals("150K FCFA par mois", model(result)["priceLabel"])
         assertEquals("Dans moins d'1 mois", model(result)["movingPeriodLabel"])
         assertEquals("le soir", model(result)["contactPeriodLabel"])
         assertEquals(listOf("Compteur d'eau", "Gardien"), model(result)["amenityLabels"])
@@ -248,6 +248,20 @@ class FindPropertyControllerTest {
     }
 
     @Test
+    fun areaWithoutNeighborhoods() {
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            PendingMandate(propertyCategory = PropertyCategory.RESIDENTIAL)
+        )
+
+        val result = mvc.perform(post("/find-property/area").session(session).param("cityId", "$YAOUNDE")).andReturn()
+
+        assertEquals("redirect:/find-property?step=property", result.modelAndView?.viewName)
+        assertEquals(YAOUNDE, pending()?.cityId)
+        assertEquals(emptyList(), pending()?.neighborhoodIds)
+    }
+
+    @Test
     fun areaBeforeNeedRedirects() {
         val result = mvc.perform(
             post("/find-property/area").session(session).param("cityId", "$YAOUNDE").param("neighborhoodIds", "1001"),
@@ -315,7 +329,7 @@ class FindPropertyControllerTest {
         val result = mvc.perform(post("/find-property/area").session(session)).andReturn()
 
         assertEquals("Choisissez la ville.", errors(result)["cityId"])
-        assertEquals("Choisissez au moins un quartier.", errors(result)["neighborhoodIds"])
+        assertNull(errors(result)["neighborhoodIds"])
     }
 
     // POST /find-property/property
@@ -528,7 +542,7 @@ class FindPropertyControllerTest {
                 .param("movingPeriod", "WITHIN_1_MONTH"),
         ).andReturn()
 
-        assertEquals("Indiquez un loyer d'au moins 5 000 FCFA par mois.", errors(result)["priceAmount"])
+        assertEquals("Indiquez un loyer d'au moins 5K FCFA par mois.", errors(result)["priceAmount"])
         assertNull(pending()?.priceAmount)
     }
 
@@ -628,7 +642,7 @@ class FindPropertyControllerTest {
         assertEquals("redirect:/find-property?step=confirmation", result.modelAndView?.viewName)
         val request = argumentCaptor<CreateMandateRequest>()
         verify(mandateClient).create(request.capture())
-        assertEquals(MandateType.TENANT, request.firstValue.mandateType)
+        assertEquals(MandateType.SEARCH_RENTAL, request.firstValue.mandateType)
         assertEquals("XAF", request.firstValue.price.currency)
         assertEquals(listOf(1001L, 1002L), request.firstValue.neighbourhoodIds)
         assertNull(pending())

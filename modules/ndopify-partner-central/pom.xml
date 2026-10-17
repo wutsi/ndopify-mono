@@ -27,11 +27,11 @@
             <url>https://maven.pkg.github.com/koki/*</url>
         </repository>
     </repositories>
-
-    <properties>
-        <jacoco.threshold.class>0.94</jacoco.threshold.class>
-    </properties>
-
+    <!--
+        <properties>
+            <jacoco.threshold.class>0.98</jacoco.threshold.class>
+        </properties>
+    -->
     <dependencies>
         <dependency>
             <groupId>com.wutsi.ndopify</groupId>

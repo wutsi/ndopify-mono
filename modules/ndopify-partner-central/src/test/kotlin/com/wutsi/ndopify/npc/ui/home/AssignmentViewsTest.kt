@@ -8,6 +8,8 @@ import com.wutsi.ndopify.mandate.dto.AssignmentStatus
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.MANDATE
+import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.NOW
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AKWA
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BONAPRISO
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.DOUALA
@@ -38,7 +40,7 @@ class AssignmentViewsTest {
         val MANDATE = Mandate(
             id = 101,
             customerId = 555,
-            mandateType = MandateType.TENANT,
+            mandateType = MandateType.SEARCH_RENTAL,
             propertyCategory = PropertyCategory.RESIDENTIAL,
             propertyType = PropertyType.APARTMENT,
             furnitureType = FurnitureType.UNFURNISHED,
@@ -63,11 +65,11 @@ class AssignmentViewsTest {
         val view = AssignmentViews.of(ASSIGNMENT, MANDATE, NAMES, NOW)
 
         assertEquals(7L, view.id)
-        assertEquals("Locataire · Appartement", view.title)
+        assertEquals("Recherche de Location", view.title)
         assertEquals("Secteurs", view.sectorTerm)
-        assertEquals("Bonapriso, Akwa — Douala", view.sector)
+        assertEquals("Bonapriso, Akwa", view.sector)
         assertEquals("Budget", view.priceTerm)
-        assertEquals("150 000 FCFA par mois", view.price)
+        assertEquals("150K FCFA par mois", view.price)
         assertEquals("Emménagement", view.movingTerm)
         assertEquals("Dans moins d'1 mois", view.moving)
         assertEquals(NOW + 52 * MINUTE, view.expiresAt)
@@ -97,17 +99,25 @@ class AssignmentViewsTest {
     fun `owner - one neighbourhood`() {
         val view = AssignmentViews.of(
             ASSIGNMENT,
-            MANDATE.copy(mandateType = MandateType.OWNER, neighborhoodIds = listOf(BONAPRISO)),
+            MANDATE.copy(mandateType = MandateType.RENTAL, neighborhoodIds = listOf(BONAPRISO)),
             NAMES,
             NOW,
         )
 
-        assertEquals("Bailleur · Appartement", view.title)
+        assertEquals("Location", view.title)
         assertEquals("Secteur", view.sectorTerm)
-        assertEquals("Bonapriso — Douala", view.sector)
+        assertEquals("Bonapriso", view.sector)
         assertEquals("Loyer", view.priceTerm)
         assertEquals("Disponibilité", view.movingTerm)
         assertEquals("80 m²", view.details.toMap()["Surface"])
+    }
+
+    @Test
+    fun `no neighbourhood - the whole city`() {
+        val view = AssignmentViews.of(ASSIGNMENT, MANDATE.copy(neighborhoodIds = emptyList()), NAMES, NOW)
+
+        assertEquals("Secteur", view.sectorTerm)
+        assertEquals("Tous les quartiers", view.sector)
     }
 
     @Test

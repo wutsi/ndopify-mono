@@ -33,7 +33,7 @@ class FindPropertyRulesTest {
     @Test
     fun neighborhoodIds() {
         assertNull(FindPropertyRules.neighborhoodIds(listOf(1L, 2L, 3L)))
-        assertEquals("Choisissez au moins un quartier.", FindPropertyRules.neighborhoodIds(emptyList()))
+        assertNull(FindPropertyRules.neighborhoodIds(emptyList()))
         assertEquals("Choisissez au plus 3 quartiers.", FindPropertyRules.neighborhoodIds(listOf(1L, 2L, 3L, 4L)))
     }
 
@@ -108,7 +108,7 @@ class FindPropertyRulesTest {
     fun priceAmount() {
         assertNull(FindPropertyRules.priceAmount(5000L))
         assertEquals("Indiquez votre budget mensuel.", FindPropertyRules.priceAmount(null))
-        assertEquals("Indiquez un loyer d'au moins 5 000 FCFA par mois.", FindPropertyRules.priceAmount(4999L))
+        assertEquals("Indiquez un loyer d'au moins 5K FCFA par mois.", FindPropertyRules.priceAmount(4999L))
     }
 
     @Test

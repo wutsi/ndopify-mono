@@ -25,10 +25,10 @@ INSERT INTO T_MANDATE(
     id, tenant_id, customer_id, agent_id, status, mandate_type, listing_type, city_id, property_type,
     rooms, price, price_periodicity_type, currency_code, created_at, modified_at
 ) VALUES
-    (1, 1, 10, null, 'PENDING_ASSIGNMENT', 'TENANT', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', NOW(), NOW()),
-    (2, 1, 10, null, 'PENDING_ASSIGNMENT', 'TENANT', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', NOW(), NOW()),
-    (3, 1, 10, 20, 'ASSIGNED', 'TENANT', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', NOW(), NOW()),
-    (9, 2, 90, null, 'PENDING_ASSIGNMENT', 'TENANT', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', NOW(), NOW());
+    (1, 1, 10, null, 'PENDING_ASSIGNMENT', 'TENANT', 'SEARCH_RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', NOW(), NOW()),
+    (2, 1, 10, null, 'PENDING_ASSIGNMENT', 'TENANT', 'SEARCH_RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', NOW(), NOW()),
+    (3, 1, 10, 20, 'ASSIGNED', 'TENANT', 'SEARCH_RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', NOW(), NOW()),
+    (9, 2, 90, null, 'PENDING_ASSIGNMENT', 'TENANT', 'SEARCH_RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', NOW(), NOW());
 
 -- 1: offered to agent 20   2: offered to agent 20, past its TTL   3: accepted   9: other tenant
 INSERT INTO T_ASSIGNMENT(id, tenant_id, mandate_id, agent_id, status, score, created_at, modified_at, expires_at) VALUES

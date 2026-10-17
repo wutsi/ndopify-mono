@@ -24,7 +24,7 @@
                         avons le plaisir de vous informer qu'un agent a été officiellement assigné à votre mandat.
                     </mj-text>
                     <mj-text>
-                        Voici les coordonnées de votre agent dédié :
+                        Voici les informations de votre agent dédié :
                     </mj-text>
                 </mj-column>
             </mj-section>
@@ -37,8 +37,9 @@
                               src="{{agent_photo_url}}" alt="Photo de {{agent_full_name}}"/>
                 </mj-column>
                 {{/agent_photo_url}}
-                <mj-column width="{{#agent_photo_url}}75%{{/agent_photo_url}}{{^agent_photo_url}}100%{{/agent_photo_url}}"
-                           vertical-align="top">
+                <mj-column
+                    width="{{#agent_photo_url}}75%{{/agent_photo_url}}{{^agent_photo_url}}100%{{/agent_photo_url}}"
+                    vertical-align="top">
                     <mj-text font-weight="bold" font-size="18px">
                         {{agent_full_name}}
                     </mj-text>

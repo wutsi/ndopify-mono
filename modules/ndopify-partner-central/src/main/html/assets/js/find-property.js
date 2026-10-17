@@ -278,11 +278,11 @@
         return n ? Number(n).toLocaleString("fr-FR") : "";
     }
 
-    // A price to read, not to type: "150K", "12M", "1,5M" (FCFA has no cents, so K and M are enough).
+    // A price to read, not to type: "800K", "12M", "1.5M" (FCFA has no cents, so K and M are enough).
     function formatPrice(n) {
         n = Number(n) || 0;
         var short = function (value, unit) {
-            return value.toLocaleString("fr-FR", { maximumFractionDigits: 2 }) + unit;
+            return value.toLocaleString("en-US", { maximumFractionDigits: 2, useGrouping: false }) + unit;
         };
         if (n >= 1000000) return short(n / 1000000, "M");
         if (n >= 1000) return short(n / 1000, "K");
@@ -464,8 +464,9 @@
             case "besoin":
                 return !!CATEGORY_LABELS[a.propertyCategory];
             case "secteur":
+                // Neighbourhoods are optional: none means the whole city.
                 return a.cityId > 0 && Array.isArray(a.neighborhoodIds) &&
-                    a.neighborhoodIds.length >= 1 && a.neighborhoodIds.length <= MAX_NEIGHBORHOODS;
+                    a.neighborhoodIds.length <= MAX_NEIGHBORHOODS;
             case "bien":
                 return typeFits(a) &&
                     (!needsRooms(a) || !!ROOM_LABELS[a.rooms]) &&
@@ -637,7 +638,6 @@
                     validate: function () {
                         if (!cityId()) return "";
                         var count = selected().length;
-                        if (count === 0) return "Choisissez au moins un quartier.";
                         if (count > MAX_NEIGHBORHOODS) return "Choisissez au plus " + MAX_NEIGHBORHOODS + " quartiers.";
                         return "";
                     }
@@ -847,10 +847,12 @@
         function render(a) {
             var values = {
                 project: CATEGORY_LABELS[a.propertyCategory] ? "Location, " + CATEGORY_LABELS[a.propertyCategory] : "",
-                sector: locationNames[a.cityId] && (a.neighborhoodIds || []).length
-                    ? locationNames[a.cityId] + " — " + a.neighborhoodIds.map(function (id) {
-                        return locationNames[id];
-                    }).filter(Boolean).join(", ")
+                sector: locationNames[a.cityId]
+                    ? locationNames[a.cityId] + " — " + ((a.neighborhoodIds || []).length
+                        ? a.neighborhoodIds.map(function (id) {
+                            return locationNames[id];
+                        }).filter(Boolean).join(", ")
+                        : "tous les quartiers")
                     : "",
                 property: describeProperty(a),
                 price: isStepComplete("budget", a)

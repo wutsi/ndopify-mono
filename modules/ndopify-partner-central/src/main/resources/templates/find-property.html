@@ -136,10 +136,10 @@
                         quartiers.</p>
                     <div class="field" data-group="neighborhoodIds" th:hidden="${city == null}">
                         <label class="field__label" for="neighborhoodIds">Quartiers souhaités
-                            <span class="field__optional">(1&nbsp;à&nbsp;3)</span></label>
+                            <span class="field__optional">(facultatif, 3&nbsp;au&nbsp;plus)</span></label>
                         <!--/* Only the chosen neighbourhoods are rendered: find-property.js loads the city's others. */-->
                         <select aria-describedby="neighborhood-counter neighborhoodIds-error" class="input select"
-                                id="neighborhoodIds" multiple name="neighborhoodIds" required
+                                id="neighborhoodIds" multiple name="neighborhoodIds"
                                 th:attr="aria-invalid=${errors['neighborhoodIds'] != null ? 'true' : null}">
                             <option selected th:each="neighborhood : ${neighborhoods}" th:text="${neighborhood.name}"
                                     th:value="${neighborhood.id}">Bastos</option>
@@ -158,7 +158,7 @@
                             <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
                         </svg>
                         <div>
-                            <p>Choisissez de 1 à 3&nbsp;quartiers, par ordre de préférence. Une fois les 3 choisis,
+                            <p>Facultatif&nbsp;: sans quartier, toute la ville est couverte. Sinon, choisissez jusqu'à 3&nbsp;quartiers, par ordre de préférence. Une fois les 3 choisis,
                                 retirez-en un pour en prendre un autre.</p>
                         </div>
                     </div>
@@ -533,7 +533,7 @@
                             <dd class="review__value">
                                 <!--/* Without the names (ndopify-server unreachable), the edit link still works. */-->
                                 <p data-review-value="sector"
-                                   th:text="${city != null} ? |${city.name} — ${#strings.listJoin(neighborhoods.![name], ', ')}| : 'Secteur choisi'">
+                                   th:text="${city == null} ? 'Secteur choisi' : (${#lists.isEmpty(neighborhoods)} ? |${city.name} — tous les quartiers| : |${city.name} — ${#strings.listJoin(neighborhoods.![name], ', ')}|)">
                                     Yaoundé — Bastos, Essos</p>
                             </dd>
                             <dd class="review__value">
@@ -570,7 +570,7 @@
                         <div class="review__item">
                             <dt class="review__term">Budget mensuel</dt>
                             <dd class="review__value">
-                                <p data-review-value="price" th:text="${priceLabel}">150 000 FCFA par mois</p>
+                                <p data-review-value="price" th:text="${priceLabel}">150K FCFA par mois</p>
                             </dd>
                             <dd class="review__value">
                                 <a class="link-button review__edit"

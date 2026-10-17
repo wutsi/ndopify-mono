@@ -14,8 +14,8 @@ import kotlin.test.assertNull
 class MandateLabelsTest {
     @Test
     fun mandateType() {
-        assertEquals("Locataire", MandateLabels.mandateType(MandateType.TENANT))
-        assertEquals("Bailleur", MandateLabels.mandateType(MandateType.OWNER))
+        assertEquals("Recherche de Location", MandateLabels.mandateType(MandateType.SEARCH_RENTAL))
+        assertEquals("Location", MandateLabels.mandateType(MandateType.RENTAL))
         assertEquals("Mandat", MandateLabels.mandateType(MandateType.UNKNOWN))
     }
 
@@ -43,10 +43,21 @@ class MandateLabelsTest {
     @Test
     fun price() {
         assertEquals(
-            "150\u00A0000 FCFA par mois",
+            "150K FCFA par mois",
             MandateLabels.price(Money(amount = 150000, currency = "XAF", periodicity = PeriodicityType.MONTHLY)),
         )
-        assertEquals("2\u00A0500 CAD", MandateLabels.price(Money(amount = 2500, currency = "CAD")))
+        assertEquals("2.5K CAD", MandateLabels.price(Money(amount = 2500, currency = "CAD")))
+    }
+
+    @Test
+    fun formatAmount() {
+        assertEquals("500", MandateLabels.formatAmount(500))
+        assertEquals("5K", MandateLabels.formatAmount(5_000))
+        assertEquals("12.5K", MandateLabels.formatAmount(12_500))
+        assertEquals("800K", MandateLabels.formatAmount(800_000))
+        assertEquals("1M", MandateLabels.formatAmount(1_000_000))
+        assertEquals("1.5M", MandateLabels.formatAmount(1_500_000))
+        assertEquals("1.23M", MandateLabels.formatAmount(1_234_567))
     }
 
     @Test

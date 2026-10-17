@@ -58,6 +58,12 @@ class PendingMandateTest {
     }
 
     @Test
+    fun areaWithoutNeighborhoodsIsComplete() {
+        assertTrue(COMPLETE.copy(neighborhoodIds = emptyList()).isComplete("area"))
+        assertFalse(COMPLETE.copy(cityId = null, neighborhoodIds = emptyList()).isComplete("area"))
+    }
+
+    @Test
     fun missingBudgetStopsAtBudget() {
         assertEquals("budget", COMPLETE.copy(priceAmount = null).firstIncompleteStep())
     }
@@ -89,7 +95,7 @@ class PendingMandateTest {
     fun toCreateMandateRequest() {
         val request = COMPLETE.toCreateMandateRequest("XAF")
 
-        assertEquals(MandateType.TENANT, request.mandateType)
+        assertEquals(MandateType.SEARCH_RENTAL, request.mandateType)
         assertEquals(ListingType.RENTAL, request.listingType)
         assertEquals(PropertyCategory.RESIDENTIAL, request.propertyCategory)
         assertEquals(2220957L, request.cityId)

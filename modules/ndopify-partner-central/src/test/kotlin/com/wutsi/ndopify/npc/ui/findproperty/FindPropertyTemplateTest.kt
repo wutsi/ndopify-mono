@@ -239,7 +239,7 @@ class FindPropertyTemplateTest {
 
         assertEquals("100", page.selectFirst("#priceAmount")?.attr("value"))
         assertEquals(
-            "Indiquez un loyer d'au moins 5 000 FCFA par mois.",
+            "Indiquez un loyer d'au moins 5K FCFA par mois.",
             page.selectFirst("#priceAmount-error")?.text()
         )
         assertEquals("true", page.selectFirst("#priceAmount")?.attr("aria-invalid"))
@@ -283,7 +283,7 @@ class FindPropertyTemplateTest {
             value(page, "property"),
         )
         assertEquals("Compteur d'eau, Gardien", value(page, "amenities"))
-        assertEquals("150\u00A0000 FCFA par mois", value(page, "price"))
+        assertEquals("150K FCFA par mois", value(page, "price"))
         assertEquals("Dans moins d'1 mois", value(page, "movingPeriod"))
         assertTrue(value(page, "contact").contains("Ray Sponsible"))
         assertTrue(value(page, "contact").contains("ray@gmail.com"))

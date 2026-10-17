@@ -43,7 +43,7 @@ class CreateMandateEndpointTest : TenantAwareEndpointIntegrationTest() {
 
     private val request = CreateMandateRequest(
         propertyCategory = PropertyCategory.RESIDENTIAL,
-        mandateType = MandateType.TENANT,
+        mandateType = MandateType.RENTAL,
         listingType = ListingType.RENTAL,
         cityId = 2370201L,
         neighbourhoodIds = listOf(111L, 222L),
@@ -150,8 +150,9 @@ class CreateMandateEndpointTest : TenantAwareEndpointIntegrationTest() {
         awaitAsyncTasks() // Dispatched after commit
 
         val mandateId = response.body!!.mandateId
-        val assignments = rest.getForEntity("/v1/assignments?mandate-id=$mandateId", SearchAssignmentResponse::class.java)
-            .body!!.assignments
+        val assignments =
+            rest.getForEntity("/v1/assignments?mandate-id=$mandateId", SearchAssignmentResponse::class.java)
+                .body!!.assignments
         assertEquals(20L, assignments.single().agentId)
         assertEquals(AssignmentStatus.PENDING, assignments.single().status)
     }

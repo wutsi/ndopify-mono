@@ -35,7 +35,7 @@ class GetMandateEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertNull(mandate.agentId)
         assertEquals(PropertyCategory.RESIDENTIAL, mandate.propertyCategory)
         assertEquals(MandateStatus.PENDING_ASSIGNMENT, mandate.status)
-        assertEquals(MandateType.TENANT, mandate.mandateType)
+        assertEquals(MandateType.SEARCH_RENTAL, mandate.mandateType)
         assertEquals(ListingType.RENTAL, mandate.listingType)
         assertEquals(2370201L, mandate.cityId)
         assertEquals(listOf(111L, 222L), mandate.neighborhoodIds.sorted())

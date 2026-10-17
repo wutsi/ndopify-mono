@@ -28,7 +28,7 @@ class NdMandateClientTest {
     private lateinit var client: NdMandateClient
 
     private val request = CreateMandateRequest(
-        mandateType = MandateType.TENANT,
+        mandateType = MandateType.RENTAL,
         listingType = ListingType.RENTAL,
         propertyCategory = PropertyCategory.RESIDENTIAL,
         cityId = 2220957,
@@ -55,7 +55,7 @@ class NdMandateClientTest {
                 content().json(
                     """
                     {
-                        "mandateType":"TENANT",
+                        "mandateType":"RENTAL",
                         "listingType":"RENTAL",
                         "propertyCategory":"RESIDENTIAL",
                         "cityId":2220957,
@@ -88,7 +88,12 @@ class NdMandateClientTest {
                 withSuccess(
                     JsonMapper.builder().build().writeValueAsString(
                         GetMandateResponse(
-                            Mandate(id = 101, mandateType = MandateType.TENANT, cityId = 2232593, neighborhoodIds = listOf(3001)),
+                            Mandate(
+                                id = 101,
+                                mandateType = MandateType.RENTAL,
+                                cityId = 2232593,
+                                neighborhoodIds = listOf(3001)
+                            ),
                         ),
                     ),
                     MediaType.APPLICATION_JSON,
@@ -99,7 +104,7 @@ class NdMandateClientTest {
 
         server.verify()
         assertEquals(101L, mandate.id)
-        assertEquals(MandateType.TENANT, mandate.mandateType)
+        assertEquals(MandateType.RENTAL, mandate.mandateType)
         assertEquals(listOf(3001L), mandate.neighborhoodIds)
     }
 }

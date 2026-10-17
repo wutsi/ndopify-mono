@@ -32,10 +32,10 @@ INSERT INTO T_MANDATE(
     id, tenant_id, customer_id, agent_id, status, mandate_type, listing_type, city_id, property_type,
     rooms, price, price_periodicity_type, currency_code, created_at, modified_at
 ) VALUES
-    (1, 1, 10, null, 'PENDING_ASSIGNMENT', 'TENANT', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    (2, 1, 10, 20,   'ASSIGNED', 'OWNER', 'SALE', 2370201, 'VILLA', '4', 90000000, 'NONE', 'XAF', '2024-06-11 00:00:00', '2024-06-11 00:00:00'),
-    (3, 1, 11, 20,   'PUBLISHED', 'TENANT', 'RENTAL', 2220957, 'ROOM', '1', 50000, 'MONTHLY', 'XAF', '2024-06-12 00:00:00', '2024-06-12 00:00:00'),
-    (4, 2, 90, null, 'PENDING_ASSIGNMENT', 'TENANT', 'RENTAL', 2370201, 'APARTMENT', '2', 100000, 'MONTHLY', 'XAF', '2024-06-13 00:00:00', '2024-06-13 00:00:00');
+    (1, 1, 10, null, 'PENDING_ASSIGNMENT', 'SEARCH_RENTAL', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (2, 1, 10, 20,   'ASSIGNED', 'RENTAL', 'SALE', 2370201, 'VILLA', '4', 90000000, 'NONE', 'XAF', '2024-06-11 00:00:00', '2024-06-11 00:00:00'),
+    (3, 1, 11, 20,   'PUBLISHED', 'SEARCH_RENTAL', 'RENTAL', 2220957, 'ROOM', '1', 50000, 'MONTHLY', 'XAF', '2024-06-12 00:00:00', '2024-06-12 00:00:00'),
+    (4, 2, 90, null, 'PENDING_ASSIGNMENT', 'TENANT', 'SEARCH_RENTAL', 2370201, 'APARTMENT', '2', 100000, 'MONTHLY', 'XAF', '2024-06-13 00:00:00', '2024-06-13 00:00:00');
 
 INSERT INTO T_MANDATE_NEIGHBORHOOD(mandate_id, neighborhood_id) VALUES
     (1, 111),

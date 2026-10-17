@@ -10,7 +10,6 @@ import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.MandateStatus
-import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.refdata.dto.Money
@@ -33,7 +32,6 @@ class UpdateMandateEndpointTest : TenantAwareEndpointIntegrationTest() {
 
     private val request = UpdateMandateRequest(
         propertyCategory = PropertyCategory.COMMERCIAL,
-        mandateType = MandateType.OWNER,
         listingType = ListingType.SALE,
         cityId = 2220957L,
         neighbourhoodIds = listOf(333L),
@@ -77,7 +75,6 @@ class UpdateMandateEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertNull(mandate.agentId)
         assertEquals(MandateStatus.PENDING_ASSIGNMENT, mandate.status)
         assertEquals(request.propertyCategory, mandate.propertyCategory)
-        assertEquals(request.mandateType, mandate.mandateType)
         assertEquals(request.listingType, mandate.listingType)
         assertEquals(request.cityId, mandate.cityId)
         assertEquals(request.neighbourhoodIds, neighborhoodIds(1L))

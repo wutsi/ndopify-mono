@@ -72,11 +72,9 @@ object FindPropertyRules {
     fun cityId(value: Long?): String? =
         if (value == null || value <= 0) "Choisissez la ville." else null
 
-    fun neighborhoodIds(value: List<Long>): String? = when {
-        value.isEmpty() -> "Choisissez au moins un quartier."
-        value.size > MAX_NEIGHBORHOODS -> "Choisissez au plus $MAX_NEIGHBORHOODS quartiers."
-        else -> null
-    }
+    /** Optional: without neighbourhoods, the whole city is searched. */
+    fun neighborhoodIds(value: List<Long>): String? =
+        if (value.size > MAX_NEIGHBORHOODS) "Choisissez au plus $MAX_NEIGHBORHOODS quartiers." else null
 
     fun propertyType(category: PropertyCategory?, type: String?): String? =
         if (typeFits(category, type)) null else "Choisissez un type de bien proposé."
@@ -102,7 +100,7 @@ object FindPropertyRules {
 
     fun priceAmount(value: Long?): String? = when {
         value == null || value <= 0 -> "Indiquez votre budget mensuel."
-        value < MIN_RENT -> "Indiquez un loyer d'au moins 5 000 FCFA par mois."
+        value < MIN_RENT -> "Indiquez un loyer d'au moins 5K FCFA par mois."
         else -> null
     }
 
