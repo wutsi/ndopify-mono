@@ -58,6 +58,7 @@ object ErrorCode {
     val MANDATE_NOT_FOUND = "$PREFIX:mandate:not-found"
     val MANDATE_NOT_ASSIGNED = "$PREFIX:mandate:not-assigned"
     val MANDATE_NOT_APPROVED = "$PREFIX:mandate:not-approved"
+    val MANDATE_CANNOT_BE_APPROVED = "$PREFIX:mandate:cannot-be-approved"
     val MANDATE_ALREADY_CLOSED = "$PREFIX:mandate:already-closed"
 
     val PARTY_NOT_FOUND = "$PREFIX:party:not-found"
