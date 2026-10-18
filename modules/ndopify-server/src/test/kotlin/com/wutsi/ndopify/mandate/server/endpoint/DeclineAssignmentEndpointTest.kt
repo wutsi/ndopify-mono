@@ -5,9 +5,10 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
 import com.wutsi.ndopify.mandate.dto.GetAssignmentResponse
-import com.wutsi.ndopify.mandate.dto.GetMandateResponse
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.SearchAssignmentResponse
+import com.wutsi.ndopify.mandate.server.dao.MandateRepository
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
@@ -17,6 +18,9 @@ import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/DeclineAssignmentEndpoint.sql"])
 class DeclineAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
+    @Autowired
+    private lateinit var mandateDao: MandateRepository
+
     @Test
     fun decline() {
         val response = rest.postForEntity("/v1/assignments/1/decline", null, Any::class.java)
@@ -26,9 +30,10 @@ class DeclineAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest(
         val assignment = rest.getForEntity("/v1/assignments/1", GetAssignmentResponse::class.java).body!!.assignment
         assertEquals(AssignmentStatus.DECLINED, assignment.status)
 
-        // The mandate is still waiting for an agent, once re-dispatched
+        // The mandate is still waiting for an agent, once re-dispatched. Read from the table: the agent who declined
+        // it may no longer see it
         awaitAsyncTasks()
-        val mandate = rest.getForEntity("/v1/mandates/1", GetMandateResponse::class.java).body!!.mandate
+        val mandate = mandateDao.findById(1L).get()
         assertNull(mandate.agentId)
         assertEquals(MandateStatus.PENDING_ASSIGNMENT, mandate.status)
     }

@@ -10,6 +10,7 @@ import com.wutsi.ndopify.mandate.dto.SearchMandateRequest
 import com.wutsi.ndopify.mandate.dto.SearchMandateResponse
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.mandate.server.mapper.MandateMapper
+import com.wutsi.ndopify.mandate.server.service.MandateAccessService
 import com.wutsi.ndopify.mandate.server.service.MandateService
 import com.wutsi.ndopify.platform.endpoint.OpsEndpoint
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
@@ -22,21 +23,28 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
+/**
+ * Only the mandate's agent or an admin may see or change a mandate ([MandateAccessService]): checked here for the
+ * reads, which the server also does for itself, and by [MandateService] for the changes. Creating one is public.
+ */
 @RestController
 @RequestMapping("/v1/mandates")
 class MandateEndpoints(
     private val service: MandateService,
+    private val access: MandateAccessService,
     private val mapper: MandateMapper,
 ) {
     @GetMapping
     fun search(@ModelAttribute request: SearchMandateRequest): SearchMandateResponse {
-        val mandates = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
+        val restricted = access.restrict(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
+        val mandates = service.search(restricted)
         return SearchMandateResponse(mandates = mandates.map { mandate -> mapper.toMandateSummary(mandate) })
     }
 
     @GetMapping("/{id}")
     fun get(@PathVariable id: Long): GetMandateResponse {
         val mandate = service.findById(id)
+        access.ensureCanRead(mandate)
         return GetMandateResponse(mandate = mapper.toMandate(mandate))
     }
 

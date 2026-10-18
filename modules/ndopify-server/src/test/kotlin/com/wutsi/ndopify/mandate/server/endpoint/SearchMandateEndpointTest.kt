@@ -1,12 +1,13 @@
 package com.wutsi.ndopify.mandate.server.endpoint
 
-import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
+import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.dto.SearchMandateResponse
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -14,7 +15,9 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/SearchMandateEndpoint.sql"])
-class SearchMandateEndpointTest : TenantAwareEndpointIntegrationTest() {
+class SearchMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
+    override val roles = arrayOf(RoleCode.ADMIN)
+
     @Test
     fun all() {
         val mandates = search("")

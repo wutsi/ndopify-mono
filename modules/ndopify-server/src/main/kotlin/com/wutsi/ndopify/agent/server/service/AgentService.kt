@@ -96,6 +96,10 @@ class AgentService(
         return dao.findById(id).orElse(null)
     }
 
+    fun findByPartyIdOrNull(partyId: Long): AgentEntity? {
+        return dao.findByPartyId(partyId)
+    }
+
     fun findById(id: Long): AgentEntity {
         return findByIdOrNull(id)
             ?: throw NotFoundException(error = Error(code = ErrorCode.AGENT_NOT_FOUND))

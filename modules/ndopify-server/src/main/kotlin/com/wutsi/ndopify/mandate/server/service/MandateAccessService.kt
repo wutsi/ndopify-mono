@@ -1,0 +1,77 @@
+package com.wutsi.ndopify.mandate.server.service
+
+import com.wutsi.ndopify.agent.server.service.AgentService
+import com.wutsi.ndopify.error.dto.Error
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.server.exception.ForbiddenException
+import com.wutsi.ndopify.mandate.dto.AssignmentStatus
+import com.wutsi.ndopify.mandate.dto.SearchMandateRequest
+import com.wutsi.ndopify.mandate.server.dao.AssignmentRepository
+import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.security.dto.JwtPrincipal
+import com.wutsi.ndopify.security.server.service.CallerService
+import org.springframework.stereotype.Service
+
+/**
+ * Who may see or change a mandate, which holds its customer's data: an admin (see [CallerService.isAdmin]), or the
+ * agent it's assigned to. The agent it's offered to (PENDING assignment) may also see it, to decide. 401 without a
+ * token, 403 MANDATE_ACCESS_DENIED otherwise. Only for the API's callers: the server's own reads (dispatch, listeners,
+ * jobs) aren't checked.
+ */
+@Service
+class MandateAccessService(
+    private val callerService: CallerService,
+    private val agentService: AgentService,
+    private val assignmentDao: AssignmentRepository,
+) {
+    fun ensureCanRead(mandate: MandateEntity) {
+        val principal = callerService.getPrincipal()
+        if (callerService.isAdmin(principal)) {
+            return
+        }
+
+        val agentId = findAgentId(principal)
+        val offered = agentId != null &&
+            assignmentDao.existsByMandateAndAgentIdAndStatus(mandate, agentId, AssignmentStatus.PENDING)
+        if (agentId == null || (mandate.agentId != agentId && !offered)) {
+            throw accessDenied()
+        }
+    }
+
+    fun ensureCanUpdate(mandate: MandateEntity) {
+        val principal = callerService.getPrincipal()
+        if (callerService.isAdmin(principal)) {
+            return
+        }
+
+        val agentId = findAgentId(principal)
+        if (agentId == null || mandate.agentId != agentId) {
+            throw accessDenied()
+        }
+    }
+
+    /**
+     * The search the caller may run: an admin's as is, an agent's restricted to its own mandates (403 if it asks for
+     * another agent's).
+     */
+    fun restrict(request: SearchMandateRequest): SearchMandateRequest {
+        val principal = callerService.getPrincipal()
+        if (callerService.isAdmin(principal)) {
+            return request
+        }
+
+        val agentId = findAgentId(principal) ?: throw accessDenied()
+        if (request.agentIds.any { id -> id != agentId }) {
+            throw accessDenied()
+        }
+        return request.copy(agentIds = listOf(agentId))
+    }
+
+    private fun findAgentId(principal: JwtPrincipal): Long? {
+        return callerService.findPartyIdOrNull(principal)
+            ?.let { partyId -> agentService.findByPartyIdOrNull(partyId) }
+            ?.id
+    }
+
+    private fun accessDenied() = ForbiddenException(error = Error(code = ErrorCode.MANDATE_ACCESS_DENIED))
+}

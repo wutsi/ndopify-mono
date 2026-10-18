@@ -23,6 +23,8 @@ interface AssignmentRepository : CrudRepository<AssignmentEntity, Long>, JpaSpec
 
     fun existsByMandateAndStatus(mandate: MandateEntity, status: AssignmentStatus): Boolean
 
+    fun existsByMandateAndAgentIdAndStatus(mandate: MandateEntity, agentId: Long, status: AssignmentStatus): Boolean
+
     fun findByStatusAndExpiresAtBefore(status: AssignmentStatus, date: Date, page: Pageable): List<AssignmentEntity>
 
     // One query for all the candidates, instead of one per agent

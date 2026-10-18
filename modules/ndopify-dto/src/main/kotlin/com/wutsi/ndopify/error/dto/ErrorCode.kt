@@ -59,6 +59,7 @@ object ErrorCode {
     val LOCATION_NOT_FOUND = "$PREFIX:location:not-found"
     val LOCATION_FEED_NOT_FOUND = "$PREFIX:location:feed-not-found"
 
+    val MANDATE_ACCESS_DENIED = "$PREFIX:mandate:access-denied"
     val MANDATE_NOT_FOUND = "$PREFIX:mandate:not-found"
     val MANDATE_NOT_ASSIGNED = "$PREFIX:mandate:not-assigned"
     val MANDATE_NOT_APPROVED = "$PREFIX:mandate:not-approved"

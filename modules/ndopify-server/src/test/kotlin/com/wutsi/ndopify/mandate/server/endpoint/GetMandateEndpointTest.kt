@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.mandate.server.endpoint
 
-import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
+import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
@@ -13,6 +13,7 @@ import com.wutsi.ndopify.mandate.dto.GetMandateResponse
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
@@ -22,7 +23,9 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/GetMandateEndpoint.sql"])
-class GetMandateEndpointTest : TenantAwareEndpointIntegrationTest() {
+class GetMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
+    override val roles = arrayOf(RoleCode.ADMIN)
+
     @Test
     fun get() {
         val response = rest.getForEntity("/v1/mandates/1", GetMandateResponse::class.java)

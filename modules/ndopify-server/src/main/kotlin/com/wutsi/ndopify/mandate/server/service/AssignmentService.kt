@@ -19,9 +19,7 @@ import com.wutsi.ndopify.mandate.server.event.AssignmentClosedEvent
 import com.wutsi.ndopify.mandate.server.mail.MandateAssignedMailet
 import com.wutsi.ndopify.mandate.server.mail.MandateOfferMailet
 import com.wutsi.ndopify.platform.tenant.TenantContext
-import com.wutsi.ndopify.security.server.service.AccessTokenService
-import com.wutsi.ndopify.security.server.service.MembershipService
-import com.wutsi.ndopify.security.server.service.UserService
+import com.wutsi.ndopify.security.server.service.CallerService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
@@ -40,9 +38,7 @@ class AssignmentService(
     private val mandateDao: MandateRepository,
     private val agentService: AgentService,
     private val customerService: CustomerService,
-    private val userService: UserService,
-    private val membershipService: MembershipService,
-    private val accessTokenService: AccessTokenService,
+    private val callerService: CallerService,
     private val eventPublisher: ApplicationEventPublisher,
     private val clock: Clock,
     private val mailet: MandateAssignedMailet,
@@ -218,10 +214,7 @@ class AssignmentService(
      * of the current tenant, must have the agent's party. 401 without a token, 403 otherwise.
      */
     private fun ensureAssignee(assignment: AssignmentEntity) {
-        val principal = accessTokenService.getPrincipal()
-        val partyId = userService.findByIdOrNull(principal.getUserId())
-            ?.let { user -> membershipService.findByUserOrNull(user) } // Tenant-filtered (@TenantId)
-            ?.party?.id
+        val partyId = callerService.findPartyIdOrNull(callerService.getPrincipal())
         val agent = agentService.findById(assignment.agentId)
         if (partyId == null || agent.party.id != partyId) {
             throw ForbiddenException(error = Error(code = ErrorCode.ASSIGNMENT_ACCESS_DENIED))

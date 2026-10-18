@@ -12,7 +12,7 @@ import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
-import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
+import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.contract.dto.ContractPartyRole
 import com.wutsi.ndopify.contract.dto.ContractStatus
 import com.wutsi.ndopify.contract.dto.ContractType
@@ -31,6 +31,7 @@ import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.mandate.server.service.MandateContractGenerator
 import com.wutsi.ndopify.platform.storage.StorageService
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.http.HttpStatusCode
@@ -52,7 +53,9 @@ import kotlin.test.assertTrue
  * storage are covered by their own tests.
  */
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/RequestMandateApprovalEndpoint.sql"])
-class RequestMandateApprovalEndpointTest : TenantAwareEndpointIntegrationTest() {
+class RequestMandateApprovalEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
+    override val roles = arrayOf(RoleCode.ADMIN)
+
     companion object {
         private const val HTML = "<html>Mandat de recherche</html>"
     }

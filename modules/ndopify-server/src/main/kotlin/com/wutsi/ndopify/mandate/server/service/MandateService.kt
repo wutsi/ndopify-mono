@@ -58,6 +58,7 @@ class MandateService(
     private val contractGenerator: MandateContractGenerator,
     private val storageProvider: StorageServiceProvider,
     private val tx: TransactionTemplate,
+    private val access: MandateAccessService,
 
     @param:Value("\${ndopify.mandate.contract.duration-months}") private val contractDurationMonths: Int,
 ) {
@@ -187,6 +188,7 @@ class MandateService(
     @Transactional
     fun update(id: Long, request: UpdateMandateRequest): MandateEntity {
         val mandate = findById(id)
+        access.ensureCanUpdate(mandate)
         if (request.version != null && request.version != mandate.version) {
             throw ConflictException(Error(ErrorCode.MANDATE_VERSION_CONFLICT))
         }
@@ -279,6 +281,7 @@ class MandateService(
     @Transactional
     fun close(id: Long, request: CloseMandateRequest): MandateEntity {
         val mandate = findByIdForUpdate(id)
+        access.ensureCanUpdate(mandate)
         ensureNotClosed(mandate)
         if (mandate.status != MandateStatus.APPROVED) {
             throw ConflictException(Error(ErrorCode.MANDATE_NOT_APPROVED))
@@ -305,6 +308,7 @@ class MandateService(
     @Transactional
     fun cancel(id: Long, request: CancelMandateRequest): MandateEntity {
         val mandate = findByIdForUpdate(id)
+        access.ensureCanUpdate(mandate)
         ensureNotClosed(mandate)
 
         val now = Date(clock.millis())
@@ -365,6 +369,7 @@ class MandateService(
     /** Returns the id of the mandate's contract to sign, created if it has none or it expired. */
     private fun prepareApproval(id: Long): String {
         val mandate = findByIdForUpdate(id)
+        access.ensureCanUpdate(mandate)
         ensureCanBeApproved(mandate)
 
         val current = mandate.contractId?.let { contractId -> contractService.findById(contractId) }

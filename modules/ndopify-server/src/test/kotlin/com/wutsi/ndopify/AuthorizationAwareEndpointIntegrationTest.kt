@@ -21,10 +21,15 @@ abstract class AuthorizationAwareEndpointIntegrationTest : TenantAwareEndpointIn
     private lateinit var accessTokenService: AccessTokenService
 
     protected var anonymousUser: Boolean = false
+    protected var userId: Long = USER_ID
+
+    // The token's roles: override with RoleCode.ADMIN to call as an admin of the admin console
+    protected open val roles: Array<String> = arrayOf("ROLE_USER")
 
     @BeforeEach
     override fun setUp() {
         anonymousUser = false
+        userId = USER_ID
         super.setUp()
     }
 
@@ -35,7 +40,8 @@ abstract class AuthorizationAwareEndpointIntegrationTest : TenantAwareEndpointIn
     ): ClientHttpResponse {
         if (!this.anonymousUser) {
             val accessToken = createAccessToken()
-            request.headers.add(HttpHeaders.AUTHORIZATION, "Bearer $accessToken")
+            // set, not add: the interceptors of earlier test instances still run, and this one (the last) must win
+            request.headers.set(HttpHeaders.AUTHORIZATION, "Bearer $accessToken")
         } else {
             request.headers.remove(HttpHeaders.AUTHORIZATION)
         }
@@ -45,10 +51,10 @@ abstract class AuthorizationAwareEndpointIntegrationTest : TenantAwareEndpointIn
     protected fun createAccessToken(application: String = ApplicationCode.ADMIN_CONSOLE): String {
         return accessTokenService.create(
             application = application,
-            tenantId = TENANT_ID,
-            userId = USER_ID,
+            tenantId = overrideTenantId ?: TENANT_ID,
+            userId = userId,
             ttlSeconds = 60 * 60, // 1 hour
-            roles = arrayOf("ROLE_USER")
+            roles = roles,
         )
     }
 }

@@ -1,12 +1,13 @@
 package com.wutsi.ndopify.mandate.server.endpoint
 
-import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
+import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.refdata.dto.Money
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
@@ -17,7 +18,9 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/CloseMandateEndpoint.sql"])
-class CloseMandateEndpointTest : TenantAwareEndpointIntegrationTest() {
+class CloseMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
+    override val roles = arrayOf(RoleCode.ADMIN)
+
     @Autowired
     private lateinit var dao: MandateRepository
 
