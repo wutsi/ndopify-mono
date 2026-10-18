@@ -5,6 +5,8 @@ import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.error.server.exception.BadRequestException
+import com.wutsi.ndopify.error.server.exception.ForbiddenException
+import com.wutsi.ndopify.error.server.exception.UnauthorizedException
 import com.wutsi.ndopify.error.server.exception.WutsiException
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
@@ -24,6 +26,8 @@ import org.springframework.web.servlet.HandlerExceptionResolver
  *
  * A request without a valid tenant is rejected here, before the DispatcherServlet: the error goes through
  * [exceptionResolver] (Spring MVC's, so `ControllerErrorHandler`) to get the same [ErrorResponse] as an endpoint's.
+ * So is a request whose token doesn't decode (expired, malformed): 401 `AUTH_UNAUTHORIZED`, so that the client
+ * knows to sign in again, even on a public endpoint.
  */
 class TenantContextFilter(
     private val accessTokenService: AccessTokenService,
@@ -88,7 +92,13 @@ class TenantContextFilter(
     }
 
     private fun resolveFromPrincipal(): Long? {
-        return accessTokenService.getPrincipalOrNull()?.getTenantId()
+        return try {
+            accessTokenService.getPrincipalOrNull()?.getTenantId()
+        } catch (e: ForbiddenException) {
+            // The token doesn't decode: not a forbidden caller but one to sign in again. The JWT library's message
+            // (ex: the expiry date) stays out of the response.
+            throw UnauthorizedException(Error(code = ErrorCode.AUTH_UNAUTHORIZED), e)
+        }
     }
 
     private fun resolveFromHeader(request: HttpServletRequest): Long? {

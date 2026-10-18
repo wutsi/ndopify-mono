@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.npc.client
 
 import com.wutsi.ndopify.npc.service.security.AccessTokenService.Companion.ACCESS_TOKEN_COOKIE
+import com.wutsi.ndopify.npc.service.security.AccessTokenService.Companion.ACCESS_TOKEN_REJECTED
 import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletRequest
 import org.junit.jupiter.api.AfterEach
@@ -68,6 +69,20 @@ class AuthorizationClientHttpRequestInterceptorTest {
             .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON))
 
         rest.get().uri("/v1/agents").retrieve().body<String>()
+
+        server.verify()
+    }
+
+    @Test
+    fun `no header when the token was rejected`() {
+        val (server, rest) = client {
+            incoming(Cookie(ACCESS_TOKEN_COOKIE, "expired")).apply { setAttribute(ACCESS_TOKEN_REJECTED, true) }
+        }
+        server.expect(requestTo("http://localhost:8080/v1/otp"))
+            .andExpect(headerDoesNotExist(HttpHeaders.AUTHORIZATION))
+            .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON))
+
+        rest.get().uri("/v1/otp").retrieve().body<String>()
 
         server.verify()
     }

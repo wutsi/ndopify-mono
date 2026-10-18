@@ -1,6 +1,8 @@
 package com.wutsi.ndopify.npc.client
 
 import com.wutsi.ndopify.npc.service.security.AccessTokenService.Companion.ACCESS_TOKEN_COOKIE
+import com.wutsi.ndopify.npc.service.security.AccessTokenService.Companion.ACCESS_TOKEN_REJECTED
+import com.wutsi.ndopify.npc.service.security.JwtAuthenticationFilter
 import com.wutsi.ndopify.npc.ui.login.LoginController
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpHeaders
@@ -16,6 +18,8 @@ import org.springframework.web.context.request.ServletRequestAttributes
  *
  * - The token is read from the access-token cookie of the incoming web request (set by [LoginController]), so
  *   outside a request (startup, scheduled jobs) or before sign-in no header is added.
+ * - Nor when [JwtAuthenticationFilter] rejected it ([ACCESS_TOKEN_REJECTED], ex: expired): ndopify-server would
+ *   answer 401 to every call, even the public ones of the sign-in.
  * - A header already set by the caller is left untouched.
  */
 class AuthorizationClientHttpRequestInterceptor(
@@ -36,6 +40,7 @@ class AuthorizationClientHttpRequestInterceptor(
 
     private fun accessToken(): String? =
         currentRequest()
+            ?.takeIf { request -> request.getAttribute(ACCESS_TOKEN_REJECTED) != true }
             ?.cookies
             ?.firstOrNull { cookie -> cookie.name == ACCESS_TOKEN_COOKIE }
             ?.value

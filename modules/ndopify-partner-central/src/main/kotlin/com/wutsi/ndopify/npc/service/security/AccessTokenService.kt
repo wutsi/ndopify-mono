@@ -10,6 +10,10 @@ import org.springframework.stereotype.Service
 class AccessTokenService(private val request: HttpServletRequest, private val response: HttpServletResponse) {
     companion object {
         const val ACCESS_TOKEN_COOKIE = "__npc_access_token"
+
+        // Request attribute set by JwtAuthenticationFilter when the cookie's token doesn't decode (ex: expired):
+        // the cookie is still in the request, but mustn't be sent to ndopify-server, which would answer 401.
+        const val ACCESS_TOKEN_REJECTED = "com.wutsi.ndopify.npc.access-token-rejected"
     }
 
     fun set(accessToken: String) {

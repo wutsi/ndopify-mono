@@ -1,14 +1,19 @@
 package com.wutsi.ndopify.security.server.endpoints
 
+import com.auth0.jwt.JWT
+import com.auth0.jwt.algorithms.Algorithm
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
+import com.wutsi.ndopify.common.dto.HttpHeader
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.refdata.dto.AuthType
 import com.wutsi.ndopify.security.dto.CreateOtpRequest
+import com.wutsi.ndopify.security.dto.JwtPrincipal
 import com.wutsi.ndopify.security.server.dao.AuthFactorRepository
 import com.wutsi.ndopify.security.server.dao.UserRepository
+import com.wutsi.ndopify.security.server.service.AccessTokenService
 import com.wutsi.ndopify.security.server.service.OtpGenerator
 import com.wutsi.ndopify.security.server.service.PasswordEncryptor
 import jakarta.mail.Message
@@ -16,9 +21,13 @@ import jakarta.mail.internet.InternetAddress
 import jakarta.mail.internet.MimeMessage
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.resttestclient.TestRestTemplate
+import org.springframework.http.HttpEntity
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.jdbc.Sql
+import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
@@ -236,6 +245,32 @@ class CreateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(0, smtp.receivedMessages.size)
 
         // rolled back: the previous OTP is untouched
+        assertEquals("old-otp-hash", authFactorRepository.findById(22L).get().data)
+    }
+
+    @Test
+    fun `expired token is unauthorized, though the endpoint is public`() {
+        val expired = JWT.create()
+            .withIssuer(AccessTokenService.ISSUER)
+            .withClaim(JwtPrincipal.CLAIM_USER_ID, 1L)
+            .withClaim(JwtPrincipal.CLAIM_TENANT_ID, TENANT_ID)
+            .withExpiresAt(Instant.now().minusSeconds(60))
+            .sign(Algorithm.none())
+        val headers = HttpHeaders().apply {
+            setBearerAuth(expired)
+            set(HttpHeader.TENANT_ID, TENANT_ID.toString())
+        }
+
+        // A template of its own: the shared one's interceptors (earlier test instances) may set another token
+        val response = TestRestTemplate().postForEntity(
+            "${rest.rootUri}/v1/otp",
+            HttpEntity(CreateOtpRequest(email = "has-otp@gmail.com"), headers),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.statusCode)
+        assertEquals(ErrorCode.AUTH_UNAUTHORIZED, response.body?.error?.code)
+        assertEquals(0, smtp.receivedMessages.size)
         assertEquals("old-otp-hash", authFactorRepository.findById(22L).get().data)
     }
 

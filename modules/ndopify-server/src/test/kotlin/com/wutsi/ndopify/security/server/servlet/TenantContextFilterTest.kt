@@ -12,8 +12,12 @@ import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.common.dto.HttpHeader
+import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.BadRequestException
+import com.wutsi.ndopify.error.server.exception.ForbiddenException
+import com.wutsi.ndopify.error.server.exception.UnauthorizedException
+import com.wutsi.ndopify.error.server.exception.WutsiException
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
@@ -33,6 +37,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class TenantContextFilterTest {
     private val accessTokenService = mock<AccessTokenService>()
@@ -152,6 +157,18 @@ class TenantContextFilterTest {
     }
 
     @Test
+    fun `token that does not decode is unauthorized, even with a tenant id header`() {
+        val error = Error(code = ErrorCode.AUTH_UNAUTHORIZED, message = "The Token has expired")
+        doThrow(ForbiddenException(error)).whenever(accessTokenService).getPrincipalOrNull()
+
+        val ex = assertRejected(request(tenantHeader = "200"), ErrorCode.AUTH_UNAUTHORIZED)
+
+        assertTrue(ex is UnauthorizedException)
+        assertNull(ex.error.message)
+        verifyNoInteractions(tenantService)
+    }
+
+    @Test
     fun `rejection is thrown when the resolver does not handle it`() {
         doReturn(null).whenever(exceptionResolver).resolveException(any(), any(), anyOrNull(), any())
 
@@ -230,13 +247,15 @@ class TenantContextFilterTest {
     }
 
     // The rejection goes to Spring MVC's resolver (ControllerErrorHandler), without a handler since none was reached
-    private fun assertRejected(request: MockHttpServletRequest, code: String) {
+    private fun assertRejected(request: MockHttpServletRequest, code: String): WutsiException {
         filter.doFilter(request, response, chain)
 
         val ex = argumentCaptor<Exception>()
         verify(exceptionResolver).resolveException(eq(request), eq(response), eq(null), ex.capture())
-        assertEquals(code, (ex.firstValue as BadRequestException).error.code)
+        val rejection = ex.firstValue as WutsiException
+        assertEquals(code, rejection.error.code)
         verify(chain, never()).doFilter(any(), any())
         assertNull(TenantContext.get())
+        return rejection
     }
 }

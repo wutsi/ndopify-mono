@@ -10,7 +10,7 @@ management:
 
 spring:
     flyway:
-        clean-disabled: false
+        clean-disabled: true
 
 springdoc:
     api-docs:

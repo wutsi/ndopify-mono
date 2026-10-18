@@ -307,7 +307,9 @@ Package `com.wutsi.ndopify.npc`: `ui/` (MVC controllers + Thymeleaf templates in
   `/login?step=code` → `/login/verify`). The code step is only shown while a `PendingLogin` (e-mail + expiry) is in
   the HTTP session, and verify reads the e-mail from there, not from the form. It calls
   `/v1/otp` then `/v1/auth` with `AuthType.OTP` and `ApplicationCode.PARTNER_CENTRAL`. The JWT is kept in the
-  HTTP-only `__npc_access_token` cookie (`AccessTokenService`) and decoded by `JwtAuthenticationFilter`; everything
+  HTTP-only `__npc_access_token` cookie (`AccessTokenService`) and decoded by `JwtAuthenticationFilter`, which clears
+  the cookie of a token that doesn't decode (expired) and marks the request `ACCESS_TOKEN_REJECTED`, so that
+  `AuthorizationClientHttpRequestInterceptor` doesn't forward it (ndopify-server would answer 401); everything
   except `/assets/**`, `/login/**`, `/error`, `/locations/**`, `/join/**`, `/find-property/**` requires authentication. `/logout` clears the cookie and session.
   The header's account menu (`<nav class="user-menu">`) is wrapped in `th:if="${signedIn}"`, a model attribute
   that `SignedInAdvice` (`ui/layout/`) sets on every page: give any new page's menu the same guard.
@@ -415,7 +417,9 @@ Tenancy is enforced via **Hibernate's built-in multi-tenancy mechanism**, not ha
 - `TenantContextFilter` (`platform/tenant/servlet/TenantContextFilter.kt`), registered at
   `Ordered.HIGHEST_PRECEDENCE` via `platform/config/TenantConfiguration.kt`, populates `TenantContext` per request —
   preferring the tenant claim on the decoded JWT (`JwtPrincipal.CLAIM_TENANT_ID` / `AccessTokenService`) and falling
-  back to the `X-Tenant-ID` header (`HttpHeader.TENANT_ID` in `ndopify-dto`) if there's no principal.
+  back to the `X-Tenant-ID` header (`HttpHeader.TENANT_ID` in `ndopify-dto`) if there's no principal. A token that
+  doesn't decode (expired, malformed) is a 401 `AUTH_UNAUTHORIZED`, even on a public endpoint, never a fallback to
+  the header.
 - Any JPA entity annotated `org.hibernate.annotations.@TenantId` is automatically filtered by Hibernate for every
   query against it — no `CriteriaBuilder` predicate, repository override, or service-level check needed. Today
   that's `PartyEntity`, `PaymentMethodEntity`, `IdentificationEntity`, `IdentificationImageEntity`, `KycCaseEntity`,
