@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${mandate} ? |${mandate.title} — Ndopify Partner Central| : 'Mandat — Ndopify Partner Central'">Mandat — Ndopify Partner Central</title>
+    <meta name="description" content="Détail d'un mandat de l'agent : suivi, coordonnées du client et recherche.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/home.css}">
+    <script th:src="@{/assets/js/partner-central.js}" defer></script>
+    <script th:src="@{/assets/js/mandate.js}" defer></script>
+</head>
+<!--/*
+  The page of one of the agent's mandates (MandateController), opened from the Espace agent's Mes mandats. Its status
+  is a wizard, Assigné > En approbation > Actif > Fermé (or Annulé), with the actions of the current step:
+    - Envoyer au client / Renvoyer (Assigné, En approbation): POST /mandates/{id}/request-approval, the contract is
+      e-mailed to the customer, who signs it online; sent again, it resets the signature deadline.
+    - Modifier le mandat (Assigné, En approbation): /mandates/{id}/edit. Edited while En approbation, the panel asks
+      to send it again.
+    - Fermer (Actif: lease signed, with the agreed rent) and Annuler (any active step, with a reason): at the bottom
+      of the page, since they're rare and final.
+  "mandate" is the MandateView, absent when "locked" (mandate not found, or a status the page doesn't show).
+  "end" is the close / cancel form open without JS ("close", "cancel" or null), "form" its values (MandateEndForm)
+  and "errors" its errors per field. "outcomeText" / "outcomeStyle" are the last action's outcome (flash attribute
+  "outcome", worded by MandateController).
+*/-->
+<body data-page="mandate">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" th:href="@{/}">
+                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte" th:if="${signedIn}">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <img class="user-menu__photo" th:if="${userPhotoUrl}" th:src="${userPhotoUrl}" alt="" width="44" height="44"
+                         data-user-photo>
+                    <span aria-hidden="true" data-user-initials th:unless="${userPhotoUrl}" th:text="${initials}">NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li><a class="user-menu__item" th:href="@{/profile}">Profil</a></li>
+                    <li><a class="user-menu__item" data-logout th:href="@{/logout}">Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column column--wide">
+            <p class="back-link"><a th:href="@{/#mandates-title}">← Retour à l'espace agent</a></p>
+
+            <!-- Locked: not found, or not (or no longer) the agent's to follow. -->
+            <div class="alert alert--warning" th:if="${locked}" data-mandate-locked>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <h1 class="alert__title">Ce mandat n'est pas disponible</h1>
+                    <p>Le détail d'un mandat et les coordonnées du client se débloquent lorsque vous acceptez le
+                        mandat depuis votre espace agent.</p>
+                </div>
+            </div>
+
+            <div th:if="${mandate}" th:with="m=${mandate}" data-mandate>
+                <!-- The status sits by the title, so the steps below can stay compact. -->
+                <div class="page-intro mandate-intro">
+                    <div class="mandate-intro__head">
+                        <h1 th:text="${m.title}">Locataire · Maison</h1>
+                        <p th:class="|status-tag status-tag--${m.tag.style}|" th:text="${m.tag.label}">Assigné</p>
+                    </div>
+                    <p class="mandate__meta">Mandat n° <span th:text="${m.id}">201</span><th:block th:if="${m.acceptedAt}">
+                        · accepté le <span th:text="${m.acceptedAt}">10 octobre 2026</span></th:block></p>
+                </div>
+
+                <!-- Outcome of the last action (sent, closed, cancelled, saved, or why it couldn't be done). -->
+                <div th:if="${outcomeText}" th:class="|alert alert--${outcomeStyle}|" tabindex="-1"
+                     th:attr="role=${outcomeStyle == 'error'} ? 'alert' : 'status'" data-mandate-flash>
+                    <svg th:if="${outcomeStyle == 'success'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg th:if="${outcomeStyle == 'warning'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                    <svg th:if="${outcomeStyle == 'error'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <p data-mandate-flash-text th:text="${outcomeText}">Mandat envoyé pour signature.</p>
+                </div>
+
+                <section class="mandate-progress" aria-labelledby="progress-title">
+                    <h2 id="progress-title" class="visually-hidden">Suivi du mandat</h2>
+
+                    <!--
+                        Phones: four marks joined by a line, with the current step's name and date under them
+                        (mandate-steps__summary, for sighted users only: the steps' own text stays for screen readers).
+                        From 640px: the four steps with their names and dates.
+                    -->
+                    <ol class="tracker mandate-steps" data-mandate-steps>
+                        <li th:each="step, it : ${m.steps}" th:attr="data-step=${step.status},
+                                data-state=${step.done} ? 'done' : (${it.index == m.currentStep} ? 'current' : 'todo'),
+                                aria-current=${it.index == m.currentStep} ? 'step' : null">
+                            <span class="tracker__mark"><svg th:if="${step.done}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                            <span class="mandate-steps__text"><span class="mandate-steps__label" th:text="${step.label}">Assigné</span>
+                                <span class="mandate-steps__date" data-step-date th:text="${step.date}"></span></span>
+                        </li>
+                    </ol>
+                    <p class="mandate-steps__summary" aria-hidden="true" data-step-summary th:text="${m.stepSummary}"></p>
+
+                    <!-- The current status's panel: one or two lines, the step's button, and the details folded away. -->
+                    <div class="mandate-panel" th:if="${m.status.name() == 'ASSIGNED'}" data-panel="ASSIGNED">
+                        <p>Confirmez <span th:text="${m.words.search}">sa recherche</span> avec
+                            <span th:text="${m.words.the}">le client</span>, puis envoyez-lui le mandat à signer.</p>
+                        <div class="mandate-panel__actions">
+                            <form method="post" th:action="@{/mandates/{id}/request-approval(id=${m.id})}"
+                                  data-request-approval-form>
+                                <button type="submit" class="btn btn--primary" data-request-approval>Envoyer au client</button>
+                            </form>
+                            <a class="btn btn--outline" th:href="@{/mandates/{id}/edit(id=${m.id})}" data-edit-link>Modifier le mandat</a>
+                        </div>
+                        <details class="assignment__details">
+                            <summary>Comment ça marche&nbsp;?</summary>
+                            <div class="assignment__details-body">
+                                <p>Le mandat est envoyé par e-mail
+                                    <th:block th:if="${m.contact}">à <strong th:text="${m.contact.email}">ray@gmail.com</strong></th:block><th:block
+                                        th:unless="${m.contact}" th:text="${m.words.to}">au client</th:block>, qui le signe
+                                    en ligne sous <span th:text="${m.signatureTtlDays}">7</span>&nbsp;jours. Vous commencez vos
+                                    recherches dès sa signature.</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <div class="mandate-panel" th:if="${m.status.name() == 'PENDING_APPROVAL'}" data-panel="PENDING_APPROVAL">
+                        <p th:if="${m.signatureDeadline}">Envoyé le <span th:text="${m.requestedAt}">15 octobre 2026</span> · à signer avant le
+                            <strong data-signature-deadline th:text="${m.deadlinePassed} ? |${m.signatureDeadline} (dépassé)| : ${m.signatureDeadline}">22 octobre 2026</strong>.</p>
+                        <p class="mandate-panel__edited" th:if="${m.editedSince}" data-edited-since>Modifié depuis l'envoi&nbsp;:
+                            renvoyez-le pour faire signer la nouvelle version.</p>
+                        <div class="mandate-panel__actions">
+                            <form method="post" th:action="@{/mandates/{id}/request-approval(id=${m.id})}"
+                                  data-request-approval-form>
+                                <button type="submit" th:class="${m.editedSince} ? 'btn btn--primary' : 'btn btn--outline'"
+                                        data-request-approval>Renvoyer</button>
+                            </form>
+                            <a class="btn btn--outline" th:href="@{/mandates/{id}/edit(id=${m.id})}" data-edit-link>Modifier le mandat</a>
+                        </div>
+                        <details class="assignment__details">
+                            <summary>Comment ça marche&nbsp;?</summary>
+                            <div class="assignment__details-body">
+                                <p>Le mandat a été envoyé
+                                    <th:block th:if="${m.contact}">à <strong th:text="${m.contact.email}">ray@gmail.com</strong></th:block><th:block
+                                        th:unless="${m.contact}" th:text="${m.words.to}">au client</th:block>. Passé le délai,
+                                    renvoyez-le&nbsp;: <span th:text="${m.words.the}">le client</span> a de nouveau
+                                    <span th:text="${m.signatureTtlDays}">7</span>&nbsp;jours pour le signer.</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <div class="mandate-panel" th:if="${m.status.name() == 'APPROVED'}" data-panel="APPROVED">
+                        <p>Signé le <span th:text="${m.approvedAt}">20 octobre 2026</span><th:block th:if="${m.validUntil}"> · valable
+                            jusqu'au <strong th:text="${m.validUntil}">28 mars 2027</strong></th:block>.</p>
+                        <details class="assignment__details">
+                            <summary>Et ensuite&nbsp;?</summary>
+                            <div class="assignment__details-body">
+                                <p><span th:text="${m.owner} ? 'Présentez le bien aux locataires et organisez les visites.' : 'Proposez des biens au client et organisez les visites.'">Proposez
+                                    des biens au client et organisez les visites.</span> Une fois le bail signé, fermez le
+                                    mandat (en bas de page) en indiquant le loyer convenu.</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <div class="alert alert--success" th:if="${m.status.name() == 'CLOSED'}" data-panel="CLOSED">
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <div>
+                            <p class="alert__title">Bail signé</p>
+                            <p>Mandat fermé le <span th:text="${m.closedAt}">1 novembre 2026</span>, au loyer de
+                                <strong th:text="${m.finalPrice}">240 000 FCFA / mois</strong>, <span th:text="${m.age}">12 jours</span>
+                                après son approbation.</p>
+                        </div>
+                    </div>
+
+                    <div class="alert alert--info" th:if="${m.status.name() == 'CANCELLED'}" data-panel="CANCELLED">
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <p class="alert__title">Mandat annulé</p>
+                            <p>Le <span th:text="${m.closedAt}">19 octobre 2026</span>&nbsp;: <span th:text="${m.cancellation}">changement de projet</span>.</p>
+                            <p class="review__multiline" th:if="${m.cancellationReason}" th:text="${m.cancellationReason}"
+                               data-cancellation-reason></p>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="home-section" aria-labelledby="contact-title">
+                    <h2 id="contact-title" th:text="${m.words.theUpper}">Le client</h2>
+                    <!--
+                        Compact: the name and best time to call on one line, then the number and e-mail, unlabelled.
+                        The number calls (tel:, as phones expect of a number) and its WhatsApp button sits beside it.
+                    -->
+                    <div class="contact-card" th:if="${m.contact}" th:with="c=${m.contact}">
+                        <p><strong data-contact="name" th:text="${c.name}">Ray Sponsible</strong><span class="contact-card__period"
+                                th:if="${c.period}"> · à appeler <span data-contact="period" th:text="${c.period}">le matin</span></span></p>
+                        <div class="contact-card__line contact-card__phone" th:if="${c.whatsapp}">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>
+                            <a data-contact="whatsapp" th:href="|tel:${c.whatsapp}|"><span class="visually-hidden">Appeler le </span><span
+                                    data-contact-number th:text="${c.whatsappDisplay}">+237 6 99 12 34 56</span></a>
+                            <a class="btn btn--primary btn--compact" target="_blank" rel="noopener" data-contact-whatsapp
+                               th:href="|https://wa.me/${c.whatsappDigits}|"><svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.870 9.870 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.860 9.860 0 0 1-1.510-5.260c.001-5.450 4.436-9.884 9.888-9.884 2.640 0 5.122 1.030 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.450-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.050 0C5.495 0 .160 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.890-5.335 11.893-11.893a11.821 11.821 0 0 0-3.480-8.413Z"/></svg>WhatsApp</a>
+                        </div>
+                        <p class="contact-card__line">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>
+                            <span><span class="visually-hidden">Adresse e-mail&nbsp;: </span><a data-contact="email"
+                                    th:href="|mailto:${c.email}|" th:text="${c.email}">ray@gmail.com</a></span>
+                        </p>
+                    </div>
+                    <p th:unless="${m.contact}" data-contact-unavailable>Les coordonnées <span th:text="${m.words.of}">du client</span>
+                        ne peuvent pas être affichées pour le moment. Réessayez dans quelques instants.</p>
+                </section>
+
+                <section class="home-section" aria-labelledby="search-title">
+                    <h2 id="search-title" th:text="${m.words.searchUpper}">Sa recherche</h2>
+                    <!--
+                        The facts that qualify a property stay visible: sector, amount, date, type (with its rooms), and
+                        the customer's own words when there are some. The rest is folded.
+                    -->
+                    <dl class="review" data-mandate-key-criteria>
+                        <div class="review__item" th:each="row : ${m.keyCriteria}">
+                            <dt class="review__term" th:text="${row.first}">Secteurs</dt>
+                            <dd class="review__value review__multiline" th:text="${row.second}">Kotto, Logpom — Douala</dd>
+                        </div>
+                    </dl>
+                    <details class="assignment__details mandate-more" th:unless="${#lists.isEmpty(m.moreCriteria)}"
+                             data-mandate-more>
+                        <summary data-mandate-more-label th:attr="data-count=${#lists.size(m.moreCriteria)}"
+                                 th:text="|Voir tous les critères (${#lists.size(m.moreCriteria)})|">Voir tous les critères</summary>
+                        <dl class="review" data-mandate-criteria>
+                            <div class="review__item" th:each="row : ${m.moreCriteria}">
+                                <dt class="review__term" th:text="${row.first}">Catégorie</dt>
+                                <dd class="review__value review__multiline" th:text="${row.second}">Résidentiel</dd>
+                            </div>
+                        </dl>
+                    </details>
+                </section>
+
+                <!--
+                    The mandate's end, on every active step, at the bottom of the page since it's rare and final.
+                    Fermer (lease signed, with the agreed rent) only once approved, ndopify-server refusing it before
+                    (409 MANDATE_NOT_APPROVED). Annuler (no lease, with a reason) on any active step, in the danger
+                    style. Without JS each link opens the form in its mode (GET ?end=close|cancel).
+                -->
+                <section class="home-section mandate-close" aria-label="Fin du mandat" th:if="${m.cancellable}" data-end>
+                    <div class="mandate-panel__actions mandate-close__buttons" data-end-buttons
+                         th:attr="hidden=${end} ? 'hidden' : null">
+                        <a class="btn btn--outline" th:if="${m.closable}" th:href="@{|/mandates/${m.id}?end=close#end-title|}"
+                           aria-controls="end-form-close" data-end-open="close">Fermer le mandat</a>
+                        <a class="btn btn--danger" th:href="@{|/mandates/${m.id}?end=cancel#end-title|}"
+                           aria-controls="end-form-cancel" data-end-open="cancel">Annuler le mandat</a>
+                    </div>
+
+                    <form id="end-form-close" class="form mandate-close__form" method="post" novalidate
+                          th:if="${m.closable}" th:action="@{/mandates/{id}/close(id=${m.id})}"
+                          th:attr="hidden=${end == 'close'} ? null : 'hidden'" data-end-form="close">
+                        <h2 class="mandate-panel__title" th:id="${end == 'close'} ? 'end-title' : null">Fermer le mandat</h2>
+                        <p>Le bail est signé&nbsp;? Indiquez le loyer convenu pour fermer le mandat.</p>
+                        <div class="field">
+                            <label class="field__label" for="finalPrice">Loyer convenu</label>
+                            <div class="input-unit">
+                                <input class="input" id="finalPrice" name="finalPrice" type="text" inputmode="numeric"
+                                       autocomplete="off" aria-describedby="finalPrice-error" th:value="${form.finalPrice}"
+                                       th:attr="aria-invalid=${errors['finalPrice'] != null ? 'true' : null}">
+                                <span aria-hidden="true" class="input-unit__suffix">FCFA / mois</span>
+                            </div>
+                            <p class="field__error" id="finalPrice-error" th:hidden="${errors['finalPrice'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['finalPrice']}"></span></p>
+                        </div>
+                        <div class="mandate-panel__actions">
+                            <button type="submit" class="btn btn--primary" data-end-submit>Confirmer la fermeture</button>
+                            <a class="btn btn--outline" th:href="@{/mandates/{id}(id=${m.id})}" data-end-back>Retour</a>
+                        </div>
+                    </form>
+
+                    <form id="end-form-cancel" class="form mandate-close__form" method="post" novalidate
+                          th:action="@{/mandates/{id}/cancel(id=${m.id})}"
+                          th:attr="hidden=${end == 'cancel'} ? null : 'hidden'" data-end-form="cancel">
+                        <h2 class="mandate-panel__title" th:id="${end == 'cancel'} ? 'end-title' : null">Annuler le mandat</h2>
+                        <p>Le mandat s'arrête sans bail. Cette action est définitive.</p>
+                        <fieldset class="choices" aria-describedby="cancellationCode-error"
+                                  th:attr="aria-invalid=${errors['cancellationCode'] != null ? 'true' : null}">
+                            <legend class="choices__legend">Pour quelle raison&nbsp;?</legend>
+                            <div class="choices__grid">
+                                <label class="choice"><input name="cancellationCode" type="radio" value="FOUND_INDEPENDENTLY"
+                                                             th:checked="${form.cancellationCode?.name() == 'FOUND_INDEPENDENTLY'}">
+                                    Trouvé sans mon aide</label>
+                                <label class="choice"><input name="cancellationCode" type="radio" value="FOUND_VIA_OTHER_AGENT"
+                                                             th:checked="${form.cancellationCode?.name() == 'FOUND_VIA_OTHER_AGENT'}">
+                                    Trouvé par un autre agent</label>
+                                <label class="choice"><input name="cancellationCode" type="radio" value="CHANGE_OF_PLANS"
+                                                             th:checked="${form.cancellationCode?.name() == 'CHANGE_OF_PLANS'}">
+                                    Changement de projet</label>
+                                <label class="choice"><input name="cancellationCode" type="radio" value="UNREALISTIC_CRITERIA"
+                                                             th:checked="${form.cancellationCode?.name() == 'UNREALISTIC_CRITERIA'}">
+                                    Critères irréalistes (budget, secteur…)</label>
+                                <label class="choice"><input name="cancellationCode" type="radio" value="UNSATISFACTORY_SERVICE"
+                                                             th:checked="${form.cancellationCode?.name() == 'UNSATISFACTORY_SERVICE'}">
+                                    Insatisfait du service</label>
+                                <label class="choice"><input name="cancellationCode" type="radio" value="OTHER"
+                                                             th:checked="${form.cancellationCode?.name() == 'OTHER'}">
+                                    Autre raison</label>
+                            </div>
+                            <p class="field__error" id="cancellationCode-error" th:hidden="${errors['cancellationCode'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['cancellationCode']}"></span></p>
+                        </fieldset>
+                        <div class="field">
+                            <label class="field__label" for="cancellationReason">Précisions <span class="field__optional">(facultatif)</span></label>
+                            <textarea class="input input--textarea" id="cancellationReason" name="cancellationReason"
+                                      rows="3" maxlength="500" aria-describedby="cancellationReason-error"
+                                      th:text="${form.cancellationReason}"
+                                      th:attr="aria-invalid=${errors['cancellationReason'] != null ? 'true' : null}"></textarea>
+                            <p class="field__error" id="cancellationReason-error" th:hidden="${errors['cancellationReason'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['cancellationReason']}"></span></p>
+                        </div>
+                        <div class="mandate-panel__actions">
+                            <button type="submit" class="btn btn--danger" data-end-submit>Confirmer l'annulation</button>
+                            <a class="btn btn--outline" th:href="@{/mandates/{id}(id=${m.id})}" data-end-back>Retour</a>
+                        </div>
+                    </form>
+                </section>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

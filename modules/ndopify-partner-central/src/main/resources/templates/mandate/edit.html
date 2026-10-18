@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${answers} ? |Modifier le mandat ${mandate.id} — Ndopify Partner Central| : 'Modifier le mandat — Ndopify Partner Central'">Modifier le mandat — Ndopify Partner Central</title>
+    <meta name="description" content="Modifier un mandat de l'agent avant son approbation.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.css">
+    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/join.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/home.css}">
+    <script src="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.iife.js" defer></script>
+    <script th:src="@{/assets/js/partner-central.js}" defer></script>
+    <script th:src="@{/assets/js/mandate.js}" defer></script>
+</head>
+<!--/*
+  Edit a mandate (MandateController, POST /mandates/{id}/edit), reached from the mandate page's "Modifier le mandat"
+  while it's Assigné or En approbation. One form, in five groups folded by default so a quick fix stays short on a
+  phone: each group's summary shows its current value ("summaries"), and a group with an error is open
+  ("openGroups"). The city can't change: the mandate would leave the agent's area. Edited while En approbation, the
+  mandate must be sent again. Wording follows "owner": a client's search (Budget, Emménagement, "Indifférent"
+  choices) or a landlord's property (Loyer, Disponibilité, no "Indifférent").
+  "answers" (MandateEditForm) pre-fill it, with "errors" per field and "error" when it couldn't be saved; "mandate"
+  (MandateView) gives the title, number and wording; "city" and "neighborhoods" the names of the chosen locations,
+  "cityId" the city whose neighbourhoods join.js-style slim-select searches; "mandateId" the id of the URL.
+  "locked" is "unavailable" or "approved" for the locked view (no form).
+*/-->
+<body data-page="mandate-edit">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" th:href="@{/}">
+                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte" th:if="${signedIn}">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <img class="user-menu__photo" th:if="${userPhotoUrl}" th:src="${userPhotoUrl}" alt="" width="44" height="44"
+                         data-user-photo>
+                    <span aria-hidden="true" data-user-initials th:unless="${userPhotoUrl}" th:text="${initials}">NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li><a class="user-menu__item" th:href="@{/profile}">Profil</a></li>
+                    <li><a class="user-menu__item" data-logout th:href="@{/logout}">Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="back-link"><a th:href="@{/mandates/{id}(id=${mandateId})}" data-back-link>← Retour au mandat</a></p>
+
+            <div class="alert alert--warning" th:if="${locked}" data-edit-locked>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div th:switch="${locked}">
+                    <th:block th:case="'approved'">
+                        <h1 class="alert__title">Ce mandat ne peut plus être modifié</h1>
+                        <p>Un mandat approuvé par le client ne se modifie plus.</p>
+                    </th:block>
+                    <th:block th:case="*">
+                        <h1 class="alert__title">Ce mandat n'est pas disponible</h1>
+                        <p>Vous ne pouvez modifier que vos mandats, tant qu'ils ne sont pas approuvés par le client.</p>
+                    </th:block>
+                </div>
+            </div>
+
+            <div th:if="${answers}" data-edit>
+                <div class="page-intro">
+                    <h1>Modifier le mandat</h1>
+                    <p class="mandate__meta"><span th:text="${mandate.title}">Locataire · Maison</span> · mandat n° <span th:text="${mandate.id}">201</span></p>
+                </div>
+
+                <div class="hint" th:if="${mandate.status.name() == 'PENDING_APPROVAL'}" data-edit-resend>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <p>Ce mandat attend la signature <span th:text="${mandate.words.of}">du client</span>&nbsp;: après vos modifications,
+                        renvoyez-le-lui pour qu'il signe la nouvelle version.</p>
+                </div>
+
+                <div class="alert alert--error" role="alert" th:if="${error}" data-edit-error>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <p th:text="${error}">Enregistrement impossible pour le moment.</p>
+                </div>
+
+                <form class="form mandate-edit" method="post" novalidate th:action="@{/mandates/{id}/edit(id=${mandate.id})}"
+                      th:attr="data-locations-url=@{/locations}" data-edit-form>
+                    <details class="edit-group" data-edit-group="sector" th:attr="open=${#sets.contains(openGroups, 'sector')} ? 'open' : null">
+                        <summary>
+                            <span class="edit-group__title">Secteur</span>
+                            <span class="edit-group__value" data-group-value th:text="${summaries['sector']}"></span>
+                        </summary>
+                        <div class="edit-group__body">
+                            <div class="field">
+                                <p class="field__label" id="city-label">Ville</p>
+                                <p class="edit-readonly" aria-labelledby="city-label" data-city th:text="${city?.name}">Douala</p>
+                            </div>
+                            <div class="field" data-group="neighborhoodIds">
+                                <label class="field__label" for="neighborhoodIds">Quartiers <span class="field__optional">(facultatif, 3&nbsp;au&nbsp;plus)</span></label>
+                                <select class="input select" id="neighborhoodIds" name="neighborhoodIds" multiple
+                                        aria-describedby="neighborhood-counter neighborhoods-hint neighborhoodIds-error"
+                                        th:attr="data-city-id=${cityId},aria-invalid=${errors['neighborhoodIds'] != null ? 'true' : null}">
+                                    <option selected th:each="neighborhood : ${neighborhoods}" th:value="${neighborhood.id}"
+                                            th:text="${neighborhood.name}">Bonapriso</option>
+                                </select>
+                                <p class="field__counter" id="neighborhood-counter" data-neighborhood-counter
+                                   th:text="|${#lists.size(neighborhoods)} sur 3 sélectionné${#lists.size(neighborhoods) > 1 ? 's' : ''}|">
+                                    0 sur 3 sélectionné</p>
+                                <p class="field__error" id="neighborhoodIds-error" th:hidden="${errors['neighborhoodIds'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['neighborhoodIds']}"></span></p>
+                                <p class="visually-hidden" role="status" data-neighborhood-status></p>
+                            </div>
+                            <div class="hint" id="neighborhoods-hint">
+                                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                                <p>Sans quartier, toute la ville est couverte. La ville ne peut pas changer&nbsp;: le mandat serait
+                                    confié à un agent d'une autre ville.</p>
+                            </div>
+                        </div>
+                    </details>
+
+                    <details class="edit-group" data-edit-group="property" th:attr="open=${#sets.contains(openGroups, 'property')} ? 'open' : null">
+                        <summary>
+                            <span class="edit-group__title">Le bien</span>
+                            <span class="edit-group__value" data-group-value th:text="${summaries['property']}"></span>
+                        </summary>
+                        <div class="edit-group__body">
+                            <fieldset class="choices" aria-describedby="propertyCategory-error" data-group="propertyCategory" th:attr="aria-invalid=${errors['propertyCategory'] != null ? 'true' : null}">
+                                <legend class="choices__legend">Usage</legend>
+                                <div class="choices__grid">
+                                    <label class="choice"><input name="propertyCategory" type="radio" value="RESIDENTIAL"
+                                                                 th:checked="${answers.propertyCategory?.name() == 'RESIDENTIAL'}"> Résidentiel</label>
+                                    <label class="choice"><input name="propertyCategory" type="radio" value="COMMERCIAL"
+                                                                 th:checked="${answers.propertyCategory?.name() == 'COMMERCIAL'}"> Commercial</label>
+                                </div>
+                                <p class="field__error" id="propertyCategory-error" th:hidden="${errors['propertyCategory'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['propertyCategory']}"></span></p>
+                            </fieldset>
+                            <fieldset class="choices" aria-describedby="propertyType-error" data-group="propertyType" th:attr="aria-invalid=${errors['propertyType'] != null ? 'true' : null}">
+                                <legend class="choices__legend">Type de bien <span class="field__optional" th:unless="${owner}">(facultatif)</span></legend>
+                                <div class="choices__grid choices__grid--2">
+                                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="ROOM"
+                                                                     th:checked="${#strings.equals(answers.propertyType, 'ROOM')}"> Chambre</label>
+                                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="STUDIO"
+                                                                     th:checked="${#strings.equals(answers.propertyType, 'STUDIO')}"> Studio</label>
+                                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="APARTMENT"
+                                                                     th:checked="${#strings.equals(answers.propertyType, 'APARTMENT')}"> Appartement</label>
+                                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="HOUSE"
+                                                                     th:checked="${#strings.equals(answers.propertyType, 'HOUSE')}"> Maison</label>
+                                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="VILLA"
+                                                                     th:checked="${#strings.equals(answers.propertyType, 'VILLA')}"> Villa</label>
+                                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="DUPLEX"
+                                                                     th:checked="${#strings.equals(answers.propertyType, 'DUPLEX')}"> Duplex</label>
+                                        <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="RETAIL"
+                                                                     th:checked="${#strings.equals(answers.propertyType, 'RETAIL')}"> Boutique, local commercial</label>
+                                        <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="OFFICE"
+                                                                     th:checked="${#strings.equals(answers.propertyType, 'OFFICE')}"> Bureau</label>
+                                        <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="INDUSTRIAL"
+                                                                     th:checked="${#strings.equals(answers.propertyType, 'INDUSTRIAL')}"> Entrepôt, local industriel</label>
+                                        <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="BUILDING"
+                                                                     th:checked="${#strings.equals(answers.propertyType, 'BUILDING')}"> Immeuble</label>
+                                        <label class="choice" data-categories="RESIDENTIAL COMMERCIAL"><input name="propertyType" type="radio" value="LAND"
+                                                                     th:checked="${#strings.equals(answers.propertyType, 'LAND')}"> Terrain</label>
+                                        <label class="choice" data-categories="RESIDENTIAL COMMERCIAL" th:unless="${owner}"><input name="propertyType" type="radio" value="ANY"
+                                                                     th:checked="${#strings.equals(answers.propertyType, 'ANY')}"> Indifférent</label>
+                                </div>
+                                <p class="field__error" id="propertyType-error" th:hidden="${errors['propertyType'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['propertyType']}"></span></p>
+                            </fieldset>
+                            <!-- Without JS every follow-up question shows; the server ignores those that don't apply to the type. -->
+                            <fieldset class="choices" aria-describedby="rooms-error" data-group="rooms" th:attr="aria-invalid=${errors['rooms'] != null ? 'true' : null}">
+                                <legend class="choices__legend">Nombre de chambres</legend>
+                                <div class="choices__grid choices__grid--2">
+                                        <label class="choice"><input name="rooms" type="radio" value="1"
+                                                                     th:checked="${#strings.equals(answers.rooms, '1')}"> 1</label>
+                                        <label class="choice"><input name="rooms" type="radio" value="2"
+                                                                     th:checked="${#strings.equals(answers.rooms, '2')}"> 2</label>
+                                        <label class="choice"><input name="rooms" type="radio" value="3"
+                                                                     th:checked="${#strings.equals(answers.rooms, '3')}"> 3</label>
+                                        <label class="choice"><input name="rooms" type="radio" value="4"
+                                                                     th:checked="${#strings.equals(answers.rooms, '4')}"> 4</label>
+                                        <label class="choice"><input name="rooms" type="radio" value="5+"
+                                                                     th:checked="${#strings.equals(answers.rooms, '5+')}"> 5&nbsp;et&nbsp;+</label>
+                                </div>
+                                <p class="field__error" id="rooms-error" th:hidden="${errors['rooms'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['rooms']}"></span></p>
+                            </fieldset>
+                            <fieldset class="choices" aria-describedby="furnitureType-error" data-group="furnitureType" th:attr="aria-invalid=${errors['furnitureType'] != null ? 'true' : null}">
+                                <legend class="choices__legend">Meublé&nbsp;?</legend>
+                                <div class="choices__grid">
+                                        <label class="choice"><input name="furnitureType" type="radio" value="FULLY_FURNISHED"
+                                                                     th:checked="${#strings.equals(answers.furnitureType, 'FULLY_FURNISHED')}"> Meublé</label>
+                                        <label class="choice"><input name="furnitureType" type="radio" value="UNFURNISHED"
+                                                                     th:checked="${#strings.equals(answers.furnitureType, 'UNFURNISHED')}"> Non meublé</label>
+                                        <label class="choice" th:unless="${owner}"><input name="furnitureType" type="radio" value="ANY"
+                                                                     th:checked="${#strings.equals(answers.furnitureType, 'ANY')}"> Indifférent</label>
+                                </div>
+                                <p class="field__error" id="furnitureType-error" th:hidden="${errors['furnitureType'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['furnitureType']}"></span></p>
+                            </fieldset>
+                            <fieldset class="choices" aria-describedby="parkings-error" data-group="parkings" th:attr="aria-invalid=${errors['parkings'] != null ? 'true' : null}">
+                                <legend class="choices__legend">Places de parking <span class="field__optional">(facultatif)</span></legend>
+                                <div class="choices__grid choices__grid--2">
+                                        <label class="choice"><input name="parkings" type="radio" value="0"
+                                                                     th:checked="${#strings.equals(answers.parkings, '0')}"> Aucune</label>
+                                        <label class="choice"><input name="parkings" type="radio" value="1"
+                                                                     th:checked="${#strings.equals(answers.parkings, '1')}"> 1</label>
+                                        <label class="choice"><input name="parkings" type="radio" value="2"
+                                                                     th:checked="${#strings.equals(answers.parkings, '2')}"> 2</label>
+                                        <label class="choice"><input name="parkings" type="radio" value="3+"
+                                                                     th:checked="${#strings.equals(answers.parkings, '3+')}"> 3&nbsp;et&nbsp;+</label>
+                                        <label class="choice" th:unless="${owner}"><input name="parkings" type="radio" value="ANY"
+                                                                     th:checked="${#strings.equals(answers.parkings, 'ANY')}"> Indifférent</label>
+                                </div>
+                                <p class="field__error" id="parkings-error" th:hidden="${errors['parkings'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['parkings']}"></span></p>
+                            </fieldset>
+                            <div class="field" data-group="area">
+                                <label class="field__label" for="area"><span th:text="${owner} ? 'Surface' : 'Surface minimale'">Surface minimale</span>
+                                    <span class="field__optional">(facultatif)</span></label>
+                                <div class="input-unit">
+                                    <input class="input" id="area" name="area" type="text" inputmode="numeric" aria-describedby="area-error"
+                                           th:value="${answers.area}" th:attr="aria-invalid=${errors['area'] != null ? 'true' : null}">
+                                    <span aria-hidden="true" class="input-unit__suffix">m²</span>
+                                </div>
+                                <p class="field__error" id="area-error" th:hidden="${errors['area'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['area']}"></span></p>
+                            </div>
+                        </div>
+                    </details>
+
+                    <details class="edit-group" data-edit-group="amenities" th:attr="open=${#sets.contains(openGroups, 'amenities')} ? 'open' : null">
+                        <summary>
+                            <span class="edit-group__title">Équipements</span>
+                            <span class="edit-group__value" data-group-value th:text="${summaries['amenities']}"></span>
+                        </summary>
+                        <div class="edit-group__body">
+                            <p th:text="${owner} ? 'Ce dont le bien dispose.' : 'Seulement ce dont le client ne peut pas se passer : chaque critère réduit le nombre de biens proposés.'">Seulement ce dont le client ne peut pas se passer&nbsp;: chaque critère réduit le nombre de biens proposés.</p>
+                            <fieldset class="choices">
+                                <legend class="choices__legend">Eau</legend>
+                                <div class="choices__grid">
+                                    <label class="choice"><input name="amenities" type="checkbox" value="waterMeter" th:checked="${answers.has('waterMeter')}"> Compteur d'eau</label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="dedicatedWaterMeter" th:checked="${answers.has('dedicatedWaterMeter')}"> Compteur d'eau individuel</label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="waterTank" th:checked="${answers.has('waterTank')}"> Citerne</label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="waterWell" th:checked="${answers.has('waterWell')}"> Forage</label>
+                                </div>
+                            </fieldset>
+                            <fieldset class="choices">
+                                <legend class="choices__legend">Électricité</legend>
+                                <div class="choices__grid">
+                                    <label class="choice"><input name="amenities" type="checkbox" value="electricityMeter" th:checked="${answers.has('electricityMeter')}"> Compteur électrique</label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="dedicatedElectricityMeter" th:checked="${answers.has('dedicatedElectricityMeter')}"> Compteur électrique individuel</label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="generatorSet" th:checked="${answers.has('generatorSet')}"> Groupe électrogène</label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="solarPanel" th:checked="${answers.has('solarPanel')}"> Panneaux solaires</label>
+                                </div>
+                            </fieldset>
+                            <fieldset class="choices">
+                                <legend class="choices__legend">Accès</legend>
+                                <div class="choices__grid">
+                                    <label class="choice"><input name="amenities" type="checkbox" value="roadPaved" th:checked="${answers.has('roadPaved')}"> Route bitumée</label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="trackAccessibleByCar" th:checked="${answers.has('trackAccessibleByCar')}"> Piste accessible en voiture</label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="trackInaccessibleByCar" th:checked="${answers.has('trackInaccessibleByCar')}"> Piste accessible à pied seulement</label>
+                                </div>
+                            </fieldset>
+                            <fieldset class="choices">
+                                <legend class="choices__legend">Sécurité</legend>
+                                <div class="choices__grid">
+                                    <label class="choice"><input name="amenities" type="checkbox" value="securedFenced" th:checked="${answers.has('securedFenced')}"> Clôturé et sécurisé</label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="securityGuard" th:checked="${answers.has('securityGuard')}"> Gardien</label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="videoSurveillance" th:checked="${answers.has('videoSurveillance')}"> Vidéosurveillance</label>
+                                </div>
+                            </fieldset>
+                        </div>
+                    </details>
+
+                    <details class="edit-group" data-edit-group="budget" th:attr="open=${#sets.contains(openGroups, 'budget')} ? 'open' : null">
+                        <summary>
+                            <span class="edit-group__title"><span th:text="${owner} ? 'Loyer et disponibilité' : 'Budget et emménagement'">Budget et emménagement</span></span>
+                            <span class="edit-group__value" data-group-value th:text="${summaries['budget']}"></span>
+                        </summary>
+                        <div class="edit-group__body">
+                            <div class="field">
+                                <label class="field__label" for="priceAmount" th:text="${owner} ? 'Loyer mensuel' : 'Budget mensuel'">Budget mensuel</label>
+                                <div class="input-unit">
+                                    <input class="input" id="priceAmount" name="priceAmount" type="text" inputmode="numeric" required
+                                           aria-describedby="priceAmount-error" th:value="${answers.priceAmount}" th:attr="aria-invalid=${errors['priceAmount'] != null ? 'true' : null}">
+                                    <span aria-hidden="true" class="input-unit__suffix">FCFA / mois</span>
+                                </div>
+                                <p class="field__error" id="priceAmount-error" th:hidden="${errors['priceAmount'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['priceAmount']}"></span></p>
+                            </div>
+                            <fieldset class="choices" aria-describedby="movingPeriod-error" data-group="movingPeriod" th:attr="aria-invalid=${errors['movingPeriod'] != null ? 'true' : null}">
+                                <legend class="choices__legend" th:text="${owner} ? 'Disponibilité du bien' : 'Date d\'emménagement souhaitée'">Date d'emménagement souhaitée</legend>
+                                <div class="choices__grid">
+                                    <label class="choice"><input name="movingPeriod" type="radio" value="WITHIN_1_MONTH" required
+                                                                 th:checked="${answers.movingPeriod?.name() == 'WITHIN_1_MONTH'}"> Dans moins d'1&nbsp;mois</label>
+                                    <label class="choice"><input name="movingPeriod" type="radio" value="WITHIN_3_MONTHS" required
+                                                                 th:checked="${answers.movingPeriod?.name() == 'WITHIN_3_MONTHS'}"> Dans 1 à 3&nbsp;mois</label>
+                                    <label class="choice"><input name="movingPeriod" type="radio" value="AFTER_3_MONTHS" required
+                                                                 th:checked="${answers.movingPeriod?.name() == 'AFTER_3_MONTHS'}"> Dans plus de 3&nbsp;mois</label>
+                                </div>
+                                <p class="field__error" id="movingPeriod-error" th:hidden="${errors['movingPeriod'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['movingPeriod']}"></span></p>
+                            </fieldset>
+                        </div>
+                    </details>
+
+                    <details class="edit-group" data-edit-group="comments" th:attr="open=${#sets.contains(openGroups, 'comments')} ? 'open' : null">
+                        <summary>
+                            <span class="edit-group__title">Autres précisions</span>
+                            <span class="edit-group__value" data-group-value th:text="${summaries['comments']}"></span>
+                        </summary>
+                        <div class="edit-group__body">
+                            <div class="field">
+                                <label class="field__label" for="comments">Autres précisions <span class="field__optional">(facultatif)</span></label>
+                                <textarea class="input input--textarea" id="comments" name="comments" rows="4" maxlength="500"
+                                          aria-describedby="comments-error" th:text="${answers.comments}" th:attr="aria-invalid=${errors['comments'] != null ? 'true' : null}"></textarea>
+                                <p class="field__error" id="comments-error" th:hidden="${errors['comments'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['comments']}"></span></p>
+                            </div>
+                        </div>
+                    </details>
+
+                    <div class="form__actions">
+                        <a class="btn btn--outline" th:href="@{/mandates/{id}(id=${mandate.id})}" data-back-link>Annuler</a>
+                        <button type="submit" class="btn btn--primary" data-edit-submit>Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

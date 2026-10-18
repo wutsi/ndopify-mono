@@ -6,7 +6,10 @@ import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
+import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.mandate.dto.MandateSummary
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
+import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
@@ -17,6 +20,7 @@ import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.ASSIGNMENT
 import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.MANDATE
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdviceTest
+import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
 import com.wutsi.ndopify.party.dto.KycStatus
@@ -52,6 +56,7 @@ class HomeTemplateTest {
     private val kycClient = mock<NdKycClient>()
     private val assignmentClient = mock<NdAssignmentClient>()
     private val mandateClient = mock<NdMandateClient>()
+    private val contractClient = mock<NdContractClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
@@ -65,6 +70,12 @@ class HomeTemplateTest {
         doReturn(AssignmentViewsTest.NOW).whenever(clock).millis()
         doReturn(listOf(ASSIGNMENT)).whenever(assignmentClient).pending(AGENT.id)
         doReturn(MANDATE).whenever(mandateClient).get(101)
+        doReturn(listOf(MandateSummary(id = 201), MandateSummary(id = 202)))
+            .whenever(mandateClient).active(AGENT.id)
+        doReturn(MandateCardsTest.MANDATE).whenever(mandateClient).get(201)
+        doReturn(MandateCardsTest.MANDATE.copy(id = 202, status = MandateStatus.PENDING_APPROVAL, contractId = "c-202"))
+            .whenever(mandateClient).get(202)
+        doReturn(MandateCardsTest.CONTRACT_2027).whenever(contractClient).get("c-202")
 
         val engine = SpringTemplateEngine().apply {
             setTemplateResolver(
@@ -86,6 +97,7 @@ class HomeTemplateTest {
                     kycClient,
                     assignmentClient,
                     mandateClient,
+                    contractClient,
                     locationClient,
                     tenantContext,
                     clock
@@ -185,5 +197,70 @@ class HomeTemplateTest {
         val page = render(get("/").flashAttr("assignment", outcome))
 
         assertEquals(title, page.selectFirst("[data-assignment-outcome] .alert__title")?.text())
+    }
+
+    // Mes mandats
+
+    @Test
+    fun mandates() {
+        val page = render(get("/"))
+
+        assertEquals("Mes mandats", page.selectFirst("#mandates-title")?.text())
+        val cards = page.select("[data-mandate-card]")
+        assertEquals(listOf("201", "202"), cards.map { it.attr("data-mandate-id") })
+        val card = cards[0]
+        val link = card.selectFirst("h3 a.mandate-card__link")!!
+        assertEquals("Locataire · Maison", link.text())
+        assertEquals("/mandates/201", link.attr("href"))
+        assertEquals("mandate-201-title", card.selectFirst("h3")?.id())
+        assertEquals("mandate-201-title", card.selectFirst("article")?.attr("aria-labelledby"))
+        assertEquals("status-tag status-tag--info", card.selectFirst(".status-tag")?.className())
+        assertEquals("Assigné", card.selectFirst(".status-tag")?.text())
+        assertEquals(listOf("Secteurs", "Budget", "Emménagement"), card.select(".assignment__facts dt").map { it.text() })
+        assertEquals("Bonapriso, Akwa", card.selectFirst(".assignment__facts dd")?.text())
+        assertEquals(
+            "Contactez le client, puis envoyez-lui le mandat à approuver.",
+            card.selectFirst(".mandate-card__next")?.text(),
+        )
+        assertEquals("status-tag status-tag--warning", cards[1].selectFirst(".status-tag")?.className())
+        assertEquals(
+            "Le client a jusqu'au 19 janvier 2027 pour signer le mandat.",
+            cards[1].selectFirst(".mandate-card__next")?.text(),
+        )
+        assertTrue(page.selectFirst("[data-mandates-empty]")!!.hasAttr("hidden"))
+        assertNull(page.selectFirst("[data-mandates-unavailable]"))
+    }
+
+    @Test
+    fun `no mandate`() {
+        doReturn(emptyList<MandateSummary>()).whenever(mandateClient).active(AGENT.id)
+
+        val page = render(get("/"))
+
+        assertNull(page.selectFirst("[data-mandate-card]"))
+        val empty = page.selectFirst("[data-mandates-empty]")!!
+        assertFalse(empty.hasAttr("hidden"))
+        assertEquals(
+            "Vous n'avez aucun mandat en cours. Acceptez un mandat proposé pour le retrouver ici.",
+            empty.text(),
+        )
+    }
+
+    @Test
+    fun `mandates unavailable`() {
+        doThrow(ResourceAccessException("timeout")).whenever(mandateClient).active(any())
+
+        val page = render(get("/"))
+
+        assertNotNull(page.selectFirst("[data-mandates-unavailable]"))
+        assertTrue(page.selectFirst("[data-mandates-empty]")!!.hasAttr("hidden"))
+    }
+
+    @Test
+    fun `not verified - no mandates section`() {
+        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING))).whenever(currentAgent).get()
+        doThrow(ResourceAccessException("no case")).whenever(kycClient).current(any())
+
+        assertNull(render(get("/")).selectFirst("#mandates-title"))
     }
 }

@@ -7,6 +7,7 @@ import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
+import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
@@ -78,7 +79,16 @@ class ProfileTemplateTest {
         }
         mvc = MockMvcBuilders
             .standaloneSetup(
-                HomeController(currentAgent, kycClient, assignmentClient, mandateClient, locationClient, tenantContext, clock),
+                HomeController(
+                    currentAgent,
+                    kycClient,
+                    assignmentClient,
+                    mandateClient,
+                    mock<NdContractClient>(),
+                    locationClient,
+                    tenantContext,
+                    clock,
+                ),
                 ProfileController(currentAgent, mock<NdAgentClient>(), mock<NdPartyClient>(), locationClient, tenantContext),
             )
             .setControllerAdvice(SignedInAdvice())
