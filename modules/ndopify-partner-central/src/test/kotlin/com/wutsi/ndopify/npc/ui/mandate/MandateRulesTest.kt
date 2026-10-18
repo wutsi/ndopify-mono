@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.contract.dto.Contract
+import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
@@ -107,7 +108,7 @@ class MandateRulesTest {
 
     @Test
     fun `next step - pending approval`() {
-        val contract = Contract(signatureDeadline = date("2026-10-22T10:00:00Z"))
+        val contract = ContractSummary(signatureDeadline = date("2026-10-22T10:00:00Z"))
 
         assertEquals(
             "Le client a jusqu'au 22 octobre 2026 pour signer le mandat.",
@@ -117,7 +118,7 @@ class MandateRulesTest {
 
     @Test
     fun `next step - deadline passed`() {
-        val contract = Contract(signatureDeadline = date("2026-10-17T10:00:00Z"))
+        val contract = ContractSummary(signatureDeadline = date("2026-10-17T10:00:00Z"))
 
         assertEquals(
             "Délai de signature dépassé : renvoyez le mandat.",
@@ -135,7 +136,7 @@ class MandateRulesTest {
 
     @Test
     fun `next step - approved`() {
-        val contract = Contract(validUntil = date("2027-03-28T10:00:00Z"))
+        val contract = ContractSummary(validUntil = date("2027-03-28T10:00:00Z"))
 
         assertEquals(
             "Mandat signé, valable jusqu'au 28 mars 2027.",

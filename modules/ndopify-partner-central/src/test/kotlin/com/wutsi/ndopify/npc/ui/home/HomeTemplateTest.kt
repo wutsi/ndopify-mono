@@ -75,7 +75,7 @@ class HomeTemplateTest {
         doReturn(MandateCardsTest.MANDATE).whenever(mandateClient).get(201)
         doReturn(MandateCardsTest.MANDATE.copy(id = 202, status = MandateStatus.PENDING_APPROVAL, contractId = "c-202"))
             .whenever(mandateClient).get(202)
-        doReturn(MandateCardsTest.CONTRACT_2027).whenever(contractClient).get("c-202")
+        doReturn(listOf(MandateCardsTest.CONTRACT_2027.copy(id = "c-202"))).whenever(contractClient).search(any())
 
         val engine = SpringTemplateEngine().apply {
             setTemplateResolver(

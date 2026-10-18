@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.contract.dto.Contract
+import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
@@ -88,7 +89,7 @@ object MandateRules {
         requestedAt != null && mandate.modifiedAt.after(requestedAt)
 
     /** The card's one-line next step; null once the mandate is no longer in progress. */
-    fun nextStep(mandate: Mandate, contract: Contract?, now: Long, zone: ZoneId): String? {
+    fun nextStep(mandate: Mandate, contract: ContractSummary?, now: Long, zone: ZoneId): String? {
         val words = words(mandate.mandateType)
         return when (mandate.status) {
             MandateStatus.ASSIGNED -> "Contactez ${words.the}, puis envoyez-lui le mandat à approuver."

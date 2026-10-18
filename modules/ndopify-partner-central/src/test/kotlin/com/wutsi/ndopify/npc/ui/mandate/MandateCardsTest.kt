@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.contract.dto.Contract
+import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
@@ -48,8 +49,15 @@ class MandateCardsTest {
             validUntil = Date.from(Instant.parse("2027-03-28T10:00:00Z")),
         )
 
-        /** [CONTRACT], still to sign at the home tests' clock (AssignmentViewsTest.NOW, 15 January 2027). */
-        val CONTRACT_2027 = CONTRACT.copy(signatureDeadline = Date.from(Instant.parse("2027-01-19T10:00:00Z")))
+        /** [CONTRACT], as the contract search returns it (the cards of the Espace agent). */
+        val CONTRACT_SUMMARY = ContractSummary(
+            id = CONTRACT.id,
+            signatureDeadline = CONTRACT.signatureDeadline,
+            validUntil = CONTRACT.validUntil,
+        )
+
+        /** [CONTRACT_SUMMARY], still to sign at the home tests' clock (AssignmentViewsTest.NOW, 15 January 2027). */
+        val CONTRACT_2027 = CONTRACT_SUMMARY.copy(signatureDeadline = Date.from(Instant.parse("2027-01-19T10:00:00Z")))
     }
 
     @Test
@@ -72,7 +80,7 @@ class MandateCardsTest {
 
     @Test
     fun `pending approval`() {
-        val card = MandateCards.of(MANDATE.copy(status = MandateStatus.PENDING_APPROVAL), CONTRACT, NAMES, NOW, ZONE)
+        val card = MandateCards.of(MANDATE.copy(status = MandateStatus.PENDING_APPROVAL), CONTRACT_SUMMARY, NAMES, NOW, ZONE)
 
         assertEquals(MandateRules.Tag("En approbation", "warning"), card.tag)
         assertEquals("Le client a jusqu'au 22 octobre 2026 pour signer le mandat.", card.nextStep)
@@ -86,7 +94,7 @@ class MandateCardsTest {
             neighborhoodIds = listOf(BONAPRISO),
         )
 
-        val card = MandateCards.of(mandate, CONTRACT, NAMES, NOW, ZONE)
+        val card = MandateCards.of(mandate, CONTRACT_SUMMARY, NAMES, NOW, ZONE)
 
         assertEquals("Bailleur · Maison", card.title)
         assertEquals(MandateRules.Tag("Actif", "success"), card.tag)

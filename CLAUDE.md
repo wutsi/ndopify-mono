@@ -207,7 +207,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   keep it that way when changing it. The wiring is covered by the endpoint tests (`CreateMandateEndpointTest`,
   `DispatchMandateEndpointTest`, `Decline` / `ExpireAssignmentEndpointTest`) and the listener / job unit tests.
 - **contract** — contracts to be signed by parties (`ContractEntity` + its `ContractPartyEntity`s, UUID ids;
-  `/v1/contracts`: create, get, `POST /{id}/content`, `POST /{id}/request-signature`, `POST /{id}/sign`). `ContractService.create` checks the type, the parties' roles,
+  `/v1/contracts`: search (`id`, `status`, `party-id` lists, newest first; `ContractSummary`, without parties), create,
+  get, `POST /{id}/content`, `POST /{id}/request-signature`, `POST /{id}/sign`). `ContractService.create` checks the type, the parties' roles,
   `durationMonths >= 1` (persisted; the request has no dates) and that each `partyId` is a party of the tenant (404
   `PARTY_NOT_FOUND`), and starts the contract as `DRAFT`, without dates nor document, numbered `<prefix>-<year>-<nnnnnn>` by `ContractNumberGenerator` (`BAIL` for a
   `LEASE_AGREEMENT`, else `MNDT`; year in the tenant's `timeZone`): one gapless sequence per tenant, prefix and year in
@@ -330,8 +331,9 @@ Package `com.wutsi.ndopify.npc`: `ui/` (MVC controllers + Thymeleaf templates in
   are shared with the find-property review in `ui/mandate/MandateLabels`.
 - A VERIFIED agent's Espace agent also lists its mandates in progress (*Mes mandats*): `HomeController` reads
   `GET /v1/mandates?agent-id=&status=ASSIGNED&status=PENDING_APPROVAL&status=APPROVED` (search order, capped at 20),
-  then one `GET /v1/mandates/{id}` per card (the summary lacks the moving date; one that fails is left out) plus its
-  contract (`GET /v1/contracts/{id}`) once PENDING_APPROVAL / APPROVED, for the next step's date; the location names
+  then one `GET /v1/mandates/{id}` per card (the summary lacks the moving date; one that fails is left out) plus, in
+  one `GET /v1/contracts?id=…` for all the cards, the contracts of those PENDING_APPROVAL / APPROVED, for the next
+  step's date (without it, the cards show no date); the location names
   of offers and mandates come in one lookup. Cards are `MandateCards` → `MandateCardView`; statuses, tags, party
   wording ("le client" / "le bailleur", after `mandateType`), dates (`d MMMM yyyy`, tenant's `timeZone`) and next
   steps are `ui/mandate/MandateRules`. Each card opens the mandate page, `MandateController` (`ui/mandate/`,

@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.npc.ui.mandate
 
-import com.wutsi.ndopify.contract.dto.Contract
+import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.refdata.dto.Location
 import java.time.ZoneId
@@ -10,7 +10,7 @@ object MandateCards {
     private const val FACTS = 3
 
     /** [contract] is the mandate's, null when it has none yet or it can't be loaded (no date in the next step). */
-    fun of(mandate: Mandate, contract: Contract?, locations: Map<Long, Location>, now: Long, zone: ZoneId): MandateCardView {
+    fun of(mandate: Mandate, contract: ContractSummary?, locations: Map<Long, Location>, now: Long, zone: ZoneId): MandateCardView {
         val facts = MandateLabels.criteria(mandate, locations).take(FACTS)
         return MandateCardView(
             id = mandate.id,

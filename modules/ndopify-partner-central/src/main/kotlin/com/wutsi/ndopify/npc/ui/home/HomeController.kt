@@ -1,7 +1,8 @@
 package com.wutsi.ndopify.npc.ui.home
 
 import com.wutsi.ndopify.agent.dto.Agent
-import com.wutsi.ndopify.contract.dto.Contract
+import com.wutsi.ndopify.contract.dto.ContractSummary
+import com.wutsi.ndopify.contract.dto.SearchContractRequest
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
@@ -127,9 +128,10 @@ class HomeController(
     /**
      * The agent's mandates in progress, in the search's order, each with its contract once sent to the customer (for
      * the signature deadline or the end of validity); null when they can't be had. The summary lacks the moving date,
-     * so each mandate is loaded: one that can't be is left out, and one whose contract can't be is shown without it.
+     * so each mandate is loaded: one that can't be is left out. Their contracts come in one search: without it, the
+     * cards are shown without them.
      */
-    private fun mandates(agent: Agent): List<Pair<Mandate, Contract?>>? {
+    private fun mandates(agent: Agent): List<Pair<Mandate, ContractSummary?>>? {
         val summaries =
             try {
                 mandateClient.active(agent.id)
@@ -138,24 +140,27 @@ class HomeController(
                 return null
             }
 
-        return summaries.mapNotNull { summary ->
+        val mandates = summaries.mapNotNull { summary ->
             try {
                 mandateClient.get(summary.id)
             } catch (ex: RestClientException) {
                 LOGGER.warn("No mandate ${summary.id} for agent ${agent.id}: ${ex.message}")
                 null
             }
-        }.map { mandate -> mandate to contract(mandate) }
+        }
+        val contracts = contracts(mandates)
+        return mandates.map { mandate -> mandate to mandate.contractId?.let { contracts[it] } }
     }
 
-    private fun contract(mandate: Mandate): Contract? {
-        val id = mandate.contractId
-        if (id == null || mandate.status !in SENT) return null
+    /** The contracts of the mandates sent to the customer, by id. */
+    private fun contracts(mandates: List<Mandate>): Map<String, ContractSummary> {
+        val ids = mandates.filter { it.status in SENT }.mapNotNull { it.contractId }.distinct()
+        if (ids.isEmpty()) return emptyMap()
         return try {
-            contractClient.get(id)
+            contractClient.search(SearchContractRequest(ids = ids, limit = ids.size)).associateBy { it.id }
         } catch (ex: RestClientException) {
-            LOGGER.warn("No contract $id for mandate ${mandate.id}: ${ex.message}")
-            null
+            LOGGER.warn("No contracts for the mandates $ids: ${ex.message}")
+            emptyMap()
         }
     }
 

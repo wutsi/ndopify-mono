@@ -8,6 +8,7 @@ import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.contract.dto.SearchContractRequest
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateSummary
@@ -306,11 +307,14 @@ class HomeControllerTest {
         doReturn(assigned).whenever(mandateClient).get(201)
         doReturn(pending).whenever(mandateClient).get(202)
         doReturn(approved).whenever(mandateClient).get(203)
-        doReturn(MandateCardsTest.CONTRACT_2027).whenever(contractClient).get("c-202")
-        doReturn(MandateCardsTest.CONTRACT).whenever(contractClient).get("c-203")
+        doReturn(listOf(MandateCardsTest.CONTRACT_SUMMARY.copy(id = "c-203"), MandateCardsTest.CONTRACT_2027.copy(id = "c-202")))
+            .whenever(contractClient).search(any())
 
         val result = mvc.perform(get("/")).andReturn()
 
+        // One search for every contract, in the mandates' order
+        verify(contractClient).search(SearchContractRequest(ids = listOf("c-203", "c-202"), limit = 2))
+        verify(contractClient, never()).get(any())
         val mandates = mandates(result)
         assertEquals(listOf(203L, 201L, 202L), mandates.map { it.id })
         assertEquals("Secteurs" to "Bonapriso, Akwa", mandates[1].facts[0])
@@ -326,7 +330,7 @@ class HomeControllerTest {
 
         mvc.perform(get("/")).andReturn()
 
-        verify(contractClient, never()).get(any())
+        verify(contractClient, never()).search(any())
     }
 
     @Test
@@ -334,22 +338,37 @@ class HomeControllerTest {
         active(201, 202)
         doThrow(HttpClientErrorException(HttpStatus.NOT_FOUND)).whenever(mandateClient).get(201)
         doReturn(pending).whenever(mandateClient).get(202)
-        doReturn(MandateCardsTest.CONTRACT_2027).whenever(contractClient).get("c-202")
+        doReturn(listOf(MandateCardsTest.CONTRACT_2027.copy(id = "c-202"))).whenever(contractClient).search(any())
 
         val result = mvc.perform(get("/")).andReturn()
 
         assertEquals(listOf(202L), mandates(result).map { it.id })
+        verify(contractClient).search(SearchContractRequest(ids = listOf("c-202"), limit = 1))
     }
 
     @Test
     fun `contract unavailable - card kept without the date`() {
         active(203)
         doReturn(approved).whenever(mandateClient).get(203)
-        doThrow(ResourceAccessException("timeout")).whenever(contractClient).get(any())
+        doThrow(ResourceAccessException("timeout")).whenever(contractClient).search(any())
 
         val result = mvc.perform(get("/")).andReturn()
 
         assertEquals("Mandat signé.", mandates(result).single().nextStep)
+    }
+
+    @Test
+    fun `contract not returned - card kept without the date`() {
+        active(202, 203)
+        doReturn(pending).whenever(mandateClient).get(202)
+        doReturn(approved).whenever(mandateClient).get(203)
+        doReturn(listOf(MandateCardsTest.CONTRACT_SUMMARY.copy(id = "c-203"))).whenever(contractClient).search(any())
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        val mandates = mandates(result)
+        assertEquals("Le client doit signer le mandat.", mandates[0].nextStep)
+        assertEquals("Mandat signé, valable jusqu'au 28 mars 2027.", mandates[1].nextStep)
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.wutsi.ndopify.contract.dto.ContractPartyRole
 import com.wutsi.ndopify.contract.dto.ContractStatus
 import com.wutsi.ndopify.contract.dto.ContractType
 import com.wutsi.ndopify.contract.dto.CreateContractRequest
+import com.wutsi.ndopify.contract.dto.SearchContractRequest
 import com.wutsi.ndopify.contract.dto.SetContractRequest
 import com.wutsi.ndopify.contract.dto.SignContractRequest
 import com.wutsi.ndopify.contract.server.dao.ContractPartyRepository
@@ -24,11 +25,15 @@ import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.server.service.TenantService
+import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
+import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.PageRequest
+import org.springframework.data.domain.Sort
+import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import java.time.Clock
@@ -52,6 +57,33 @@ class ContractService(
     companion object {
         private val LOGGER = LoggerFactory.getLogger(ContractService::class.java)
         const val BATCH_SIZE = 100
+    }
+
+    // Newest first. By party: the contracts the party is one of the parties of
+    fun search(request: SearchContractRequest): List<ContractEntity> {
+        val spec = Specification<ContractEntity> { root, query, cb ->
+            val predicates = mutableListOf<Predicate>()
+
+            if (request.ids.isNotEmpty()) {
+                predicates.add(root.get<String>("id").`in`(request.ids))
+            }
+            if (request.statuses.isNotEmpty()) {
+                predicates.add(root.get<Any>("status").`in`(request.statuses))
+            }
+            if (request.partyIds.isNotEmpty()) {
+                // A subquery rather than a join: a party appearing twice in a contract mustn't return it twice
+                val sub = query!!.subquery(String::class.java)
+                val party = sub.from(ContractPartyEntity::class.java)
+                sub.select(party.get<ContractEntity>("contract").get("id"))
+                    .where(party.get<Long>("partyId").`in`(request.partyIds))
+                predicates.add(root.get<String>("id").`in`(sub))
+            }
+
+            cb.and(*predicates.toTypedArray())
+        }
+
+        val sort = Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))
+        return dao.findAll(spec, OffsetLimitPageRequest(request.offset, request.limit, sort)).content
     }
 
     fun findByIdOrNull(id: String): ContractEntity? {

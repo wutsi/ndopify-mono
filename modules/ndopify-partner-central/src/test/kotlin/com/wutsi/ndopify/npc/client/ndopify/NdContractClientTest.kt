@@ -2,7 +2,10 @@ package com.wutsi.ndopify.npc.client.ndopify
 
 import com.wutsi.ndopify.contract.dto.Contract
 import com.wutsi.ndopify.contract.dto.ContractStatus
+import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.contract.dto.GetContractResponse
+import com.wutsi.ndopify.contract.dto.SearchContractRequest
+import com.wutsi.ndopify.contract.dto.SearchContractResponse
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpMethod
@@ -14,6 +17,7 @@ import org.springframework.test.web.client.match.MockRestRequestMatchers.request
 import org.springframework.test.web.client.response.MockRestResponseCreators.withStatus
 import org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess
 import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.client.HttpServerErrorException
 import org.springframework.web.client.RestClient
 import tools.jackson.databind.json.JsonMapper
 import java.util.Date
@@ -60,5 +64,49 @@ class NdContractClientTest {
             .andRespond(withStatus(HttpStatus.NOT_FOUND))
 
         assertFailsWith<HttpClientErrorException> { client.get("abc") }
+    }
+
+    @Test
+    fun search() {
+        server.expect(
+            requestTo(
+                "http://localhost:8080/v1/contracts?id=c-1&id=c-2&status=SIGNED&status=PENDING_SIGNATURE&party-id=100&limit=2&offset=0",
+            ),
+        )
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(
+                withSuccess(
+                    JsonMapper.builder().build().writeValueAsString(
+                        SearchContractResponse(
+                            listOf(
+                                ContractSummary(id = "c-2", status = ContractStatus.SIGNED, validUntil = Date(4102444800000)),
+                                ContractSummary(id = "c-1", status = ContractStatus.PENDING_SIGNATURE),
+                            ),
+                        ),
+                    ),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val contracts = client.search(
+            SearchContractRequest(
+                ids = listOf("c-1", "c-2"),
+                statuses = listOf(ContractStatus.SIGNED, ContractStatus.PENDING_SIGNATURE),
+                partyIds = listOf(100),
+                limit = 2,
+            ),
+        )
+
+        server.verify()
+        assertEquals(listOf("c-2", "c-1"), contracts.map { it.id })
+        assertEquals(4102444800000L, contracts[0].validUntil?.time)
+    }
+
+    @Test
+    fun `search - error`() {
+        server.expect(requestTo("http://localhost:8080/v1/contracts?id=c-1&limit=20&offset=0"))
+            .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR))
+
+        assertFailsWith<HttpServerErrorException> { client.search(SearchContractRequest(ids = listOf("c-1"))) }
     }
 }
