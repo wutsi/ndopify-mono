@@ -114,6 +114,9 @@ class ContractService(
             }
             partyService.findById(party.partyId) // 404 PARTY_NOT_FOUND, also for a party of another tenant
         }
+        if (request.parties.none { party -> party.signatureRequired }) {
+            throw invalidParameter("parties.signatureRequired", "false") // Nobody could make it SIGNED
+        }
 
         // Last, once the request is valid: the sequence stays locked until the commit
         val tenantId = TenantContext.get()!!
@@ -142,6 +145,7 @@ class ContractService(
                     partyId = party.partyId,
                     legalName = party.legalName,
                     legalEmail = party.legalEmail.lowercase(),
+                    signatureRequired = party.signatureRequired,
                 )
             )
         }
@@ -186,7 +190,7 @@ class ContractService(
     }
 
     /**
-     * E-mails each party that hasn't signed yet the contract to sign. Returns how many e-mails were sent. One party's
+     * E-mails each party that must sign the contract and hasn't yet. Returns how many e-mails were sent. One party's
      * failure is logged, and doesn't stop the e-mails of the others. Called by `ContractEventListener` with
      * `TenantContext` set: the transaction gives the mailet a session to load the parties.
      */
@@ -198,7 +202,7 @@ class ContractService(
         }
 
         return partyDao.findByContract(contract)
-            .filter { party -> !party.signed }
+            .filter { party -> party.signatureRequired && !party.signed }
             .count { party ->
                 try {
                     signatureMailet.send(contract, party)
@@ -212,7 +216,7 @@ class ContractService(
 
     /**
      * Records the signature of one of the contract's parties ([SignContractRequest.partyId] is a contract party id).
-     * The contract is SIGNED once all its parties have signed, and publishes a [ContractSignedEvent]: it's valid from
+     * Only a party whose signature is required can sign. The contract is SIGNED once all those parties have signed, and publishes a [ContractSignedEvent]: it's valid from
      * this last signature, for its `durationMonths` (added in the tenant's time zone, so a month ends on the same day).
      */
     @Transactional
@@ -230,6 +234,9 @@ class ContractService(
         val parties = partyDao.findByContract(contract)
         val party = parties.find { party -> party.id == request.partyId }
             ?: throw NotFoundException(error = Error(code = ErrorCode.CONTRACT_PARTY_NOT_FOUND))
+        if (!party.signatureRequired) {
+            throw ConflictException(error = Error(code = ErrorCode.CONTRACT_PARTY_SIGNATURE_NOT_REQUIRED))
+        }
         if (party.signed) {
             throw ConflictException(error = Error(code = ErrorCode.CONTRACT_PARTY_ALREADY_SIGNED))
         }
@@ -243,7 +250,9 @@ class ContractService(
             )
         )
 
-        val allSigned = parties.all { other -> other.id == party.id || other.signed }
+        val allSigned = parties
+            .filter { other -> other.signatureRequired }
+            .all { other -> other.id == party.id || other.signed }
         return if (allSigned) {
             val zone = ZoneId.of(tenantService.findById(TenantContext.get()!!).timeZone)
             val validUntil = now.toInstant().atZone(zone).plusMonths(contract.durationMonths.toLong()).toInstant()

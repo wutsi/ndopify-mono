@@ -114,7 +114,7 @@ class RequestMandateApprovalEndpointTest : AuthorizationAwareEndpointIntegration
         assertEquals(MandateStatus.PENDING_APPROVAL, mandate.status)
         assertEquals("c-1", mandate.contractId)
 
-        // The customer is the only party: the mandator
+        // The customer signs it, as the mandator. The agent is a party, but doesn't sign it
         val request = argumentCaptor<CreateContractRequest>()
         verify(contractService).create(request.capture())
         assertEquals(ContractType.SEARCH, request.firstValue.type)
@@ -125,7 +125,15 @@ class RequestMandateApprovalEndpointTest : AuthorizationAwareEndpointIntegration
                     legalName = "Ray Sponsible",
                     legalEmail = "ray.sponsible@gmail.com",
                     role = ContractPartyRole.MANDATOR,
-                )
+                    signatureRequired = true,
+                ),
+                CreateContractParty(
+                    partyId = 200L,
+                    legalName = "Kim Possible",
+                    legalEmail = "kim.possible@gmail.com",
+                    role = ContractPartyRole.AGENT,
+                    signatureRequired = false,
+                ),
             ),
             request.firstValue.parties,
         )

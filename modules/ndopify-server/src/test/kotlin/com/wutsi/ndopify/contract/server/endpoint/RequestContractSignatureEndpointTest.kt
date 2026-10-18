@@ -83,6 +83,25 @@ class RequestContractSignatureEndpointTest : AuthorizationAwareEndpointIntegrati
     }
 
     @Test
+    fun `parties that don't sign are not asked to`() {
+        val response = rest.postForEntity(
+            "/v1/contracts/c-3/request-signature",
+            null,
+            Any::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(ContractStatus.PENDING_SIGNATURE, dao.findById("c-3").get().status)
+
+        assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received")
+        assertFalse(smtp.waitForIncomingEmail(1000, 2), "only one email expected")
+        assertEquals(
+            "Ray Sponsible <ray.sponsible@gmail.com>",
+            smtp.receivedMessages.single().allRecipients.single().toString(),
+        )
+    }
+
+    @Test
     fun `contract expired`() {
         assertConflict("c-4", ErrorCode.CONTRACT_EXPIRED, ContractStatus.EXPIRED)
     }

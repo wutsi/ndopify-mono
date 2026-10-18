@@ -233,11 +233,12 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `CONTRACT_CANCELLED` / `CONTRACT_ALREADY_SIGNED` otherwise). `request-signature` moves a DRAFT (or
   PENDING_SIGNATURE) contract, locked like a signature, to `PENDING_SIGNATURE` with `signatureDeadline` = now + `ndopify.contract.signature.ttl-days`
   (7), reset by each request (409 `CONTRACT_EXPIRED` / `CONTRACT_CANCELLED` / `CONTRACT_ALREADY_SIGNED`), and publishes `ContractSignatureRequestedEvent`:
-  `ContractSignatureMailet` e-mails each unsigned party (`mail/contract/signature_request.mjml`) its deadline and a single button, never
+  `ContractSignatureMailet` e-mails each unsigned party whose `signatureRequired` is set (`mail/contract/signature_request.mjml`) its deadline and a single button, never
   the document's URL: the page it opens shows the contract and signs it, `{partnerCentralUrl}/contracts/{id}/sign?party-id={contractPartyId}` (no button without a
   `partnerCentralUrl`; that ndopify-partner-central page doesn't exist yet). Sign takes a *contract party* id (`SignContractRequest.partyId`), locks the
   contract (`findByIdForUpdate`), then 409 `CONTRACT_NOT_PENDING` / `CONTRACT_EXPIRED` (past `signatureDeadline`) /
-  `CONTRACT_PARTY_ALREADY_SIGNED`; the last signature makes it `SIGNED`, valid from then (`validFrom`) for its
+  `CONTRACT_PARTY_SIGNATURE_NOT_REQUIRED` / `CONTRACT_PARTY_ALREADY_SIGNED`; the last signature of the parties whose
+  `signatureRequired` is set (default `true`; at least one per contract, else 400) makes it `SIGNED`, valid from then (`validFrom`) for its
   `durationMonths` (`validUntil`, months added in the tenant's `timeZone`).
   **Access** (`ContractAccessService`, checked by `ContractEndpoints`, without lock since a contract's parties never
   change): every endpoint needs a JWT (401 `AUTH_UNAUTHORIZED`). Get and search are for an admin or one of the
@@ -246,8 +247,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   request-signature are admin-only (`MandateService` calls the service directly, unchecked). Sign is only for the
   party itself (the JWT's party must be the contract party's `partyId`): **no admin bypass, nobody signs on another's
   behalf** — never add one. Customers have no membership yet (only `AgentService.create` makes one), so they can't
-  sign until a customer sign-in exists; agents aren't parties of their mandate's contract yet (only the customer, as
-  `MANDATOR`), so Partner Central's contract reads get 403s / empty searches and its pages leave the contract dates out.
+  sign until a customer sign-in exists. A mandate's contract (`MandateService.createContract`) has the customer as
+  `MANDATOR` (signs it) and its agent as `AGENT` with `signatureRequired = false`: a party, so it can read the
+  contract, but it's neither asked to sign nor waited for.
   `ContractJobs.expire` (daily, `ndopify.contract.expire.cron`) moves to `EXPIRED` the PENDING_SIGNATURE contracts past
   their `signatureDeadline` and the SIGNED ones past their `validUntil` (each locked, in its own transaction), publishing
   `ContractExpiredEvent` (no listener yet). Tenant-scoped.

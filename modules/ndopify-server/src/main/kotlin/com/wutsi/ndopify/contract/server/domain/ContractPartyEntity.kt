@@ -29,6 +29,7 @@ data class ContractPartyEntity(
     val partyId: Long = -1,
     val legalName: String = "",
     val legalEmail: String = "",
+    val signatureRequired: Boolean = true,
     val signed: Boolean = false,
     val ipAddress: String? = null,
     val userAgent: String? = null,

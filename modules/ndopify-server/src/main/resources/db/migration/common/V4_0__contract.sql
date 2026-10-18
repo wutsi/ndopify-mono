@@ -33,6 +33,7 @@ CREATE TABLE T_CONTRACT_PARTY(
   role                    VARCHAR(30) DEFAULT NULL,
   legal_name              VARCHAR(255) NOT NULL,
   legal_email             VARCHAR(255) NOT NULL,
+  signature_required      BOOLEAN NOT NULL DEFAULT true,
 
   signed                  BOOLEAN NOT NULL DEFAULT false,
   ip_address              VARCHAR(45) DEFAULT NULL,

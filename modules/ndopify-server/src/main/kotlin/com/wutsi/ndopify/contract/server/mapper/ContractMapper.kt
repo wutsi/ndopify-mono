@@ -48,6 +48,7 @@ class ContractMapper {
             partyId = entity.partyId,
             legalName = entity.legalName,
             legalEmail = entity.legalEmail,
+            signatureRequired = entity.signatureRequired,
             signed = entity.signed,
             ipAddress = entity.ipAddress,
             userAgent = entity.userAgent,

@@ -51,6 +51,7 @@ class CreateContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
                 legalName = "John Smith",
                 legalEmail = "john.smith@gmail.com",
                 role = ContractPartyRole.GUARANTOR,
+                signatureRequired = false,
             ),
         ),
     )
@@ -81,6 +82,7 @@ class CreateContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(ContractPartyRole.MANDATOR, parties[0].role)
         assertEquals("Ray Sponsible", parties[0].legalName)
         assertEquals("ray.sponsible@gmail.com", parties[0].legalEmail)
+        assertTrue(parties[0].signatureRequired)
         assertFalse(parties[0].signed)
         assertNull(parties[0].ipAddress)
         assertNull(parties[0].userAgent)
@@ -91,6 +93,7 @@ class CreateContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(ContractPartyRole.GUARANTOR, parties[1].role)
         assertEquals("John Smith", parties[1].legalName)
         assertEquals("john.smith@gmail.com", parties[1].legalEmail)
+        assertFalse(parties[1].signatureRequired)
         assertFalse(parties[1].signed)
     }
 
@@ -133,6 +136,12 @@ class CreateContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     fun `unknown party role`() {
         val parties = listOf(request.parties[0].copy(role = ContractPartyRole.UNKNOWN))
         assertBadRequest(request.copy(parties = parties), ErrorCode.HTTP_INVALID_PARAMETER, "parties.role")
+    }
+
+    @Test
+    fun `no party signs`() {
+        val parties = request.parties.map { party -> party.copy(signatureRequired = false) }
+        assertBadRequest(request.copy(parties = parties), ErrorCode.HTTP_INVALID_PARAMETER, "parties.signatureRequired")
     }
 
     @Test

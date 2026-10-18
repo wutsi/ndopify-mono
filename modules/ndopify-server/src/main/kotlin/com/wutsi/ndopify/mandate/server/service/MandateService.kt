@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.mandate.server.service
 
+import com.wutsi.ndopify.agent.server.service.AgentService
 import com.wutsi.ndopify.contract.dto.ContractPartyRole
 import com.wutsi.ndopify.contract.dto.ContractStatus
 import com.wutsi.ndopify.contract.dto.ContractType
@@ -52,6 +53,7 @@ class MandateService(
     private val assignmentDao: AssignmentRepository,
     private val clock: Clock,
     private val customerService: CustomerService,
+    private val agentService: AgentService,
     private val eventPublisher: ApplicationEventPublisher,
     private val contractService: ContractService,
     private val dispatcher: MandateDispatcher,
@@ -344,8 +346,10 @@ class MandateService(
     private fun age(from: Date, to: Date): Int =
         Duration.ofMillis(to.time - from.time).toDays().toInt().coerceAtLeast(0)
 
+    // Signed by the customer only: the agent is a party, so that it can read the contract, but doesn't sign it
     private fun createContract(mandate: MandateEntity): ContractEntity {
         val customer = customerService.findById(mandate.customerId)
+        val agent = agentService.findById(mandate.agentId!!) // An ASSIGNED / PENDING_APPROVAL mandate has an agent
         return contractService.create(
             CreateContractRequest(
                 type = when (mandate.mandateType) {
@@ -360,7 +364,15 @@ class MandateService(
                         legalName = customer.party.fullName(),
                         legalEmail = customer.party.email,
                         role = ContractPartyRole.MANDATOR,
-                    )
+                        signatureRequired = true,
+                    ),
+                    CreateContractParty(
+                        partyId = agent.party.id ?: -1,
+                        legalName = agent.party.fullName(),
+                        legalEmail = agent.party.email,
+                        role = ContractPartyRole.AGENT,
+                        signatureRequired = false,
+                    ),
                 )
             )
         )

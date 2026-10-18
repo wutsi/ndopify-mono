@@ -101,6 +101,23 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `parties that don't sign are not waited for`() {
+        val response = rest.postForEntity("/v1/contracts/c-8/sign", request("cp-81"), Any::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(ContractStatus.SIGNED, dao.findById("c-8").get().status)
+        assertFalse(partyDao.findById("cp-82").get().signed)
+    }
+
+    @Test
+    fun `party whose signature is not required`() {
+        userId = 12L
+
+        assertConflict("c-8", "cp-82", ErrorCode.CONTRACT_PARTY_SIGNATURE_NOT_REQUIRED)
+        assertFalse(partyDao.findById("cp-82").get().signed)
+    }
+
+    @Test
     fun `party already signed`() {
         assertConflict("c-2", "cp-21", ErrorCode.CONTRACT_PARTY_ALREADY_SIGNED)
     }
