@@ -7,6 +7,7 @@ import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
 import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
@@ -47,6 +48,9 @@ import java.time.ZoneId
  * ndopify-server's 409, or gone: 404) is [CHANGED], not an error: the page it was on was just stale. The close /
  * cancel form opens without JS through `GET /mandates/{id}?end=close|cancel`, and comes back with its errors.
  *
+ * The edit page (`mandate/edit.html`) is only for a mandate the customer hasn't signed ([MandateRules.EDITABLE]),
+ * checked again when it's saved since ndopify-server's update doesn't check the status.
+ *
  * Out of scope for now (and not checked by ndopify-server either): that the mandate is the signed-in agent's.
  */
 @Controller
@@ -66,6 +70,7 @@ class MandateController(
         private val LOGGER = LoggerFactory.getLogger(MandateController::class.java)
 
         const val VIEW = "mandate"
+        const val VIEW_EDIT = "mandate/edit"
         const val SIGN_OUT = "redirect:/logout"
 
         // GET /mandates/{id}?end=…: the close / cancel form, open without JS.
@@ -82,6 +87,12 @@ class MandateController(
         const val FAILED = "error"
 
         private val CHANGED_STATUSES = setOf(404, 409)
+
+        // The edit page's locked view: not found (or a status the pages don't show), or signed by the customer.
+        const val LOCKED_UNAVAILABLE = "unavailable"
+        const val LOCKED_APPROVED = "approved"
+
+        private const val SAVE_FAILED = "Enregistrement impossible pour le moment. Réessayez dans quelques instants."
 
         // Not a reason the agent can choose: UNKNOWN is no answer, EXPIRED is the server's own.
         private val CANCELLATION_CODES = MandateRules.CANCELLATION_LABELS.keys
@@ -152,6 +163,94 @@ class MandateController(
             return render(mandate, END_CANCEL, form.copy(cancellationCode = code), errors, model)
         }
         return act(id, CANCELLED, redirect) { mandateClient.cancel(id, CancelMandateRequest(code, reason)) }
+    }
+
+    @GetMapping("/{id}/edit")
+    fun edit(@PathVariable id: String, model: Model): String {
+        val agent = currentAgent.get() ?: return SIGN_OUT
+        ProfileRules.header(agent, model)
+
+        val mandate = id.toLongOrNull()?.let { load(it) }
+        return when {
+            mandate == null -> lockedEdit(id, LOCKED_UNAVAILABLE, model)
+            mandate.status !in MandateRules.EDITABLE -> lockedEdit(id, LOCKED_APPROVED, model)
+            else -> edit(mandate, MandateEditForm.of(mandate), emptyMap(), null, model)
+        }
+    }
+
+    /** Unknown enum values (hand-edited form) fail the binding: they read as no answer, [binding] keeps it from a 400. */
+    @PostMapping("/{id}/edit")
+    fun save(
+        @PathVariable id: Long,
+        @ModelAttribute form: MandateEditForm,
+        binding: BindingResult,
+        model: Model,
+        redirect: RedirectAttributes,
+    ): String {
+        val agent = currentAgent.get() ?: return SIGN_OUT
+        // Signed since the form was shown (ex: in another tab): ndopify-server would update it all the same.
+        val mandate = current(id, redirect) { it.status in MandateRules.EDITABLE } ?: return back(id)
+
+        val answers = form.copy(neighborhoodIds = form.neighborhoodIds.distinct())
+        val owner = mandate.mandateType == MandateType.LISTING
+        ProfileRules.header(agent, model)
+        try {
+            val errors = MandateEditRules.errors(answers, owner).ifEmpty { neighborhoodErrors(mandate, answers) }
+            if (errors.isNotEmpty()) return edit(mandate, answers, errors, null, model)
+
+            mandateClient.update(id, MandateEditRules.request(answers, mandate))
+        } catch (ex: RestClientException) {
+            LOGGER.error("Mandate $id not saved: ${ex.message}", ex)
+            return edit(mandate, answers, emptyMap(), SAVE_FAILED, model)
+        }
+        redirect.addFlashAttribute(OUTCOME, SAVED)
+        return back(id)
+    }
+
+    /** The city isn't editable: only the neighbourhoods are checked against it. */
+    private fun neighborhoodErrors(mandate: Mandate, form: MandateEditForm): Map<String, String> =
+        sector.errors(mandate.cityId, form.neighborhoodIds).filterKeys { it == "neighborhoodIds" }
+
+    private fun lockedEdit(id: String, reason: String, model: Model): String {
+        model.addAttribute("mandateId", id)
+        model.addAttribute("locked", reason)
+        return VIEW_EDIT
+    }
+
+    private fun edit(
+        mandate: Mandate,
+        answers: MandateEditForm,
+        errors: Map<String, String>,
+        error: String?,
+        model: Model,
+    ): String {
+        // Names of the city and the chosen neighbourhoods (the select's initial options). Capped: a form shown again
+        // with its errors may carry whatever ids were posted.
+        val neighborhoodIds = answers.neighborhoodIds.take(FindPropertyRules.MAX_NEIGHBORHOODS)
+        val names = lookup("location names of mandate ${mandate.id}") {
+            sector.locations(listOf(mandate.cityId) + neighborhoodIds)
+        } ?: emptyMap()
+        val neighborhoods = neighborhoodIds.mapNotNull { names[it] }
+
+        // The title, number and wording only: no need for the contract, customer and offer.
+        model.addAttribute(
+            "mandate",
+            MandateViews.of(mandate, null, null, null, names, clock.millis(), ZoneId.of(tenantContext.getTenant().timeZone), ttlDays),
+        )
+        model.addAttribute("owner", mandate.mandateType == MandateType.LISTING)
+        model.addAttribute("mandateId", mandate.id.toString())
+        model.addAttribute("city", names[mandate.cityId])
+        model.addAttribute("cityId", mandate.cityId)
+        model.addAttribute("neighborhoods", neighborhoods)
+        model.addAttribute("answers", answers)
+        model.addAttribute("errors", errors)
+        model.addAttribute("error", error)
+        model.addAttribute("summaries", MandateEditRules.summaries(answers, neighborhoods.map { it.name }))
+        model.addAttribute(
+            "openGroups",
+            MandateEditRules.GROUPS.filterValues { fields -> fields.any { it in errors } }.keys,
+        )
+        return VIEW_EDIT
     }
 
     private fun render(

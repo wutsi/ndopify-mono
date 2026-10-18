@@ -1,16 +1,20 @@
 package com.wutsi.ndopify.npc.ui.mandate
 
 import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.listing.dto.MovingPeriod
+import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
 import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
@@ -27,6 +31,8 @@ import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.CUSTOMER
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.PENDING
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
+import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BASTOS
+import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BONAPRISO
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import org.junit.jupiter.api.BeforeEach
@@ -34,6 +40,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.MvcResult
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
@@ -448,5 +455,158 @@ class MandateControllerTest {
 
         assertEquals(true, model(result)["locked"])
         assertNull(model(result)["outcomeText"])
+    }
+
+    // Edit
+
+    private fun answers(result: MvcResult) = model(result)["answers"] as MandateEditForm
+
+    @Suppress("UNCHECKED_CAST")
+    private fun errors(result: MvcResult) = model(result)["errors"] as Map<String, String>
+
+    /** A valid edit, [changes] replacing its values. */
+    private fun edit(vararg changes: Pair<String, String>): MockHttpServletRequestBuilder {
+        val params = mapOf(
+            "neighborhoodIds" to BONAPRISO.toString(),
+            "propertyCategory" to "RESIDENTIAL",
+            "propertyType" to "APARTMENT",
+            "rooms" to "3",
+            "furnitureType" to "ANY",
+            "parkings" to "1",
+            "area" to "80",
+            "amenities" to "waterWell",
+            "priceAmount" to "150 000",
+            "movingPeriod" to "WITHIN_1_MONTH",
+            "comments" to "Près d'une école",
+        ) + changes
+        val request = post("/mandates/201/edit")
+        params.forEach { (name, value) -> request.param(name, value) }
+        return request
+    }
+
+    @Test
+    fun `edit form`() {
+        val result = mvc.perform(get("/mandates/201/edit")).andReturn()
+
+        assertEquals("mandate/edit", result.modelAndView?.viewName)
+        assertEquals("HOUSE", answers(result).propertyType)
+        assertEquals("250\u00a0000", answers(result).priceAmount)
+        assertEquals(emptyMap(), errors(result))
+        assertEquals("Locataire · Maison", mandate(result).title)
+        assertEquals("Douala", (model(result)["city"] as com.wutsi.ndopify.refdata.dto.Location).name)
+        @Suppress("UNCHECKED_CAST")
+        val neighborhoods = model(result)["neighborhoods"] as List<com.wutsi.ndopify.refdata.dto.Location>
+        assertEquals(listOf("Bonapriso", "Akwa"), neighborhoods.map { it.name })
+        assertEquals(false, model(result)["owner"])
+        assertNull(model(result)["locked"])
+    }
+
+    @Test
+    fun `edit form - approved - locked`() {
+        doReturn(APPROVED).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(get("/mandates/201/edit")).andReturn()
+
+        assertEquals("mandate/edit", result.modelAndView?.viewName)
+        assertEquals("approved", model(result)["locked"])
+        assertNull(model(result)["answers"])
+    }
+
+    @Test
+    fun `edit form - not found - locked`() {
+        doThrow(HttpClientErrorException(HttpStatus.NOT_FOUND)).whenever(mandateClient).get(201)
+
+        assertEquals("unavailable", model(mvc.perform(get("/mandates/201/edit")).andReturn())["locked"])
+    }
+
+    @Test
+    fun `edit form - malformed id - locked`() {
+        assertEquals("unavailable", model(mvc.perform(get("/mandates/abc/edit")).andReturn())["locked"])
+    }
+
+    @Test
+    fun save() {
+        val result = mvc.perform(edit()).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        assertEquals("saved", outcome(result))
+        val request = argumentCaptor<UpdateMandateRequest>()
+        verify(mandateClient).update(com.nhaarman.mockitokotlin2.eq(201L), request.capture())
+        assertEquals(listOf(BONAPRISO), request.firstValue.neighbourhoodIds)
+        assertEquals(150000L, request.firstValue.price.amount)
+        assertEquals(MovingPeriod.WITHIN_1_MONTH, request.firstValue.movingPeriod)
+        assertEquals(PropertyCategory.RESIDENTIAL, request.firstValue.propertyCategory)
+        assertEquals(true, request.firstValue.waterWell)
+        assertEquals(null, request.firstValue.furnitureType)
+    }
+
+    @Test
+    fun `save - approved since`() {
+        doReturn(APPROVED).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(edit()).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        assertEquals("changed", outcome(result))
+        verify(mandateClient, never()).update(any(), any())
+    }
+
+    @Test
+    fun `save - mandate gone`() {
+        doThrow(HttpClientErrorException(HttpStatus.NOT_FOUND)).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(edit()).andReturn()
+
+        assertEquals("changed", outcome(result))
+        verify(mandateClient, never()).update(any(), any())
+    }
+
+    @Test
+    fun `save - invalid`() {
+        val result = mvc.perform(edit("priceAmount" to "", "rooms" to "")).andReturn()
+
+        assertEquals("mandate/edit", result.modelAndView?.viewName)
+        assertEquals(setOf("priceAmount", "rooms"), errors(result).keys)
+        assertEquals("80", answers(result).area)
+        verify(mandateClient, never()).update(any(), any())
+    }
+
+    @Test
+    fun `save - unknown enum - invalid, not a 400`() {
+        val result = mvc.perform(edit("movingPeriod" to "SOON", "propertyCategory" to "XYZ")).andReturn()
+
+        assertEquals(200, result.response.status)
+        assertEquals(setOf("movingPeriod", "propertyCategory", "propertyType"), errors(result).keys)
+    }
+
+    @Test
+    fun `save - neighbourhood outside the city`() {
+        val result = mvc.perform(edit("neighborhoodIds" to BASTOS.toString())).andReturn()
+
+        assertEquals("mandate/edit", result.modelAndView?.viewName)
+        assertEquals("Choisissez des quartiers de la ville sélectionnée.", errors(result)["neighborhoodIds"])
+        verify(mandateClient, never()).update(any(), any())
+    }
+
+    @Test
+    fun `save - server error`() {
+        doThrow(HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR)).whenever(mandateClient).update(any(), any())
+
+        val result = mvc.perform(edit()).andReturn()
+
+        assertEquals("mandate/edit", result.modelAndView?.viewName)
+        assertEquals(
+            "Enregistrement impossible pour le moment. Réessayez dans quelques instants.",
+            model(result)["error"],
+        )
+        assertEquals("150 000", answers(result).priceAmount)
+    }
+
+    @Test
+    fun `edit - not an agent - sign out`() {
+        doReturn(null).whenever(currentAgent).get()
+
+        assertEquals("redirect:/logout", mvc.perform(get("/mandates/201/edit")).andReturn().modelAndView?.viewName)
+        assertEquals("redirect:/logout", mvc.perform(edit()).andReturn().modelAndView?.viewName)
     }
 }
