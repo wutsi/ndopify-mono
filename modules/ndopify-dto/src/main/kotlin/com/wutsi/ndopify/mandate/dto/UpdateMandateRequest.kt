@@ -46,4 +46,8 @@ data class UpdateMandateRequest(
     val movingPeriod: MovingPeriod = MovingPeriod.UNKNOWN,
 
     val comments: String? = null,
+
+    // The Mandate.version the update is based on: 409 MANDATE_VERSION_CONFLICT if the mandate changed since. Null: not
+    // checked
+    val version: Long? = null,
 )

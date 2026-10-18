@@ -5,6 +5,7 @@ object ErrorCode {
 
     val AGENT_NOT_FOUND = "$PREFIX:agent:not-found"
     val AGENT_ALREADY_EXISTS = "$PREFIX:agent:already-exists"
+    val AGENT_VERSION_CONFLICT = "$PREFIX:agent:version-conflict"
 
     val APPLICATION_NOT_FOUND = "$PREFIX:application:not-found"
 
@@ -30,6 +31,7 @@ object ErrorCode {
     val CONTRACT_EXPIRED = "$PREFIX:contract:expired"
     val CONTRACT_PARTY_NOT_FOUND = "$PREFIX:contract:party-not-found"
     val CONTRACT_PARTY_ALREADY_SIGNED = "$PREFIX:contract:party-already-signed"
+    val CONTRACT_VERSION_CONFLICT = "$PREFIX:contract:version-conflict"
 
     val CUSTOMER_NOT_FOUND = "$PREFIX:customer:not-found"
 
@@ -41,6 +43,7 @@ object ErrorCode {
     val HTTP_ACCESS_DENIED = "$PREFIX:http:access-denied"
     val HTTP_AUTHENTICATION_FAILED = "$PREFIX:http:authentication-failed"
     val HTTP_DOWNSTREAM_ERROR = "$PREFIX:http:downstream-error"
+    val HTTP_VERSION_CONFLICT = "$PREFIX:http:version-conflict"
 
     val IDENTIFICATION_NOT_FOUND = "$PREFIX:identification:not-found"
 
@@ -48,6 +51,7 @@ object ErrorCode {
     val KYC_CASE_NOT_PENDING = "$PREFIX:kyc-case:not-pending"
     val KYC_CASE_NOT_SUBMITTED = "$PREFIX:kyc-case:not-submitted"
     val KYC_CASE_MISSING_IDENTIFICATION_IMAGE = "$PREFIX:kyc-case:missing-identification-image"
+    val KYC_CASE_VERSION_CONFLICT = "$PREFIX:kyc-case:version-conflict"
     val KYC_IMAGE_INVALID_MIME_TYPE = "$PREFIX:kyc-image:invalid-mime-type"
     val KYC_IMAGE_NOT_FOUND = "$PREFIX:kyc-image:not-found"
     val KYC_IMAGE_NO_CONTENT = "$PREFIX:kyc-image:image-no-content"
@@ -60,6 +64,7 @@ object ErrorCode {
     val MANDATE_NOT_APPROVED = "$PREFIX:mandate:not-approved"
     val MANDATE_CANNOT_BE_APPROVED = "$PREFIX:mandate:cannot-be-approved"
     val MANDATE_ALREADY_CLOSED = "$PREFIX:mandate:already-closed"
+    val MANDATE_VERSION_CONFLICT = "$PREFIX:mandate:version-conflict"
 
     val PARTY_NOT_FOUND = "$PREFIX:party:not-found"
     val PARTY_EMAIL_ALREADY_EXISTS = "$PREFIX:party:email-already-exists"

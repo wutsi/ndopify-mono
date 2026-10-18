@@ -12,4 +12,7 @@ data class UpdateAgentRequest(
     val cityId: Long? = null,
     val neighborhoodIds: List<Long>? = null,
     val biography: String? = null,
+
+    // The Agent.version the update is based on: 409 AGENT_VERSION_CONFLICT if the agent changed since. Null: not checked
+    val version: Long? = null,
 )

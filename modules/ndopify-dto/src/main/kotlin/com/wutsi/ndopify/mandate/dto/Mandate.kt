@@ -67,4 +67,6 @@ data class Mandate(
     val finalPrice: Long? = null,
     val cancellationCode: MandateCancellationCode? = null,
     val cancellationReason: String? = null,
+
+    val version: Long = 0, // Sent back in UpdateMandateRequest.version
 )
