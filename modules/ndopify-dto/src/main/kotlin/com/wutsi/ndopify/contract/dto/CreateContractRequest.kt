@@ -17,4 +17,7 @@ data class CreateContractParty(
     @get:NotEmpty val legalName: String = "",
     @get:NotEmpty val legalEmail: String = "",
     val role: ContractPartyRole = ContractPartyRole.UNKNOWN,
+
+    // False for a party named in the contract that doesn't sign it: it's not asked to, and can't
+    val signatureRequired: Boolean = true,
 )
