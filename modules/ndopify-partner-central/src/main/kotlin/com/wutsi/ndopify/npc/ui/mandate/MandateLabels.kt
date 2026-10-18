@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.mandate
 
+import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
@@ -60,6 +61,13 @@ object MandateLabels {
         MovingPeriod.WITHIN_1_MONTH to "Dans moins d'1 mois",
         MovingPeriod.WITHIN_3_MONTHS to "Dans 1 à 3 mois",
         MovingPeriod.AFTER_3_MONTHS to "Dans plus de 3 mois",
+    )
+
+    /** When the customer wants to be called, as "à appeler …" ends it. */
+    val CONTACT_PERIOD_LABELS = mapOf(
+        ContactPeriodType.MORNING to "le matin",
+        ContactPeriodType.AFTERNOON to "l'après-midi",
+        ContactPeriodType.EVENING to "le soir",
     )
 
     /** Same order and copy as the prototype's AMENITIES; keys are [PendingMandate.AMENITIES]. */

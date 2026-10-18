@@ -1,6 +1,5 @@
 package com.wutsi.ndopify.npc.ui.findproperty
 
-import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
@@ -65,12 +64,6 @@ class FindPropertyController(
             PropertyCategory.RESIDENTIAL to "usage résidentiel",
             PropertyCategory.COMMERCIAL to "usage commercial",
         )
-
-        private val CONTACT_PERIOD_LABELS = mapOf(
-            ContactPeriodType.MORNING to "le matin",
-            ContactPeriodType.AFTERNOON to "l'après-midi",
-            ContactPeriodType.EVENING to "le soir",
-        )
     }
 
     /** The current tenant, for the header on every step: its logo, and "Quitter" back to its public portal. */
@@ -89,7 +82,7 @@ class FindPropertyController(
             model.addAttribute("step", STEP_CONFIRMATION)
             model.addAttribute("maskedEmail", LoginController.maskEmail(submitted.email))
             model.addAttribute("whatsappNumber", submitted.whatsappNumber)
-            model.addAttribute("contactPeriodLabel", CONTACT_PERIOD_LABELS[submitted.preferredContactPeriod])
+            model.addAttribute("contactPeriodLabel", MandateLabels.CONTACT_PERIOD_LABELS[submitted.preferredContactPeriod])
             return VIEW
         }
 
@@ -321,7 +314,7 @@ class FindPropertyController(
             model.addAttribute("propertyLabel", propertyLabel(answers))
             model.addAttribute("priceLabel", answers.priceAmount?.let { MandateLabels.formatAmount(it) + " FCFA par mois" })
             model.addAttribute("movingPeriodLabel", MandateLabels.MOVE_IN_LABELS[answers.movingPeriod])
-            model.addAttribute("contactPeriodLabel", CONTACT_PERIOD_LABELS[answers.preferredContactPeriod])
+            model.addAttribute("contactPeriodLabel", MandateLabels.CONTACT_PERIOD_LABELS[answers.preferredContactPeriod])
             model.addAttribute("amenityLabels", MandateLabels.AMENITY_LABELS.filterKeys { answers.has(it) }.values.toList())
         }
         return VIEW

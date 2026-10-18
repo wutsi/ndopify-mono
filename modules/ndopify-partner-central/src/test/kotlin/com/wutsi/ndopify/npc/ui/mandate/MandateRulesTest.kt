@@ -45,6 +45,7 @@ class MandateRulesTest {
         assertEquals("du bailleur", owner.of)
         assertEquals("son bien", owner.search)
         assertEquals("Son bien", owner.searchUpper)
+        assertEquals("au bailleur", owner.to)
 
         val client = MandateRules.words(MandateType.SEARCH)
         assertEquals("le client", client.the)
@@ -52,6 +53,7 @@ class MandateRulesTest {
         assertEquals("du client", client.of)
         assertEquals("sa recherche", client.search)
         assertEquals("Sa recherche", client.searchUpper)
+        assertEquals("au client", client.to)
     }
 
     @Test

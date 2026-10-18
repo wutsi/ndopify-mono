@@ -53,10 +53,12 @@ object MandateRules {
         val of: String,
         val search: String,
         val searchUpper: String,
+        /** "envoyé au client". */
+        val to: String,
     )
 
-    private val OWNER = PartyWords("le bailleur", "Le bailleur", "du bailleur", "son bien", "Son bien")
-    private val CLIENT = PartyWords("le client", "Le client", "du client", "sa recherche", "Sa recherche")
+    private val OWNER = PartyWords("le bailleur", "Le bailleur", "du bailleur", "son bien", "Son bien", "au bailleur")
+    private val CLIENT = PartyWords("le client", "Le client", "du client", "sa recherche", "Sa recherche", "au client")
 
     private val DATE_FORMAT = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.FRENCH)
 
