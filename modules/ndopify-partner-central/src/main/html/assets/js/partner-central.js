@@ -1566,6 +1566,9 @@
         return { add: add };
     }
 
+    // ContactPeriodType, as "à appeler …" ends.
+    var CONTACT_PERIOD_PHRASES = { Matin: "le matin", "Après-midi": "l'après-midi", "Soirée": "le soir" };
+
     // "+237699123456" → "+237 6 99 12 34 56" (Cameroon numbers; others are shown as they are).
     function displayPhone(e164) {
         var m = /^\+237(\d)(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(e164);
@@ -1615,18 +1618,17 @@
             : "Proposez des biens au client et organisez les visites.";
 
         $('[data-contact="name"]').textContent = c.name;
-        var wa = $('[data-contact="whatsapp"]');
-        wa.textContent = displayPhone(c.whatsapp);
-        wa.href = "https://wa.me/" + c.whatsapp.replace("+", "");
+        // The number calls; its WhatsApp button writes.
+        var phone = $('[data-contact="whatsapp"]');
+        $("[data-contact-number]", phone).textContent = displayPhone(c.whatsapp);
+        phone.href = "tel:" + c.whatsapp;
         var email = $('[data-contact="email"]');
         email.textContent = c.email;
         email.href = "mailto:" + c.email;
-        $('[data-contact="period"]').textContent = c.period;
-        $("[data-contact-whatsapp]").href = wa.href;
-        $("[data-contact-call]").href = "tel:" + c.whatsapp;
+        $('[data-contact="period"]').textContent = CONTACT_PERIOD_PHRASES[c.period] || c.period;
+        $("[data-contact-whatsapp]").href = "https://wa.me/" + c.whatsapp.replace("+", "");
 
-        var criteria = $("[data-mandate-criteria]");
-        criteriaOf(id).forEach(function (row) {
+        function criterion(list, row) {
             var item = document.createElement("div");
             item.className = "review__item";
             var dt = document.createElement("dt");
@@ -1637,8 +1639,37 @@
             dd.textContent = row[1];
             item.appendChild(dt);
             item.appendChild(dd);
-            criteria.appendChild(item);
+            list.appendChild(item);
+        }
+
+        // Visible: sector, amount, date, the type with its rooms ("Maison, 3 chambres"), then the client's comments.
+        // Folded: everything else.
+        var rows = criteriaOf(id);
+        var byTerm = {};
+        rows.forEach(function (row) {
+            byTerm[row[0]] = row[1];
         });
+        var rooms = byTerm["Chambres"];
+        var key = rows.slice(0, 3).concat([["Type de bien", byTerm["Type de propriété"] +
+            (rooms ? ", " + rooms + (rooms === "1" ? " chambre" : " chambres") : "")]]);
+        if (byTerm["Autres précisions"]) key.push(["Autres précisions", byTerm["Autres précisions"]]);
+        var rest = rows.slice(3).filter(function (row) {
+            return ["Type de propriété", "Chambres", "Autres précisions"].indexOf(row[0]) === -1;
+        });
+        key.forEach(function (row) {
+            criterion($("[data-mandate-key-criteria]"), row);
+        });
+        rest.forEach(function (row) {
+            criterion($("[data-mandate-criteria]"), row);
+        });
+        var more = $("[data-mandate-more]");
+        var moreLabel = $("[data-mandate-more-label]");
+        more.hidden = rest.length === 0;
+        function syncMore() {
+            moreLabel.textContent = more.open ? "Masquer les critères" : "Voir tous les critères (" + rest.length + ")";
+        }
+        more.addEventListener("toggle", syncMore);
+        syncMore();
 
         var flash = $("[data-mandate-flash]");
 

@@ -337,10 +337,6 @@
     outline: none;
 }
 
-.mandate__cta {
-    flex-wrap: wrap;
-    gap: var(--space-3);
-}
 
 /* rejoindre.css (loaded for the close form's choices) lays the review out for its edit links: undone here. */
 [data-mandate] .review__item {
@@ -515,9 +511,9 @@ h1.alert__title {
     font-size: var(--step-hint);
 }
 
-/* The end section follows Sa recherche without the sections' separator: its box sets it apart. */
+/* The end section follows Sa recherche without the sections' separator: its box and a gap set it apart. */
 .home-section + .mandate-close {
-    margin-top: 0;
+    margin-top: var(--space-4);
     padding-top: 0;
     border-top: 0;
 }
@@ -625,4 +621,42 @@ h1.alert__title {
 /* "Renvoyez-le" hint, above the groups. */
 [data-edit-resend] {
     margin-bottom: var(--space-4);
+}
+
+/* ---------- Mandate (mandate.html): contact and search ---------- */
+
+/* The client's contact, unlabelled: name and best time to call, then the number and the e-mail. */
+.contact-card > * + * {
+    margin-top: var(--space-2);
+}
+
+.contact-card__period {
+    font-size: var(--step-hint);
+}
+
+.contact-card__line {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    overflow-wrap: anywhere;
+}
+
+/* "Voir tous les critères": folded under the key facts. */
+.mandate-more > .review {
+    margin-top: var(--space-2);
+}
+
+/* The number, then its WhatsApp button beside it (on its own line only if the screen is too narrow). */
+.contact-card__phone {
+    flex-wrap: wrap;
+    column-gap: var(--space-3);
+    row-gap: var(--space-1);
+}
+
+/* A smaller button for a row of text: same 44px tap target, less padding and a smaller font. */
+.btn--compact {
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-3);
+    font-size: var(--step-hint);
+    box-shadow: none;
 }
