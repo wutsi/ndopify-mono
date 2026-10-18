@@ -49,22 +49,22 @@ class ContractEndpoints(
     fun setContent(
         @PathVariable id: String,
         @RequestBody @Valid request: SetContractRequest,
-    ): GetContractResponse {
-        return toResponse(service.setContent(id, request))
+    ) {
+        service.setContent(id, request)
     }
 
     // DRAFT → PENDING_SIGNATURE, and asks each party by e-mail to sign it
     @PostMapping("/{id}/request-signature")
-    fun requestSignature(@PathVariable id: String): GetContractResponse {
-        return toResponse(service.requestSignature(id))
+    fun requestSignature(@PathVariable id: String) {
+        service.requestSignature(id)
     }
 
     @PostMapping("/{id}/sign")
     fun sign(
         @PathVariable id: String,
-        @RequestBody request: SignContractRequest,
-    ): GetContractResponse {
-        return toResponse(service.sign(id, request))
+        @RequestBody @Valid request: SignContractRequest,
+    ) {
+        service.sign(id, request)
     }
 
     private fun toResponse(contract: ContractEntity): GetContractResponse {

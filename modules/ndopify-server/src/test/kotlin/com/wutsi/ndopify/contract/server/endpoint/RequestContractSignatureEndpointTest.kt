@@ -2,7 +2,6 @@ package com.wutsi.ndopify.contract.server.endpoint
 
 import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import com.wutsi.ndopify.contract.dto.ContractStatus
-import com.wutsi.ndopify.contract.dto.GetContractResponse
 import com.wutsi.ndopify.contract.server.dao.ContractRepository
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
@@ -27,11 +26,10 @@ class RequestContractSignatureEndpointTest : TenantAwareEndpointIntegrationTest(
         val response = rest.postForEntity(
             "/v1/contracts/c-1/request-signature",
             null,
-            GetContractResponse::class.java,
+            Any::class.java,
         )
 
         assertEquals(HttpStatus.OK, response.statusCode)
-        assertEquals(ContractStatus.PENDING_SIGNATURE, response.body!!.contract.status)
         val contract = dao.findById("c-1").get()
         assertEquals(ContractStatus.PENDING_SIGNATURE, contract.status)
         assertDeadlineIn7Days(contract.signatureDeadline!!.time)
@@ -64,11 +62,10 @@ class RequestContractSignatureEndpointTest : TenantAwareEndpointIntegrationTest(
         val response = rest.postForEntity(
             "/v1/contracts/c-2/request-signature",
             null,
-            GetContractResponse::class.java,
+            Any::class.java,
         )
 
         assertEquals(HttpStatus.OK, response.statusCode)
-        assertEquals(ContractStatus.PENDING_SIGNATURE, response.body!!.contract.status)
         val contract = dao.findById("c-2").get()
         assertEquals(ContractStatus.PENDING_SIGNATURE, contract.status)
         assertDeadlineIn7Days(contract.signatureDeadline!!.time) // Was past

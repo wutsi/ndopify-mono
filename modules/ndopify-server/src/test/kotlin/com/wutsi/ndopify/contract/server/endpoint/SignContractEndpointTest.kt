@@ -2,7 +2,6 @@ package com.wutsi.ndopify.contract.server.endpoint
 
 import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import com.wutsi.ndopify.contract.dto.ContractStatus
-import com.wutsi.ndopify.contract.dto.GetContractResponse
 import com.wutsi.ndopify.contract.dto.SignContractRequest
 import com.wutsi.ndopify.contract.server.dao.ContractPartyRepository
 import com.wutsi.ndopify.contract.server.dao.ContractRepository
@@ -41,55 +40,40 @@ class SignContractEndpointTest : TenantAwareEndpointIntegrationTest() {
 
     @Test
     fun `first signature`() {
-        val response = rest.postForEntity("/v1/contracts/c-1/sign", request("cp-11"), GetContractResponse::class.java)
+        val response = rest.postForEntity("/v1/contracts/c-1/sign", request("cp-11"), Any::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
 
-        val contract = response.body!!.contract
+        val contract = dao.findById("c-1").get()
         assertEquals(ContractStatus.PENDING_SIGNATURE, contract.status)
         assertNull(contract.signedAt)
         assertNull(contract.validFrom) // Only from the last signature
         assertNull(contract.validUntil)
-
-        val signer = contract.parties.first { party -> party.id == "cp-11" }
-        assertTrue(signer.signed)
-        assertEquals("192.168.1.10", signer.ipAddress)
-        assertEquals("Mozilla/5.0 (iPhone)", signer.userAgent)
-        assertNotNull(signer.signedAt)
-        assertFalse(contract.parties.first { party -> party.id == "cp-12" }.signed)
 
         val party = partyDao.findById("cp-11").get()
         assertTrue(party.signed)
         assertEquals("192.168.1.10", party.ipAddress)
         assertEquals("Mozilla/5.0 (iPhone)", party.userAgent)
         assertNotNull(party.signedAt)
-        assertEquals(ContractStatus.PENDING_SIGNATURE, dao.findById("c-1").get().status)
+        assertFalse(partyDao.findById("cp-12").get().signed)
         assertEquals(MandateStatus.PENDING_APPROVAL, mandateDao.findById(1L).get().status) // Not signed by all yet
     }
 
     @Test
     fun `last signature signs the contract`() {
-        val response = rest.postForEntity("/v1/contracts/c-2/sign", request("cp-22"), GetContractResponse::class.java)
+        val response = rest.postForEntity("/v1/contracts/c-2/sign", request("cp-22"), Any::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
 
-        val contract = response.body!!.contract
+        val contract = dao.findById("c-2").get()
         assertEquals(ContractStatus.SIGNED, contract.status)
         assertNotNull(contract.signedAt)
-        assertTrue(contract.parties.all { party -> party.signed })
-
-        val entity = dao.findById("c-2").get()
-        assertEquals(ContractStatus.SIGNED, entity.status)
-        assertNotNull(entity.signedAt)
+        assertTrue(partyDao.findByContract(contract).all { party -> party.signed })
 
         // Valid from the last signature, for its 6 months (in the tenant's time zone)
-        assertEquals(entity.signedAt?.time, entity.validFrom?.time)
-        val validUntil = entity.validFrom!!.toInstant().atZone(ZoneId.of("Africa/Douala")).plusMonths(6).toInstant()
-        assertEquals(Date.from(validUntil).time, entity.validUntil?.time)
-        // DATETIME: rounded to the second when stored
-        assertTrue(Math.abs(entity.validFrom!!.time - contract.validFrom!!.time) < 1000)
-        assertTrue(Math.abs(entity.validUntil!!.time - contract.validUntil!!.time) < 1000)
-        assertTrue(partyDao.findById("cp-22").get().signed)
+        assertEquals(contract.signedAt?.time, contract.validFrom?.time)
+        val validUntil = contract.validFrom!!.toInstant().atZone(ZoneId.of("Africa/Douala")).plusMonths(6).toInstant()
+        assertEquals(Date.from(validUntil).time, contract.validUntil?.time)
 
         // ContractSignedEvent: its mandate is approved
         assertEquals(MandateStatus.APPROVED, mandateDao.findById(2L).get().status)
@@ -97,19 +81,19 @@ class SignContractEndpointTest : TenantAwareEndpointIntegrationTest() {
 
     @Test
     fun `mandate no longer waiting for approval`() {
-        val response = rest.postForEntity("/v1/contracts/c-6/sign", request("cp-61"), GetContractResponse::class.java)
+        val response = rest.postForEntity("/v1/contracts/c-6/sign", request("cp-61"), Any::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
-        assertEquals(ContractStatus.SIGNED, response.body!!.contract.status)
+        assertEquals(ContractStatus.SIGNED, dao.findById("c-6").get().status)
         assertEquals(MandateStatus.CANCELLED, mandateDao.findById(6L).get().status)
     }
 
     @Test
     fun `contract without mandate`() {
-        val response = rest.postForEntity("/v1/contracts/c-7/sign", request("cp-71"), GetContractResponse::class.java)
+        val response = rest.postForEntity("/v1/contracts/c-7/sign", request("cp-71"), Any::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
-        assertEquals(ContractStatus.SIGNED, response.body!!.contract.status)
+        assertEquals(ContractStatus.SIGNED, dao.findById("c-7").get().status)
         assertNull(mandateDao.findByContractId("c-7"))
     }
 

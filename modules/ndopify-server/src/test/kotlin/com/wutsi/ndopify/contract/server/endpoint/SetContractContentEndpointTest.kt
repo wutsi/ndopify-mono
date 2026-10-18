@@ -2,7 +2,6 @@ package com.wutsi.ndopify.contract.server.endpoint
 
 import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import com.wutsi.ndopify.contract.dto.ContractStatus
-import com.wutsi.ndopify.contract.dto.GetContractResponse
 import com.wutsi.ndopify.contract.dto.SetContractRequest
 import com.wutsi.ndopify.contract.server.dao.ContractRepository
 import com.wutsi.ndopify.error.dto.ErrorCode
@@ -23,10 +22,9 @@ class SetContractContentEndpointTest : TenantAwareEndpointIntegrationTest() {
 
     @Test
     fun `draft contract`() {
-        val response = rest.postForEntity("/v1/contracts/c-1/content", request, GetContractResponse::class.java)
+        val response = rest.postForEntity("/v1/contracts/c-1/content", request, Any::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
-        assertEquals("https://cdn.ndopify.com/contracts/new.pdf", response.body!!.contract.contentUrl)
 
         val contract = dao.findById("c-1").get()
         assertEquals("https://cdn.ndopify.com/contracts/new.pdf", contract.contentUrl)
@@ -35,7 +33,7 @@ class SetContractContentEndpointTest : TenantAwareEndpointIntegrationTest() {
 
     @Test
     fun `contract pending signature`() {
-        val response = rest.postForEntity("/v1/contracts/c-2/content", request, GetContractResponse::class.java)
+        val response = rest.postForEntity("/v1/contracts/c-2/content", request, Any::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
 
