@@ -18,6 +18,7 @@
         <module>modules/ndopify-dto</module>
         <module>modules/ndopify-server</module>
         <module>modules/ndopify-partner-central</module>
+        <module>modules/ndopify-esignature</module>
     </modules>
 
     <scm>
