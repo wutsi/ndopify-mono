@@ -16,12 +16,13 @@ import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.chat.prompt.Prompt
 import java.io.File
 import java.text.SimpleDateFormat
+import java.time.Clock
 import java.util.TimeZone
 import kotlin.test.assertEquals
 
 class KycInfoExtractorIdentificationTest {
     private val chatModel = mock<ChatModel>()
-    private val extractor = KycInfoExtractorIdentification(ChatClient.builder(chatModel))
+    private val extractor = KycInfoExtractorIdentification(ChatClient.builder(chatModel), Clock.systemUTC())
     private val fmt = SimpleDateFormat("yyyy-MM-dd")
 
     @BeforeEach

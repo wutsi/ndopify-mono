@@ -8,9 +8,14 @@ import org.springframework.core.io.FileSystemResource
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import java.io.File
+import java.time.Clock
+import java.time.LocalDate
 
 @Service
-class KycInfoExtractorIdentification(private val chatClientBuilder: ChatClient.Builder) : KycInfoExtractor {
+class KycInfoExtractorIdentification(
+    private val chatClientBuilder: ChatClient.Builder,
+    private val clock: Clock,
+) : KycInfoExtractor {
     companion object {
         const val PROMPT = """
             You are an expert in identity verification.
@@ -49,6 +54,9 @@ class KycInfoExtractorIdentification(private val chatClientBuilder: ChatClient.B
             ## Image Requirements
             - For National ID, Driver License, Resident Card, the front and back images of the document must be provided.
             - For Passport, only the front image of the document must be provided.
+
+            ## Additional Information
+            - Today's date is {{TODAY}}.
         """
     }
 
@@ -57,6 +65,7 @@ class KycInfoExtractorIdentification(private val chatClientBuilder: ChatClient.B
     override fun extract(images: List<File>): KycInfo {
         val instructions = PROMPT
             .replace("{{ID_TYPES}}", IdentificationType.entries.joinToString(", ") { it.name })
+            .replace("{{TODAY}}", LocalDate.now(clock).toString())
 
         return client.prompt()
             .user { user ->
