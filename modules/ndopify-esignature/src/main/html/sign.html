@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Signature de votre contrat — Ndopify</title>
+    <meta name="description" content="Signez électroniquement votre contrat Ndopify, en toute sécurité, après vérification par un code envoyé à votre adresse e-mail.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="referrer" content="no-referrer">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="assets/images/icon.png">
+    <link rel="apple-touch-icon" href="assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="assets/css/esignature.css">
+    <script src="assets/js/esignature.js" defer></script>
+</head>
+<!--
+    Prototype of the e-signature page. The link of the e-mail "Contrat à signer" opens
+    sign.html?contract-id={contractId}&party-id={contractPartyId}; the slide shown is in ?step=intro|code|sign|done.
+    Prototype only: ?state=signed|expired|cancelled shows a link that can no longer be signed; on the code step,
+    000000 is an expired code and 111111 a wrong one, any other 6 digits are accepted.
+-->
+<body data-page="sign">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <span class="site-header__brand">
+                <img src="assets/images/logo.png" alt="Ndopify" width="84" height="40">
+            </span>
+        </div>
+    </header>
+
+    <main id="main" class="page">
+        <p class="visually-hidden" aria-live="polite" data-live></p>
+        <div class="column" data-column>
+            <div class="page-intro" data-page-intro>
+                <h1>Signature de votre contrat</h1>
+            </div>
+
+            <!-- A link that can no longer be signed: the intro's place, with no code to ask for. -->
+            <section class="stack" hidden aria-labelledby="blocked-title" data-blocked>
+                <h2 id="blocked-title" class="visually-hidden">Contrat indisponible</h2>
+                <div class="alert alert--info" hidden data-blocked-state="signed">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <div>
+                        <p class="alert__title">Vous avez déjà signé ce contrat.</p>
+                        <p>Une copie du contrat signé vous a été envoyée par e-mail. Il n'y a rien d'autre à faire.</p>
+                    </div>
+                </div>
+                <div class="alert alert--warning" hidden data-blocked-state="expired">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                    <div>
+                        <p class="alert__title">Le délai de signature de ce contrat est dépassé.</p>
+                        <p>Ce lien ne permet plus de le signer. Contactez votre agent, Marie Ngo Biyong, au
+                            <a href="https://wa.me/237699887766" class="nowrap">+237&nbsp;6&nbsp;99&nbsp;88&nbsp;77&nbsp;66</a>
+                            (WhatsApp)&nbsp;: elle peut vous envoyer un nouveau contrat à signer.</p>
+                    </div>
+                </div>
+                <div class="alert alert--warning" hidden data-blocked-state="cancelled">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                    <div>
+                        <p class="alert__title">Ce contrat a été annulé.</p>
+                        <p>Il n'y a plus rien à signer. Si vous pensez qu'il s'agit d'une erreur, contactez votre agent,
+                            Marie Ngo Biyong, au <a href="https://wa.me/237699887766" class="nowrap">+237&nbsp;6&nbsp;99&nbsp;88&nbsp;77&nbsp;66</a>
+                            (WhatsApp).</p>
+                    </div>
+                </div>
+            </section>
+
+            <div class="progress" data-progress-block>
+                <p class="progress__label" id="progress-label" data-progress-label>Étape 1 sur 3</p>
+                <div class="progress__track" role="progressbar" aria-labelledby="progress-label"
+                     aria-valuemin="1" aria-valuemax="3" aria-valuenow="1" aria-valuetext="Étape 1 sur 3"
+                     data-progress>
+                    <div class="progress__bar" style="transform: scaleX(0.3333)" data-progress-bar></div>
+                </div>
+            </div>
+
+            <h2 class="visually-hidden" data-steps-title>Étapes de la signature</h2>
+
+            <!-- Étape 1 : Introduction -->
+            <form class="form" novalidate data-step="intro" data-intro-form>
+                <fieldset class="step" tabindex="-1">
+                    <legend class="visually-hidden">Étape 1 sur 3 : Vérification de votre identité</legend>
+                    <h3 aria-hidden="true">Vérification de votre identité</h3>
+                    <p>Le contrat suivant attend votre signature&nbsp;:</p>
+
+                    <dl class="review review--compact">
+                        <div class="review__item">
+                            <dt class="review__term">Contrat</dt>
+                            <dd class="review__value" data-contract-type>Mandat de recherche immobilière (location)</dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Envoyé par</dt>
+                            <dd class="review__value" data-sender>Marie Ngo Biyong, votre agent Ndopify</dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Référence</dt>
+                            <dd class="review__value nowrap" data-contract-number>MNDT-2026-000042</dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">À signer avant le</dt>
+                            <dd class="review__value" data-contract-deadline>25 octobre 2026</dd>
+                        </div>
+                    </dl>
+
+                    <p>Pour votre sécurité, seule la personne à qui ce contrat est destiné peut le signer. Nous allons
+                        envoyer un code de vérification à 6&nbsp;chiffres à <strong data-masked-email>r•••@gmail.com</strong>.</p>
+
+                    <div class="hint" id="intro-hint">
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <p>Vous lirez le contrat en entier avant de le signer. Aucun paiement n'est demandé sur
+                                cette page.</p>
+                            <p>Cette adresse n'est pas la vôtre&nbsp;? Ne continuez pas, et prévenez l'agent qui vous a
+                                envoyé ce contrat. Chaque nouvelle demande de code remplace la précédente.</p>
+                        </div>
+                    </div>
+
+                    <p role="alert" class="field__error" hidden data-intro-error><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>Le code n'a pas pu être envoyé. Vérifiez votre connexion, puis réessayez.</span></p>
+
+                    <div class="cta-row">
+                        <button class="btn btn--primary" type="submit" aria-describedby="intro-hint" data-submit>S'authentifier</button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <!-- Étape 2 : Authentification -->
+            <form class="form" novalidate hidden data-step="code" data-code-form>
+                <fieldset class="step" tabindex="-1">
+                    <legend class="visually-hidden">Étape 2 sur 3 : Saisissez votre code</legend>
+                    <h3 aria-hidden="true">Saisissez votre code</h3>
+                    <p>Nous avons envoyé un code à 6&nbsp;chiffres à <strong data-masked-email>r•••@gmail.com</strong>.</p>
+
+                    <div class="field">
+                        <label class="field__label" for="code">Code de vérification</label>
+                        <input class="input input--code" id="code" name="code" type="text" inputmode="numeric"
+                               autocomplete="one-time-code" pattern="[0-9]*" required
+                               aria-describedby="code-hint code-error">
+                        <div class="hint" id="code-hint">
+                            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                            <div>
+                                <p>Le code est valable 5&nbsp;minutes, jusqu'à <span data-expiry>14&nbsp;h&nbsp;35</span>.</p>
+                                <p>Vous ne le voyez pas&nbsp;? Regardez dans vos courriers indésirables ou dans l'onglet
+                                    «&nbsp;Promotions&nbsp;».</p>
+                            </div>
+                        </div>
+                        <p class="field__error" id="code-error" role="alert" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                    </div>
+
+                    <div class="stack">
+                        <p>Code expiré ou jamais reçu&nbsp;?
+                            <button class="link-button" type="button" data-resend>Recevoir un nouveau code</button></p>
+                        <p role="status" data-status></p>
+                    </div>
+
+                    <div class="form__actions">
+                        <button class="btn btn--outline" type="button" data-previous>Précédent</button>
+                        <button class="btn btn--primary" type="submit" aria-disabled="true"
+                                aria-describedby="code-hint" data-submit>Suivant</button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <!-- Étape 3 : Signature -->
+            <form class="form" novalidate hidden data-step="sign" data-sign-form>
+                <fieldset class="step" tabindex="-1">
+                    <legend class="visually-hidden">Étape 3 sur 3 : Lisez et signez le contrat</legend>
+                    <h3 aria-hidden="true">Lisez et signez le contrat</h3>
+                    <p>Lisez le contrat jusqu'au bout&nbsp;: le bouton de signature se trouve à la fin.</p>
+
+                    <!-- Served page: the contract's content, as generated by ndopify-server. Sample: the mandate template. -->
+                    <article class="contract" aria-labelledby="contract-title">
+                        <h3 id="contract-title">Mandat de recherche immobilière (location)</h3>
+                        <div class="contract__meta">
+                            <p>Référence du contrat&nbsp;: <span class="nowrap">MNDT-2026-000042</span></p>
+                            <p>Date&nbsp;: 15&nbsp;octobre&nbsp;2026</p>
+                        </div>
+
+                        <h4>Entre les soussignés</h4>
+                        <ul>
+                            <li>Le Mandant (Client)&nbsp;: Ray Sponsible, Tél&nbsp;: +237&nbsp;6&nbsp;77&nbsp;12&nbsp;34&nbsp;56,
+                                Email&nbsp;: ray.sponsible@gmail.com</li>
+                            <li>Le Mandataire&nbsp;: Ndopify, représenté par Marie Ngo Biyong</li>
+                        </ul>
+
+                        <h4>1. Objet du mandat</h4>
+                        <p>Le Mandant confie au Mandataire la mission de rechercher un bien immobilier à louer répondant
+                            aux critères suivants&nbsp;:</p>
+                        <ul>
+                            <li>Type de bien&nbsp;: Appartement, 2&nbsp;chambres, meublé</li>
+                            <li>Ville&nbsp;: Yaoundé</li>
+                            <li>Quartiers ciblés&nbsp;: Bastos, Golf, Omnisport</li>
+                            <li>Accès à l'eau&nbsp;: Compteur d'eau, Forage</li>
+                            <li>Accès à l'électricité&nbsp;: Compteur dédié</li>
+                            <li>Loyer maximum&nbsp;: 150&nbsp;000&nbsp;FCFA par mois</li>
+                            <li>Emménagement souhaité&nbsp;: dans le mois</li>
+                        </ul>
+
+                        <h4>2. Durée</h4>
+                        <p>Le présent mandat est conclu pour une durée de 2&nbsp;mois, à compter de la date de sa
+                            signature.</p>
+
+                        <h4>3. Honoraires et frais</h4>
+                        <ul>
+                            <li>Frais de dossier&nbsp;: gratuit.</li>
+                            <li>Frais de visite&nbsp;: payables avant chaque visite.</li>
+                            <!-- The real template states the commission; the source doc forbids showing commission amounts. -->
+                            <li>Commission de succès&nbsp;: selon le barème en vigueur, exigible uniquement à la signature
+                                effective du contrat de bail trouvé par l'intermédiaire du Mandataire.</li>
+                        </ul>
+
+                        <h4>4. Engagements des parties</h4>
+                        <ul>
+                            <li>Le Mandataire s'engage à proposer des biens conformes et à accompagner le Mandant lors
+                                des visites.</li>
+                            <li>Le Mandant s'engage à verser la commission convenue si le bail est conclu avec un
+                                propriétaire présenté par Ndopify.</li>
+                        </ul>
+                    </article>
+
+                    <div class="hint">
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <p>Signer ne déclenche aucun paiement&nbsp;: les frais prévus au contrat ne sont dus que dans les
+                            conditions qu'il décrit.</p>
+                    </div>
+
+                    <dl class="review signature" aria-label="Votre signature">
+                        <div class="review__item">
+                            <dt class="review__term">Signataire</dt>
+                            <dd class="review__value" data-signer-name>Ray Sponsible</dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Date de signature</dt>
+                            <dd class="review__value" data-sign-date>18 octobre 2026</dd>
+                        </div>
+                    </dl>
+
+                    <div class="field">
+                        <label class="choice">
+                            <input type="checkbox" id="consent" name="consent" value="yes" required
+                                   aria-describedby="consent-hint">
+                            <span>J'ai lu le contrat et j'accepte de le signer électroniquement.</span>
+                        </label>
+                        <div class="hint" id="consent-hint">
+                            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                            <div>
+                                <p>Cochez la case pour pouvoir signer. Nous enregistrons la date, l'heure et l'appareil
+                                    utilisés pour votre signature.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p role="alert" class="field__error" hidden data-sign-error><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>Votre signature n'a pas pu être enregistrée. Vérifiez votre connexion, puis réessayez.</span></p>
+
+                    <div class="cta-row">
+                        <button class="btn btn--primary" type="submit" aria-disabled="true"
+                                aria-describedby="consent-hint" data-submit>Signer électroniquement</button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <!-- Étape 5 (the doc's numbering) : Confirmation -->
+            <section class="confirmation stack" hidden data-step="done" aria-labelledby="done-title">
+                <span class="confirmation__mark" aria-hidden="true">
+                    <svg class="confirmation__icon" viewBox="0 0 48 48" focusable="false"><circle cx="24" cy="24" r="21" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="m15 24.5 6 6 12-13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                <h2 id="done-title" tabindex="-1">Votre signature est enregistrée</h2>
+                <p>Merci, <span data-signer-firstname>Ray</span>. Vous avez signé le contrat
+                    <strong class="nowrap">MNDT-2026-000042</strong> le <span data-signed-at>18 octobre 2026 à 14&nbsp;h&nbsp;32</span>.</p>
+                <p>Une copie du contrat signé est envoyée automatiquement à <strong data-user-email-text>ray.sponsible@gmail.com</strong>.
+                    Vous n'avez rien d'autre à faire.</p>
+            </section>
+        </div>
+    </main>
+</body>
+</html>
