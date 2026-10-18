@@ -1,13 +1,37 @@
 spring:
+    ai:
+        openai:
+            api-key: ${KIMI_API_KEY}
+            base-url: https://api.moonshot.ai/v1
+            chat:
+                options:
+                    model: kimi-k2.6
+
     flyway:
         clean-disabled: false
         locations: "classpath:db/migration/common,classpath:db/migration/test"
     jpa:
         show-sql: false
     datasource:
-        url: ${SPRING_DATABASE_URL}
-        username: ${SPRING_DATABASE_USERNAME}
-        password: ${SPRING_DATABASE_PASSWORD}
+        url: ${JAWSDB_URL}
+        username: ${JAWSDB_USERNAME}
+        password: ${JAWSDB_PASSWORD}
+
+    mail:
+        host: ${SMTP_HOST}
+        username: ${SMTP_USER}
+        password: ${SMTP_PASSWORD}
+        test-connection: false
+        properties:
+            mail:
+                debug: false
+                smtp:
+                    from: no-reply@wutsi.com
+                    port: ${SMTP_PORT}
+                    auth: true
+                    starttls:
+                        enable: true
+                        required: true
 
 swagger:
     protocol: https

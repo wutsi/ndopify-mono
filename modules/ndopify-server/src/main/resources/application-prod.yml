@@ -11,6 +11,8 @@ management:
 spring:
     flyway:
         clean-disabled: true
+    jpa:
+        show-sql: false
 
 springdoc:
     api-docs:
@@ -36,7 +38,7 @@ ndopify:
     party:
         kyc:
             verify:
-                cron: "0 0 * * * ?"    # Every hourss
+                cron: "0 0 * * * ?"    # Every hours
 
     storage:
         default-type: s3
