@@ -4,6 +4,7 @@ import com.wutsi.ndopify.mandate.dto.AssignmentStatus
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.refdata.dto.Location
@@ -16,7 +17,7 @@ object AssignmentViews {
     fun isOpen(assignment: AssignmentSummary, now: Long): Boolean =
         assignment.status == AssignmentStatus.PENDING && assignment.expiresAt.time > now
 
-    fun of(assignment: AssignmentSummary, mandate: Mandate, locations: Map<Long, Location>, now: Long): AssignmentView {
+    fun of(assignment: AssignmentSummary, mandate: Mandate, locations: Map<Long, Location>, now: Long, formatter: TenantFormatter): AssignmentView {
         val owner = mandate.mandateType == MandateType.LISTING
         val neighborhoods = mandate.neighborhoodIds.mapNotNull { locations[it] }
         return AssignmentView(
@@ -26,7 +27,7 @@ object AssignmentViews {
             sectorTerm = if (mandate.neighborhoodIds.size > 1) "Secteurs" else "Secteur",
             sector = sector(mandate, neighborhoods),
             priceTerm = if (owner) "Loyer" else "Budget",
-            price = MandateLabels.price(mandate.price),
+            price = MandateLabels.price(mandate.price, formatter),
             movingTerm = if (owner) "Disponibilité" else "Emménagement",
             moving = MandateLabels.MOVE_IN_LABELS[mandate.movingPeriod],
             expiresAt = assignment.expiresAt.time,

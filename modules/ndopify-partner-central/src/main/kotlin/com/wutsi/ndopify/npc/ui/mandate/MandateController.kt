@@ -14,6 +14,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantContext
+import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
@@ -36,7 +37,6 @@ import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClientException
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 import java.time.Clock
-import java.time.ZoneId
 
 /**
  * The page of one of the agent's mandates (`mandate.html`), opened from *Mes mandats*: its status as steps, the
@@ -134,7 +134,7 @@ class MandateController(
         val amount = finalPrice(form.finalPrice)
         if (amount == null || amount < 1) {
             ProfileRules.header(agent, model)
-            val errors = mapOf("finalPrice" to "Indiquez le loyer convenu, en FCFA par mois.")
+            val errors = mapOf("finalPrice" to "Indiquez le loyer convenu, en ${formatter().currency()} par mois.")
             return render(mandate, END_CLOSE, form, errors, model)
         }
         val price = Money(amount, mandate.price.currency, PeriodicityType.MONTHLY)
@@ -197,7 +197,7 @@ class MandateController(
         val owner = mandate.mandateType == MandateType.LISTING
         ProfileRules.header(agent, model)
         try {
-            val errors = MandateEditRules.errors(answers, owner).ifEmpty { neighborhoodErrors(mandate, answers) }
+            val errors = MandateEditRules.errors(answers, owner, formatter()).ifEmpty { neighborhoodErrors(mandate, answers) }
             if (errors.isNotEmpty()) return edit(mandate, answers, errors, null, model)
 
             mandateClient.update(id, MandateEditRules.request(answers, mandate))
@@ -244,7 +244,7 @@ class MandateController(
                 null,
                 names,
                 clock.millis(),
-                ZoneId.of(tenantContext.getTenant().timeZone),
+                formatter(),
                 ttlDays
             ),
         )
@@ -256,7 +256,8 @@ class MandateController(
         model.addAttribute("answers", answers)
         model.addAttribute("errors", errors)
         model.addAttribute("error", error)
-        model.addAttribute("summaries", MandateEditRules.summaries(answers, neighborhoods.map { it.name }))
+        model.addAttribute("currency", formatter().currency())
+        model.addAttribute("summaries", MandateEditRules.summaries(answers, neighborhoods.map { it.name }, formatter()))
         model.addAttribute(
             "openGroups",
             MandateEditRules.GROUPS.filterValues { fields -> fields.any { it in errors } }.keys,
@@ -279,6 +280,7 @@ class MandateController(
         )
         model.addAttribute("form", form)
         model.addAttribute("errors", errors)
+        model.addAttribute("currency", formatter().currency())
         (model.getAttribute(OUTCOME) as? String)?.let { outcome -> outcome(outcome, view, model) }
         return VIEW
     }
@@ -385,9 +387,11 @@ class MandateController(
             accepted(mandate),
             locations(mandate),
             clock.millis(),
-            ZoneId.of(tenantContext.getTenant().timeZone),
+            formatter(),
             ttlDays,
         )
+
+    private fun formatter(): TenantFormatter = TenantFormatter(tenantContext.getTenant())
 
     private fun contract(mandate: Mandate): Contract? {
         val id = mandate.contractId ?: return null

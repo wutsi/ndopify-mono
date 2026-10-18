@@ -5,8 +5,8 @@ import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
+import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
-import com.wutsi.ndopify.refdata.dto.Money
 
 /**
  * Validation of the edit page ([MandateEditForm]) and the update it sends. ndopify-server doesn't validate a mandate,
@@ -29,7 +29,7 @@ object MandateEditRules {
         "comments" to listOf("comments"),
     )
 
-    fun errors(form: MandateEditForm, owner: Boolean): Map<String, String> {
+    fun errors(form: MandateEditForm, owner: Boolean, formatter: TenantFormatter): Map<String, String> {
         val type = type(form)
         val area = area(form.area)
         return listOfNotNull(
@@ -50,7 +50,7 @@ object MandateEditRules {
                 },
             ("area" to "Indiquez la surface en m², ou laissez le champ vide.")
                 .takeIf { area.isFailure || FindPropertyRules.area(area.getOrNull()) != null },
-            priceError(form.priceAmount, owner)?.let { "priceAmount" to it },
+            priceError(form.priceAmount, owner, formatter)?.let { "priceAmount" to it },
             ("movingPeriod" to if (owner) "Indiquez quand le bien est disponible." else "Indiquez la date d'emménagement.")
                 .takeIf { FindPropertyRules.movingPeriod(form.movingPeriod) != null },
             FindPropertyRules.comments(form.comments?.trim())?.let { "comments" to it },
@@ -102,7 +102,7 @@ object MandateEditRules {
     }
 
     /** Each folded group's current value, as the prototype's `SUMMARIES`; [neighborhoods] are the chosen names. */
-    fun summaries(form: MandateEditForm, neighborhoods: List<String>): Map<String, String> {
+    fun summaries(form: MandateEditForm, neighborhoods: List<String>, formatter: TenantFormatter): Map<String, String> {
         val type = type(form)
         val rooms = form.rooms?.takeIf { FindPropertyRules.needsRooms(type) && FindPropertyRules.rooms(it) == null }
         val area = area(form.area).getOrNull()
@@ -126,7 +126,7 @@ object MandateEditRules {
                 else -> "$amenities critères"
             },
             "budget" to listOfNotNull(
-                price?.let { MandateLabels.rent(Money(it, "XAF")) } ?: "Montant à indiquer",
+                price?.let { formatter.money(it) + " / mois" } ?: "Montant à indiquer",
                 MandateLabels.MOVE_IN_LABELS[form.movingPeriod],
             ).joinToString(" · "),
             "comments" to when {
@@ -150,12 +150,13 @@ object MandateEditRules {
         }
     }
 
-    private fun priceError(value: String?, owner: Boolean): String? {
+    private fun priceError(value: String?, owner: Boolean, formatter: TenantFormatter): String? {
         val amount = FindPropertyRules.parseAmount(value)
+        val currency = formatter.currency()
         return if (amount == null || amount <= 0) {
-            if (owner) "Indiquez le loyer, en FCFA par mois." else "Indiquez le budget, en FCFA par mois."
+            if (owner) "Indiquez le loyer, en $currency par mois." else "Indiquez le budget, en $currency par mois."
         } else {
-            FindPropertyRules.priceAmount(amount)
+            FindPropertyRules.priceAmount(amount, formatter)
         }
     }
 

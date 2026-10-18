@@ -319,7 +319,7 @@ class HomeControllerTest {
         assertEquals(listOf(203L, 201L, 202L), mandates.map { it.id })
         assertEquals("Secteurs" to "Bonapriso, Akwa", mandates[1].facts[0])
         assertEquals("Mandat signé, valable jusqu'au 28 mars 2027.", mandates[0].nextStep)
-        assertEquals("Le client a jusqu'au 19 janvier 2027 pour signer le mandat.", mandates[2].nextStep)
+        assertEquals("Le client a jusqu'au 19 janv. 2027 pour signer le mandat.", mandates[2].nextStep)
         assertEquals(false, model(result)["mandatesUnavailable"])
     }
 

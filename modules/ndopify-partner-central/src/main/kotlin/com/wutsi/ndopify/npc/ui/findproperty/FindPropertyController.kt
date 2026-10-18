@@ -4,6 +4,7 @@ import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantContext
+import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyController.Companion.STEPS
 import com.wutsi.ndopify.npc.ui.join.JoinRules
 import com.wutsi.ndopify.npc.ui.login.LoginController
@@ -191,7 +192,7 @@ class FindPropertyController(
             movingPeriod = form.movingPeriod,
         )
         val errors = errors(
-            "priceAmount" to FindPropertyRules.priceAmount(answers.priceAmount),
+            "priceAmount" to FindPropertyRules.priceAmount(answers.priceAmount, formatter()),
             "movingPeriod" to FindPropertyRules.movingPeriod(answers.movingPeriod),
         )
         return save(STEP_BUDGET, answers, errors, returnTo, session, model)
@@ -306,13 +307,16 @@ class FindPropertyController(
             )
             model.addAttribute("propertyTypeLabels", MandateLabels.PROPERTY_TYPE_LABELS)
         }
+        if (step == STEP_BUDGET) {
+            model.addAttribute("currency", formatter().currency())
+        }
         if (step == STEP_AMENITIES) {
             model.addAttribute("amenityLabels", MandateLabels.AMENITY_LABELS)
         }
         if (step == STEP_REVIEW) {
             model.addAttribute("categoryLabel", CATEGORY_LABELS[answers.propertyCategory]?.let { "Location, $it" })
             model.addAttribute("propertyLabel", propertyLabel(answers))
-            model.addAttribute("priceLabel", answers.priceAmount?.let { MandateLabels.formatAmount(it) + " FCFA par mois" })
+            model.addAttribute("priceLabel", answers.priceAmount?.let { formatter().money(it) + " par mois" })
             model.addAttribute("movingPeriodLabel", MandateLabels.MOVE_IN_LABELS[answers.movingPeriod])
             model.addAttribute("contactPeriodLabel", MandateLabels.CONTACT_PERIOD_LABELS[answers.preferredContactPeriod])
             model.addAttribute("amenityLabels", MandateLabels.AMENITY_LABELS.filterKeys { answers.has(it) }.values.toList())
@@ -370,6 +374,8 @@ class FindPropertyController(
             .locations
             .associateBy { location -> location.id }
     }
+
+    private fun formatter(): TenantFormatter = TenantFormatter(tenantContext.getTenant())
 
     private fun isAllowed(step: String, pending: PendingMandate): Boolean =
         STEPS.indexOf(step) <= STEPS.indexOf(pending.firstIncompleteStep())

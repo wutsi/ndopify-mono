@@ -7,11 +7,11 @@ import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.CONTRACT
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.MANDATE
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.NAMES
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.NOW
-import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.ZONE
 import com.wutsi.ndopify.party.dto.Party
 import java.time.Instant
 import java.util.Date
@@ -56,7 +56,7 @@ class MandateViewsTest {
         customer: Customer? = CUSTOMER,
         accepted: AssignmentSummary? = ACCEPTED,
         now: Long = NOW,
-    ) = MandateViews.of(mandate, contract, customer, accepted, NAMES, now, ZONE, 7)
+    ) = MandateViews.of(mandate, contract, customer, accepted, NAMES, now, FORMATTER, 7)
 
     @Test
     fun assigned() {
@@ -65,16 +65,16 @@ class MandateViewsTest {
         assertEquals(201L, view.id)
         assertEquals("Locataire · Maison", view.title)
         assertEquals(MandateRules.Tag("Assigné", "info"), view.tag)
-        assertEquals("10 octobre 2026", view.acceptedAt)
+        assertEquals("10 oct. 2026", view.acceptedAt)
         assertEquals(0, view.currentStep)
         assertEquals(
             listOf("ASSIGNED", "PENDING_APPROVAL", "APPROVED", "CLOSED"),
             view.steps.map { it.status },
         )
         assertEquals(listOf("Assigné", "En approbation", "Actif", "Fermé"), view.steps.map { it.label })
-        assertEquals(listOf("10 octobre 2026", null, null, null), view.steps.map { it.date })
+        assertEquals(listOf("10 oct. 2026", null, null, null), view.steps.map { it.date })
         assertEquals(listOf(false, false, false, false), view.steps.map { it.done })
-        assertEquals("Étape 1 sur 4 · Assigné, le 10 octobre 2026", view.stepSummary)
+        assertEquals("Étape 1 sur 4 · Assigné, le 10 oct. 2026", view.stepSummary)
         assertTrue(view.editable)
         assertFalse(view.closable)
         assertTrue(view.cancellable)
@@ -87,10 +87,10 @@ class MandateViewsTest {
         val view = view(PENDING)
 
         assertEquals(1, view.currentStep)
-        assertEquals(listOf("10 octobre 2026", "15 octobre 2026", null, null), view.steps.map { it.date })
+        assertEquals(listOf("10 oct. 2026", "15 oct. 2026", null, null), view.steps.map { it.date })
         assertEquals(listOf(true, false, false, false), view.steps.map { it.done })
-        assertEquals("15 octobre 2026", view.requestedAt)
-        assertEquals("22 octobre 2026", view.signatureDeadline)
+        assertEquals("15 oct. 2026", view.requestedAt)
+        assertEquals("22 oct. 2026", view.signatureDeadline)
         assertFalse(view.deadlinePassed)
         assertFalse(view.editedSince)
         assertTrue(view.editable)
@@ -103,7 +103,7 @@ class MandateViewsTest {
         val view = view(PENDING, now = date("2026-10-23T10:00:00Z").time)
 
         assertTrue(view.deadlinePassed)
-        assertEquals("22 octobre 2026", view.signatureDeadline)
+        assertEquals("22 oct. 2026", view.signatureDeadline)
     }
 
     @Test
@@ -118,10 +118,10 @@ class MandateViewsTest {
         val view = view(APPROVED)
 
         assertEquals(2, view.currentStep)
-        assertEquals("20 octobre 2026", view.approvedAt)
+        assertEquals("20 oct. 2026", view.approvedAt)
         assertEquals("28 mars 2027", view.validUntil)
         assertEquals(listOf(true, true, false, false), view.steps.map { it.done })
-        assertEquals("Étape 3 sur 4 · Actif, le 20 octobre 2026", view.stepSummary)
+        assertEquals("Étape 3 sur 4 · Actif, le 20 oct. 2026", view.stepSummary)
         assertFalse(view.editable)
         assertTrue(view.closable)
         assertTrue(view.cancellable)
@@ -134,8 +134,8 @@ class MandateViewsTest {
         assertEquals(3, view.currentStep)
         assertEquals(listOf(true, true, true, true), view.steps.map { it.done })
         assertEquals("Fermé", view.steps.last().label)
-        assertEquals("1 novembre 2026", view.closedAt)
-        assertEquals("240 000 FCFA / mois", view.finalPrice)
+        assertEquals("01 nov. 2026", view.closedAt)
+        assertEquals("240\u00a0000\u00a0FCFA / mois", view.finalPrice)
         assertEquals("12 jours", view.age)
         assertFalse(view.editable)
         assertFalse(view.closable)
@@ -162,7 +162,7 @@ class MandateViewsTest {
         assertEquals(3, view.currentStep)
         assertEquals("Annulé", view.steps.last().label)
         assertEquals(listOf(true, true, false, true), view.steps.map { it.done })
-        assertEquals("Étape 4 sur 4 · Annulé, le 19 octobre 2026", view.stepSummary)
+        assertEquals("Étape 4 sur 4 · Annulé, le 19 oct. 2026", view.stepSummary)
         assertEquals("changement de projet", view.cancellation)
         assertEquals("Il reste chez lui", view.cancellationReason)
         assertFalse(view.cancellable)
@@ -208,7 +208,7 @@ class MandateViewsTest {
         assertNull(view.requestedAt)
         assertNull(view.signatureDeadline)
         assertNull(view.validUntil)
-        assertEquals("20 octobre 2026", view.approvedAt)
+        assertEquals("20 oct. 2026", view.approvedAt)
     }
 
     @Test
@@ -230,7 +230,7 @@ class MandateViewsTest {
         assertEquals(
             listOf(
                 "Secteurs" to "Bonapriso, Akwa — Douala",
-                "Budget" to "250K FCFA / mois",
+                "Budget" to "250\u00a0000\u00a0FCFA / mois",
                 "Emménagement" to "Dans 1 à 3 mois",
                 "Type de bien" to "Maison, 3 chambres",
                 "Autres précisions" to "Près d'une école",

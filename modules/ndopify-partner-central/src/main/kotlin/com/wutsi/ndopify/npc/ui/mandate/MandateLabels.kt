@@ -7,12 +7,11 @@ import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
-import java.math.BigDecimal
-import java.math.RoundingMode
 import java.util.Locale
 
 /**
@@ -136,28 +135,11 @@ object MandateLabels {
         else -> "Indifférent"
     }
 
-    /** "150K FCFA par mois". */
-    fun price(money: Money): String {
-        val currency = if (money.currency == "XAF") "FCFA" else money.currency
+    /** "150 000 FCFA par mois", in the tenant's format. */
+    fun price(money: Money, formatter: TenantFormatter): String {
         val period = if (money.periodicity == PeriodicityType.MONTHLY) " par mois" else ""
-        return "${formatAmount(money.amount)} $currency$period"
+        return formatter.money(money.amount, money.currency) + period
     }
-
-    /** An amount to read, not to type: "800K", "1.5M" (FCFA has no cents, so K and M are enough). */
-    fun formatAmount(value: Number): String {
-        val amount = value.toLong()
-        return when {
-            amount >= 1_000_000 -> short(amount, 1_000_000) + "M"
-            amount >= 1_000 -> short(amount, 1_000) + "K"
-            else -> amount.toString()
-        }
-    }
-
-    private fun short(amount: Long, unit: Long): String =
-        BigDecimal.valueOf(amount)
-            .divide(BigDecimal.valueOf(unit), 2, RoundingMode.HALF_UP)
-            .stripTrailingZeros()
-            .toPlainString()
 
     /** The mandate's criteria by group ("Accès à l'eau" → "Compteur d'eau, Forage"), only the groups it has. */
     fun amenityGroups(mandate: Mandate): List<Pair<String, String>> {
@@ -192,19 +174,15 @@ object MandateLabels {
     /** "Locataire · Maison". */
     fun title(mandate: Mandate): String = party(mandate.mandateType) + " · " + shortPropertyType(mandate.propertyType)
 
-    /** "150K FCFA / mois", "152 500 FCFA / mois": the rent of a mandate's criteria. */
-    fun rent(money: Money): String {
-        val value = if (money.amount % 1000 == 0L) "${money.amount / 1000}K" else formatNumber(money.amount)
-        val currency = if (money.currency == "XAF") "FCFA" else money.currency
-        return "$value $currency / mois"
-    }
+    /** "152 500 FCFA / mois", in the tenant's format: the rent of a mandate's criteria. */
+    fun rent(money: Money, formatter: TenantFormatter): String = formatter.money(money.amount, money.currency) + " / mois"
 
     /**
      * The mandate's criteria as term → value rows, in the prototype's order (`criteriaOf`): sector, amount and moving
      * date first (a card's three facts), the category and the type (with them, the page's key criteria), then the
      * follow-up questions that apply to the type, the amenities by group, and the comments.
      */
-    fun criteria(mandate: Mandate, locations: Map<Long, Location>): List<Pair<String, String>> {
+    fun criteria(mandate: Mandate, locations: Map<Long, Location>, formatter: TenantFormatter): List<Pair<String, String>> {
         val owner = mandate.mandateType == MandateType.LISTING
         val type = mandate.propertyType?.name
         val neighborhoods = mandate.neighborhoodIds.mapNotNull { locations[it]?.name }
@@ -214,7 +192,7 @@ object MandateLabels {
         ).joinToString(" — ").ifEmpty { NONE }
         return listOfNotNull(
             (if (mandate.neighborhoodIds.size > 1) "Secteurs" else "Secteur") to sector,
-            (if (owner) "Loyer" else "Budget") to rent(mandate.price),
+            (if (owner) "Loyer" else "Budget") to rent(mandate.price, formatter),
             (if (owner) "Disponibilité" else "Emménagement") to (MOVE_IN_LABELS[mandate.movingPeriod] ?: NONE),
             "Catégorie" to (category(mandate.propertyCategory) ?: NONE),
             "Type de propriété" to (PROPERTY_TYPE_LABELS[mandate.propertyType] ?: "Indifférent"),

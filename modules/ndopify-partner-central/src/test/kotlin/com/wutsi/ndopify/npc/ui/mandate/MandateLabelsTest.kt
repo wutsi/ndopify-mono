@@ -6,6 +6,7 @@ import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
@@ -45,21 +46,10 @@ class MandateLabelsTest {
     @Test
     fun price() {
         assertEquals(
-            "150K FCFA par mois",
-            MandateLabels.price(Money(amount = 150000, currency = "XAF", periodicity = PeriodicityType.MONTHLY)),
+            "150\u00a0000\u00a0FCFA par mois",
+            MandateLabels.price(Money(amount = 150000, currency = "XAF", periodicity = PeriodicityType.MONTHLY), FORMATTER),
         )
-        assertEquals("2.5K CAD", MandateLabels.price(Money(amount = 2500, currency = "CAD")))
-    }
-
-    @Test
-    fun formatAmount() {
-        assertEquals("500", MandateLabels.formatAmount(500))
-        assertEquals("5K", MandateLabels.formatAmount(5_000))
-        assertEquals("12.5K", MandateLabels.formatAmount(12_500))
-        assertEquals("800K", MandateLabels.formatAmount(800_000))
-        assertEquals("1M", MandateLabels.formatAmount(1_000_000))
-        assertEquals("1.5M", MandateLabels.formatAmount(1_500_000))
-        assertEquals("1.23M", MandateLabels.formatAmount(1_234_567))
+        assertEquals("2\u00a0500,00\u00a0CAD", MandateLabels.price(Money(amount = 2500, currency = "CAD"), FORMATTER))
     }
 
     @Test
@@ -98,8 +88,8 @@ class MandateLabelsTest {
 
     @Test
     fun rent() {
-        assertEquals("150K FCFA / mois", MandateLabels.rent(Money(150000, "XAF", PeriodicityType.MONTHLY)))
-        assertEquals("152\u00a0500 FCFA / mois", MandateLabels.rent(Money(152500, "XAF", PeriodicityType.MONTHLY)))
+        assertEquals("150\u00a0000\u00a0FCFA / mois", MandateLabels.rent(Money(150000, "XAF", PeriodicityType.MONTHLY), FORMATTER))
+        assertEquals("152\u00a0500\u00a0FCFA / mois", MandateLabels.rent(Money(152500, "XAF", PeriodicityType.MONTHLY), FORMATTER))
     }
 
     @Test
@@ -122,7 +112,7 @@ class MandateLabelsTest {
         assertEquals(
             listOf(
                 "Secteurs" to "Kotto, Logpom — Douala",
-                "Budget" to "150K FCFA / mois",
+                "Budget" to "150\u00a0000\u00a0FCFA / mois",
                 "Emménagement" to "Dans moins d'1 mois",
                 "Catégorie" to "Résidentiel",
                 "Type de propriété" to "Appartement",
@@ -133,7 +123,7 @@ class MandateLabelsTest {
                 "Accès à l'eau" to "Forage",
                 "Autres précisions" to "Près d'une école",
             ),
-            MandateLabels.criteria(mandate, LOCATIONS),
+            MandateLabels.criteria(mandate, LOCATIONS, FORMATTER),
         )
     }
 
@@ -153,18 +143,18 @@ class MandateLabelsTest {
         assertEquals(
             listOf(
                 "Secteur" to "Toute la ville — Douala",
-                "Loyer" to "50K FCFA / mois",
+                "Loyer" to "50\u00a0000\u00a0FCFA / mois",
                 "Disponibilité" to "Dans plus de 3 mois",
                 "Catégorie" to "Résidentiel",
                 "Type de propriété" to "Terrain",
             ),
-            MandateLabels.criteria(mandate, LOCATIONS),
+            MandateLabels.criteria(mandate, LOCATIONS, FORMATTER),
         )
     }
 
     @Test
     fun `criteria - client, any type`() {
-        val rows = MandateLabels.criteria(Mandate(mandateType = MandateType.SEARCH, cityId = 1), LOCATIONS)
+        val rows = MandateLabels.criteria(Mandate(mandateType = MandateType.SEARCH, cityId = 1), LOCATIONS, FORMATTER)
 
         assertEquals("Type de propriété" to "Indifférent", rows[4])
         assertEquals("Parking" to "Indifférent", rows[6])

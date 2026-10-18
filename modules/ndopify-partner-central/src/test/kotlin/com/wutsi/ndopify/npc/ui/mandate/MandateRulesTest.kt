@@ -6,8 +6,8 @@ import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import java.time.Instant
-import java.time.ZoneId
 import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -16,7 +16,6 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class MandateRulesTest {
-    private val zone = ZoneId.of("Africa/Douala")
     private val now = date("2026-10-18T10:00:00Z").time
 
     @Test
@@ -66,11 +65,6 @@ class MandateRulesTest {
     }
 
     @Test
-    fun formatDate() {
-        assertEquals("23 octobre 2026", MandateRules.formatDate(date("2026-10-22T23:30:00Z"), zone))
-    }
-
-    @Test
     fun requestedAt() {
         val contract = Contract(signatureDeadline = date("2026-10-22T10:00:00Z"))
 
@@ -93,7 +87,7 @@ class MandateRulesTest {
     fun `next step - assigned`() {
         assertEquals(
             "Contactez le client, puis envoyez-lui le mandat à approuver.",
-            MandateRules.nextStep(Mandate(status = MandateStatus.ASSIGNED), null, now, zone),
+            MandateRules.nextStep(Mandate(status = MandateStatus.ASSIGNED), null, now, FORMATTER),
         )
         assertEquals(
             "Contactez le bailleur, puis envoyez-lui le mandat à approuver.",
@@ -101,7 +95,7 @@ class MandateRulesTest {
                 Mandate(status = MandateStatus.ASSIGNED, mandateType = MandateType.LISTING),
                 null,
                 now,
-                zone,
+                FORMATTER,
             ),
         )
     }
@@ -111,8 +105,8 @@ class MandateRulesTest {
         val contract = ContractSummary(signatureDeadline = date("2026-10-22T10:00:00Z"))
 
         assertEquals(
-            "Le client a jusqu'au 22 octobre 2026 pour signer le mandat.",
-            MandateRules.nextStep(Mandate(status = MandateStatus.PENDING_APPROVAL), contract, now, zone),
+            "Le client a jusqu'au 22 oct. 2026 pour signer le mandat.",
+            MandateRules.nextStep(Mandate(status = MandateStatus.PENDING_APPROVAL), contract, now, FORMATTER),
         )
     }
 
@@ -122,7 +116,7 @@ class MandateRulesTest {
 
         assertEquals(
             "Délai de signature dépassé : renvoyez le mandat.",
-            MandateRules.nextStep(Mandate(status = MandateStatus.PENDING_APPROVAL), contract, now, zone),
+            MandateRules.nextStep(Mandate(status = MandateStatus.PENDING_APPROVAL), contract, now, FORMATTER),
         )
     }
 
@@ -130,7 +124,7 @@ class MandateRulesTest {
     fun `next step - pending approval without contract`() {
         assertEquals(
             "Le client doit signer le mandat.",
-            MandateRules.nextStep(Mandate(status = MandateStatus.PENDING_APPROVAL), null, now, zone),
+            MandateRules.nextStep(Mandate(status = MandateStatus.PENDING_APPROVAL), null, now, FORMATTER),
         )
     }
 
@@ -140,17 +134,17 @@ class MandateRulesTest {
 
         assertEquals(
             "Mandat signé, valable jusqu'au 28 mars 2027.",
-            MandateRules.nextStep(Mandate(status = MandateStatus.APPROVED), contract, now, zone),
+            MandateRules.nextStep(Mandate(status = MandateStatus.APPROVED), contract, now, FORMATTER),
         )
         assertEquals(
             "Mandat signé.",
-            MandateRules.nextStep(Mandate(status = MandateStatus.APPROVED), null, now, zone),
+            MandateRules.nextStep(Mandate(status = MandateStatus.APPROVED), null, now, FORMATTER),
         )
     }
 
     @Test
     fun `next step - closed`() {
-        assertNull(MandateRules.nextStep(Mandate(status = MandateStatus.CLOSED), null, now, zone))
+        assertNull(MandateRules.nextStep(Mandate(status = MandateStatus.CLOSED), null, now, FORMATTER))
     }
 
     private fun date(iso: String): Date = Date.from(Instant.parse(iso))

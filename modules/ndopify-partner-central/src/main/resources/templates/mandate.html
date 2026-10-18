@@ -31,7 +31,7 @@
   and "errors" its errors per field. "outcomeText" / "outcomeStyle" are the last action's outcome (flash attribute
   "outcome", worded by MandateController).
 */-->
-<body data-page="mandate">
+<body data-page="mandate" th:attr="data-currency=${currency}">
     <a class="skip-link" href="#main">Aller au contenu</a>
     <header class="site-header">
         <div class="site-header__inner">
@@ -265,7 +265,7 @@
                                 <input class="input" id="finalPrice" name="finalPrice" type="text" inputmode="numeric"
                                        autocomplete="off" aria-describedby="finalPrice-error" th:value="${form.finalPrice}"
                                        th:attr="aria-invalid=${errors['finalPrice'] != null ? 'true' : null}">
-                                <span aria-hidden="true" class="input-unit__suffix">FCFA / mois</span>
+                                <span aria-hidden="true" class="input-unit__suffix" th:text="${currency} + ' / mois'">FCFA / mois</span>
                             </div>
                             <p class="field__error" id="finalPrice-error" th:hidden="${errors['finalPrice'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['finalPrice']}"></span></p>
                         </div>

@@ -12,6 +12,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantContext
+import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.kyc.KycRules
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
@@ -27,7 +28,6 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.client.RestClientException
 import java.time.Clock
-import java.time.ZoneId
 
 /**
  * The Espace agent (`index.html`), where every agent lands: its profile section (photo, name, area, biography
@@ -76,6 +76,7 @@ class HomeController(
         model.addAttribute("kyc", kyc(agent))
         if (agent.party.kycStatus == KycStatus.VERIFIED) {
             val now = clock.millis()
+            val formatter = TenantFormatter(tenantContext.getTenant())
             val offers = offers(agent, now)
             val mandates = mandates(agent)
             val names = names(
@@ -83,7 +84,7 @@ class HomeController(
                     .flatMap { mandate -> listOf(mandate.cityId) + mandate.neighborhoodIds },
             )
 
-            val assignments = offers?.map { (assignment, mandate) -> AssignmentViews.of(assignment, mandate, names, now) }
+            val assignments = offers?.map { (assignment, mandate) -> AssignmentViews.of(assignment, mandate, names, now, formatter) }
             model.addAttribute("assignments", assignments ?: emptyList<AssignmentView>())
             model.addAttribute("assignmentsUnavailable", assignments == null)
             // GET /?decline={id}: the decline confirmation without JS, for one of the listed offers only. A String,
@@ -91,10 +92,9 @@ class HomeController(
             val declineId = decline?.toLongOrNull()
             model.addAttribute("declining", assignments?.firstOrNull { it.id == declineId }?.id)
 
-            val zone = ZoneId.of(tenantContext.getTenant().timeZone)
             model.addAttribute(
                 "mandates",
-                mandates?.map { (mandate, contract) -> MandateCards.of(mandate, contract, names, now, zone) }
+                mandates?.map { (mandate, contract) -> MandateCards.of(mandate, contract, names, now, formatter) }
                     ?: emptyList<MandateCardView>(),
             )
             model.addAttribute("mandatesUnavailable", mandates == null)

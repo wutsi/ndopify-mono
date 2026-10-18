@@ -8,6 +8,7 @@ import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AKWA
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BONAPRISO
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.DOUALA
@@ -15,14 +16,12 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.LOCATIONS
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import java.time.Instant
-import java.time.ZoneId
 import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class MandateCardsTest {
     companion object {
-        val ZONE: ZoneId = ZoneId.of("Africa/Douala")
         val NOW: Long = Instant.parse("2026-10-18T10:00:00Z").toEpochMilli()
         val NAMES = LOCATIONS.associateBy { it.id }
 
@@ -62,7 +61,7 @@ class MandateCardsTest {
 
     @Test
     fun assigned() {
-        val card = MandateCards.of(MANDATE, null, NAMES, NOW, ZONE)
+        val card = MandateCards.of(MANDATE, null, NAMES, NOW, FORMATTER)
 
         assertEquals(201L, card.id)
         assertEquals("Locataire · Maison", card.title)
@@ -70,7 +69,7 @@ class MandateCardsTest {
         assertEquals(
             listOf(
                 "Secteurs" to "Bonapriso, Akwa",
-                "Budget" to "250K FCFA / mois",
+                "Budget" to "250\u00a0000\u00a0FCFA / mois",
                 "Emménagement" to "Dans 1 à 3 mois",
             ),
             card.facts,
@@ -80,10 +79,10 @@ class MandateCardsTest {
 
     @Test
     fun `pending approval`() {
-        val card = MandateCards.of(MANDATE.copy(status = MandateStatus.PENDING_APPROVAL), CONTRACT_SUMMARY, NAMES, NOW, ZONE)
+        val card = MandateCards.of(MANDATE.copy(status = MandateStatus.PENDING_APPROVAL), CONTRACT_SUMMARY, NAMES, NOW, FORMATTER)
 
         assertEquals(MandateRules.Tag("En approbation", "warning"), card.tag)
-        assertEquals("Le client a jusqu'au 22 octobre 2026 pour signer le mandat.", card.nextStep)
+        assertEquals("Le client a jusqu'au 22 oct. 2026 pour signer le mandat.", card.nextStep)
     }
 
     @Test
@@ -94,12 +93,12 @@ class MandateCardsTest {
             neighborhoodIds = listOf(BONAPRISO),
         )
 
-        val card = MandateCards.of(mandate, CONTRACT_SUMMARY, NAMES, NOW, ZONE)
+        val card = MandateCards.of(mandate, CONTRACT_SUMMARY, NAMES, NOW, FORMATTER)
 
         assertEquals("Bailleur · Maison", card.title)
         assertEquals(MandateRules.Tag("Actif", "success"), card.tag)
         assertEquals(
-            listOf("Secteur" to "Bonapriso", "Loyer" to "250K FCFA / mois", "Disponibilité" to "Dans 1 à 3 mois"),
+            listOf("Secteur" to "Bonapriso", "Loyer" to "250\u00a0000\u00a0FCFA / mois", "Disponibilité" to "Dans 1 à 3 mois"),
             card.facts,
         )
         assertEquals("Mandat signé, valable jusqu'au 28 mars 2027.", card.nextStep)
@@ -107,7 +106,7 @@ class MandateCardsTest {
 
     @Test
     fun `whole city`() {
-        val card = MandateCards.of(MANDATE.copy(neighborhoodIds = emptyList()), null, NAMES, NOW, ZONE)
+        val card = MandateCards.of(MANDATE.copy(neighborhoodIds = emptyList()), null, NAMES, NOW, FORMATTER)
 
         assertEquals("Secteur" to "Toute la ville", card.facts[0])
     }

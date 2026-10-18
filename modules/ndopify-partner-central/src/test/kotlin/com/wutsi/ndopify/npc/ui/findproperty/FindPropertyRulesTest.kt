@@ -3,6 +3,7 @@ package com.wutsi.ndopify.npc.ui.findproperty
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -106,9 +107,19 @@ class FindPropertyRulesTest {
 
     @Test
     fun priceAmount() {
-        assertNull(FindPropertyRules.priceAmount(5000L))
-        assertEquals("Indiquez votre budget mensuel.", FindPropertyRules.priceAmount(null))
-        assertEquals("Indiquez un loyer d'au moins 5K FCFA par mois.", FindPropertyRules.priceAmount(4999L))
+        assertNull(FindPropertyRules.priceAmount(5000L, FORMATTER))
+        assertEquals("Indiquez votre budget mensuel.", FindPropertyRules.priceAmount(null, FORMATTER))
+        assertEquals(
+            "Indiquez un loyer d'au moins 5\u00a0000\u00a0FCFA par mois.",
+            FindPropertyRules.priceAmount(4999L, FORMATTER),
+        )
+    }
+
+    @Test
+    fun isPriceAmount() {
+        assertTrue(FindPropertyRules.isPriceAmount(5000L))
+        assertFalse(FindPropertyRules.isPriceAmount(4999L))
+        assertFalse(FindPropertyRules.isPriceAmount(null))
     }
 
     @Test

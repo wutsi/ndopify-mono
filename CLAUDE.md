@@ -276,7 +276,10 @@ Package `com.wutsi.ndopify.npc`: `ui/` (MVC controllers + Thymeleaf templates in
   The header's account menu (`<nav class="user-menu">`) is wrapped in `th:if="${signedIn}"`, a model attribute
   that `SignedInAdvice` (`ui/layout/`) sets on every page: give any new page's menu the same guard.
 - Tenant is resolved by `TenantContext` matching the request URL against each active tenant's `partnerCentralUrl`
-  (from `GET /v1/tenants`).
+  (from `GET /v1/tenants`). Dates and amounts shown to users go through `service/TenantFormatter` (built from the
+  `Tenant`, like ndopify-server's): the tenant's `dateFormat` / `monetaryFormat` / `numberFormat`, first locale and
+  `timeZone`, with no-break spaces; a field's unit or a message names the currency with `currency()` (the
+  `currencySymbol`), never a hard-coded "FCFA". `mandate.js` reads it from the body's `data-currency`.
 - `RestConfiguration` adds logging, `Authorization` and `X-Tenant-ID` interceptors to every Spring-built
   `RestClient`. `NdTenantClient` uses a plain `RestTemplate` instead, since tenants are global.
 - Sign-up is the *Rejoindre Ndopify* wizard (`JoinController`, `ui/join/`), built like the login: one page
@@ -337,7 +340,7 @@ Package `com.wutsi.ndopify.npc`: `ui/` (MVC controllers + Thymeleaf templates in
   one `GET /v1/contracts?id=…` for all the cards, the contracts of those PENDING_APPROVAL / APPROVED, for the next
   step's date (without it, the cards show no date); the location names
   of offers and mandates come in one lookup. Cards are `MandateCards` → `MandateCardView`; statuses, tags, party
-  wording ("le client" / "le bailleur", after `mandateType`), dates (`d MMMM yyyy`, tenant's `timeZone`) and next
+  wording ("le client" / "le bailleur", after `mandateType`), dates and next
   steps are `ui/mandate/MandateRules`. Each card opens the mandate page, `MandateController` (`ui/mandate/`,
   `templates/mandate.html`): `GET /mandates/{id}` (`MandateViews` → `MandateView`: steps, panel of the status,
   contact from `GET /v1/customers/{id}`, criteria, "accepté le" from the ACCEPTED assignment); only the mandate

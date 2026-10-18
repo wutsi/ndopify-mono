@@ -32,7 +32,7 @@
   "cityId" the city whose neighbourhoods join.js-style slim-select searches; "mandateId" the id of the URL.
   "locked" is "unavailable" or "approved" for the locked view (no form).
 */-->
-<body data-page="mandate-edit">
+<body data-page="mandate-edit" th:attr="data-currency=${currency}">
     <a class="skip-link" href="#main">Aller au contenu</a>
     <header class="site-header">
         <div class="site-header__inner">
@@ -282,7 +282,7 @@
                                 <div class="input-unit">
                                     <input class="input" id="priceAmount" name="priceAmount" type="text" inputmode="numeric" required
                                            aria-describedby="priceAmount-error" th:value="${answers.priceAmount}" th:attr="aria-invalid=${errors['priceAmount'] != null ? 'true' : null}">
-                                    <span aria-hidden="true" class="input-unit__suffix">FCFA / mois</span>
+                                    <span aria-hidden="true" class="input-unit__suffix" th:text="${currency} + ' / mois'">FCFA / mois</span>
                                 </div>
                                 <p class="field__error" id="priceAmount-error" th:hidden="${errors['priceAmount'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['priceAmount']}"></span></p>
                             </div>

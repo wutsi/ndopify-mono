@@ -19,6 +19,7 @@ import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantContext
+import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
@@ -68,7 +69,7 @@ class FindPropertyControllerTest {
 
     @BeforeEach
     fun setUp() {
-        doReturn(Tenant(id = 1, countryCode = "CM", currencyCode = "XAF")).whenever(tenantContext).getTenant()
+        doReturn(TENANT).whenever(tenantContext).getTenant()
         whenever(locationClient.search(any())).thenAnswer { invocation ->
             val request = invocation.getArgument<SearchLocationRequest>(0)
             SearchLocationResponse(locations = locations.filter { request.ids.contains(it.id) })
@@ -169,7 +170,7 @@ class FindPropertyControllerTest {
             "Appartement · 3 chambres · Meublé ou non · 1 place de parking · 80 m² minimum",
             model(result)["propertyLabel"],
         )
-        assertEquals("150K FCFA par mois", model(result)["priceLabel"])
+        assertEquals("150\u00a0000\u00a0FCFA par mois", model(result)["priceLabel"])
         assertEquals("Dans moins d'1 mois", model(result)["movingPeriodLabel"])
         assertEquals("le soir", model(result)["contactPeriodLabel"])
         assertEquals(listOf("Compteur d'eau", "Gardien"), model(result)["amenityLabels"])
@@ -542,7 +543,7 @@ class FindPropertyControllerTest {
                 .param("movingPeriod", "WITHIN_1_MONTH"),
         ).andReturn()
 
-        assertEquals("Indiquez un loyer d'au moins 5K FCFA par mois.", errors(result)["priceAmount"])
+        assertEquals("Indiquez un loyer d'au moins 5\u00a0000\u00a0FCFA par mois.", errors(result)["priceAmount"])
         assertNull(pending()?.priceAmount)
     }
 

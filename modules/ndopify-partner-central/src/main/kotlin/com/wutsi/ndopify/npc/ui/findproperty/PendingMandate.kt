@@ -81,7 +81,7 @@ data class PendingMandate(
         FindPropertyController.STEP_AMENITIES -> true
 
         FindPropertyController.STEP_BUDGET ->
-            FindPropertyRules.priceAmount(priceAmount) == null && FindPropertyRules.movingPeriod(movingPeriod) == null
+            FindPropertyRules.isPriceAmount(priceAmount) && FindPropertyRules.movingPeriod(movingPeriod) == null
 
         FindPropertyController.STEP_CONTACT -> listOf(
             JoinRules.firstName(firstName),

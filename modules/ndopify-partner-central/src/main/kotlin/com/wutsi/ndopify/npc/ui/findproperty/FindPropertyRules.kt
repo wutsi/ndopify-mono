@@ -5,6 +5,7 @@ import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.npc.service.TenantFormatter
 
 /**
  * Field rules of the "Trouver un bien" wizard, shared by [FindPropertyController] (to validate what a step posts)
@@ -16,7 +17,7 @@ object FindPropertyRules {
     const val MAX_NEIGHBORHOODS = 3
     const val MAX_COMMENTS = 500
 
-    // Smallest monthly rent worth a search (FCFA).
+    // Smallest monthly rent worth a search, in the tenant's currency.
     const val MIN_RENT = 5000L
     private const val MIN_AREA = 5
     private const val MAX_AREA = 1_000_000
@@ -98,11 +99,13 @@ object FindPropertyRules {
             "Indiquez une surface d'au moins 5 m², ou laissez ce champ vide."
         }
 
-    fun priceAmount(value: Long?): String? = when {
+    fun priceAmount(value: Long?, formatter: TenantFormatter): String? = when {
         value == null || value <= 0 -> "Indiquez votre budget mensuel."
-        value < MIN_RENT -> "Indiquez un loyer d'au moins 5K FCFA par mois."
+        value < MIN_RENT -> "Indiquez un loyer d'au moins ${formatter.money(MIN_RENT)} par mois."
         else -> null
     }
+
+    fun isPriceAmount(value: Long?): Boolean = value != null && value >= MIN_RENT
 
     fun movingPeriod(value: MovingPeriod?): String? =
         if (value == null || value == MovingPeriod.UNKNOWN) "Indiquez quand vous souhaitez emménager." else null

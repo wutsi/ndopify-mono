@@ -86,9 +86,14 @@
         return amount.toLocaleString("fr-FR");
     }
 
-    // 150000 → "150K FCFA / mois" (MandateLabels.rent).
+    // The tenant's currency ("FCFA"), from the page's body (data-currency).
+    function currency() {
+        return document.body.getAttribute("data-currency") || "";
+    }
+
+    // 150000 → "150 000 FCFA / mois", close to MandateLabels.rent (the tenant's monetaryFormat is server-side only).
     function formatRent(amount) {
-        return (amount % 1000 === 0 ? amount / 1000 + "K" : formatNumber(amount)) + " FCFA / mois";
+        return formatNumber(amount) + "\u00a0" + currency() + " / mois";
     }
 
     // A form's submit button, once pressed: disabled and relabelled, so the form can't be posted twice.
@@ -198,7 +203,7 @@
             closeForm.addEventListener("submit", function (event) {
                 if (!(parseAmount(price.value) > 0)) {
                     event.preventDefault();
-                    setFieldError(price, priceError, "Indiquez le loyer convenu, en FCFA par mois.");
+                    setFieldError(price, priceError, "Indiquez le loyer convenu, en " + currency() + " par mois.");
                     price.focus();
                 }
             });

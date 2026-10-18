@@ -129,7 +129,7 @@ class HomeTemplateTest {
         assertEquals("52 min", card.selectFirst("[data-timer-value]")?.text())
         assertEquals("Secteurs", card.selectFirst("[data-fact=sector]")?.previousElementSibling()?.text())
         assertEquals("Bonapriso, Akwa", card.selectFirst("[data-fact=sector]")?.text())
-        assertEquals("150K FCFA par mois", card.selectFirst("[data-fact=price]")?.wholeText())
+        assertEquals("150\u00a0000\u00a0FCFA par mois", card.selectFirst("[data-fact=price]")?.wholeText())
         assertEquals("Dans moins d'1 mois", card.selectFirst("[data-fact=moving]")?.text())
         assertEquals("/assignments/7/accept", card.selectFirst("form[data-accept-form]")?.attr("action"))
         assertEquals("post", card.selectFirst("form[data-accept-form]")?.attr("method"))
@@ -224,7 +224,7 @@ class HomeTemplateTest {
         )
         assertEquals("status-tag status-tag--warning", cards[1].selectFirst(".status-tag")?.className())
         assertEquals(
-            "Le client a jusqu'au 19 janvier 2027 pour signer le mandat.",
+            "Le client a jusqu'au 19 janv. 2027 pour signer le mandat.",
             cards[1].selectFirst(".mandate-card__next")?.text(),
         )
         assertTrue(page.selectFirst("[data-mandates-empty]")!!.hasAttr("hidden"))

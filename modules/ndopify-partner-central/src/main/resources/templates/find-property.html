@@ -351,7 +351,7 @@
                                    th:attr="aria-invalid=${errors['priceAmount'] != null ? 'true' : null}"
                                    th:value="${answers.priceAmount != null} ? ${#numbers.formatInteger(answers.priceAmount, 1, 'WHITESPACE')} : ''"
                                    type="text">
-                            <span aria-hidden="true" class="input-unit__suffix">FCFA / mois</span>
+                            <span aria-hidden="true" class="input-unit__suffix" th:text="${currency} + ' / mois'">FCFA / mois</span>
                         </div>
                         <p th:replace="~{:: error('priceAmount')}"></p>
                     </div>

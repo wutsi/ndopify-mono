@@ -8,6 +8,7 @@ import com.wutsi.ndopify.mandate.dto.AssignmentStatus
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.MANDATE
 import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.NOW
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AKWA
@@ -62,14 +63,14 @@ class AssignmentViewsTest {
 
     @Test
     fun card() {
-        val view = AssignmentViews.of(ASSIGNMENT, MANDATE, NAMES, NOW)
+        val view = AssignmentViews.of(ASSIGNMENT, MANDATE, NAMES, NOW, FORMATTER)
 
         assertEquals(7L, view.id)
         assertEquals("Recherche", view.title)
         assertEquals("Secteurs", view.sectorTerm)
         assertEquals("Bonapriso, Akwa", view.sector)
         assertEquals("Budget", view.priceTerm)
-        assertEquals("150K FCFA par mois", view.price)
+        assertEquals("150\u00a0000\u00a0FCFA par mois", view.price)
         assertEquals("Emménagement", view.movingTerm)
         assertEquals("Dans moins d'1 mois", view.moving)
         assertEquals(NOW + 52 * MINUTE, view.expiresAt)
@@ -78,7 +79,7 @@ class AssignmentViewsTest {
 
     @Test
     fun details() {
-        val view = AssignmentViews.of(ASSIGNMENT, MANDATE, NAMES, NOW)
+        val view = AssignmentViews.of(ASSIGNMENT, MANDATE, NAMES, NOW, FORMATTER)
 
         assertEquals(
             listOf(
@@ -102,6 +103,7 @@ class AssignmentViewsTest {
             MANDATE.copy(mandateType = MandateType.LISTING, neighborhoodIds = listOf(BONAPRISO)),
             NAMES,
             NOW,
+            FORMATTER,
         )
 
         assertEquals("Affichage", view.title)
@@ -114,7 +116,7 @@ class AssignmentViewsTest {
 
     @Test
     fun `no neighbourhood - the whole city`() {
-        val view = AssignmentViews.of(ASSIGNMENT, MANDATE.copy(neighborhoodIds = emptyList()), NAMES, NOW)
+        val view = AssignmentViews.of(ASSIGNMENT, MANDATE.copy(neighborhoodIds = emptyList()), NAMES, NOW, FORMATTER)
 
         assertEquals("Secteur", view.sectorTerm)
         assertEquals("Tous les quartiers", view.sector)
@@ -122,7 +124,7 @@ class AssignmentViewsTest {
 
     @Test
     fun `questions that don't apply to the type are left out`() {
-        val view = AssignmentViews.of(ASSIGNMENT, MANDATE.copy(propertyType = PropertyType.LAND), NAMES, NOW)
+        val view = AssignmentViews.of(ASSIGNMENT, MANDATE.copy(propertyType = PropertyType.LAND), NAMES, NOW, FORMATTER)
 
         val terms = view.details.map { it.first }
         assertFalse("Chambres" in terms)
@@ -132,7 +134,7 @@ class AssignmentViewsTest {
 
     @Test
     fun `comments and customer are never shown`() {
-        val view = AssignmentViews.of(ASSIGNMENT, MANDATE, NAMES, NOW)
+        val view = AssignmentViews.of(ASSIGNMENT, MANDATE, NAMES, NOW, FORMATTER)
 
         assertFalse(view.toString().contains("677"))
         assertFalse(view.toString().contains("555"))
@@ -140,7 +142,7 @@ class AssignmentViewsTest {
 
     @Test
     fun `location names unavailable`() {
-        val view = AssignmentViews.of(ASSIGNMENT, MANDATE, emptyMap(), NOW)
+        val view = AssignmentViews.of(ASSIGNMENT, MANDATE, emptyMap(), NOW, FORMATTER)
 
         assertNull(view.sector)
     }

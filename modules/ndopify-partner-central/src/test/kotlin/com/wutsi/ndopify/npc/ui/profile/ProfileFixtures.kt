@@ -8,6 +8,7 @@ import com.wutsi.ndopify.agent.dto.AgentType
 import com.wutsi.ndopify.agent.dto.ExperienceLevel
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.service.TenantContext
+import com.wutsi.ndopify.npc.service.TenantFixtures
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.refdata.dto.Location
@@ -53,7 +54,7 @@ object ProfileFixtures {
     )
 
     fun mockLocations(locationClient: NdLocationClient, tenantContext: TenantContext) {
-        doReturn(Tenant(id = 1, countryCode = "CM")).whenever(tenantContext).getTenant()
+        doReturn(TenantFixtures.TENANT).whenever(tenantContext).getTenant()
         whenever(locationClient.search(any())).thenAnswer { invocation ->
             val request = invocation.getArgument<SearchLocationRequest>(0)
             SearchLocationResponse(locations = LOCATIONS.filter { request.ids.contains(it.id) })

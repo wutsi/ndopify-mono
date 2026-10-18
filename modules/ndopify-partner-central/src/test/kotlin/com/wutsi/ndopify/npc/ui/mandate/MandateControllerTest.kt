@@ -101,9 +101,9 @@ class MandateControllerTest {
         assertEquals("mandate", result.modelAndView?.viewName)
         val view = mandate(result)
         assertEquals(201L, view.id)
-        assertEquals("22 octobre 2026", view.signatureDeadline)
+        assertEquals("22 oct. 2026", view.signatureDeadline)
         assertEquals("ray@gmail.com", view.contact?.email)
-        assertEquals("10 octobre 2026", view.acceptedAt)
+        assertEquals("10 oct. 2026", view.acceptedAt)
         assertEquals("Secteurs" to "Bonapriso, Akwa — Douala", view.keyCriteria[0])
         assertEquals("SN", model(result)["initials"])
         assertNull(model(result)["locked"])
@@ -162,7 +162,7 @@ class MandateControllerTest {
         val view = mandate(mvc.perform(get("/mandates/201")).andReturn())
 
         assertNull(view.contact)
-        assertEquals("22 octobre 2026", view.signatureDeadline)
+        assertEquals("22 oct. 2026", view.signatureDeadline)
     }
 
     @Test

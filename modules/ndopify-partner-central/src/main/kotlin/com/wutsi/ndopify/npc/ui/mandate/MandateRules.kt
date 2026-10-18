@@ -6,10 +6,8 @@ import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
+import com.wutsi.ndopify.npc.service.TenantFormatter
 import java.util.Date
-import java.util.Locale
 
 /**
  * The life of a mandate as the agent sees it, worded as the prototype's `partner-central.js` (`STATUS_TAGS`,
@@ -61,8 +59,6 @@ object MandateRules {
     private val OWNER = PartyWords("le bailleur", "Le bailleur", "du bailleur", "son bien", "Son bien", "au bailleur")
     private val CLIENT = PartyWords("le client", "Le client", "du client", "sa recherche", "Sa recherche", "au client")
 
-    private val DATE_FORMAT = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.FRENCH)
-
     /** An unknown status reads as the neutral "Fermé" tag: the page never shows one anyway (see [SHOWN]). */
     fun tag(status: MandateStatus): Tag = TAGS[status] ?: TAGS.getValue(MandateStatus.CLOSED)
 
@@ -70,9 +66,6 @@ object MandateRules {
 
     fun cancellation(code: MandateCancellationCode?): String =
         CANCELLATION_LABELS[code] ?: CANCELLATION_LABELS.getValue(MandateCancellationCode.OTHER)
-
-    /** "22 octobre 2026", in the tenant's time zone. */
-    fun formatDate(date: Date, zone: ZoneId): String = DATE_FORMAT.format(date.toInstant().atZone(zone))
 
     /**
      * When the mandate was last sent to the customer: no DTO says so, but each sending resets the contract's
@@ -89,7 +82,7 @@ object MandateRules {
         requestedAt != null && mandate.modifiedAt.after(requestedAt)
 
     /** The card's one-line next step; null once the mandate is no longer in progress. */
-    fun nextStep(mandate: Mandate, contract: ContractSummary?, now: Long, zone: ZoneId): String? {
+    fun nextStep(mandate: Mandate, contract: ContractSummary?, now: Long, formatter: TenantFormatter): String? {
         val words = words(mandate.mandateType)
         return when (mandate.status) {
             MandateStatus.ASSIGNED -> "Contactez ${words.the}, puis envoyez-lui le mandat à approuver."
@@ -98,12 +91,12 @@ object MandateRules {
                 when {
                     deadline == null -> "${words.theUpper} doit signer le mandat."
                     deadline.time < now -> "Délai de signature dépassé : renvoyez le mandat."
-                    else -> "${words.theUpper} a jusqu'au ${formatDate(deadline, zone)} pour signer le mandat."
+                    else -> "${words.theUpper} a jusqu'au ${formatter.date(deadline)} pour signer le mandat."
                 }
             }
             MandateStatus.APPROVED ->
                 contract?.validUntil
-                    ?.let { "Mandat signé, valable jusqu'au ${formatDate(it, zone)}." }
+                    ?.let { "Mandat signé, valable jusqu'au ${formatter.date(it)}." }
                     ?: "Mandat signé."
             else -> null
         }

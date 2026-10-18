@@ -10,6 +10,7 @@ import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantContext
+import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
@@ -56,11 +57,8 @@ class FindPropertyTemplateTest {
 
     private val complete = PendingMandateTest.COMPLETE
 
-    private val tenant = Tenant(
-        id = 1,
+    private val tenant = TENANT.copy(
         name = "Ndopify Cameroun",
-        countryCode = "CM",
-        currencyCode = "XAF",
         logoUrl = "https://cdn.ndopify.com/tenant/1/logo.png",
         publicPortalUrl = "https://www.ndopify.com",
     )
@@ -107,7 +105,7 @@ class FindPropertyTemplateTest {
 
     @Test
     fun `header falls back to Ndopify for a tenant without branding`() {
-        doReturn(Tenant(id = 1, countryCode = "CM")).whenever(tenantContext).getTenant()
+        doReturn(TENANT).whenever(tenantContext).getTenant()
 
         val page = render(get("/find-property"))
 
@@ -239,7 +237,7 @@ class FindPropertyTemplateTest {
 
         assertEquals("100", page.selectFirst("#priceAmount")?.attr("value"))
         assertEquals(
-            "Indiquez un loyer d'au moins 5K FCFA par mois.",
+            "Indiquez un loyer d'au moins 5 000 FCFA par mois.",
             page.selectFirst("#priceAmount-error")?.text()
         )
         assertEquals("true", page.selectFirst("#priceAmount")?.attr("aria-invalid"))
@@ -283,7 +281,7 @@ class FindPropertyTemplateTest {
             value(page, "property"),
         )
         assertEquals("Compteur d'eau, Gardien", value(page, "amenities"))
-        assertEquals("150K FCFA par mois", value(page, "price"))
+        assertEquals("150\u00a0000\u00a0FCFA par mois", value(page, "price"))
         assertEquals("Dans moins d'1 mois", value(page, "movingPeriod"))
         assertTrue(value(page, "contact").contains("Ray Sponsible"))
         assertTrue(value(page, "contact").contains("ray@gmail.com"))

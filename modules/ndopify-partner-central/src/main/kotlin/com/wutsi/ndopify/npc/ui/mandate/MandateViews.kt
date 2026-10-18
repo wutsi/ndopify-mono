@@ -6,8 +6,8 @@ import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.refdata.dto.Location
-import java.time.ZoneId
 import java.util.Date
 
 /** Builds the mandate page's [MandateView], as the prototype's `initMandate` (partner-central.js) renders it. */
@@ -40,10 +40,10 @@ object MandateViews {
         accepted: AssignmentSummary?,
         locations: Map<Long, Location>,
         now: Long,
-        zone: ZoneId,
+        formatter: TenantFormatter,
         ttlDays: Int,
     ): MandateView {
-        fun format(date: Date?): String? = date?.let { MandateRules.formatDate(it, zone) }
+        fun format(date: Date?): String? = date?.let { formatter.date(it) }
 
         val status = mandate.status
         val ended = status in ENDED
@@ -64,7 +64,7 @@ object MandateViews {
                 done = if (ended) i == current || dates[i] != null else i < current,
             )
         }
-        val (key, more) = criteria(mandate, locations)
+        val (key, more) = criteria(mandate, locations, formatter)
 
         return MandateView(
             id = mandate.id,
@@ -85,7 +85,7 @@ object MandateViews {
             approvedAt = format(mandate.approvedAt),
             validUntil = format(contract?.validUntil),
             closedAt = format(mandate.closedAt),
-            finalPrice = mandate.finalPrice?.let { MandateLabels.formatNumber(it) + " FCFA / mois" },
+            finalPrice = mandate.finalPrice?.let { formatter.money(it, mandate.price.currency) + " / mois" },
             age = mandate.age?.let { if (it > 1) "$it jours" else "$it jour" },
             cancellation = if (status == MandateStatus.CANCELLED) MandateRules.cancellation(mandate.cancellationCode) else null,
             cancellationReason = mandate.cancellationReason?.trim()?.ifEmpty { null },
@@ -100,8 +100,12 @@ object MandateViews {
     }
 
     /** Visible: sector, amount, date, the type with its rooms, then the comments. Folded: everything else. */
-    private fun criteria(mandate: Mandate, locations: Map<Long, Location>): Pair<List<Pair<String, String>>, List<Pair<String, String>>> {
-        val rows = MandateLabels.criteria(mandate, locations)
+    private fun criteria(
+        mandate: Mandate,
+        locations: Map<Long, Location>,
+        formatter: TenantFormatter,
+    ): Pair<List<Pair<String, String>>, List<Pair<String, String>>> {
+        val rows = MandateLabels.criteria(mandate, locations, formatter)
         val byTerm = rows.toMap()
         val rooms = byTerm[ROOMS]?.let { if (it == "1") "1 chambre" else "$it chambres" }
         val key = rows.take(KEY_FACTS) +

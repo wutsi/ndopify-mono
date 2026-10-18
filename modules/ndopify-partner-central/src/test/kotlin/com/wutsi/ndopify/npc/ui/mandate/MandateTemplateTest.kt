@@ -129,7 +129,7 @@ class MandateTemplateTest {
         assertEquals("Locataire · Maison", page.selectFirst("h1")?.text())
         assertEquals("status-tag status-tag--warning", page.selectFirst(".mandate-intro .status-tag")?.className())
         assertEquals("En approbation", page.selectFirst(".mandate-intro .status-tag")?.text())
-        assertEquals("Mandat n° 201 · accepté le 10 octobre 2026", page.selectFirst(".mandate__meta")?.text())
+        assertEquals("Mandat n° 201 · accepté le 10 oct. 2026", page.selectFirst(".mandate__meta")?.text())
         assertEquals("/#mandates-title", page.selectFirst(".back-link a")?.attr("href"))
         assertNotNull(page.selectFirst("nav.user-menu"))
 
@@ -139,12 +139,12 @@ class MandateTemplateTest {
         assertEquals(listOf("", "step", "", ""), steps.map { it.attr("aria-current") })
         assertNotNull(steps[0].selectFirst(".tracker__mark svg"))
         assertNull(steps[1].selectFirst(".tracker__mark svg"))
-        assertEquals("15 octobre 2026", steps[1].selectFirst("[data-step-date]")?.text())
-        assertEquals("Étape 2 sur 4 · En approbation, le 15 octobre 2026", page.selectFirst("[data-step-summary]")?.text())
+        assertEquals("15 oct. 2026", steps[1].selectFirst("[data-step-date]")?.text())
+        assertEquals("Étape 2 sur 4 · En approbation, le 15 oct. 2026", page.selectFirst("[data-step-summary]")?.text())
 
         assertEquals(listOf("PENDING_APPROVAL"), page.select("[data-panel]").map { it.attr("data-panel") })
         val panel = page.selectFirst("[data-panel=PENDING_APPROVAL]")!!
-        assertEquals("Envoyé le 15 octobre 2026 · à signer avant le 22 octobre 2026.", panel.selectFirst("p")?.text())
+        assertEquals("Envoyé le 15 oct. 2026 · à signer avant le 22 oct. 2026.", panel.selectFirst("p")?.text())
         assertNull(panel.selectFirst("[data-edited-since]"))
         val resend = panel.selectFirst("form[data-request-approval-form]")!!
         assertEquals("/mandates/201/request-approval", resend.attr("action"))
@@ -172,7 +172,7 @@ class MandateTemplateTest {
 
         val page = render(get("/mandates/201"))
 
-        assertEquals("22 octobre 2026 (dépassé)", page.selectFirst("[data-signature-deadline]")?.text())
+        assertEquals("22 oct. 2026 (dépassé)", page.selectFirst("[data-signature-deadline]")?.text())
     }
 
     @Test
@@ -201,7 +201,7 @@ class MandateTemplateTest {
         val page = render(APPROVED)
 
         val panel = page.selectFirst("[data-panel=APPROVED]")!!
-        assertEquals("Signé le 20 octobre 2026 · valable jusqu'au 28 mars 2027.", panel.selectFirst("p")?.text())
+        assertEquals("Signé le 20 oct. 2026 · valable jusqu'au 28 mars 2027.", panel.selectFirst("p")?.text())
         assertTrue(panel.text().contains("Proposez des biens au client et organisez les visites."))
         assertNull(page.selectFirst("a[data-edit-link]"))
         assertEquals("/mandates/201?end=close#end-title", page.selectFirst("a[data-end-open=close]")?.attr("href"))
@@ -224,7 +224,7 @@ class MandateTemplateTest {
         )
 
         assertEquals(
-            "Mandat fermé le 1 novembre 2026, au loyer de 240 000 FCFA / mois, 12 jours après son approbation.",
+            "Mandat fermé le 01 nov. 2026, au loyer de 240 000 FCFA / mois, 12 jours après son approbation.",
             page.selectFirst("[data-panel=CLOSED] .alert__title + p")?.text()?.replace('\u00a0', ' '),
         )
         assertNull(page.selectFirst("[data-end]"))
@@ -243,7 +243,7 @@ class MandateTemplateTest {
         )
 
         val panel = page.selectFirst("[data-panel=CANCELLED]")!!
-        assertEquals("Le 19 octobre 2026 : changement de projet.", panel.select("p")[1].text())
+        assertEquals("Le 19 oct. 2026 : changement de projet.", panel.select("p")[1].text())
         assertEquals("Il reste chez lui", panel.selectFirst("[data-cancellation-reason]")?.text())
         assertEquals("Annulé", page.selectFirst("[data-step=CLOSED] .mandate-steps__label")?.text())
         assertNull(page.selectFirst("[data-end]"))
