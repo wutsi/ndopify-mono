@@ -26,7 +26,9 @@
     - Fermer (Actif: lease signed, with the agreed rent) and Annuler (any active step, with a reason): at the bottom
       of the page, since they're rare and final.
   "mandate" is the MandateView, absent when "locked" (mandate not found, or a status the page doesn't show).
-  "end" is the close / cancel form open without JS ("close", "cancel" or null).
+  "end" is the close / cancel form open without JS ("close", "cancel" or null), "form" its values (MandateEndForm)
+  and "errors" its errors per field. "outcomeText" / "outcomeStyle" are the last action's outcome (flash attribute
+  "outcome", worded by MandateController).
 */-->
 <body data-page="mandate">
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -73,6 +75,15 @@
                     </div>
                     <p class="mandate__meta">Mandat n° <span th:text="${m.id}">201</span><th:block th:if="${m.acceptedAt}">
                         · accepté le <span th:text="${m.acceptedAt}">10 octobre 2026</span></th:block></p>
+                </div>
+
+                <!-- Outcome of the last action (sent, closed, cancelled, saved, or why it couldn't be done). -->
+                <div th:if="${outcomeText}" th:class="|alert alert--${outcomeStyle}|" tabindex="-1"
+                     th:attr="role=${outcomeStyle == 'error'} ? 'alert' : 'status'" data-mandate-flash>
+                    <svg th:if="${outcomeStyle == 'success'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg th:if="${outcomeStyle == 'warning'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                    <svg th:if="${outcomeStyle == 'error'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <p data-mandate-flash-text th:text="${outcomeText}">Mandat envoyé pour signature.</p>
                 </div>
 
                 <section class="mandate-progress" aria-labelledby="progress-title">
@@ -241,6 +252,71 @@
                         <a class="btn btn--danger" th:href="@{|/mandates/${m.id}?end=cancel#end-title|}"
                            aria-controls="end-form-cancel" data-end-open="cancel">Annuler le mandat</a>
                     </div>
+
+                    <form id="end-form-close" class="form mandate-close__form" method="post" novalidate
+                          th:if="${m.closable}" th:action="@{/mandates/{id}/close(id=${m.id})}"
+                          th:attr="hidden=${end == 'close'} ? null : 'hidden'" data-end-form="close">
+                        <h2 class="mandate-panel__title" th:id="${end == 'close'} ? 'end-title' : null">Fermer le mandat</h2>
+                        <p>Le bail est signé&nbsp;? Indiquez le loyer convenu pour fermer le mandat.</p>
+                        <div class="field">
+                            <label class="field__label" for="finalPrice">Loyer convenu</label>
+                            <div class="input-unit">
+                                <input class="input" id="finalPrice" name="finalPrice" type="text" inputmode="numeric"
+                                       autocomplete="off" aria-describedby="finalPrice-error" th:value="${form.finalPrice}"
+                                       th:attr="aria-invalid=${errors['finalPrice'] != null ? 'true' : null}">
+                                <span aria-hidden="true" class="input-unit__suffix">FCFA / mois</span>
+                            </div>
+                            <p class="field__error" id="finalPrice-error" th:hidden="${errors['finalPrice'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['finalPrice']}"></span></p>
+                        </div>
+                        <div class="mandate-panel__actions">
+                            <button type="submit" class="btn btn--primary" data-end-submit>Confirmer la fermeture</button>
+                            <a class="btn btn--outline" th:href="@{/mandates/{id}(id=${m.id})}" data-end-back>Retour</a>
+                        </div>
+                    </form>
+
+                    <form id="end-form-cancel" class="form mandate-close__form" method="post" novalidate
+                          th:action="@{/mandates/{id}/cancel(id=${m.id})}"
+                          th:attr="hidden=${end == 'cancel'} ? null : 'hidden'" data-end-form="cancel">
+                        <h2 class="mandate-panel__title" th:id="${end == 'cancel'} ? 'end-title' : null">Annuler le mandat</h2>
+                        <p>Le mandat s'arrête sans bail. Cette action est définitive.</p>
+                        <fieldset class="choices" aria-describedby="cancellationCode-error"
+                                  th:attr="aria-invalid=${errors['cancellationCode'] != null ? 'true' : null}">
+                            <legend class="choices__legend">Pour quelle raison&nbsp;?</legend>
+                            <div class="choices__grid">
+                                <label class="choice"><input name="cancellationCode" type="radio" value="FOUND_INDEPENDENTLY"
+                                                             th:checked="${form.cancellationCode?.name() == 'FOUND_INDEPENDENTLY'}">
+                                    Trouvé sans mon aide</label>
+                                <label class="choice"><input name="cancellationCode" type="radio" value="FOUND_VIA_OTHER_AGENT"
+                                                             th:checked="${form.cancellationCode?.name() == 'FOUND_VIA_OTHER_AGENT'}">
+                                    Trouvé par un autre agent</label>
+                                <label class="choice"><input name="cancellationCode" type="radio" value="CHANGE_OF_PLANS"
+                                                             th:checked="${form.cancellationCode?.name() == 'CHANGE_OF_PLANS'}">
+                                    Changement de projet</label>
+                                <label class="choice"><input name="cancellationCode" type="radio" value="UNREALISTIC_CRITERIA"
+                                                             th:checked="${form.cancellationCode?.name() == 'UNREALISTIC_CRITERIA'}">
+                                    Critères irréalistes (budget, secteur…)</label>
+                                <label class="choice"><input name="cancellationCode" type="radio" value="UNSATISFACTORY_SERVICE"
+                                                             th:checked="${form.cancellationCode?.name() == 'UNSATISFACTORY_SERVICE'}">
+                                    Insatisfait du service</label>
+                                <label class="choice"><input name="cancellationCode" type="radio" value="OTHER"
+                                                             th:checked="${form.cancellationCode?.name() == 'OTHER'}">
+                                    Autre raison</label>
+                            </div>
+                            <p class="field__error" id="cancellationCode-error" th:hidden="${errors['cancellationCode'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['cancellationCode']}"></span></p>
+                        </fieldset>
+                        <div class="field">
+                            <label class="field__label" for="cancellationReason">Précisions <span class="field__optional">(facultatif)</span></label>
+                            <textarea class="input input--textarea" id="cancellationReason" name="cancellationReason"
+                                      rows="3" maxlength="500" aria-describedby="cancellationReason-error"
+                                      th:text="${form.cancellationReason}"
+                                      th:attr="aria-invalid=${errors['cancellationReason'] != null ? 'true' : null}"></textarea>
+                            <p class="field__error" id="cancellationReason-error" th:hidden="${errors['cancellationReason'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['cancellationReason']}"></span></p>
+                        </div>
+                        <div class="mandate-panel__actions">
+                            <button type="submit" class="btn btn--danger" data-end-submit>Confirmer l'annulation</button>
+                            <a class="btn btn--outline" th:href="@{/mandates/{id}(id=${m.id})}" data-end-back>Retour</a>
+                        </div>
+                    </form>
                 </section>
             </div>
         </div>

@@ -33,11 +33,14 @@ import org.jsoup.nodes.Document
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.AbstractMockHttpServletRequestBuilder
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.client.HttpClientErrorException
 import org.thymeleaf.spring6.SpringTemplateEngine
@@ -187,7 +190,10 @@ class MandateTemplateTest {
         // Cancel only: closing needs the approval.
         assertNull(page.selectFirst("a[data-end-open=close]"))
         assertEquals("/mandates/201?end=cancel#end-title", page.selectFirst("a[data-end-open=cancel]")?.attr("href"))
-        assertNull(page.selectFirst("[data-end-form]"))
+        // Present for mandate.js, hidden without ?end=.
+        assertEquals(listOf("cancel"), page.select("form[data-end-form]").map { it.attr("data-end-form") })
+        assertTrue(page.selectFirst("form[data-end-form]")!!.hasAttr("hidden"))
+        assertFalse(page.selectFirst("[data-end-buttons]")!!.hasAttr("hidden"))
     }
 
     @Test
@@ -298,5 +304,110 @@ class MandateTemplateTest {
         SecurityContextHolder.clearContext()
 
         assertNull(render(get("/mandates/201")).selectFirst("nav.user-menu"))
+    }
+
+    // Send for approval, close, cancel
+
+    @ParameterizedTest
+    @CsvSource(
+        delimiter = '|',
+        value = [
+            "sent | success | Mandat envoyé à ray@gmail.com pour signature.",
+            "resent | success | Mandat renvoyé à ray@gmail.com pour signature.",
+            "closed | success | Mandat fermé : félicitations pour ce bail !",
+            "cancelled | success | Mandat annulé. Il ne figure plus dans vos mandats en cours.",
+            "saved | success | Mandat modifié. Renvoyez-le pour que le client signe la nouvelle version.",
+            "changed | warning | Ce mandat a changé entre-temps : vérifiez son état avant de recommencer.",
+            "error | error | Action impossible pour le moment. Réessayez dans quelques instants.",
+        ],
+    )
+    fun outcome(outcome: String, style: String, text: String) {
+        val flash = render(get("/mandates/201").flashAttr("outcome", outcome)).selectFirst("[data-mandate-flash]")!!
+
+        assertEquals("alert alert--$style", flash.className())
+        assertEquals("-1", flash.attr("tabindex"))
+        assertEquals(text, flash.text())
+    }
+
+    @Test
+    fun `saved - assigned`() {
+        doReturn(MANDATE).whenever(mandateClient).get(201)
+
+        assertEquals("Mandat modifié.", render(get("/mandates/201").flashAttr("outcome", "saved")).selectFirst("[data-mandate-flash]")?.text())
+    }
+
+    @Test
+    fun `no outcome`() {
+        assertNull(render(get("/mandates/201")).selectFirst("[data-mandate-flash]"))
+    }
+
+    @Test
+    fun `close form`() {
+        val page = render(APPROVED, "/mandates/201?end=close")
+
+        assertTrue(page.selectFirst("[data-end-buttons]")!!.hasAttr("hidden"))
+        val form = page.selectFirst("form[data-end-form=close]")!!
+        assertFalse(form.hasAttr("hidden"))
+        assertTrue(page.selectFirst("form[data-end-form=cancel]")!!.hasAttr("hidden"))
+        assertEquals("/mandates/201/close", form.attr("action"))
+        assertEquals("post", form.attr("method"))
+        assertEquals("Fermer le mandat", form.selectFirst("h2")?.text())
+        assertEquals("end-title", form.selectFirst("h2")?.id())
+        assertEquals("Confirmer la fermeture", form.selectFirst("button[type=submit]")?.text())
+        assertEquals("btn btn--primary", form.selectFirst("button[type=submit]")?.className())
+        assertEquals("/mandates/201", form.selectFirst("a[data-end-back]")?.attr("href"))
+        assertNotNull(form.selectFirst("input[name=finalPrice]"))
+        assertNull(form.selectFirst("[name=cancellationCode]"))
+        assertTrue(form.selectFirst("#finalPrice-error")!!.hasAttr("hidden"))
+    }
+
+    @Test
+    fun `close form - invalid amount`() {
+        doReturn(APPROVED).whenever(mandateClient).get(201)
+
+        val page = render(post("/mandates/201/close").param("finalPrice", "abc"))
+
+        val form = page.selectFirst("form[data-end-form=close]")!!
+        assertFalse(form.hasAttr("hidden"))
+        assertEquals("abc", form.selectFirst("input[name=finalPrice]")?.attr("value"))
+        assertEquals("true", form.selectFirst("input[name=finalPrice]")?.attr("aria-invalid"))
+        assertFalse(form.selectFirst("#finalPrice-error")!!.hasAttr("hidden"))
+        assertEquals("Indiquez le loyer convenu, en FCFA par mois.", form.selectFirst("#finalPrice-error")?.text())
+    }
+
+    @Test
+    fun `cancel form`() {
+        val page = render(get("/mandates/201?end=cancel"))
+
+        assertNull(page.selectFirst("form[data-end-form=close]"))
+        val form = page.selectFirst("form[data-end-form=cancel]")!!
+        assertFalse(form.hasAttr("hidden"))
+        assertEquals("/mandates/201/cancel", form.attr("action"))
+        assertEquals("Annuler le mandat", form.selectFirst("h2")?.text())
+        assertEquals("Confirmer l'annulation", form.selectFirst("button[type=submit]")?.text())
+        assertEquals("btn btn--danger", form.selectFirst("button[type=submit]")?.className())
+        assertEquals(
+            listOf("FOUND_INDEPENDENTLY", "FOUND_VIA_OTHER_AGENT", "CHANGE_OF_PLANS", "UNREALISTIC_CRITERIA", "UNSATISFACTORY_SERVICE", "OTHER"),
+            form.select("input[name=cancellationCode]").map { it.attr("value") },
+        )
+        assertNull(form.selectFirst("input[name=finalPrice]"))
+    }
+
+    @Test
+    fun `cancel form - no code`() {
+        val page = render(post("/mandates/201/cancel").param("cancellationReason", "Pourquoi pas"))
+
+        val form = page.selectFirst("form[data-end-form=cancel]")!!
+        assertEquals("Choisissez la raison de l'annulation.", form.selectFirst("#cancellationCode-error")?.text())
+        assertFalse(form.selectFirst("#cancellationCode-error")!!.hasAttr("hidden"))
+        assertEquals("Pourquoi pas", form.selectFirst("textarea[name=cancellationReason]")?.text())
+    }
+
+    @Test
+    fun `cancel form - code kept`() {
+        val page = render(post("/mandates/201/cancel").param("cancellationCode", "OTHER").param("cancellationReason", "x".repeat(501)))
+
+        assertTrue(page.selectFirst("input[name=cancellationCode][value=OTHER]")!!.hasAttr("checked"))
+        assertFalse(page.selectFirst("#cancellationReason-error")!!.hasAttr("hidden"))
     }
 }

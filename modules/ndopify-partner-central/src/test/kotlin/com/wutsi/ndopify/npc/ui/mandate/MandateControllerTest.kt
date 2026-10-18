@@ -7,6 +7,9 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
+import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
+import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
@@ -19,23 +22,29 @@ import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.CONTRACT
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.MANDATE
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.NOW
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.ACCEPTED
+import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.APPROVED
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.CUSTOMER
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.PENDING
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
+import com.wutsi.ndopify.refdata.dto.Money
+import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.MvcResult
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.client.HttpServerErrorException
 import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.servlet.view.InternalResourceViewResolver
 import java.time.Clock
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class MandateControllerTest {
     private val currentAgent = mock<CurrentAgent>()
@@ -206,5 +215,238 @@ class MandateControllerTest {
         doReturn(null).whenever(currentAgent).get()
 
         assertEquals("redirect:/logout", mvc.perform(get("/mandates/201")).andReturn().modelAndView?.viewName)
+    }
+
+    // Send for approval, close, cancel
+
+    private fun outcome(result: MvcResult) = result.flashMap["outcome"]
+
+    @Test
+    fun `request approval`() {
+        doReturn(MANDATE).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(post("/mandates/201/request-approval")).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        assertEquals("sent", outcome(result))
+        verify(mandateClient).requestApproval(201)
+    }
+
+    @Test
+    fun `request approval - again`() {
+        val result = mvc.perform(post("/mandates/201/request-approval")).andReturn()
+
+        assertEquals("resent", outcome(result))
+    }
+
+    @Test
+    fun `request approval - conflict`() {
+        doThrow(HttpClientErrorException(HttpStatus.CONFLICT)).whenever(mandateClient).requestApproval(201)
+
+        val result = mvc.perform(post("/mandates/201/request-approval")).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        assertEquals("changed", outcome(result))
+    }
+
+    @Test
+    fun `request approval - server error`() {
+        doThrow(HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR)).whenever(mandateClient).requestApproval(201)
+
+        val result = mvc.perform(post("/mandates/201/request-approval")).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        assertEquals("error", outcome(result))
+    }
+
+    @Test
+    fun `request approval - mandate unavailable - still sent`() {
+        doThrow(ResourceAccessException("timeout")).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(post("/mandates/201/request-approval")).andReturn()
+
+        assertEquals("sent", outcome(result))
+        verify(mandateClient).requestApproval(201)
+    }
+
+    @Test
+    fun close() {
+        doReturn(APPROVED).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(post("/mandates/201/close").param("finalPrice", "150 000")).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        assertEquals("closed", outcome(result))
+        verify(mandateClient).close(201, CloseMandateRequest(Money(150000, "XAF", PeriodicityType.MONTHLY)))
+    }
+
+    @Test
+    fun `close - conflict`() {
+        doReturn(APPROVED).whenever(mandateClient).get(201)
+        doThrow(HttpClientErrorException(HttpStatus.CONFLICT)).whenever(mandateClient).close(any(), any())
+
+        val result = mvc.perform(post("/mandates/201/close").param("finalPrice", "150000")).andReturn()
+
+        assertEquals("changed", outcome(result))
+    }
+
+    @Test
+    fun `close - server error`() {
+        doReturn(APPROVED).whenever(mandateClient).get(201)
+        doThrow(HttpServerErrorException(HttpStatus.BAD_GATEWAY)).whenever(mandateClient).close(any(), any())
+
+        assertEquals("error", outcome(mvc.perform(post("/mandates/201/close").param("finalPrice", "150000")).andReturn()))
+    }
+
+    @Test
+    fun `close - mandate gone`() {
+        doThrow(HttpClientErrorException(HttpStatus.NOT_FOUND)).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(post("/mandates/201/close").param("finalPrice", "150000")).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        assertEquals("changed", outcome(result))
+        verify(mandateClient, never()).close(any(), any())
+    }
+
+    @Test
+    fun `close - invalid amount`() {
+        doReturn(APPROVED).whenever(mandateClient).get(201)
+
+        for (amount in listOf("", "abc", "0")) {
+            val result = mvc.perform(post("/mandates/201/close").param("finalPrice", amount)).andReturn()
+
+            assertEquals("mandate", result.modelAndView?.viewName, amount)
+            assertEquals("close", model(result)["end"])
+            assertEquals(mapOf("finalPrice" to "Indiquez le loyer convenu, en FCFA par mois."), model(result)["errors"])
+            assertEquals(amount, (model(result)["form"] as MandateEndForm).finalPrice)
+            assertEquals(201L, mandate(result).id)
+        }
+        verify(mandateClient, never()).close(any(), any())
+    }
+
+    @Test
+    fun cancel() {
+        val result = mvc.perform(
+            post("/mandates/201/cancel")
+                .param("cancellationCode", "CHANGE_OF_PLANS")
+                .param("cancellationReason", "  Il reste chez lui  "),
+        ).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        assertEquals("cancelled", outcome(result))
+        verify(mandateClient).cancel(201, CancelMandateRequest(MandateCancellationCode.CHANGE_OF_PLANS, "Il reste chez lui"))
+    }
+
+    @Test
+    fun `cancel - blank reason sent as null`() {
+        mvc.perform(post("/mandates/201/cancel").param("cancellationCode", "OTHER").param("cancellationReason", "  "))
+            .andReturn()
+
+        verify(mandateClient).cancel(201, CancelMandateRequest(MandateCancellationCode.OTHER, null))
+    }
+
+    @Test
+    fun `cancel - conflict`() {
+        doThrow(HttpClientErrorException(HttpStatus.CONFLICT)).whenever(mandateClient).cancel(any(), any())
+
+        val result = mvc.perform(post("/mandates/201/cancel").param("cancellationCode", "OTHER")).andReturn()
+
+        assertEquals("changed", outcome(result))
+    }
+
+    @Test
+    fun `cancel - no code`() {
+        for (code in listOf(null, "UNKNOWN", "EXPIRED", "XYZ")) {
+            val request = post("/mandates/201/cancel").param("cancellationReason", "Pourquoi pas")
+            code?.let { request.param("cancellationCode", it) }
+
+            val result = mvc.perform(request).andReturn()
+
+            assertEquals("mandate", result.modelAndView?.viewName, code)
+            assertEquals("cancel", model(result)["end"])
+            assertEquals(mapOf("cancellationCode" to "Choisissez la raison de l'annulation."), model(result)["errors"])
+            assertEquals("Pourquoi pas", (model(result)["form"] as MandateEndForm).cancellationReason)
+        }
+        verify(mandateClient, never()).cancel(any(), any())
+    }
+
+    @Test
+    fun `cancel - reason too long`() {
+        val result = mvc.perform(
+            post("/mandates/201/cancel").param("cancellationCode", "OTHER").param("cancellationReason", "x".repeat(501)),
+        ).andReturn()
+
+        @Suppress("UNCHECKED_CAST")
+        val errors = model(result)["errors"] as Map<String, String>
+        assertTrue(errors.containsKey("cancellationReason"))
+        verify(mandateClient, never()).cancel(any(), any())
+    }
+
+    @Test
+    fun `cancel - already closed`() {
+        doReturn(APPROVED.copy(status = MandateStatus.CLOSED)).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(post("/mandates/201/cancel").param("cancellationCode", "")).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        assertEquals("changed", outcome(result))
+    }
+
+    @Test
+    fun `actions - not an agent - sign out`() {
+        doReturn(null).whenever(currentAgent).get()
+
+        for (action in listOf("request-approval", "close", "cancel")) {
+            assertEquals(
+                "redirect:/logout",
+                mvc.perform(post("/mandates/201/$action")).andReturn().modelAndView?.viewName,
+            )
+        }
+        verify(mandateClient, never()).requestApproval(any())
+    }
+
+    @Test
+    fun `outcome - sent`() {
+        val result = mvc.perform(get("/mandates/201").flashAttr("outcome", "sent")).andReturn()
+
+        assertEquals("Mandat envoyé à ray@gmail.com pour signature.", model(result)["outcomeText"])
+        assertEquals("success", model(result)["outcomeStyle"])
+    }
+
+    @Test
+    fun `outcome - sent without contact`() {
+        doThrow(ResourceAccessException("timeout")).whenever(customerClient).get(any())
+
+        val result = mvc.perform(get("/mandates/201").flashAttr("outcome", "resent")).andReturn()
+
+        assertEquals("Mandat renvoyé au client pour signature.", model(result)["outcomeText"])
+    }
+
+    @Test
+    fun `outcome - saved while pending approval`() {
+        val result = mvc.perform(get("/mandates/201").flashAttr("outcome", "saved")).andReturn()
+
+        assertEquals(
+            "Mandat modifié. Renvoyez-le pour que le client signe la nouvelle version.",
+            model(result)["outcomeText"],
+        )
+    }
+
+    @Test
+    fun `outcome - unknown ignored`() {
+        val result = mvc.perform(get("/mandates/201").flashAttr("outcome", "xyz")).andReturn()
+
+        assertNull(model(result)["outcomeText"])
+    }
+
+    @Test
+    fun `outcome - changed on a locked mandate`() {
+        doThrow(HttpClientErrorException(HttpStatus.NOT_FOUND)).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(get("/mandates/201").flashAttr("outcome", "changed")).andReturn()
+
+        assertEquals(true, model(result)["locked"])
+        assertNull(model(result)["outcomeText"])
     }
 }
