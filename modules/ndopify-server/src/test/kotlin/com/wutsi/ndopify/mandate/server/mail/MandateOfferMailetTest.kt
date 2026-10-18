@@ -95,7 +95,8 @@ class MandateOfferMailetTest {
                 "city" to "Yaounde",
                 "neighbourhoods" to "Bastos, Mvan",
                 "budget" to "1 500 000 XAF / mois",
-                "deadline" to "15/10/2026 à 13:00",
+                "deadline_date" to "15/10/2026",
+                "deadline_time" to "13:00",
                 "offer_url" to "https://partner.ndopify.com",
             ),
             context(),
@@ -113,7 +114,28 @@ class MandateOfferMailetTest {
     fun `the deadline is in the tenant's time zone`() {
         doReturn(tenant.copy(timeZone = "America/Toronto")).whenever(tenantService).findById(1L)
 
-        assertEquals("15/10/2026 à 08:00", context()["deadline"])
+        val context = context()
+        assertEquals("15/10/2026", context["deadline_date"])
+        assertEquals("08:00", context["deadline_time"])
+    }
+
+    @Test
+    fun `the tenant's formats`() {
+        doReturn(
+            tenant.copy(
+                locales = listOf("fr-CM"),
+                currencyCode = "XAF",
+                monetaryFormat = "#,###,##0 FCFA",
+                dateFormat = "dd MMM yyyy",
+                timeFormat = "HH'h'mm",
+            )
+        ).whenever(tenantService).findById(1L)
+
+        val context = context()
+
+        assertEquals("1 500 000 FCFA / mois", context["budget"])
+        assertEquals("15 oct. 2026", context["deadline_date"])
+        assertEquals("13h00", context["deadline_time"])
     }
 
     @Test

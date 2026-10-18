@@ -127,7 +127,9 @@ Code is organized by domain under `com.wutsi.ndopify.<domain>.server`, each foll
 All of a domain's mail-related classes go in its `mail/` package, never in `service/`: a mailet builds the `Email`
 and hands it to `platform/mail`'s `MailService`; its MJML template lives under `src/main/resources/mail/<domain>/`
 (e.g. `mail/agent/welcome.mjml`). The service method that triggers it (see *Asynchronous e-mails*) stays in
-`service/`. Mailet unit tests mirror the package (`<domain>/server/mail/*MailetTest.kt`).
+`service/`. Dates and amounts in e-mails (and generated contracts) go through `TenantFormatter`
+(`refdata/server/service/`): the tenant's `dateFormat` / `timeFormat` / `monetaryFormat` / `numberFormat`, first
+locale and `timeZone` — never a hard-coded pattern. Mailet unit tests mirror the package (`<domain>/server/mail/*MailetTest.kt`).
 
 Scheduled jobs live in `<domain>/server/job/`: `KycJobs` (party), `MandateJobs` (mandate) and `ContractJobs`
 (contract). They loop over the

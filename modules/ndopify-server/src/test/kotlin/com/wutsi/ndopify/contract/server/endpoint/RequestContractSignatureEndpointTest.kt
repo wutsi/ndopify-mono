@@ -53,7 +53,8 @@ class RequestContractSignatureEndpointTest : TenantAwareEndpointIntegrationTest(
         assertTrue(body.contains("Mandat de recherche"))
         assertFalse(body.contains("https://cdn.ndopify.com/contracts/c-1.pdf")) // Only reached through the sign page
         val deadline = contract.signatureDeadline!!.toInstant().atZone(ZoneId.of("Africa/Douala"))
-        assertTrue(body.contains(deadline.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))))
+        // The fixture leaves the tenant's date_format to the T_TENANT default
+        assertTrue(body.contains(deadline.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))))
         assertTrue(body.contains("https://partner.ndopify.com/contracts/c-1/sign?party-id=cp-11"))
         assertTrue(messages[0].content.toString().contains("https://partner.ndopify.com/contracts/c-1/sign?party-id=cp-12"))
     }

@@ -13,12 +13,9 @@ import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.server.service.LocationService
+import com.wutsi.ndopify.refdata.server.service.TenantFormatter
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.springframework.stereotype.Service
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Date
-import java.util.Locale
 
 /**
  * Generates the HTML content of a mandate's contract, from its MJML template under `/mandate/contract/`. Every value
@@ -34,8 +31,6 @@ class MandateContractGenerator(
     private val bodyResolver: MailBodyResolver,
 ) {
     companion object {
-        private val DATE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy")
-
         private val TEMPLATES = mapOf(
             MandateType.SEARCH to "/mandate/contract/search.mjml",
         )
@@ -109,7 +104,7 @@ class MandateContractGenerator(
 
     private fun context(mandate: MandateEntity, contract: ContractEntity): Map<String, Any?> {
         val tenant = tenantService.findById(mandate.tenantId!!)
-        val zone = ZoneId.of(tenant.timeZone) // Dates as the parties read them
+        val formatter = TenantFormatter(tenant) // Dates as the parties read them
         val customer = customerService.findById(mandate.customerId)
         val agent = mandate.agentId?.let { id -> agentService.findById(id) }
 
@@ -141,7 +136,7 @@ class MandateContractGenerator(
         return mapOf(
             // Contract
             "contract_number" to contract.number,
-            "contract_date" to format(contract.createdAt, zone),
+            "contract_date" to formatter.date(contract.createdAt),
             // Generated before the signature, from which the contract is valid: no dates yet
             "duration_months" to contract.durationMonths,
 
@@ -173,7 +168,7 @@ class MandateContractGenerator(
             "security" to security,
 
             // Terms
-            "budget" to budget(mandate),
+            "budget" to budget(mandate, formatter),
             "security_deposit" to months(mandate.securityDeposit),
             "advance_rent" to months(mandate.advanceRent),
             "lease_term" to months(mandate.leaseTerm),
@@ -187,9 +182,6 @@ class MandateContractGenerator(
         )
     }
 
-    private fun format(date: Date, zone: ZoneId): String =
-        date.toInstant().atZone(zone).format(DATE_FORMAT)
-
     // "Compteur d'eau, Forage", or null when none is checked (the template leaves the group out)
     private fun amenities(vararg amenities: Pair<Boolean, String>): String? =
         amenities.filter { (checked, _) -> checked }
@@ -202,11 +194,11 @@ class MandateContractGenerator(
             .joinToString(", ")
             .ifEmpty { null }
 
-    // Ex: 150 000 XAF / mois
-    private fun budget(mandate: MandateEntity): String {
-        val amount = String.Companion.format(Locale.US, "%,d", mandate.price).replace(',', ' ')
+    // Ex: 150 000 FCFA / mois
+    private fun budget(mandate: MandateEntity, formatter: TenantFormatter): String {
+        val amount = formatter.money(mandate.price, mandate.currencyCode)
         val periodicity = PERIODICITIES[mandate.pricePeriodicityType]?.let { " / $it" } ?: ""
-        return "$amount ${mandate.currencyCode}$periodicity"
+        return "$amount$periodicity"
     }
 
     // The deposit, advance, lease term and notice period are numbers of months

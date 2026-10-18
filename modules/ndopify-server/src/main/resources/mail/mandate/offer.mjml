@@ -48,7 +48,7 @@
                 </mj-text>
 
                 <mj-text font-weight="bold">
-                    Vous avez jusqu'au <span class="text-primary">{{deadline}}</span> pour accepter ce mandat. Passé ce
+                    Vous avez jusqu'au <span class="text-primary">{{deadline_date}} à {{deadline_time}}</span> pour accepter ce mandat. Passé ce
                     délai, il sera proposé à un autre
                     agent.
                 </mj-text>

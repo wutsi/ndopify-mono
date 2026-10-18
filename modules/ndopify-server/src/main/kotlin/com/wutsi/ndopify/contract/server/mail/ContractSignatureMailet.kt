@@ -7,10 +7,9 @@ import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.Receipient
+import com.wutsi.ndopify.refdata.server.service.TenantFormatter
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.springframework.stereotype.Service
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 /** Asks a party of a contract to read and sign it. */
 @Service
@@ -21,7 +20,6 @@ class ContractSignatureMailet(
 ) {
     companion object {
         const val SUBJECT = "{{tenant_name}}: Votre contrat {{contract_number}} est prêt à être signé"
-        private val DEADLINE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy")
 
         private val TYPES = mapOf(
             ContractType.SEARCH to "Mandat de recherche",
@@ -47,8 +45,7 @@ class ContractSignatureMailet(
                         "contract_type" to (TYPES[contract.type] ?: "Contrat"),
                         "contract_number" to contract.number,
                         // The party reads it in its local time
-                        "deadline" to contract.signatureDeadline?.toInstant()?.atZone(ZoneId.of(tenant.timeZone))
-                            ?.format(DEADLINE_FORMAT),
+                        "deadline" to contract.signatureDeadline?.let { TenantFormatter(tenant).date(it) },
                         // Shows the contract and signs it: the e-mail never links the document itself
                         "sign_url" to tenant.partnerCentralUrl?.let { url ->
                             "$url/contracts/${contract.id}/sign?party-id=${party.id}"

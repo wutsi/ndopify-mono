@@ -57,7 +57,7 @@ class DispatchMandateEndpointTest : TenantAwareEndpointIntegrationTest() {
         val body = messages[0].content.toString()
         assertTrue(body.contains("John Doe"), body)
         assertTrue(body.contains("Appartement"), body)
-        assertTrue(body.contains("150 000 XAF / mois"), body)
+        assertTrue(body.contains("150 000 FCFA / mois"), body) // T_TENANT's default monetary_format
         assertTrue(body.contains("http://localhost:8081/partner-central"), body)
     }
 

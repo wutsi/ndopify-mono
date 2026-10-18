@@ -11,11 +11,9 @@ import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.Receipient
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.server.service.LocationService
+import com.wutsi.ndopify.refdata.server.service.TenantFormatter
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.springframework.stereotype.Service
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 /** Offers a mandate to an agent: what the customer is looking for, and until when the agent can accept. */
 @Service
@@ -27,7 +25,6 @@ class MandateOfferMailet(
 ) {
     companion object {
         const val SUBJECT = "{{tenant_name}}: Un nouveau mandat vous est proposé à {{city}}"
-        private val DEADLINE_FORMAT = DateTimeFormatter.ofPattern("dd/MM/yyyy 'à' HH:mm")
 
         private val PROPERTY_TYPES = mapOf(
             PropertyType.ROOM to "Chambre",
@@ -58,6 +55,7 @@ class MandateOfferMailet(
         val city = locationService.findByIdOrNull(mandate.cityId)?.name ?: ""
         val party = agent.party
         val fullName = party.fullName()
+        val formatter = TenantFormatter(tenant)
         mailService.send(
             Email(
                 recipient = Receipient(email = party.email, displayName = fullName),
@@ -73,10 +71,10 @@ class MandateOfferMailet(
                         "rooms" to mandate.rooms?.ifBlank { null },
                         "city" to city,
                         "neighbourhoods" to neighbourhoods(mandate),
-                        "budget" to budget(mandate),
+                        "budget" to budget(mandate, formatter),
                         // The agent reads it in its local time
-                        "deadline" to assignment.expiresAt.toInstant().atZone(ZoneId.of(tenant.timeZone))
-                            .format(DEADLINE_FORMAT),
+                        "deadline_date" to formatter.date(assignment.expiresAt),
+                        "deadline_time" to formatter.time(assignment.expiresAt),
                         "offer_url" to tenant.partnerCentralUrl,
                     )
                 )
@@ -90,10 +88,10 @@ class MandateOfferMailet(
             .joinToString(", ")
             .ifEmpty { null }
 
-    // Ex: 150 000 XAF / mois
-    private fun budget(mandate: MandateEntity): String {
-        val amount = String.format(Locale.US, "%,d", mandate.price).replace(',', ' ')
+    // Ex: 150 000 FCFA / mois
+    private fun budget(mandate: MandateEntity, formatter: TenantFormatter): String {
+        val amount = formatter.money(mandate.price, mandate.currencyCode)
         val periodicity = PERIODICITIES[mandate.pricePeriodicityType]?.let { " / $it" } ?: ""
-        return "$amount ${mandate.currencyCode}$periodicity"
+        return "$amount$periodicity"
     }
 }
