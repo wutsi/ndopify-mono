@@ -12,9 +12,13 @@ class TenantService(
     private val dao: TenantRepository
 ) {
     fun findById(id: Long): TenantEntity {
-        val tenant = dao.findById(id)
-            .orElseThrow { NotFoundException(Error(ErrorCode.TENANT_NOT_FOUND)) }
+        val tenant = findByIdOrNull(id)
+            ?: throw NotFoundException(Error(ErrorCode.TENANT_NOT_FOUND))
         return tenant
+    }
+
+    fun findByIdOrNull(id: Long): TenantEntity? {
+        return dao.findById(id).orElse(null)
     }
 
     fun search(status: Boolean?): List<TenantEntity> {

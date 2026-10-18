@@ -77,6 +77,9 @@ object ErrorCode {
     val PAYMENT_METHOD_NUMBER_NOT_VALID = "$PREFIX:payment-method:number-not-valid"
 
     val TENANT_NOT_FOUND: String = "$PREFIX:tenant:not-found"
+    val TENANT_MISSING_HEADER: String = "$PREFIX:tenant:missing-header"
+    val TENANT_NOT_ACTIVE: String = "$PREFIX:tenant:not-active"
+    val TENANT_ID_NOT_VALID: String = "$PREFIX:tenant:id-not-valid"
 
     val USER_NOT_FOUND: String = "$PREFIX:user:not-found"
     val USER_EMAIL_ALREADY_EXISTS: String = "$PREFIX:user:email-already-exists"

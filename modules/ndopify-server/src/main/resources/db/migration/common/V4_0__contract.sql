@@ -1,6 +1,7 @@
 CREATE TABLE T_CONTRACT(
   id                      VARCHAR(36) NOT NULL,
   tenant_id               BIGINT NOT NULL DEFAULT 1,
+  version                 BIGINT NOT NULL DEFAULT 0,
 
   number                  VARCHAR(20) NOT NULL,
   type                    VARCHAR(30) DEFAULT NULL,

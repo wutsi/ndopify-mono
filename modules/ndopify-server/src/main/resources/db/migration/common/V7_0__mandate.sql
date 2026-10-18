@@ -1,6 +1,7 @@
 CREATE TABLE T_MANDATE(
   id                      BIGINT NOT NULL AUTO_INCREMENT,
   tenant_id               BIGINT NOT NULL DEFAULT 1,
+  version                 BIGINT NOT NULL DEFAULT 0,
 
   customer_id             BIGINT NOT NULL,
   agent_id                BIGINT,

@@ -1,6 +1,7 @@
 CREATE TABLE T_AGENT(
   id                      BIGINT NOT NULL AUTO_INCREMENT,
   tenant_id               BIGINT NOT NULL DEFAULT 1,
+  version                 BIGINT NOT NULL DEFAULT 0,
 
   party_id                BIGINT NOT NULL,
 
