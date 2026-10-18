@@ -9,6 +9,7 @@ import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.mandate.dto.GetMandateResponse
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
@@ -20,6 +21,7 @@ import org.springframework.test.context.jdbc.Sql
 import javax.sql.DataSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/UpdateMandateEndpoint.sql"])
@@ -107,6 +109,28 @@ class UpdateMandateEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(request.movingPeriod, mandate.movingPeriod)
         assertEquals(ContactPeriodType.entries[1], mandate.preferredContactPeriod)
         assertEquals(request.comments, mandate.comments)
+    }
+
+    @Test
+    fun `current version - saved, and the next update needs the new one`() {
+        val response = rest.postForEntity("/v1/mandates/1", request.copy(version = 0), Any::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(request.comments, dao.findById(1L).get().comments)
+        val mandate = rest.getForEntity("/v1/mandates/1", GetMandateResponse::class.java).body!!.mandate
+        assertEquals(1L, mandate.version)
+    }
+
+    @Test
+    fun `stale version - 409, nothing saved`() {
+        val response = rest.postForEntity("/v1/mandates/1", request.copy(version = 7), ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_VERSION_CONFLICT, response.body?.error?.code)
+
+        val mandate = dao.findById(1L).get()
+        assertEquals(0L, mandate.version)
+        assertNotEquals(request.comments, mandate.comments)
     }
 
     @Test

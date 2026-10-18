@@ -91,6 +91,7 @@
 
                 <form class="form mandate-edit" method="post" novalidate th:action="@{/mandates/{id}/edit(id=${mandate.id})}"
                       th:attr="data-locations-url=@{/locations}" data-edit-form>
+                    <input type="hidden" name="version" th:value="${answers.version}">
                     <details class="edit-group" data-edit-group="sector" th:attr="open=${#sets.contains(openGroups, 'sector')} ? 'open' : null">
                         <summary>
                             <span class="edit-group__title">Secteur</span>

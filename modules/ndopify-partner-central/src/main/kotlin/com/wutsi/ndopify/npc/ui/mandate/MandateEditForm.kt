@@ -24,6 +24,8 @@ data class MandateEditForm(
     val priceAmount: String? = null,
     val movingPeriod: MovingPeriod? = null,
     val comments: String? = null,
+    // The version of the mandate the page was loaded with: ndopify-server refuses the save if it changed since
+    val version: Long? = null,
 ) {
     companion object {
         /** The mandate's answers; for a client, what it left open (null) is "Indifférent". */
@@ -57,6 +59,7 @@ data class MandateEditForm(
                 priceAmount = MandateLabels.formatNumber(mandate.price.amount),
                 movingPeriod = mandate.movingPeriod,
                 comments = mandate.comments,
+                version = mandate.version,
             )
         }
     }

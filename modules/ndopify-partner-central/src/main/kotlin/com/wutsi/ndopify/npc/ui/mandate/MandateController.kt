@@ -2,6 +2,8 @@ package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.contract.dto.Contract
 import com.wutsi.ndopify.customer.dto.Customer
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
 import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
@@ -94,6 +96,8 @@ class MandateController(
         const val LOCKED_APPROVED = "approved"
 
         private const val SAVE_FAILED = "Enregistrement impossible pour le moment. Réessayez dans quelques instants."
+        private const val SAVE_CONFLICT =
+            "Ce mandat a été modifié entre-temps. Vos réponses sont conservées : vérifiez-les, puis enregistrez à nouveau."
 
         // Not a reason the agent can choose: UNKNOWN is no answer, EXPIRED is the server's own.
         private val CANCELLATION_CODES = MandateRules.CANCELLATION_LABELS.keys
@@ -201,6 +205,14 @@ class MandateController(
             if (errors.isNotEmpty()) return edit(mandate, answers, errors, null, model)
 
             mandateClient.update(id, MandateEditRules.request(answers, mandate))
+        } catch (ex: HttpClientErrorException) {
+            if (errorCode(ex) != ErrorCode.MANDATE_VERSION_CONFLICT) {
+                LOGGER.error("Mandate $id not saved: ${ex.message}", ex)
+                return edit(mandate, answers, emptyMap(), SAVE_FAILED, model)
+            }
+            // Changed since the form was shown: saving again, now based on the version just loaded, is the agent's call
+            LOGGER.warn("Mandate $id not saved: changed since version ${answers.version}")
+            return edit(mandate, answers.copy(version = mandate.version), emptyMap(), SAVE_CONFLICT, model)
         } catch (ex: RestClientException) {
             LOGGER.error("Mandate $id not saved: ${ex.message}", ex)
             return edit(mandate, answers, emptyMap(), SAVE_FAILED, model)
@@ -353,6 +365,13 @@ class MandateController(
     }
 
     private fun back(id: Long): String = "redirect:/mandates/$id"
+
+    private fun errorCode(ex: HttpClientErrorException): String? =
+        try {
+            ex.getResponseBodyAs(ErrorResponse::class.java)?.error?.code
+        } catch (ignored: Exception) {
+            null
+        }
 
     /**
      * "150 000" or "150.000" → 150000; anything but digits and separators ("150k") → null: closing is final, so a

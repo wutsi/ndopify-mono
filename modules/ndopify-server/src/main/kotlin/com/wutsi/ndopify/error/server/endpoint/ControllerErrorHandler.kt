@@ -1,6 +1,8 @@
 package com.wutsi.ndopify.error.endpoint
 
+import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.common.dto.HttpHeader
+import com.wutsi.ndopify.contract.server.domain.ContractEntity
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
@@ -10,6 +12,9 @@ import com.wutsi.ndopify.error.dto.ParameterType.PARAMETER_TYPE_PATH
 import com.wutsi.ndopify.error.dto.ParameterType.PARAMETER_TYPE_PAYLOAD
 import com.wutsi.ndopify.error.dto.ParameterType.PARAMETER_TYPE_QUERY
 import com.wutsi.ndopify.error.server.exception.WutsiException
+import com.wutsi.ndopify.mandate.server.domain.AssignmentEntity
+import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.party.server.domain.KycCaseEntity
 import com.wutsi.ndopify.platform.logger.KVLogger
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
@@ -61,8 +66,8 @@ class ControllerErrorHandler(private val logger: KVLogger) {
             message = e.message,
         )
 
-    // Only AssignmentEntity is @Version-ed today: the offer changed under the caller, it's no longer the PENDING one
-    // it read
+    // A @Version-ed entity changed between the read and the write of a transaction (concurrent requests). An offer is
+    // then no longer the PENDING one the caller read
     @ExceptionHandler(ObjectOptimisticLockingFailureException::class)
     fun onObjectOptimisticLockingFailureException(
         request: HttpServletRequest,
@@ -70,7 +75,14 @@ class ControllerErrorHandler(private val logger: KVLogger) {
     ): ResponseEntity<ErrorResponse> =
         handleException(
             request,
-            code = ErrorCode.ASSIGNMENT_NOT_PENDING,
+            code = when (e.persistentClassName) {
+                AssignmentEntity::class.java.name -> ErrorCode.ASSIGNMENT_NOT_PENDING
+                MandateEntity::class.java.name -> ErrorCode.MANDATE_VERSION_CONFLICT
+                AgentEntity::class.java.name -> ErrorCode.AGENT_VERSION_CONFLICT
+                ContractEntity::class.java.name -> ErrorCode.CONTRACT_VERSION_CONFLICT
+                KycCaseEntity::class.java.name -> ErrorCode.KYC_CASE_VERSION_CONFLICT
+                else -> ErrorCode.HTTP_VERSION_CONFLICT
+            },
             status = CONFLICT,
             e = e,
             message = e.message,

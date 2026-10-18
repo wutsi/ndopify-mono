@@ -4,6 +4,7 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.dto.AgentType
 import com.wutsi.ndopify.agent.dto.ExperienceLevel
+import com.wutsi.ndopify.agent.dto.GetAgentResponse
 import com.wutsi.ndopify.agent.dto.UpdateAgentRequest
 import com.wutsi.ndopify.agent.server.dao.AgentRepository
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
@@ -18,6 +19,7 @@ import org.springframework.test.context.jdbc.Sql
 import java.time.Clock
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/agent/UpdateAgentEndpoint.sql"])
@@ -73,6 +75,32 @@ class UpdateAgentEndpointTest : AbstractAgentEndpointTest() {
         assertEquals("Milla", party.lastName)
         assertEquals("roger.milla@gmail.com", party.email)
         assertTrue(party.modifiedAt.time < now)
+    }
+
+    @Test
+    fun `current version - saved, and the next update needs the new one`() {
+        val request = UpdateAgentRequest(biography = "Updated bio", version = 0)
+
+        val response = rest.postForEntity("/v1/agents/101", request, Void::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(request.biography, dao.findById(101L).get().biography)
+        val agent = rest.getForEntity("/v1/agents/101", GetAgentResponse::class.java).body!!.agent
+        assertEquals(1L, agent.version)
+    }
+
+    @Test
+    fun `stale version - 409, nothing saved`() {
+        val request = UpdateAgentRequest(biography = "Updated bio", version = 7)
+
+        val response = rest.postForEntity("/v1/agents/101", request, ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.AGENT_VERSION_CONFLICT, response.body?.error?.code)
+
+        val agent = dao.findById(101L).get()
+        assertEquals(0L, agent.version)
+        assertNull(agent.biography)
     }
 
     @Test

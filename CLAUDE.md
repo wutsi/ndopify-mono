@@ -245,6 +245,17 @@ entered *after* `TenantContext` is set since Hibernate resolves the tenant when 
 logged, never rethrown. Tests must wait for the mail (`smtp.waitForIncomingEmail`);
 `BaseEndpointIntegrationTest.tearDown` waits for the running async tasks, so a test's mail can't reach the next one.
 
+**Optimistic locking**: `MandateEntity`, `AgentEntity`, `ContractEntity`, `KycCaseEntity` and `AssignmentEntity` are
+`@Version`-ed (`version` column, `V7_2`). Hibernate checks it on flush (`UPDATE ... WHERE version = ?`), so it only
+catches concurrent transactions; `ControllerErrorHandler` turns the `ObjectOptimisticLockingFailureException` into a
+409 named after the entity (`MANDATE_VERSION_CONFLICT`, `AGENT_VERSION_CONFLICT`, `CONTRACT_VERSION_CONFLICT`,
+`KYC_CASE_VERSION_CONFLICT`; `ASSIGNMENT_NOT_PENDING` for an offer). Across requests, `Mandate` / `Agent` expose
+`version`, and `UpdateMandateRequest.version` / `UpdateAgentRequest.version` (null: not checked) must still be the
+entity's, else the same 409 before anything is saved. With `@Version`, Spring Data treats an entity whose `version` is
+null as new: update with `copy()` of a loaded entity, never by building one with an existing id. Any write bumps the
+version, incl. the server's own (ex: `AgentService.markAssigned` on dispatch), so an edit form can get a 409 for a
+change to a field it doesn't show.
+
 There's also a non-domain **`platform`** package holding shared infrastructure (wired by `platform/config`):
 
 - `platform/momo` — mobile-money providers, used by `KycVerifierMoMo` to KYC-verify a mobile-money
@@ -353,7 +364,9 @@ Package `com.wutsi.ndopify.npc`: `ui/` (MVC controllers + Thymeleaf templates in
   `ndopify.contract.signature.ttl-days` (partner-central's `application.yml`), which must match ndopify-server's
   setting of the same name. The edit page (`GET|POST /mandates/{id}/edit`, `templates/mandate/edit.html`,
   `MandateEditForm` / `MandateEditRules`) is only for `MandateRules.EDITABLE` statuses (ASSIGNED, PENDING_APPROVAL),
-  re-checked on POST since ndopify-server's update doesn't check the status; the city can't change, the
+  re-checked on POST since ndopify-server's update doesn't check the status; it posts the mandate's `version` it was
+  loaded with (hidden field), and a 409 `MANDATE_VERSION_CONFLICT` shows the form again with the agent's answers, now
+  based on the new version (the profile page does the same with `AGENT_VERSION_CONFLICT`); the city can't change, the
   neighbourhoods are checked by `SectorValidator`, and the rest by `FindPropertyRules` (the only validation a mandate
   gets). `public/assets/js/mandate.js` only enhances both pages (`data-page` `mandate` / `mandate-edit`). Ownership
   isn't checked yet, in the BFF nor in ndopify-server: any signed-in agent can open any mandate's page by its id.

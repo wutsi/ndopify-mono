@@ -12,6 +12,9 @@ import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.dto.AgentType
 import com.wutsi.ndopify.agent.dto.ExperienceLevel
 import com.wutsi.ndopify.agent.dto.UpdateAgentRequest
+import com.wutsi.ndopify.error.dto.Error
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdPartyClient
@@ -67,6 +70,12 @@ class ProfileControllerTest {
     }
 
     private fun model(result: MvcResult) = result.modelAndView!!.model
+
+    private fun conflict(code: String): HttpClientErrorException {
+        val ex = HttpClientErrorException(HttpStatus.CONFLICT)
+        ex.setBodyConvertFunction { ErrorResponse(Error(code = code)) }
+        return ex
+    }
 
     @Suppress("UNCHECKED_CAST")
     private fun errors(result: MvcResult) = model(result)["errors"] as Map<String, String>
@@ -207,6 +216,33 @@ class ProfileControllerTest {
 
         assertEquals(setOf("neighborhoodIds"), errors(result).keys)
         verify(agentClient, never()).update(any(), any())
+    }
+
+    @Test
+    fun `save - sends the version the form was loaded with`() {
+        mvc.perform(valid("version" to listOf("4"))).andReturn()
+
+        val request = argumentCaptor<UpdateAgentRequest>()
+        verify(agentClient).update(eq(20L), request.capture())
+        assertEquals(4L, request.firstValue.version)
+    }
+
+    @Test
+    fun `save - changed since - the form again, with the answers, based on the new version`() {
+        doReturn(AGENT.copy(version = 5)).whenever(currentAgent).get()
+        doThrow(conflict(ErrorCode.AGENT_VERSION_CONFLICT)).whenever(agentClient).update(any(), any())
+
+        val result = mvc.perform(valid("version" to listOf("4"))).andReturn()
+
+        assertEquals("profile/edit", result.modelAndView?.viewName)
+        assertEquals(
+            "Votre profil a été modifié entre-temps. Vos réponses sont conservées : vérifiez-les, puis enregistrez à nouveau.",
+            model(result)["error"],
+        )
+        val answers = model(result)["answers"] as ProfileForm
+        assertEquals("Nouvelle bio.", answers.biography)
+        assertEquals(5L, answers.version)
+        assertTrue(result.flashMap.isEmpty())
     }
 
     @Test

@@ -60,6 +60,7 @@
 
             <form class="form" method="post" novalidate data-join-form th:action="@{/profile}"
                   th:attr="data-locations-url=@{/locations}">
+                <input type="hidden" name="version" th:value="${answers.version}">
                 <div class="alert alert--error" role="alert" th:if="${error}">
                     <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                     <p th:text="${error}">Enregistrement impossible pour le moment.</p>

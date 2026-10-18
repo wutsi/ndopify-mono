@@ -117,7 +117,7 @@ class NdAgentClientTest {
                 withSuccess(
                     """{"agent":{"id":20,"party":{"id":100,"firstName":"Ray","lastName":"Sponsible","email":"ray@gmail.com","kycStatus":"VERIFIED","createdAt":0,"modifiedAt":0},"agentType":"INDEPENDANT","biography":"Bio","cityId":1,""" +
                         """"neighborhoodIds":[1,2],"experienceLevel":"SENIOR","whatsappNumber":"+237670000001",""" +
-                        """"createdAt":0,"modifiedAt":0,"rating":3.0}}""",
+                        """"createdAt":0,"modifiedAt":0,"rating":3.0,"version":2}}""",
                     MediaType.APPLICATION_JSON,
                 ),
             )
@@ -128,6 +128,7 @@ class NdAgentClientTest {
         assertEquals("Ray", agent?.party?.firstName)
         assertEquals("Bio", agent?.biography)
         assertEquals(listOf(1L, 2L), agent?.neighborhoodIds)
+        assertEquals(2L, agent?.version)
         server.verify()
     }
 

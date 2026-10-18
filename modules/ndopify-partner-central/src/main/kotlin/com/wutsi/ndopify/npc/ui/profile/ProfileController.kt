@@ -2,6 +2,8 @@ package com.wutsi.ndopify.npc.ui.profile
 
 import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.agent.dto.UpdateAgentRequest
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdPartyClient
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClientException
 import org.springframework.web.multipart.MultipartFile
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
@@ -49,6 +52,8 @@ class ProfileController(
         const val SIGN_OUT = "redirect:/logout"
 
         private const val SAVE_FAILED = "Enregistrement impossible pour le moment. Réessayez dans quelques instants."
+        private const val SAVE_CONFLICT =
+            "Votre profil a été modifié entre-temps. Vos réponses sont conservées : vérifiez-les, puis enregistrez à nouveau."
     }
 
     private val sector = SectorValidator(locationClient, tenantContext)
@@ -88,8 +93,18 @@ class ProfileController(
                     neighborhoodIds = answers.neighborhoodIds,
                     // "" (not null) clears it.
                     biography = answers.biography,
+                    version = answers.version,
                 ),
             )
+        } catch (ex: HttpClientErrorException) {
+            if (errorCode(ex) != ErrorCode.AGENT_VERSION_CONFLICT) {
+                LOGGER.error("Server error: ${ex.message}", ex)
+                return edit(agent, answers, emptyMap(), SAVE_FAILED, model)
+            }
+            // Changed since the form was shown (ex: in another tab): saving again, based on the agent just loaded, is
+            // the agent's call
+            LOGGER.warn("Agent ${agent.id} not saved: changed since version ${answers.version}")
+            return edit(agent, answers.copy(version = agent.version), emptyMap(), SAVE_CONFLICT, model)
         } catch (ex: RestClientException) {
             LOGGER.error("Server error: ${ex.message}", ex)
             return edit(agent, answers, emptyMap(), SAVE_FAILED, model)
@@ -167,4 +182,11 @@ class ProfileController(
 
     private fun errors(vararg errors: Pair<String, String?>): Map<String, String> =
         errors.mapNotNull { (field, message) -> message?.let { field to it } }.toMap()
+
+    private fun errorCode(ex: HttpClientErrorException): String? =
+        try {
+            ex.getResponseBodyAs(ErrorResponse::class.java)?.error?.code
+        } catch (ignored: Exception) {
+            null
+        }
 }

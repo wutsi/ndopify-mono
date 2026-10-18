@@ -122,7 +122,7 @@ class MandateEditTemplateTest {
 
     @Test
     fun form() {
-        val page = render(MANDATE.copy(waterWell = true))
+        val page = render(MANDATE.copy(waterWell = true, version = 3))
 
         assertEquals("Modifier le mandat 201 — Ndopify Partner Central", page.title())
         assertEquals("Modifier le mandat", page.selectFirst("h1")?.text())
@@ -133,6 +133,7 @@ class MandateEditTemplateTest {
 
         val form = page.selectFirst("form[data-edit-form]")!!
         assertEquals("/mandates/201/edit", form.attr("action"))
+        assertEquals("3", form.selectFirst("input[type=hidden][name=version]")?.attr("value"))
         assertEquals("post", form.attr("method"))
         assertEquals(
             listOf("sector", "property", "amenities", "budget", "comments"),

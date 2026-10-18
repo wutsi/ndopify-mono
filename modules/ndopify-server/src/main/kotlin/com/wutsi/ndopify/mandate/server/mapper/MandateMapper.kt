@@ -54,7 +54,8 @@ class MandateMapper {
             age = entity.age,
             finalPrice = entity.finalPrice,
             cancellationCode = entity.cancellationCode,
-            cancellationReason = entity.cancellationReason
+            cancellationReason = entity.cancellationReason,
+            version = entity.version ?: 0,
         )
     }
 

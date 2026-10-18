@@ -217,6 +217,15 @@ class ProfileTemplateTest {
     }
 
     @Test
+    fun `edit - posts the version it was loaded with`() {
+        doReturn(AGENT.copy(version = 3)).whenever(currentAgent).get()
+
+        val page = render(get("/profile"))
+
+        assertEquals("3", page.selectFirst("form input[type=hidden][name=version]")?.attr("value"))
+    }
+
+    @Test
     fun `edit - new agent`() {
         doReturn(AGENT.copy(party = AGENT.party.copy(photoUrl = null), cityId = null, neighborhoodIds = emptyList()))
             .whenever(currentAgent).get()

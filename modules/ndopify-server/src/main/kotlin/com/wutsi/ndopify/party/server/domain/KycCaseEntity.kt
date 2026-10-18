@@ -9,6 +9,7 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.ManyToOne
 import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import org.hibernate.annotations.TenantId
 import java.util.Date
 import java.util.UUID
@@ -42,4 +43,8 @@ data class KycCaseEntity(
     val retries: Int? = null,
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
+
+    // Optimistic locking: a write based on a stale read fails (409) instead of silently overwriting the change
+    @Version
+    val version: Long? = null,
 )

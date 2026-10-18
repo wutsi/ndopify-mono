@@ -12,6 +12,8 @@ data class ProfileForm(
     val cityId: Long? = null,
     val neighborhoodIds: List<Long> = emptyList(),
     val biography: String = "",
+    // The version of the agent the page was loaded with: ndopify-server refuses the save if it changed since
+    val version: Long? = null,
 ) {
     companion object {
         /** The form pre-filled from the agent's profile; an UNKNOWN answer shows as unanswered. */
@@ -22,6 +24,7 @@ data class ProfileForm(
             cityId = agent.cityId,
             neighborhoodIds = agent.neighborhoodIds,
             biography = agent.biography.orEmpty(),
+            version = agent.version,
         )
     }
 }

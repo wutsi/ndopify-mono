@@ -13,6 +13,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.OneToOne
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import org.hibernate.annotations.TenantId
 import java.util.Date
 
@@ -54,6 +55,10 @@ data class AgentEntity(
 
     // 1..5 stars, used by the mandate dispatch. Read-only in the API: an agent mustn't rate itself
     val rating: Double = DEFAULT_RATING,
+
+    // Optimistic locking: a write based on a stale read fails (409) instead of silently overwriting the change
+    @Version
+    val version: Long? = null,
 ) {
     companion object {
         const val DEFAULT_RATING = 3.0 // Unrated: neutral in the dispatch score

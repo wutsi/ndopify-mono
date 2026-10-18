@@ -37,7 +37,7 @@ class MandateEditRulesTest {
 
     @Test
     fun `of - client`() {
-        val form = MandateEditForm.of(MANDATE.copy(waterWell = true, area = 120))
+        val form = MandateEditForm.of(MANDATE.copy(waterWell = true, area = 120, version = 3))
 
         assertEquals(listOf(BONAPRISO, AKWA), form.neighborhoodIds)
         assertEquals(PropertyCategory.RESIDENTIAL, form.propertyCategory)
@@ -50,6 +50,14 @@ class MandateEditRulesTest {
         assertEquals("250 000", form.priceAmount)
         assertEquals(MovingPeriod.WITHIN_3_MONTHS, form.movingPeriod)
         assertEquals("Près d'une école", form.comments)
+        assertEquals(3L, form.version)
+    }
+
+    @Test
+    fun `request - the version the form was loaded with, not the mandate's`() {
+        val request = MandateEditRules.request(FORM.copy(version = 3), MANDATE.copy(version = 4))
+
+        assertEquals(3L, request.version)
     }
 
     @Test

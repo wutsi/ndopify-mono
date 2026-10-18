@@ -39,10 +39,11 @@ class ProfileRulesTest {
                 cityId = ProfileFixtures.DOUALA,
                 neighborhoodIds = listOf(ProfileFixtures.BONAPRISO, ProfileFixtures.AKWA),
                 biography = "Démarcheur à Douala depuis 6 ans.",
+                version = 4,
             ),
-            ProfileForm.of(AGENT),
+            ProfileForm.of(AGENT.copy(version = 4)),
         )
         // Unknown answers show as unanswered.
-        assertEquals(ProfileForm(), ProfileForm.of(Agent()))
+        assertEquals(ProfileForm(version = 0), ProfileForm.of(Agent()))
     }
 }

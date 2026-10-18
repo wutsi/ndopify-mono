@@ -1,0 +1,5 @@
+-- Optimistic locking (@Version): an update based on a stale read fails with 409 instead of overwriting the change
+ALTER TABLE T_AGENT ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE T_MANDATE ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE T_CONTRACT ADD COLUMN version BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE T_KYC_CASE ADD COLUMN version BIGINT NOT NULL DEFAULT 0;

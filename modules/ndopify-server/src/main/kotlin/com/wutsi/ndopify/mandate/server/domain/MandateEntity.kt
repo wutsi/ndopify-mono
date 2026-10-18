@@ -19,6 +19,7 @@ import jakarta.persistence.GenerationType
 import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import org.hibernate.annotations.TenantId
 import java.util.Date
 
@@ -98,4 +99,8 @@ data class MandateEntity(
     val finalPrice: Long? = null,
     val cancellationCode: MandateCancellationCode? = null,
     val cancellationReason: String? = null,
+
+    // Optimistic locking: a write based on a stale read fails (409) instead of silently overwriting the change
+    @Version
+    val version: Long? = null,
 )

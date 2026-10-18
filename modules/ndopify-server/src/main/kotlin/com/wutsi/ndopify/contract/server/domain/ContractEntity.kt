@@ -6,6 +6,7 @@ import jakarta.persistence.Entity
 import jakarta.persistence.Id
 import jakarta.persistence.OneToMany
 import jakarta.persistence.Table
+import jakarta.persistence.Version
 import org.hibernate.annotations.TenantId
 import java.util.Date
 import java.util.UUID
@@ -34,4 +35,8 @@ data class ContractEntity(
     val validUntil: Date? = null,
     val createdAt: Date = Date(),
     val signedAt: Date? = null,
+
+    // Optimistic locking: a write based on a stale read fails (409) instead of silently overwriting the change
+    @Version
+    val version: Long? = null,
 )

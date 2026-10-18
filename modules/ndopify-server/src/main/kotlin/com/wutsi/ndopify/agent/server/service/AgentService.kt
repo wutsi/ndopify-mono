@@ -154,6 +154,10 @@ class AgentService(
     @Transactional
     fun update(id: Long, request: UpdateAgentRequest): AgentEntity {
         val agent = findById(id)
+        // The caller's copy is stale: saving it would overwrite the change made since (ex: in another tab)
+        if (request.version != null && request.version != agent.version) {
+            throw ConflictException(Error(ErrorCode.AGENT_VERSION_CONFLICT))
+        }
         val now = Date(clock.millis())
         return dao.save(
             agent.copy(

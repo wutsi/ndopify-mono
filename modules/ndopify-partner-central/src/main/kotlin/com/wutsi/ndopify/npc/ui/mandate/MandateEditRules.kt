@@ -98,6 +98,7 @@ object MandateEditRules {
             noticePeriod = mandate.noticePeriod,
             movingPeriod = form.movingPeriod ?: MovingPeriod.UNKNOWN,
             comments = form.comments?.trim()?.ifEmpty { null },
+            version = form.version,
         )
     }
 

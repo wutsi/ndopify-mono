@@ -8,6 +8,9 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.error.dto.Error
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
@@ -461,6 +464,12 @@ class MandateControllerTest {
 
     private fun answers(result: MvcResult) = model(result)["answers"] as MandateEditForm
 
+    private fun conflict(code: String): HttpClientErrorException {
+        val ex = HttpClientErrorException(HttpStatus.CONFLICT)
+        ex.setBodyConvertFunction { ErrorResponse(Error(code = code)) }
+        return ex
+    }
+
     @Suppress("UNCHECKED_CAST")
     private fun errors(result: MvcResult) = model(result)["errors"] as Map<String, String>
 
@@ -538,6 +547,47 @@ class MandateControllerTest {
         assertEquals(PropertyCategory.RESIDENTIAL, request.firstValue.propertyCategory)
         assertEquals(true, request.firstValue.waterWell)
         assertEquals(null, request.firstValue.furnitureType)
+    }
+
+    @Test
+    fun `save - sends the version the form was loaded with`() {
+        doReturn(PENDING.copy(version = 5)).whenever(mandateClient).get(201)
+
+        mvc.perform(edit("version" to "4")).andReturn()
+
+        val request = argumentCaptor<UpdateMandateRequest>()
+        verify(mandateClient).update(com.nhaarman.mockitokotlin2.eq(201L), request.capture())
+        assertEquals(4L, request.firstValue.version)
+    }
+
+    @Test
+    fun `save - changed since - the form again, with the answers, based on the new version`() {
+        doReturn(PENDING.copy(version = 5)).whenever(mandateClient).get(201)
+        doThrow(conflict(ErrorCode.MANDATE_VERSION_CONFLICT)).whenever(mandateClient).update(any(), any())
+
+        val result = mvc.perform(edit("version" to "4")).andReturn()
+
+        assertEquals("mandate/edit", result.modelAndView?.viewName)
+        assertEquals(
+            "Ce mandat a été modifié entre-temps. Vos réponses sont conservées : vérifiez-les, puis enregistrez à nouveau.",
+            model(result)["error"],
+        )
+        assertEquals("150 000", answers(result).priceAmount)
+        assertEquals(5L, answers(result).version)
+        assertTrue(result.flashMap.isEmpty())
+    }
+
+    @Test
+    fun `save - other conflict - error`() {
+        doThrow(conflict(ErrorCode.MANDATE_NOT_APPROVED)).whenever(mandateClient).update(any(), any())
+
+        val result = mvc.perform(edit()).andReturn()
+
+        assertEquals("mandate/edit", result.modelAndView?.viewName)
+        assertEquals(
+            "Enregistrement impossible pour le moment. Réessayez dans quelques instants.",
+            model(result)["error"],
+        )
     }
 
     @Test

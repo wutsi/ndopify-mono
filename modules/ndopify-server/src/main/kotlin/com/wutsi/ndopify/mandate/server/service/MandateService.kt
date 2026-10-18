@@ -96,12 +96,16 @@ class MandateService(
         return dao.findAll(spec, OffsetLimitPageRequest(request.offset, request.limit, Sort.by("id"))).content
     }
 
-    fun findByIdOrNull(id: Long): MandateEntity? {
-        return dao.findById(id).orElse(null)
+    fun findByIdOrNull(id: Long, forUpdate: Boolean = false): MandateEntity? {
+        return if (forUpdate) {
+            dao.findByIdForUpdate(id)
+        } else {
+            dao.findById(id).orElse(null)
+        }
     }
 
-    fun findById(id: Long): MandateEntity {
-        return findByIdOrNull(id)
+    fun findById(id: Long, forUpdate: Boolean = false): MandateEntity {
+        return findByIdOrNull(id, forUpdate)
             ?: throw NotFoundException(error = Error(code = ErrorCode.MANDATE_NOT_FOUND))
     }
 
@@ -174,9 +178,16 @@ class MandateService(
         return dispatcher.dispatch(id)
     }
 
+    /**
+     * Updates the mandate's search. With a [UpdateMandateRequest.version], it must be the mandate's (409
+     * MANDATE_VERSION_CONFLICT otherwise): the caller's copy is stale, saving it would overwrite the change made since.
+     */
     @Transactional
     fun update(id: Long, request: UpdateMandateRequest): MandateEntity {
         val mandate = findById(id)
+        if (request.version != null && request.version != mandate.version) {
+            throw ConflictException(Error(ErrorCode.MANDATE_VERSION_CONFLICT))
+        }
         return dao.save(
             mandate.copy(
                 propertyCategory = request.propertyCategory,
