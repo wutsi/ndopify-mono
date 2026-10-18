@@ -96,7 +96,8 @@
             <!--
                 Section Assignments (source doc): the active mandates offered to the agent, each to accept or
                 decline before its deadline. Anti-bypass: no client information, and the neighbourhood is the only
-                location given, until the agent accepts: mandate.html?id=… then shows the whole mandate. PROTOTYPE: deadlines are relative to the page load (data-expires-in, in minutes).
+                location given, until the agent accepts: mandate.html?id=… then shows the whole mandate, and the mandate joins
+                "Mes mandats" below. PROTOTYPE: deadlines are relative to the page load (data-expires-in, in minutes).
             -->
             <section class="home-section" aria-labelledby="assignments-title">
                 <h2 id="assignments-title">Mandats proposés</h2>
@@ -319,6 +320,121 @@
                     Aucun mandat ne vous est proposé pour le moment. Vous recevrez un e-mail dès qu'un client de
                     votre secteur vous est attribué.
                 </p>
+            </section>
+
+            <!--
+                Section Mandates (source doc): the agent's active mandates (Assigné, En approbation, Actif), each
+                opening its page, mandate.html?id=…. Closed mandates (Fermé) leave the list. PROTOTYPE: 201, 202 and
+                203 are already the agent's; an offer accepted above joins them at the top, and the statuses follow
+                what is done on mandate.html (see KEYS.mandates). ?mandates=empty shows the empty state.
+            -->
+            <section class="home-section" aria-labelledby="mandates-title">
+                <h2 id="mandates-title">Mes mandats</h2>
+                <p>Les mandats que vous suivez, de leur approbation par le client jusqu'à leur fermeture.</p>
+
+                <ul class="assignments" data-mandates>
+                    <li class="mandate-card" data-mandate-card data-mandate-id="201">
+                        <article aria-labelledby="mandate-201-title">
+                            <div class="assignment__head">
+                                <h3 id="mandate-201-title" class="assignment__type">
+                                    <a class="mandate-card__link" href="mandate.html?id=201" data-mandate-link>Locataire · Maison</a>
+                                </h3>
+                                <p class="status-tag status-tag--info" data-status-tag>Assigné</p>
+                            </div>
+                            <dl class="assignment__facts">
+                                <div>
+                                    <dt>Secteurs</dt>
+                                    <dd>Kotto, Logpom</dd>
+                                </div>
+                                <div>
+                                    <dt>Budget</dt>
+                                    <dd>250K FCFA / mois</dd>
+                                </div>
+                                <div>
+                                    <dt>Emménagement</dt>
+                                    <dd>Dans 1 à 3 mois</dd>
+                                </div>
+                            </dl>
+                            <p class="mandate-card__next" data-next-step>
+                                Contactez le client, puis envoyez-lui le mandat à approuver.
+                            </p>
+                        </article>
+                    </li>
+
+                    <li class="mandate-card" data-mandate-card data-mandate-id="202">
+                        <article aria-labelledby="mandate-202-title">
+                            <div class="assignment__head">
+                                <h3 id="mandate-202-title" class="assignment__type">
+                                    <a class="mandate-card__link" href="mandate.html?id=202" data-mandate-link>Locataire · Appartement</a>
+                                </h3>
+                                <p class="status-tag status-tag--warning" data-status-tag>En approbation</p>
+                            </div>
+                            <dl class="assignment__facts">
+                                <div>
+                                    <dt>Secteurs</dt>
+                                    <dd>Bonamoussadi, Makepe</dd>
+                                </div>
+                                <div>
+                                    <dt>Budget</dt>
+                                    <dd>120K FCFA / mois</dd>
+                                </div>
+                                <div>
+                                    <dt>Emménagement</dt>
+                                    <dd>Dans moins de 1 mois</dd>
+                                </div>
+                            </dl>
+                            <p class="mandate-card__next" data-next-step>
+                                Le client a jusqu'au 22 octobre 2026 pour signer le mandat.
+                            </p>
+                        </article>
+                    </li>
+
+                    <li class="mandate-card" data-mandate-card data-mandate-id="203">
+                        <article aria-labelledby="mandate-203-title">
+                            <div class="assignment__head">
+                                <h3 id="mandate-203-title" class="assignment__type">
+                                    <a class="mandate-card__link" href="mandate.html?id=203" data-mandate-link>Bailleur · Appartement</a>
+                                </h3>
+                                <p class="status-tag status-tag--success" data-status-tag>Actif</p>
+                            </div>
+                            <dl class="assignment__facts">
+                                <div>
+                                    <dt>Secteur</dt>
+                                    <dd>Bonapriso</dd>
+                                </div>
+                                <div>
+                                    <dt>Loyer</dt>
+                                    <dd>300K FCFA / mois</dd>
+                                </div>
+                                <div>
+                                    <dt>Disponibilité</dt>
+                                    <dd>Dans moins de 1 mois</dd>
+                                </div>
+                            </dl>
+                            <p class="mandate-card__next" data-next-step>
+                                Mandat signé, valable jusqu'au 28 mars 2027.
+                            </p>
+                        </article>
+                    </li>
+                </ul>
+
+                <p class="assignments__empty" hidden data-mandates-empty>
+                    Vous n'avez aucun mandat en cours. Acceptez un mandat proposé pour le retrouver ici.
+                </p>
+
+                <!-- An accepted offer's card, filled by initMandates from MANDATES. -->
+                <template data-mandate-template>
+                    <li class="mandate-card" data-mandate-card>
+                        <article>
+                            <div class="assignment__head">
+                                <h3 class="assignment__type"><a class="mandate-card__link" data-mandate-link></a></h3>
+                                <p class="status-tag" data-status-tag></p>
+                            </div>
+                            <dl class="assignment__facts" data-mandate-facts></dl>
+                            <p class="mandate-card__next" data-next-step></p>
+                        </article>
+                    </li>
+                </template>
             </section>
         </div>
     </main>

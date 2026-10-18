@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Mandat — Ndopify Partner Central</title>
-    <meta name="description" content="Détail d'un mandat accepté et coordonnées du client.">
+    <meta name="description" content="Détail d'un mandat de l'agent : suivi, coordonnées du client et recherche.">
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="#ffffff">
     <link rel="icon" type="image/png" href="assets/images/icon.png">
@@ -13,13 +13,26 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
     <link rel="stylesheet" href="assets/css/partner-central.css">
+    <link rel="stylesheet" href="assets/css/rejoindre.css">
+    <link rel="stylesheet" href="assets/css/find-property.css">
     <link rel="stylesheet" href="assets/css/home.css">
     <script src="assets/js/partner-central.js" defer></script>
 </head>
 <!--
-    Detail of a mandate the agent accepted: unlocked by the acceptance (anti-bypass), so it shows the client's
-    contact details and the whole search. PROTOTYPE: ?id=101, 102 or 103, once accepted on index.html; any other
-    mandate shows the locked view.
+    Mandate page (source doc): the detail of one of the agent's mandates, unlocked by the acceptance (anti-bypass:
+    an agent never sees a mandate that isn't assigned to it), so it shows the client's contact details and the whole
+    search. Its status is a wizard, Assigné > En approbation > Actif > Fermé, with the actions of the current step:
+      - Approuver (Assigné, En approbation): POST /v1/mandates/{id}/request-approval, the contract is e-mailed to
+        the client, who signs it online; sent again, it resets the signature deadline. The step's main button,
+        full width on phones.
+      - Modifier le mandat (Assigné, En approbation): an outline button next to the step's one (under it on
+        phones), to mandate/edit.html.
+        Not available once approved. Edited while En approbation, the panel asks to send it again.
+      - Fermer (Actif: lease signed, with the agreed rent) and Annuler (any step: no lease, with a reason, danger
+        style): two buttons at the bottom of the page, since they're rare and final.
+    PROTOTYPE: ?id=201, 202 or 203, or 101, 102 and 103 once accepted on index.html; any other mandate shows the
+    locked view. The statuses are kept in the session (KEYS.mandates), and "Simuler la signature" stands for the
+    client signing the contract.
 -->
 <body data-page="mandate">
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -44,9 +57,9 @@
     </header>
     <main id="main" class="page">
         <div class="column column--wide">
-            <p class="back-link"><a href="index.html">← Retour à l'espace agent</a></p>
+            <p class="back-link"><a href="index.html#mandates-title">← Retour à l'espace agent</a></p>
 
-            <!-- Locked: not accepted (yet), or not offered to this agent. -->
+            <!-- Locked: not accepted (yet), or not assigned to this agent. -->
             <div class="alert alert--warning" hidden data-mandate-locked>
                 <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
                 <div>
@@ -57,14 +70,117 @@
             </div>
 
             <div hidden data-mandate>
-                <div class="page-intro">
-                    <h1 data-mandate-title></h1>
-                    <p class="mandate__status">
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        <span>Mandat accepté. <span data-party-label-cap>Le client</span> a été prévenu&nbsp;:
-                            contactez-le rapidement.</span>
-                    </p>
+                <!-- The status sits by the title, so the steps below can stay compact. -->
+                <div class="page-intro mandate-intro">
+                    <div class="mandate-intro__head">
+                        <h1 data-mandate-title></h1>
+                        <p class="status-tag" data-status-tag></p>
+                    </div>
+                    <p class="mandate__meta">Mandat n° <span data-mandate-number></span> · accepté le
+                        <span data-mandate-accepted></span></p>
                 </div>
+
+                <!-- Outcome of the last action (sent, signed, closed). -->
+                <div class="alert alert--success" role="status" tabindex="-1" hidden data-mandate-flash>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <p data-mandate-flash-text></p>
+                </div>
+
+                <section class="mandate-progress" aria-labelledby="progress-title">
+                    <h2 id="progress-title" class="visually-hidden">Suivi du mandat</h2>
+
+                    <!--
+                        Phones: four marks joined by a line, with the current step's name and date under them
+                        (data-step-summary, for sighted users only: the steps' own text stays for screen readers).
+                        From 640px: the four steps with their names and dates.
+                    -->
+                    <ol class="tracker mandate-steps" data-mandate-steps>
+                        <li data-step="ASSIGNED"><span class="tracker__mark"></span>
+                            <span class="mandate-steps__text"><span class="mandate-steps__label">Assigné</span>
+                                <span class="mandate-steps__date" data-step-date></span></span></li>
+                        <li data-step="PENDING_APPROVAL"><span class="tracker__mark"></span>
+                            <span class="mandate-steps__text"><span class="mandate-steps__label">En approbation</span>
+                                <span class="mandate-steps__date" data-step-date></span></span></li>
+                        <li data-step="APPROVED"><span class="tracker__mark"></span>
+                            <span class="mandate-steps__text"><span class="mandate-steps__label">Actif</span>
+                                <span class="mandate-steps__date" data-step-date></span></span></li>
+                        <li data-step="CLOSED"><span class="tracker__mark"></span>
+                            <span class="mandate-steps__text"><span class="mandate-steps__label">Fermé</span>
+                                <span class="mandate-steps__date" data-step-date></span></span></li>
+                    </ol>
+                    <p class="mandate-steps__summary" aria-hidden="true" data-step-summary></p>
+
+                    <!-- One panel per status: one or two lines, the step's button, and the details folded away. -->
+                    <div class="mandate-panel" hidden data-panel="ASSIGNED">
+                        <p>Confirmez <span data-search-label>sa recherche</span> avec <span data-party-label>le
+                            client</span>, puis envoyez-lui le mandat à signer.</p>
+                        <div class="mandate-panel__actions">
+                            <button type="button" class="btn btn--primary" data-request-approval>Envoyer au client</button>
+                            <a class="btn btn--outline" data-edit-link>Modifier le mandat</a>
+                        </div>
+                        <details class="assignment__details">
+                            <summary>Comment ça marche&nbsp;?</summary>
+                            <div class="assignment__details-body">
+                                <p>Le mandat est envoyé par e-mail à <strong data-party-email></strong>, qui le signe
+                                    en ligne sous <span data-signature-ttl>7</span>&nbsp;jours. Vous commencez vos
+                                    recherches dès sa signature.</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <div class="mandate-panel" hidden data-panel="PENDING_APPROVAL">
+                        <p>Envoyé le <span data-requested-at></span> · à signer avant le
+                            <strong data-signature-deadline></strong>.</p>
+                        <p class="mandate-panel__edited" hidden data-edited-since>Modifié depuis l'envoi&nbsp;:
+                            renvoyez-le pour faire signer la nouvelle version.</p>
+                        <div class="mandate-panel__actions">
+                            <button type="button" class="btn btn--outline" data-request-approval>Renvoyer</button>
+                            <a class="btn btn--outline" data-edit-link>Modifier le mandat</a>
+                        </div>
+                        <details class="assignment__details">
+                            <summary>Comment ça marche&nbsp;?</summary>
+                            <div class="assignment__details-body">
+                                <p>Le mandat a été envoyé à <strong data-party-email></strong>. Passé le délai,
+                                    renvoyez-le&nbsp;: <span data-party-label>le client</span> a de nouveau
+                                    <span data-signature-ttl>7</span>&nbsp;jours pour le signer.</p>
+                            </div>
+                        </details>
+                        <p class="mandate-panel__prototype">
+                            <button type="button" class="link-button" data-simulate-signature>Simuler la signature (prototype)</button>
+                        </p>
+                    </div>
+
+                    <div class="mandate-panel" hidden data-panel="APPROVED">
+                        <p>Signé le <span data-approved-at></span> · valable jusqu'au <strong data-valid-until></strong>.</p>
+                        <details class="assignment__details">
+                            <summary>Et ensuite&nbsp;?</summary>
+                            <div class="assignment__details-body">
+                                <p><span data-approved-next>Proposez des biens au client et organisez les
+                                    visites.</span> Une fois le bail signé, fermez le mandat (en bas de page) en
+                                    indiquant le loyer convenu.</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <div class="alert alert--success" hidden data-panel="CLOSED">
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <div>
+                            <p class="alert__title">Bail signé</p>
+                            <p>Mandat fermé le <span data-closed-at></span>, au loyer de
+                                <strong data-final-price></strong>, <span data-age></span> après son approbation.</p>
+                        </div>
+                    </div>
+
+                    <div class="alert alert--info" hidden data-panel="CANCELLED">
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <p class="alert__title">Mandat annulé</p>
+                            <p>Le <span data-closed-at></span>&nbsp;: <span data-cancellation-label></span>.</p>
+                            <p class="review__multiline" hidden data-cancellation-reason></p>
+                        </div>
+                    </div>
+
+                </section>
 
                 <section class="home-section" aria-labelledby="contact-title">
                     <h2 id="contact-title" data-contact-title>Le client</h2>
@@ -74,7 +190,7 @@
                         <div class="review__item"><dt class="review__term">Adresse e-mail</dt><dd class="review__value"><a data-contact="email"></a></dd></div>
                         <div class="review__item"><dt class="review__term">Moment idéal pour l'appeler</dt><dd class="review__value" data-contact="period"></dd></div>
                     </dl>
-                    <div class="cta-row mandate__cta">
+                    <div class="cta-row mandate__cta" data-contact-actions>
                         <a class="btn btn--primary" target="_blank" rel="noopener" data-contact-whatsapp>Écrire sur WhatsApp</a>
                         <a class="btn btn--outline" data-contact-call>Appeler</a>
                     </div>
@@ -83,6 +199,68 @@
                 <section class="home-section" aria-labelledby="search-title">
                     <h2 id="search-title" data-search-title>Sa recherche</h2>
                     <dl class="review" data-mandate-criteria></dl>
+                </section>
+
+                <!--
+                    The mandate's end, on every step but Fermé / Annulé, at the bottom of the page since it's rare and
+                    final. Fermer (lease signed, with the agreed rent: POST /v1/mandates/{id}/close) only once approved,
+                    the server refusing it before (409 MANDATE_NOT_APPROVED). Annuler (no lease, with a reason: POST
+                    /v1/mandates/{id}/cancel) on any step, in the danger style. Each button opens the form in its mode.
+                -->
+                <section class="home-section mandate-close" aria-label="Fin du mandat" hidden data-close>
+                    <div class="mandate-panel__actions mandate-close__buttons" data-close-buttons>
+                        <button type="button" class="btn btn--outline" aria-expanded="false" aria-controls="close-form"
+                                data-close-open="close">Fermer le mandat</button>
+                        <button type="button" class="btn btn--danger" aria-expanded="false" aria-controls="close-form"
+                                data-close-open="cancel">Annuler le mandat</button>
+                    </div>
+
+                    <form id="close-form" class="form mandate-close__form" novalidate hidden data-close-form>
+                        <h2 class="mandate-panel__title" data-close-title></h2>
+                        <p data-for-mode="close">Le bail est signé&nbsp;? Indiquez le loyer convenu pour fermer le
+                            mandat.</p>
+                        <p data-for-mode="cancel">Le mandat s'arrête sans bail. Cette action est définitive.</p>
+
+                        <div class="field" data-for-mode="close">
+                            <label class="field__label" for="finalPrice">Loyer convenu</label>
+                            <div class="input-unit">
+                                <input class="input" id="finalPrice" name="finalPrice" type="text" inputmode="numeric"
+                                       autocomplete="off" aria-describedby="finalPrice-error">
+                                <span aria-hidden="true" class="input-unit__suffix">FCFA / mois</span>
+                            </div>
+                            <p class="field__error" id="finalPrice-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                        </div>
+
+                        <fieldset class="choices" aria-describedby="cancellationCode-error" data-for-mode="cancel">
+                            <legend class="choices__legend">Pour quelle raison&nbsp;?</legend>
+                            <div class="choices__grid">
+                                <label class="choice"><input name="cancellationCode" type="radio" value="FOUND_INDEPENDENTLY">
+                                    Trouvé sans mon aide</label>
+                                <label class="choice"><input name="cancellationCode" type="radio" value="FOUND_VIA_OTHER_AGENT">
+                                    Trouvé par un autre agent</label>
+                                <label class="choice"><input name="cancellationCode" type="radio" value="CHANGE_OF_PLANS">
+                                    Changement de projet</label>
+                                <label class="choice"><input name="cancellationCode" type="radio" value="UNREALISTIC_CRITERIA">
+                                    Critères irréalistes (budget, secteur…)</label>
+                                <label class="choice"><input name="cancellationCode" type="radio" value="UNSATISFACTORY_SERVICE">
+                                    Insatisfait du service</label>
+                                <label class="choice"><input name="cancellationCode" type="radio" value="OTHER">
+                                    Autre raison</label>
+                            </div>
+                            <p class="field__error" id="cancellationCode-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                        </fieldset>
+
+                        <div class="field" data-for-mode="cancel">
+                            <label class="field__label" for="cancellationReason">Précisions <span class="field__optional">(facultatif)</span></label>
+                            <textarea class="input input--textarea" id="cancellationReason" name="cancellationReason"
+                                      rows="3" maxlength="500"></textarea>
+                        </div>
+
+                        <div class="mandate-panel__actions">
+                            <button type="submit" class="btn" data-close-submit></button>
+                            <button type="button" class="btn btn--outline" data-close-back>Retour</button>
+                        </div>
+                    </form>
                 </section>
             </div>
         </div>

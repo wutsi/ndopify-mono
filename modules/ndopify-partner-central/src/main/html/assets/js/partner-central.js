@@ -31,7 +31,9 @@
         // The agent's profile, as saved by profile/edit.html and profile/photo.html (see profile.js).
         profile: "npc.profile",
         // Ids of the mandates the agent accepted: their details (mandate.html) are unlocked.
-        accepted: "npc.mandates.accepted"
+        accepted: "npc.mandates.accepted",
+        // Status and dates of each of the agent's mandates, as changed on mandate.html (see stateOf).
+        mandates: "npc.mandates.state"
     };
 
     /* ---------- Storage (fails soft: private mode, quota) ---------- */
@@ -1012,7 +1014,8 @@
         }
     }
 
-    function initAssignments() {
+    // mandates: the "Mes mandats" section (initMandates), where an accepted offer is added.
+    function initAssignments(mandates) {
         var list = $("[data-assignments]");
         if (!list) return;
         var status = $("[data-assignments-status]");
@@ -1096,9 +1099,12 @@
                 accept.textContent = "Acceptation…";
                 // PROTOTYPE: simulates POST /v1/assignments/{id}/accept.
                 window.setTimeout(function () {
+                    var id = item.getAttribute("data-mandate-id");
                     var ids = acceptedMandates();
-                    ids.push(item.getAttribute("data-mandate-id"));
+                    ids.push(id);
                     store.set(KEYS.accepted, JSON.stringify(ids));
+                    saveState(id, { status: "ASSIGNED", acceptedAt: Date.now() });
+                    if (mandates) mandates.add(id);
                     closeAccepted(item);
                     announce(status, "Mandat accepté. Les coordonnées du client sont débloquées.");
                     $("h3", item).setAttribute("tabindex", "-1");
@@ -1148,15 +1154,17 @@
 
     function initAgentHome() {
         initProfile();
-        initAssignments();
+        initAssignments(initMandates());
     }
 
-    /* ---------- mandate.html — an accepted mandate ---------- */
+    /* ---------- The agent's mandates (index.html › Mes mandats, mandate.html) ---------- */
 
-    // PROTOTYPE: the mandates offered on index.html, as GET /v1/mandates/{id} (+ its customer) would return them.
+    // PROTOTYPE: the agent's mandates, as GET /v1/mandates/{id} (+ its customer) would return them. 101 to 103 are
+    // the offers of index.html, the agent's once accepted; 201 to 203 are already its own, at the status of their
+    // initial state (dates in days from now). "fields" is the search, as UpdateMandateRequest names it: once edited
+    // (mandate/edit.html), the session's copy replaces it (see fieldsOf). Title and criteria are derived from it.
     var MANDATES = {
         101: {
-            title: "Locataire · Appartement",
             party: "client",
             contact: {
                 name: "Aïcha Mbarga",
@@ -1164,25 +1172,23 @@
                 email: "aicha.mbarga@example.com",
                 period: "Matin"
             },
-            criteria: [
-                ["Secteur", "Bonapriso, Akwa — Douala"],
-                ["Budget", "150K FCFA / mois"],
-                ["Emménagement", "Dans moins de 1 mois"],
-                ["Catégorie", "Résidentiel"],
-                ["Type de propriété", "Appartement"],
-                ["Meublé", "Non"],
-                ["Chambres", "2"],
-                ["Parking", "1"],
-                ["Surface souhaitée", "80 m²"],
-                ["Accès à l'eau", "Compteur dédié, Forage"],
-                ["Accès à l'électricité", "Compteur dédié, Groupe électrogène"],
-                ["Accès routier", "Route bitumée"],
-                ["Sécurité", "Gardien 24h/24h"],
-                ["Autres précisions", "Proche d'une école pour mes deux enfants.\nRez-de-chaussée ou premier étage."]
-            ]
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Bonapriso", "Akwa"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "APARTMENT",
+                furnitureType: "UNFURNISHED",
+                rooms: "2",
+                parkings: "1",
+                area: 80,
+                amenities: ["dedicatedWaterMeter", "waterWell", "dedicatedElectricityMeter", "generatorSet",
+                    "roadPaved", "securityGuard"],
+                price: 150000,
+                movingPeriod: "WITHIN_1_MONTH",
+                comments: "Proche d'une école pour mes deux enfants.\nRez-de-chaussée ou premier étage."
+            }
         },
         102: {
-            title: "Bailleur · Studio",
             party: "bailleur",
             contact: {
                 name: "Paul Ekwalla",
@@ -1190,24 +1196,21 @@
                 email: "paul.ekwalla@example.com",
                 period: "Après-midi"
             },
-            criteria: [
-                ["Secteur", "Bonanjo — Douala"],
-                ["Loyer", "75K FCFA / mois"],
-                ["Disponibilité", "Dans 1 à 3 mois"],
-                ["Catégorie", "Résidentiel"],
-                ["Type de propriété", "Studio"],
-                ["Meublé", "Oui"],
-                ["Chambres", "1"],
-                ["Parking", "Aucune"],
-                ["Surface", "30 m²"],
-                ["Accès à l'eau", "Compteur d'eau"],
-                ["Accès à l'électricité", "Compteur électrique"],
-                ["Accès routier", "Piste accessible en voiture"],
-                ["Sécurité", "Barrière sécurisée"]
-            ]
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Bonanjo"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "STUDIO",
+                furnitureType: "FULLY_FURNISHED",
+                rooms: "1",
+                parkings: "0",
+                area: 30,
+                amenities: ["waterMeter", "electricityMeter", "trackAccessibleByCar", "securedFenced"],
+                price: 75000,
+                movingPeriod: "WITHIN_3_MONTHS"
+            }
         },
         103: {
-            title: "Locataire · Bureau",
             party: "client",
             contact: {
                 name: "Marie-Claire Ndjock",
@@ -1215,22 +1218,353 @@
                 email: "mc.ndjock@example.com",
                 period: "Soirée"
             },
-            criteria: [
-                ["Secteurs", "Akwa, Bonanjo, Deïdo — Douala"],
-                ["Budget", "400K FCFA / mois"],
-                ["Emménagement", "Dans plus de 3 mois"],
-                ["Catégorie", "Commercial"],
-                ["Type de propriété", "Bureau"],
-                ["Meublé", "Indifférent"],
-                ["Parking", "3+"],
-                ["Surface souhaitée", "150 m²"],
-                ["Accès à l'eau", "Compteur dédié"],
-                ["Accès à l'électricité", "Compteur dédié, Panneau solaire"],
-                ["Accès routier", "Route bitumée"],
-                ["Sécurité", "Vidéo surveillance, Gardien 24h/24h"]
-            ]
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Akwa", "Bonanjo", "Deïdo"],
+                propertyCategory: "COMMERCIAL",
+                propertyType: "OFFICE",
+                furnitureType: "ANY",
+                parkings: "3+",
+                area: 150,
+                amenities: ["dedicatedWaterMeter", "dedicatedElectricityMeter", "solarPanel", "roadPaved",
+                    "securityGuard", "videoSurveillance"],
+                price: 400000,
+                movingPeriod: "AFTER_3_MONTHS"
+            }
+        },
+        201: {
+            party: "client",
+            initial: { status: "ASSIGNED", acceptedAt: -1 },
+            contact: {
+                name: "Jean-Pierre Fotso",
+                whatsapp: "+237670112233",
+                email: "jp.fotso@example.com",
+                period: "Soirée"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Kotto", "Logpom"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "HOUSE",
+                furnitureType: "UNFURNISHED",
+                rooms: "3",
+                parkings: "2",
+                area: 150,
+                amenities: ["dedicatedWaterMeter", "waterTank", "dedicatedElectricityMeter", "roadPaved",
+                    "securedFenced"],
+                price: 250000,
+                movingPeriod: "WITHIN_3_MONTHS",
+                comments: "Une cour pour garer deux voitures."
+            }
+        },
+        202: {
+            party: "client",
+            initial: { status: "PENDING_APPROVAL", acceptedAt: -5, requestedAt: -2 },
+            contact: {
+                name: "Grâce Nkoulou",
+                whatsapp: "+237691554433",
+                email: "grace.nkoulou@example.com",
+                period: "Après-midi"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Bonamoussadi", "Makepe"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "APARTMENT",
+                furnitureType: "FULLY_FURNISHED",
+                rooms: "1",
+                parkings: "0",
+                amenities: ["waterMeter", "electricityMeter", "trackAccessibleByCar", "securityGuard"],
+                price: 120000,
+                movingPeriod: "WITHIN_1_MONTH"
+            }
+        },
+        203: {
+            party: "bailleur",
+            initial: { status: "APPROVED", acceptedAt: -24, requestedAt: -21, approvedAt: -19 },
+            contact: {
+                name: "Emmanuel Tchoua",
+                whatsapp: "+237677001122",
+                email: "e.tchoua@example.com",
+                period: "Matin"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Bonapriso"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "APARTMENT",
+                furnitureType: "UNFURNISHED",
+                rooms: "3",
+                parkings: "1",
+                area: 120,
+                amenities: ["dedicatedWaterMeter", "waterWell", "dedicatedElectricityMeter", "generatorSet",
+                    "roadPaved", "securityGuard", "videoSurveillance"],
+                price: 300000,
+                movingPeriod: "WITHIN_1_MONTH"
+            }
         }
     };
+
+    /* The search's labels, as the find-property wizard words them. "ANY" is the UI's "Indifférent". */
+    var CATEGORY_LABELS = { RESIDENTIAL: "Résidentiel", COMMERCIAL: "Commercial" };
+    var PROPERTY_TYPE_LABELS = {
+        ROOM: "Chambre",
+        STUDIO: "Studio",
+        APARTMENT: "Appartement",
+        HOUSE: "Maison",
+        VILLA: "Villa",
+        DUPLEX: "Duplex",
+        RETAIL: "Boutique, local commercial",
+        OFFICE: "Bureau",
+        INDUSTRIAL: "Entrepôt, local industriel",
+        BUILDING: "Immeuble",
+        LAND: "Terrain",
+        ANY: "Indifférent"
+    };
+    // In the title ("Locataire · Boutique"): one word.
+    var PROPERTY_TYPE_SHORT = { RETAIL: "Boutique", INDUSTRIAL: "Entrepôt", ANY: "Tout type" };
+    var FURNITURE_LABELS = { FULLY_FURNISHED: "Oui", UNFURNISHED: "Non", ANY: "Indifférent" };
+    var PARKING_LABELS = { "0": "Aucune", "3+": "3+", ANY: "Indifférent" };
+    var MOVING_LABELS = {
+        WITHIN_1_MONTH: "Dans moins de 1 mois",
+        WITHIN_3_MONTHS: "Dans 1 à 3 mois",
+        AFTER_3_MONTHS: "Dans plus de 3 mois"
+    };
+    var AMENITY_GROUPS = [
+        ["Accès à l'eau", [["waterMeter", "Compteur d'eau"], ["dedicatedWaterMeter", "Compteur d'eau individuel"],
+            ["waterTank", "Citerne"], ["waterWell", "Forage"]]],
+        ["Accès à l'électricité", [["electricityMeter", "Compteur électrique"],
+            ["dedicatedElectricityMeter", "Compteur électrique individuel"], ["generatorSet", "Groupe électrogène"],
+            ["solarPanel", "Panneaux solaires"]]],
+        ["Accès routier", [["roadPaved", "Route bitumée"], ["trackAccessibleByCar", "Piste accessible en voiture"],
+            ["trackInaccessibleByCar", "Piste accessible à pied seulement"]]],
+        ["Sécurité", [["securedFenced", "Clôturé et sécurisé"], ["securityGuard", "Gardien"],
+            ["videoSurveillance", "Vidéosurveillance"]]]
+    ];
+
+    // 150000 → "150K FCFA / mois".
+    function formatRent(amount) {
+        var value = amount % 1000 === 0 ? amount / 1000 + "K" : amount.toLocaleString("fr-FR");
+        return value + " FCFA / mois";
+    }
+
+    function fieldsOf(id) {
+        var saved = mandateStates()[id];
+        return saved && saved.fields ? saved.fields : MANDATES[id].fields;
+    }
+
+    function titleOf(id) {
+        var f = fieldsOf(id);
+        var type = PROPERTY_TYPE_SHORT[f.propertyType] || PROPERTY_TYPE_LABELS[f.propertyType] || "Tout type";
+        return (MANDATES[id].party === "bailleur" ? "Bailleur" : "Locataire") + " · " + type;
+    }
+
+    // The search as [term, value] rows: sector, amount and date first (a card's three facts), then the rest.
+    function criteriaOf(id) {
+        var f = fieldsOf(id);
+        var owner = MANDATES[id].party === "bailleur";
+        var n = f.neighbourhoods.length;
+        var rows = [
+            [n > 1 ? "Secteurs" : "Secteur", (n ? f.neighbourhoods.join(", ") : "Toute la ville") + " — " + f.city],
+            [owner ? "Loyer" : "Budget", formatRent(f.price)],
+            [owner ? "Disponibilité" : "Emménagement", MOVING_LABELS[f.movingPeriod]],
+            ["Catégorie", CATEGORY_LABELS[f.propertyCategory]],
+            ["Type de propriété", PROPERTY_TYPE_LABELS[f.propertyType] || "Indifférent"]
+        ];
+        if (f.furnitureType) rows.push(["Meublé", FURNITURE_LABELS[f.furnitureType]]);
+        if (f.rooms) rows.push(["Chambres", f.rooms]);
+        if (f.parkings) rows.push(["Parking", PARKING_LABELS[f.parkings] || f.parkings]);
+        if (f.area) rows.push([owner ? "Surface" : "Surface souhaitée", f.area + " m²"]);
+        AMENITY_GROUPS.forEach(function (group) {
+            var labels = group[1].filter(function (a) {
+                return f.amenities.indexOf(a[0]) !== -1;
+            }).map(function (a) {
+                return a[1];
+            });
+            if (labels.length) rows.push([group[0], labels.join(", ")]);
+        });
+        if (f.comments) rows.push(["Autres précisions", f.comments]);
+        return rows;
+    }
+
+    var DAY_MS = 24 * 60 * 60 * 1000;
+    // Assigné, En approbation, Actif: listed in "Mes mandats". CLOSED is "Fermé" (lease signed), CANCELLED "Annulé".
+    var ACTIVE_STATUSES = ["ASSIGNED", "PENDING_APPROVAL", "APPROVED"];
+    // ndopify.contract.signature.ttl-days and ndopify.mandate.contract.duration-months.
+    var SIGNATURE_TTL_DAYS = 7;
+    var CONTRACT_MONTHS = 6;
+
+    var STATUS_TAGS = {
+        ASSIGNED: ["Assigné", "info"],
+        PENDING_APPROVAL: ["En approbation", "warning"],
+        APPROVED: ["Actif", "success"],
+        CLOSED: ["Fermé", "neutral"],
+        CANCELLED: ["Annulé", "neutral"]
+    };
+
+    // MandateCancellationCode, as the cancel form words them.
+    var CANCELLATION_LABELS = {
+        FOUND_INDEPENDENTLY: "trouvé sans votre aide",
+        FOUND_VIA_OTHER_AGENT: "trouvé par un autre agent",
+        CHANGE_OF_PLANS: "changement de projet",
+        UNREALISTIC_CRITERIA: "critères irréalistes",
+        UNSATISFACTORY_SERVICE: "insatisfait du service",
+        OTHER: "autre raison"
+    };
+
+    var DATE_FORMAT = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+    var CHECK_MARK = '<svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+    function formatDate(ms) {
+        return DATE_FORMAT.format(new Date(ms));
+    }
+
+    function addMonths(ms, months) {
+        var d = new Date(ms);
+        d.setMonth(d.getMonth() + months);
+        return d.getTime();
+    }
+
+    function signatureDeadline(state) {
+        return state.requestedAt + SIGNATURE_TTL_DAYS * DAY_MS;
+    }
+
+    // Anti-bypass: an agent only sees its own mandates, the offers it accepted included.
+    function ownsMandate(id) {
+        var mandate = MANDATES[id];
+        return !!mandate && (!!mandate.initial || acceptedMandates().indexOf(id) !== -1);
+    }
+
+    function mandateStates() {
+        try {
+            return JSON.parse(store.get(KEYS.mandates)) || {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    // { status, acceptedAt, requestedAt?, approvedAt?, closedAt?, finalPrice?, cancellationCode?, cancellationReason? }
+    function stateOf(id) {
+        var saved = mandateStates()[id];
+        if (saved) return saved;
+        var initial = MANDATES[id].initial || { status: "ASSIGNED", acceptedAt: 0 };
+        var state = {};
+        Object.keys(initial).forEach(function (key) {
+            var value = initial[key];
+            state[key] = typeof value === "number" ? Date.now() + value * DAY_MS : value;
+        });
+        return state;
+    }
+
+    function saveState(id, state) {
+        var states = mandateStates();
+        states[id] = state;
+        store.set(KEYS.mandates, JSON.stringify(states));
+    }
+
+    function partyWords(mandate) {
+        var owner = mandate.party === "bailleur";
+        return {
+            the: owner ? "le bailleur" : "le client",
+            The: owner ? "Le bailleur" : "Le client",
+            of: owner ? "du bailleur" : "du client",
+            search: owner ? "son bien" : "sa recherche",
+            Search: owner ? "Son bien" : "Sa recherche"
+        };
+    }
+
+    // The card's one-line next step on index.html.
+    function nextStep(mandate, state) {
+        var p = partyWords(mandate);
+        if (state.status === "ASSIGNED") {
+            return "Contactez " + p.the + ", puis envoyez-lui le mandat à approuver.";
+        }
+        if (state.status === "PENDING_APPROVAL") {
+            var deadline = signatureDeadline(state);
+            if (deadline < Date.now()) return "Délai de signature dépassé : renvoyez le mandat.";
+            return p.The + " a jusqu'au " + formatDate(deadline) + " pour signer le mandat.";
+        }
+        if (state.status === "APPROVED") {
+            return "Mandat signé, valable jusqu'au " + formatDate(addMonths(state.approvedAt, CONTRACT_MONTHS)) + ".";
+        }
+        return "";
+    }
+
+    function setStatusTag(el, status) {
+        var tag = STATUS_TAGS[status];
+        el.textContent = tag[0];
+        el.className = "status-tag status-tag--" + tag[1];
+    }
+
+    function initMandates() {
+        var list = $("[data-mandates]");
+        if (!list) return null;
+        var empty = $("[data-mandates-empty]");
+        var template = $("[data-mandate-template]");
+
+        function syncEmpty() {
+            var none = $all("[data-mandate-card]", list).length === 0;
+            list.hidden = none;
+            empty.hidden = !none;
+        }
+
+        // Title and facts too: the search may have been edited since the page was written.
+        function render(item, id) {
+            var state = stateOf(id);
+            $("[data-mandate-link]", item).textContent = titleOf(id);
+            var facts = $(".assignment__facts", item);
+            facts.textContent = "";
+            criteriaOf(id).slice(0, 3).forEach(function (row, i) {
+                var div = document.createElement("div");
+                var dt = document.createElement("dt");
+                var dd = document.createElement("dd");
+                dt.textContent = row[0];
+                // The card names the neighbourhoods only; the city is the agent's.
+                dd.textContent = i === 0 ? row[1].split(" — ")[0] : row[1];
+                div.appendChild(dt);
+                div.appendChild(dd);
+                facts.appendChild(div);
+            });
+            setStatusTag($("[data-status-tag]", item), state.status);
+            $("[data-next-step]", item).textContent = nextStep(MANDATES[id], state);
+        }
+
+        function card(id) {
+            var item = template.content.firstElementChild.cloneNode(true);
+            var titleId = "mandate-" + id + "-title";
+            item.setAttribute("data-mandate-id", id);
+            $("article", item).setAttribute("aria-labelledby", titleId);
+            $("h3", item).id = titleId;
+            $("[data-mandate-link]", item).href = "mandate.html?id=" + id;
+            return item;
+        }
+
+        // An accepted offer: newest first.
+        function add(id) {
+            if ($('[data-mandate-id="' + id + '"]', list)) return;
+            var item = card(id);
+            list.insertBefore(item, list.firstElementChild);
+            render(item, id);
+            syncEmpty();
+        }
+
+        // PROTOTYPE: ?mandates=empty shows an agent without mandates.
+        if (new URLSearchParams(window.location.search).get("mandates") === "empty") {
+            $all("[data-mandate-card]", list).forEach(function (item) {
+                item.remove();
+            });
+        } else {
+            acceptedMandates().forEach(add);
+        }
+
+        $all("[data-mandate-card]", list).forEach(function (item) {
+            var id = item.getAttribute("data-mandate-id");
+            if (ACTIVE_STATUSES.indexOf(stateOf(id).status) === -1) item.remove();
+            else render(item, id);
+        });
+        syncEmpty();
+        return { add: add };
+    }
 
     // "+237699123456" → "+237 6 99 12 34 56" (Cameroon numbers; others are shown as they are).
     function displayPhone(e164) {
@@ -1238,21 +1572,47 @@
         return m ? "+237 " + m.slice(1).join(" ") : e164;
     }
 
+    // The status wizard: Assigné > En approbation > Actif > Fermé.
+    var MANDATE_STEPS = ["ASSIGNED", "PENDING_APPROVAL", "APPROVED", "CLOSED"];
+
     function initMandate() {
         var id = new URLSearchParams(window.location.search).get("id");
-        var mandate = MANDATES[id];
-        // Anti-bypass: the details only unlock once the agent accepted the mandate.
-        if (!mandate || acceptedMandates().indexOf(id) === -1) {
+        if (!ownsMandate(id)) {
             $("[data-mandate-locked]").hidden = false;
             return;
         }
-        var owner = mandate.party === "bailleur";
+        var mandate = MANDATES[id];
+        var p = partyWords(mandate);
         var c = mandate.contact;
-        document.title = mandate.title + " — Ndopify Partner Central";
-        $("[data-mandate-title]").textContent = mandate.title;
-        $("[data-party-label-cap]").textContent = owner ? "Le bailleur" : "Le client";
-        $("[data-contact-title]").textContent = owner ? "Le bailleur" : "Le client";
-        $("[data-search-title]").textContent = owner ? "Son bien" : "Sa recherche";
+        document.title = titleOf(id) + " — Ndopify Partner Central";
+        $("[data-mandate-title]").textContent = titleOf(id);
+        $all("[data-edit-link]").forEach(function (a) {
+            a.href = "mandate/edit.html?id=" + encodeURIComponent(id);
+        });
+        $("[data-mandate-number]").textContent = id;
+        $("[data-contact-title]").textContent = p.The;
+        $("[data-search-title]").textContent = p.Search;
+        $all("[data-party-label]").forEach(function (el) {
+            el.textContent = p.the;
+        });
+        $all("[data-party-label-cap]").forEach(function (el) {
+            el.textContent = p.The;
+        });
+        $all("[data-party-of]").forEach(function (el) {
+            el.textContent = p.of;
+        });
+        $all("[data-search-label]").forEach(function (el) {
+            el.textContent = p.search;
+        });
+        $all("[data-party-email]").forEach(function (el) {
+            el.textContent = c.email;
+        });
+        $all("[data-signature-ttl]").forEach(function (el) {
+            el.textContent = SIGNATURE_TTL_DAYS;
+        });
+        $("[data-approved-next]").textContent = mandate.party === "bailleur"
+            ? "Présentez le bien aux locataires et organisez les visites."
+            : "Proposez des biens au client et organisez les visites.";
 
         $('[data-contact="name"]').textContent = c.name;
         var wa = $('[data-contact="whatsapp"]');
@@ -1265,8 +1625,8 @@
         $("[data-contact-whatsapp]").href = wa.href;
         $("[data-contact-call]").href = "tel:" + c.whatsapp;
 
-        var list = $("[data-mandate-criteria]");
-        mandate.criteria.forEach(function (row) {
+        var criteria = $("[data-mandate-criteria]");
+        criteriaOf(id).forEach(function (row) {
             var item = document.createElement("div");
             item.className = "review__item";
             var dt = document.createElement("dt");
@@ -1277,17 +1637,503 @@
             dd.textContent = row[1];
             item.appendChild(dt);
             item.appendChild(dd);
-            list.appendChild(item);
+            criteria.appendChild(item);
         });
+
+        var flash = $("[data-mandate-flash]");
+
+        function showFlash(text) {
+            $("[data-mandate-flash-text]").textContent = text;
+            flash.hidden = false;
+            flash.focus();
+        }
+
+        function fill(selector, text) {
+            $all(selector).forEach(function (el) {
+                el.textContent = text;
+            });
+        }
+
+        function render() {
+            var state = stateOf(id);
+            var closed = state.status === "CLOSED" || state.status === "CANCELLED";
+            var current = closed ? MANDATE_STEPS.length - 1 : MANDATE_STEPS.indexOf(state.status);
+            var dates = [state.acceptedAt, state.requestedAt, state.approvedAt, state.closedAt];
+
+            $("[data-mandate-accepted]").textContent = formatDate(state.acceptedAt);
+            setStatusTag($("[data-status-tag]"), state.status);
+            $all("[data-step]").forEach(function (li, i) {
+                // A mandate closed without a lease may skip steps (ex: cancelled before its approval): never done.
+                var done = closed ? i === current || !!dates[i] : i < current;
+                li.setAttribute("data-state", done ? "done" : i === current ? "current" : "todo");
+                $(".tracker__mark", li).innerHTML = done ? CHECK_MARK : "";
+                if (i === current) li.setAttribute("aria-current", "step");
+                else li.removeAttribute("aria-current");
+                $("[data-step-date]", li).textContent = i <= current && dates[i] ? formatDate(dates[i]) : "";
+            });
+            // The wizard's last step is the mandate's end: Fermé (lease signed) or Annulé.
+            var label = STATUS_TAGS[state.status][0];
+            $('[data-step="CLOSED"] .mandate-steps__label').textContent = state.status === "CANCELLED" ? "Annulé" : "Fermé";
+            var date = dates[current];
+            $("[data-step-summary]").textContent = "Étape " + (current + 1) + " sur " + MANDATE_STEPS.length + " · " +
+                label + (date ? ", le " + formatDate(date) : "");
+
+            $all("[data-panel]").forEach(function (panel) {
+                panel.hidden = panel.getAttribute("data-panel") !== state.status;
+            });
+            if (state.requestedAt) {
+                var deadline = signatureDeadline(state);
+                fill("[data-requested-at]", formatDate(state.requestedAt));
+                fill("[data-signature-deadline]", formatDate(deadline) + (deadline < Date.now() ? " (dépassé)" : ""));
+            }
+            // Edited since sent: sending it again becomes the step's main action.
+            var edited = state.editedAt > state.requestedAt;
+            $("[data-edited-since]").hidden = !edited;
+            var resend = $('[data-panel="PENDING_APPROVAL"] [data-request-approval]');
+            resend.classList.toggle("btn--primary", edited);
+            resend.classList.toggle("btn--outline", !edited);
+            if (state.approvedAt) {
+                fill("[data-approved-at]", formatDate(state.approvedAt));
+                fill("[data-valid-until]", formatDate(addMonths(state.approvedAt, CONTRACT_MONTHS)));
+            }
+            if (closed) {
+                fill("[data-closed-at]", formatDate(state.closedAt));
+            }
+            if (state.status === "CLOSED") {
+                var days = Math.max(0, Math.floor((state.closedAt - state.approvedAt) / DAY_MS));
+                fill("[data-final-price]", state.finalPrice.toLocaleString("fr-FR") + " FCFA / mois");
+                fill("[data-age]", days + (days > 1 ? " jours" : " jour"));
+            }
+            if (state.status === "CANCELLED") {
+                fill("[data-cancellation-label]", CANCELLATION_LABELS[state.cancellationCode]);
+                var reason = $("[data-cancellation-reason]");
+                reason.textContent = state.cancellationReason || "";
+                reason.hidden = !state.cancellationReason;
+            }
+
+            $("[data-close]").hidden = closed;
+            // Before its approval a mandate can't be closed with a lease (409 MANDATE_NOT_APPROVED): only cancelled.
+            $('[data-close-open="close"]').hidden = state.status !== "APPROVED";
+        }
+
+        function update(changes) {
+            var state = stateOf(id);
+            Object.keys(changes).forEach(function (key) {
+                state[key] = changes[key];
+            });
+            saveState(id, state);
+            render();
+        }
+
+        // Approuver / Renvoyer: PROTOTYPE, simulates POST /v1/mandates/{id}/request-approval.
+        $all("[data-request-approval]").forEach(function (button) {
+            var label = button.textContent;
+            button.addEventListener("click", function () {
+                if (!isActive(button)) return;
+                var again = stateOf(id).status === "PENDING_APPROVAL";
+                setActive(button, false);
+                button.textContent = "Envoi…";
+                window.setTimeout(function () {
+                    update({ status: "PENDING_APPROVAL", requestedAt: Date.now() });
+                    setActive(button, true);
+                    button.textContent = label;
+                    showFlash((again ? "Mandat renvoyé à " : "Mandat envoyé à ") + c.email + " pour signature.");
+                }, 600);
+            });
+        });
+
+        // PROTOTYPE: the client signs the contract (ContractService.sign → MandateService.onContractSigned).
+        $("[data-simulate-signature]").addEventListener("click", function () {
+            update({ status: "APPROVED", approvedAt: Date.now() });
+            showFlash(p.The + " a signé le mandat : il est maintenant actif.");
+        });
+
+        /* Fermer (close, lease signed) and Annuler (cancel): one form, in the mode of the button that opened it. */
+        var CLOSE_MODES = {
+            close: { title: "Fermer le mandat", submit: "Confirmer la fermeture", style: "btn--primary" },
+            cancel: { title: "Annuler le mandat", submit: "Confirmer l'annulation", style: "btn--danger" }
+        };
+        var closeBox = $("[data-close]");
+        var buttons = $("[data-close-buttons]", closeBox);
+        var form = $("[data-close-form]", closeBox);
+        var submit = $("[data-close-submit]", form);
+        var price = $("#finalPrice", form);
+        var priceError = $("#finalPrice-error", form);
+        var codes = $all('[name="cancellationCode"]', form);
+        var codeError = $("#cancellationCode-error", form);
+        var mode = null;
+        var opener = null;
+
+        function clearErrors() {
+            setFieldError(price, priceError, null);
+            setFieldError(codes[0], codeError, null);
+        }
+
+        function openForm(button) {
+            opener = button;
+            mode = button.getAttribute("data-close-open");
+            var m = CLOSE_MODES[mode];
+            $("[data-close-title]", form).textContent = m.title;
+            submit.textContent = m.submit;
+            submit.className = "btn " + m.style;
+            $all("[data-for-mode]", form).forEach(function (el) {
+                el.hidden = el.getAttribute("data-for-mode") !== mode;
+            });
+            buttons.hidden = true;
+            button.setAttribute("aria-expanded", "true");
+            form.hidden = false;
+            $("[data-for-mode]:not([hidden]) input", form).focus();
+        }
+
+        function closeForm(returnFocus) {
+            form.hidden = true;
+            form.reset();
+            clearErrors();
+            buttons.hidden = false;
+            if (opener) opener.setAttribute("aria-expanded", "false");
+            if (returnFocus && opener) opener.focus();
+            mode = null;
+        }
+
+        $all("[data-close-open]", buttons).forEach(function (button) {
+            button.addEventListener("click", function () {
+                openForm(button);
+            });
+        });
+
+        $("[data-close-back]", form).addEventListener("click", function () {
+            closeForm(true);
+        });
+
+        price.addEventListener("input", function () {
+            setFieldError(price, priceError, null);
+        });
+
+        codes.forEach(function (radio) {
+            radio.addEventListener("change", function () {
+                setFieldError(codes[0], codeError, null);
+            });
+        });
+
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            if (!isActive(submit)) return;
+            var cancel = mode === "cancel";
+            var changes = { status: cancel ? "CANCELLED" : "CLOSED", closedAt: Date.now() };
+
+            if (cancel) {
+                var code = $('[name="cancellationCode"]:checked', form);
+                if (!code) {
+                    setFieldError(codes[0], codeError, "Choisissez la raison de l'annulation.");
+                    codes[0].focus();
+                    return;
+                }
+                changes.cancellationCode = code.value;
+                changes.cancellationReason = $("#cancellationReason", form).value.trim();
+            } else {
+                var digits = price.value.replace(/[\s.]/g, "");
+                var amount = parseInt(digits, 10);
+                if (!/^\d+$/.test(digits) || !(amount > 0)) {
+                    setFieldError(price, priceError, "Indiquez le loyer convenu, en FCFA par mois.");
+                    price.focus();
+                    return;
+                }
+                changes.finalPrice = amount;
+            }
+
+            // PROTOTYPE: simulates POST /v1/mandates/{id}/close (finalPrice) or /cancel (cancellationCode, reason).
+            setActive(submit, false);
+            submit.textContent = cancel ? "Annulation…" : "Fermeture…";
+            window.setTimeout(function () {
+                setActive(submit, true);
+                closeForm(false);
+                update(changes);
+                showFlash(cancel
+                    ? "Mandat annulé. Il ne figure plus dans vos mandats en cours."
+                    : "Mandat fermé : félicitations pour ce bail !");
+            }, 600);
+        });
+
+        render();
         $("[data-mandate]").hidden = false;
+
+        var params = new URLSearchParams(window.location.search);
+        if (params.get("saved")) {
+            showFlash(stateOf(id).status === "PENDING_APPROVAL"
+                ? "Mandat modifié. Renvoyez-le pour que " + p.the + " signe la nouvelle version."
+                : "Mandat modifié.");
+            params.delete("saved");
+            window.history.replaceState(null, "", window.location.pathname + "?" + params.toString());
+        }
     }
+
+    /* ---------- mandate/edit.html — edit a mandate before its approval ---------- */
+
+    var EDITABLE_STATUSES = ["ASSIGNED", "PENDING_APPROVAL"];
+    var MAX_NEIGHBOURHOODS = 3;
+    var AMENITY_KEYS = [];
+    AMENITY_GROUPS.forEach(function (group) {
+        group[1].forEach(function (a) {
+            AMENITY_KEYS.push(a[0]);
+        });
+    });
+
+    // "150 000" → 150000; null when empty, NaN when not a positive whole number.
+    function parseAmount(value) {
+        var digits = value.replace(/[\s.]/g, "");
+        if (!digits) return null;
+        return /^\d+$/.test(digits) && parseInt(digits, 10) > 0 ? parseInt(digits, 10) : NaN;
+    }
+
+    function initMandateEdit() {
+        var id = new URLSearchParams(window.location.search).get("id");
+        $all("[data-back-link]").forEach(function (a) {
+            a.href = "../mandate.html?id=" + encodeURIComponent(id || "");
+        });
+        if (!ownsMandate(id)) {
+            $("[data-edit-locked]").hidden = false;
+            return;
+        }
+        var state = stateOf(id);
+        // Source doc: no edit once approved.
+        if (EDITABLE_STATUSES.indexOf(state.status) === -1) {
+            $("[data-edit-locked-title]").textContent = "Ce mandat ne peut plus être modifié";
+            $("[data-edit-locked-text]").textContent = "Un mandat approuvé par le client ne se modifie plus.";
+            $("[data-edit-locked]").hidden = false;
+            return;
+        }
+
+        var mandate = MANDATES[id];
+        var owner = mandate.party === "bailleur";
+        var f = fieldsOf(id);
+        var form = $("[data-edit-form]");
+        var submit = $("[data-edit-submit]", form);
+
+        document.title = "Modifier le mandat " + id + " — Ndopify Partner Central";
+        $("[data-edit-title]").textContent = titleOf(id);
+        $("[data-edit-number]").textContent = id;
+        $("[data-city]").textContent = f.city;
+        $("[data-party-of]").textContent = partyWords(mandate).of;
+        $("[data-edit-resend]").hidden = state.status !== "PENDING_APPROVAL";
+
+        // A client's search or a landlord's property: wording, and no "Indifférent" for a property that exists.
+        $all("[data-label-tenant]").forEach(function (el) {
+            el.textContent = el.getAttribute(owner ? "data-label-owner" : "data-label-tenant");
+        });
+        if (owner) {
+            $all("[data-tenant-only]", form).forEach(function (el) {
+                el.remove();
+            });
+        }
+
+        function field(name) {
+            return form.elements[name];
+        }
+
+        function checked(name) {
+            var input = $('[name="' + name + '"]:checked', form);
+            return input ? input.value : null;
+        }
+
+        function check(name, value) {
+            var input = value == null ? null : $('[name="' + name + '"][value="' + value + '"]', form);
+            if (input) input.checked = true;
+        }
+
+        /* Pre-fill */
+        f.neighbourhoods.forEach(function (n) {
+            check("neighbourhoods", n);
+        });
+        check("propertyCategory", f.propertyCategory);
+        check("propertyType", f.propertyType);
+        check("rooms", f.rooms);
+        check("furnitureType", f.furnitureType);
+        check("parkings", f.parkings);
+        field("area").value = f.area || "";
+        f.amenities.forEach(function (key) {
+            field(key).checked = true;
+        });
+        field("price").value = f.price.toLocaleString("fr-FR");
+        check("movingPeriod", f.movingPeriod);
+        field("comments").value = f.comments || "";
+
+        /* Dependent fields */
+        var counter = $("[data-neighbourhoods-counter]", form);
+
+        // At most 3 neighbourhoods: once 3 are chosen, the others wait for one to be removed.
+        function syncNeighbourhoods() {
+            var boxes = $all('[name="neighbourhoods"]', form);
+            var count = boxes.filter(function (b) {
+                return b.checked;
+            }).length;
+            boxes.forEach(function (b) {
+                b.disabled = !b.checked && count >= MAX_NEIGHBOURHOODS;
+            });
+            counter.textContent = count + " sur " + MAX_NEIGHBOURHOODS + (count > 1 ? " sélectionnés" : " sélectionné");
+        }
+
+        // The types of the category; rooms for a home, furniture and parking for anything but a plot of land.
+        function syncProperty() {
+            var category = checked("propertyCategory");
+            $all('[name="propertyType"]', form).forEach(function (input) {
+                var label = input.closest("label");
+                var fits = label.getAttribute("data-categories").split(" ").indexOf(category) !== -1;
+                label.hidden = !fits;
+                if (!fits) input.checked = false;
+            });
+            var type = checked("propertyType");
+            var land = type === "LAND";
+            $('[data-group="rooms"]', form).hidden = category !== "RESIDENTIAL" || land;
+            $('[data-group="furnitureType"]', form).hidden = land;
+            $('[data-group="parkings"]', form).hidden = land;
+        }
+
+        function visible(name) {
+            return !$('[data-group="' + name + '"]', form).hidden;
+        }
+
+        /* Each folded group shows its current value. */
+        var SUMMARIES = {
+            sector: function () {
+                var names = $all('[name="neighbourhoods"]:checked', form).map(function (b) {
+                    return b.value;
+                });
+                return names.length ? names.join(", ") : "Toute la ville";
+            },
+            property: function () {
+                var parts = [PROPERTY_TYPE_LABELS[checked("propertyType")] || CATEGORY_LABELS[checked("propertyCategory")]];
+                var rooms = visible("rooms") && checked("rooms");
+                if (rooms) parts.push(rooms + (rooms === "1" ? " chambre" : " chambres"));
+                var area = parseAmount(field("area").value);
+                if (area > 0) parts.push(area + " m²");
+                return parts.join(" · ");
+            },
+            amenities: function () {
+                var count = AMENITY_KEYS.filter(function (key) {
+                    return field(key).checked;
+                }).length;
+                return count ? count + (count > 1 ? " critères" : " critère") : "Aucun critère";
+            },
+            budget: function () {
+                var price = parseAmount(field("price").value);
+                var parts = [price > 0 ? formatRent(price) : "Montant à indiquer"];
+                if (checked("movingPeriod")) parts.push(MOVING_LABELS[checked("movingPeriod")]);
+                return parts.join(" · ");
+            },
+            comments: function () {
+                var text = field("comments").value.trim();
+                return text ? (text.length > 40 ? text.slice(0, 40) + "…" : text) : "Aucune";
+            }
+        };
+
+        function syncSummaries() {
+            $all("[data-edit-group]", form).forEach(function (group) {
+                $("[data-group-value]", group).textContent = SUMMARIES[group.getAttribute("data-edit-group")]();
+            });
+        }
+
+        /* Errors */
+        var ERRORS = {
+            price: "Indiquez " + (owner ? "le loyer" : "le budget") + ", en FCFA par mois.",
+            movingPeriod: owner ? "Indiquez quand le bien est disponible." : "Indiquez la date d'emménagement.",
+            rooms: "Indiquez le nombre de chambres.",
+            furnitureType: "Indiquez si le bien est meublé.",
+            area: "Indiquez la surface en m², ou laissez le champ vide."
+        };
+
+        function errorTarget(name) {
+            return $('[name="' + name + '"]', form);
+        }
+
+        function clearError(name) {
+            setFieldError(errorTarget(name), $("#" + name + "-error", form), null);
+        }
+
+        function validate() {
+            var invalid = [];
+            if (!(parseAmount(field("price").value) > 0)) invalid.push("price");
+            if (!checked("movingPeriod")) invalid.push("movingPeriod");
+            if (visible("rooms") && !checked("rooms")) invalid.push("rooms");
+            if (visible("furnitureType") && !checked("furnitureType")) invalid.push("furnitureType");
+            if (isNaN(parseAmount(field("area").value))) invalid.push("area");
+            Object.keys(ERRORS).forEach(function (name) {
+                setFieldError(errorTarget(name), $("#" + name + "-error", form),
+                    invalid.indexOf(name) !== -1 ? ERRORS[name] : null);
+            });
+            return invalid;
+        }
+
+        form.addEventListener("change", function (event) {
+            var name = event.target.name;
+            if (name === "neighbourhoods") syncNeighbourhoods();
+            if (name === "propertyCategory" || name === "propertyType") syncProperty();
+            if (ERRORS[name]) clearError(name);
+            syncSummaries();
+        });
+
+        form.addEventListener("input", function (event) {
+            if (ERRORS[event.target.name]) clearError(event.target.name);
+            syncSummaries();
+        });
+
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            if (!isActive(submit)) return;
+            var invalid = validate();
+            if (invalid.length) {
+                // The first error's group is unfolded, so the agent sees what to fix.
+                var target = errorTarget(invalid[0]);
+                target.closest("details").open = true;
+                target.focus();
+                return;
+            }
+
+            var area = parseAmount(field("area").value);
+            var fields = {
+                city: f.city,
+                neighbourhoods: $all('[name="neighbourhoods"]:checked', form).map(function (b) {
+                    return b.value;
+                }),
+                propertyCategory: checked("propertyCategory"),
+                propertyType: checked("propertyType"),
+                furnitureType: visible("furnitureType") ? checked("furnitureType") : null,
+                rooms: visible("rooms") ? checked("rooms") : null,
+                parkings: visible("parkings") ? checked("parkings") : null,
+                area: area || null,
+                amenities: AMENITY_KEYS.filter(function (key) {
+                    return field(key).checked;
+                }),
+                price: parseAmount(field("price").value),
+                movingPeriod: checked("movingPeriod"),
+                comments: field("comments").value.trim() || null
+            };
+
+            // PROTOTYPE: simulates POST /v1/mandates/{id} with the whole search (UpdateMandateRequest).
+            setActive(submit, false);
+            submit.textContent = "Enregistrement…";
+            window.setTimeout(function () {
+                var current = stateOf(id);
+                current.fields = fields;
+                current.editedAt = Date.now();
+                saveState(id, current);
+                window.location.href = "../mandate.html?id=" + encodeURIComponent(id) + "&saved=1";
+            }, 600);
+        });
+
+        syncNeighbourhoods();
+        syncProperty();
+        syncSummaries();
+        $("[data-edit]").hidden = false;
+    }
+
 
     /* ---------- Boot ---------- */
     var pages = {
         login: initLogin,
         "kyc-wizard": initKycWizard,
         "agent-home": initAgentHome,
-        mandate: initMandate
+        mandate: initMandate,
+        "mandate-edit": initMandateEdit
     };
 
     document.addEventListener("DOMContentLoaded", function () {

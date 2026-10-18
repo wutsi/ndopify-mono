@@ -420,6 +420,16 @@ a.user-menu__item:hover {
     border-color: var(--color-border);
 }
 
+/* Destructive actions (ex: "Annuler le mandat"): white on the error red, 10:1. */
+.btn--danger {
+    background: var(--color-error-fg);
+    color: var(--color-on-accent);
+}
+
+.btn--danger:hover:not([aria-disabled="true"], :disabled) {
+    background: color-mix(in srgb, var(--color-error-fg) 85%, #000);
+}
+
 /*
  * Disabled (DESIGN.md › button-disabled), whatever the variant: gray fill, white text, no border, no glow, no
  * hover. White on gray is 3.95:1, accepted because WCAG exempts disabled controls.

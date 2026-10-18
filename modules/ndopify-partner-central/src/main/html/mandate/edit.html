@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Modifier le mandat — Ndopify Partner Central</title>
+    <meta name="description" content="Modifier la recherche d'un mandat avant son approbation.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="../assets/images/icon.png">
+    <link rel="apple-touch-icon" href="../assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="../assets/css/partner-central.css">
+    <link rel="stylesheet" href="../assets/css/rejoindre.css">
+    <link rel="stylesheet" href="../assets/css/find-property.css">
+    <link rel="stylesheet" href="../assets/css/home.css">
+    <script src="../assets/js/partner-central.js" defer></script>
+</head>
+<!--
+    Edit a mandate (source doc: "Editer: pour éditer le mandat, non disponible une fois approuvé"), reached from
+    mandate.html's "Modifier le mandat" link while the mandate is Assigné or En approbation. One form, in five groups
+    folded by default so a quick fix stays short on a phone: each group's summary shows its current value. Saved with
+    POST /v1/mandates/{id} (UpdateMandateRequest: the whole search, every field sent). The city can't change: the
+    mandate would leave the agent's area. The client's contact details aren't editable either: the contract is
+    e-mailed to them. Edited while En approbation, the mandate must be sent again (request-approval regenerates the
+    contract). Wording follows the party: a client's search (Budget, Emménagement, "Indifférent" choices) or a
+    landlord's property (Loyer, Disponibilité, no "Indifférent").
+    PROTOTYPE: ?id=101 to 103 once accepted, 201 or 202; any other mandate, or one approved since, shows the locked view.
+    The changes are kept in the session (KEYS.mandates, the mandate's "fields").
+-->
+<body data-page="mandate-edit">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" href="../index.html">
+                <img src="../assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <span aria-hidden="true" data-user-initials>NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li class="user-menu__email" data-user-email></li>
+                    <li><a class="user-menu__item" href="../profile/edit.html">Profil</a></li>
+                    <li><a class="user-menu__item" href="../login.html" data-logout>Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="back-link"><a href="../mandate.html" data-back-link>← Retour au mandat</a></p>
+
+            <!-- Locked: not the agent's mandate, or approved since (no edit once approved). -->
+            <div class="alert alert--warning" hidden data-edit-locked>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <h1 class="alert__title" data-edit-locked-title>Ce mandat n'est pas disponible</h1>
+                    <p data-edit-locked-text>Vous ne pouvez modifier que vos mandats, tant qu'ils ne sont pas approuvés par le client.</p>
+                </div>
+            </div>
+
+            <div hidden data-edit>
+                <div class="page-intro">
+                    <h1>Modifier le mandat</h1>
+                    <p class="mandate__meta"><span data-edit-title></span> · mandat n° <span data-edit-number></span></p>
+                </div>
+
+                <div class="hint" hidden data-edit-resend>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <p>Ce mandat attend la signature <span data-party-of>du client</span>&nbsp;: après vos modifications,
+                        renvoyez-le-lui pour qu'il signe la nouvelle version.</p>
+                </div>
+
+                <form class="form mandate-edit" novalidate data-edit-form>
+                    <details class="edit-group" data-edit-group="sector">
+                        <summary>
+                            <span class="edit-group__title">Secteur</span>
+                            <span class="edit-group__value" data-group-value></span>
+                        </summary>
+                        <div class="edit-group__body">
+                                <div class="field">
+                                    <p class="field__label" id="city-label">Ville</p>
+                                    <p class="edit-readonly" aria-labelledby="city-label" data-city>Douala</p>
+                                </div>
+                                <fieldset class="choices" aria-describedby="neighbourhoods-counter neighbourhoods-hint">
+                                    <legend class="choices__legend">Quartiers <span class="field__optional">(facultatif, 3&nbsp;au&nbsp;plus)</span></legend>
+                                    <div class="choices__grid choices__grid--2">
+                                        <label class="choice"><input name="neighbourhoods" type="checkbox" value="Akwa"> Akwa</label>
+                                        <label class="choice"><input name="neighbourhoods" type="checkbox" value="Bali"> Bali</label>
+                                        <label class="choice"><input name="neighbourhoods" type="checkbox" value="Bonabéri"> Bonabéri</label>
+                                        <label class="choice"><input name="neighbourhoods" type="checkbox" value="Bonamoussadi"> Bonamoussadi</label>
+                                        <label class="choice"><input name="neighbourhoods" type="checkbox" value="Bonanjo"> Bonanjo</label>
+                                        <label class="choice"><input name="neighbourhoods" type="checkbox" value="Bonapriso"> Bonapriso</label>
+                                        <label class="choice"><input name="neighbourhoods" type="checkbox" value="Deïdo"> Deïdo</label>
+                                        <label class="choice"><input name="neighbourhoods" type="checkbox" value="Kotto"> Kotto</label>
+                                        <label class="choice"><input name="neighbourhoods" type="checkbox" value="Logpom"> Logpom</label>
+                                        <label class="choice"><input name="neighbourhoods" type="checkbox" value="Makepe"> Makepe</label>
+                                    </div>
+                                    <p class="field__counter" id="neighbourhoods-counter" data-neighbourhoods-counter>0 sur 3 sélectionné</p>
+                                </fieldset>
+                                <div class="hint" id="neighbourhoods-hint">
+                                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                                    <p>Sans quartier, toute la ville est couverte. La ville ne peut pas changer&nbsp;: le mandat serait
+                                        confié à un agent d'une autre ville.</p>
+                                </div>
+                        </div>
+                    </details>
+
+                    <details class="edit-group" data-edit-group="property">
+                        <summary>
+                            <span class="edit-group__title">Le bien</span>
+                            <span class="edit-group__value" data-group-value></span>
+                        </summary>
+                        <div class="edit-group__body">
+                                <fieldset class="choices">
+                                    <legend class="choices__legend">Usage</legend>
+                                    <div class="choices__grid">
+                                        <label class="choice"><input name="propertyCategory" type="radio" value="RESIDENTIAL" required> Résidentiel</label>
+                                        <label class="choice"><input name="propertyCategory" type="radio" value="COMMERCIAL" required> Commercial</label>
+                                    </div>
+                                </fieldset>
+                                <fieldset class="choices">
+                                    <legend class="choices__legend">Type de bien <span class="field__optional" data-tenant-only>(facultatif)</span></legend>
+                                    <div class="choices__grid choices__grid--2">
+                                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="ROOM"> Chambre</label>
+                                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="STUDIO"> Studio</label>
+                                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="APARTMENT"> Appartement</label>
+                                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="HOUSE"> Maison</label>
+                                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="VILLA"> Villa</label>
+                                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="DUPLEX"> Duplex</label>
+                                        <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="RETAIL"> Boutique, local commercial</label>
+                                        <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="OFFICE"> Bureau</label>
+                                        <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="INDUSTRIAL"> Entrepôt, local industriel</label>
+                                        <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="BUILDING"> Immeuble</label>
+                                        <label class="choice" data-categories="RESIDENTIAL COMMERCIAL"><input name="propertyType" type="radio" value="LAND"> Terrain</label>
+                                        <label class="choice" data-categories="RESIDENTIAL COMMERCIAL" data-tenant-only><input name="propertyType" type="radio" value="ANY"> Indifférent</label>
+                                    </div>
+                                </fieldset>
+                                <fieldset class="choices" aria-describedby="rooms-error" data-group="rooms">
+                                    <legend class="choices__legend">Nombre de chambres</legend>
+                                    <div class="choices__grid choices__grid--2">
+                                        <label class="choice"><input name="rooms" type="radio" value="1" required> 1</label>
+                                        <label class="choice"><input name="rooms" type="radio" value="2" required> 2</label>
+                                        <label class="choice"><input name="rooms" type="radio" value="3" required> 3</label>
+                                        <label class="choice"><input name="rooms" type="radio" value="4" required> 4</label>
+                                        <label class="choice"><input name="rooms" type="radio" value="5+" required> 5&nbsp;et&nbsp;+</label>
+                                    </div>
+                                    <p class="field__error" id="rooms-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                                </fieldset>
+                                <fieldset class="choices" aria-describedby="furnitureType-error" data-group="furnitureType">
+                                    <legend class="choices__legend">Meublé&nbsp;?</legend>
+                                    <div class="choices__grid">
+                                        <label class="choice"><input name="furnitureType" type="radio" value="FULLY_FURNISHED" required> Meublé</label>
+                                        <label class="choice"><input name="furnitureType" type="radio" value="UNFURNISHED" required> Non meublé</label>
+                                        <label class="choice" data-tenant-only><input name="furnitureType" type="radio" value="ANY" required> Indifférent</label>
+                                    </div>
+                                    <p class="field__error" id="furnitureType-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                                </fieldset>
+                                <fieldset class="choices" data-group="parkings">
+                                    <legend class="choices__legend">Places de parking <span class="field__optional">(facultatif)</span></legend>
+                                    <div class="choices__grid choices__grid--2">
+                                        <label class="choice"><input name="parkings" type="radio" value="0"> Aucune</label>
+                                        <label class="choice"><input name="parkings" type="radio" value="1"> 1</label>
+                                        <label class="choice"><input name="parkings" type="radio" value="2"> 2</label>
+                                        <label class="choice"><input name="parkings" type="radio" value="3+"> 3&nbsp;et&nbsp;+</label>
+                                        <label class="choice" data-tenant-only><input name="parkings" type="radio" value="ANY"> Indifférent</label>
+                                    </div>
+                                </fieldset>
+                                <div class="field" data-group="area">
+                                    <label class="field__label" for="area"><span data-label-tenant="Surface minimale" data-label-owner="Surface">Surface minimale</span>
+                                        <span class="field__optional">(facultatif)</span></label>
+                                    <div class="input-unit">
+                                        <input class="input" id="area" name="area" type="text" inputmode="numeric" aria-describedby="area-error">
+                                        <span aria-hidden="true" class="input-unit__suffix">m²</span>
+                                    </div>
+                                    <p class="field__error" id="area-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                                </div>
+                        </div>
+                    </details>
+
+                    <details class="edit-group" data-edit-group="amenities">
+                        <summary>
+                            <span class="edit-group__title">Équipements</span>
+                            <span class="edit-group__value" data-group-value></span>
+                        </summary>
+                        <div class="edit-group__body">
+                                <p data-label-tenant="Seulement ce dont le client ne peut pas se passer : chaque critère réduit le nombre de biens proposés." data-label-owner="Ce dont le bien dispose.">Seulement ce dont le client ne peut pas se passer&nbsp;: chaque critère réduit le nombre de biens proposés.</p>
+                                <fieldset class="choices">
+                                    <legend class="choices__legend">Eau</legend>
+                                    <div class="choices__grid">
+                                        <label class="choice"><input name="waterMeter" type="checkbox"> Compteur d'eau</label>
+                                        <label class="choice"><input name="dedicatedWaterMeter" type="checkbox"> Compteur d'eau individuel</label>
+                                        <label class="choice"><input name="waterTank" type="checkbox"> Citerne</label>
+                                        <label class="choice"><input name="waterWell" type="checkbox"> Forage</label>
+                                    </div>
+                                </fieldset>
+                                <fieldset class="choices">
+                                    <legend class="choices__legend">Électricité</legend>
+                                    <div class="choices__grid">
+                                        <label class="choice"><input name="electricityMeter" type="checkbox"> Compteur électrique</label>
+                                        <label class="choice"><input name="dedicatedElectricityMeter" type="checkbox"> Compteur électrique individuel</label>
+                                        <label class="choice"><input name="generatorSet" type="checkbox"> Groupe électrogène</label>
+                                        <label class="choice"><input name="solarPanel" type="checkbox"> Panneaux solaires</label>
+                                    </div>
+                                </fieldset>
+                                <fieldset class="choices">
+                                    <legend class="choices__legend">Accès</legend>
+                                    <div class="choices__grid">
+                                        <label class="choice"><input name="roadPaved" type="checkbox"> Route bitumée</label>
+                                        <label class="choice"><input name="trackAccessibleByCar" type="checkbox"> Piste accessible en voiture</label>
+                                        <label class="choice"><input name="trackInaccessibleByCar" type="checkbox"> Piste accessible à pied seulement</label>
+                                    </div>
+                                </fieldset>
+                                <fieldset class="choices">
+                                    <legend class="choices__legend">Sécurité</legend>
+                                    <div class="choices__grid">
+                                        <label class="choice"><input name="securedFenced" type="checkbox"> Clôturé et sécurisé</label>
+                                        <label class="choice"><input name="securityGuard" type="checkbox"> Gardien</label>
+                                        <label class="choice"><input name="videoSurveillance" type="checkbox"> Vidéosurveillance</label>
+                                    </div>
+                                </fieldset>
+                        </div>
+                    </details>
+
+                    <details class="edit-group" data-edit-group="budget">
+                        <summary>
+                            <span class="edit-group__title"><span data-label-tenant="Budget et emménagement" data-label-owner="Loyer et disponibilité">Budget et emménagement</span></span>
+                            <span class="edit-group__value" data-group-value></span>
+                        </summary>
+                        <div class="edit-group__body">
+                                <div class="field">
+                                    <label class="field__label" for="price" data-label-tenant="Budget mensuel" data-label-owner="Loyer mensuel">Budget mensuel</label>
+                                    <div class="input-unit">
+                                        <input class="input" id="price" name="price" type="text" inputmode="numeric" required aria-describedby="price-error">
+                                        <span aria-hidden="true" class="input-unit__suffix">FCFA / mois</span>
+                                    </div>
+                                    <p class="field__error" id="price-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                                </div>
+                                <fieldset class="choices" aria-describedby="movingPeriod-error">
+                                    <legend class="choices__legend" data-label-tenant="Date d'emménagement souhaitée" data-label-owner="Disponibilité du bien">Date d'emménagement souhaitée</legend>
+                                    <div class="choices__grid">
+                                        <label class="choice"><input name="movingPeriod" type="radio" value="WITHIN_1_MONTH" required> Dans moins d'1&nbsp;mois</label>
+                                        <label class="choice"><input name="movingPeriod" type="radio" value="WITHIN_3_MONTHS" required> Dans 1 à 3&nbsp;mois</label>
+                                        <label class="choice"><input name="movingPeriod" type="radio" value="AFTER_3_MONTHS" required> Dans plus de 3&nbsp;mois</label>
+                                    </div>
+                                    <p class="field__error" id="movingPeriod-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                                </fieldset>
+                        </div>
+                    </details>
+
+                    <details class="edit-group" data-edit-group="comments">
+                        <summary>
+                            <span class="edit-group__title">Autres précisions</span>
+                            <span class="edit-group__value" data-group-value></span>
+                        </summary>
+                        <div class="edit-group__body">
+                                <div class="field">
+                                    <label class="field__label" for="comments">Autres précisions <span class="field__optional">(facultatif)</span></label>
+                                    <textarea class="input input--textarea" id="comments" name="comments" rows="4" maxlength="500"></textarea>
+                                </div>
+                        </div>
+                    </details>
+
+                    <div class="form__actions">
+                        <a class="btn btn--outline" href="../mandate.html" data-back-link>Annuler</a>
+                        <button type="submit" class="btn btn--primary" data-edit-submit>Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
