@@ -80,11 +80,7 @@ class TenantContextFilter(
     }
 
     private fun resolveFromPrincipal(): Long? {
-        return try {
-            accessTokenService.getPrincipalOrNull()?.getTenantId()
-        } catch (_: Exception) {
-            null
-        }
+        return accessTokenService.getPrincipalOrNull()?.getTenantId()
     }
 
     private fun resolveFromHeader(request: HttpServletRequest): Long? {

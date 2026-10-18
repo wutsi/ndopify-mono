@@ -12,10 +12,8 @@ import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.common.dto.HttpHeader
-import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.BadRequestException
-import com.wutsi.ndopify.error.server.exception.ForbiddenException
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
@@ -100,16 +98,6 @@ class TenantContextFilterTest {
     @Test
     fun `principal without tenant falls back to the header`() {
         givenPrincipalTenant(null)
-
-        filter.doFilter(request(tenantHeader = "200"), response, chain)
-
-        assertEquals(200L, tenantIdDuringChain)
-    }
-
-    @Test
-    fun `token decode failure falls back to the header`() {
-        doThrow(ForbiddenException(error = Error(code = ErrorCode.AUTH_UNAUTHORIZED)))
-            .whenever(accessTokenService).getPrincipalOrNull()
 
         filter.doFilter(request(tenantHeader = "200"), response, chain)
 
