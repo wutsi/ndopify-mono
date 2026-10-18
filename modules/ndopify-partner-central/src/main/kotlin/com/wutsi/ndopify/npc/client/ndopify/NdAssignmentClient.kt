@@ -38,4 +38,13 @@ class NdAssignmentClient(
     fun decline(id: Long) {
         rest.post().uri("/v1/assignments/{id}/decline", id).retrieve().toBodilessEntity()
     }
+
+    /** The mandate's accepted offer, if it was assigned through one. */
+    fun accepted(mandateId: Long): AssignmentSummary? =
+        rest.get()
+            .uri("/v1/assignments?mandate-id={mandateId}&status={status}", mandateId, AssignmentStatus.ACCEPTED)
+            .retrieve()
+            .body<SearchAssignmentResponse>()
+            ?.assignments
+            ?.firstOrNull()
 }

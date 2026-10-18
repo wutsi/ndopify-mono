@@ -1,6 +1,8 @@
 package com.wutsi.ndopify.npc.client.ndopify
 
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
+import com.wutsi.ndopify.mandate.dto.AssignmentSummary
+import com.wutsi.ndopify.mandate.dto.SearchAssignmentResponse
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpMethod
@@ -13,8 +15,11 @@ import org.springframework.test.web.client.response.MockRestResponseCreators.wit
 import org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClient
+import tools.jackson.databind.json.JsonMapper
+import java.util.Date
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 
 class NdAssignmentClientTest {
     private lateinit var server: MockRestServiceServer
@@ -75,5 +80,35 @@ class NdAssignmentClientTest {
             .andRespond(withStatus(HttpStatus.CONFLICT))
 
         assertFailsWith<HttpClientErrorException> { client.accept(7) }
+    }
+
+    @Test
+    fun accepted() {
+        server.expect(requestTo("http://localhost:8080/v1/assignments?mandate-id=101&status=ACCEPTED"))
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(
+                withSuccess(
+                    JsonMapper.builder().build().writeValueAsString(
+                        SearchAssignmentResponse(
+                            listOf(AssignmentSummary(id = 7, mandateId = 101, status = AssignmentStatus.ACCEPTED, modifiedAt = Date(1000))),
+                        ),
+                    ),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val assignment = client.accepted(101)
+
+        server.verify()
+        assertEquals(7L, assignment?.id)
+        assertEquals(1000L, assignment?.modifiedAt?.time)
+    }
+
+    @Test
+    fun `accepted - none`() {
+        server.expect(requestTo("http://localhost:8080/v1/assignments?mandate-id=101&status=ACCEPTED"))
+            .andRespond(withSuccess("""{"assignments":[]}""", MediaType.APPLICATION_JSON))
+
+        assertNull(client.accepted(101))
     }
 }

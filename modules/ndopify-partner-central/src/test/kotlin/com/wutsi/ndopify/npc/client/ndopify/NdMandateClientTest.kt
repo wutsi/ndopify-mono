@@ -1,11 +1,21 @@
 package com.wutsi.ndopify.npc.client.ndopify
 
 import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
+import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.GetMandateResponse
 import com.wutsi.ndopify.mandate.dto.Mandate
+import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
+import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.mandate.dto.MandateSummary
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.SearchMandateResponse
+import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
+import com.wutsi.ndopify.refdata.dto.Money
+import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpMethod
@@ -107,4 +117,119 @@ class NdMandateClientTest {
         assertEquals(MandateType.LISTING, mandate.mandateType)
         assertEquals(listOf(3001L), mandate.neighborhoodIds)
     }
+
+    @Test
+    fun active() {
+        server.expect(
+            requestTo(
+                "http://localhost:8080/v1/mandates?agent-id=20&status=ASSIGNED&status=PENDING_APPROVAL&status=APPROVED",
+            ),
+        )
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(
+                withSuccess(
+                    json(
+                        SearchMandateResponse(
+                            listOf(
+                                MandateSummary(id = 101, status = MandateStatus.ASSIGNED),
+                                MandateSummary(id = 102, status = MandateStatus.APPROVED),
+                            ),
+                        ),
+                    ),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val mandates = client.active(20)
+
+        server.verify()
+        assertEquals(listOf(101L, 102L), mandates.map { it.id })
+        assertEquals(MandateStatus.APPROVED, mandates[1].status)
+    }
+
+    @Test
+    fun update() {
+        server.expect(requestTo("http://localhost:8080/v1/mandates/101"))
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(
+                content().json(
+                    """
+                    {
+                        "propertyCategory":"RESIDENTIAL",
+                        "cityId":2232593,
+                        "neighbourhoodIds":[3001],
+                        "price":{"amount":150000,"currency":"XAF","periodicity":"MONTHLY"},
+                        "movingPeriod":"WITHIN_1_MONTH"
+                    }
+                    """.trimIndent(),
+                ),
+            )
+            .andRespond(withSuccess())
+
+        client.update(
+            101,
+            UpdateMandateRequest(
+                propertyCategory = PropertyCategory.RESIDENTIAL,
+                cityId = 2232593,
+                neighbourhoodIds = listOf(3001),
+                price = Money(150000, "XAF", PeriodicityType.MONTHLY),
+                movingPeriod = MovingPeriod.WITHIN_1_MONTH,
+            ),
+        )
+
+        server.verify()
+    }
+
+    @Test
+    fun requestApproval() {
+        server.expect(requestTo("http://localhost:8080/v1/mandates/101/request-approval"))
+            .andExpect(method(HttpMethod.POST))
+            .andRespond(withSuccess())
+
+        client.requestApproval(101)
+
+        server.verify()
+    }
+
+    @Test
+    fun `request approval - conflict`() {
+        server.expect(requestTo("http://localhost:8080/v1/mandates/101/request-approval"))
+            .andRespond(withStatus(HttpStatus.CONFLICT))
+
+        assertFailsWith<HttpClientErrorException> { client.requestApproval(101) }
+    }
+
+    @Test
+    fun close() {
+        server.expect(requestTo("http://localhost:8080/v1/mandates/101/close"))
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(
+                content().json(
+                    """{"finalPrice":{"amount":150000,"currency":"XAF","periodicity":"MONTHLY"}}""",
+                ),
+            )
+            .andRespond(withSuccess())
+
+        client.close(101, CloseMandateRequest(Money(150000, "XAF", PeriodicityType.MONTHLY)))
+
+        server.verify()
+    }
+
+    @Test
+    fun cancel() {
+        server.expect(requestTo("http://localhost:8080/v1/mandates/101/cancel"))
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(
+                content().json(
+                    """{"cancellationCode":"CHANGE_OF_PLANS","cancellationReason":"Il reste chez lui"}""",
+                ),
+            )
+            .andRespond(withSuccess())
+
+        client.cancel(101, CancelMandateRequest(MandateCancellationCode.CHANGE_OF_PLANS, "Il reste chez lui"))
+
+        server.verify()
+    }
+
+    private fun json(value: Any): String = JsonMapper.builder().build().writeValueAsString(value)
 }
