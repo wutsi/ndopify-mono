@@ -64,7 +64,8 @@ open class AccessTokenService(
     }
 
     fun getPrincipalOrNull(): JwtPrincipal? {
-        val accessToken = request.getHeader("Authorization")?.removePrefix("Bearer ")
+        val accessToken = request.getHeader("Authorization")
+            ?.removePrefix("Bearer ")
             ?: return null
 
         try {

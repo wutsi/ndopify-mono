@@ -47,7 +47,7 @@ import java.time.Clock
  *
  * The actions (send for approval, close, cancel) are post-redirect-get, back to the page with their outcome (flash
  * attribute [OUTCOME]). A mandate that changed since the page was loaded (approved, closed or cancelled meanwhile:
- * ndopify-server's 409, or gone: 404) is [CHANGED], not an error: the page it was on was just stale. The close /
+ * ndopify-server's 409, gone: 404, or no longer the agent's: 403) is [CHANGED], not an error: the page it was on was just stale. The close /
  * cancel form opens without JS through `GET /mandates/{id}?end=close|cancel`, and comes back with its errors.
  *
  * The edit page (`mandate/edit.html`) is only for a mandate the customer hasn't signed ([MandateRules.EDITABLE]),
@@ -89,7 +89,8 @@ class MandateController(
         const val CHANGED = "changed"
         const val FAILED = "error"
 
-        private val CHANGED_STATUSES = setOf(404, 409)
+        // 403: no longer the agent's (ndopify-server's MANDATE_ACCESS_DENIED), retrying won't help
+        private val CHANGED_STATUSES = setOf(403, 404, 409)
 
         // The edit page's locked view: not found (or a status the pages don't show), or signed by the customer.
         const val LOCKED_UNAVAILABLE = "unavailable"

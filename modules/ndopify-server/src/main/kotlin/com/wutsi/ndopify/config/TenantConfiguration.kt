@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.boot.web.servlet.FilterRegistrationBean
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.core.Ordered
 import org.springframework.web.servlet.HandlerExceptionResolver
 
 @Configuration
@@ -19,8 +18,6 @@ open class TenantConfiguration(
     open fun tenantContextFilter(
         @Qualifier("handlerExceptionResolver") exceptionResolver: HandlerExceptionResolver,
     ): FilterRegistrationBean<TenantContextFilter> {
-        val filter = FilterRegistrationBean(TenantContextFilter(accessTokenService, tenantService, exceptionResolver))
-        filter.order = Ordered.HIGHEST_PRECEDENCE
-        return filter
+        return FilterRegistrationBean(TenantContextFilter(accessTokenService, tenantService, exceptionResolver))
     }
 }

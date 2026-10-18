@@ -320,6 +320,38 @@ class MandateControllerTest {
     }
 
     @Test
+    fun `close - no longer the agent's`() {
+        doThrow(HttpClientErrorException(HttpStatus.FORBIDDEN)).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(post("/mandates/201/close").param("finalPrice", "150000")).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        assertEquals("changed", outcome(result))
+        verify(mandateClient, never()).close(any(), any())
+    }
+
+    @Test
+    fun `request approval - forbidden`() {
+        doThrow(HttpClientErrorException(HttpStatus.FORBIDDEN)).whenever(mandateClient).requestApproval(201)
+
+        val result = mvc.perform(post("/mandates/201/request-approval")).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        assertEquals("changed", outcome(result))
+    }
+
+    @Test
+    fun `forbidden - locked`() {
+        doThrow(HttpClientErrorException(HttpStatus.FORBIDDEN)).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(get("/mandates/201")).andReturn()
+
+        assertEquals("mandate", result.modelAndView?.viewName)
+        assertEquals(true, model(result)["locked"])
+        assertNull(model(result)["mandate"])
+    }
+
+    @Test
     fun `close - invalid amount`() {
         doReturn(APPROVED).whenever(mandateClient).get(201)
 
@@ -604,6 +636,16 @@ class MandateControllerTest {
     @Test
     fun `save - mandate gone`() {
         doThrow(HttpClientErrorException(HttpStatus.NOT_FOUND)).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(edit()).andReturn()
+
+        assertEquals("changed", outcome(result))
+        verify(mandateClient, never()).update(any(), any())
+    }
+
+    @Test
+    fun `save - no longer the agent's`() {
+        doThrow(HttpClientErrorException(HttpStatus.FORBIDDEN)).whenever(mandateClient).get(201)
 
         val result = mvc.perform(edit()).andReturn()
 

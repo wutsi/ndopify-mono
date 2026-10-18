@@ -36,6 +36,14 @@ class TenantContextFilter(
             "/v1/tenants",
             "/v1/locations",
             "/v1/applications",
+
+            // Swagger UI (springdoc.swagger-ui.path) and the OpenAPI docs it loads
+            "/api.html",
+            "/swagger-ui",
+            "/v3/api-docs",
+
+            // Local storage
+            "/storage"
         )
     }
 

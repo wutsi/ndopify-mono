@@ -22,6 +22,22 @@ ndopify:
     endpoints:
         ops: false                         # The @OpsEndpoint endpoints are unauthenticated
 
+    contract:
+        expire:
+            cron: "0 0 1 * * ?"            # Every day at 01:00: contracts not signed in time, or past their end date
+
+    mandate:
+        assignment:
+            expire:
+                cron: "0 */15 * * * ?"     # Every 15 minutes: offers past their TTL go to the next agent
+            dispatch:
+                cron: "0 */30 * * * ?"     # Every 30 minutes: mandates that came at night, or had no candidate
+
+    party:
+        kyc:
+            verify:
+                cron: "0 0 * * * ?"    # Every hourss
+
     storage:
         default-type: s3
         s3:

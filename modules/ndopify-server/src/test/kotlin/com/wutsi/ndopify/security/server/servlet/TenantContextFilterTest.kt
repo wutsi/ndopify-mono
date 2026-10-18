@@ -176,9 +176,15 @@ class TenantContextFilterTest {
             "/v1/locations/123",
             "/v1/applications",
             "/v1/applications/partner-central",
+            "/api.html",
+            "/swagger-ui",
+            "/swagger-ui/index.html",
+            "/v3/api-docs",
+            "/v3/api-docs/swagger-config",
+            "/v3/api-docs/agent",
         ],
     )
-    fun `refdata paths are not filtered`(path: String) {
+    fun `refdata and swagger paths are not filtered`(path: String) {
         val request = request(uri = path)
 
         filter.doFilter(request, response, chain)
@@ -207,8 +213,8 @@ class TenantContextFilterTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = ["/v1/tenantsfoo", "/v1/locations-x", "/v2/locations", "/v1/agents", "/v1/tenant"])
-    fun `paths that only look like refdata are filtered`(path: String) {
+    @ValueSource(strings = ["/v1/tenantsfoo", "/v1/locations-x", "/v2/locations", "/v1/agents", "/v1/tenant", "/api.htmlx", "/swagger-uix", "/v3/api-docsx"])
+    fun `paths that only look like excluded ones are filtered`(path: String) {
         assertRejected(request(uri = path), ErrorCode.TENANT_MISSING_HEADER)
     }
 

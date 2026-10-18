@@ -220,7 +220,7 @@ ndopify:
             image:
                 url-ttl-seconds: 3600   # 1h
             verify:
-                cron: "0 0 * * * ?"    # Every hour at 00 minutes
+                cron: "0 */15 * * * ?"    # Every 15 minutes
                 in-progress-timeout-minutes: 15  # A case IN_PROGRESS for longer was interrupted: it's retried
 
     storage:

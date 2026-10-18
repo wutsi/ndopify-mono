@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Page introuvable — Ndopify Partner Central</title>
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
+</head>
+<!--/*
+  The 404 page: an unknown address, or something ndopify-server doesn't know (HttpClientErrorHandler).
+  Rendered by Spring Boot's error controller, outside of the page that failed: no account menu, since the signed-in
+  agent isn't known there.
+*/-->
+<body data-page="error-404">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" th:href="@{/}">
+                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <div class="page-intro" data-error="404">
+                <h1>Page introuvable</h1>
+                <p>Cette page n'existe pas, ou plus. Vérifiez l'adresse, ou repartez de votre espace agent.</p>
+            </div>
+            <p class="cta-row"><a class="btn btn--primary" th:href="@{/}">Retour à l'espace agent</a></p>
+        </div>
+    </main>
+</body>
+</html>
