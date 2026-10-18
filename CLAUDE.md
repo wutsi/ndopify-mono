@@ -178,6 +178,13 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `MandateService.create` finds or creates the customer from the request's contact fields and starts the mandate
   as `PENDING_ASSIGNMENT`. It only checks that the contact fields aren't empty (`@NotEmpty`): categories, cities,
   neighbourhoods, prices and enums aren't validated server-side yet. Tenant-scoped.
+  `POST /{id}/request-approval` (ASSIGNED or PENDING_APPROVAL, else 409 `MANDATE_CANNOT_BE_APPROVED`) →
+  `PENDING_APPROVAL`, its contract's content generated and stored, and its signature requested, in 3 transactions so that
+  no lock (the tenant's contract sequence, the mandate) is held during the upload: (1) under the mandate's lock, reuse
+  its contract or create one (none, or EXPIRED) and link it, so concurrent requests share one contract; (2) generate
+  (read-only) then upload, outside any transaction; (3) under the lock again, 409 `MANDATE_VERSION_CONFLICT` if the
+  mandate changed since (2), else set the content, PENDING_APPROVAL, request the signature. A failure after (1) leaves
+  the mandate ASSIGNED with its DRAFT contract, reused next time: an ASSIGNED mandate can have a `contractId`.
   `POST /{id}/close` (APPROVED only, else 409 `MANDATE_NOT_APPROVED`) → `CLOSED` with `finalPrice`, `closedAt` and
   `age`: whole days from `approvedAt` to closing, the time a mandate takes to close. `POST /{id}/cancel` (any status but
   CLOSED / CANCELLED: 409 `MANDATE_ALREADY_CLOSED`) → `CANCELLED` with `cancellationCode` (default `OTHER`),

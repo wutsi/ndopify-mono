@@ -4,7 +4,7 @@ on:
     pull_request:
         paths:
             - 'modules/ndopify-server/**'
-            - '.github/workflows/ndopify-server-main.yml'
+            - '.github/workflows/ndopify-server-pr.yml'
             - '!modules/ndopify-server/*.md'
 
 jobs:

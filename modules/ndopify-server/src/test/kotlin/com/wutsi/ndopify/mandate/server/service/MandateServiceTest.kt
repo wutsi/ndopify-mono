@@ -43,6 +43,7 @@ class MandateServiceTest {
         dispatcher = mock(),
         contractGenerator = mock(),
         storageProvider = mock(),
+        tx = mock(),
         contractDurationMonths = 6,
     )
 

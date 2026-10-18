@@ -4,7 +4,7 @@ on:
     pull_request:
         paths:
             - 'modules/ndopify-partner-central/**'
-            - '.github/workflows/ndopify-partner-central-main.yml'
+            - '.github/workflows/ndopify-partner-central-pr.yml'
             - '!modules/ndopify-partner-central/*.md'
 
 jobs:

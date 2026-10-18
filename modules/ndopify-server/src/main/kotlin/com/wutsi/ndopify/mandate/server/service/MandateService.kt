@@ -39,6 +39,7 @@ import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.stereotype.Service
+import org.springframework.transaction.support.TransactionTemplate
 import java.io.ByteArrayInputStream
 import java.time.Clock
 import java.time.Duration
@@ -56,6 +57,7 @@ class MandateService(
     private val dispatcher: MandateDispatcher,
     private val contractGenerator: MandateContractGenerator,
     private val storageProvider: StorageServiceProvider,
+    private val tx: TransactionTemplate,
 
     @param:Value("\${ndopify.mandate.contract.duration-months}") private val contractDurationMonths: Int,
 ) {
@@ -227,37 +229,26 @@ class MandateService(
         )
     }
 
-    @Transactional
-    public fun requestApproval(id: Long): MandateEntity {
-        // Mandate
-        val mandate = findById(id)
-        if (mandate.status != MandateStatus.ASSIGNED && mandate.status != MandateStatus.PENDING_APPROVAL) {
-            throw ConflictException(Error(ErrorCode.MANDATE_CANNOT_BE_APPROVED))
+    /**
+     * Sends an ASSIGNED mandate (or a PENDING_APPROVAL one, again) to its customer for approval: it becomes
+     * PENDING_APPROVAL, with a contract to sign. In 3 transactions, so that no lock is held while the contract's content
+     * is uploaded (creating a contract locks the tenant's contract sequence until commit):
+     * 1. Under the mandate's lock, its contract: the current one, or a new one (none yet, or expired), linked to the
+     *    mandate right away. A concurrent request waits for the lock, then reuses it: never 2 contracts for a mandate.
+     * 2. Its content, generated from the mandate (read-only), then uploaded outside any transaction.
+     * 3. Under the mandate's lock again: the content is set, the mandate is PENDING_APPROVAL and the signature is
+     *    requested. 409 MANDATE_VERSION_CONFLICT if the mandate changed since 2: the content would be stale.
+     * A failure after 1 leaves the mandate as it was, with its DRAFT contract, which the next request reuses.
+     * Not @Transactional: each step is its own transaction.
+     */
+    fun requestApproval(id: Long): MandateEntity {
+        val contractId = tx.execute { prepareApproval(id) }
+        val (version, html) = tx.execute {
+            val mandate = findById(id)
+            mandate.version to contractGenerator.generate(mandate, contractService.findById(contractId))
         }
-
-        // Contract
-        var contract = mandate.contractId
-            ?.let { id -> contractService.findById(id) }
-            ?: createContract(mandate)
-        if (contract.status == ContractStatus.EXPIRED) {
-            contract = createContract(mandate) // Re-create a new contract if the previous one expired
-        }
-
-        // Contract content
-        setContractContent(contract, mandate)
-
-        // Update the mandate
-        val updated = dao.save(
-            mandate.copy(
-                status = MandateStatus.PENDING_APPROVAL,
-                contractId = contract.id,
-                modifiedAt = Date(clock.millis()),
-            )
-        )
-
-        // Request signature for approval
-        contractService.requestSignature(contract.id)
-        return updated
+        val url = storeContent(id, contractId, html)
+        return tx.execute { completeApproval(id, contractId, version, url) }
     }
 
     /**
@@ -371,18 +362,51 @@ class MandateService(
         )
     }
 
-    private fun setContractContent(contract: ContractEntity, mandate: MandateEntity) {
-        val html = contractGenerator.generate(mandate, contract)
-        val path = "mandates/${mandate.id}/contracts/${contract.id}/${UUID.randomUUID()}.html"
-        val content = ByteArrayInputStream(html.toByteArray())
-        val storage = storageProvider.get()
-        storage.store(path, content, "text/html")
+    /** Returns the id of the mandate's contract to sign, created if it has none or it expired. */
+    private fun prepareApproval(id: Long): String {
+        val mandate = findByIdForUpdate(id)
+        ensureCanBeApproved(mandate)
 
-        contractService.setContent(
-            contract,
-            SetContractRequest(
-                url = storage.publicUrl(path).toString()
+        val current = mandate.contractId?.let { contractId -> contractService.findById(contractId) }
+        if (current != null && current.status != ContractStatus.EXPIRED) {
+            return current.id
+        }
+        val contract = createContract(mandate)
+        dao.save(mandate.copy(contractId = contract.id, modifiedAt = Date(clock.millis())))
+        return contract.id
+    }
+
+    /** Returns the content's URL. A new path each time: a content being signed is never overwritten. */
+    private fun storeContent(id: Long, contractId: String, html: String): String {
+        val path = "mandates/$id/contracts/$contractId/${UUID.randomUUID()}.html"
+        val storage = storageProvider.get()
+        storage.store(path, ByteArrayInputStream(html.toByteArray()), "text/html")
+        return storage.publicUrl(path).toString()
+    }
+
+    /** [version] is the mandate's the content was generated from. */
+    private fun completeApproval(id: Long, contractId: String, version: Long?, url: String): MandateEntity {
+        val mandate = findByIdForUpdate(id)
+        ensureCanBeApproved(mandate)
+        if (mandate.version != version) {
+            // Updated meanwhile (or its contract replaced by a concurrent request): the content isn't the mandate's
+            throw ConflictException(Error(ErrorCode.MANDATE_VERSION_CONFLICT))
+        }
+
+        contractService.setContent(contractId, SetContractRequest(url = url))
+        val updated = dao.save(
+            mandate.copy(
+                status = MandateStatus.PENDING_APPROVAL,
+                modifiedAt = Date(clock.millis()),
             )
         )
+        contractService.requestSignature(contractId)
+        return updated
+    }
+
+    private fun ensureCanBeApproved(mandate: MandateEntity) {
+        if (mandate.status != MandateStatus.ASSIGNED && mandate.status != MandateStatus.PENDING_APPROVAL) {
+            throw ConflictException(Error(ErrorCode.MANDATE_CANNOT_BE_APPROVED))
+        }
     }
 }

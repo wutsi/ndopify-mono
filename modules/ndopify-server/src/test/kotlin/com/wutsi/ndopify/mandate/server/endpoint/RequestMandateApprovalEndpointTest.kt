@@ -3,15 +3,18 @@ package com.wutsi.ndopify.mandate.server.endpoint
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.doAnswer
+import com.nhaarman.mockitokotlin2.doNothing
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
+import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import com.wutsi.ndopify.contract.dto.ContractPartyRole
+import com.wutsi.ndopify.contract.dto.ContractStatus
 import com.wutsi.ndopify.contract.dto.ContractType
 import com.wutsi.ndopify.contract.dto.CreateContractParty
 import com.wutsi.ndopify.contract.dto.CreateContractRequest
@@ -30,10 +33,14 @@ import com.wutsi.ndopify.platform.storage.StorageService
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
+import org.springframework.http.HttpStatusCode
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.jdbc.Sql
 import java.io.InputStream
 import java.net.URI
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -52,6 +59,9 @@ class RequestMandateApprovalEndpointTest : TenantAwareEndpointIntegrationTest() 
 
     @Autowired
     private lateinit var dao: MandateRepository
+
+    @Autowired
+    private lateinit var jdbc: JdbcTemplate
 
     @MockitoBean
     private lateinit var contractService: ContractService
@@ -78,6 +88,7 @@ class RequestMandateApprovalEndpointTest : TenantAwareEndpointIntegrationTest() 
 
         doReturn(storage).whenever(storageProvider).get()
         doReturn(contract1).whenever(contractService).create(any())
+        doReturn(contract1).whenever(contractService).findById("c-1")
         doReturn(contract4).whenever(contractService).findById("c-4")
         doReturn(HTML).whenever(contractGenerator).generate(any(), any())
         doAnswer { invocation ->
@@ -123,7 +134,7 @@ class RequestMandateApprovalEndpointTest : TenantAwareEndpointIntegrationTest() 
         assertEquals(1L, generated.firstValue.id)
         val path = assertStored("mandates/1/contracts/c-1/")
         verify(contractService).setContent(
-            contract1,
+            "c-1",
             SetContractRequest(url = "https://cdn.ndopify.com/$path"),
         )
 
@@ -131,8 +142,71 @@ class RequestMandateApprovalEndpointTest : TenantAwareEndpointIntegrationTest() 
     }
 
     @Test
+    fun `concurrent requests - one contract`() {
+        // Slow enough for the 2nd request to arrive while the 1st creates the contract
+        doAnswer {
+            Thread.sleep(500)
+            contract1
+        }.whenever(contractService).create(any())
+
+        val pool = Executors.newFixedThreadPool(2)
+        val statuses = try {
+            List(2) {
+                pool.submit<HttpStatusCode> {
+                    rest.postForEntity("/v1/mandates/1/request-approval", null, Any::class.java).statusCode
+                }
+            }.map { it.get(10, TimeUnit.SECONDS) }
+        } finally {
+            pool.shutdown()
+        }
+
+        // The 2nd waits for the 1st's lock, then reuses its contract. It can still find the mandate sent meanwhile: 409
+        assertTrue(HttpStatus.OK in statuses, "statuses: $statuses")
+        assertTrue(statuses.all { it == HttpStatus.OK || it == HttpStatus.CONFLICT }, "statuses: $statuses")
+        verify(contractService, times(1)).create(any())
+
+        val mandate = dao.findById(1L).get()
+        assertEquals(MandateStatus.PENDING_APPROVAL, mandate.status)
+        assertEquals("c-1", mandate.contractId)
+    }
+
+    @Test
+    fun `expired contract - replaced by a new one`() {
+        doReturn(contract4.copy(status = ContractStatus.EXPIRED)).whenever(contractService).findById("c-4")
+
+        val response = rest.postForEntity("/v1/mandates/4/request-approval", null, Any::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        verify(contractService).create(any())
+        assertEquals("c-1", dao.findById(4L).get().contractId)
+        assertStored("mandates/4/contracts/c-1/")
+        verify(contractService).requestSignature("c-1")
+    }
+
+    @Test
+    fun `mandate updated while its content was generated - 409, not sent`() {
+        doAnswer {
+            // Another request's update, committed between the generation and the end of the approval
+            jdbc.update("UPDATE T_MANDATE SET version = version + 1, comments = 'Changed' WHERE id = 1")
+            HTML
+        }.whenever(contractGenerator).generate(any(), any())
+
+        val response = rest.postForEntity("/v1/mandates/1/request-approval", null, ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_VERSION_CONFLICT, response.body?.error?.code)
+
+        val mandate = dao.findById(1L).get()
+        assertEquals(MandateStatus.ASSIGNED, mandate.status)
+        assertEquals("Changed", mandate.comments)
+        assertEquals("c-1", mandate.contractId) // Kept for the next request
+    }
+
+    @Test
     fun `listing mandate`() {
-        doReturn(ContractEntity(id = "c-2")).whenever(contractService).create(any())
+        val contract2 = ContractEntity(id = "c-2")
+        doReturn(contract2).whenever(contractService).create(any())
+        doReturn(contract2).whenever(contractService).findById("c-2")
 
         val response = rest.postForEntity("/v1/mandates/2/request-approval", null, Any::class.java)
 
@@ -163,7 +237,7 @@ class RequestMandateApprovalEndpointTest : TenantAwareEndpointIntegrationTest() 
         verify(contractService, never()).create(any())
         val path = assertStored("mandates/4/contracts/c-4/")
         verify(contractService).setContent(
-            contract4,
+            "c-4",
             SetContractRequest(url = "https://cdn.ndopify.com/$path"),
         )
         verify(contractService).requestSignature("c-4")
@@ -180,7 +254,7 @@ class RequestMandateApprovalEndpointTest : TenantAwareEndpointIntegrationTest() 
     }
 
     @Test
-    fun `signature request failure rolls back the approval`() {
+    fun `signature request failure - not sent, the contract kept for the next request`() {
         doThrow(ConflictException(Error(code = ErrorCode.CONTRACT_EXPIRED)))
             .whenever(contractService).requestSignature("c-1")
 
@@ -191,11 +265,11 @@ class RequestMandateApprovalEndpointTest : TenantAwareEndpointIntegrationTest() 
 
         val mandate = dao.findById(1L).get()
         assertEquals(MandateStatus.ASSIGNED, mandate.status)
-        assertNull(mandate.contractId)
+        assertEquals("c-1", mandate.contractId)
     }
 
     @Test
-    fun `storage failure rolls back the approval`() {
+    fun `storage failure - not sent, the contract reused by the next request`() {
         doThrow(IllegalStateException("storage down")).whenever(storage).store(any(), any(), any())
 
         val response = rest.postForEntity("/v1/mandates/1/request-approval", null, ErrorResponse::class.java)
@@ -204,9 +278,17 @@ class RequestMandateApprovalEndpointTest : TenantAwareEndpointIntegrationTest() 
 
         val mandate = dao.findById(1L).get()
         assertEquals(MandateStatus.ASSIGNED, mandate.status)
-        assertNull(mandate.contractId)
-        verify(contractService, never()).setContent(any<ContractEntity>(), any())
+        assertEquals("c-1", mandate.contractId)
+        verify(contractService, never()).setContent(any<String>(), any())
         verify(contractService, never()).requestSignature(any())
+
+        // Storage back: the same contract, no new number taken
+        doNothing().whenever(storage).store(any(), any(), any())
+        val retry = rest.postForEntity("/v1/mandates/1/request-approval", null, Any::class.java)
+
+        assertEquals(HttpStatus.OK, retry.statusCode)
+        verify(contractService, times(1)).create(any())
+        assertEquals(MandateStatus.PENDING_APPROVAL, dao.findById(1L).get().status)
     }
 
     @Test
