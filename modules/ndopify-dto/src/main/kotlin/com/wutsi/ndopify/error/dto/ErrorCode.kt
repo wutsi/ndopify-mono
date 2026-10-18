@@ -23,6 +23,7 @@ object ErrorCode {
     val AUTH_TYPE_NOT_SUPPORTED = "$PREFIX:auth:auth-type-not-supported"
     val AUTH_UNAUTHORIZED = "$PREFIX:auth:unauthorized"
 
+    val CONTRACT_ACCESS_DENIED = "$PREFIX:contract:access-denied"
     val CONTRACT_NOT_FOUND = "$PREFIX:contract:not-found"
     val CONTRACT_NOT_DRAFT = "$PREFIX:contract:not-draft"
     val CONTRACT_NOT_PENDING = "$PREFIX:contract:not-pending"

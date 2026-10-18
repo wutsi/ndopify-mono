@@ -7,6 +7,15 @@ INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name) VALUES
     (101, 1, 'john.smith@gmail.com', 'John', 'Smith'),
     (900, 2, 'other.tenant@example.com', 'Other', 'Tenant');
 
+-- The users who sign: 11 is party 100, 12 is party 101
+INSERT INTO T_USER (id, email, deleted, created_at) VALUES
+    (11, 'ray.sponsible@gmail.com', false, '2024-05-20 00:00:00'),
+    (12, 'john.smith@gmail.com', false, '2024-05-20 00:00:00');
+
+INSERT INTO T_MEMBERSHIP (id, tenant_id, user_id, party_id, deleted) VALUES
+    (11, 1, 11, 100, false),
+    (12, 1, 12, 101, false);
+
 -- c-1: nobody signed yet; c-2: only its last party left to sign; c-3: already signed; c-4: expired; c-5: draft;
 -- c-9: other tenant
 -- c-6: one party left, mandate cancelled meanwhile; c-7: one party left, no mandate

@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.contract.server.endpoint
 
-import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
+import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.contract.dto.ContractStatus
 import com.wutsi.ndopify.contract.dto.SignContractRequest
 import com.wutsi.ndopify.contract.server.dao.ContractPartyRepository
@@ -21,8 +21,9 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+/** Signed by the party itself: user 11 is party 100, user 12 party 101. */
 @Sql(value = ["/db/test/clean.sql", "/db/test/contract/SignContractEndpoint.sql"])
-class SignContractEndpointTest : TenantAwareEndpointIntegrationTest() {
+class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Autowired
     private lateinit var dao: ContractRepository
 
@@ -61,6 +62,8 @@ class SignContractEndpointTest : TenantAwareEndpointIntegrationTest() {
 
     @Test
     fun `last signature signs the contract`() {
+        userId = 12L
+
         val response = rest.postForEntity("/v1/contracts/c-2/sign", request("cp-22"), Any::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
@@ -119,6 +122,8 @@ class SignContractEndpointTest : TenantAwareEndpointIntegrationTest() {
 
     @Test
     fun `party of another contract`() {
+        userId = 12L
+
         val response = rest.postForEntity("/v1/contracts/c-1/sign", request("cp-22"), ErrorResponse::class.java)
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)

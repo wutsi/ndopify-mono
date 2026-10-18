@@ -1,9 +1,10 @@
 package com.wutsi.ndopify.contract.server.endpoint
 
-import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
+import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.contract.dto.ContractStatus
 import com.wutsi.ndopify.contract.dto.ContractType
 import com.wutsi.ndopify.contract.dto.SearchContractResponse
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -12,7 +13,9 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/contract/SearchContractEndpoint.sql"])
-class SearchContractEndpointTest : TenantAwareEndpointIntegrationTest() {
+class SearchContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
+    override val roles = arrayOf(RoleCode.ADMIN)
+
     @Test
     fun all() {
         val contracts = search("")

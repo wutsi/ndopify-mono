@@ -9,6 +9,7 @@ import com.wutsi.ndopify.contract.dto.SetContractRequest
 import com.wutsi.ndopify.contract.dto.SignContractRequest
 import com.wutsi.ndopify.contract.server.domain.ContractEntity
 import com.wutsi.ndopify.contract.server.mapper.ContractMapper
+import com.wutsi.ndopify.contract.server.service.ContractAccessService
 import com.wutsi.ndopify.contract.server.service.ContractService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.validation.Valid
@@ -20,28 +21,37 @@ import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
+/**
+ * Only an admin or one of its parties may see a contract, only an admin may change it, and only the party itself may
+ * sign ([ContractAccessService]).
+ */
 @RestController
 @RequestMapping("/v1/contracts")
 class ContractEndpoints(
     private val service: ContractService,
+    private val access: ContractAccessService,
     private val mapper: ContractMapper,
 ) {
     // Ex: the contracts of a list of mandates: GET /v1/contracts?id=c-1&id=c-2
     @GetMapping
     fun search(@ModelAttribute request: SearchContractRequest): SearchContractResponse {
-        val contracts = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
+        val restricted = access.restrict(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
+        val contracts = service.search(restricted)
         return SearchContractResponse(contracts = contracts.map { contract -> mapper.toContractSummary(contract) })
     }
 
     @PostMapping
     fun create(@RequestBody @Valid request: CreateContractRequest): CreateContractResponse {
+        access.ensureCanUpdate()
         val contract = service.create(request)
         return CreateContractResponse(contractId = contract.id)
     }
 
     @GetMapping("/{id}")
     fun get(@PathVariable id: String): GetContractResponse {
-        return toResponse(service.findById(id))
+        val contract = service.findById(id)
+        access.ensureCanRead(contract)
+        return toResponse(contract)
     }
 
     // The document's URL, while the contract is DRAFT or PENDING_SIGNATURE
@@ -50,12 +60,14 @@ class ContractEndpoints(
         @PathVariable id: String,
         @RequestBody @Valid request: SetContractRequest,
     ) {
+        access.ensureCanUpdate()
         service.setContent(id, request)
     }
 
     // DRAFT → PENDING_SIGNATURE, and asks each party by e-mail to sign it
     @PostMapping("/{id}/request-signature")
     fun requestSignature(@PathVariable id: String) {
+        access.ensureCanUpdate()
         service.requestSignature(id)
     }
 
@@ -64,6 +76,7 @@ class ContractEndpoints(
         @PathVariable id: String,
         @RequestBody @Valid request: SignContractRequest,
     ) {
+        access.ensureCanSign(service.findById(id), request.partyId)
         service.sign(id, request)
     }
 

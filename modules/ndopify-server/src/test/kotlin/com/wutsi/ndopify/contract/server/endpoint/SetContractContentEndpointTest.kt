@@ -1,11 +1,12 @@
 package com.wutsi.ndopify.contract.server.endpoint
 
-import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
+import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.contract.dto.ContractStatus
 import com.wutsi.ndopify.contract.dto.SetContractRequest
 import com.wutsi.ndopify.contract.server.dao.ContractRepository
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
@@ -14,7 +15,9 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/contract/SetContractContentEndpoint.sql"])
-class SetContractContentEndpointTest : TenantAwareEndpointIntegrationTest() {
+class SetContractContentEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
+    override val roles = arrayOf(RoleCode.ADMIN)
+
     @Autowired
     private lateinit var dao: ContractRepository
 

@@ -238,7 +238,16 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `partnerCentralUrl`; that ndopify-partner-central page doesn't exist yet). Sign takes a *contract party* id (`SignContractRequest.partyId`), locks the
   contract (`findByIdForUpdate`), then 409 `CONTRACT_NOT_PENDING` / `CONTRACT_EXPIRED` (past `signatureDeadline`) /
   `CONTRACT_PARTY_ALREADY_SIGNED`; the last signature makes it `SIGNED`, valid from then (`validFrom`) for its
-  `durationMonths` (`validUntil`, months added in the tenant's `timeZone`). Nobody checks who signs yet (no JWT check).
+  `durationMonths` (`validUntil`, months added in the tenant's `timeZone`).
+  **Access** (`ContractAccessService`, checked by `ContractEndpoints`, without lock since a contract's parties never
+  change): every endpoint needs a JWT (401 `AUTH_UNAUTHORIZED`). Get and search are for an admin or one of the
+  contract's parties (JWT user → membership → party), else 403 `CONTRACT_ACCESS_DENIED` (after the 404); a non-admin's
+  search is restricted to its own party (`party-id` forced; another party's is a 403). Create, content and
+  request-signature are admin-only (`MandateService` calls the service directly, unchecked). Sign is only for the
+  party itself (the JWT's party must be the contract party's `partyId`): **no admin bypass, nobody signs on another's
+  behalf** — never add one. Customers have no membership yet (only `AgentService.create` makes one), so they can't
+  sign until a customer sign-in exists; agents aren't parties of their mandate's contract yet (only the customer, as
+  `MANDATOR`), so Partner Central's contract reads get 403s / empty searches and its pages leave the contract dates out.
   `ContractJobs.expire` (daily, `ndopify.contract.expire.cron`) moves to `EXPIRED` the PENDING_SIGNATURE contracts past
   their `signatureDeadline` and the SIGNED ones past their `validUntil` (each locked, in its own transaction), publishing
   `ContractExpiredEvent` (no listener yet). Tenant-scoped.
