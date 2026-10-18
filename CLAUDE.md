@@ -224,7 +224,7 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `T_CONTRACT_SEQUENCE`, incremented last in the create transaction (row locked until commit). `content` (`SetContractRequest.url`) sets the
   document's `contentUrl` of a DRAFT or PENDING_SIGNATURE contract, locked like a signature (409 `CONTRACT_EXPIRED` /
   `CONTRACT_CANCELLED` / `CONTRACT_ALREADY_SIGNED` otherwise). `request-signature` moves a DRAFT (or
-  PENDING_SIGNATURE) contract to `PENDING_SIGNATURE` with `signatureDeadline` = now + `ndopify.contract.signature.ttl-days`
+  PENDING_SIGNATURE) contract, locked like a signature, to `PENDING_SIGNATURE` with `signatureDeadline` = now + `ndopify.contract.signature.ttl-days`
   (7), reset by each request (409 `CONTRACT_EXPIRED` / `CONTRACT_CANCELLED` / `CONTRACT_ALREADY_SIGNED`), and publishes `ContractSignatureRequestedEvent`:
   `ContractSignatureMailet` e-mails each unsigned party (`mail/contract/signature_request.mjml`) its deadline and a single button, never
   the document's URL: the page it opens shows the contract and signs it, `{partnerCentralUrl}/contracts/{id}/sign?party-id={contractPartyId}` (no button without a

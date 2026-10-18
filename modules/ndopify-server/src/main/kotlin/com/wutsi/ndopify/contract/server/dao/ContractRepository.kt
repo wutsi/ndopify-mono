@@ -13,7 +13,8 @@ import java.util.Date
 
 @Repository
 interface ContractRepository : CrudRepository<ContractEntity, String>, JpaSpecificationExecutor<ContractEntity> {
-    // Serializes the signatures of a contract, so that the last one always sees the others and marks it SIGNED
+    // Serializes the writes of a contract (see ContractService.findByIdForUpdate): the last signature always sees the
+    // others and marks it SIGNED, and an expiry or a request for signature sees the status the other left
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT c FROM ContractEntity c WHERE c.id = :id")
     fun findByIdForUpdate(id: String): ContractEntity?

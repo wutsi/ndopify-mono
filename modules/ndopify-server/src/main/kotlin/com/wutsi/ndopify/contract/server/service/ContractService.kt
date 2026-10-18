@@ -154,13 +154,7 @@ class ContractService(
      */
     @Transactional
     fun setContent(id: String, request: SetContractRequest): ContractEntity {
-        val contract = dao.findByIdForUpdate(id)
-            ?: throw NotFoundException(error = Error(code = ErrorCode.CONTRACT_NOT_FOUND))
-        return setContent(contract, request)
-    }
-
-    @Transactional
-    fun setContent(contract: ContractEntity, request: SetContractRequest): ContractEntity {
+        val contract = findByIdForUpdate(id)
         ensureNotClosed(contract)
         return dao.save(contract.copy(contentUrl = request.url.trim()))
     }
@@ -168,11 +162,12 @@ class ContractService(
     /**
      * Sends a DRAFT or PENDING_SIGNATURE contract to its parties for signature: it becomes PENDING_SIGNATURE, its
      * parties have `ttl-days` from now to sign it (each request resets the deadline), and are e-mailed after commit, by
-     * a listener of [ContractSignatureRequestedEvent].
+     * a listener of [ContractSignatureRequestedEvent]. Locked like a signature, so that it can't expire while its
+     * deadline is reset.
      */
     @Transactional
     fun requestSignature(id: String): ContractEntity {
-        val contract = findById(id)
+        val contract = findByIdForUpdate(id)
 
         ensureNotClosed(contract)
         val pending = dao.save(
@@ -222,8 +217,7 @@ class ContractService(
      */
     @Transactional
     fun sign(id: String, request: SignContractRequest): ContractEntity {
-        val contract = dao.findByIdForUpdate(id)
-            ?: throw NotFoundException(error = Error(code = ErrorCode.CONTRACT_NOT_FOUND))
+        val contract = findByIdForUpdate(id)
         if (contract.status != ContractStatus.PENDING_SIGNATURE) {
             throw ConflictException(error = Error(code = ErrorCode.CONTRACT_NOT_PENDING))
         }
@@ -307,6 +301,15 @@ class ContractService(
         dao.save(contract.copy(status = ContractStatus.EXPIRED))
         eventPublisher.publishEvent(ContractExpiredEvent(contractId = id, tenantId = TenantContext.get()!!))
         return true
+    }
+
+    /**
+     * Every write of a contract locks it first (content, request for signature, signature, expiry), so that they're
+     * serialized: each one checks the status the previous one left, rather than failing on its version.
+     */
+    private fun findByIdForUpdate(id: String): ContractEntity {
+        return dao.findByIdForUpdate(id)
+            ?: throw NotFoundException(error = Error(code = ErrorCode.CONTRACT_NOT_FOUND))
     }
 
     // Only a DRAFT or PENDING_SIGNATURE contract can still change
