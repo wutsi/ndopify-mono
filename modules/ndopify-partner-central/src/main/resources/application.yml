@@ -58,3 +58,8 @@ ndopify:
     server:
         api:
             base-url: http://localhost:8080
+    contract:
+        signature:
+            # Same as ndopify-server's: the mandate page derives when the contract was sent from its deadline
+            # (MandateRules.requestedAt), so the two must not drift.
+            ttl-days: 7

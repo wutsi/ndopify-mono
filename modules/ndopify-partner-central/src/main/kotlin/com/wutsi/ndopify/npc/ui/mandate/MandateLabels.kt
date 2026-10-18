@@ -7,13 +7,17 @@ import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
+import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.util.Locale
 
-/** The French wording of a mandate, shared by the find-property review and the Espace agent's offers. */
+/**
+ * The French wording of a mandate, shared by the find-property review, the Espace agent's offers and mandates, and
+ * the mandate pages.
+ */
 object MandateLabels {
     // Labels of the prototype (find-property.js).
     val PROPERTY_TYPE_LABELS: Map<PropertyType, String> = linkedMapOf(
@@ -75,6 +79,15 @@ object MandateLabels {
         "securityGuard" to "Gardien",
         "videoSurveillance" to "Vidéosurveillance",
     )
+
+    // In a title ("Locataire · Boutique"): one word (prototype's PROPERTY_TYPE_SHORT).
+    private val PROPERTY_TYPE_SHORT = mapOf(
+        PropertyType.RETAIL to "Boutique",
+        PropertyType.INDUSTRIAL to "Entrepôt",
+    )
+
+    // The criteria's "Parking" row (prototype's PARKING_LABELS in partner-central.js); other values are shown as is.
+    private val PARKING_VALUES = mapOf("0" to "Aucune")
 
     private val MANDATE_TYPE_LABELS = mapOf(
         MandateType.SEARCH to "Recherche",
@@ -161,4 +174,49 @@ object MandateLabels {
             if (labels.isEmpty()) null else group to labels.joinToString(", ")
         }
     }
+
+    /** Who the agent works for: a landlord for a listing, else someone looking for a rental. */
+    fun party(type: MandateType): String = if (type == MandateType.LISTING) "Bailleur" else "Locataire"
+
+    fun shortPropertyType(type: PropertyType?): String =
+        PROPERTY_TYPE_SHORT[type] ?: PROPERTY_TYPE_LABELS[type] ?: "Tout type"
+
+    /** "Locataire · Maison". */
+    fun title(mandate: Mandate): String = party(mandate.mandateType) + " · " + shortPropertyType(mandate.propertyType)
+
+    /** "150K FCFA / mois", "152 500 FCFA / mois": the rent of a mandate's criteria. */
+    fun rent(money: Money): String {
+        val value = if (money.amount % 1000 == 0L) "${money.amount / 1000}K" else formatNumber(money.amount)
+        val currency = if (money.currency == "XAF") "FCFA" else money.currency
+        return "$value $currency / mois"
+    }
+
+    /**
+     * The mandate's criteria as term → value rows, in the prototype's order (`criteriaOf`): sector, amount and moving
+     * date first (a card's three facts), the category and the type (with them, the page's key criteria), then the
+     * follow-up questions that apply to the type, the amenities by group, and the comments.
+     */
+    fun criteria(mandate: Mandate, locations: Map<Long, Location>): List<Pair<String, String>> {
+        val owner = mandate.mandateType == MandateType.LISTING
+        val type = mandate.propertyType?.name
+        val neighborhoods = mandate.neighborhoodIds.mapNotNull { locations[it]?.name }
+        val sector = listOfNotNull(
+            if (mandate.neighborhoodIds.isEmpty()) "Toute la ville" else neighborhoods.joinToString(", ").ifEmpty { null },
+            locations[mandate.cityId]?.name,
+        ).joinToString(" — ").ifEmpty { NONE }
+        return listOfNotNull(
+            (if (mandate.neighborhoodIds.size > 1) "Secteurs" else "Secteur") to sector,
+            (if (owner) "Loyer" else "Budget") to rent(mandate.price),
+            (if (owner) "Disponibilité" else "Emménagement") to (MOVE_IN_LABELS[mandate.movingPeriod] ?: NONE),
+            "Catégorie" to (category(mandate.propertyCategory) ?: NONE),
+            "Type de propriété" to (PROPERTY_TYPE_LABELS[mandate.propertyType] ?: "Indifférent"),
+            ("Meublé" to furniture(mandate.furnitureType)).takeIf { FindPropertyRules.needsFurniture(type) },
+            mandate.rooms?.let { "Chambres" to it }?.takeIf { FindPropertyRules.needsRooms(type) },
+            ("Parking" to (mandate.parkings?.let { PARKING_VALUES[it] ?: it } ?: "Indifférent"))
+                .takeIf { FindPropertyRules.asksParkings(type) },
+            mandate.area?.let { (if (owner) "Surface" else "Surface souhaitée") to formatNumber(it) + " m²" },
+        ) + amenityGroups(mandate) + listOfNotNull(mandate.comments?.trim()?.ifEmpty { null }?.let { "Autres précisions" to it })
+    }
+
+    private const val NONE = "—"
 }
