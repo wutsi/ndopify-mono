@@ -64,7 +64,8 @@ class MandateController(
     locationClient: NdLocationClient,
     private val tenantContext: TenantContext,
     private val clock: Clock,
-    @get:Value("\${ndopify.contract.signature.ttl-days}") private val ttlDays: Int,
+    // @param: so that the formatter can't move it to a getter, where Spring wouldn't see it.
+    @param:Value("\${ndopify.contract.signature.ttl-days}") private val ttlDays: Int,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(MandateController::class.java)
@@ -130,7 +131,7 @@ class MandateController(
         val agent = currentAgent.get() ?: return SIGN_OUT
         val mandate = current(id, redirect) { it.status == MandateStatus.APPROVED } ?: return back(id)
 
-        val amount = FindPropertyRules.parseAmount(form.finalPrice)
+        val amount = finalPrice(form.finalPrice)
         if (amount == null || amount < 1) {
             ProfileRules.header(agent, model)
             val errors = mapOf("finalPrice" to "Indiquez le loyer convenu, en FCFA par mois.")
@@ -152,7 +153,8 @@ class MandateController(
         val agent = currentAgent.get() ?: return SIGN_OUT
         val mandate = current(id, redirect) { it.status in MandateRules.ACTIVE } ?: return back(id)
 
-        val code = form.cancellationCode?.takeIf { it in CANCELLATION_CODES && !binding.hasFieldErrors("cancellationCode") }
+        val code =
+            form.cancellationCode?.takeIf { it in CANCELLATION_CODES && !binding.hasFieldErrors("cancellationCode") }
         val reason = form.cancellationReason?.trim()?.ifEmpty { null }
         val errors = listOfNotNull(
             if (code == null) "cancellationCode" to "Choisissez la raison de l'annulation." else null,
@@ -235,7 +237,16 @@ class MandateController(
         // The title, number and wording only: no need for the contract, customer and offer.
         model.addAttribute(
             "mandate",
-            MandateViews.of(mandate, null, null, null, names, clock.millis(), ZoneId.of(tenantContext.getTenant().timeZone), ttlDays),
+            MandateViews.of(
+                mandate,
+                null,
+                null,
+                null,
+                names,
+                clock.millis(),
+                ZoneId.of(tenantContext.getTenant().timeZone),
+                ttlDays
+            ),
         )
         model.addAttribute("owner", mandate.mandateType == MandateType.LISTING)
         model.addAttribute("mandateId", mandate.id.toString())
@@ -286,6 +297,7 @@ class MandateController(
                 } else {
                     "Mandat modifié."
                 }
+
             CHANGED -> "Ce mandat a changé entre-temps : vérifiez son état avant de recommencer."
             FAILED -> "Action impossible pour le moment. Réessayez dans quelques instants."
             else -> return
@@ -339,6 +351,16 @@ class MandateController(
     }
 
     private fun back(id: Long): String = "redirect:/mandates/$id"
+
+    /**
+     * "150 000" or "150.000" → 150000; anything but digits and separators ("150k") → null: closing is final, so a
+     * typo is refused rather than read as another amount (the prototype's check).
+     */
+    private fun finalPrice(value: String?): Long? =
+        value.orEmpty()
+            .filterNot { it.isWhitespace() || it == '.' || it == '\u00a0' || it == '\u202f' }
+            .takeIf { it.isNotEmpty() && it.all { c -> c.isDigit() } }
+            ?.let { FindPropertyRules.parseAmount(it) }
 
     private fun locked(model: Model): String {
         model.addAttribute("locked", true)

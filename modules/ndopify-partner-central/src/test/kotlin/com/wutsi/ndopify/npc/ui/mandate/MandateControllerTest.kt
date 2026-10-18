@@ -320,7 +320,7 @@ class MandateControllerTest {
     fun `close - invalid amount`() {
         doReturn(APPROVED).whenever(mandateClient).get(201)
 
-        for (amount in listOf("", "abc", "0")) {
+        for (amount in listOf("", "abc", "0", "150k", "12abc", "1 500 000 F/mois")) {
             val result = mvc.perform(post("/mandates/201/close").param("finalPrice", amount)).andReturn()
 
             assertEquals("mandate", result.modelAndView?.viewName, amount)
@@ -608,5 +608,25 @@ class MandateControllerTest {
 
         assertEquals("redirect:/logout", mvc.perform(get("/mandates/201/edit")).andReturn().modelAndView?.viewName)
         assertEquals("redirect:/logout", mvc.perform(edit()).andReturn().modelAndView?.viewName)
+    }
+
+    @Test
+    fun `signature ttl - injected from the configuration`() {
+        // Spring injects constructor parameters only: a @Value moved to a getter (@get:) leaves the bean unbuildable.
+        val parameter = MandateController::class.java.constructors.single().parameters.last()
+
+        assertEquals(
+            "\${ndopify.contract.signature.ttl-days}",
+            parameter.getAnnotation(org.springframework.beans.factory.annotation.Value::class.java)?.value,
+        )
+    }
+
+    @Test
+    fun `close - amount with separators`() {
+        doReturn(APPROVED).whenever(mandateClient).get(201)
+
+        mvc.perform(post("/mandates/201/close").param("finalPrice", "150.000")).andReturn()
+
+        verify(mandateClient).close(201, CloseMandateRequest(Money(150000, "XAF", PeriodicityType.MONTHLY)))
     }
 }
