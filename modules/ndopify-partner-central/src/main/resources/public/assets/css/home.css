@@ -1,5 +1,6 @@
 /*
- * Ndopify Partner Central — Espace agent (templates/index.html): KYC banner, profile and assignments sections.
+ * Ndopify Partner Central — Espace agent (templates/index.html): KYC banner, profile, assignments and mandates
+ * sections; and the mandate pages (templates/mandate.html, templates/mandate/edit.html).
  * Ported from the prototype (src/main/html/assets/css/home.css).
  * Loaded after partner-central.css; uses its tier-2 semantic tokens only, no new colours.
  */
@@ -9,7 +10,8 @@
     max-width: 44rem;
 }
 
-.home-section + .home-section {
+.home-section + .home-section,
+.mandate-progress + .home-section {
     margin-top: var(--space-4);
     padding-top: var(--space-4);
     border-top: 1px solid var(--color-border);
@@ -245,4 +247,433 @@
 /* The accept button and "Refuser" are in a form and a link: keep them side by side. */
 .assignment__actions form {
     display: contents;
+}
+
+/* ---------- Mandates (index.html › Mes mandats) ---------- */
+
+/* Status of a mandate: the label carries the meaning, the colours only echo it. */
+.status-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem var(--space-3);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-control);
+    background: var(--color-bg);
+    font-size: var(--step-hint);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.status-tag--info {
+    border-color: var(--color-info-border);
+    background: var(--color-info-bg);
+    color: var(--color-info-fg);
+}
+
+.status-tag--warning {
+    border-color: var(--color-warning-border);
+    background: var(--color-warning-bg);
+    color: var(--color-warning-fg);
+}
+
+.status-tag--success {
+    border-color: var(--color-success-border);
+    background: var(--color-success-bg);
+    color: var(--color-success-fg);
+}
+
+/* The whole card opens the mandate: the title's link covers it. */
+.mandate-card {
+    position: relative;
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    transition: border-color var(--duration) var(--ease-out);
+}
+
+.mandate-card:hover {
+    border-color: var(--color-fg);
+}
+
+.mandate-card:has(.mandate-card__link:focus-visible) {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
+.mandate-card article > * + * {
+    margin-top: var(--space-3);
+}
+
+.mandate-card__link {
+    color: inherit;
+    text-decoration: none;
+}
+
+.mandate-card__link:focus-visible {
+    outline: none;
+}
+
+.mandate-card__link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+}
+
+.mandate-card:hover .mandate-card__link {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
+.mandate-card__next {
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+}
+
+/* ---------- Mandate (mandate.html) ---------- */
+.back-link {
+    margin-bottom: var(--space-3);
+}
+
+.back-link a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    font-weight: 600;
+}
+
+.mandate__meta {
+    font-size: var(--step-hint);
+}
+
+[data-mandate-flash] {
+    margin-bottom: var(--space-4);
+}
+
+/* Focused by script so it's read out after an action: not a control, so no focus ring. */
+[data-mandate-flash]:focus {
+    outline: none;
+}
+
+
+/* rejoindre.css (loaded for the close form's choices) lays the review out for its edit links: undone here. */
+[data-mandate] .review__item {
+    grid-template-columns: minmax(0, 1fr);
+    padding-block: var(--space-2);
+}
+
+[data-mandate] .review__term {
+    grid-column: auto;
+}
+
+@media (min-width: 640px) {
+    [data-mandate] .review__item {
+        grid-template-columns: 14rem minmax(0, 1fr);
+    }
+}
+
+/* Comments keep the line breaks the client typed. */
+.review__multiline {
+    white-space: pre-line;
+}
+
+/* The locked view's page title sits in a warning box: sized like an alert title, not a page heading. */
+h1.alert__title {
+    font: 600 var(--step-h4) / 1.3 var(--font-body);
+}
+
+/* Title and status tag on one line; the title a size down on phones, where it would wrap. */
+.mandate-intro {
+    margin-bottom: var(--space-4);
+}
+
+.mandate-intro__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+}
+
+.mandate-intro h1 {
+    font-size: var(--step-h2);
+}
+
+@media (min-width: 640px) {
+    .mandate-intro h1 {
+        font-size: var(--step-h1);
+    }
+}
+
+.mandate-progress > * + * {
+    margin-top: var(--space-3);
+}
+
+/*
+ * The status wizard. Phones: the four marks joined by a line (done in green), the steps' text kept for screen
+ * readers only, and the current step spelled out under them (.mandate-steps__summary). From 640px: four columns.
+ */
+.mandate-steps {
+    display: flex;
+}
+
+.mandate-steps li {
+    flex: 1;
+    gap: var(--space-1);
+    min-height: 0;
+}
+
+.mandate-steps li:last-child {
+    flex: none;
+}
+
+.mandate-steps li:not(:last-child)::after {
+    content: "";
+    flex: 1;
+    height: 2px;
+    margin-right: var(--space-1);
+    background: var(--color-border-strong);
+}
+
+/* Green up to the current step only: a step skipped by a cancellation stays gray, and so does the line to it. */
+.mandate-steps li[data-state="done"]:has(+ li:not([data-state="todo"]))::after {
+    background: var(--color-success-fg);
+}
+
+.mandate-steps__text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.mandate-steps__summary {
+    font-weight: 600;
+}
+
+.mandate-steps__label,
+.mandate-steps__date {
+    display: block;
+}
+
+.mandate-steps__date {
+    font-size: var(--step-hint);
+    font-weight: 400;
+}
+
+@media (min-width: 640px) {
+    .mandate-steps {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: var(--space-3);
+    }
+
+    .mandate-steps li {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--space-2);
+    }
+
+    .mandate-steps li::after {
+        display: none;
+    }
+
+    .mandate-steps__text {
+        position: static;
+        width: auto;
+        height: auto;
+        margin: 0;
+        overflow: visible;
+        clip: auto;
+        white-space: normal;
+    }
+
+    .mandate-steps__summary {
+        display: none;
+    }
+}
+
+.mandate-panel {
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface-alt);
+}
+
+.mandate-panel > * + * {
+    margin-top: var(--space-3);
+}
+
+.mandate-panel__title {
+    font: 600 var(--step-h4) / 1.3 var(--font-body);
+}
+
+/* Phones: one full-width button per row, the step's main action first. From 640px: a row, left-aligned. */
+.mandate-panel__actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+@media (min-width: 640px) {
+    .mandate-panel__actions {
+        flex-direction: row;
+    }
+
+    .mandate-panel__actions .btn {
+        min-width: 10rem;
+    }
+}
+
+.mandate-panel__prototype {
+    font-size: var(--step-hint);
+}
+
+/* The end section follows Sa recherche without the sections' separator: its box and a gap set it apart. */
+.home-section + .mandate-close {
+    margin-top: var(--space-4);
+    padding-top: 0;
+    border-top: 0;
+}
+
+/* Fermer / Annuler: grouped in a light blue box (the info tokens of .hint), centred (full width on phones). */
+.mandate-close__buttons {
+    justify-content: center;
+    padding: var(--space-4);
+    border: 1px solid var(--color-info-border);
+    background: var(--color-info-bg);
+}
+
+.mandate-close__form {
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+/* Edited while waiting for the client's signature: the client has the old version. */
+.mandate-panel__edited {
+    color: var(--color-warning-fg);
+    font-weight: 600;
+}
+
+/* ---------- Edit a mandate (mandate/edit.html) ---------- */
+
+/* Five folded groups: a quick fix stays short on a phone. Each summary shows the group's current value. */
+.mandate-edit > .edit-group + .edit-group {
+    margin-top: 0;
+    border-top: 0;
+}
+
+.edit-group {
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+.edit-group summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: var(--space-3);
+    min-height: var(--target);
+    padding: var(--space-3) var(--space-4);
+    list-style: none;
+    cursor: pointer;
+}
+
+.edit-group summary::-webkit-details-marker {
+    display: none;
+}
+
+/* Chevron: down when folded, up when open. */
+.edit-group summary::after {
+    content: "";
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    width: 0.6rem;
+    height: 0.6rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(45deg);
+    transition: transform var(--duration) var(--ease-out);
+}
+
+.edit-group[open] summary::after {
+    transform: rotate(-135deg);
+}
+
+.edit-group summary:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: -2px;
+}
+
+.edit-group__title {
+    font-weight: 600;
+}
+
+.edit-group__value {
+    grid-column: 1;
+    overflow: hidden;
+    font-size: var(--step-hint);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Open, the value is in the fields below: the summary keeps only the title. */
+.edit-group[open] .edit-group__value {
+    display: none;
+}
+
+.edit-group__body {
+    padding: 0 var(--space-4) var(--space-4);
+}
+
+.edit-group__body > * + * {
+    margin-top: var(--space-4);
+}
+
+/* The city: shown, not editable. */
+.edit-readonly {
+    font-weight: 600;
+}
+
+/* "Renvoyez-le" hint, above the groups. */
+[data-edit-resend] {
+    margin-bottom: var(--space-4);
+}
+
+/* ---------- Mandate (mandate.html): contact and search ---------- */
+
+/* The client's contact, unlabelled: name and best time to call, then the number and the e-mail. */
+.contact-card > * + * {
+    margin-top: var(--space-2);
+}
+
+.contact-card__period {
+    font-size: var(--step-hint);
+}
+
+.contact-card__line {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    overflow-wrap: anywhere;
+}
+
+/* "Voir tous les critères": folded under the key facts. */
+.mandate-more > .review {
+    margin-top: var(--space-2);
+}
+
+/* The number, then its WhatsApp button beside it (on its own line only if the screen is too narrow). */
+.contact-card__phone {
+    flex-wrap: wrap;
+    column-gap: var(--space-3);
+    row-gap: var(--space-1);
+}
+
+/* A smaller button for a row of text: same 44px tap target, less padding and a smaller font. */
+.btn--compact {
+    gap: var(--space-1);
+    padding: var(--space-1) var(--space-3);
+    font-size: var(--step-hint);
+    box-shadow: none;
 }

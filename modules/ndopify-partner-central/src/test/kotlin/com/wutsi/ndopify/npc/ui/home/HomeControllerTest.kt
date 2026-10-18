@@ -5,10 +5,14 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
+import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
+import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.mandate.dto.MandateSummary
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
+import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
@@ -16,6 +20,8 @@ import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.ASSIGNMENT
 import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.MANDATE
+import com.wutsi.ndopify.npc.ui.mandate.MandateCardView
+import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
 import com.wutsi.ndopify.party.dto.KycCase
@@ -44,6 +50,7 @@ class HomeControllerTest {
     private val tenantContext = mock<TenantContext>()
     private val assignmentClient = mock<NdAssignmentClient>()
     private val mandateClient = mock<NdMandateClient>()
+    private val contractClient = mock<NdContractClient>()
     private val clock = mock<Clock>()
     private lateinit var mvc: MockMvc
 
@@ -53,9 +60,18 @@ class HomeControllerTest {
         doReturn(AGENT).whenever(currentAgent).get()
         doReturn(AssignmentViewsTest.NOW).whenever(clock).millis()
         doReturn(emptyList<AssignmentSummary>()).whenever(assignmentClient).pending(any())
+        doReturn(emptyList<MandateSummary>()).whenever(mandateClient).active(any())
 
-        val controller =
-            HomeController(currentAgent, kycClient, assignmentClient, mandateClient, locationClient, tenantContext, clock)
+        val controller = HomeController(
+            currentAgent,
+            kycClient,
+            assignmentClient,
+            mandateClient,
+            contractClient,
+            locationClient,
+            tenantContext,
+            clock,
+        )
         mvc = MockMvcBuilders.standaloneSetup(controller)
             .setViewResolvers(InternalResourceViewResolver("/templates/", ".html"))
             .build()
@@ -273,6 +289,107 @@ class HomeControllerTest {
         assertEquals("index", result.modelAndView?.viewName)
         assertNull(model(result)["declining"])
     }
+
+    // Mes mandats
+
+    private val assigned = MandateCardsTest.MANDATE
+    private val pending = assigned.copy(id = 202, status = MandateStatus.PENDING_APPROVAL, contractId = "c-202")
+    private val approved = assigned.copy(id = 203, status = MandateStatus.APPROVED, contractId = "c-203")
+
+    private fun active(vararg ids: Long) {
+        doReturn(ids.map { MandateSummary(id = it) }).whenever(mandateClient).active(AGENT.id)
+    }
+
+    @Test
+    fun `mandates shown`() {
+        active(203, 201, 202)
+        doReturn(assigned).whenever(mandateClient).get(201)
+        doReturn(pending).whenever(mandateClient).get(202)
+        doReturn(approved).whenever(mandateClient).get(203)
+        doReturn(MandateCardsTest.CONTRACT_2027).whenever(contractClient).get("c-202")
+        doReturn(MandateCardsTest.CONTRACT).whenever(contractClient).get("c-203")
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        val mandates = mandates(result)
+        assertEquals(listOf(203L, 201L, 202L), mandates.map { it.id })
+        assertEquals("Secteurs" to "Bonapriso, Akwa", mandates[1].facts[0])
+        assertEquals("Mandat signé, valable jusqu'au 28 mars 2027.", mandates[0].nextStep)
+        assertEquals("Le client a jusqu'au 19 janvier 2027 pour signer le mandat.", mandates[2].nextStep)
+        assertEquals(false, model(result)["mandatesUnavailable"])
+    }
+
+    @Test
+    fun `contract only fetched for mandates sent to the customer`() {
+        active(201)
+        doReturn(assigned.copy(contractId = "c-201")).whenever(mandateClient).get(201)
+
+        mvc.perform(get("/")).andReturn()
+
+        verify(contractClient, never()).get(any())
+    }
+
+    @Test
+    fun `one mandate unavailable - the others still show`() {
+        active(201, 202)
+        doThrow(HttpClientErrorException(HttpStatus.NOT_FOUND)).whenever(mandateClient).get(201)
+        doReturn(pending).whenever(mandateClient).get(202)
+        doReturn(MandateCardsTest.CONTRACT_2027).whenever(contractClient).get("c-202")
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        assertEquals(listOf(202L), mandates(result).map { it.id })
+    }
+
+    @Test
+    fun `contract unavailable - card kept without the date`() {
+        active(203)
+        doReturn(approved).whenever(mandateClient).get(203)
+        doThrow(ResourceAccessException("timeout")).whenever(contractClient).get(any())
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        assertEquals("Mandat signé.", mandates(result).single().nextStep)
+    }
+
+    @Test
+    fun `mandates unavailable - page still shown`() {
+        doThrow(ResourceAccessException("timeout")).whenever(mandateClient).active(any())
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        assertEquals("index", result.modelAndView?.viewName)
+        assertEquals(emptyList(), mandates(result))
+        assertEquals(true, model(result)["mandatesUnavailable"])
+    }
+
+    @Test
+    fun `location names fetched once for offers and mandates`() {
+        doReturn(listOf(ASSIGNMENT)).whenever(assignmentClient).pending(AGENT.id)
+        doReturn(MANDATE).whenever(mandateClient).get(101)
+        active(201)
+        doReturn(assigned).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        // One for the profile's area, one for the cards.
+        verify(locationClient, times(2)).search(any())
+        assertEquals("Bonapriso, Akwa", assignments(result).single().sector)
+        assertEquals("Bonapriso, Akwa", mandates(result).single().facts[0].second)
+    }
+
+    @Test
+    fun `not verified - no mandates section`() {
+        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING))).whenever(currentAgent).get()
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        assertNull(model(result)["mandates"])
+        verify(mandateClient, never()).active(any())
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    private fun mandates(result: MvcResult) = model(result)["mandates"] as List<MandateCardView>
 
     @Suppress("UNCHECKED_CAST")
     private fun assignments(result: MvcResult) = model(result)["assignments"] as List<AssignmentView>
