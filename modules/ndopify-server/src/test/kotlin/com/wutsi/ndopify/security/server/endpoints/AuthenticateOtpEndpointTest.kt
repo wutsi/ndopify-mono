@@ -216,7 +216,7 @@ class AuthenticateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
         val response = loginError("ray.sponsible@gmail.com", CODE)
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
-        assertEquals(ErrorCode.HTTP_MISSING_PARAMETER, response.body?.error?.code)
+        assertEquals(ErrorCode.TENANT_MISSING_HEADER, response.body?.error?.code)
         assertNull(authFactorRepository.findById(1L).get().lastLoggedInAt)
     }
 

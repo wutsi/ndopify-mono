@@ -197,7 +197,7 @@ class AuthenticatePasswordEndpointTest : TenantAwareEndpointIntegrationTest() {
         val response = rest.postForEntity("/v1/auth", request, ErrorResponse::class.java)
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
-        assertEquals(ErrorCode.HTTP_MISSING_PARAMETER, response.body?.error?.code)
+        assertEquals(ErrorCode.TENANT_MISSING_HEADER, response.body?.error?.code)
         assertNull(authFactorService.findByIdOrNull(1L)?.lastLoggedInAt)
     }
 

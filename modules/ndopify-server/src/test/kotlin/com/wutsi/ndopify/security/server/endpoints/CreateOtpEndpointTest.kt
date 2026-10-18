@@ -232,7 +232,7 @@ class CreateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
             rest.postForEntity("/v1/otp", CreateOtpRequest(email = "has-otp@gmail.com"), ErrorResponse::class.java)
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
-        assertEquals(ErrorCode.HTTP_MISSING_PARAMETER, response.body?.error?.code)
+        assertEquals(ErrorCode.TENANT_MISSING_HEADER, response.body?.error?.code)
         assertEquals(0, smtp.receivedMessages.size)
 
         // rolled back: the previous OTP is untouched
@@ -246,8 +246,8 @@ class CreateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
         val response =
             rest.postForEntity("/v1/otp", CreateOtpRequest(email = "has-otp@gmail.com"), ErrorResponse::class.java)
 
-        assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
-        assertEquals(ErrorCode.TENANT_NOT_FOUND, response.body?.error?.code)
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.TENANT_ID_NOT_VALID, response.body?.error?.code)
         assertEquals(0, smtp.receivedMessages.size)
         assertEquals("old-otp-hash", authFactorRepository.findById(22L).get().data)
     }

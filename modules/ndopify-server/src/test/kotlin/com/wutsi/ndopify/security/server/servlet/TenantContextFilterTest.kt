@@ -1,9 +1,12 @@
 package com.wutsi.ndopify.security.server.servlet
 
 import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.anyOrNull
+import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
+import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
@@ -26,6 +29,8 @@ import org.junit.jupiter.params.provider.ValueSource
 import org.mockito.Mockito.verifyNoInteractions
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
+import org.springframework.web.servlet.HandlerExceptionResolver
+import org.springframework.web.servlet.ModelAndView
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -34,10 +39,11 @@ import kotlin.test.assertNull
 class TenantContextFilterTest {
     private val accessTokenService = mock<AccessTokenService>()
     private val tenantService = mock<TenantService>()
+    private val exceptionResolver = mock<HandlerExceptionResolver>()
     private val chain = mock<FilterChain>()
     private val response = MockHttpServletResponse()
 
-    private val filter = TenantContextFilter(accessTokenService, tenantService)
+    private val filter = TenantContextFilter(accessTokenService, tenantService, exceptionResolver)
 
     private var tenantIdDuringChain: Long? = null
 
@@ -49,6 +55,7 @@ class TenantContextFilterTest {
 
         doReturn(TenantEntity(id = 100L, active = true)).whenever(tenantService).findByIdOrNull(100L)
         doReturn(TenantEntity(id = 200L, active = true)).whenever(tenantService).findByIdOrNull(200L)
+        doReturn(ModelAndView()).whenever(exceptionResolver).resolveException(any(), any(), anyOrNull(), any())
     }
 
     @AfterEach
@@ -156,6 +163,19 @@ class TenantContextFilterTest {
         assertRejected(request(), ErrorCode.TENANT_NOT_ACTIVE)
     }
 
+    @Test
+    fun `rejection is thrown when the resolver does not handle it`() {
+        doReturn(null).whenever(exceptionResolver).resolveException(any(), any(), anyOrNull(), any())
+
+        val ex = assertFailsWith<BadRequestException> {
+            filter.doFilter(request(), response, chain)
+        }
+
+        assertEquals(ErrorCode.TENANT_MISSING_HEADER, ex.error.code)
+        verify(chain, never()).doFilter(any(), any())
+        assertNull(TenantContext.get())
+    }
+
     // Excluded paths
 
     @ParameterizedTest
@@ -215,12 +235,13 @@ class TenantContextFilterTest {
         doReturn(principal).whenever(accessTokenService).getPrincipalOrNull()
     }
 
+    // The rejection goes to Spring MVC's resolver (ControllerErrorHandler), without a handler since none was reached
     private fun assertRejected(request: MockHttpServletRequest, code: String) {
-        val ex = assertFailsWith<BadRequestException> {
-            filter.doFilter(request, response, chain)
-        }
+        filter.doFilter(request, response, chain)
 
-        assertEquals(code, ex.error.code)
+        val ex = argumentCaptor<Exception>()
+        verify(exceptionResolver).resolveException(eq(request), eq(response), eq(null), ex.capture())
+        assertEquals(code, (ex.firstValue as BadRequestException).error.code)
         verify(chain, never()).doFilter(any(), any())
         assertNull(TenantContext.get())
     }
