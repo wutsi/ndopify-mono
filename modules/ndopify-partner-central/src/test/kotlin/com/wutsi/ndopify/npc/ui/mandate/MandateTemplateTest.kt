@@ -410,4 +410,20 @@ class MandateTemplateTest {
         assertTrue(page.selectFirst("input[name=cancellationCode][value=OTHER]")!!.hasAttr("checked"))
         assertFalse(page.selectFirst("#cancellationReason-error")!!.hasAttr("hidden"))
     }
+
+    // mandate.js
+
+    @Test
+    fun `script and hooks`() {
+        val page = render(APPROVED)
+
+        val script = page.selectFirst("script[src=/assets/js/mandate.js]")!!
+        assertTrue(script.hasAttr("defer"))
+        assertEquals("mandate", page.body().attr("data-page"))
+        assertEquals(listOf("close", "cancel"), page.select("[data-end-open]").map { it.attr("data-end-open") })
+        assertEquals(listOf("close", "cancel"), page.select("form[data-end-form]").map { it.attr("data-end-form") })
+        assertEquals("end-form-close", page.selectFirst("[data-end-open=close]")?.attr("aria-controls"))
+        assertEquals("end-form-close", page.selectFirst("form[data-end-form=close]")?.id())
+        assertEquals(2, page.select("[data-end-back]").size)
+    }
 }

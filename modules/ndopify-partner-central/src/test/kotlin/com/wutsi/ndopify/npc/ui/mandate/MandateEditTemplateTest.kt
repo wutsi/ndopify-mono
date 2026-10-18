@@ -260,4 +260,24 @@ class MandateEditTemplateTest {
             page.selectFirst("[data-edit-locked] p")?.text(),
         )
     }
+
+    // mandate.js
+
+    @Test
+    fun `script and hooks`() {
+        val page = render(MANDATE)
+
+        assertTrue(page.selectFirst("script[src=/assets/js/mandate.js]")!!.hasAttr("defer"))
+        assertNotNull(page.selectFirst("script[src*=slim-select@4.3.0]"))
+        assertNotNull(page.selectFirst("link[href*=slim-select@4.3.0]"))
+        assertEquals("mandate-edit", page.body().attr("data-page"))
+        val form = page.selectFirst("form[data-edit-form]")!!
+        assertEquals("/locations", form.attr("data-locations-url"))
+        assertEquals(12, form.select("[data-categories]").size)
+        assertEquals(5, form.select("[data-edit-group] [data-group-value]").size)
+        assertEquals(DOUALA.toString(), form.selectFirst("[data-city-id]")?.attr("data-city-id"))
+        assertNotNull(form.selectFirst("[data-group=rooms]"))
+        assertNotNull(form.selectFirst("[data-group=furnitureType]"))
+        assertNotNull(form.selectFirst("[data-group=parkings]"))
+    }
 }

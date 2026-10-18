@@ -12,9 +12,13 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.css">
     <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/join.css}">
     <link rel="stylesheet" th:href="@{/assets/css/home.css}">
+    <script src="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.iife.js" defer></script>
     <script th:src="@{/assets/js/partner-central.js}" defer></script>
+    <script th:src="@{/assets/js/mandate.js}" defer></script>
 </head>
 <!--/*
   Edit a mandate (MandateController, POST /mandates/{id}/edit), reached from the mandate page's "Modifier le mandat"
@@ -86,7 +90,7 @@
                 </div>
 
                 <form class="form mandate-edit" method="post" novalidate th:action="@{/mandates/{id}/edit(id=${mandate.id})}"
-                      data-edit-form>
+                      th:attr="data-locations-url=@{/locations}" data-edit-form>
                     <details class="edit-group" data-edit-group="sector" th:attr="open=${#sets.contains(openGroups, 'sector')} ? 'open' : null">
                         <summary>
                             <span class="edit-group__title">Secteur</span>
