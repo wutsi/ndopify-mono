@@ -18,10 +18,7 @@ spring:
             max-request-size: 10MB
 
 server:
-    port: 8082
-    tomcat:
-        # Lets Tomcat read past the multipart limit so the redirect reaches the browser instead of a reset connection.
-        max-swallow-size: 20MB
+    port: 8083
     error:
         whitelabel:
             enabled: false
