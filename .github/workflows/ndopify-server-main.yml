@@ -96,7 +96,7 @@ jobs:
             -   name: Install Heroku CLI
                 run: |
                     curl https://cli-assets.heroku.com/install.sh | sh
-                    heroku plugins:install heroku-cli-deploy
+#                    heroku plugins:install heroku-cli-deploy
 
             -   name: Heroku-Deploy-Test
                 env:
@@ -110,7 +110,6 @@ jobs:
                     SMTP_PORT: ${{secrets.SMTP_PORT}}
                     MTN_COLLECTION_SUBSCRIPTION_KEY: ${{secrets.MTN_COLLECTION_SUBSCRIPTION_KEY}}
                 run: |
-                    heroku apps | grep ${HEROKU_APP} && echo 'app: ${HEROKU_APP} exists' ||  heroku apps:create ${HEROKU_APP}
                     heroku buildpacks:clear --app ${HEROKU_APP}
                     heroku buildpacks:add heroku/jvm --app ${HEROKU_APP}
                     heroku config:set --app ${HEROKU_APP} APP_PROFILE=test
@@ -121,10 +120,9 @@ jobs:
                     heroku config:set --app ${HEROKU_APP} SMTP_HOST=${SMTP_HOST}
                     heroku config:set --app ${HEROKU_APP} SMTP_PORT=${SMTP_PORT}
                     heroku config:set --app ${HEROKU_APP} MTN_COLLECTION_SUBSCRIPTION_KEY=${MTN_COLLECTION_SUBSCRIPTION_KEY}
-                    heroku addons -a ${HEROKU_APP} | grep papertrail && echo 'addon: papertrail exists' ||  heroku addons:create papertrail -a ${HEROKU_APP}
-                    cp modules/ndopify-server/system.properties .
-                    cp modules/ndopify-server/Procfile .
-                    heroku deploy:jar ndopify-server.jar --app ${HEROKU_APP}
+#                    cp modules/ndopify-server/system.properties .
+#                    cp modules/ndopify-server/Procfile .
+#                    heroku deploy:jar ndopify-server.jar --app ${HEROKU_APP}
 
 #            -   name: Health check
 #                env:
