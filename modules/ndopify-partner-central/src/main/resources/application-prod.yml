@@ -10,4 +10,4 @@ management:
 ndopify:
     server:
         api:
-            base-url: http://localhost:8080
+            base-url: ${NDOPIFY_SERVER_URL}

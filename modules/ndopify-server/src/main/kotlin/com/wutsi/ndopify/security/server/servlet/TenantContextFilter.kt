@@ -47,7 +47,10 @@ class TenantContextFilter(
             "/v3/api-docs",
 
             // Local storage
-            "/storage"
+            "/storage",
+
+            // Actuator
+            "/actuator",
         )
     }
 
