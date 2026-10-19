@@ -149,7 +149,10 @@ class SignControllerTest {
         assertEquals(300, request.firstValue.ttl)
 
         assertEquals("redirect:$path?step=code", result.modelAndView?.viewName)
-        assertEquals(pending, session.getAttribute(PendingSignature.SESSION_ATTRIBUTE))
+        val stored = session.getAttribute(PendingSignature.SESSION_ATTRIBUTE) as PendingSignature
+        assertEquals(CONTRACT_PARTY_ID, stored.contractPartyId)
+        assertEquals("ray.sponsible@gmail.com", stored.email)
+        assertEquals(NOW.toEpochMilli() + 300_000, stored.expiresAt)
         assertEquals(false, result.flashMap["resent"])
     }
 
