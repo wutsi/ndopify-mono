@@ -96,14 +96,14 @@ jobs:
             -   name: Install Heroku CLI
                 run: |
                     curl https://cli-assets.heroku.com/install.sh | sh
-                    heroku plugins:install @heroku-cli/plugin-java
+                    heroku plugins:install heroku-cli-deploy
 
-            -   name: Heroku-Deploy-Prod
+            -   name: Heroku-Deploy-Test
                 env:
+                    HEROKU_APP: ndopify-server-test
                     AWS_ACCESS_KEY: ${{ secrets.AWS_ACCESS_KEY }}
                     AWS_SECRET_KEY: ${{ secrets.AWS_SECRET_KEY }}
                     HEROKU_API_KEY: ${{secrets.HEROKU_API_KEY}}
-                    HEROKU_APP: ndopify-server-test
                     SMTP_USER: ${{secrets.SMTP_USER}}
                     SMTP_PASSWORD: ${{secrets.SMTP_PASSWORD}}
                     SMTP_HOST: ${{secrets.SMTP_HOST}}
