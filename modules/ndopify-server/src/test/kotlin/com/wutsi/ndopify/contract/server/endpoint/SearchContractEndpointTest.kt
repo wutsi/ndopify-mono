@@ -14,7 +14,10 @@ import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/contract/SearchContractEndpoint.sql"])
 class SearchContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
-    override val roles = arrayOf(RoleCode.ADMIN)
+    private var admin = true
+
+    override val roles: Array<String>
+        get() = if (admin) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
 
     @Test
     fun all() {
@@ -46,6 +49,25 @@ class SearchContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Test
     fun `by party ids`() {
         assertEquals(listOf("c-2", "c-1"), search("party-id=100&party-id=101").map { it.id })
+    }
+
+    @Test
+    fun `by contract party ids`() {
+        assertEquals(listOf("c-2", "c-1"), search("contract-party-id=cp-11&contract-party-id=cp-21").map { it.id })
+    }
+
+    @Test
+    fun `by contract party id, as the party of that contract party`() {
+        admin = false // user 11 is party 100, the party of cp-11
+
+        assertEquals(listOf("c-1"), search("contract-party-id=cp-11").map { it.id })
+    }
+
+    @Test
+    fun `contract party of another party returns nothing`() {
+        admin = false // user 11 is party 100, cp-21 is party 101's
+
+        assertTrue(search("contract-party-id=cp-21").isEmpty())
     }
 
     @Test

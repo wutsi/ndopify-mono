@@ -79,6 +79,13 @@ class ContractService(
                     .where(party.get<Long>("partyId").`in`(request.partyIds))
                 predicates.add(root.get<String>("id").`in`(sub))
             }
+            if (request.contractPartyIds.isNotEmpty()) {
+                val sub = query!!.subquery(String::class.java)
+                val party = sub.from(ContractPartyEntity::class.java)
+                sub.select(party.get<ContractEntity>("contract").get("id"))
+                    .where(party.get<String>("id").`in`(request.contractPartyIds))
+                predicates.add(root.get<String>("id").`in`(sub))
+            }
 
             cb.and(*predicates.toTypedArray())
         }

@@ -224,7 +224,7 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   keep it that way when changing it. The wiring is covered by the endpoint tests (`CreateMandateEndpointTest`,
   `DispatchMandateEndpointTest`, `Decline` / `ExpireAssignmentEndpointTest`) and the listener / job unit tests.
 - **contract** — contracts to be signed by parties (`ContractEntity` + its `ContractPartyEntity`s, UUID ids;
-  `/v1/contracts`: search (`id`, `status`, `party-id` lists, newest first; `ContractSummary`, without parties), create,
+  `/v1/contracts`: search (`id`, `status`, `party-id`, `contract-party-id` lists, newest first; `ContractSummary`, without parties), create,
   get, `POST /{id}/content`, `POST /{id}/request-signature`, `POST /{id}/sign`). `ContractService.create` checks the type, the parties' roles,
   `durationMonths >= 1` (persisted; the request has no dates) and that each `partyId` is a party of the tenant (404
   `PARTY_NOT_FOUND`), and starts the contract as `DRAFT`, without dates nor document, numbered `<prefix>-<year>-<nnnnnn>` by `ContractNumberGenerator` (`BAIL` for a
