@@ -31,6 +31,8 @@ class SearchContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(ContractType.SEARCH, contract.type)
         assertEquals(ContractStatus.SIGNED, contract.status)
         assertEquals(12, contract.durationMonths)
+        assertEquals("https://cdn.ndopify.com/contracts/MNDT-2024-000002.pdf", contract.signedContentUrl)
+        assertNull(contracts[0].signedContentUrl)
         assertEquals(Date.from(Instant.parse("2024-05-25T00:00:00Z")), contract.signatureRequestedAt)
         assertNotNull(contract.signatureDeadline)
         assertNotNull(contract.validFrom)

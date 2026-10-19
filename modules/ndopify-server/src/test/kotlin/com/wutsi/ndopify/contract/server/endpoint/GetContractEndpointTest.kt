@@ -27,6 +27,8 @@ class GetContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         // Set in GetContractEndpoint.sql
         private const val CONTENT_HASH = "1111111111111111111111111111111111111111111111111111111111111111"
         private const val SIGNATURE_HASH = "2222222222222222222222222222222222222222222222222222222222222222"
+        private const val SIGNED_CONTENT_HASH = "4444444444444444444444444444444444444444444444444444444444444444"
+        private const val SIGNATURE_SALT = "55555555555555555555555555555555"
     }
 
     @Test
@@ -41,6 +43,7 @@ class GetContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(ContractType.SEARCH, contract.type)
         assertEquals(ContractStatus.PENDING_SIGNATURE, contract.status)
         assertEquals("https://cdn.ndopify.com/contracts/c-1.pdf", contract.contentUrl)
+        assertEquals("https://cdn.ndopify.com/contracts/MNDT-2024-000001.pdf", contract.signedContentUrl)
         assertEquals(6, contract.durationMonths)
         assertEquals(Date.from(Instant.parse("2099-05-25T00:00:00Z")), contract.signatureRequestedAt)
         assertNotNull(contract.signatureDeadline)
@@ -77,6 +80,10 @@ class GetContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertFalse(body.contains("signatureHash"))
         assertFalse(body.contains(CONTENT_HASH))
         assertFalse(body.contains(SIGNATURE_HASH))
+        assertFalse(body.contains("signedContentHash"))
+        assertFalse(body.contains(SIGNED_CONTENT_HASH))
+        assertFalse(body.contains("signatureSalt"))
+        assertFalse(body.contains(SIGNATURE_SALT))
     }
 
     @Test

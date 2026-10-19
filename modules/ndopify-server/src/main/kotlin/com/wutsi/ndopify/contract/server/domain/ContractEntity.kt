@@ -30,6 +30,8 @@ data class ContractEntity(
     val status: ContractStatus = ContractStatus.UNKNOWN,
     val contentUrl: String? = null, // Set by POST /v1/contracts/{id}/content
     val contentHash: String? = null, // SHA-256 of the content's bytes (ContractHasher), null when unknown
+    val signedContentUrl: String? = null, // The signed PDF, set once all parties signed (SignedContractService)
+    val signedContentHash: String? = null, // SHA-256 of the signed PDF's bytes (ContractHasher), set with signedContentUrl
     val durationMonths: Int = 0,
     val signatureRequestedAt: Date? = null, // Set by each request for signature, with signatureDeadline
     val signatureDeadline: Date? = null, // Set by each request for signature

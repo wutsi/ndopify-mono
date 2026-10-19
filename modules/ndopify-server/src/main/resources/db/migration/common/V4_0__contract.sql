@@ -8,6 +8,8 @@ CREATE TABLE T_CONTRACT(
   status                  VARCHAR(30) DEFAULT NULL,
   content_url             TEXT DEFAULT NULL,
   content_hash            CHAR(64) DEFAULT NULL,
+  signed_content_url      TEXT DEFAULT NULL,
+  signed_content_hash     CHAR(64) DEFAULT NULL,
 
   duration_months         INT NOT NULL,
   signature_requested_at  DATETIME DEFAULT NULL,

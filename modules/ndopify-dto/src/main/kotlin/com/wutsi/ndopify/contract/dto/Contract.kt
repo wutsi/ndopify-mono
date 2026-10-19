@@ -8,6 +8,7 @@ data class Contract(
     val type: ContractType = ContractType.UNKNOWN,
     val status: ContractStatus = ContractStatus.UNKNOWN,
     val contentUrl: String? = null,
+    val signedContentUrl: String? = null, // The signed PDF, once all parties signed
     val parties: List<ContractParty> = emptyList(),
     val createdAt: Date = Date(),
     val durationMonths: Int = 0,

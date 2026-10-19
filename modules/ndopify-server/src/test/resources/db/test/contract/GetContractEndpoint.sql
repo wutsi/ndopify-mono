@@ -7,11 +7,11 @@ INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name) VALUES
     (101, 1, 'john.smith@gmail.com', 'John', 'Smith'),
     (900, 2, 'other.tenant@example.com', 'Other', 'Tenant');
 
-INSERT INTO T_CONTRACT(id, tenant_id, number, type, status, content_url, content_hash, duration_months, signature_requested_at, signature_deadline, valid_from, valid_until, created_at, signed_at) VALUES
-    ('c-1', 1, 'MNDT-2024-000001', 'SEARCH', 'PENDING_SIGNATURE', 'https://cdn.ndopify.com/contracts/c-1.pdf', '1111111111111111111111111111111111111111111111111111111111111111', 6, '2099-05-25 00:00:00', '2099-06-01 00:00:00', null, null, '2024-05-20 00:00:00', null),
-    ('c-9', 2, 'MNDT-2024-000001', 'SEARCH', 'PENDING_SIGNATURE', 'https://cdn.ndopify.com/contracts/c-9.pdf', null, 6, null, '2099-06-01 00:00:00', null, null, '2024-05-20 00:00:00', null);
+INSERT INTO T_CONTRACT(id, tenant_id, number, type, status, content_url, content_hash, signed_content_url, signed_content_hash, duration_months, signature_requested_at, signature_deadline, valid_from, valid_until, created_at, signed_at) VALUES
+    ('c-1', 1, 'MNDT-2024-000001', 'SEARCH', 'PENDING_SIGNATURE', 'https://cdn.ndopify.com/contracts/c-1.pdf', '1111111111111111111111111111111111111111111111111111111111111111', 'https://cdn.ndopify.com/contracts/MNDT-2024-000001.pdf', '4444444444444444444444444444444444444444444444444444444444444444', 6, '2099-05-25 00:00:00', '2099-06-01 00:00:00', null, null, '2024-05-20 00:00:00', null),
+    ('c-9', 2, 'MNDT-2024-000001', 'SEARCH', 'PENDING_SIGNATURE', 'https://cdn.ndopify.com/contracts/c-9.pdf', null, null, null, 6, null, '2099-06-01 00:00:00', null, null, '2024-05-20 00:00:00', null);
 
-INSERT INTO T_CONTRACT_PARTY(id, tenant_id, contract_id, party_id, role, legal_name, legal_email, signed, ip_address, user_agent, signed_at, signature_hash) VALUES
-    ('cp-1', 1, 'c-1', 100, 'MANDATOR', 'Ray Sponsible', 'ray.sponsible@gmail.com', true, '10.0.0.1', 'Mozilla/5.0', '2024-05-21 00:00:00', '2222222222222222222222222222222222222222222222222222222222222222'),
-    ('cp-2', 1, 'c-1', 101, 'GUARANTOR', 'John Smith', 'john.smith@gmail.com', false, null, null, null, null),
-    ('cp-9', 2, 'c-9', 900, 'MANDATOR', 'Other Tenant', 'other.tenant@example.com', false, null, null, null, null);
+INSERT INTO T_CONTRACT_PARTY(id, tenant_id, contract_id, party_id, role, legal_name, legal_email, signed, ip_address, user_agent, signed_at, signature_salt, signature_hash) VALUES
+    ('cp-1', 1, 'c-1', 100, 'MANDATOR', 'Ray Sponsible', 'ray.sponsible@gmail.com', true, '10.0.0.1', 'Mozilla/5.0', '2024-05-21 00:00:00', '55555555555555555555555555555555', '2222222222222222222222222222222222222222222222222222222222222222'),
+    ('cp-2', 1, 'c-1', 101, 'GUARANTOR', 'John Smith', 'john.smith@gmail.com', false, null, null, null, null, null),
+    ('cp-9', 2, 'c-9', 900, 'MANDATOR', 'Other Tenant', 'other.tenant@example.com', false, null, null, null, null, null);
