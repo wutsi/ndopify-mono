@@ -410,6 +410,20 @@ Package `com.wutsi.ndopify.npc`: `ui/` (MVC controllers + Thymeleaf templates in
   Thymeleaf templates. `application-test.yml` / `application-prod.yml` still contain config copied from another
   project (`koki`) — don't treat it as meaningful.
 
+### `ndopify-esignature`
+
+Package `com.wutsi.ndopify.esignature` (port 8083, French UI): the contract sign page, a Spring Boot + Thymeleaf BFF with
+no database that talks to `ndopify-server` over REST. Its infrastructure is copied from Partner Central (same class
+names and signatures; depends on `ndopify-dto` only, never on partner-central), minus the agent / login parts.
+
+- Tenant is resolved by `service/TenantContext` matching the request URL against each active tenant's
+  `eSignaturePortalUrl` (not `partnerCentralUrl`).
+- The JWT is kept in the HTTP-only `__nes_access_token` cookie (`AccessTokenService`, `Path=/`, 1 hour like the token's
+  TTL) and decoded by `JwtAuthenticationFilter`, like Partner Central's.
+- `SecurityConfiguration` permits only `/assets/**`, `/sign/**` and `/error`; every other path is denied (nothing else
+  is served). The 403 / 404 pages (`templates/error/`) show the logo only, no account menu.
+- `src/main/html/` is the prototype: never serve it, and never delete or modify anything in it.
+
 ### Multi-Tenancy — current state
 
 Tenancy is enforced via **Hibernate's built-in multi-tenancy mechanism**, not hand-rolled predicates:

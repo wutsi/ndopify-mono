@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Accès refusé — Ndopify</title>
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" th:href="@{/assets/css/esignature.css}">
+</head>
+<!--/*
+  The 403 page: ndopify-server refused what the page asked (HttpClientErrorHandler), ex: another signer's contract.
+  Rendered by Spring Boot's error controller, outside of the page that failed: no account menu: the signer isn't known there.
+*/-->
+<body data-page="error-403">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <span class="site-header__brand">
+                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
+            </span>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <div class="page-intro" data-error="403">
+                <h1>Accès refusé</h1>
+                <p>Ce contrat n'est pas, ou plus, accessible. Utilisez le lien reçu par e-mail.</p>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
