@@ -56,7 +56,7 @@ class MandateViewsTest {
         customer: Customer? = CUSTOMER,
         accepted: AssignmentSummary? = ACCEPTED,
         now: Long = NOW,
-    ) = MandateViews.of(mandate, contract, customer, accepted, NAMES, now, FORMATTER, 7)
+    ) = MandateViews.of(mandate, contract, customer, accepted, NAMES, now, FORMATTER)
 
     @Test
     fun assigned() {
@@ -79,7 +79,7 @@ class MandateViewsTest {
         assertFalse(view.closable)
         assertTrue(view.cancellable)
         assertNull(view.requestedAt)
-        assertEquals(7, view.signatureTtlDays)
+        assertNull(view.signatureTtlDays) // No contract yet
     }
 
     @Test
@@ -91,6 +91,7 @@ class MandateViewsTest {
         assertEquals(listOf(true, false, false, false), view.steps.map { it.done })
         assertEquals("15 oct. 2026", view.requestedAt)
         assertEquals("22 oct. 2026", view.signatureDeadline)
+        assertEquals(7, view.signatureTtlDays) // From the contract's dates
         assertFalse(view.deadlinePassed)
         assertFalse(view.editedSince)
         assertTrue(view.editable)

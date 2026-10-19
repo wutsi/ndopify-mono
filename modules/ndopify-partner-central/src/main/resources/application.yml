@@ -58,8 +58,3 @@ ndopify:
     server:
         api:
             base-url: http://localhost:8080
-    contract:
-        signature:
-            # Same as ndopify-server's, for the mandate page's wording only ("sous 7 jours"), shown before any contract
-            # exists: its dates come from the contract.
-            ttl-days: 7

@@ -100,7 +100,6 @@ class MandateTemplateTest {
                     locationClient,
                     tenantContext,
                     clock,
-                    7,
                 ),
             )
             .setControllerAdvice(SignedInAdvice())
@@ -158,6 +157,17 @@ class MandateTemplateTest {
     }
 
     @Test
+    fun `pending approval - no request date`() {
+        doReturn(CONTRACT.copy(signatureRequestedAt = null)).whenever(contractClient).get("c-201")
+
+        val page = render(get("/mandates/201"))
+
+        val panel = page.selectFirst("[data-panel=PENDING_APPROVAL]")!!
+        assertTrue(panel.text().contains("renvoyez-le : le client pourra de nouveau le signer."), panel.text())
+        assertFalse(panel.text().contains("jours"))
+    }
+
+    @Test
     fun `pending approval - edited since`() {
         val page = render(PENDING.copy(modifiedAt = date("2026-10-16T10:00:00Z")))
 
@@ -187,6 +197,12 @@ class MandateTemplateTest {
         assertEquals("Envoyer au client", panel.selectFirst("form[data-request-approval-form] button")?.text())
         assertEquals("btn btn--primary", panel.selectFirst("form[data-request-approval-form] button")?.className())
         assertEquals("/mandates/201/edit", panel.selectFirst("a[data-edit-link]")?.attr("href"))
+        // No contract yet: no number of days
+        assertTrue(
+            panel.text().contains("qui le signe en ligne avant la date limite indiquée dans l'e-mail."),
+            panel.text(),
+        )
+        assertFalse(panel.text().contains("jours"))
         // Cancel only: closing needs the approval.
         assertNull(page.selectFirst("a[data-end-open=close]"))
         assertEquals("/mandates/201?end=cancel#end-title", page.selectFirst("a[data-end-open=cancel]")?.attr("href"))

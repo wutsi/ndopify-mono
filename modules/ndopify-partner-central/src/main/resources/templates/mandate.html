@@ -123,7 +123,7 @@
                                 <p>Le mandat est envoyé par e-mail
                                     <th:block th:if="${m.contact}">à <strong th:text="${m.contact.email}">ray@gmail.com</strong></th:block><th:block
                                         th:unless="${m.contact}" th:text="${m.words.to}">au client</th:block>, qui le signe
-                                    en ligne sous <span th:text="${m.signatureTtlDays}">7</span>&nbsp;jours. Vous commencez vos
+                                    en ligne avant la date limite indiquée dans l'e-mail. Vous commencez vos
                                     recherches dès sa signature.</p>
                             </div>
                         </details>
@@ -148,8 +148,10 @@
                                 <p>Le mandat a été envoyé
                                     <th:block th:if="${m.contact}">à <strong th:text="${m.contact.email}">ray@gmail.com</strong></th:block><th:block
                                         th:unless="${m.contact}" th:text="${m.words.to}">au client</th:block>. Passé le délai,
-                                    renvoyez-le&nbsp;: <span th:text="${m.words.the}">le client</span> a de nouveau
-                                    <span th:text="${m.signatureTtlDays}">7</span>&nbsp;jours pour le signer.</p>
+                                    renvoyez-le&nbsp;: <span th:text="${m.words.the}">le client</span><th:block
+                                        th:if="${m.signatureTtlDays}"> a de nouveau <span th:text="${m.signatureTtlDays}">7</span>&nbsp;jours
+                                        pour le signer</th:block><th:block th:unless="${m.signatureTtlDays}"> pourra de nouveau
+                                        le signer</th:block>.</p>
                             </div>
                         </details>
                     </div>

@@ -41,7 +41,7 @@ data class MandateView(
     val editable: Boolean,
     val closable: Boolean,
     val cancellable: Boolean,
-    val signatureTtlDays: Int,
+    val signatureTtlDays: Int?, // Null without a request for signature
 )
 
 data class StepView(

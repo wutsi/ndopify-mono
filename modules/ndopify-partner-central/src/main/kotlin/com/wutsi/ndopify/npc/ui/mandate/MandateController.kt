@@ -25,7 +25,6 @@ import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import org.slf4j.LoggerFactory
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.validation.BindingResult
@@ -66,8 +65,6 @@ class MandateController(
     locationClient: NdLocationClient,
     private val tenantContext: TenantContext,
     private val clock: Clock,
-    // @param: so that the formatter can't move it to a getter, where Spring wouldn't see it.
-    @param:Value("\${ndopify.contract.signature.ttl-days}") private val ttlDays: Int,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(MandateController::class.java)
@@ -262,7 +259,6 @@ class MandateController(
                 names,
                 clock.millis(),
                 formatter(),
-                ttlDays
             ),
         )
         model.addAttribute("owner", mandate.mandateType == MandateType.LISTING)
@@ -419,7 +415,6 @@ class MandateController(
             locations(mandate),
             clock.millis(),
             formatter(),
-            ttlDays,
         )
 
     private fun formatter(): TenantFormatter = TenantFormatter(tenantContext.getTenant())

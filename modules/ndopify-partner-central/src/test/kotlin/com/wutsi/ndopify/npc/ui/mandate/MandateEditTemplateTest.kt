@@ -99,7 +99,6 @@ class MandateEditTemplateTest {
                     locationClient,
                     tenantContext,
                     clock,
-                    7,
                 ),
             )
             .setControllerAdvice(SignedInAdvice())

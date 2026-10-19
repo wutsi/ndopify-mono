@@ -78,6 +78,20 @@ class MandateRulesTest {
     }
 
     @Test
+    fun signatureTtlDays() {
+        val contract = Contract(
+            signatureRequestedAt = date("2026-10-15T10:00:00Z"),
+            signatureDeadline = date("2026-10-22T10:00:00Z"),
+        )
+
+        assertEquals(7, MandateRules.signatureTtlDays(contract))
+        assertEquals(3, MandateRules.signatureTtlDays(contract.copy(signatureDeadline = date("2026-10-18T10:00:00Z"))))
+        assertNull(MandateRules.signatureTtlDays(contract.copy(signatureRequestedAt = null)))
+        assertNull(MandateRules.signatureTtlDays(contract.copy(signatureDeadline = null)))
+        assertNull(MandateRules.signatureTtlDays(null))
+    }
+
+    @Test
     fun editedSince() {
         val requestedAt = date("2026-10-15T10:00:00Z")
 

@@ -41,7 +41,6 @@ object MandateViews {
         locations: Map<Long, Location>,
         now: Long,
         formatter: TenantFormatter,
-        ttlDays: Int,
     ): MandateView {
         fun format(date: Date?): String? = date?.let { formatter.date(it) }
 
@@ -95,7 +94,7 @@ object MandateViews {
             editable = status in MandateRules.EDITABLE,
             closable = status == MandateStatus.APPROVED,
             cancellable = status in MandateRules.ACTIVE,
-            signatureTtlDays = ttlDays,
+            signatureTtlDays = MandateRules.signatureTtlDays(contract),
         )
     }
 

@@ -7,6 +7,7 @@ import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.npc.service.TenantFormatter
+import java.time.Duration
 import java.util.Date
 
 /**
@@ -67,6 +68,13 @@ object MandateRules {
 
     /** When the mandate was last sent to the customer: the contract's last request for signature. */
     fun requestedAt(contract: Contract?): Date? = contract?.signatureRequestedAt
+
+    /** How many days the customer was given to sign: from the contract's last request to its deadline. */
+    fun signatureTtlDays(contract: Contract?): Int? {
+        val requestedAt = contract?.signatureRequestedAt ?: return null
+        val deadline = contract.signatureDeadline ?: return null
+        return Duration.ofMillis(deadline.time - requestedAt.time).plusHours(12).toDays().toInt() // Rounded
+    }
 
     /**
      * Edited since it was sent: the customer would sign an outdated version. Sending saves the mandate before

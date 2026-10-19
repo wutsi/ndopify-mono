@@ -1,5 +1,5 @@
 /*
- * Ndopify e-Signature — prototype behaviour of sign.html.
+ * Ndopify e-Signature — prototype behaviour of sign.html (and of verify.html, see renderVerify).
  *
  * One page, four slides (?step=intro|code|sign|done), each a history entry. A slide only opens once the earlier ones
  * are done, whatever the URL says: the code slide once a code was sent, the signing slide once the code was
@@ -330,7 +330,20 @@
 
     // ---------- Start ----------
 
+    // verify.html: one view or the other (prototype: ?state=invalid), no state, no slides.
+    function renderVerify() {
+        var shown = new URL(window.location.href).searchParams.get("state") === "invalid" ? "invalid" : "valid";
+        $$("[data-verify-state]").forEach(function (section) {
+            section.hidden = section.getAttribute("data-verify-state") !== shown;
+        });
+    }
+
     document.addEventListener("DOMContentLoaded", function () {
+        if (document.body.getAttribute("data-page") === "verify") {
+            renderVerify();
+            return;
+        }
+
         var reason = new URL(window.location.href).searchParams.get("state");
         if (reason && renderBlocked(reason)) return;
 

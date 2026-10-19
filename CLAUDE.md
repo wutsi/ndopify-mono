@@ -426,9 +426,9 @@ Package `com.wutsi.ndopify.npc`: `ui/` (MVC controllers + Thymeleaf templates in
   on, `email-conflict` for request-approval's 409 `CONTRACT_PARTY_MEMBERSHIP_CONFLICT`: the customer's e-mail is
   another account's, `error`), worded by the controller: `POST /mandates/{id}/request-approval|close|cancel`. The close / cancel
   form opens without JS via `GET /mandates/{id}?end=close|cancel` (ignored when the button wouldn't show) and comes
-  back with its errors. "Envoyé le" is the contract's `signatureRequestedAt` (`MandateRules.requestedAt`);
-  partner-central's `ndopify.contract.signature.ttl-days` only words the panels ("sous 7 jours", shown before any
-  contract exists) and should match ndopify-server's setting of the same name. The edit page (`GET|POST /mandates/{id}/edit`, `templates/mandate/edit.html`,
+  back with its errors. "Envoyé le" is the contract's `signatureRequestedAt` (`MandateRules.requestedAt`), and the
+  days given to sign are its deadline less that date (`MandateRules.signatureTtlDays`): partner-central has no TTL
+  setting of its own, so it can't drift from ndopify-server's `ndopify.contract.signature.ttl-days`. The edit page (`GET|POST /mandates/{id}/edit`, `templates/mandate/edit.html`,
   `MandateEditForm` / `MandateEditRules`) is only for `MandateRules.EDITABLE` statuses (ASSIGNED, PENDING_APPROVAL),
   re-checked on POST since ndopify-server's update doesn't check the status; it posts the mandate's `version` it was
   loaded with (hidden field), and a 409 `MANDATE_VERSION_CONFLICT` shows the form again with the agent's answers, now

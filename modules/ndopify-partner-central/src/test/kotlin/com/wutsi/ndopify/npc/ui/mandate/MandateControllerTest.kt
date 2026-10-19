@@ -86,7 +86,6 @@ class MandateControllerTest {
             locationClient,
             tenantContext,
             clock,
-            7,
         )
         mvc = MockMvcBuilders.standaloneSetup(controller)
             .setViewResolvers(InternalResourceViewResolver("/templates/", ".html"))
@@ -721,17 +720,6 @@ class MandateControllerTest {
 
         assertEquals("redirect:/logout", mvc.perform(get("/mandates/201/edit")).andReturn().modelAndView?.viewName)
         assertEquals("redirect:/logout", mvc.perform(edit()).andReturn().modelAndView?.viewName)
-    }
-
-    @Test
-    fun `signature ttl - injected from the configuration`() {
-        // Spring injects constructor parameters only: a @Value moved to a getter (@get:) leaves the bean unbuildable.
-        val parameter = MandateController::class.java.constructors.single().parameters.last()
-
-        assertEquals(
-            "\${ndopify.contract.signature.ttl-days}",
-            parameter.getAnnotation(org.springframework.beans.factory.annotation.Value::class.java)?.value,
-        )
     }
 
     @Test
