@@ -66,6 +66,7 @@ class SignTemplateTest {
         signerFirstName = "Ray",
         signDate = "18 octobre 2026",
         contentHtml = "<h3>Mandat</h3><p>Le Mandant confie…</p>",
+        contentUrl = "https://storage.ndopify.cm/contracts/MNDT-2026-000042.html",
         canSign = true,
     )
 
@@ -161,6 +162,8 @@ class SignTemplateTest {
         val form = page.selectFirst("form[action=/sign/cp-1]")
         assertNotNull(form)
         assertEquals("yes", form.selectFirst("input[type=checkbox][name=consent]")?.attr("value"))
+        // The version shown, posted back so that only it gets signed
+        assertEquals(details.contentUrl, form.selectFirst("input[type=hidden][name=contentUrl]")?.attr("value"))
         assertEquals("Signer électroniquement", form.selectFirst("button[type=submit]")?.text())
         assertNull(form.selectFirst("button[aria-disabled]"))
     }
@@ -181,6 +184,7 @@ class SignTemplateTest {
         assertNull(page.selectFirst("article.contract"))
         assertTrue(page.text().contains("Le contrat ne peut pas être affiché pour le moment. Réessayez dans quelques instants."))
         assertNull(page.selectFirst("input[name=consent]"))
+        assertNull(page.selectFirst("input[name=contentUrl]"))
         assertNull(page.selectFirst("button[type=submit]"))
     }
 

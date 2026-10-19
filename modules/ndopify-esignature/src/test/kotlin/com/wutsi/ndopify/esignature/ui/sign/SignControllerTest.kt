@@ -281,6 +281,7 @@ class SignControllerTest {
         assertEquals(CONTRACT_PARTY_ID, model(result)["contractPartyId"])
         assertEquals(SignView.STEP_SIGN, view(result).step)
         assertEquals(CONTENT_HTML, view(result).contentHtml)
+        assertEquals(CONTENT_URL, view(result).contentUrl)
         assertEquals("MNDT-2026-000042", view(result).contractNumber)
         assertTrue(view(result).canSign)
 
@@ -353,7 +354,7 @@ class SignControllerTest {
         signIn()
         givenContract(CONTRACT)
 
-        val result = mvc.perform(post(path).param("partyId", "cp-other")).andReturn()
+        val result = mvc.perform(post(path).param("partyId", "cp-other").param("contentUrl", CONTENT_URL)).andReturn()
 
         assertEquals("sign", result.modelAndView?.viewName)
         assertEquals(SignView.STEP_SIGN, view(result).step)
@@ -370,6 +371,7 @@ class SignControllerTest {
         val result = mvc.perform(
             post(path)
                 .param("consent", "yes")
+                .param("contentUrl", CONTENT_URL)
                 .param("partyId", "cp-other")
                 .header("X-Forwarded-For", "41.202.1.2, 10.0.0.1")
                 .header(HttpHeaders.USER_AGENT, "Mozilla/5.0"),
@@ -386,11 +388,67 @@ class SignControllerTest {
         signIn()
         givenContract(CONTRACT)
 
-        mvc.perform(post(path).param("consent", "yes").with { it.apply { remoteAddr = "41.202.1.3" } }).andReturn()
+        mvc.perform(signPost().with { it.apply { remoteAddr = "41.202.1.3" } }).andReturn()
 
         val request = argumentCaptor<SignContractRequest>()
         verify(contractClient).sign(eq(CONTRACT.id), request.capture())
         assertEquals("41.202.1.3", request.firstValue.ipAddress)
+    }
+
+    @Test
+    fun `changed content is shown again without signing`() {
+        signIn()
+        val newUrl = "https://storage.ndopify.cm/contracts/MNDT-2026-000042-v2.html"
+        givenContract(CONTRACT.copy(contentUrl = newUrl))
+        doReturn("<p>Nouvelle version</p>").whenever(contentClient).fetch(newUrl)
+
+        val result = mvc.perform(signPost()).andReturn() // Posts the URL of the version shown before
+
+        assertEquals("sign", result.modelAndView?.viewName)
+        assertEquals(SignView.STEP_SIGN, view(result).step)
+        assertEquals("<p>Nouvelle version</p>", view(result).contentHtml)
+        assertEquals(newUrl, view(result).contentUrl)
+        assertEquals(
+            "Le contrat a été modifié depuis son affichage : relisez-le avant de signer.",
+            model(result)["error"],
+        )
+        verify(contractClient, never()).sign(any(), any())
+    }
+
+    @Test
+    fun `no content url posted does not sign`() {
+        signIn()
+        givenContract(CONTRACT)
+
+        val result = mvc.perform(post(path).param("consent", "yes")).andReturn()
+
+        assertEquals(SignView.STEP_SIGN, view(result).step)
+        assertEquals(SignController.CONTENT_CHANGED, model(result)["error"])
+        verify(contractClient, never()).sign(any(), any())
+    }
+
+    @Test
+    fun `content unavailable does not sign`() {
+        signIn()
+        givenContract(CONTRACT)
+        doReturn(null).whenever(contentClient).fetch(CONTENT_URL)
+
+        val result = mvc.perform(signPost()).andReturn()
+
+        assertEquals(SignView.STEP_SIGN, view(result).step)
+        assertEquals(false, view(result).canSign)
+        verify(contractClient, never()).sign(any(), any())
+    }
+
+    @Test
+    fun `contract no longer signable goes to done without signing`() {
+        signIn()
+        givenContract(CONTRACT.copy(status = ContractStatus.CANCELLED))
+
+        val result = mvc.perform(signPost()).andReturn()
+
+        assertEquals("redirect:$path?step=done", result.modelAndView?.viewName)
+        verify(contractClient, never()).sign(any(), any())
     }
 
     @Test
@@ -400,7 +458,7 @@ class SignControllerTest {
         doThrow(error(HttpStatus.CONFLICT, ErrorCode.CONTRACT_PARTY_ALREADY_SIGNED))
             .whenever(contractClient).sign(any(), any())
 
-        val result = mvc.perform(post(path).param("consent", "yes")).andReturn()
+        val result = mvc.perform(signPost()).andReturn()
 
         assertEquals("redirect:$path?step=done", result.modelAndView?.viewName)
 
@@ -415,7 +473,7 @@ class SignControllerTest {
         givenContract(CONTRACT)
         doThrow(HttpClientErrorException(HttpStatus.BAD_REQUEST)).whenever(contractClient).sign(any(), any())
 
-        val result = mvc.perform(post(path).param("consent", "yes")).andReturn()
+        val result = mvc.perform(signPost()).andReturn()
 
         assertEquals(SignView.STEP_SIGN, view(result).step)
         assertEquals(
@@ -426,7 +484,7 @@ class SignControllerTest {
 
     @Test
     fun `sign without token`() {
-        val result = mvc.perform(post(path).param("consent", "yes")).andReturn()
+        val result = mvc.perform(signPost()).andReturn()
 
         assertEquals("redirect:$path", result.modelAndView?.viewName)
         verify(contractClient, never()).sign(any(), any())
@@ -437,7 +495,7 @@ class SignControllerTest {
         signIn()
         doReturn(emptyList<ContractSummary>()).whenever(contractClient).search(any())
 
-        val result = mvc.perform(post(path).param("consent", "yes")).andReturn()
+        val result = mvc.perform(signPost()).andReturn()
 
         assertEquals("redirect:$path", result.modelAndView?.viewName)
         verify(contractClient, never()).sign(any(), any())
@@ -471,6 +529,8 @@ class SignControllerTest {
         // A wrong code keeps the sign-in pending, so the signer can try again or resend
         assertEquals(pending, session.getAttribute(PendingSignature.SESSION_ATTRIBUTE))
     }
+
+    private fun signPost() = post(path).param("consent", "yes").param("contentUrl", CONTENT_URL)
 
     private fun signIn() {
         val principal = JwtPrincipal(mock<DecodedJWT>())

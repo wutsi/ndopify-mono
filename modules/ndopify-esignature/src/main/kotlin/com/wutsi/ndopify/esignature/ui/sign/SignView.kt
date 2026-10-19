@@ -16,6 +16,8 @@ data class SignView(
     val signDate: String? = null,
     val signedAt: String? = null,
     val contentHtml: String? = null,
+    // The URL of the content shown, posted back by the sign form: null unless the sign step shows content
+    val contentUrl: String? = null,
     val canSign: Boolean = false,
     val maskedEmail: String? = null,
     val codeExpiresAt: String? = null,

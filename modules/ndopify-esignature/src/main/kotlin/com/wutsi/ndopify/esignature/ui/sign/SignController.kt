@@ -42,7 +42,8 @@ import java.time.Duration
  *    and records a [PendingSignature] in the HTTP session (`resend=true` sends a new one to the pending address).
  * 2. Code: `GET ?step=code`, only while a [PendingSignature] of this link is in the session; `POST /verify` exchanges
  *    the code for an `e-signature` access token, kept in the cookie.
- * 3. Signed in: the contract (or why it can't be signed, see [SignViews]); `POST /` signs it, then `?step=done`.
+ * 3. Signed in: the contract (or why it can't be signed, see [SignViews]); `POST /` signs it, then `?step=done`, but
+ *    only the version the page showed: the form posts back the shown `contentUrl`, compared to the contract's.
  *
  * Nothing about the contract is shown before sign-in. The contract party is the URL's, the contract the one ndopify-server
  * finds for it among the signer's own: never a form field.
@@ -74,6 +75,7 @@ class SignController(
         const val AUTH_FAILED = "Connexion impossible pour le moment. Réessayez dans quelques instants."
         const val CONSENT_REQUIRED = "Cochez la case pour signer le contrat."
         const val SIGN_FAILED = "Votre signature n'a pas pu être enregistrée. Vérifiez votre connexion, puis réessayez."
+        const val CONTENT_CHANGED = "Le contrat a été modifié depuis son affichage : relisez-le avant de signer."
 
         // The contract can no longer be signed by this party, or already is: the done step says which
         private val SIGN_SETTLED = setOf(403, 404, 409)
@@ -116,7 +118,7 @@ class SignController(
         try {
             otpClient.create(CreateOtpRequest(email = email, ttl = OTP_TTL.seconds.toInt()))
         } catch (ex: HttpClientErrorException) {
-            LOGGER.warn("Server error: ${ex.statusCode} ${ex.responseBodyAsString}")
+            warn(ex)
 
             // A rejected request replaces any earlier one: don't leave a code step open for another address
             session.removeAttribute(PendingSignature.SESSION_ATTRIBUTE)
@@ -157,7 +159,7 @@ class SignController(
                 ),
             ).accessToken
         } catch (ex: HttpClientErrorException) {
-            LOGGER.warn("Server error: ${ex.statusCode} ${ex.responseBodyAsString}")
+            warn(ex)
             model.addAttribute("error", toCodeMessage(ex))
             model.addAttribute("code", code)
             return codeStep(contractPartyId, pending, model)
@@ -177,9 +179,20 @@ class SignController(
     ): String {
         if (!signedIn()) return "redirect:/sign/$contractPartyId"
         val contract = findContract(contractPartyId) ?: return "redirect:/sign/$contractPartyId"
+
+        // Freshly built: signs only what the signer can be shown now, and shows the new version if it changed
+        val view = views.build(contract, contractPartyId, STEP_SIGN, contentClient::fetch)
+        if (view.step != STEP_SIGN) {
+            return "redirect:/sign/$contractPartyId?step=$STEP_DONE" // No longer signable: the page says why
+        }
+        // Only compared, never used to find anything: the contract is the one ndopify-server found for the link
+        if (!view.canSign || form.contentUrl == null || form.contentUrl != contract.contentUrl) {
+            model.addAttribute("error", CONTENT_CHANGED)
+            return render(contractPartyId, view, model)
+        }
         if (form.consent != "yes") {
             model.addAttribute("error", CONSENT_REQUIRED)
-            return render(contractPartyId, views.build(contract, contractPartyId, STEP_SIGN, contentClient::fetch), model)
+            return render(contractPartyId, view, model)
         }
 
         try {
@@ -193,10 +206,10 @@ class SignController(
                 ),
             )
         } catch (ex: HttpClientErrorException) {
-            LOGGER.warn("Server error: ${ex.statusCode} ${ex.responseBodyAsString}")
+            warn(ex)
             if (ex.statusCode.value() !in SIGN_SETTLED) {
                 model.addAttribute("error", SIGN_FAILED)
-                return render(contractPartyId, views.build(contract, contractPartyId, STEP_SIGN, contentClient::fetch), model)
+                return render(contractPartyId, view, model)
             }
             // Signed already (a double tap), or no longer signable: the page says which
         }
@@ -247,6 +260,11 @@ class SignController(
             ErrorCode.AUTH_ACCESS_DENIED -> EMAIL_UNKNOWN
             else -> AUTH_FAILED
         }
+
+    // Status and error code only: the body's message can name the e-mail ("User not found: <email>")
+    private fun warn(ex: HttpClientErrorException) {
+        LOGGER.warn("Server error: ${ex.statusCode} ${errorCode(ex)}")
+    }
 
     private fun errorCode(ex: HttpClientErrorException): String? =
         try {

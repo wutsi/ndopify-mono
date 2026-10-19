@@ -123,6 +123,7 @@ class SignViews(
             signerFirstName = firstName(party),
             signDate = formatter.date(now),
             contentHtml = content,
+            contentUrl = contract.contentUrl?.takeIf { content != null },
             // Never signable unseen
             canSign = content != null,
         )

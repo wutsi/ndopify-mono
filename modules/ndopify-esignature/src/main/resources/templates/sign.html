@@ -226,6 +226,8 @@
                     </p>
 
                     <th:block th:if="${view.canSign}">
+                        <!-- The version shown: SignController only signs it if it's still the contract's -->
+                        <input type="hidden" name="contentUrl" th:value="${view.contentUrl}">
                         <div class="hint">
                             <th:block th:replace="~{::info-icon}"></th:block>
                             <p>Signer ne déclenche aucun paiement&nbsp;: les frais prévus au contrat ne sont dus que dans les

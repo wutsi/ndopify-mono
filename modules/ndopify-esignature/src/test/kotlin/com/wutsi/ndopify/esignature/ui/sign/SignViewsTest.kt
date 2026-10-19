@@ -48,6 +48,7 @@ class SignViewsTest {
         assertEquals("Ray", view.signerFirstName)
         assertEquals("18 oct. 2026", view.signDate)
         assertEquals(CONTENT_HTML, view.contentHtml)
+        assertEquals(CONTENT_URL, view.contentUrl)
         assertTrue(view.canSign)
         assertEquals(listOf(CONTENT_URL), fetched)
     }
@@ -58,6 +59,7 @@ class SignViewsTest {
 
         assertEquals(SignView.STEP_SIGN, view.step)
         assertNull(view.contentHtml)
+        assertNull(view.contentUrl)
         assertFalse(view.canSign)
     }
 
