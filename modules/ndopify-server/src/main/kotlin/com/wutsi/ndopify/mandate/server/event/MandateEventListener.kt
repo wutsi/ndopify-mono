@@ -13,8 +13,8 @@ import org.springframework.transaction.event.TransactionPhase
 import org.springframework.transaction.event.TransactionalEventListener
 
 /**
- * Offers a new mandate to an agent (a declined or expired one is re-offered by `AssignmentEventListener`), and approves
- * a mandate once its contract is signed.
+ * Offers a new mandate to an agent (a declined or expired one is re-offered by `AssignmentEventListener`), approves
+ * a mandate once its contract is signed, and tells its agent.
  *
  * The offer runs on an executor thread once the mandate is committed, so a dispatch failure never fails, nor rolls back, the
  * customer's mandate: it's only logged, and `MandateJobs.dispatch` retries the mandate later.
@@ -33,6 +33,35 @@ class MandateEventListener(
     @EventListener
     fun onContractSigned(event: ContractSignedEvent) {
         service.onContractSigned(event.contractId)
+    }
+
+    /**
+     * E-mails the agent that its mandate is approved, once the signature is committed, so no e-mail goes out for a
+     * rolled-back signature, and the signer doesn't wait for SMTP. A failure is only logged — the mandate is already
+     * approved.
+     */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    fun onMandateApproved(event: MandateApprovedEvent) {
+        val logger = DefaultKVLogger()
+        KVLoggerThreadLocal.set(logger)
+        TenantContext.set(event.tenantId)
+        try {
+            logger.add("event", MandateApprovedEvent::class.java.simpleName)
+            logger.add("tenant_id", event.tenantId)
+            logger.add("mandate_id", event.mandateId)
+
+            val sent = service.sendApprovedEmail(event.mandateId)
+            logger.add("email_sent", sent)
+            logger.add("success", true)
+        } catch (ex: Exception) {
+            logger.add("success", false)
+            logger.setException(ex)
+        } finally {
+            logger.log()
+            TenantContext.remove()
+            KVLoggerThreadLocal.remove()
+        }
     }
 
     @Async

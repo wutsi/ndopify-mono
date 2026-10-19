@@ -8,6 +8,12 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.agent.server.domain.AgentEntity
+import com.wutsi.ndopify.agent.server.service.AgentService
+import com.wutsi.ndopify.contract.server.domain.ContractEntity
+import com.wutsi.ndopify.contract.server.service.ContractService
+import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
 import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
@@ -15,37 +21,48 @@ import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.server.dao.AssignmentRepository
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.mandate.server.event.MandateApprovedEvent
 import com.wutsi.ndopify.mandate.server.event.MandateClosedEvent
+import com.wutsi.ndopify.mandate.server.mail.MandateApprovedMailet
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.dto.Money
 import org.springframework.context.ApplicationEventPublisher
 import java.time.Clock
 import java.util.Date
+import java.util.Optional
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
-/** Closing and cancelling: the age and the event, that the endpoint tests can't see. */
+/** Approving, closing and cancelling: the age, the events and the e-mail, that the endpoint tests can't see. */
 class MandateServiceTest {
     private val dao = mock<MandateRepository>()
     private val assignmentDao = mock<AssignmentRepository>()
     private val eventPublisher = mock<ApplicationEventPublisher>()
     private val clock = mock<Clock>()
+    private val customerService = mock<CustomerService>()
+    private val agentService = mock<AgentService>()
+    private val contractService = mock<ContractService>()
+    private val approvedMailet = mock<MandateApprovedMailet>()
     private val service = MandateService(
         dao = dao,
         assignmentDao = assignmentDao,
         clock = clock,
-        customerService = mock(),
-        agentService = mock(),
+        customerService = customerService,
+        agentService = agentService,
         eventPublisher = eventPublisher,
-        contractService = mock(),
+        contractService = contractService,
         dispatcher = mock(),
         contractGenerator = mock(),
         storageProvider = mock(),
         tx = mock(),
         access = mock(),
+        approvedMailet = approvedMailet,
         contractDurationMonths = 6,
     )
 
@@ -130,5 +147,69 @@ class MandateServiceTest {
 
         assertFailsWith<ConflictException> { service.cancel(1L, CancelMandateRequest()) }
         verify(eventPublisher, never()).publishEvent(any())
+    }
+
+    @Test
+    fun `contract signed - approves the mandate and publishes the event`() {
+        doReturn(mandate(MandateStatus.PENDING_APPROVAL)).whenever(dao).findByContractId("c-1")
+
+        val approved = service.onContractSigned("c-1")
+
+        assertEquals(MandateStatus.APPROVED, approved?.status)
+        assertEquals(now, approved?.approvedAt?.time)
+        val event = argumentCaptor<MandateApprovedEvent>()
+        verify(eventPublisher).publishEvent(event.capture())
+        assertEquals(MandateApprovedEvent(mandateId = 1L, tenantId = 1L), event.firstValue)
+    }
+
+    @Test
+    fun `contract signed - a mandate no longer waiting for approval is left as is`() {
+        doReturn(mandate(MandateStatus.CANCELLED)).whenever(dao).findByContractId("c-1")
+
+        assertNull(service.onContractSigned("c-1"))
+        verify(dao, never()).save(any())
+        verify(eventPublisher, never()).publishEvent(any())
+    }
+
+    @Test
+    fun `contract signed - a contract without mandate`() {
+        assertNull(service.onContractSigned("c-1"))
+        verify(eventPublisher, never()).publishEvent(any())
+    }
+
+    @Test
+    fun `approved email - sent to the agent`() {
+        val mandate = mandate(MandateStatus.APPROVED).copy(customerId = 10L, agentId = 20L, contractId = "c-1")
+        val contract = ContractEntity(id = "c-1")
+        val customer = CustomerEntity(id = 10L)
+        val agent = AgentEntity(id = 20L)
+        doReturn(Optional.of(mandate)).whenever(dao).findById(1L)
+        doReturn(contract).whenever(contractService).findById("c-1")
+        doReturn(customer).whenever(customerService).findById(10L)
+        doReturn(agent).whenever(agentService).findById(20L)
+
+        assertTrue(service.sendApprovedEmail(1L))
+
+        verify(approvedMailet).send(mandate, contract, customer, agent)
+    }
+
+    @Test
+    fun `approved email - not sent once the mandate has moved on`() {
+        val mandate = mandate(MandateStatus.CLOSED).copy(agentId = 20L, contractId = "c-1")
+        doReturn(Optional.of(mandate)).whenever(dao).findById(1L)
+
+        assertFalse(service.sendApprovedEmail(1L))
+
+        verify(approvedMailet, never()).send(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `approved email - not sent without agent`() {
+        val mandate = mandate(MandateStatus.APPROVED).copy(contractId = "c-1")
+        doReturn(Optional.of(mandate)).whenever(dao).findById(1L)
+
+        assertFalse(service.sendApprovedEmail(1L))
+
+        verify(approvedMailet, never()).send(any(), any(), any(), any())
     }
 }

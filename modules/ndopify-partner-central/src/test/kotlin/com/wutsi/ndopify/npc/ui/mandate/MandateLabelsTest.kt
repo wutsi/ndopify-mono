@@ -74,7 +74,7 @@ class MandateLabelsTest {
         assertEquals("Boutique", MandateLabels.shortPropertyType(PropertyType.RETAIL))
         assertEquals("Entrepôt", MandateLabels.shortPropertyType(PropertyType.INDUSTRIAL))
         assertEquals("Maison", MandateLabels.shortPropertyType(PropertyType.HOUSE))
-        assertEquals("Tout type", MandateLabels.shortPropertyType(null))
+        assertNull(MandateLabels.shortPropertyType(null))
     }
 
     @Test
@@ -83,7 +83,7 @@ class MandateLabelsTest {
             "Bailleur · Appartement",
             MandateLabels.title(Mandate(mandateType = MandateType.LISTING, propertyType = PropertyType.APARTMENT)),
         )
-        assertEquals("Locataire · Tout type", MandateLabels.title(Mandate(mandateType = MandateType.SEARCH)))
+        assertEquals("Locataire", MandateLabels.title(Mandate(mandateType = MandateType.SEARCH)))
     }
 
     @Test

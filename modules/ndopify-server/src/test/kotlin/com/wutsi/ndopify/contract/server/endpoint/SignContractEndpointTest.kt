@@ -78,8 +78,19 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         val validUntil = contract.validFrom!!.toInstant().atZone(ZoneId.of("Africa/Douala")).plusMonths(6).toInstant()
         assertEquals(Date.from(validUntil).time, contract.validUntil?.time)
 
-        // ContractSignedEvent: its mandate is approved
+        // ContractSignedEvent: its mandate is approved, and its agent told
         assertEquals(MandateStatus.APPROVED, mandateDao.findById(2L).get().status)
+
+        assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received")
+        val messages = smtp.receivedMessages
+        assertEquals(1, messages.size)
+        assertEquals("Ndopify: Votre mandat à Yaounde est approuvé", messages[0].subject)
+        assertEquals("Kim Possible <kim.possible@gmail.com>", messages[0].allRecipients.single().toString())
+
+        val body = messages[0].content.toString()
+        assertTrue(body.contains("Ray Sponsible"))
+        assertTrue(body.contains("MNDT-2024-000002"))
+        assertTrue(body.contains("https://partner.ndopify.com/mandates/2"))
     }
 
     @Test
@@ -89,6 +100,7 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(ContractStatus.SIGNED, dao.findById("c-6").get().status)
         assertEquals(MandateStatus.CANCELLED, mandateDao.findById(6L).get().status)
+        assertFalse(smtp.waitForIncomingEmail(1000, 1), "no email expected")
     }
 
     @Test

@@ -28,8 +28,10 @@ import com.wutsi.ndopify.mandate.server.dao.AssignmentRepository
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.mandate.server.domain.AssignmentEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.mandate.server.event.MandateApprovedEvent
 import com.wutsi.ndopify.mandate.server.event.MandateClosedEvent
 import com.wutsi.ndopify.mandate.server.event.MandateCreatedEvent
+import com.wutsi.ndopify.mandate.server.mail.MandateApprovedMailet
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
@@ -61,6 +63,7 @@ class MandateService(
     private val storageProvider: StorageServiceProvider,
     private val tx: TransactionTemplate,
     private val access: MandateAccessService,
+    private val approvedMailet: MandateApprovedMailet,
 
     @param:Value("\${ndopify.mandate.contract.duration-months}") private val contractDurationMonths: Int,
 ) {
@@ -256,8 +259,9 @@ class MandateService(
     }
 
     /**
-     * Approves the PENDING_APPROVAL mandate of a contract that all its parties have signed. Does nothing for a contract
-     * that isn't a mandate's, or a mandate no longer waiting for approval (ex: cancelled in the meantime).
+     * Approves the PENDING_APPROVAL mandate of a contract that all its parties have signed, and publishes a
+     * [MandateApprovedEvent]. Does nothing for a contract that isn't a mandate's, or a mandate no longer waiting for
+     * approval (ex: cancelled in the meantime).
      */
     @Transactional
     fun onContractSigned(contractId: String): MandateEntity? {
@@ -267,13 +271,37 @@ class MandateService(
         }
 
         val now = Date(clock.millis())
-        return dao.save(
+        val approved = dao.save(
             mandate.copy(
                 status = MandateStatus.APPROVED,
                 modifiedAt = now,
                 approvedAt = now
             )
         )
+        eventPublisher.publishEvent(MandateApprovedEvent(mandateId = approved.id!!, tenantId = TenantContext.get()!!))
+        return approved
+    }
+
+    /**
+     * E-mails the agent that its mandate is approved. Nothing is sent once the mandate has moved on (closed or
+     * cancelled in the meantime), nor for a mandate without agent or contract. Returns whether it was sent.
+     */
+    @Transactional
+    fun sendApprovedEmail(id: Long): Boolean {
+        val mandate = findById(id)
+        val agentId = mandate.agentId
+        val contractId = mandate.contractId
+        if (mandate.status != MandateStatus.APPROVED || agentId == null || contractId == null) {
+            return false
+        }
+
+        approvedMailet.send(
+            mandate = mandate,
+            contract = contractService.findById(contractId),
+            customer = customerService.findById(mandate.customerId),
+            agent = agentService.findById(agentId),
+        )
+        return true
     }
 
     /**

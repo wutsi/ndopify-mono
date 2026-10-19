@@ -60,4 +60,29 @@ class MandateEventListenerTest {
 
         assertNull(TenantContext.get())
     }
+
+    @Test
+    fun `approved - the agent is e-mailed, in its tenant`() {
+        var tenantId: Long? = null
+        doAnswer {
+            tenantId = TenantContext.get()
+            true
+        }.whenever(service).sendApprovedEmail(10L)
+
+        listener.onMandateApproved(MandateApprovedEvent(mandateId = 10L, tenantId = 7L))
+
+        verify(service).sendApprovedEmail(10L)
+        assertEquals(7L, tenantId)
+        assertNull(TenantContext.get()) // Removed: the executor threads are reused
+        assertNull(KVLoggerThreadLocal.get())
+    }
+
+    @Test
+    fun `approved - a failing e-mail is only logged, never fails the approval`() {
+        doThrow(IllegalStateException("boom")).whenever(service).sendApprovedEmail(10L)
+
+        listener.onMandateApproved(MandateApprovedEvent(mandateId = 10L, tenantId = 7L))
+
+        assertNull(TenantContext.get())
+    }
 }

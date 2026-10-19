@@ -168,11 +168,12 @@ object MandateLabels {
     /** Who the agent works for: a landlord for a listing, else someone looking for a rental. */
     fun party(type: MandateType): String = if (type == MandateType.LISTING) "Bailleur" else "Locataire"
 
-    fun shortPropertyType(type: PropertyType?): String =
-        PROPERTY_TYPE_SHORT[type] ?: PROPERTY_TYPE_LABELS[type] ?: "Tout type"
+    /** null without a type: any type will do. */
+    fun shortPropertyType(type: PropertyType?): String? = PROPERTY_TYPE_SHORT[type] ?: PROPERTY_TYPE_LABELS[type]
 
-    /** "Locataire · Maison". */
-    fun title(mandate: Mandate): String = party(mandate.mandateType) + " · " + shortPropertyType(mandate.propertyType)
+    /** "Locataire · Maison", or just "Locataire" without a type. */
+    fun title(mandate: Mandate): String =
+        listOfNotNull(party(mandate.mandateType), shortPropertyType(mandate.propertyType)).joinToString(" · ")
 
     /** "152 500 FCFA / mois", in the tenant's format: the rent of a mandate's criteria. */
     fun rent(money: Money, formatter: TenantFormatter): String = formatter.money(money.amount, money.currency) + " / mois"

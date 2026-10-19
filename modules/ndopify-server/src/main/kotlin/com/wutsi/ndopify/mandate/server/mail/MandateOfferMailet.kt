@@ -1,15 +1,11 @@
 package com.wutsi.ndopify.mandate.server.mail
 
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
-import com.wutsi.ndopify.listing.dto.ListingType
-import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.server.domain.AssignmentEntity
-import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.Receipient
-import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantFormatter
 import com.wutsi.ndopify.refdata.server.service.TenantService
@@ -25,28 +21,6 @@ class MandateOfferMailet(
 ) {
     companion object {
         const val SUBJECT = "{{tenant_name}}: Un nouveau mandat vous est proposé à {{city}}"
-
-        private val PROPERTY_TYPES = mapOf(
-            PropertyType.ROOM to "Chambre",
-            PropertyType.STUDIO to "Studio",
-            PropertyType.APARTMENT to "Appartement",
-            PropertyType.VILLA to "Villa",
-            PropertyType.DUPLEX to "Duplex",
-            PropertyType.HOUSE to "Maison",
-            PropertyType.BUILDING to "Immeuble",
-            PropertyType.LAND to "Terrain",
-            PropertyType.RETAIL to "Local commercial",
-            PropertyType.INDUSTRIAL to "Local industriel",
-            PropertyType.OFFICE to "Bureau",
-        )
-
-        private val PERIODICITIES = mapOf(
-            PeriodicityType.DAILY to "jour",
-            PeriodicityType.WEEKLY to "semaine",
-            PeriodicityType.MONTHLY to "mois",
-            PeriodicityType.QUARTERLY to "trimestre",
-            PeriodicityType.YEARLY to "an",
-        )
     }
 
     fun send(assignment: AssignmentEntity, agent: AgentEntity) {
@@ -66,12 +40,12 @@ class MandateOfferMailet(
                         "tenant_logo_url" to tenant.logoUrl,
                         "tenant_name" to tenant.name,
                         "recipient_name" to fullName,
-                        "listing_type" to if (mandate.listingType == ListingType.SALE) "Achat" else "Location",
-                        "property_type" to mandate.propertyType?.let { PROPERTY_TYPES[it] },
+                        "listing_type" to MandateMailLabels.listingType(mandate),
+                        "property_type" to MandateMailLabels.propertyType(mandate),
                         "rooms" to mandate.rooms?.ifBlank { null },
                         "city" to city,
-                        "neighbourhoods" to neighbourhoods(mandate),
-                        "budget" to budget(mandate, formatter),
+                        "neighbourhoods" to MandateMailLabels.neighbourhoods(mandate, locationService),
+                        "budget" to MandateMailLabels.budget(mandate, formatter),
                         // The agent reads it in its local time
                         "deadline_date" to formatter.date(assignment.expiresAt),
                         "deadline_time" to formatter.time(assignment.expiresAt),
@@ -80,18 +54,5 @@ class MandateOfferMailet(
                 )
             )
         )
-    }
-
-    private fun neighbourhoods(mandate: MandateEntity): String? =
-        mandate.neighborhoodIds
-            .mapNotNull { id -> locationService.findByIdOrNull(id)?.name }
-            .joinToString(", ")
-            .ifEmpty { null }
-
-    // Ex: 150 000 FCFA / mois
-    private fun budget(mandate: MandateEntity, formatter: TenantFormatter): String {
-        val amount = formatter.money(mandate.price, mandate.currencyCode)
-        val periodicity = PERIODICITIES[mandate.pricePeriodicityType]?.let { " / $it" } ?: ""
-        return "$amount$periodicity"
     }
 }

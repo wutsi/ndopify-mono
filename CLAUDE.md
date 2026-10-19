@@ -199,6 +199,10 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   (read-only) then upload, outside any transaction; (3) under the lock again, 409 `MANDATE_VERSION_CONFLICT` if the
   mandate changed since (2), else set the content, PENDING_APPROVAL, request the signature. A failure after (1) leaves
   the mandate ASSIGNED with its DRAFT contract, reused next time: an ASSIGNED mandate can have a `contractId`.
+  The last signature of its contract approves it (`MandateEventListener.onContractSigned`, synchronous, in the
+  signature's transaction: `APPROVED`, `approvedAt`), publishing `MandateApprovedEvent`: `MandateApprovedMailet` e-mails
+  its agent that the customer signed, with the contract's validity and a link to `{partnerCentralUrl}/mandates/{id}`
+  (`mail/mandate/approved.mjml`; nothing for a mandate without agent, or no longer APPROVED).
   `POST /{id}/close` (APPROVED only, else 409 `MANDATE_NOT_APPROVED`) → `CLOSED` with `finalPrice`, `closedAt` and
   `age`: whole days from `approvedAt` to closing, the time a mandate takes to close. `POST /{id}/cancel` (any status but
   CLOSED / CANCELLED: 409 `MANDATE_ALREADY_CLOSED`) → `CANCELLED` with `cancellationCode` (default `OTHER`),
@@ -270,14 +274,14 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `ConflictException`, `ForbiddenException`, `UnauthorizedException`, `InternalErrorException`) and a global
   `ControllerErrorHandler`.
 
-**Asynchronous e-mails** (welcome, OTP, KYC status, mandate offered, mandate assigned, contract to sign): the service publishes an event
+**Asynchronous e-mails** (welcome, OTP, KYC status, mandate offered, mandate assigned, mandate approved, contract to sign): the service publishes an event
 from its transaction (`AgentCreatedEvent`, `OtpCreatedEvent`, `KycCaseCompletedEvent`, `AssignmentCreatedEvent`,
-`AssignmentAcceptedEvent`, `ContractSignatureRequestedEvent` in `<domain>/server/event/`), carrying ids plus the `tenantId` — never entities. Its
+`AssignmentAcceptedEvent`, `MandateApprovedEvent`, `ContractSignatureRequestedEvent` in `<domain>/server/event/`), carrying ids plus the `tenantId` — never entities. Its
 listener is `@Async @TransactionalEventListener(AFTER_COMMIT)`, so nothing is sent for a rolled-back transaction. The
 executor thread has no request, so the listener sets `TenantContext` and a `DefaultKVLogger` in `KVLoggerThreadLocal`
 (which the injected `KVLogger` falls back to), calls `logger.log()` in `finally` to flush it, and removes both
 (threads are reused). The work runs in a `@Transactional` service method (`AgentService.sendWelcomeEmail`,
-`OtpService.sendEmail`, `KycService.sendStatusEmail`, `AssignmentService.sendOfferEmail` / `sendAssignedEmail`,
+`OtpService.sendEmail`, `KycService.sendStatusEmail`, `AssignmentService.sendOfferEmail` / `sendAssignedEmail`, `MandateService.sendApprovedEmail`,
 `ContractService.sendSignatureRequestEmails`),
 entered *after* `TenantContext` is set since Hibernate resolves the tenant when the session opens. Failures are
 logged, never rethrown. Tests must wait for the mail (`smtp.waitForIncomingEmail`);

@@ -1,7 +1,6 @@
 package com.wutsi.ndopify.esignature.client
 
 import org.jsoup.Jsoup
-import org.jsoup.safety.Safelist
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.http.MediaType
