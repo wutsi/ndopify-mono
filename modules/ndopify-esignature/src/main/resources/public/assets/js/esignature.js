@@ -34,8 +34,23 @@
     function setBusy(button, busyLabel) {
         var live = $("[data-live]");
         if (live) live.textContent = busyLabel;
+        if (!button.hasAttribute("data-label")) button.setAttribute("data-label", button.textContent);
         button.textContent = busyLabel;
         button.setAttribute("aria-busy", "true");
+    }
+
+    // Back from the next page can restore this one from the browser's cache as it was left: buttons busy again
+    // for nothing. Give them their label back, then let each form re-run its own enabling.
+    var syncs = [];
+
+    function resetBusy() {
+        Array.prototype.forEach.call(document.querySelectorAll("[aria-busy]"), function (button) {
+            if (button.hasAttribute("data-label")) button.textContent = button.getAttribute("data-label");
+            button.removeAttribute("aria-busy");
+        });
+        var live = $("[data-live]");
+        if (live) live.textContent = "";
+        syncs.forEach(function (sync) { sync(); });
     }
 
     // A submit that is disabled or already under way does nothing
@@ -76,15 +91,18 @@
         guard(form, submit, MESSAGES.verifying);
 
         var resend = $("[data-resend]", form);
-        var resendForm = document.getElementById(resend.getAttribute("form"));
-        resendForm.addEventListener("submit", function (event) {
-            if (resend.getAttribute("aria-busy") === "true") {
-                event.preventDefault();
-                return;
-            }
-            setBusy(resend, MESSAGES.sending);
-        });
+        var resendForm = resend && document.getElementById(resend.getAttribute("form"));
+        if (resendForm) {
+            resendForm.addEventListener("submit", function (event) {
+                if (resend.getAttribute("aria-busy") === "true") {
+                    event.preventDefault();
+                    return;
+                }
+                setBusy(resend, MESSAGES.sending);
+            });
+        }
 
+        syncs.push(sync);
         sync();
         // Straight to the field: the keyboard and the code autofill open at once; the legend is still read on entering
         input.focus();
@@ -102,6 +120,7 @@
 
         consent.addEventListener("change", sync);
         guard(form, submit, MESSAGES.signing);
+        syncs.push(sync);
         sync();
     }
 
@@ -115,5 +134,9 @@
         bindCode();
         bindSign();
         focusConfirmation();
+    });
+
+    window.addEventListener("pageshow", function (event) {
+        if (event.persisted) resetBusy();
     });
 })();

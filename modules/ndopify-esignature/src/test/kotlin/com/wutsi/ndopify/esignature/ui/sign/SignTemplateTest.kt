@@ -282,4 +282,17 @@ class SignTemplateTest {
         assertNull(page.selectFirst("nav"))
         assertFalse(page.html().contains("wa.me"))
     }
+
+    @Test
+    fun `text is escaped and the contract is markup`() {
+        val page = render(
+            details.copy(senderName = "<script>alert(1)</script>", contentHtml = "<p class=\"x\">Contenu</p>"),
+            "error" to "<script>alert(2)</script>",
+        )
+
+        assertNull(page.selectFirst("script:not([src])"))
+        assertTrue(page.text().contains("<script>alert(1)</script>"))
+        assertTrue(page.text().contains("<script>alert(2)</script>"))
+        assertEquals("Contenu", page.selectFirst("article.contract p.x")?.text())
+    }
 }
