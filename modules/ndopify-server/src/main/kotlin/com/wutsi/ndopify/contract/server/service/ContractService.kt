@@ -82,8 +82,14 @@ class ContractService(
             if (request.contractPartyIds.isNotEmpty()) {
                 val sub = query!!.subquery(String::class.java)
                 val party = sub.from(ContractPartyEntity::class.java)
+                // With parties too (always for a non-admin, forced to its own party), on the same row: the
+                // contract party must be one of those parties', not just any party of the same contract
+                val conditions = mutableListOf(party.get<String>("id").`in`(request.contractPartyIds))
+                if (request.partyIds.isNotEmpty()) {
+                    conditions.add(party.get<Long>("partyId").`in`(request.partyIds))
+                }
                 sub.select(party.get<ContractEntity>("contract").get("id"))
-                    .where(party.get<String>("id").`in`(request.contractPartyIds))
+                    .where(*conditions.toTypedArray())
                 predicates.add(root.get<String>("id").`in`(sub))
             }
 

@@ -71,6 +71,19 @@ class SearchContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `contract party of a co-party of the same contract returns nothing`() {
+        admin = false // user 11 is party 100, a party of c-1, but cp-12 is party 101's
+
+        assertTrue(search("contract-party-id=cp-12").isEmpty())
+    }
+
+    @Test
+    fun `by contract party id and party id, on the same contract party`() {
+        assertEquals(listOf("c-1"), search("contract-party-id=cp-12&party-id=101").map { it.id })
+        assertTrue(search("contract-party-id=cp-12&party-id=100").isEmpty())
+    }
+
+    @Test
     fun `by party id - a party twice in a contract returns it once`() {
         assertEquals(listOf("c-1"), search("party-id=100").map { it.id })
     }
