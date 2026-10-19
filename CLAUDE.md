@@ -243,7 +243,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   document's `contentUrl` of a DRAFT or PENDING_SIGNATURE contract, locked like a signature (409 `CONTRACT_EXPIRED` /
   `CONTRACT_CANCELLED` / `CONTRACT_ALREADY_SIGNED` otherwise). `contentHash` (SHA-256 of the uploaded bytes, set by
   `MandateService`; the endpoint clears it) and each party's `signatureHash` (set by `sign`, see `ContractHasher`) are
-  stored only, never in a DTO. `request-signature` moves a DRAFT (or
+  stored only, never in a DTO. Each signature has a random `signatureSalt` (`ContractHasher.newSalt`, 16 bytes from
+  `SecureRandom`, stored only, never logged), the first input of its `signatureHash`: the hash is printed in the
+  signed PDF, and the salt keeps it from being brute-forced back to the signer's IP / user agent / e-mail. `request-signature` moves a DRAFT (or
   PENDING_SIGNATURE) contract, locked like a signature, to `PENDING_SIGNATURE` with `signatureRequestedAt` = now and `signatureDeadline` = now +
   `ndopify.contract.signature.ttl-days` (7), both reset by each request (409 `CONTRACT_EXPIRED` / `CONTRACT_CANCELLED` / `CONTRACT_ALREADY_SIGNED`), and publishes `ContractSignatureRequestedEvent`:
   `ContractSignatureMailet` e-mails each unsigned party whose `signatureRequired` is set (`mail/contract/signature_request.mjml`) its deadline and a single button, never
@@ -253,6 +255,19 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `CONTRACT_PARTY_SIGNATURE_NOT_REQUIRED` / `CONTRACT_PARTY_ALREADY_SIGNED`; the last signature of the parties whose
   `signatureRequired` is set (default `true`; at least one per contract, else 400) makes it `SIGNED`, valid from then (`validFrom`) for its
   `durationMonths` (`validUntil`, months added in the tenant's `timeZone`).
+  **Signed PDF.** The last signature's `ContractSignedEvent` is also handled by `ContractEventListener.onSigned`
+  (async, after commit): `SignedContractService.generate` downloads the content (`StorageService.pathOf`, inverse of
+  `publicUrl`), checks it against `contentHash` (if set), and `SignedContractRenderer` renders its `<body>` (head
+  dropped) plus one signature block per party that signed (QR code of `{eSignaturePortalUrl}/verify/{contractId}/{signatureHash}`,
+  legal name, date and time by `TenantFormatter`, hash) to PDF: Jsoup → XHTML → Flying Saucer **9.x** (10.x needs
+  Java 21), DejaVu fonts embedded (`resources/contract/fonts/`; the built-in fonts can't print no-break spaces nor
+  Ŋ / Ɛ), CSS 2.1 only. Stored next to the content as `{number}.pdf` and `signature-{n}.png` (never named after the
+  contract party: its id is the secret of the sign link); `ContractService.setSignedContent` then saves
+  `signedContentUrl` (in `Contract` / `ContractSummary`) and `signedContentHash` (SHA-256 of the PDF, stored only)
+  under the lock, first one wins. Nothing is locked during the download / render / upload. No PDF (logged) without
+  content in the storage, with a content hash mismatch, a signature without hash or salt, or no
+  `eSignaturePortalUrl`. `POST /v1/contracts/{id}/signed-content` (`@OpsEndpoint`, admin) generates it again. The
+  verify page isn't built yet.
   **Access** (`ContractAccessService`, checked by `ContractEndpoints`, without lock since a contract's parties never
   change): every endpoint needs a JWT (401 `AUTH_UNAUTHORIZED`). Get and search are for an admin or one of the
   contract's parties (JWT user → membership → party), else 403 `CONTRACT_ACCESS_DENIED` (after the 404); a non-admin's
@@ -284,7 +299,8 @@ executor thread has no request, so the listener sets `TenantContext` and a `Defa
 (which the injected `KVLogger` falls back to), calls `logger.log()` in `finally` to flush it, and removes both
 (threads are reused). The work runs in a `@Transactional` service method (`AgentService.sendWelcomeEmail`,
 `OtpService.sendEmail`, `KycService.sendStatusEmail`, `AssignmentService.sendOfferEmail` / `sendAssignedEmail`, `MandateService.sendApprovedEmail`,
-`ContractService.sendSignatureRequestEmails`),
+`ContractService.sendSignatureRequestEmails`); the signed PDF (`ContractSignedEvent` → `SignedContractService.generate`,
+not an e-mail, not transactional) follows the same listener pattern. The service methods are
 entered *after* `TenantContext` is set since Hibernate resolves the tenant when the session opens. Failures are
 logged, never rethrown. Tests must wait for the mail (`smtp.waitForIncomingEmail`);
 `BaseEndpointIntegrationTest.tearDown` waits for the running async tasks, so a test's mail can't reach the next one.
