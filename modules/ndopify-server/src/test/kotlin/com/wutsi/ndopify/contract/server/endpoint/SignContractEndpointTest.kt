@@ -18,6 +18,7 @@ import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -63,7 +64,8 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertNotNull(party.signedAt)
         assertFalse(partyDao.findById("cp-12").get().signed)
 
-        // Recomputable from what's stored: the contract's content hash and the party's signature
+        // Recomputable from what's stored: the contract's content hash and the party's signature, salted
+        assertTrue(Regex("[0-9a-f]{32}").matches(party.signatureSalt!!))
         assertEquals(ContractHasher.signatureHash(contract, party), party.signatureHash)
         assertNull(partyDao.findById("cp-12").get().signatureHash)
         assertEquals(MandateStatus.PENDING_APPROVAL, mandateDao.findById(1L).get().status) // Not signed by all yet
@@ -105,6 +107,19 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertTrue(body.contains("Ray Sponsible"))
         assertTrue(body.contains("MNDT-2024-000002"))
         assertTrue(body.contains("https://partner.ndopify.com/mandates/2"))
+    }
+
+    @Test
+    fun `salts differ`() {
+        rest.postForEntity("/v1/contracts/c-1/sign", request("cp-11"), Any::class.java)
+        userId = 12L
+        rest.postForEntity("/v1/contracts/c-1/sign", request("cp-12"), Any::class.java)
+
+        // Same IP address and user agent: only the salt keeps the hashes apart
+        val first = partyDao.findById("cp-11").get()
+        val second = partyDao.findById("cp-12").get()
+        assertTrue(first.signed && second.signed)
+        assertNotEquals(first.signatureSalt, second.signatureSalt)
     }
 
     @Test

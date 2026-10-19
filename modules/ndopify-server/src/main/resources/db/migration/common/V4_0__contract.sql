@@ -41,6 +41,7 @@ CREATE TABLE T_CONTRACT_PARTY(
   ip_address              VARCHAR(45) DEFAULT NULL,
   user_agent              TEXT DEFAULT NULL,
   signed_at               DATETIME DEFAULT NULL,
+  signature_salt          CHAR(32) DEFAULT NULL,
   signature_hash          CHAR(64) DEFAULT NULL,
 
   CONSTRAINT FK_CONTRACT_PARTY_contract FOREIGN KEY(contract_id) REFERENCES T_CONTRACT(id),

@@ -262,6 +262,7 @@ class ContractService(
 
         val signed = party.copy(
             signed = true,
+            signatureSalt = ContractHasher.newSalt(),
             ipAddress = request.ipAddress,
             userAgent = request.userAgent,
             // To the second, as stored (DATETIME): the signature's hash must be recomputable from the stored row
