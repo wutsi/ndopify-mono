@@ -458,7 +458,8 @@ names and signatures; depends on `ndopify-dto` only, never on partner-central), 
   `public/assets/js/esignature.js` only enhances (digit sync + "Suivant", consent enabling, busy state against double
   submit, focus on the code field / confirmation heading); it keeps no state. `SignTemplateTest` renders the template
   with a real Thymeleaf engine.
-- `src/main/html/` is the prototype: never serve it, and never delete or modify anything in it.
+- `src/main/html/` (`sign.html` + assets) is the prototype: never serve it, and never delete or "clean up" anything in
+  it; the served page is `templates/sign.html`.
 
 ### Multi-Tenancy — current state
 

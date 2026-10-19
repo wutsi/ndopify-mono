@@ -61,7 +61,7 @@ class SignController(
     companion object {
         private val LOGGER = LoggerFactory.getLogger(SignController::class.java)
 
-        val OTP_TTL: Duration = Duration.ofMinutes(5)
+        private val OTP_TTL: Duration = Duration.ofMinutes(5)
 
         const val VIEW = "sign"
 
