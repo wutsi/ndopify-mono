@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.refdata.dto
 
+import com.fasterxml.jackson.annotation.JsonProperty
 import java.util.Date
 
 data class Tenant(
@@ -22,6 +23,10 @@ data class Tenant(
     val adminConsoleUrl: String? = null,
     val partnerCentralUrl: String? = null,
     val publicPortalUrl: String? = null,
-    val eSignaturePortalUrl: String? = null,
+
+    @get:JsonProperty("eSignaturePortalUrl")
+    @param:JsonProperty("eSignaturePortalUrl")
+    val eSignaturePortalUrl: String? = null, // @get: and @param: are needed to avoid this field to be serialized as "ESignaturePortalUrl"
+
     val createdAt: Date = Date(),
 )
