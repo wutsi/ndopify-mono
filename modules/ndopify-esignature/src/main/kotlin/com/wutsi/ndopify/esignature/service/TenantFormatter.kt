@@ -10,12 +10,13 @@ import java.util.Locale
 
 /**
  * Formats dates and amounts with the tenant's rules, as ndopify-server's `TenantFormatter` does in its e-mails: its
- * patterns (`dateFormat`, `numberFormat`, `monetaryFormat`), its first locale (month names, separators) and its
+ * patterns (`dateFormat`, `timeFormat`, `numberFormat`, `monetaryFormat`), its first locale (month names, separators) and its
  * `timeZone` (dates as its users read them). A blank pattern falls back to a default.
  */
 class TenantFormatter(private val tenant: Tenant) {
     companion object {
         const val DEFAULT_DATE_FORMAT = "dd/MM/yyyy"
+        const val DEFAULT_TIME_FORMAT = "HH:mm"
         const val DEFAULT_NUMBER_FORMAT = "#,##0"
     }
 
@@ -23,8 +24,9 @@ class TenantFormatter(private val tenant: Tenant) {
         ?: Locale.FRENCH
     private val zone = ZoneId.of(tenant.timeZone)
 
-    fun date(date: Date): String =
-        date.toInstant().atZone(zone).format(DateTimeFormatter.ofPattern(tenant.dateFormat.ifBlank { DEFAULT_DATE_FORMAT }, locale))
+    fun date(date: Date): String = format(date, tenant.dateFormat.ifBlank { DEFAULT_DATE_FORMAT })
+
+    fun time(date: Date): String = format(date, tenant.timeFormat.ifBlank { DEFAULT_TIME_FORMAT })
 
     /** The tenant's currency as its users read it ("FCFA"), for a field's unit or a message. */
     fun currency(): String = tenant.currencySymbol.ifBlank { tenant.currencyCode }
@@ -42,6 +44,9 @@ class TenantFormatter(private val tenant: Tenant) {
                 .filter { it.isNotEmpty() }
                 .joinToString("\u00A0")
         }
+
+    private fun format(date: Date, pattern: String): String =
+        date.toInstant().atZone(zone).format(DateTimeFormatter.ofPattern(pattern, locale))
 
     // French groups digits with a narrow no-break space (U+202F): a no-break space instead, which every font has. The
     // pattern's own spaces too, so an amount never wraps.

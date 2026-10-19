@@ -428,6 +428,21 @@ names and signatures; depends on `ndopify-dto` only, never on partner-central), 
   `Safelist.relaxed()` (the page renders it with `th:utext`), null on any failure (the page then can't sign), through
   the plain `contentRestClient` bean (`RestClient.create()`, not the Spring builder) so that the `Authorization` /
   `X-Tenant-ID` interceptors never reach a storage URL.
+- The sign page is `SignController` (`ui/sign/`), one page (`templates/sign.html`, view model `SignView` in `view`,
+  plus `contractPartyId`), all under `/sign/{contractPartyId}`, built like Partner Central's login. Signed out,
+  nothing about the contract is shown: the intro asks for the e-mail the link was sent to, `POST /otp` (trimmed,
+  lowercased; `resend=true` reuses the pending one) sends a code and records a `PendingSignature` (this link's
+  `contractPartyId`, e-mail, expiry) in the session, and `?step=code` only shows while it's there for **this** link;
+  `POST /verify` reads the e-mail from it (never the form) and authenticates with `ApplicationCode.E_SIGNATURE`.
+  A 404 `USER_NOT_FOUND` (OTP) or 409 `AUTH_ACCESS_DENIED` (auth) is "Aucun contrat n'a été envoyé à cette adresse".
+  Signed in (a `JwtAuthentication`), the contract is found by `search(contract-party-id)`, which ndopify-server
+  restricts to the caller's party: none is the `not-yours` blocked view, with no contract data. `SignViews.build` then
+  picks the step: done (signed, `?step=done`), blocked (`signed`, `not-required`, `cancelled`, `expired` incl. a
+  deadline already past, `unavailable`), else `sign`, the only one that fetches the content (`ContractContentClient`),
+  and signable (`canSign`) only with it. `POST /` needs `consent=yes`, signs as the URL's contract party with the first
+  `X-Forwarded-For` (else `remoteAddr`) and the `User-Agent`, and goes to `?step=done`, also on a 403 / 404 / 409
+  (a double tap's `CONTRACT_PARTY_ALREADY_SIGNED`: the done or blocked view says which). `POST /logout` ("Utiliser une
+  autre adresse") clears the cookie and the session.
 - `src/main/html/` is the prototype: never serve it, and never delete or modify anything in it.
 
 ### Multi-Tenancy — current state

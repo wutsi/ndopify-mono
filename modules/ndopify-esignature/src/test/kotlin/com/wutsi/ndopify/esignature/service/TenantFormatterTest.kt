@@ -27,6 +27,17 @@ class TenantFormatterTest {
     }
 
     @Test
+    fun `time in the tenant's format and time zone`() {
+        assertEquals("00:30", TenantFormatter(TENANT).time(date))
+        assertEquals("12:30 AM", TenantFormatter(TENANT.copy(timeFormat = "hh:mm a", locales = listOf("en"))).time(date))
+    }
+
+    @Test
+    fun `time without a format`() {
+        assertEquals("00:30", TenantFormatter(TENANT.copy(timeFormat = "")).time(date))
+    }
+
+    @Test
     fun `amount in the tenant's monetary format, never wrapping`() {
         assertEquals("1 500 000 FCFA", TenantFormatter(TENANT).money(1_500_000))
         assertEquals("1 500 000 FCFA", TenantFormatter(TENANT).money(1_500_000, "XAF"))
