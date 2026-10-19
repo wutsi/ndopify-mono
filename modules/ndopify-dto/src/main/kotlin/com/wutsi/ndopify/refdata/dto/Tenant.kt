@@ -25,7 +25,7 @@ data class Tenant(
     val publicPortalUrl: String? = null,
 
     @get:JsonProperty("eSignaturePortalUrl")
-    @param:JsonProperty("eSignaturePortalUrl")
+    @field:JsonProperty("eSignaturePortalUrl")
     val eSignaturePortalUrl: String? = null, // @get: and @param: are needed to avoid this field to be serialized as "ESignaturePortalUrl"
 
     val createdAt: Date = Date(),
