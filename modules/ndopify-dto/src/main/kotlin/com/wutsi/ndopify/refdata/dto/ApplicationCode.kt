@@ -4,4 +4,5 @@ object ApplicationCode {
     val PUBLIC_PORTAL = "public-portal"
     val ADMIN_CONSOLE = "admin-console"
     val PARTNER_CENTRAL = "partner-central"
+    val E_SIGNATURE = "e-signature"
 }

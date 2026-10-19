@@ -22,5 +22,6 @@ data class Tenant(
     val adminConsoleUrl: String? = null,
     val partnerCentralUrl: String? = null,
     val publicPortalUrl: String? = null,
+    val eSignaturePortalUrl: String? = null,
     val createdAt: Date = Date(),
 )
