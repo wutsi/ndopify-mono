@@ -31,6 +31,7 @@ object ErrorCode {
     val CONTRACT_ALREADY_SIGNED = "$PREFIX:contract:already-signed"
     val CONTRACT_EXPIRED = "$PREFIX:contract:expired"
     val CONTRACT_PARTY_NOT_FOUND = "$PREFIX:contract:party-not-found"
+    val CONTRACT_PARTY_MEMBERSHIP_CONFLICT = "$PREFIX:contract:party-membership-conflict"
     val CONTRACT_PARTY_ALREADY_SIGNED = "$PREFIX:contract:party-already-signed"
     val CONTRACT_PARTY_SIGNATURE_NOT_REQUIRED = "$PREFIX:contract:party-signature-not-required"
     val CONTRACT_VERSION_CONFLICT = "$PREFIX:contract:version-conflict"
