@@ -28,11 +28,6 @@
         </repository>
     </repositories>
 
-    <properties>
-        <jacoco.threshold.line>0.00</jacoco.threshold.line>
-        <jacoco.threshold.class>0.00</jacoco.threshold.class>
-    </properties>
-
     <dependencies>
         <dependency>
             <groupId>com.wutsi.ndopify</groupId>

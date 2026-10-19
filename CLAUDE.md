@@ -4,12 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-`ndopify-mono` is an early-stage monorepo. The group/package is `com.wutsi.ndopify`. Four modules currently exist:
+`ndopify-mono` is an early-stage monorepo. The group/package is `com.wutsi.ndopify`. Five modules currently exist:
 
 - `modules/ndopify-dto` — shared DTOs/contracts (no business logic)
 - `modules/ndopify-server` — the REST API backend (Spring Boot)
 - `modules/ndopify-partner-central` — agent-facing web app (Spring Boot + Thymeleaf, French UI), package
   `com.wutsi.ndopify.npc`. No database; talks to `ndopify-server` over REST.
+- `modules/ndopify-esignature` — signer-facing contract sign page (Spring Boot + Thymeleaf, French UI), package
+  `com.wutsi.ndopify.esignature`. No database; talks to `ndopify-server` over REST.
 - `modules/ndopify-website` — static marketing site (plain HTML/CSS/JS, French). **Not** a Maven module (not in the
   root `pom.xml` reactor); deployed to S3 by its own workflow.
 
@@ -43,8 +45,8 @@ mvn test -Dtest=ClassName#methodName
 ```
 
 `ndopify-server` endpoint tests use `TestRestTemplate` against a real MySQL database (Flyway-migrated), so a local
-MySQL instance must be running (see Environment Setup below). `ndopify-partner-central` tests are plain unit tests /
-standalone `MockMvc` and need neither MySQL nor a running server.
+MySQL instance must be running (see Environment Setup below). `ndopify-partner-central` and `ndopify-esignature` tests are
+plain unit tests / standalone `MockMvc` and need neither MySQL nor a running server.
 
 ### Code Quality
 
@@ -71,6 +73,9 @@ mvn spring-boot:run          # starts on port 8080, Swagger UI at /api.html
 
 cd modules/ndopify-partner-central
 mvn spring-boot:run          # starts on port 8081, calls ndopify-server at ndopify.server.api.base-url
+
+cd modules/ndopify-esignature
+mvn spring-boot:run          # starts on port 8083, calls ndopify-server like partner-central
 ```
 
 First-time local setup requires importing reference data (see `LocationEndpoints` / `ApplicationEndpoints`):
@@ -102,11 +107,12 @@ sandbox values and don't need to be set for local dev unless you're exercising r
 ```
 ndopify-dto  →  ndopify-server
 ndopify-dto  →  ndopify-partner-central  ──(REST, runtime)──▶  ndopify-server
+ndopify-dto  →  ndopify-esignature       ──(REST, runtime)──▶  ndopify-server
 ```
 
 DTOs live in `ndopify-dto` and are the request/response contracts shared by the server and its clients. `ndopify-dto`
-must never depend on `ndopify-server` or `ndopify-partner-central`, and `ndopify-partner-central` must not depend on
-`ndopify-server` at build time — only call it over HTTP.
+must never depend on `ndopify-server`, `ndopify-partner-central` or `ndopify-esignature`, and `ndopify-partner-central` /
+`ndopify-esignature` must not depend on `ndopify-server` at build time — only call it over HTTP.
 
 ### Domains in `ndopify-server`
 
@@ -573,7 +579,7 @@ Every module README (`modules/<module>/README.md`) has CI-managed badges as the 
 
 - `main` and `pull_request` GitHub Actions workflow-status badges (all modules; `ndopify-website` has no PR
   workflow yet, so its PR badge points at a missing workflow).
-- A JaCoCo coverage badge (`ndopify-server` and `ndopify-partner-central`), pointing at the auto-generated SVG in
+- A JaCoCo coverage badge (`ndopify-server`, `ndopify-partner-central` and `ndopify-esignature`), pointing at the auto-generated SVG in
   `.github/badges/<module>-jacoco.svg`.
 
 These badges must be preserved whenever a README is edited. Edit module READMEs with a targeted edit (not a
