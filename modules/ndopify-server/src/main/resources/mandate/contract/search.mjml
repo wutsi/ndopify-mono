@@ -63,7 +63,7 @@
 
                 <!-- The property -->
                 <mj-text font-weight="bold">
-                    Le bien
+                    <h4>Le bien</h4>
                 </mj-text>
                 <mj-text>
                     <ul>
@@ -100,7 +100,7 @@
 
                 <!-- Location -->
                 <mj-text font-weight="bold">
-                    La localisation
+                    <h4>La localisation</h4>
                 </mj-text>
                 <mj-text>
                     <ul>
@@ -118,7 +118,7 @@
                 <!-- Amenities: only the groups the mandate asks for -->
                 {{#has_amenities}}
                 <mj-text font-weight="bold">
-                    Les équipements souhaités
+                    <h4>Les équipements souhaités</h4>
                 </mj-text>
                 <mj-text>
                     <ul>
@@ -148,7 +148,7 @@
 
                 <!-- Rental terms -->
                 <mj-text font-weight="bold">
-                    Les conditions de location
+                    <h4>Les conditions de location</h4>
                 </mj-text>
                 <mj-text>
                     <ul>
@@ -186,7 +186,7 @@
                 <!-- Contact and comments -->
                 {{#has_contact}}
                 <mj-text font-weight="bold">
-                    Informations complémentaires
+                    <h4>Informations complémentaires</h4>
                 </mj-text>
                 <mj-text>
                     <ul>

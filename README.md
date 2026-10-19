@@ -1,6 +1,7 @@
 # ndopify-mono
 
-Maven monorepo for Ndopify — a multi-tenant backend for managing mobile-money agents, their KYC verification, and
+Maven monorepo for Ndopify — a multi-tenant rental platform built on mobile-money agents: agents and their KYC
+verification, customers' property-search mandates dispatched to those agents, contracts signed online, and
 mobile-money payment integrations across Africa.
 
 [![main](https://github.com/wutsi/ndopify-mono/actions/workflows/_main.yml/badge.svg)](https://github.com/wutsi/ndopify-mono/actions/workflows/_main.yml)
@@ -8,7 +9,7 @@ mobile-money payment integrations across Africa.
 
 ## Project Status
 
-Early-stage. Only four modules exist today — there is no SDK or tracking-server module (yet).
+Early-stage. Only five modules exist today — there is no SDK or tracking-server module (yet).
 
 ## Modules
 
@@ -16,7 +17,8 @@ Early-stage. Only four modules exist today — there is no SDK or tracking-serve
 |------------------------------------------------------------|------------------------------------------------------------------------------------------|
 | [ndopify-dto](modules/ndopify-dto)                         | Shared request/response DTOs and contracts — no business logic                           |
 | [ndopify-server](modules/ndopify-server)                   | REST API backend (Spring Boot)                                                           |
-| [ndopify-partner-central](modules/ndopify-partner-central) | Agent-facing web app (Spring Boot + Thymeleaf, French): sign-up wizard, e-mail OTP sign-in, KYC wizard |
+| [ndopify-partner-central](modules/ndopify-partner-central) | Agent-facing web app (Spring Boot + Thymeleaf, French): sign-up, e-mail OTP sign-in, KYC, mandate offers and follow-up, plus the public *Trouver un bien* wizard |
+| [ndopify-esignature](modules/ndopify-esignature)           | Signer-facing contract sign page (Spring Boot + Thymeleaf, French): e-mail OTP sign-in, read and sign a contract |
 | [ndopify-website](modules/ndopify-website)                 | Static marketing + lead-capture website (plain HTML/CSS/JS, French) — not a Maven module |
 
 ### Module Dependency
@@ -24,10 +26,11 @@ Early-stage. Only four modules exist today — there is no SDK or tracking-serve
 ```
 ndopify-dto  →  ndopify-server
 ndopify-dto  →  ndopify-partner-central  ──(REST, runtime)──▶  ndopify-server
+ndopify-dto  →  ndopify-esignature       ──(REST, runtime)──▶  ndopify-server
 ```
 
-`ndopify-partner-central` depends on `ndopify-dto` at build time and calls `ndopify-server` over HTTP at runtime
-(`ndopify.server.api.base-url`); it has no database of its own.
+`ndopify-partner-central` and `ndopify-esignature` depend on `ndopify-dto` at build time and call `ndopify-server`
+over HTTP at runtime (`ndopify.server.api.base-url`); neither has a database of its own, nor depends on the other.
 
 `ndopify-website` is standalone: it is not part of the Maven reactor and has no build-time dependency on the other
 modules.
@@ -35,7 +38,7 @@ modules.
 ## Technologies
 
 - **Language**: Kotlin, JDK 17
-- **Framework**: Spring Boot (Web, Data JPA, Security, Cache, Validation, Actuator), Thymeleaf (partner central)
+- **Framework**: Spring Boot (Web, Data JPA, Security, Cache, Validation, Actuator), Thymeleaf (partner central, e-signature)
 - **AI**: Spring AI (OpenAI-compatible client, Kimi by default) for identity-document data extraction
 - **Database**: MySQL, with Flyway for versioned schema migrations
 - **API docs**: SpringDoc OpenAPI / Swagger UI
@@ -48,21 +51,28 @@ modules.
 layering (`endpoint` → `service` → `dao` → `domain`, plus `mapper` for entity/DTO conversion):
 
 - **refdata** — shared reference data: `Tenant`, `Location` (imported from GeoNames), `Application`, `Role`.
-- **security** — `User` accounts, JWT issuance, and pluggable authentication (`PasswordAuthenticator`,
-  `GoogleOneTapAuthenticator`, `OtpAuthenticator` for e-mailed one-time codes).
+- **security** — global `User` accounts with a `Membership` of each tenant (party, roles per application), JWT
+  issuance, and pluggable authentication (`PasswordAuthenticator`, `GoogleOneTapAuthenticator`, `OtpAuthenticator`
+  for e-mailed one-time codes).
 - **party** — parties, identifications (with uploaded images), KYC cases/verifications, and payment methods. KYC
   cases are verified through pluggable `KycVerifier` strategies (identification, mobile-money, manual); data is
   extracted from identity-document images by an LLM (`IdentificationInfoExtractorAi`).
 - **agent** — mobile-money agents: create, update, get and search, plus a welcome e-mail on registration.
+- **customer** — people looking for a property.
+- **mandate** — a customer's search request, offered by `MandateDispatcher` to the best-scoring agent of its city,
+  then followed by that agent up to its contract's signature and its closing.
+- **contract** — contracts to be signed by their parties on ndopify-esignature; the last required signature makes
+  them `SIGNED`.
 - **error** — shared exception types and a global error handler.
 
 A non-domain **`platform`** package holds shared infrastructure: the mobile-money gateway integration
 (`platform.momo`, MTN only today), file storage (`platform.storage`, local or S3), mail (`platform.mail`),
-request logging (`platform.logger`) and tenant resolution (`platform.tenant`).
+request logging (`platform.logger`), tenant resolution (`platform.tenant`) and operational endpoints, off in prod
+(`platform.endpoint`).
 
 Tenancy is request/token-scoped via the `X-Tenant-ID` header and a `tenantId` JWT claim, and enforced by Hibernate's
-`@TenantId` on the `party` entities and `AgentEntity` — every query against them is filtered automatically.
-Reference data (`refdata`) and `security` entities are global.
+`@TenantId` on the tenant-scoped entities (party, agent, customer, mandate, contract, membership) — every query
+against them is filtered automatically. Reference data (`refdata`) and users / credentials are global.
 
 See [CLAUDE.md](CLAUDE.md) for detailed build/test commands and architecture notes for AI-assisted development.
 
@@ -94,6 +104,16 @@ cd modules/ndopify-partner-central
 mvn spring-boot:run
 ```
 
+Run the e-signature portal (starts on port 8083, also expects `ndopify-server` on `http://localhost:8080`):
+
+```bash
+cd modules/ndopify-esignature
+mvn spring-boot:run
+```
+
+Each web app resolves its tenant from the URL you browse to: the tenant's `partnerCentralUrl` /
+`eSignaturePortalUrl` must match it (e.g. `http://localhost:8081` / `http://localhost:8083`).
+
 To preview the website (no build step):
 
 ```bash
@@ -113,10 +133,11 @@ AI tooling for [Claude Code](https://claude.com/claude-code) lives in [`.claude/
 | [`/init-website-design`](.claude/commands/init-website-design.md)   | Generates `modules/ndopify-website/DESIGN.md` (colors, typography, spacing, components) from the canonical design doc. Run it before `/init-website`, which reads that file. |
 | [`/init-website`](.claude/commands/init-website.md)                 | Builds the French website in `modules/ndopify-website/src/main/html/` in three stages: journey planning (`neo-user-journey`), generation (`power-design`), critique and fixes (`impeccable`). |
 | [`/init-partner-central`](.claude/commands/init-partner-central.md) | Builds the French partner central pages in `modules/ndopify-partner-central/src/main/html/` using the same three-stage pipeline (`neo-user-journey` → `power-design` → `impeccable`). |
+| [`/init-esignature`](.claude/commands/init-esignature.md)           | Builds the French e-signature prototype in `modules/ndopify-esignature/src/main/html/` with the same pipeline. |
 
 ### Vendored third-party skills
 
-Used by `/init-website` and `/init-partner-central`; not specific to Ndopify.
+Used by `/init-website`, `/init-partner-central` and `/init-esignature`; not specific to Ndopify.
 
 | Skill                                                          | Purpose                                                                                           |
 |----------------------------------------------------------------|---------------------------------------------------------------------------------------------------|
