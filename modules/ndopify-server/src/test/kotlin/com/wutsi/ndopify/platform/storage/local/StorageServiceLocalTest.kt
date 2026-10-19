@@ -10,6 +10,7 @@ import java.io.File
 import java.io.FileNotFoundException
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class StorageServiceLocalTest {
@@ -84,5 +85,18 @@ class StorageServiceLocalTest {
         val url = service.generatePresignedUrl("foo/bar.txt", 3600)
 
         assertEquals("http://localhost:8080/storage/foo/bar.txt", url.toString())
+    }
+
+    @Test
+    fun `pathOf is the inverse of publicUrl`() {
+        val url = service.publicUrl("mandates/1/contracts/c1/a.html").toString()
+
+        assertEquals("mandates/1/contracts/c1/a.html", service.pathOf(url))
+    }
+
+    @Test
+    fun `pathOf a URL of another storage`() {
+        assertNull(service.pathOf("https://evil.com/storage/mandates/1/a.html"))
+        assertNull(service.pathOf("http://localhost:$port$servletPath/"))
     }
 }

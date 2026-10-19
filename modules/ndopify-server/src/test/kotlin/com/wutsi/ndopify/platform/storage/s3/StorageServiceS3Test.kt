@@ -21,6 +21,7 @@ import java.io.ByteArrayOutputStream
 import java.net.URL
 import java.time.Clock
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class StorageServiceS3Test {
     private val s3 = mock<AmazonS3>()
@@ -91,5 +92,19 @@ class StorageServiceS3Test {
         assertEquals("test", request.value.bucketName)
         assertEquals("document/test.txt", request.value.key)
         assertEquals(now + 5 * 1000L, request.value.expiration.time)
+    }
+
+    @Test
+    fun `pathOf is the inverse of publicUrl`() {
+        doReturn(URL("https://test.s3.amazonaws.com/")).whenever(s3).getUrl("test", "")
+
+        assertEquals("mandates/1/c1/a b.html", storage.pathOf("https://test.s3.amazonaws.com/mandates/1/c1/a%20b.html"))
+    }
+
+    @Test
+    fun `pathOf a URL of another bucket`() {
+        doReturn(URL("https://test.s3.amazonaws.com/")).whenever(s3).getUrl("test", "")
+
+        assertNull(storage.pathOf("https://other.s3.amazonaws.com/mandates/1/c1/a.html"))
     }
 }
