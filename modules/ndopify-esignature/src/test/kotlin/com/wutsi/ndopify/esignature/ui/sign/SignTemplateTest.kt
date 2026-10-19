@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.esignature.ui.sign
 
+import com.wutsi.ndopify.refdata.dto.Tenant
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.springframework.stereotype.Controller
@@ -285,6 +286,26 @@ class SignTemplateTest {
         assertNotNull(page.selectFirst("header img[alt=Ndopify]"))
         assertNull(page.selectFirst("nav"))
         assertFalse(page.html().contains("wa.me"))
+    }
+
+    @Test
+    fun `header shows the tenant logo`() {
+        val tenant = Tenant(name = "Ndopify Cameroun", logoUrl = "https://cdn.ndopify.cm/logo.png")
+
+        val page = render(SignView(step = SignView.STEP_INTRO), "tenant" to tenant)
+
+        val logo = page.selectFirst("header img")
+        assertEquals("https://cdn.ndopify.cm/logo.png", logo?.attr("src"))
+        assertEquals("Ndopify Cameroun", logo?.attr("alt"))
+    }
+
+    @Test
+    fun `header falls back to the ndopify logo`() {
+        val page = render(SignView(step = SignView.STEP_INTRO), "tenant" to Tenant(name = "Ndopify Cameroun"))
+
+        val logo = page.selectFirst("header img")
+        assertEquals("/assets/images/logo.png", logo?.attr("src"))
+        assertEquals("Ndopify Cameroun", logo?.attr("alt"))
     }
 
     @Test

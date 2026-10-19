@@ -24,8 +24,8 @@
                 {{/tenant_logo_url}}
 
                 <!-- Title -->
-                <mj-text align="center" font-size="20px" font-weight="bold">
-                    MANDAT DE RECHERCHE IMMOBILIÈRE (LOCATION)
+                <mj-text>
+                    <h2 style="text-align:center">MANDAT DE RECHERCHE IMMOBILIÈRE (LOCATION)</h2>
                 </mj-text>
                 <mj-text align="center">
                     Référence du contrat : <strong>{{contract_number}}</strong>
@@ -38,7 +38,7 @@
 
                 <!-- Parties -->
                 <mj-text font-weight="bold">
-                    ENTRE LES SOUSSIGNÉS :
+                    <h3>ENTRE LES SOUSSIGNÉS :</h3>
                 </mj-text>
                 <mj-text>
                     <ul>
@@ -54,7 +54,7 @@
 
                 <!-- 1. Object -->
                 <mj-text font-weight="bold">
-                    1. OBJET DU MANDAT
+                    <h3>1. OBJET DU MANDAT</h3>
                 </mj-text>
                 <mj-text>
                     Le Mandant confie au Mandataire la mission de rechercher un bien immobilier à louer répondant aux
@@ -206,7 +206,7 @@
 
                 <!-- 2. Duration -->
                 <mj-text font-weight="bold">
-                    2. DURÉE
+                    <h3>2. DURÉE</h3>
                 </mj-text>
                 <mj-text>
                     Le présent mandat est conclu pour une durée de {{duration_months}} mois, à compter de la date de sa
@@ -215,7 +215,7 @@
 
                 <!-- 3. Fees -->
                 <mj-text font-weight="bold">
-                    3. HONORAIRES ET FRAIS
+                    <h3>3. HONORAIRES ET FRAIS</h3>
                 </mj-text>
                 <mj-text>
                     <ul>
@@ -234,7 +234,7 @@
 
                 <!-- 4. Commitments -->
                 <mj-text font-weight="bold">
-                    4. ENGAGEMENTS DES PARTIES
+                    <h3>4. ENGAGEMENTS DES PARTIES</h3>
                 </mj-text>
                 <mj-text>
                     <ul>

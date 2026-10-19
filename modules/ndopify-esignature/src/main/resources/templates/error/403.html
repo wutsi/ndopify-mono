@@ -21,8 +21,11 @@
     <a class="skip-link" href="#main">Aller au contenu</a>
     <header class="site-header">
         <div class="site-header__inner">
+            <!--/* The tenant's logo, falling back to Ndopify's when it has none (or isn't known). */-->
             <span class="site-header__brand">
-                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
+                <img alt="Ndopify, accueil" height="40"
+                     th:alt="${#strings.isEmpty(tenant?.name)} ? 'Ndopify, accueil' : ${tenant.name}"
+                     th:src="${#strings.isEmpty(tenant?.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}">
             </span>
         </div>
     </header>

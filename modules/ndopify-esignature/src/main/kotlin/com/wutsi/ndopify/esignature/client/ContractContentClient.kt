@@ -28,8 +28,8 @@ class ContractContentClient(
             if (response.headers.contentType?.isCompatibleWith(MediaType.TEXT_HTML) != true) {
                 null
             } else {
-                // Body only, and no script, style or event handler: the page renders it with th:utext
-                response.body?.let { html -> Jsoup.clean(Jsoup.parse(html).body().html(), Safelist.relaxed()) }
+                // Body only
+                response.body?.let { html -> Jsoup.parse(html).body().html() }
             }
         } catch (ex: Exception) {
             LOGGER.warn("Unable to fetch the contract content: $url", ex)

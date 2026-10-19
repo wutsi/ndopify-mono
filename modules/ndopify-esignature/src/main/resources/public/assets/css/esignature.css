@@ -97,7 +97,8 @@
     --space-6: calc(var(--spacing-xl) * 3);
 
     /* Type: DESIGN.md sizes are the desktop maxima; clamp() scales headings down on phones. */
-    --step-h1: clamp(var(--h2-size), 2rem + 1.5vw, var(--h1-size));
+    /* Sized so that a page title of ~26 characters ("Signature de votre contrat") fits on one line in the column, from 320px up */
+    --step-h1: clamp(1.25rem, 7.5vw - 0.25rem, 2.5rem);
     --step-h2: clamp(var(--h3-size), 1.2rem + 1.5vw, var(--h2-size));
     --step-h3: var(--h3-size);
     --step-h4: var(--h4-size);

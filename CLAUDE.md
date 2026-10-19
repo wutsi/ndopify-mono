@@ -426,7 +426,9 @@ no database that talks to `ndopify-server` over REST. Its infrastructure is copi
 names and signatures; depends on `ndopify-dto` only, never on partner-central), minus the agent / login parts.
 
 - Tenant is resolved by `service/TenantContext` matching the request URL against each active tenant's
-  `eSignaturePortalUrl` (not `partnerCentralUrl`).
+  `eSignaturePortalUrl` (not `partnerCentralUrl`). `ui/layout/TenantAdvice` puts it in every page's model as `tenant`
+  (error pages included), for the header's logo (`logoUrl`, falling back to Ndopify's `logo.png`); null when it can't
+  be resolved, so that an error page still renders.
 - The JWT is kept in the HTTP-only `__nes_access_token` cookie (`AccessTokenService`, `Path=/`, 1 hour like the token's
   TTL) and decoded by `JwtAuthenticationFilter`, like Partner Central's.
 - `SecurityConfiguration` permits only `/assets/**`, `/sign/**` and `/error`; every other path is denied (nothing else

@@ -1,11 +1,13 @@
 package com.wutsi.ndopify.esignature.ui.layout
 
+import com.wutsi.ndopify.refdata.dto.Tenant
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.springframework.stereotype.Controller
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
+import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.thymeleaf.spring6.SpringTemplateEngine
@@ -20,12 +22,19 @@ class ErrorTemplateTest {
     /** Stands for Spring Boot's error controller, which renders `error/{status}`. */
     @Controller
     class ErrorPageController {
+        /** The `tenant` that [TenantAdvice] puts in the model. */
+        var tenant: Tenant? = null
+
         @GetMapping("/error-page/{status}")
-        fun page(@PathVariable status: Int): String = "error/$status"
+        fun page(@PathVariable status: Int, model: Model): String {
+            model.addAttribute("tenant", tenant)
+            return "error/$status"
+        }
     }
 
+    private val controller = ErrorPageController()
     private val mvc: MockMvc = MockMvcBuilders
-        .standaloneSetup(ErrorPageController())
+        .standaloneSetup(controller)
         .setViewResolvers(
             ThymeleafViewResolver().apply {
                 templateEngine = SpringTemplateEngine().apply {
@@ -63,5 +72,25 @@ class ErrorTemplateTest {
         assertNull(page.selectFirst("a")?.takeIf { it.attr("href") == "/" })
         assertNull(page.selectFirst(".cta-row"))
         assertNull(page.selectFirst(".user-menu"))
+    }
+
+    @Test
+    fun `tenant logo`() {
+        controller.tenant = Tenant(name = "Ndopify Cameroun", logoUrl = "https://cdn.ndopify.cm/logo.png")
+
+        listOf(403, 404).forEach { status ->
+            val logo = render(status).selectFirst("header img")
+            assertEquals("https://cdn.ndopify.cm/logo.png", logo?.attr("src"))
+            assertEquals("Ndopify Cameroun", logo?.attr("alt"))
+        }
+    }
+
+    @Test
+    fun `ndopify logo without tenant`() {
+        listOf(403, 404).forEach { status ->
+            val logo = render(status).selectFirst("header img")
+            assertEquals("/assets/images/logo.png", logo?.attr("src"))
+            assertEquals("Ndopify, accueil", logo?.attr("alt"))
+        }
     }
 }
