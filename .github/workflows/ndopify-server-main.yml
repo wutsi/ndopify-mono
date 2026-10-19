@@ -110,7 +110,7 @@ jobs:
                     heroku config:set --app ${HEROKU_APP} SMTP_HOST=${{secrets.SMTP_HOST}}
                     heroku config:set --app ${HEROKU_APP} SMTP_PORT=${{secrets.SMTP_PORT}}
                     heroku config:set --app ${HEROKU_APP} MTN_COLLECTION_SUBSCRIPTION_KEY=${{secrets.MTN_COLLECTION_SUBSCRIPTION_KEY}}
-                    java -jar heroku-jvm-application-deployer.jar --app=${HEROKU_APP} ndopify-server.jar
+                    java -jar heroku-jvm-application-deployer-4.0.14.jar --app=${HEROKU_APP} ndopify-server.jar
 
 #            -   name: Heroku-Deploy-Test
 #                uses: akhileshns/heroku-deploy@v3.15.15 # This is the action
