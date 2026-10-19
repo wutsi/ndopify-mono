@@ -89,6 +89,10 @@ class MandateController(
         const val CHANGED = "changed"
         const val FAILED = "error"
 
+        // Request-approval: the customer's e-mail is another member's (ndopify-server's
+        // CONTRACT_PARTY_MEMBERSHIP_CONFLICT), it couldn't sign. Not a stale page: the agent must correct it.
+        const val EMAIL_CONFLICT = "email-conflict"
+
         // 403: no longer the agent's (ndopify-server's MANDATE_ACCESS_DENIED), retrying won't help
         private val CHANGED_STATUSES = setOf(403, 404, 409)
 
@@ -314,6 +318,9 @@ class MandateController(
                 }
 
             CHANGED -> "Ce mandat a changé entre-temps : vérifiez son état avant de recommencer."
+            EMAIL_CONFLICT ->
+                "L'adresse e-mail ${view.words.of} est déjà utilisée par un autre compte : " +
+                    "corrigez-la avant de demander sa signature."
             FAILED -> "Action impossible pour le moment. Réessayez dans quelques instants."
             else -> return
         }
@@ -322,7 +329,7 @@ class MandateController(
             "outcomeStyle",
             when (outcome) {
                 CHANGED -> "warning"
-                FAILED -> "error"
+                FAILED, EMAIL_CONFLICT -> "error"
                 else -> "success"
             },
         )
@@ -356,7 +363,11 @@ class MandateController(
                 outcome
             } catch (ex: HttpClientErrorException) {
                 LOGGER.warn("Mandate $id not $outcome: ${ex.statusCode}")
-                if (ex.statusCode.value() in CHANGED_STATUSES) CHANGED else FAILED
+                when {
+                    errorCode(ex) == ErrorCode.CONTRACT_PARTY_MEMBERSHIP_CONFLICT -> EMAIL_CONFLICT
+                    ex.statusCode.value() in CHANGED_STATUSES -> CHANGED
+                    else -> FAILED
+                }
             } catch (ex: RestClientException) {
                 LOGGER.error("Mandate $id not $outcome", ex)
                 FAILED

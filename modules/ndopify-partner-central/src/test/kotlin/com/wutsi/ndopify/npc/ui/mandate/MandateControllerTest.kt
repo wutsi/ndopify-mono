@@ -476,6 +476,27 @@ class MandateControllerTest {
     }
 
     @Test
+    fun `request approval - customer e-mail of another member`() {
+        doThrow(conflict(ErrorCode.CONTRACT_PARTY_MEMBERSHIP_CONFLICT)).whenever(mandateClient).requestApproval(201)
+
+        val result = mvc.perform(post("/mandates/201/request-approval")).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        assertEquals("email-conflict", outcome(result))
+    }
+
+    @Test
+    fun `outcome - email conflict`() {
+        val result = mvc.perform(get("/mandates/201").flashAttr("outcome", "email-conflict")).andReturn()
+
+        assertEquals(
+            "L'adresse e-mail du client est déjà utilisée par un autre compte : corrigez-la avant de demander sa signature.",
+            model(result)["outcomeText"],
+        )
+        assertEquals("error", model(result)["outcomeStyle"])
+    }
+
+    @Test
     fun `outcome - unknown ignored`() {
         val result = mvc.perform(get("/mandates/201").flashAttr("outcome", "xyz")).andReturn()
 
