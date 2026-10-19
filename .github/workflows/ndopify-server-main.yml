@@ -96,6 +96,7 @@ jobs:
             -   name: Prepare Heroku Files
                 env:
                     HEROKU_APP: ndopify-server-test
+                    HEROKU_API_KEY: ${{secrets.HEROKU_API_KEY}}
                 run: |
                     curl https://cli-assets.heroku.com/install.sh | sh
                     curl -L -O https://github.com/heroku/heroku-jvm-application-deployer/releases/download/v4.0.14/heroku-jvm-application-deployer-4.0.14.jar
