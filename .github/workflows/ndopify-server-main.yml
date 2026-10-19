@@ -95,6 +95,7 @@ jobs:
 
             -   name: Prepare Heroku Files
                 run: |
+                    curl https://cli-assets.heroku.com/install.sh | sh
                     cp modules/ndopify-server/system.properties .
                     cp modules/ndopify-server/Procfile .
 
