@@ -65,6 +65,11 @@ jobs:
                       git push
                     fi
 
+            -   name: Get artifact
+                uses: actions/download-artifact@v7
+                with:
+                    name: appbundle
+
             -   name: Prepare Heroku Files
                 env:
                     HEROKU_APP: ndopify-partner-central-test
