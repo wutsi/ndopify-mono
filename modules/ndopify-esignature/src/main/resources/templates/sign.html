@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Signature de votre contrat — Ndopify</title>
+    <meta name="description" content="Signez électroniquement votre contrat Ndopify, en toute sécurité, après vérification par un code envoyé à votre adresse e-mail.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="referrer" content="no-referrer">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" th:href="@{/assets/css/esignature.css}">
+    <script th:src="@{/assets/js/esignature.js}" defer></script>
+</head>
+<!--/*
+    The e-signature page, /sign/{contractPartyId}: the link of the "Contrat à signer" e-mail (SignController, view model
+    SignView in `view`). Only the current step is rendered, each action is its own form: every step works without
+    JS, which only enhances (esignature.js). Prototype: src/main/html/sign.html (never served).
+*/-->
+<body data-page="sign" th:with="inWizard=${view.step == 'intro' or view.step == 'code' or view.step == 'sign'},
+                                  stepNumber=${view.step == 'intro' ? 1 : (view.step == 'code' ? 2 : 3)}">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <span class="site-header__brand">
+                <img th:src="@{/assets/images/logo.png}" alt="Ndopify" width="84" height="40">
+            </span>
+        </div>
+    </header>
+
+    <main id="main" class="page">
+        <p class="visually-hidden" aria-live="polite" data-live></p>
+        <div class="column" th:classappend="${view.step == 'sign'} ? 'column--wide'" data-column>
+            <div class="page-intro" th:classappend="${view.step == 'done'} ? 'page-intro--center'" data-page-intro>
+                <h1>Signature de votre contrat</h1>
+            </div>
+
+            <!-- A link that can no longer be signed: the intro's place, with no code to ask for. -->
+            <section class="stack" th:if="${view.step == 'blocked'}" aria-labelledby="blocked-title" data-blocked>
+                <h2 id="blocked-title" class="visually-hidden">Contrat indisponible</h2>
+
+                <div class="alert alert--info" th:if="${view.blocked == 'signed'}">
+                    <th:block th:replace="~{::info-icon}"></th:block>
+                    <div>
+                        <p class="alert__title">Vous avez déjà signé ce contrat.</p>
+                        <p>Il n'y a rien d'autre à faire.</p>
+                    </div>
+                </div>
+
+                <div class="alert alert--warning" th:if="${view.blocked == 'expired'}">
+                    <th:block th:replace="~{::warning-icon}"></th:block>
+                    <div>
+                        <p class="alert__title">Le délai de signature de ce contrat est dépassé.</p>
+                        <p>Ce lien ne permet plus de le signer.
+                            <th:block th:replace="~{::contact(${view.senderName})}"></th:block></p>
+                    </div>
+                </div>
+
+                <div class="alert alert--warning" th:if="${view.blocked == 'cancelled'}">
+                    <th:block th:replace="~{::warning-icon}"></th:block>
+                    <div>
+                        <p class="alert__title">Ce contrat a été annulé.</p>
+                        <p>Il n'y a plus rien à signer. Si vous pensez qu'il s'agit d'une erreur&nbsp;:
+                            <th:block th:replace="~{::contact(${view.senderName})}"></th:block></p>
+                    </div>
+                </div>
+
+                <div class="alert alert--info" th:if="${view.blocked == 'not-required'}">
+                    <th:block th:replace="~{::info-icon}"></th:block>
+                    <div>
+                        <p class="alert__title">Votre signature n'est pas requise pour ce contrat.</p>
+                        <p>Il n'y a rien à faire de votre côté.</p>
+                    </div>
+                </div>
+
+                <div class="alert alert--warning" th:if="${view.blocked == 'unavailable'}">
+                    <th:block th:replace="~{::warning-icon}"></th:block>
+                    <div>
+                        <p class="alert__title">Ce contrat n'est pas disponible.</p>
+                        <p>Contactez la personne qui vous l'a envoyé.</p>
+                    </div>
+                </div>
+
+                <th:block th:if="${view.blocked == 'not-yours'}">
+                    <div class="alert alert--warning">
+                        <th:block th:replace="~{::warning-icon}"></th:block>
+                        <div>
+                            <p class="alert__title">Ce contrat n'a pas été envoyé à cette adresse.</p>
+                            <p>Identifiez-vous avec l'adresse e-mail à laquelle vous avez reçu ce lien.</p>
+                        </div>
+                    </div>
+                    <form method="post" th:action="@{/sign/{id}/logout(id=${contractPartyId})}">
+                        <div class="cta-row">
+                            <button class="btn btn--primary" type="submit">Utiliser une autre adresse</button>
+                        </div>
+                    </form>
+                </th:block>
+            </section>
+
+            <div class="progress" th:if="${inWizard}" data-progress-block>
+                <p class="progress__label" id="progress-label" th:text="|Étape ${stepNumber} sur 3|" data-progress-label>Étape 1 sur 3</p>
+                <div class="progress__track" role="progressbar" aria-labelledby="progress-label"
+                     aria-valuemin="1" aria-valuemax="3" th:attr="aria-valuenow=${stepNumber},aria-valuetext=|Étape ${stepNumber} sur 3|"
+                     data-progress>
+                    <div class="progress__bar" th:style="|transform: scaleX(${#numbers.formatDecimal(stepNumber / 3.0, 1, 4, 'POINT')})|" data-progress-bar></div>
+                </div>
+            </div>
+
+            <h2 class="visually-hidden" th:if="${inWizard}" data-steps-title>Étapes de la signature</h2>
+
+            <!-- Étape 1 : Introduction. Nothing about the contract: the signer isn't identified yet. -->
+            <form th:if="${view.step == 'intro'}" class="form" method="post" novalidate data-step="intro"
+                  th:action="@{/sign/{id}/otp(id=${contractPartyId})}" data-intro-form>
+                <fieldset class="step" tabindex="-1">
+                    <legend class="visually-hidden">Étape 1 sur 3 : Vérification de votre identité</legend>
+                    <h3 aria-hidden="true">Vérification de votre identité</h3>
+                    <p>Un contrat attend votre signature. Pour votre sécurité, seule la personne à qui il est destiné
+                        peut le signer. Saisissez l'adresse e-mail à laquelle vous avez reçu ce lien&nbsp;: nous allons
+                        vous y envoyer un code de vérification à 6&nbsp;chiffres.</p>
+
+                    <div class="field">
+                        <label class="field__label" for="email">Adresse e-mail</label>
+                        <input class="input" id="email" name="email" type="email" autocomplete="email" required
+                               aria-describedby="intro-hint" th:value="${email}"
+                               th:aria-invalid="${error != null} ? 'true' : null">
+                    </div>
+
+                    <div class="hint" id="intro-hint">
+                        <th:block th:replace="~{::info-icon}"></th:block>
+                        <div>
+                            <p>Vous lirez le contrat en entier avant de le signer. Aucun paiement n'est demandé sur
+                                cette page.</p>
+                            <p>Ce message ne vous était pas destiné&nbsp;? Ne continuez pas, et prévenez la personne
+                                qui vous l'a envoyé. Chaque nouvelle demande de code remplace la précédente.</p>
+                        </div>
+                    </div>
+
+                    <p role="alert" class="field__error" th:if="${error != null}"><th:block th:replace="~{::error-icon}"></th:block><span th:text="${error}"></span></p>
+
+                    <div class="cta-row">
+                        <button class="btn btn--primary" type="submit" aria-describedby="intro-hint" data-submit>S'authentifier</button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <!-- Étape 2 : Authentification -->
+            <form th:if="${view.step == 'code'}" class="form" method="post" novalidate data-step="code"
+                  th:action="@{/sign/{id}/verify(id=${contractPartyId})}" data-code-form>
+                <fieldset class="step" tabindex="-1">
+                    <legend class="visually-hidden">Étape 2 sur 3 : Saisissez votre code</legend>
+                    <h3 aria-hidden="true">Saisissez votre code</h3>
+                    <p>Nous avons envoyé un code à 6&nbsp;chiffres à <strong th:text="${view.maskedEmail}">r•••@gmail.com</strong>.</p>
+
+                    <div class="field">
+                        <label class="field__label" for="code">Code de vérification</label>
+                        <input class="input input--code" id="code" name="code" type="text" inputmode="numeric"
+                               autocomplete="one-time-code" pattern="[0-9]*" required th:value="${code}"
+                               th:attr="aria-describedby=${error != null} ? 'code-hint code-error' : 'code-hint'"
+                               th:aria-invalid="${error != null} ? 'true' : null">
+                        <div class="hint" id="code-hint">
+                            <th:block th:replace="~{::info-icon}"></th:block>
+                            <div>
+                                <p>Le code est valable 5&nbsp;minutes, jusqu'à <span th:text="${view.codeExpiresAt}" data-expiry>14&nbsp;h&nbsp;35</span>.</p>
+                                <p>Vous ne le voyez pas&nbsp;? Regardez dans vos courriers indésirables ou dans l'onglet
+                                    «&nbsp;Promotions&nbsp;».</p>
+                            </div>
+                        </div>
+                        <p class="field__error" id="code-error" role="alert" th:if="${error != null}"><th:block th:replace="~{::error-icon}"></th:block><span th:text="${error}" data-error-text></span></p>
+                    </div>
+
+                    <div class="stack">
+                        <!-- The button belongs to the resend form below (a form can't be nested in this one) -->
+                        <p>Code expiré ou jamais reçu&nbsp;?
+                            <button class="link-button" type="submit" form="resend-form" data-resend>Recevoir un nouveau code</button></p>
+                        <p role="status" data-status th:text="${resent == true} ? 'Un nouveau code a été envoyé. Il remplace le précédent.'"></p>
+                    </div>
+
+                    <div class="form__actions">
+                        <a class="btn btn--outline" th:href="@{/sign/{id}(id=${contractPartyId})}" data-previous>Précédent</a>
+                        <button class="btn btn--primary" type="submit" aria-describedby="code-hint" data-submit>Suivant</button>
+                    </div>
+                </fieldset>
+            </form>
+            <form th:if="${view.step == 'code'}" id="resend-form" method="post" th:action="@{/sign/{id}/otp(id=${contractPartyId})}">
+                <input type="hidden" name="resend" value="true">
+            </form>
+
+            <!-- Étape 3 : Signature -->
+            <form th:if="${view.step == 'sign'}" class="form" method="post" novalidate data-step="sign" data-sign-form
+                  th:action="@{/sign/{id}(id=${contractPartyId})}">
+                <fieldset class="step" tabindex="-1">
+                    <legend class="visually-hidden">Étape 3 sur 3 : Lisez et signez le contrat</legend>
+                    <h3 aria-hidden="true">Lisez et signez le contrat</h3>
+                    <p>Un contrat attend votre signature&nbsp;:</p>
+
+                    <dl class="review review--compact">
+                        <div class="review__item">
+                            <dt class="review__term">Contrat</dt>
+                            <dd class="review__value" th:text="${view.contractType}">Mandat de recherche</dd>
+                        </div>
+                        <div class="review__item" th:if="${view.senderName != null}">
+                            <dt class="review__term">Envoyé par</dt>
+                            <dd class="review__value" th:text="${view.senderName}">Marie Ngo Biyong</dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Référence</dt>
+                            <dd class="review__value nowrap" th:text="${view.contractNumber}">MNDT-2026-000042</dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">À signer avant le</dt>
+                            <dd class="review__value" th:text="${view.deadline}">25 octobre 2026</dd>
+                        </div>
+                    </dl>
+
+                    <p th:if="${view.canSign}">Lisez le contrat jusqu'au bout&nbsp;: le bouton de signature se trouve à la fin.</p>
+
+                    <!-- Cleaned by ContractContentClient (Jsoup Safelist.relaxed()): never put unsanitized HTML here -->
+                    <article class="contract" aria-label="Contrat" th:if="${view.contentHtml != null}"
+                             th:utext="${view.contentHtml}"></article>
+                    <p role="alert" class="field__error" th:unless="${view.canSign}">
+                        <th:block th:replace="~{::error-icon}"></th:block><span>Le contrat ne peut pas être affiché pour le moment. Réessayez dans quelques instants.</span>
+                    </p>
+
+                    <th:block th:if="${view.canSign}">
+                        <div class="hint">
+                            <th:block th:replace="~{::info-icon}"></th:block>
+                            <p>Signer ne déclenche aucun paiement&nbsp;: les frais prévus au contrat ne sont dus que dans les
+                                conditions qu'il décrit.</p>
+                        </div>
+
+                        <dl class="review signature" aria-label="Votre signature">
+                            <div class="review__item">
+                                <dt class="review__term">Signataire</dt>
+                                <dd class="review__value" th:text="${view.signerName}">Ray Sponsible</dd>
+                            </div>
+                            <div class="review__item">
+                                <dt class="review__term">Date de signature</dt>
+                                <dd class="review__value" th:text="${view.signDate}">18 octobre 2026</dd>
+                            </div>
+                        </dl>
+
+                        <div class="field">
+                            <label class="choice">
+                                <input type="checkbox" id="consent" name="consent" value="yes" required
+                                       aria-describedby="consent-hint" th:aria-invalid="${error != null} ? 'true' : null">
+                                <span>J'ai lu le contrat et j'accepte de le signer électroniquement.</span>
+                            </label>
+                            <div class="hint" id="consent-hint">
+                                <th:block th:replace="~{::info-icon}"></th:block>
+                                <div>
+                                    <p>Cochez la case pour pouvoir signer. Nous enregistrons la date, l'heure et l'appareil
+                                        utilisés pour votre signature.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <p role="alert" class="field__error" th:if="${error != null}"><th:block th:replace="~{::error-icon}"></th:block><span th:text="${error}"></span></p>
+
+                        <div class="cta-row">
+                            <!-- Enabled without JS; esignature.js disables it until the box is ticked -->
+                            <button class="btn btn--primary" type="submit" aria-describedby="consent-hint" data-submit>
+                                Signer électroniquement</button>
+                        </div>
+                    </th:block>
+                </fieldset>
+            </form>
+
+            <!-- Étape 5 (the doc's numbering) : Confirmation -->
+            <section class="confirmation stack" th:if="${view.step == 'done'}" aria-labelledby="done-title" data-step="done">
+                <span class="confirmation__mark" aria-hidden="true">
+                    <svg class="confirmation__icon" viewBox="0 0 48 48" focusable="false"><circle cx="24" cy="24" r="21" fill="none" stroke="currentColor" stroke-width="2.5"/><path d="m15 24.5 6 6 12-13" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                <h2 id="done-title" tabindex="-1">Votre signature est enregistrée</h2>
+                <p>Merci, <span th:text="${view.signerFirstName}">Ray</span>. Vous avez signé le contrat
+                    <strong class="nowrap" th:text="${view.contractNumber}">MNDT-2026-000042</strong>
+                    <th:block th:if="${view.signedAt != null}">le <span th:text="${view.signedAt}">18 octobre 2026 à 14 h 32</span></th:block>.</p>
+                <p>Vous n'avez rien d'autre à faire.</p>
+            </section>
+        </div>
+    </main>
+
+    <!--/* Fragments: defined here, never rendered in place */-->
+    <th:block th:remove="all">
+    <th:block th:fragment="info-icon"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg></th:block>
+    <th:block th:fragment="warning-icon"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg></th:block>
+    <th:block th:fragment="error-icon"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></th:block>
+    <th:block th:fragment="contact(senderName)"><th:block th:if="${senderName != null}" th:text="|Contactez votre agent, ${senderName}.|"></th:block><th:block th:if="${senderName == null}">Contactez la personne qui vous l'a envoyé.</th:block></th:block>
+    </th:block>
+</body>
+</html>

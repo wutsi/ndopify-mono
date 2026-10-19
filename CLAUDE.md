@@ -443,6 +443,15 @@ names and signatures; depends on `ndopify-dto` only, never on partner-central), 
   `X-Forwarded-For` (else `remoteAddr`) and the `User-Agent`, and goes to `?step=done`, also on a 403 / 404 / 409
   (a double tap's `CONTRACT_PARTY_ALREADY_SIGNED`: the done or blocked view says which). `POST /logout` ("Utiliser une
   autre adresse") clears the cookie and the session.
+- `templates/sign.html` renders only the current step (`th:if` on `view.step`), "Étape N sur 3" included, one
+  `<form method="post">` per action (intro `/otp`, code `/verify`, resend `/otp` with `resend=true`, sign `/`, logout
+  `/logout`; the resend button sits in the code form with `form="resend-form"`, since forms can't nest), so every step
+  posts without JS. `view` dates are already formatted by `TenantFormatter`: print them as-is. Nothing of the contract
+  in the intro / code steps; the contract's HTML goes through `th:utext` from `view.contentHtml` only (sanitized by
+  `ContractContentClient`). No WhatsApp number, no signed-copy promise, no "Précédent" on the intro.
+  `public/assets/js/esignature.js` only enhances (digit sync + "Suivant", consent enabling, busy state against double
+  submit, focus on the code field / confirmation heading); it keeps no state. `SignTemplateTest` renders the template
+  with a real Thymeleaf engine.
 - `src/main/html/` is the prototype: never serve it, and never delete or modify anything in it.
 
 ### Multi-Tenancy — current state
