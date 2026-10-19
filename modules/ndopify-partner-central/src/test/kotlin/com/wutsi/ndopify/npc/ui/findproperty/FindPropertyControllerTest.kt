@@ -24,7 +24,6 @@ import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
 import com.wutsi.ndopify.refdata.dto.SearchLocationResponse
-import com.wutsi.ndopify.refdata.dto.Tenant
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus

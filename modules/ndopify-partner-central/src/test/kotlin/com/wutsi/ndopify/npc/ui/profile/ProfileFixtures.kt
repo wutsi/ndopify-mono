@@ -15,7 +15,6 @@ import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
 import com.wutsi.ndopify.refdata.dto.SearchLocationResponse
-import com.wutsi.ndopify.refdata.dto.Tenant
 
 /** The signed-in agent and the locations of the profile tests. */
 object ProfileFixtures {
