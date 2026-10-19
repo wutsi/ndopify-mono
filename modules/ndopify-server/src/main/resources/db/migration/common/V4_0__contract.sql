@@ -7,6 +7,7 @@ CREATE TABLE T_CONTRACT(
   type                    VARCHAR(30) DEFAULT NULL,
   status                  VARCHAR(30) DEFAULT NULL,
   content_url             TEXT DEFAULT NULL,
+  content_hash            CHAR(64) DEFAULT NULL,
 
   duration_months         INT NOT NULL,
   signature_deadline      DATETIME DEFAULT NULL,
@@ -39,6 +40,7 @@ CREATE TABLE T_CONTRACT_PARTY(
   ip_address              VARCHAR(45) DEFAULT NULL,
   user_agent              TEXT DEFAULT NULL,
   signed_at               DATETIME DEFAULT NULL,
+  signature_hash          CHAR(64) DEFAULT NULL,
 
   CONSTRAINT FK_CONTRACT_PARTY_contract FOREIGN KEY(contract_id) REFERENCES T_CONTRACT(id),
   CONSTRAINT FK_CONTRACT_PARTY_party FOREIGN KEY(party_id) REFERENCES T_PARTY(id),

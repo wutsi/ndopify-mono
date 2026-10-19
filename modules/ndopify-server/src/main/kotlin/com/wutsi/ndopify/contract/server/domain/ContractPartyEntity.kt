@@ -34,4 +34,5 @@ data class ContractPartyEntity(
     val ipAddress: String? = null,
     val userAgent: String? = null,
     val signedAt: Date? = null,
+    val signatureHash: String? = null, // SHA-256 of the signature (ContractHasher), set by the signature
 )

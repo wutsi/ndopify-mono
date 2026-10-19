@@ -21,6 +21,12 @@ import kotlin.test.assertTrue
 class GetContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     override val roles = arrayOf(RoleCode.ADMIN)
 
+    companion object {
+        // Set in GetContractEndpoint.sql
+        private const val CONTENT_HASH = "1111111111111111111111111111111111111111111111111111111111111111"
+        private const val SIGNATURE_HASH = "2222222222222222222222222222222222222222222222222222222222222222"
+    }
+
     @Test
     fun get() {
         val response = rest.getForEntity("/v1/contracts/c-1", GetContractResponse::class.java)
@@ -55,6 +61,19 @@ class GetContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(ContractPartyRole.GUARANTOR, parties[1].role)
         assertFalse(parties[1].signed)
         assertNull(parties[1].signedAt)
+    }
+
+    @Test
+    fun `hashes are never returned`() {
+        val response = rest.getForEntity("/v1/contracts/c-1", String::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+
+        val body = response.body!!
+        assertFalse(body.contains("contentHash"))
+        assertFalse(body.contains("signatureHash"))
+        assertFalse(body.contains(CONTENT_HASH))
+        assertFalse(body.contains(SIGNATURE_HASH))
     }
 
     @Test
