@@ -3,6 +3,7 @@ package com.wutsi.ndopify.contract.server.endpoint
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.contract.dto.ContractStatus
 import com.wutsi.ndopify.contract.dto.SetContractRequest
+import com.wutsi.ndopify.contract.server.dao.ContractPartyRepository
 import com.wutsi.ndopify.contract.server.dao.ContractRepository
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
@@ -21,6 +22,9 @@ class SetContractContentEndpointTest : AuthorizationAwareEndpointIntegrationTest
     @Autowired
     private lateinit var dao: ContractRepository
 
+    @Autowired
+    private lateinit var partyDao: ContractPartyRepository
+
     private val request = SetContractRequest(url = " https://cdn.ndopify.com/contracts/new.pdf ")
 
     @Test
@@ -32,6 +36,7 @@ class SetContractContentEndpointTest : AuthorizationAwareEndpointIntegrationTest
         val contract = dao.findById("c-1").get()
         assertEquals("https://cdn.ndopify.com/contracts/new.pdf", contract.contentUrl)
         assertEquals(ContractStatus.DRAFT, contract.status)
+        assertNull(contract.contentHash) // A URL only: the previous content's hash is cleared
     }
 
     @Test
@@ -43,6 +48,13 @@ class SetContractContentEndpointTest : AuthorizationAwareEndpointIntegrationTest
         val contract = dao.findById("c-2").get()
         assertEquals("https://cdn.ndopify.com/contracts/new.pdf", contract.contentUrl)
         assertEquals(ContractStatus.PENDING_SIGNATURE, contract.status)
+        assertNull(contract.contentHash)
+
+        // An earlier signature keeps its hash, of the content it signed
+        assertEquals(
+            "3333333333333333333333333333333333333333333333333333333333333333",
+            partyDao.findById("cp-21").get().signatureHash,
+        )
     }
 
     @Test

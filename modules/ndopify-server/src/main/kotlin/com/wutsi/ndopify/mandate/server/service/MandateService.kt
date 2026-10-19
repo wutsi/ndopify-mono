@@ -8,6 +8,7 @@ import com.wutsi.ndopify.contract.dto.CreateContractParty
 import com.wutsi.ndopify.contract.dto.CreateContractRequest
 import com.wutsi.ndopify.contract.dto.SetContractRequest
 import com.wutsi.ndopify.contract.server.domain.ContractEntity
+import com.wutsi.ndopify.contract.server.service.ContractHasher
 import com.wutsi.ndopify.contract.server.service.ContractService
 import com.wutsi.ndopify.customer.dto.CreateCustomerRequest
 import com.wutsi.ndopify.customer.server.service.CustomerService
@@ -254,8 +255,10 @@ class MandateService(
             val mandate = findById(id)
             mandate.version to contractGenerator.generate(mandate, contractService.findById(contractId))
         }
-        val url = storeContent(id, contractId, html)
-        return tx.execute { completeApproval(id, contractId, version, url) }
+        val content = html.toByteArray(Charsets.UTF_8)
+        val url = storeContent(id, contractId, content)
+        val contentHash = ContractHasher.contentHash(content)
+        return tx.execute { completeApproval(id, contractId, version, url, contentHash) }
     }
 
     /**
@@ -422,15 +425,21 @@ class MandateService(
     }
 
     /** Returns the content's URL. A new path each time: a content being signed is never overwritten. */
-    private fun storeContent(id: Long, contractId: String, html: String): String {
+    private fun storeContent(id: Long, contractId: String, content: ByteArray): String {
         val path = "mandates/$id/contracts/$contractId/${UUID.randomUUID()}.html"
         val storage = storageProvider.get()
-        storage.store(path, ByteArrayInputStream(html.toByteArray()), "text/html")
+        storage.store(path, ByteArrayInputStream(content), "text/html")
         return storage.publicUrl(path).toString()
     }
 
-    /** [version] is the mandate's the content was generated from. */
-    private fun completeApproval(id: Long, contractId: String, version: Long?, url: String): MandateEntity {
+    /** [version] is the mandate's the content was generated from, [contentHash] the hash of the stored content. */
+    private fun completeApproval(
+        id: Long,
+        contractId: String,
+        version: Long?,
+        url: String,
+        contentHash: String,
+    ): MandateEntity {
         val mandate = findByIdForUpdate(id)
         ensureCanBeApproved(mandate)
         if (mandate.version != version) {
@@ -438,7 +447,7 @@ class MandateService(
             throw ConflictException(Error(ErrorCode.MANDATE_VERSION_CONFLICT))
         }
 
-        contractService.setContent(contractId, SetContractRequest(url = url))
+        contractService.setContent(contractId, SetContractRequest(url = url), contentHash)
         val updated = dao.save(
             mandate.copy(
                 status = MandateStatus.PENDING_APPROVAL,

@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.mandate.server.endpoint
 
 import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.anyOrNull
 import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doNothing
@@ -32,6 +33,7 @@ import com.wutsi.ndopify.mandate.server.service.MandateContractGenerator
 import com.wutsi.ndopify.platform.storage.StorageService
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.refdata.dto.RoleCode
+import org.apache.commons.codec.digest.DigestUtils
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.http.HttpStatusCode
@@ -57,7 +59,10 @@ class RequestMandateApprovalEndpointTest : AuthorizationAwareEndpointIntegration
     override val roles = arrayOf(RoleCode.ADMIN)
 
     companion object {
-        private const val HTML = "<html>Mandat de recherche</html>"
+        private const val HTML = "<html>Mandat de recherche à Yaoundé</html>"
+
+        // Of the stored bytes: UTF-8
+        private val CONTENT_HASH = DigestUtils.sha256Hex(HTML.toByteArray(Charsets.UTF_8))
     }
 
     @Autowired
@@ -147,6 +152,7 @@ class RequestMandateApprovalEndpointTest : AuthorizationAwareEndpointIntegration
         verify(contractService).setContent(
             "c-1",
             SetContractRequest(url = "https://cdn.ndopify.com/$path"),
+            CONTENT_HASH,
         )
 
         verify(contractService).requestSignature("c-1")
@@ -250,6 +256,7 @@ class RequestMandateApprovalEndpointTest : AuthorizationAwareEndpointIntegration
         verify(contractService).setContent(
             "c-4",
             SetContractRequest(url = "https://cdn.ndopify.com/$path"),
+            CONTENT_HASH,
         )
         verify(contractService).requestSignature("c-4")
     }
@@ -290,7 +297,7 @@ class RequestMandateApprovalEndpointTest : AuthorizationAwareEndpointIntegration
         val mandate = dao.findById(1L).get()
         assertEquals(MandateStatus.ASSIGNED, mandate.status)
         assertEquals("c-1", mandate.contractId)
-        verify(contractService, never()).setContent(any<String>(), any())
+        verify(contractService, never()).setContent(any<String>(), any(), anyOrNull())
         verify(contractService, never()).requestSignature(any())
 
         // Storage back: the same contract, no new number taken

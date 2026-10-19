@@ -168,13 +168,15 @@ class ContractService(
 
     /**
      * Sets the URL of the contract's document, while it can still be signed: DRAFT or PENDING_SIGNATURE. Locked like a
-     * signature, so that the last party can't sign it while its document changes.
+     * signature, so that the last party can't sign it while its document changes. [contentHash] is the caller's, of
+     * the bytes it stored (ContractHasher.contentHash): null when unknown (ex: POST /v1/contracts/{id}/content), which
+     * clears the previous content's.
      */
     @Transactional
-    fun setContent(id: String, request: SetContractRequest): ContractEntity {
+    fun setContent(id: String, request: SetContractRequest, contentHash: String? = null): ContractEntity {
         val contract = findByIdForUpdate(id)
         ensureNotClosed(contract)
-        return dao.save(contract.copy(contentUrl = request.url.trim()))
+        return dao.save(contract.copy(contentUrl = request.url.trim(), contentHash = contentHash))
     }
 
     /**
