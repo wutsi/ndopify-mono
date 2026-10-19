@@ -256,14 +256,14 @@ class ContractService(
             throw ConflictException(error = Error(code = ErrorCode.CONTRACT_PARTY_ALREADY_SIGNED))
         }
 
-        partyDao.save(
-            party.copy(
-                signed = true,
-                ipAddress = request.ipAddress,
-                userAgent = request.userAgent,
-                signedAt = now,
-            )
+        val signed = party.copy(
+            signed = true,
+            ipAddress = request.ipAddress,
+            userAgent = request.userAgent,
+            // To the second, as stored (DATETIME): the signature's hash must be recomputable from the stored row
+            signedAt = Date(now.time / 1000 * 1000),
         )
+        partyDao.save(signed.copy(signatureHash = ContractHasher.signatureHash(contract, signed)))
 
         val allSigned = parties
             .filter { other -> other.signatureRequired }

@@ -5,6 +5,7 @@ import com.wutsi.ndopify.contract.dto.ContractStatus
 import com.wutsi.ndopify.contract.dto.SignContractRequest
 import com.wutsi.ndopify.contract.server.dao.ContractPartyRepository
 import com.wutsi.ndopify.contract.server.dao.ContractRepository
+import com.wutsi.ndopify.contract.server.service.ContractHasher
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.mandate.dto.MandateStatus
@@ -24,6 +25,10 @@ import kotlin.test.assertTrue
 /** Signed by the party itself: user 11 is party 100, user 12 party 101. */
 @Sql(value = ["/db/test/clean.sql", "/db/test/contract/SignContractEndpoint.sql"])
 class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
+    companion object {
+        private const val SIGNATURE_HASH = "3333333333333333333333333333333333333333333333333333333333333333" // cp-21's
+    }
+
     @Autowired
     private lateinit var dao: ContractRepository
 
@@ -57,6 +62,10 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals("Mozilla/5.0 (iPhone)", party.userAgent)
         assertNotNull(party.signedAt)
         assertFalse(partyDao.findById("cp-12").get().signed)
+
+        // Recomputable from what's stored: the contract's content hash and the party's signature
+        assertEquals(ContractHasher.signatureHash(contract, party), party.signatureHash)
+        assertNull(partyDao.findById("cp-12").get().signatureHash)
         assertEquals(MandateStatus.PENDING_APPROVAL, mandateDao.findById(1L).get().status) // Not signed by all yet
     }
 
@@ -72,6 +81,11 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(ContractStatus.SIGNED, contract.status)
         assertNotNull(contract.signedAt)
         assertTrue(partyDao.findByContract(contract).all { party -> party.signed })
+
+        // Signed without content hash (null): hashed all the same. The earlier signature's hash is left as it was
+        val party = partyDao.findById("cp-22").get()
+        assertEquals(ContractHasher.signatureHash(contract, party), party.signatureHash)
+        assertEquals(SIGNATURE_HASH, partyDao.findById("cp-21").get().signatureHash)
 
         // Valid from the last signature, for its 6 months (in the tenant's time zone)
         assertEquals(contract.signedAt?.time, contract.validFrom?.time)
@@ -132,6 +146,8 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Test
     fun `party already signed`() {
         assertConflict("c-2", "cp-21", ErrorCode.CONTRACT_PARTY_ALREADY_SIGNED)
+
+        assertEquals(SIGNATURE_HASH, partyDao.findById("cp-21").get().signatureHash)
     }
 
     @Test
