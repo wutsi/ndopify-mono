@@ -292,6 +292,19 @@ class ContractService(
     }
 
     /**
+     * Sets the signed PDF of a SIGNED contract: its [url] and [hash] (SHA-256 of its bytes). Locked like a signature.
+     * The first one wins: a contract that already has one, or is no longer SIGNED, is returned unchanged.
+     */
+    @Transactional
+    fun setSignedContent(id: String, url: String, hash: String): ContractEntity {
+        val contract = findByIdForUpdate(id)
+        if (contract.status != ContractStatus.SIGNED || contract.signedContentUrl != null) {
+            return contract
+        }
+        return dao.save(contract.copy(signedContentUrl = url, signedContentHash = hash))
+    }
+
+    /**
      * Expires the contracts not signed by all their parties before their deadline, and the signed ones past their end
      * date. Each one in its own transaction, so one failing contract doesn't roll back the others. Returns how many
      * expired.
