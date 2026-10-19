@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.esignature.client
 
 import org.jsoup.Jsoup
+import org.jsoup.safety.Safelist
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.http.MediaType
@@ -18,6 +19,12 @@ class ContractContentClient(
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(ContractContentClient::class.java)
+
+        // relaxed() plus the presentational attributes of the MJML-generated contract, needed for its layout
+        private val SAFELIST =
+            Safelist
+                .relaxed()
+                .addAttributes(":all", "style", "class", "align", "valign")
     }
 
     /** The contract's document (HTML), cleaned to be shown in the page. Null when it can't be: the page then can't sign. */
@@ -27,8 +34,8 @@ class ContractContentClient(
             if (response.headers.contentType?.isCompatibleWith(MediaType.TEXT_HTML) != true) {
                 null
             } else {
-                // Body only
-                response.body?.let { html -> Jsoup.parse(html).body().html() }
+                // Body only, and no script or event handler: the page renders it with th:utext
+                response.body?.let { html -> Jsoup.clean(Jsoup.parse(html).body().html(), SAFELIST) }
             }
         } catch (ex: Exception) {
             LOGGER.warn("Unable to fetch the contract content: $url", ex)

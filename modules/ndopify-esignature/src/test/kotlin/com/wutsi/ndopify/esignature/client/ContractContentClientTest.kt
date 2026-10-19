@@ -68,6 +68,24 @@ class ContractContentClientTest {
     }
 
     @Test
+    fun `layout attributes are kept`() {
+        server.expect(requestTo(url))
+            .andRespond(
+                withSuccess(
+                    """<body><div class="mj-column" style="font-size:13px"><h2 style="text-align:center">Title</h2><td align="left" valign="top">x</td></div></body>""",
+                    MediaType.TEXT_HTML,
+                ),
+            )
+
+        val html = client.fetch(url)
+
+        assertTrue(html != null)
+        assertTrue(html.contains("class=\"mj-column\""))
+        assertTrue(html.contains("style=\"text-align:center\""))
+        assertTrue(html.contains("style=\"font-size:13px\""))
+    }
+
+    @Test
     fun `null on 404`() {
         server.expect(requestTo(url)).andRespond(withStatus(HttpStatus.NOT_FOUND))
 
