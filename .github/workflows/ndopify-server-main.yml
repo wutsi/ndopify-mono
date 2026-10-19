@@ -96,10 +96,12 @@ jobs:
             -   name: Prepare Heroku Files
                 run: |
                     curl https://cli-assets.heroku.com/install.sh | sh
+                    heroku plugins:install java
                     cp modules/ndopify-server/system.properties .
                     cp modules/ndopify-server/Procfile .
 
-            -   uses: akhileshns/heroku-deploy@v3.15.15 # This is the action
+            -   name: Heroku-Deploy-Test
+                uses: akhileshns/heroku-deploy@v3.15.15 # This is the action
                 with:
                     heroku_api_key: ${{secrets.HEROKU_API_KEY}}
                     heroku_app_name: "ndopify-server-test"
