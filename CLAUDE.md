@@ -241,8 +241,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   PENDING_SIGNATURE) contract, locked like a signature, to `PENDING_SIGNATURE` with `signatureDeadline` = now + `ndopify.contract.signature.ttl-days`
   (7), reset by each request (409 `CONTRACT_EXPIRED` / `CONTRACT_CANCELLED` / `CONTRACT_ALREADY_SIGNED`), and publishes `ContractSignatureRequestedEvent`:
   `ContractSignatureMailet` e-mails each unsigned party whose `signatureRequired` is set (`mail/contract/signature_request.mjml`) its deadline and a single button, never
-  the document's URL: the page it opens shows the contract and signs it, `{partnerCentralUrl}/contracts/{id}/sign?party-id={contractPartyId}` (no button without a
-  `partnerCentralUrl`; that ndopify-partner-central page doesn't exist yet). Sign takes a *contract party* id (`SignContractRequest.partyId`), locks the
+  the document's URL: the page it opens shows the contract and signs it, `{eSignaturePortalUrl}/sign/{contractPartyId}` (no button without an
+  `eSignaturePortalUrl`), served by ndopify-esignature. Sign takes a *contract party* id (`SignContractRequest.partyId`), locks the
   contract (`findByIdForUpdate`), then 409 `CONTRACT_NOT_PENDING` / `CONTRACT_EXPIRED` (past `signatureDeadline`) /
   `CONTRACT_PARTY_SIGNATURE_NOT_REQUIRED` / `CONTRACT_PARTY_ALREADY_SIGNED`; the last signature of the parties whose
   `signatureRequired` is set (default `true`; at least one per contract, else 400) makes it `SIGNED`, valid from then (`validFrom`) for its
@@ -250,7 +250,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   **Access** (`ContractAccessService`, checked by `ContractEndpoints`, without lock since a contract's parties never
   change): every endpoint needs a JWT (401 `AUTH_UNAUTHORIZED`). Get and search are for an admin or one of the
   contract's parties (JWT user → membership → party), else 403 `CONTRACT_ACCESS_DENIED` (after the 404); a non-admin's
-  search is restricted to its own party (`party-id` forced; another party's is a 403). Create, content and
+  search is restricted to its own party (`party-id` forced; another party's is a 403). With both `party-id` and
+  `contract-party-id`, the contract party must be one of those parties' (same `T_CONTRACT_PARTY` row): a co-party of a
+  contract finds nothing with another party's contract-party id (the sign page's `not-yours`). Create, content and
   request-signature are admin-only (`MandateService` calls the service directly, unchecked). Sign is only for the
   party itself (the JWT's party must be the contract party's `partyId`): **no admin bypass, nobody signs on another's
   behalf** — never add one. `request-signature` gives each party asked to sign
@@ -396,7 +398,8 @@ Package `com.wutsi.ndopify.npc`: `ui/` (MVC controllers + Thymeleaf templates in
   itself is required (contract, customer, offer or names failing just leave their lines out), and a status outside
   `MandateRules.SHOWN` or a 404 is the locked view. Actions are post-redirect-get back to the page with an `outcome`
   flash attribute (`sent`, `resent`, `closed`, `cancelled`, `saved`, `changed` for a 404/409 or a mandate that moved
-  on, `error`), worded by the controller: `POST /mandates/{id}/request-approval|close|cancel`. The close / cancel
+  on, `email-conflict` for request-approval's 409 `CONTRACT_PARTY_MEMBERSHIP_CONFLICT`: the customer's e-mail is
+  another account's, `error`), worded by the controller: `POST /mandates/{id}/request-approval|close|cancel`. The close / cancel
   form opens without JS via `GET /mandates/{id}?end=close|cancel` (ignored when the button wouldn't show) and comes
   back with its errors. "Envoyé le" is derived (`MandateRules.requestedAt`): the contract's `signatureDeadline` less
   `ndopify.contract.signature.ttl-days` (partner-central's `application.yml`), which must match ndopify-server's
@@ -445,10 +448,15 @@ names and signatures; depends on `ndopify-dto` only, never on partner-central), 
   restricts to the caller's party: none is the `not-yours` blocked view, with no contract data. `SignViews.build` then
   picks the step: done (signed, `?step=done`), blocked (`signed`, `not-required`, `cancelled`, `expired` incl. a
   deadline already past, `unavailable`), else `sign`, the only one that fetches the content (`ContractContentClient`),
-  and signable (`canSign`) only with it. `POST /` needs `consent=yes`, signs as the URL's contract party with the first
+  and signable (`canSign`) only with it. `POST /` rebuilds the sign view (fetching the content again) and signs only
+  if it's still the `sign` step (else `?step=done`, without signing), `canSign`, and the form's hidden `contentUrl`
+  (`SignView.contentUrl`, the version shown; only compared, never used to find anything) is still the contract's: else
+  the sign step again, with the new content, and "Le contrat a été modifié depuis son affichage…". Then it needs
+  `consent=yes`, signs as the URL's contract party with the first
   `X-Forwarded-For` (else `remoteAddr`) and the `User-Agent`, and goes to `?step=done`, also on a 403 / 404 / 409
   (a double tap's `CONTRACT_PARTY_ALREADY_SIGNED`: the done or blocked view says which). `POST /logout` ("Utiliser une
-  autre adresse") clears the cookie and the session.
+  autre adresse") clears the cookie and the session. Its warn logs carry ndopify-server's status and error code only,
+  never the response body (which can name the e-mail).
 - `templates/sign.html` renders only the current step (`th:if` on `view.step`), "Étape N sur 3" included, one
   `<form method="post">` per action (intro `/otp`, code `/verify`, resend `/otp` with `resend=true`, sign `/`, logout
   `/logout`; the resend button sits in the code form with `form="resend-form"`, since forms can't nest), so every step
