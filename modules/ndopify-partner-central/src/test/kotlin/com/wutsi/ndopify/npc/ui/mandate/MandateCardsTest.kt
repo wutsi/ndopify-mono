@@ -44,6 +44,7 @@ class MandateCardsTest {
 
         val CONTRACT = Contract(
             id = "c-201",
+            signatureRequestedAt = Date.from(Instant.parse("2026-10-15T10:00:00Z")),
             signatureDeadline = Date.from(Instant.parse("2026-10-22T10:00:00Z")),
             validUntil = Date.from(Instant.parse("2027-03-28T10:00:00Z")),
         )

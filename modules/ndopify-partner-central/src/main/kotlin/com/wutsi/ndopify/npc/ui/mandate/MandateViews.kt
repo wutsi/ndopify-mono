@@ -47,7 +47,7 @@ object MandateViews {
 
         val status = mandate.status
         val ended = status in ENDED
-        val requestedAt = MandateRules.requestedAt(contract, ttlDays)
+        val requestedAt = MandateRules.requestedAt(contract)
         val deadline = contract?.signatureDeadline
         val current = if (ended) STEPS.size - 1 else STEPS.indexOf(status).coerceAtLeast(0)
         val dates = listOf(accepted?.modifiedAt, requestedAt, mandate.approvedAt, mandate.closedAt)

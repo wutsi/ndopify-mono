@@ -11,6 +11,7 @@ data class Contract(
     val parties: List<ContractParty> = emptyList(),
     val createdAt: Date = Date(),
     val durationMonths: Int = 0,
+    val signatureRequestedAt: Date? = null, // When the signature was last requested
     val signatureDeadline: Date? = null,
     val validFrom: Date? = null,
     val validUntil: Date? = null,

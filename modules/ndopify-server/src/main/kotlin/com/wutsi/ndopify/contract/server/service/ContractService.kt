@@ -191,10 +191,12 @@ class ContractService(
 
         ensureNotClosed(contract)
         signerService.grantAccess(partyDao.findByContract(contract)) // Before the save: a 409 leaves the contract as it was
+        val now = Date(clock.millis()) // Read here, after the caller's own changes (ex: the mandate's modifiedAt)
         val pending = dao.save(
             contract.copy(
                 status = ContractStatus.PENDING_SIGNATURE,
-                signatureDeadline = Date(clock.millis() + Duration.ofDays(signatureTtlDays).toMillis()),
+                signatureRequestedAt = now,
+                signatureDeadline = Date(now.time + Duration.ofDays(signatureTtlDays).toMillis()),
             )
         )
         eventPublisher.publishEvent(

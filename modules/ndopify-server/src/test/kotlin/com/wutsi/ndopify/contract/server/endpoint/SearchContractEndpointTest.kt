@@ -6,6 +6,8 @@ import com.wutsi.ndopify.contract.dto.ContractType
 import com.wutsi.ndopify.contract.dto.SearchContractResponse
 import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.test.context.jdbc.Sql
+import java.time.Instant
+import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -29,11 +31,13 @@ class SearchContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(ContractType.SEARCH, contract.type)
         assertEquals(ContractStatus.SIGNED, contract.status)
         assertEquals(12, contract.durationMonths)
+        assertEquals(Date.from(Instant.parse("2024-05-25T00:00:00Z")), contract.signatureRequestedAt)
         assertNotNull(contract.signatureDeadline)
         assertNotNull(contract.validFrom)
         assertNotNull(contract.validUntil)
         assertNotNull(contract.signedAt)
         assertNull(contracts[0].signatureDeadline)
+        assertNull(contracts[0].signatureRequestedAt)
     }
 
     @Test

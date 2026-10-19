@@ -10,6 +10,7 @@ CREATE TABLE T_CONTRACT(
   content_hash            CHAR(64) DEFAULT NULL,
 
   duration_months         INT NOT NULL,
+  signature_requested_at  DATETIME DEFAULT NULL,
   signature_deadline      DATETIME DEFAULT NULL,
   valid_from              DATETIME DEFAULT NULL,
   valid_until             DATETIME DEFAULT NULL,

@@ -16,8 +16,10 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import java.time.Duration
+import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -56,6 +58,7 @@ class RequestContractSignatureEndpointTest : AuthorizationAwareEndpointIntegrati
         val contract = dao.findById("c-1").get()
         assertEquals(ContractStatus.PENDING_SIGNATURE, contract.status)
         assertDeadlineIn7Days(contract.signatureDeadline!!.time)
+        assertDeadline7DaysAfterRequest(contract.signatureRequestedAt!!.time, contract.signatureDeadline!!.time)
 
         // Each party is asked to sign, asynchronously
         assertTrue(smtp.waitForIncomingEmail(5000, 2), "no email received")
@@ -92,6 +95,8 @@ class RequestContractSignatureEndpointTest : AuthorizationAwareEndpointIntegrati
         val contract = dao.findById("c-2").get()
         assertEquals(ContractStatus.PENDING_SIGNATURE, contract.status)
         assertDeadlineIn7Days(contract.signatureDeadline!!.time) // Was past
+        assertTrue(contract.signatureRequestedAt!!.after(Date.from(Instant.parse("2024-05-20T00:00:00Z")))) // Replaced
+        assertDeadline7DaysAfterRequest(contract.signatureRequestedAt!!.time, contract.signatureDeadline!!.time)
 
         // Only the party that hasn't signed yet is asked again
         assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received")
@@ -219,6 +224,10 @@ class RequestContractSignatureEndpointTest : AuthorizationAwareEndpointIntegrati
     }
 
     // ndopify.contract.signature.ttl-days
+    private fun assertDeadline7DaysAfterRequest(requestedAt: Long, deadline: Long) {
+        assertEquals(requestedAt + Duration.ofDays(7).toMillis(), deadline)
+    }
+
     private fun assertDeadlineIn7Days(deadline: Long) {
         val expected = System.currentTimeMillis() + Duration.ofDays(7).toMillis()
         assertTrue(Math.abs(expected - deadline) < Duration.ofMinutes(1).toMillis(), "deadline: $deadline")

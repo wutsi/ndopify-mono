@@ -244,8 +244,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `CONTRACT_CANCELLED` / `CONTRACT_ALREADY_SIGNED` otherwise). `contentHash` (SHA-256 of the uploaded bytes, set by
   `MandateService`; the endpoint clears it) and each party's `signatureHash` (set by `sign`, see `ContractHasher`) are
   stored only, never in a DTO. `request-signature` moves a DRAFT (or
-  PENDING_SIGNATURE) contract, locked like a signature, to `PENDING_SIGNATURE` with `signatureDeadline` = now + `ndopify.contract.signature.ttl-days`
-  (7), reset by each request (409 `CONTRACT_EXPIRED` / `CONTRACT_CANCELLED` / `CONTRACT_ALREADY_SIGNED`), and publishes `ContractSignatureRequestedEvent`:
+  PENDING_SIGNATURE) contract, locked like a signature, to `PENDING_SIGNATURE` with `signatureRequestedAt` = now and `signatureDeadline` = now +
+  `ndopify.contract.signature.ttl-days` (7), both reset by each request (409 `CONTRACT_EXPIRED` / `CONTRACT_CANCELLED` / `CONTRACT_ALREADY_SIGNED`), and publishes `ContractSignatureRequestedEvent`:
   `ContractSignatureMailet` e-mails each unsigned party whose `signatureRequired` is set (`mail/contract/signature_request.mjml`) its deadline and a single button, never
   the document's URL: the page it opens shows the contract and signs it, `{eSignaturePortalUrl}/sign/{contractPartyId}` (no button without an
   `eSignaturePortalUrl`), served by ndopify-esignature. Sign takes a *contract party* id (`SignContractRequest.partyId`), locks the
@@ -407,9 +407,9 @@ Package `com.wutsi.ndopify.npc`: `ui/` (MVC controllers + Thymeleaf templates in
   on, `email-conflict` for request-approval's 409 `CONTRACT_PARTY_MEMBERSHIP_CONFLICT`: the customer's e-mail is
   another account's, `error`), worded by the controller: `POST /mandates/{id}/request-approval|close|cancel`. The close / cancel
   form opens without JS via `GET /mandates/{id}?end=close|cancel` (ignored when the button wouldn't show) and comes
-  back with its errors. "Envoyé le" is derived (`MandateRules.requestedAt`): the contract's `signatureDeadline` less
-  `ndopify.contract.signature.ttl-days` (partner-central's `application.yml`), which must match ndopify-server's
-  setting of the same name. The edit page (`GET|POST /mandates/{id}/edit`, `templates/mandate/edit.html`,
+  back with its errors. "Envoyé le" is the contract's `signatureRequestedAt` (`MandateRules.requestedAt`);
+  partner-central's `ndopify.contract.signature.ttl-days` only words the panels ("sous 7 jours", shown before any
+  contract exists) and should match ndopify-server's setting of the same name. The edit page (`GET|POST /mandates/{id}/edit`, `templates/mandate/edit.html`,
   `MandateEditForm` / `MandateEditRules`) is only for `MandateRules.EDITABLE` statuses (ASSIGNED, PENDING_APPROVAL),
   re-checked on POST since ndopify-server's update doesn't check the status; it posts the mandate's `version` it was
   loaded with (hidden field), and a 409 `MANDATE_VERSION_CONFLICT` shows the form again with the agent's answers, now

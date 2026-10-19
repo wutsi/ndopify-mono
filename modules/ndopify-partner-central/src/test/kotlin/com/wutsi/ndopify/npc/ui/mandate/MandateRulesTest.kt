@@ -66,11 +66,15 @@ class MandateRulesTest {
 
     @Test
     fun requestedAt() {
-        val contract = Contract(signatureDeadline = date("2026-10-22T10:00:00Z"))
+        // The deadline isn't 7 days later: the date comes from the contract, never from the TTL
+        val contract = Contract(
+            signatureRequestedAt = date("2026-10-15T10:00:00Z"),
+            signatureDeadline = date("2026-10-30T10:00:00Z"),
+        )
 
-        assertEquals(date("2026-10-15T10:00:00Z"), MandateRules.requestedAt(contract, 7))
-        assertNull(MandateRules.requestedAt(Contract(), 7))
-        assertNull(MandateRules.requestedAt(null, 7))
+        assertEquals(date("2026-10-15T10:00:00Z"), MandateRules.requestedAt(contract))
+        assertNull(MandateRules.requestedAt(Contract(signatureDeadline = date("2026-10-22T10:00:00Z"))))
+        assertNull(MandateRules.requestedAt(null))
     }
 
     @Test

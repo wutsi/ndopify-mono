@@ -8,11 +8,11 @@ INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name) VALUES
     (102, 1, 'jane.doe@gmail.com', 'Jane', 'Doe'),
     (900, 2, 'other.tenant@example.com', 'Other', 'Tenant');
 
-INSERT INTO T_CONTRACT(id, tenant_id, number, type, status, content_url, duration_months, signature_deadline, valid_from, valid_until, created_at, signed_at) VALUES
-    ('c-1', 1, 'MNDT-2024-000001', 'SEARCH', 'PENDING_SIGNATURE', 'https://cdn.ndopify.com/contracts/c-1.pdf', 6, '2099-06-01 00:00:00', null, null, '2024-05-20 00:00:00', null),
-    ('c-2', 1, 'MNDT-2024-000002', 'SEARCH', 'SIGNED', null, 12, '2024-06-01 00:00:00', '2024-05-25 00:00:00', '2025-05-25 00:00:00', '2024-05-21 00:00:00', '2024-05-25 00:00:00'),
-    ('c-3', 1, 'BAIL-2024-000001', 'LEASE_AGREEMENT', 'DRAFT', null, 6, null, null, null, '2024-05-22 00:00:00', null),
-    ('c-9', 2, 'MNDT-2024-000001', 'SEARCH', 'PENDING_SIGNATURE', null, 6, '2099-06-01 00:00:00', null, null, '2024-05-20 00:00:00', null);
+INSERT INTO T_CONTRACT(id, tenant_id, number, type, status, content_url, duration_months, signature_requested_at, signature_deadline, valid_from, valid_until, created_at, signed_at) VALUES
+    ('c-1', 1, 'MNDT-2024-000001', 'SEARCH', 'PENDING_SIGNATURE', 'https://cdn.ndopify.com/contracts/c-1.pdf', 6, null, '2099-06-01 00:00:00', null, null, '2024-05-20 00:00:00', null),
+    ('c-2', 1, 'MNDT-2024-000002', 'SEARCH', 'SIGNED', null, 12, '2024-05-25 00:00:00', '2024-06-01 00:00:00', '2024-05-25 00:00:00', '2025-05-25 00:00:00', '2024-05-21 00:00:00', '2024-05-25 00:00:00'),
+    ('c-3', 1, 'BAIL-2024-000001', 'LEASE_AGREEMENT', 'DRAFT', null, 6, null, null, null, null, '2024-05-22 00:00:00', null),
+    ('c-9', 2, 'MNDT-2024-000001', 'SEARCH', 'PENDING_SIGNATURE', null, 6, null, '2099-06-01 00:00:00', null, null, '2024-05-20 00:00:00', null);
 
 -- Party 100 is in c-1 three times (cp-1, cp-2, cp-11): c-1 must still be returned once. Party 101 is its co-party (cp-12)
 INSERT INTO T_CONTRACT_PARTY(id, tenant_id, contract_id, party_id, role, legal_name, legal_email, signed) VALUES

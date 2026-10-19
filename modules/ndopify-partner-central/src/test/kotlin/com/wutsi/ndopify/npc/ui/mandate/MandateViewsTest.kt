@@ -37,7 +37,7 @@ class MandateViewsTest {
             modifiedAt = date("2026-10-10T10:00:00Z"),
         )
 
-        // Sent on 15 October (the deadline, 22 October, less 7 days), not edited since.
+        // Sent on 15 October (the contract's signatureRequestedAt), not edited since.
         val PENDING = MANDATE.copy(
             status = MandateStatus.PENDING_APPROVAL,
             contractId = "c-201",

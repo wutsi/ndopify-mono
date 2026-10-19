@@ -10,6 +10,8 @@ import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
+import java.time.Instant
+import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -40,6 +42,7 @@ class GetContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(ContractStatus.PENDING_SIGNATURE, contract.status)
         assertEquals("https://cdn.ndopify.com/contracts/c-1.pdf", contract.contentUrl)
         assertEquals(6, contract.durationMonths)
+        assertEquals(Date.from(Instant.parse("2099-05-25T00:00:00Z")), contract.signatureRequestedAt)
         assertNotNull(contract.signatureDeadline)
         assertNull(contract.validFrom)
         assertNull(contract.validUntil)

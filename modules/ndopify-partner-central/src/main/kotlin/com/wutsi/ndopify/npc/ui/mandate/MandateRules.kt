@@ -14,8 +14,6 @@ import java.util.Date
  * `partyWords`, `nextStep`, `CANCELLATION_LABELS`): shared by the Espace agent's *Mes mandats* and the mandate pages.
  */
 object MandateRules {
-    private const val DAY = 24L * 60 * 60 * 1000
-
     /** Listed in *Mes mandats*. */
     val ACTIVE: Set<MandateStatus> = setOf(MandateStatus.ASSIGNED, MandateStatus.PENDING_APPROVAL, MandateStatus.APPROVED)
 
@@ -67,12 +65,8 @@ object MandateRules {
     fun cancellation(code: MandateCancellationCode?): String =
         CANCELLATION_LABELS[code] ?: CANCELLATION_LABELS.getValue(MandateCancellationCode.OTHER)
 
-    /**
-     * When the mandate was last sent to the customer: no DTO says so, but each sending resets the contract's
-     * signature deadline to then + [ttlDays] (`ndopify.contract.signature.ttl-days`, which must match ndopify-server's).
-     */
-    fun requestedAt(contract: Contract?, ttlDays: Int): Date? =
-        contract?.signatureDeadline?.let { Date(it.time - ttlDays * DAY) }
+    /** When the mandate was last sent to the customer: the contract's last request for signature. */
+    fun requestedAt(contract: Contract?): Date? = contract?.signatureRequestedAt
 
     /**
      * Edited since it was sent: the customer would sign an outdated version. Sending saves the mandate before
