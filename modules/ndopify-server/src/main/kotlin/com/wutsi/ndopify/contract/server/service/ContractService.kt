@@ -46,6 +46,7 @@ class ContractService(
     private val dao: ContractRepository,
     private val partyDao: ContractPartyRepository,
     private val partyService: PartyService,
+    private val signerService: ContractSignerService,
     private val tenantService: TenantService,
     private val numberGenerator: ContractNumberGenerator,
     private val signatureMailet: ContractSignatureMailet,
@@ -174,6 +175,7 @@ class ContractService(
         val contract = findByIdForUpdate(id)
 
         ensureNotClosed(contract)
+        signerService.grantAccess(partyDao.findByContract(contract)) // Before the save: a 409 leaves the contract as it was
         val pending = dao.save(
             contract.copy(
                 status = ContractStatus.PENDING_SIGNATURE,

@@ -151,7 +151,8 @@ Current domains:
   `AbstractAuthenticator` requires a tenant (400 `HTTP_MISSING_PARAMETER` otherwise), finds the user by e-mail
   (global), then its membership of the tenant (`AUTH_ACCESS_DENIED` without one), whose roles go in the token. A
   person in two tenants has one user, one set of credentials, and a membership (party, roles) in each. Nothing
-  creates a membership on sign-in (not even Google One Tap): only registration (`AgentService.create`) does.
+  creates a membership on sign-in (not even Google One Tap): only registration (`AgentService.create`) does, and a request
+  for signature (`ContractSignerService`), for the parties asked to sign, with `e-signature` access.
   `GET /v1/users/{id}` (`UserEndpoints`) returns the user with its party in the current tenant embedded, and 404
   `USER_NOT_FOUND` for a user who isn't a member of it. Like the rest of the API, it isn't authorized yet
   (`permitAll`). A party's e-mail is its contact e-mail in the tenant, not synced to the user's (global) login
@@ -246,8 +247,12 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   search is restricted to its own party (`party-id` forced; another party's is a 403). Create, content and
   request-signature are admin-only (`MandateService` calls the service directly, unchecked). Sign is only for the
   party itself (the JWT's party must be the contract party's `partyId`): **no admin bypass, nobody signs on another's
-  behalf** — never add one. Customers have no membership yet (only `AgentService.create` makes one), so they can't
-  sign until a customer sign-in exists. A mandate's contract (`MandateService.createContract`) has the customer as
+  behalf** — never add one. `request-signature` gives each party asked to sign
+  (`signatureRequired`, not signed yet) a membership of the tenant, as its party, with `e-signature` access
+  (`ContractSignerService`, in the request's transaction, before the save): the one it has (an agent), else the user of
+  its `legalEmail` (created if needed). An address already a member's as another party is a 409
+  `CONTRACT_PARTY_MEMBERSHIP_CONFLICT`: contract unchanged, no e-mail. Idempotent. So a customer signs in to the
+  e-signature portal by OTP once asked to sign; nothing else (not `CustomerService`) creates its membership. A mandate's contract (`MandateService.createContract`) has the customer as
   `MANDATOR` (signs it) and its agent as `AGENT` with `signatureRequired = false`: a party, so it can read the
   contract, but it's neither asked to sign nor waited for.
   `ContractJobs.expire` (daily, `ndopify.contract.expire.cron`) moves to `EXPIRED` the PENDING_SIGNATURE contracts past

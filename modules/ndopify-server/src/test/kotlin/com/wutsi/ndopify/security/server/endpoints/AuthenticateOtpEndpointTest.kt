@@ -185,6 +185,25 @@ class AuthenticateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `signer signs in to e-signature`() {
+        val response = login("signer@gmail.com", CODE, ApplicationCode.E_SIGNATURE)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val principal = accessTokenService.decode(response.body!!.accessToken)
+        assertEquals(8L, principal.getUserId())
+        assertEquals(ApplicationCode.E_SIGNATURE, principal.getApplication())
+        assertEquals(TENANT_ID, principal.getTenantId())
+    }
+
+    @Test
+    fun `member without access cannot sign in to e-signature`() {
+        val response = loginError("ray.sponsible@gmail.com", CODE, ApplicationCode.E_SIGNATURE)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.AUTH_ACCESS_DENIED, response.body?.error?.code)
+    }
+
+    @Test
     fun `user of another tenant`() {
         val response = loginError("other-tenant@gmail.com", CODE)
 

@@ -5,6 +5,8 @@ INSERT INTO T_TENANT(id, name, domain_name, locales, country_code, logo_url, par
 INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name) VALUES
     (100, 1, 'ray.sponsible@gmail.com', 'Ray', 'Sponsible'),
     (101, 1, 'john.smith@gmail.com', 'John', 'Smith'),
+    (102, 1, 'agent@gmail.com', 'Alex', 'Agent'),
+    (103, 1, 'impostor@gmail.com', 'Ima', 'Postor'),
     (900, 2, 'other.tenant@example.com', 'Other', 'Tenant');
 
 -- c-1: draft; c-2: already sent for signature, signed by one of its parties, past its deadline but not expired yet;
@@ -31,3 +33,22 @@ INSERT INTO T_CONTRACT_PARTY(id, tenant_id, contract_id, party_id, role, legal_n
 INSERT INTO T_CONTRACT_PARTY(id, tenant_id, contract_id, party_id, role, legal_name, legal_email, signature_required) VALUES
     ('cp-31', 1, 'c-3', 100, 'MANDATOR', 'Ray Sponsible', 'ray.sponsible@gmail.com', true),
     ('cp-32', 1, 'c-3', 101, 'AGENT', 'John Smith', 'john.smith@gmail.com', false);
+
+-- c-7: a party that already has a membership, with partner-central access (an agent);
+-- c-8: a party whose legal e-mail is the one of a member, as another party
+INSERT INTO T_CONTRACT(id, tenant_id, number, type, status, content_url, duration_months, created_at) VALUES
+    ('c-7', 1, 'MNDT-2024-000007', 'SEARCH', 'DRAFT', 'https://cdn.ndopify.com/contracts/c-7.pdf', 6, '2024-05-20 00:00:00'),
+    ('c-8', 1, 'MNDT-2024-000008', 'SEARCH', 'DRAFT', 'https://cdn.ndopify.com/contracts/c-8.pdf', 6, '2024-05-20 00:00:00');
+
+INSERT INTO T_CONTRACT_PARTY(id, tenant_id, contract_id, party_id, role, legal_name, legal_email, signature_required) VALUES
+    ('cp-71', 1, 'c-7', 102, 'MANDATOR', 'Alex Agent', 'agent@gmail.com', true),
+    ('cp-81', 1, 'c-8', 103, 'MANDATOR', 'Ima Postor', 'agent@gmail.com', true);
+
+INSERT INTO T_USER (id, email, deleted, created_at, deleted_at) VALUES
+    (20, 'agent@gmail.com', false, NOW(), NULL);
+
+INSERT INTO T_MEMBERSHIP (id, tenant_id, user_id, party_id) VALUES
+    (20, 1, 20, 102);
+
+INSERT INTO T_USER_APPLICATION (id, membership_id, application_id) VALUES
+    (200, 20, 3);
