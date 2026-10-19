@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.contract.server.event
 
 import com.wutsi.ndopify.contract.server.service.ContractService
+import com.wutsi.ndopify.contract.server.service.SignedContractService
 import com.wutsi.ndopify.platform.logger.DefaultKVLogger
 import com.wutsi.ndopify.platform.logger.KVLoggerThreadLocal
 import com.wutsi.ndopify.platform.tenant.TenantContext
@@ -12,6 +13,7 @@ import org.springframework.transaction.event.TransactionalEventListener
 @Component
 class ContractEventListener(
     private val service: ContractService,
+    private val signedContractService: SignedContractService,
 ) {
     /**
      * E-mails the parties the contract to sign, once the request is committed, so no e-mail goes out for a rolled-back
@@ -33,6 +35,35 @@ class ContractEventListener(
             val sent = service.sendSignatureRequestEmails(event.contractId)
             logger.add("email_count", sent)
             logger.add("success", true)
+        } catch (ex: Exception) {
+            logger.add("success", false)
+            logger.setException(ex)
+        } finally {
+            logger.log()
+            TenantContext.remove()
+            KVLoggerThreadLocal.remove()
+        }
+    }
+
+    /**
+     * Generates the signed PDF of the contract, once its last signature is committed, so that the signer doesn't wait
+     * for it. Same thread handling as [onSignatureRequested]. A failure is only logged — the contract stays SIGNED,
+     * without signed PDF, until `POST /v1/contracts/{id}/signed-content` generates it.
+     */
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    fun onSigned(event: ContractSignedEvent) {
+        val logger = DefaultKVLogger()
+        KVLoggerThreadLocal.set(logger)
+        TenantContext.set(event.tenantId)
+        try {
+            logger.add("event", ContractSignedEvent::class.java.simpleName)
+            logger.add("tenant_id", event.tenantId)
+            logger.add("contract_id", event.contractId)
+
+            val url = signedContractService.generate(event.contractId)
+            logger.add("signed_content_url", url)
+            logger.add("success", url != null)
         } catch (ex: Exception) {
             logger.add("success", false)
             logger.setException(ex)

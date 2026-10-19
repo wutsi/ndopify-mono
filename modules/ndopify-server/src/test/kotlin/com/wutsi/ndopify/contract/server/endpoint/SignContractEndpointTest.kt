@@ -1,5 +1,7 @@
 package com.wutsi.ndopify.contract.server.endpoint
 
+import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.contract.dto.ContractStatus
 import com.wutsi.ndopify.contract.dto.SignContractRequest
@@ -10,9 +12,16 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
+import com.wutsi.ndopify.platform.storage.StorageServiceProvider
+import com.wutsi.ndopify.platform.storage.local.StorageServiceLocal
+import org.junit.jupiter.api.io.TempDir
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
+import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.jdbc.Sql
+import java.io.ByteArrayInputStream
+import java.io.File
 import java.time.ZoneId
 import java.util.Date
 import kotlin.test.Test
@@ -38,6 +47,16 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
     @Autowired
     private lateinit var mandateDao: MandateRepository
+
+    @Autowired
+    private lateinit var jdbc: JdbcTemplate
+
+    // The signed PDF goes into a local storage of a temporary directory
+    @MockitoBean
+    private lateinit var storageProvider: StorageServiceProvider
+
+    @TempDir
+    lateinit var dir: File
 
     private fun request(partyId: String) = SignContractRequest(
         partyId = partyId,
@@ -68,6 +87,7 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertTrue(Regex("[0-9a-f]{32}").matches(party.signatureSalt!!))
         assertEquals(ContractHasher.signatureHash(contract, party), party.signatureHash)
         assertNull(partyDao.findById("cp-12").get().signatureHash)
+        assertNull(contract.signedContentUrl) // Only once signed by all
         assertEquals(MandateStatus.PENDING_APPROVAL, mandateDao.findById(1L).get().status) // Not signed by all yet
     }
 
@@ -107,6 +127,28 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertTrue(body.contains("Ray Sponsible"))
         assertTrue(body.contains("MNDT-2024-000002"))
         assertTrue(body.contains("https://partner.ndopify.com/mandates/2"))
+    }
+
+    @Test
+    fun `last signature generates the signed PDF`() {
+        val storage = StorageServiceLocal(dir.absolutePath, "/storage", 8080)
+        doReturn(storage).whenever(storageProvider).get()
+        val content = "<html><body><p>Mandat</p></body></html>".toByteArray()
+        storage.store("mandates/2/c-2.html", ByteArrayInputStream(content), "text/html")
+        jdbc.update("UPDATE T_CONTRACT SET content_url=? WHERE id='c-2'", storage.publicUrl("mandates/2/c-2.html").toString())
+        userId = 12L
+
+        rest.postForEntity("/v1/contracts/c-2/sign", request("cp-22"), Any::class.java)
+
+        // Asynchronously, after the signature's commit
+        var url: String? = null
+        for (i in 1..50) {
+            url = dao.findById("c-2").get().signedContentUrl
+            if (url != null) break
+            Thread.sleep(200)
+        }
+        assertEquals(storage.publicUrl("mandates/2/MNDT-2024-000002.pdf").toString(), url)
+        assertTrue(File(dir, "mandates/2/MNDT-2024-000002.pdf").exists())
     }
 
     @Test

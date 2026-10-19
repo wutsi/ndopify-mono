@@ -11,6 +11,8 @@ import com.wutsi.ndopify.contract.server.domain.ContractEntity
 import com.wutsi.ndopify.contract.server.mapper.ContractMapper
 import com.wutsi.ndopify.contract.server.service.ContractAccessService
 import com.wutsi.ndopify.contract.server.service.ContractService
+import com.wutsi.ndopify.contract.server.service.SignedContractService
+import com.wutsi.ndopify.platform.endpoint.OpsEndpoint
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.GetMapping
@@ -31,6 +33,7 @@ class ContractEndpoints(
     private val service: ContractService,
     private val access: ContractAccessService,
     private val mapper: ContractMapper,
+    private val signedContractService: SignedContractService,
 ) {
     // Ex: the contracts of a list of mandates: GET /v1/contracts?id=c-1&id=c-2
     @GetMapping
@@ -69,6 +72,14 @@ class ContractEndpoints(
     fun requestSignature(@PathVariable id: String) {
         access.ensureCanUpdate()
         service.requestSignature(id)
+    }
+
+    // Generates the signed PDF of a SIGNED contract that has none (ex: its generation after the last signature failed)
+    @OpsEndpoint
+    @PostMapping("/{id}/signed-content")
+    fun generateSignedContent(@PathVariable id: String) {
+        access.ensureCanUpdate()
+        signedContractService.generate(id)
     }
 
     @PostMapping("/{id}/sign")
