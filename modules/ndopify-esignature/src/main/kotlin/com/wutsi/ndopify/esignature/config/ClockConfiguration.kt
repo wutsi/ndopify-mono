@@ -5,8 +5,7 @@ import org.springframework.context.annotation.Configuration
 import java.time.Clock
 
 @Configuration
-class
-ClockConfiguration {
+class ClockConfiguration {
     @Bean
     fun clock(): Clock {
         return Clock.systemUTC()

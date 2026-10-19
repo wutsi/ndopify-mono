@@ -19,7 +19,7 @@ open class JwtDecoder {
             .build()
         val jwt = verifier.verify(accessToken)
         val app = jwt.getClaim(JwtPrincipal.CLAIM_APPLICATION)
-        if (app.asString() != ApplicationCode.PARTNER_CENTRAL) {
+        if (app.asString() != ApplicationCode.E_SIGNATURE) {
             throw IncorrectClaimException("Invalid application", JwtPrincipal.CLAIM_APPLICATION, app)
         }
         return JwtPrincipal(jwt)

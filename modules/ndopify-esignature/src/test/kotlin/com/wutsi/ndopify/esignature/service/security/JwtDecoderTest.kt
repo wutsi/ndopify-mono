@@ -19,15 +19,23 @@ class JwtDecoderTest {
     private val decoder = JwtDecoder()
 
     @Test
-    fun `decodes the claims of a partner-central token`() {
+    fun `decodes the claims of an e-signature token`() {
         val principal = decoder.decode(token().sign(Algorithm.none()))
 
         assertEquals(11L, principal.getUserId())
         assertEquals(1L, principal.getTenantId())
         assertEquals("11", principal.getSubject())
         assertEquals("11", principal.name)
-        assertEquals(ApplicationCode.PARTNER_CENTRAL, principal.getApplication())
+        assertEquals(ApplicationCode.E_SIGNATURE, principal.getApplication())
         assertContentEquals(arrayOf("agent"), principal.getRoles())
+    }
+
+    @Test
+    fun `rejects a partner-central token`() {
+        val accessToken = token(application = ApplicationCode.PARTNER_CENTRAL).sign(Algorithm.none())
+
+        val ex = assertFailsWith<IncorrectClaimException> { decoder.decode(accessToken) }
+        assertEquals(JwtPrincipal.CLAIM_APPLICATION, ex.claimName)
     }
 
     @Test
@@ -36,7 +44,7 @@ class JwtDecoderTest {
             .withIssuer(JwtDecoder.ISSUER)
             .withSubject("11")
             .withClaim(JwtPrincipal.CLAIM_USER_ID, 11L)
-            .withClaim(JwtPrincipal.CLAIM_APPLICATION, ApplicationCode.PARTNER_CENTRAL)
+            .withClaim(JwtPrincipal.CLAIM_APPLICATION, ApplicationCode.E_SIGNATURE)
             .sign(Algorithm.none())
 
         assertEquals(null, decoder.decode(accessToken).getTenantId())
@@ -93,7 +101,7 @@ class JwtDecoderTest {
     // Same claims as ndopify-server's AccessTokenService.
     private fun token(
         issuer: String = JwtDecoder.ISSUER,
-        application: String? = ApplicationCode.PARTNER_CENTRAL,
+        application: String? = ApplicationCode.E_SIGNATURE,
         expiresAt: Instant? = Instant.now().plusSeconds(3600),
     ): JWTCreator.Builder =
         JWT.create()

@@ -45,7 +45,7 @@ class JwtAuthenticationFilterTest {
         val principal = auth.principal as JwtPrincipal
         assertEquals(11L, principal.getUserId())
         assertEquals(1L, principal.getTenantId())
-        assertEquals("partner-central", principal.getApplication())
+        assertEquals("e-signature", principal.getApplication())
 
         assertChainCalled()
     }
@@ -122,7 +122,7 @@ class JwtAuthenticationFilterTest {
             .withSubject(userId.toString())
             .withClaim(JwtPrincipal.CLAIM_USER_ID, userId)
             .withClaim(JwtPrincipal.CLAIM_TENANT_ID, tenantId)
-            .withClaim(JwtPrincipal.CLAIM_APPLICATION, "partner-central")
+            .withClaim(JwtPrincipal.CLAIM_APPLICATION, "e-signature")
             .withArrayClaim(JwtPrincipal.CLAIM_ROLE, emptyArray<String>())
             .apply { expiresAt?.let { withExpiresAt(it) } }
             .sign(Algorithm.none())
