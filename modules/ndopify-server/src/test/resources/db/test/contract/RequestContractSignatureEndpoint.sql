@@ -1,6 +1,6 @@
-INSERT INTO T_TENANT(id, name, domain_name, locales, country_code, logo_url, partner_central_url) VALUES
-    (1, 'Ndopify', 'localhost', 'fr-CM, en-CM', 'CM', 'https://cdn.ndopify.com/logo.png', 'https://partner.ndopify.com'),
-    (2, 'Other', 'other.localhost', 'fr-CM, en-CM', 'CM', null, null);
+INSERT INTO T_TENANT(id, name, domain_name, locales, country_code, logo_url, partner_central_url, e_signature_portal_url) VALUES
+    (1, 'Ndopify', 'localhost', 'fr-CM, en-CM', 'CM', 'https://cdn.ndopify.com/logo.png', 'https://partner.ndopify.com', 'https://sign.ndopify.com'),
+    (2, 'Other', 'other.localhost', 'fr-CM, en-CM', 'CM', null, null, null);
 
 INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name) VALUES
     (100, 1, 'ray.sponsible@gmail.com', 'Ray', 'Sponsible'),

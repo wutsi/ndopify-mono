@@ -18,7 +18,7 @@ class SearchApplicationEndpointTest : BaseEndpointIntegrationTest() {
         assertEquals(HttpStatus.OK, result.statusCode)
 
         val applications = result.body!!.applications.sortedBy { it.id }
-        assertEquals(3, applications.size)
+        assertEquals(4, applications.size)
 
         assertEquals(1L, applications[0].id)
         assertEquals(ApplicationCode.PUBLIC_PORTAL, applications[0].code)
@@ -36,5 +36,10 @@ class SearchApplicationEndpointTest : BaseEndpointIntegrationTest() {
         assertEquals(ApplicationCode.PARTNER_CENTRAL, applications[2].code)
         assertEquals(0, applications[2].roles.size)
         assertEquals(listOf(AuthType.OTP), applications[2].supportedAuthTypes)
+
+        assertEquals(4L, applications[3].id)
+        assertEquals(ApplicationCode.E_SIGNATURE, applications[3].code)
+        assertEquals(0, applications[3].roles.size)
+        assertEquals(listOf(AuthType.OTP), applications[3].supportedAuthTypes)
     }
 }

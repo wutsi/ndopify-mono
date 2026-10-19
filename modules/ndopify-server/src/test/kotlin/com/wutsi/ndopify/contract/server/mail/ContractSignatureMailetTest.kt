@@ -32,7 +32,7 @@ class ContractSignatureMailetTest {
         id = 1L,
         name = "Ndopify",
         logoUrl = "https://cdn.ndopify.com/logo.png",
-        partnerCentralUrl = "https://partner.ndopify.com",
+        eSignaturePortalUrl = "https://sign.ndopify.com",
     )
     private val contract = ContractEntity(
         id = "c-1",
@@ -69,7 +69,7 @@ class ContractSignatureMailetTest {
                 "contract_type" to "Contrat de bail",
                 "contract_number" to "BAIL-2026-000042",
                 "deadline" to "01/01/2027",
-                "sign_url" to "https://partner.ndopify.com/contracts/c-1/sign?party-id=cp-1",
+                "sign_url" to "https://sign.ndopify.com/sign/cp-1",
             ),
             context.firstValue,
         )
@@ -83,8 +83,8 @@ class ContractSignatureMailetTest {
     }
 
     @Test
-    fun `no sign button without partner central`() {
-        doReturn(tenant.copy(partnerCentralUrl = null)).whenever(tenantService).findById(1L)
+    fun `no sign button without eSignature portal`() {
+        doReturn(tenant.copy(eSignaturePortalUrl = null)).whenever(tenantService).findById(1L)
 
         mailet.send(contract, party)
 

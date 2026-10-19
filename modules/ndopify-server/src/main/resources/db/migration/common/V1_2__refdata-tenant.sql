@@ -20,6 +20,7 @@ CREATE TABLE T_TENANT(
   admin_console_url       TEXT DEFAULT null,
   partner_central_url     TEXT DEFAULT null,
   public_portal_url       TEXT DEFAULT null,
+  e_signature_portal_url  TEXT DEFAULT null,
 
   created_at              DATETIME DEFAULT NOW(),
 

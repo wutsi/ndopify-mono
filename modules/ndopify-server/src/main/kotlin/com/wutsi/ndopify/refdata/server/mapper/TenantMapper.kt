@@ -28,6 +28,7 @@ class TenantMapper {
             adminConsoleUrl = entity.adminConsoleUrl,
             partnerCentralUrl = entity.partnerCentralUrl,
             publicPortalUrl = entity.publicPortalUrl,
+            eSignaturePortalUrl = entity.eSignaturePortalUrl,
         )
     }
 }

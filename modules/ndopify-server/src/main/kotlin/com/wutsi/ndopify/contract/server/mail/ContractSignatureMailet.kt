@@ -28,11 +28,11 @@ class ContractSignatureMailet(
         )
     }
 
-    fun send(contract: ContractEntity, party: ContractPartyEntity) {
+    fun send(contract: ContractEntity, contractParty: ContractPartyEntity) {
         val tenant = tenantService.findById(contract.tenantId!!)
         mailService.send(
             Email(
-                recipient = Receipient(email = party.legalEmail, displayName = party.legalName),
+                recipient = Receipient(email = contractParty.legalEmail, displayName = contractParty.legalName),
                 subject = SUBJECT
                     .replace("{{tenant_name}}", tenant.name)
                     .replace("{{contract_number}}", contract.number),
@@ -41,15 +41,13 @@ class ContractSignatureMailet(
                     context = mapOf(
                         "tenant_logo_url" to tenant.logoUrl,
                         "tenant_name" to tenant.name,
-                        "recipient_name" to party.legalName,
+                        "recipient_name" to contractParty.legalName,
                         "contract_type" to (TYPES[contract.type] ?: "Contrat"),
                         "contract_number" to contract.number,
                         // The party reads it in its local time
                         "deadline" to contract.signatureDeadline?.let { TenantFormatter(tenant).date(it) },
                         // Shows the contract and signs it: the e-mail never links the document itself
-                        "sign_url" to tenant.partnerCentralUrl?.let { url ->
-                            "$url/contracts/${contract.id}/sign?party-id=${party.id}"
-                        },
+                        "sign_url" to tenant.eSignaturePortalUrl?.let { url -> "$url/sign/${contractParty.id}" },
                     )
                 )
             )

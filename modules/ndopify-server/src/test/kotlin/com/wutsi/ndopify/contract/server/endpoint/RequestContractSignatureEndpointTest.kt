@@ -56,8 +56,8 @@ class RequestContractSignatureEndpointTest : AuthorizationAwareEndpointIntegrati
         val deadline = contract.signatureDeadline!!.toInstant().atZone(ZoneId.of("Africa/Douala"))
         // The fixture leaves the tenant's date_format to the T_TENANT default
         assertTrue(body.contains(deadline.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))))
-        assertTrue(body.contains("https://partner.ndopify.com/contracts/c-1/sign?party-id=cp-11"))
-        assertTrue(messages[0].content.toString().contains("https://partner.ndopify.com/contracts/c-1/sign?party-id=cp-12"))
+        assertTrue(body.contains("https://sign.ndopify.com/sign/cp-11"))
+        assertTrue(messages[0].content.toString().contains("https://sign.ndopify.com/sign/cp-12"))
     }
 
     @Test
@@ -79,7 +79,7 @@ class RequestContractSignatureEndpointTest : AuthorizationAwareEndpointIntegrati
         val message = smtp.receivedMessages.single()
         assertEquals("Ray Sponsible <ray.sponsible@gmail.com>", message.allRecipients.single().toString())
         assertEquals("Ndopify: Votre contrat MNDT-2024-000002 est prêt à être signé", message.subject)
-        assertTrue(message.content.toString().contains("https://partner.ndopify.com/contracts/c-2/sign?party-id=cp-21"))
+        assertTrue(message.content.toString().contains("https://sign.ndopify.com/sign/cp-21"))
     }
 
     @Test

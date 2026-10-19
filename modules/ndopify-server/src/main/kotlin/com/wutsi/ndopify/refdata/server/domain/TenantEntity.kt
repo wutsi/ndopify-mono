@@ -35,5 +35,6 @@ data class TenantEntity(
 
     val adminConsoleUrl: String? = null,
     val partnerCentralUrl: String? = null,
-    val publicPortalUrl: String? = null
+    val publicPortalUrl: String? = null,
+    val eSignaturePortalUrl: String? = null,
 )
