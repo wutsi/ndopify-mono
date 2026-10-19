@@ -116,7 +116,6 @@
             <groupId>org.jsoup</groupId>
             <artifactId>jsoup</artifactId>
             <version>${jsoup.version}</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.nhaarman.mockitokotlin2</groupId>

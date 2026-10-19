@@ -7,6 +7,7 @@ import com.wutsi.ndopify.esignature.service.TenantContext
 import org.springframework.boot.restclient.RestClientCustomizer
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.web.client.RestClient
 import org.springframework.web.client.RestTemplate
 
 /**
@@ -27,6 +28,13 @@ class RestConfiguration {
     @Bean
     fun tenantIdRestClientCustomizer(tenantContext: TenantContext): RestClientCustomizer =
         RestClientCustomizer { builder -> builder.requestInterceptor(TenantIdClientHttpRequestInterceptor(tenantContext)) }
+
+    /**
+     * Plain client for the contract's document, which lives in file storage: deliberately not built from the
+     * Spring `RestClient.Builder`, so the `Authorization` / `X-Tenant-ID` interceptors never reach a storage URL.
+     */
+    @Bean
+    fun contentRestClient(): RestClient = RestClient.create()
 
     @Bean
     fun restTemplate(): RestTemplate {

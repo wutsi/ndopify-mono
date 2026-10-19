@@ -422,6 +422,12 @@ names and signatures; depends on `ndopify-dto` only, never on partner-central), 
   TTL) and decoded by `JwtAuthenticationFilter`, like Partner Central's.
 - `SecurityConfiguration` permits only `/assets/**`, `/sign/**` and `/error`; every other path is denied (nothing else
   is served). The 403 / 404 pages (`templates/error/`) show the logo only, no account menu.
+- `client/ndopify/` holds the ndopify-server clients: `NdOtpClient` / `NdAuthClient` (as Partner Central's),
+  `NdContractClient` (get, search incl. `contract-party-id`, `sign`) and the global `NdTenantClient`.
+  `client/ContractContentClient` downloads the contract's `contentUrl`: HTML only, sanitized with Jsoup
+  `Safelist.relaxed()` (the page renders it with `th:utext`), null on any failure (the page then can't sign), through
+  the plain `contentRestClient` bean (`RestClient.create()`, not the Spring builder) so that the `Authorization` /
+  `X-Tenant-ID` interceptors never reach a storage URL.
 - `src/main/html/` is the prototype: never serve it, and never delete or modify anything in it.
 
 ### Multi-Tenancy — current state
