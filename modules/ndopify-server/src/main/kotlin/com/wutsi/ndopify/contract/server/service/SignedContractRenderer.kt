@@ -8,9 +8,12 @@ import org.jsoup.nodes.Comment
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Node
 import org.springframework.stereotype.Component
+import org.xhtmlrenderer.pdf.ITextOutputDevice
 import org.xhtmlrenderer.pdf.ITextRenderer
+import org.xhtmlrenderer.pdf.ITextUserAgent
 import qrcode.QRCode
 import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.io.InputStreamReader
 import java.io.StringWriter
 import java.util.Base64
@@ -28,12 +31,16 @@ data class SignatureBlock(
  * *Signatures* section, one block per signature (`/contract/signatures.html`). Rendered by Flying Saucer, which only
  * knows XHTML and CSS 2.1: the content is parsed by Jsoup (MJML's output isn't well-formed) and its comments and
  * scripts removed. Every text is in DejaVu Sans, embedded, since the PDF's built-in fonts can't print the tenant
- * formatter's no-break spaces nor names in Latin Extended (ex: Ŋ, Ɛ). Nothing is fetched for the signatures: their
- * QR codes are data URIs.
+ * formatter's no-break spaces nor names in Latin Extended (ex: Ŋ, Ɛ). Nothing is ever fetched ([OfflineUserAgent]):
+ * the QR codes are data URIs, and the content's remote images and stylesheets (ex: the tenant's logo) are left out.
  */
 @Component
 class SignedContractRenderer(private val mustache: MustacheFactory) {
     companion object {
+        // Flying Saucer's defaults
+        private const val DOTS_PER_POINT = 20f * 4f / 3f
+        private const val DOTS_PER_PIXEL = 20
+
         private val FONTS = listOf("DejaVuSans.ttf", "DejaVuSans-Bold.ttf", "DejaVuSansMono.ttf")
             .map { font -> "contract/fonts/$font" }
 
@@ -67,7 +74,8 @@ class SignedContractRenderer(private val mustache: MustacheFactory) {
         doc.outputSettings().syntax(Document.OutputSettings.Syntax.xml)
 
         val out = ByteArrayOutputStream()
-        val renderer = ITextRenderer()
+        val device = ITextOutputDevice(DOTS_PER_POINT)
+        val renderer = ITextRenderer(device, OfflineUserAgent(device))
         FONTS.forEach { font -> renderer.fontResolver.addFont(font, BaseFont.IDENTITY_H, BaseFont.EMBEDDED) }
         renderer.setDocument(W3CDom().fromJsoup(doc), "")
         renderer.layout()
@@ -102,6 +110,21 @@ class SignedContractRenderer(private val mustache: MustacheFactory) {
             } else {
                 removeComments(child)
             }
+        }
+    }
+
+    /**
+     * Never opens a URL: rendering runs on the executor of the e-mails, and a fetch has no timeout, so a slow host
+     * would hold it. Data URIs (the QR codes) don't need any.
+     */
+    private class OfflineUserAgent(device: ITextOutputDevice) : ITextUserAgent(device, DOTS_PER_PIXEL) {
+        // Data URIs, and Flying Saucer's own default stylesheet, read from its jar (jar:nested: in the Spring Boot
+        // executable jar): never a remote URL, incl. jar:http
+        override fun resolveAndOpenStream(uri: String?): InputStream? =
+            if (uri != null && LOCAL.any { prefix -> uri.startsWith(prefix) }) super.resolveAndOpenStream(uri) else null
+
+        companion object {
+            private val LOCAL = listOf("data:", "jar:file:", "jar:nested:")
         }
     }
 }

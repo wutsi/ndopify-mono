@@ -261,8 +261,11 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   dropped) plus one signature block per party that signed (QR code of `{eSignaturePortalUrl}/verify/{contractId}/{signatureHash}`,
   legal name, date and time by `TenantFormatter`, hash) to PDF: Jsoup → XHTML → Flying Saucer **9.x** (10.x needs
   Java 21), DejaVu fonts embedded (`resources/contract/fonts/`; the built-in fonts can't print no-break spaces nor
-  Ŋ / Ɛ), CSS 2.1 only. Stored next to the content as `{number}.pdf` and `signature-{n}.png` (never named after the
-  contract party: its id is the secret of the sign link); `ContractService.setSignedContent` then saves
+  Ŋ / Ɛ), CSS 2.1 only, and nothing fetched (`OfflineUserAgent`: only `data:` URIs and the library's own stylesheet;
+  the content's remote images, ex: the tenant logo, are left out). Stored next to the content as
+  `{number}-{token}.pdf` and `{number}-{token}-signature-{n}.png`, `token` random per run (the storage is public and the
+  directory is guessable from a QR code; concurrent runs never overwrite each other), never named after the contract
+  party (its id is the secret of the sign link); `ContractService.setSignedContent` then saves
   `signedContentUrl` (in `Contract` / `ContractSummary`) and `signedContentHash` (SHA-256 of the PDF, stored only)
   under the lock, first one wins. Nothing is locked during the download / render / upload. No PDF (logged) without
   content in the storage, with a content hash mismatch, a signature without hash or salt, or no

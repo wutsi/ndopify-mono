@@ -147,8 +147,9 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
             if (url != null) break
             Thread.sleep(200)
         }
-        assertEquals(storage.publicUrl("mandates/2/MNDT-2024-000002.pdf").toString(), url)
-        assertTrue(File(dir, "mandates/2/MNDT-2024-000002.pdf").exists())
+        val pdfPath = storage.pathOf(url!!)!!
+        assertTrue(pdfPath.startsWith("mandates/2/MNDT-2024-000002-"), pdfPath)
+        assertTrue(File(dir, pdfPath).exists())
     }
 
     @Test

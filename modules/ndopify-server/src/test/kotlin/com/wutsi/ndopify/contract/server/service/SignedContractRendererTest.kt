@@ -1,11 +1,14 @@
 package com.wutsi.ndopify.contract.server.service
 
 import com.github.mustachejava.DefaultMustacheFactory
+import com.sun.net.httpserver.HttpServer
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.filter.MailFilterNull
 import dev.jcputney.mjml.MjmlRenderer
 import org.apache.pdfbox.Loader
 import org.apache.pdfbox.text.PDFTextStripper
+import java.net.InetSocketAddress
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -73,6 +76,33 @@ class SignedContractRendererTest {
             }
         }
         assertEquals(2, images)
+    }
+
+    @Test
+    fun `render fetches nothing`() {
+        // The content's images and stylesheets (ex: the tenant's logo) would be fetched without timeout, on the
+        // executor of the e-mails: they're left out
+        val requests = AtomicInteger()
+        val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
+        server.createContext("/") { exchange ->
+            requests.incrementAndGet()
+            exchange.sendResponseHeaders(404, -1)
+            exchange.close()
+        }
+        server.start()
+        try {
+            val base = "http://127.0.0.1:${server.address.port}"
+            val pdf = renderer.render(
+                """<html><body><link rel="stylesheet" href="$base/style.css"/>
+                    <p style="background-image: url('$base/bg.png')">Article 1</p><img src="$base/logo.png"/></body></html>""",
+                listOf(block("Ray Sponsible", 'a')),
+            )
+
+            assertTrue(text(pdf).contains("Article 1"))
+            assertEquals(0, requests.get())
+        } finally {
+            server.stop(0)
+        }
     }
 
     @Test

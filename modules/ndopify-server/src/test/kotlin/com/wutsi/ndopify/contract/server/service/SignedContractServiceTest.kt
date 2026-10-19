@@ -140,25 +140,39 @@ class SignedContractServiceTest {
         TenantContext.remove()
     }
 
+    private val token = "[0-9a-f]{32}"
+
+    private fun pdfPaths() = storage.files.keys.filter { path -> path.endsWith(".pdf") }
+
     @Test
     fun `generate stores the PDF and the QR codes next to the content`() {
         val url = service.generate("c1")
 
-        val pdfPath = "mandates/1/contracts/c1/MNDT-2026-000001.pdf"
+        // A random token in the names: the directory and the contract number are known to whoever has a QR code
+        val pdfPath = pdfPaths().single()
+        assertTrue(Regex("mandates/1/contracts/c1/MNDT-2026-000001-$token\\.pdf").matches(pdfPath), pdfPath)
         assertEquals("https://s.com/$pdfPath", url)
         assertContentEquals(pdf, storage.files[pdfPath])
         assertEquals("application/pdf", storage.contentTypes[pdfPath])
 
-        // One per signer, never named after the contract party (the secret of its sign link)
+        // One per signer, with the PDF's token, never named after the contract party (the secret of its sign link)
+        val prefix = pdfPath.removeSuffix(".pdf")
         val qrPaths = storage.files.keys.filter { path -> path.endsWith(".png") }.sorted()
-        assertEquals(
-            listOf("mandates/1/contracts/c1/signature-1.png", "mandates/1/contracts/c1/signature-2.png"),
-            qrPaths,
-        )
+        assertEquals(listOf("$prefix-signature-1.png", "$prefix-signature-2.png"), qrPaths)
         assertTrue(qrPaths.all { path -> storage.contentTypes[path] == "image/png" })
         assertTrue(storage.files.keys.none { path -> path.contains("cp-") })
 
         verify(contractService).setSignedContent("c1", "https://s.com/$pdfPath", ContractHasher.contentHash(pdf))
+    }
+
+    @Test
+    fun `each run stores its own files`() {
+        // Two runs at once (listener and ops endpoint): neither overwrites the files of the other
+        service.generate("c1")
+        service.generate("c1")
+
+        assertEquals(2, pdfPaths().size)
+        assertEquals(4, storage.files.keys.count { path -> path.endsWith(".png") })
     }
 
     @Test
@@ -169,7 +183,7 @@ class SignedContractServiceTest {
         verify(renderer).qrCode("https://sign.ndopify.com/verify/c1/${"b".repeat(64)}")
         assertContentEquals(
             "https://sign.ndopify.com/verify/c1/${"a".repeat(64)}".toByteArray(),
-            storage.files["mandates/1/contracts/c1/signature-1.png"],
+            storage.files[pdfPaths().single().removeSuffix(".pdf") + "-signature-1.png"],
         )
     }
 
@@ -194,7 +208,9 @@ class SignedContractServiceTest {
     fun `null content hash is accepted`() {
         doReturn(contract.copy(contentHash = null)).whenever(contractService).findById("c1")
 
-        assertEquals("https://s.com/mandates/1/contracts/c1/MNDT-2026-000001.pdf", service.generate("c1"))
+        val url = service.generate("c1")
+
+        assertEquals("https://s.com/${pdfPaths().single()}", url)
     }
 
     @Test
@@ -202,8 +218,12 @@ class SignedContractServiceTest {
         storage.files["a.html"] = content
         doReturn(contract.copy(contentUrl = "https://s.com/a.html")).whenever(contractService).findById("c1")
 
-        assertEquals("https://s.com/MNDT-2026-000001.pdf", service.generate("c1"))
-        assertTrue(storage.files.containsKey("signature-1.png"))
+        val url = service.generate("c1")
+
+        val pdfPath = pdfPaths().single()
+        assertTrue(Regex("MNDT-2026-000001-$token\\.pdf").matches(pdfPath), pdfPath)
+        assertEquals("https://s.com/$pdfPath", url)
+        assertTrue(storage.files.containsKey(pdfPath.removeSuffix(".pdf") + "-signature-1.png"))
     }
 
     @Test

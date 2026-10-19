@@ -22,6 +22,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /** The signed PDF, generated on demand (ops endpoint) into a local storage of a temporary directory. */
 @Sql(value = ["/db/test/clean.sql", "/db/test/contract/GenerateSignedContentEndpoint.sql"])
@@ -73,14 +74,16 @@ class GenerateSignedContentEndpointTest : AuthorizationAwareEndpointIntegrationT
 
         assertEquals(HttpStatus.OK, response.statusCode)
 
-        val url = rest.getForEntity("/v1/contracts/c-1", GetContractResponse::class.java).body!!.contract.signedContentUrl
-        assertEquals(storage.publicUrl("mandates/1/contracts/c-1/MNDT-2024-000001.pdf").toString(), url)
+        val url = rest.getForEntity("/v1/contracts/c-1", GetContractResponse::class.java).body!!.contract.signedContentUrl!!
+        val pdfPath = storage.pathOf(url)!!
+        assertTrue(Regex("mandates/1/contracts/c-1/MNDT-2024-000001-[0-9a-f]{32}\\.pdf").matches(pdfPath), pdfPath)
 
         // Next to the content: the PDF, and one QR code per signer (not the agent)
+        val name = pdfPath.substringAfterLast('/').removeSuffix(".pdf")
         val files = File(dir, "mandates/1/contracts/c-1").list()!!.sorted()
-        assertEquals(listOf("MNDT-2024-000001.pdf", "content.html", "signature-1.png", "signature-2.png"), files)
+        assertEquals(listOf("$name-signature-1.png", "$name-signature-2.png", "$name.pdf", "content.html"), files)
 
-        val pdf = File(dir, "mandates/1/contracts/c-1/MNDT-2024-000001.pdf").readBytes()
+        val pdf = File(dir, pdfPath).readBytes()
         assertEquals("%PDF", String(pdf.copyOfRange(0, 4), Charsets.US_ASCII))
         assertEquals(ContractHasher.contentHash(pdf), dao.findById("c-1").get().signedContentHash)
     }
