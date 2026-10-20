@@ -109,6 +109,13 @@ class MandateCardsTest {
     fun `whole city`() {
         val card = MandateCards.of(MANDATE.copy(neighborhoodIds = emptyList()), null, NAMES, NOW, FORMATTER)
 
+        assertEquals("Secteur" to "Douala", card.facts[0])
+    }
+
+    @Test
+    fun `whole city without its name`() {
+        val card = MandateCards.of(MANDATE.copy(neighborhoodIds = emptyList()), null, emptyMap(), NOW, FORMATTER)
+
         assertEquals("Secteur" to "Toute la ville", card.facts[0])
     }
 }

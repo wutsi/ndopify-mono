@@ -12,13 +12,17 @@ object MandateCards {
     /** [contract] is the mandate's, null when it has none yet or it can't be loaded (no date in the next step). */
     fun of(mandate: Mandate, contract: ContractSummary?, locations: Map<Long, Location>, now: Long, formatter: TenantFormatter): MandateCardView {
         val facts = MandateLabels.criteria(mandate, locations, formatter).take(FACTS)
+        val city = locations[mandate.cityId]?.name
         return MandateCardView(
             id = mandate.id,
             title = MandateLabels.title(mandate),
             tag = MandateRules.tag(mandate.status),
-            // The card names the neighbourhoods only: the city is the agent's.
-            facts = facts.mapIndexed { i, (term, value) -> if (i == 0) term to value.substringBefore(" — ") else term to value },
+            facts = facts.mapIndexed { i, (term, value) -> if (i == 0) term to sector(mandate, value, city) else term to value },
             nextStep = MandateRules.nextStep(mandate, contract, now, formatter),
         )
     }
+
+    /** The neighbourhoods only (the city is the agent's), or the city's name for a mandate on the whole city. */
+    private fun sector(mandate: Mandate, value: String, city: String?): String =
+        if (mandate.neighborhoodIds.isEmpty() && city != null) city else value.substringBefore(" — ")
 }
