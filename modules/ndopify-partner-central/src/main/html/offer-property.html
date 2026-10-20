@@ -1,0 +1,773 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>Proposer un bien — Ndopify</title>
+    <meta content="Mettez votre bien en location avec un Agent Vérifié Ndopify de votre quartier : audit et photos gratuits, frais dus seulement à la signature du bail."
+          name="description">
+    <meta content="noindex, nofollow" name="robots">
+    <meta content="#ffffff" name="theme-color">
+    <link href="assets/images/icon.png" rel="icon" type="image/png">
+    <link href="assets/images/icon.png" rel="apple-touch-icon">
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
+    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap"
+          rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/css/intlTelInput.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.css" rel="stylesheet">
+    <link href="assets/css/partner-central.css" rel="stylesheet">
+    <link href="assets/css/rejoindre.css" rel="stylesheet">
+    <link href="assets/css/find-property.css" rel="stylesheet">
+    <link href="assets/css/offer-property.css" rel="stylesheet">
+    <script defer src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/js/intlTelInput.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.iife.js"></script>
+    <script defer src="assets/js/util.js"></script>
+    <script defer src="assets/js/offer-property.js"></script>
+</head>
+<body data-page="offer-property">
+<a class="skip-link" href="#main">Aller au contenu</a>
+<header class="site-header">
+    <div class="site-header__inner">
+        <a class="site-header__brand" href="https://www.ndopify.com/">
+            <img alt="Ndopify, accueil" height="40" src="assets/images/logo.png" width="84">
+        </a>
+        <!-- Leaving keeps the answers in the session: coming back to the page resumes where the visitor stopped. -->
+        <a class="btn btn--outline" data-exit href="https://www.ndopify.com/">
+            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                <path d="m6 6 8 8M14 6l-8 8" fill="none" stroke="currentColor" stroke-linecap="round"
+                      stroke-width="1.5"/>
+            </svg>
+            Quitter</a>
+    </div>
+</header>
+<main class="page" id="main">
+    <div class="column">
+        <div class="page-intro">
+            <h1>Proposer un bien</h1>
+        </div>
+
+        <div class="progress" data-progress-block>
+            <p class="progress__label" data-progress-label id="progress-label">Étape 1 sur 7</p>
+            <div aria-labelledby="progress-label" aria-valuemax="7" aria-valuemin="1"
+                 aria-valuenow="1" aria-valuetext="Étape 1 sur 7" class="progress__track" data-progress
+                 role="progressbar">
+                <div class="progress__bar" data-progress-bar style="transform: scaleX(0.1429)"></div>
+            </div>
+        </div>
+
+        <h2 class="visually-hidden" data-steps-title>Étapes du formulaire</h2>
+        <!-- Field names match CreateMandateRequest (ndopify-dto); mandateType is always LISTING here. -->
+        <form class="form" data-offer-form novalidate>
+            <fieldset class="step" data-step="bien" tabindex="-1">
+                <legend class="visually-hidden">Étape 1 sur 7 : votre bien</legend>
+                <h3 aria-hidden="true">Quel bien souhaitez-vous louer&nbsp;?</h3>
+                <p>Un Agent Vérifié de votre quartier vérifie votre bien, le photographie et trouve vos locataires.
+                    L'audit et la publication sont gratuits.</p>
+                <fieldset aria-describedby="propertyCategory-error" class="choices" data-group="propertyCategory">
+                    <legend class="choices__legend">Pour quel usage&nbsp;?</legend>
+                    <div class="choices__grid">
+                        <label class="choice choice--described">
+                            <input name="propertyCategory" required type="radio" value="RESIDENTIAL">
+                            <span>Résidentiel <span class="choice__detail">Pour y habiter&nbsp;: chambre,
+                                studio, appartement, villa, immeuble…</span></span></label>
+                        <label class="choice choice--described">
+                            <input name="propertyCategory" required type="radio" value="COMMERCIAL">
+                            <span>Commercial <span class="choice__detail">Pour une activité&nbsp;: bureau,
+                                boutique, entrepôt, terrain…</span></span></label>
+                    </div>
+                    <p class="field__error" hidden id="propertyCategory-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </fieldset>
+
+                <div class="form__actions">
+                    <button aria-disabled="true" class="btn btn--primary" data-next type="button">Suivant
+                    </button>
+                </div>
+            </fieldset>
+
+            <fieldset class="step" data-step="adresse" hidden tabindex="-1">
+                <legend class="visually-hidden">Étape 2 sur 7 : l'emplacement du bien</legend>
+                <h3 aria-hidden="true">Où se situe votre bien&nbsp;?</h3>
+                <p>Nous désignons un agent qui connaît bien ce quartier.</p>
+                <div class="field">
+                    <label class="field__label" for="cityId">Ville</label>
+                    <select aria-describedby="cityId-error" class="input select" id="cityId" name="cityId" required>
+                        <option data-placeholder="true" value="">Choisissez une ville</option>
+                    </select>
+                    <p class="field__error" hidden id="cityId-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </div>
+
+                <p data-neighborhoods-empty>Choisissez d'abord la ville pour voir ses quartiers.</p>
+
+                <div class="field" data-group="neighborhoodId" hidden>
+                    <label class="field__label" for="neighborhoodId">Quartier</label>
+                    <select aria-describedby="neighborhoodId-error" class="input select" id="neighborhoodId"
+                            name="neighborhoodId" required>
+                        <option data-placeholder="true" value="">Choisissez le quartier</option>
+                    </select>
+                    <p class="field__error" hidden id="neighborhoodId-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </div>
+
+                <div class="field">
+                    <label class="field__label" for="address">Précision <span
+                        class="field__optional">(facultatif)</span></label>
+                    <input aria-describedby="address-counter address-hint" class="input" id="address" maxlength="200"
+                           name="address" placeholder="Ex. derrière la pharmacie du carrefour, portail bleu"
+                           type="text">
+                    <p class="field__counter" data-address-counter id="address-counter">0 sur 200 caractères</p>
+                </div>
+
+                <div class="hint" id="address-hint">
+                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                        <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/>
+                        <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
+                    </svg>
+                    <div>
+                        <p>Un point de repère connu aide votre agent à trouver le bien pour la visite d'audit.
+                            L'adresse exacte n'est jamais publiée dans l'annonce.</p>
+                    </div>
+                </div>
+
+                <div class="form__actions">
+                    <button class="btn btn--outline" data-prev type="button">Précédent</button>
+                    <button aria-disabled="true" class="btn btn--primary" data-next type="button">Suivant
+                    </button>
+                </div>
+            </fieldset>
+
+            <fieldset class="step" data-step="conditions" hidden tabindex="-1">
+                <legend class="visually-hidden">Étape 3 sur 7 : vos conditions financières</legend>
+                <h3 aria-hidden="true">Quelles sont vos conditions&nbsp;?</h3>
+                <p>Le loyer et les garanties que vous demandez, et la date à laquelle le bien est libre.</p>
+                <div class="field">
+                    <label class="field__label" for="priceAmount">Loyer mensuel souhaité</label>
+                    <div class="input-unit">
+                        <input aria-describedby="priceAmount-error" class="input" id="priceAmount"
+                               inputmode="numeric" name="priceAmount" required type="text">
+                        <span aria-hidden="true" class="input-unit__suffix">FCFA / mois</span>
+                    </div>
+                    <p class="field__error" hidden id="priceAmount-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </div>
+                <div class="field">
+                    <label class="field__label" for="advanceRent">Avance de loyer exigée <span
+                        class="field__optional">(si applicable)</span></label>
+                    <select class="input select" id="advanceRent" name="advanceRent">
+                        <option value="">Aucune avance</option>
+                        <option value="1">1 mois</option>
+                        <option value="2">2 mois</option>
+                        <option value="3">3 mois</option>
+                        <option value="4">4 mois</option>
+                        <option value="5">5 mois</option>
+                        <option value="6">6 mois</option>
+                        <option value="7">7 mois</option>
+                        <option value="8">8 mois</option>
+                        <option value="9">9 mois</option>
+                        <option value="10">10 mois</option>
+                        <option value="11">11 mois</option>
+                        <option value="12">12 mois</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <label class="field__label" for="securityDeposit">Caution demandée</label>
+                    <select aria-describedby="securityDeposit-error" class="input select" id="securityDeposit"
+                            name="securityDeposit" required>
+                        <option value="">Choisissez le nombre de mois</option>
+                        <option value="1">1 mois</option>
+                        <option value="2">2 mois</option>
+                        <option value="3">3 mois</option>
+                        <option value="4">4 mois</option>
+                        <option value="5">5 mois</option>
+                        <option value="6">6 mois</option>
+                    </select>
+                    <p class="field__error" hidden id="securityDeposit-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </div>
+                <div class="field">
+                    <label class="field__label" for="availableFrom">Disponible à partir du</label>
+                    <input aria-describedby="availableFrom-error" class="input input--date" id="availableFrom"
+                           name="availableFrom" required type="date">
+                    <p class="field__error" hidden id="availableFrom-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </div>
+
+                <div class="hint" id="conditions-hint">
+                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                        <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/>
+                        <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
+                    </svg>
+                    <div>
+                        <p>Rien à payer d'avance&nbsp;: les frais de service, 1&nbsp;mois de loyer, ne sont dus
+                            qu'à la signature du bail.</p>
+                    </div>
+                </div>
+
+                <div class="form__actions">
+                    <button class="btn btn--outline" data-prev type="button">Précédent</button>
+                    <button aria-describedby="conditions-hint" aria-disabled="true" class="btn btn--primary"
+                            data-next type="button">Suivant
+                    </button>
+                </div>
+            </fieldset>
+
+            <fieldset class="step" data-step="caracteristiques" hidden tabindex="-1">
+                <legend class="visually-hidden">Étape 4 sur 7 : les caractéristiques du bien</legend>
+                <h3 aria-hidden="true">Décrivez votre bien</h3>
+                <fieldset aria-describedby="propertyType-error" class="choices" data-group="propertyType">
+                    <legend class="choices__legend">Type de bien</legend>
+                    <div class="choices__grid">
+                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" required
+                                                                                   type="radio" value="APARTMENT">
+                            Appartement</label>
+                        <!-- One answer for both, as in the specs: sent as HOUSE. -->
+                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" required
+                                                                                   type="radio" value="HOUSE">
+                            Villa, maison</label>
+                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" required
+                                                                                   type="radio" value="ROOM">
+                            Chambre</label>
+                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" required
+                                                                                   type="radio" value="STUDIO">
+                            Studio</label>
+                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" required
+                                                                                   type="radio" value="DUPLEX">
+                            Duplex</label>
+                        <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" required
+                                                                                   type="radio" value="BUILDING">
+                            Immeuble entier</label>
+                        <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" required
+                                                                                  type="radio" value="OFFICE">
+                            Bureau</label>
+                        <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" required
+                                                                                  type="radio" value="RETAIL">
+                            Commerce, boutique</label>
+                        <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" required
+                                                                                  type="radio" value="INDUSTRIAL">
+                            Entrepôt, local industriel</label>
+                        <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" required
+                                                                                  type="radio" value="LAND">
+                            Terrain</label>
+                    </div>
+                    <p class="field__error" hidden id="propertyType-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </fieldset>
+
+                <fieldset aria-describedby="furnitureType-error" class="choices" data-group="furnitureType" hidden>
+                    <legend class="choices__legend">Ameublement</legend>
+                    <div class="choices__grid choices__grid--2">
+                        <label class="choice"><input name="furnitureType" required type="radio" value="UNFURNISHED">
+                            Non meublé</label>
+                        <label class="choice"><input name="furnitureType" required type="radio"
+                                                     value="FULLY_FURNISHED"> Meublé</label>
+                    </div>
+                    <p class="field__error" hidden id="furnitureType-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </fieldset>
+
+                <fieldset aria-describedby="rooms-error" class="choices" data-group="rooms" hidden>
+                    <legend class="choices__legend">Nombre de chambres</legend>
+                    <div class="choices__grid">
+                        <label class="choice"><input name="rooms" required type="radio" value="1"> 1</label>
+                        <label class="choice"><input name="rooms" required type="radio" value="2"> 2</label>
+                        <label class="choice"><input name="rooms" required type="radio" value="3"> 3</label>
+                        <label class="choice"><input name="rooms" required type="radio" value="4"> 4</label>
+                        <label class="choice"><input name="rooms" required type="radio" value="5+"> 5&nbsp;et&nbsp;+</label>
+                    </div>
+                    <p class="field__error" hidden id="rooms-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </fieldset>
+
+                <fieldset aria-describedby="hasParking-error" class="choices" data-group="hasParking" hidden>
+                    <legend class="choices__legend">Parking ou garage</legend>
+                    <div class="choices__grid choices__grid--2">
+                        <label class="choice"><input name="hasParking" required type="radio" value="YES"> Oui</label>
+                        <label class="choice"><input name="hasParking" required type="radio" value="NO"> Non</label>
+                    </div>
+                    <p class="field__error" hidden id="hasParking-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </fieldset>
+
+                <fieldset aria-describedby="parkings-error" class="choices" data-group="parkings" hidden>
+                    <legend class="choices__legend">Combien de places&nbsp;?</legend>
+                    <div class="choices__grid">
+                        <label class="choice"><input name="parkings" required type="radio" value="1"> 1</label>
+                        <label class="choice"><input name="parkings" required type="radio" value="2"> 2</label>
+                        <label class="choice"><input name="parkings" required type="radio" value="3+"> 3&nbsp;et&nbsp;+</label>
+                    </div>
+                    <p class="field__error" hidden id="parkings-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </fieldset>
+
+                <div class="field" data-group="area" hidden>
+                    <label class="field__label" for="area" data-area-label>Surface estimée</label>
+                    <div class="input-unit">
+                        <input aria-describedby="area-error" class="input" id="area" inputmode="numeric" name="area"
+                               required type="text">
+                        <span aria-hidden="true" class="input-unit__suffix">m²</span>
+                    </div>
+                    <p class="field__error" hidden id="area-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </div>
+
+                <div class="form__actions">
+                    <button class="btn btn--outline" data-prev type="button">Précédent</button>
+                    <button aria-disabled="true" class="btn btn--primary" data-next type="button">Suivant
+                    </button>
+                </div>
+            </fieldset>
+
+            <fieldset class="step" data-step="equipements" hidden tabindex="-1">
+                <legend class="visually-hidden">Étape 5 sur 7 : les équipements du bien</legend>
+                <h3 aria-hidden="true">Quels sont les équipements du bien&nbsp;?</h3>
+                <p>Cochez ce que le bien a déjà. Votre agent le vérifie lors de la visite d'audit.</p>
+                <fieldset class="choices">
+                    <legend class="choices__legend">Eau <span class="field__optional">(plusieurs choix
+                        possibles)</span></legend>
+                    <div class="choices__grid">
+                        <label class="choice"><input name="waterMeter" type="checkbox"> Compteur d'eau</label>
+                        <label class="choice"><input name="dedicatedWaterMeter" type="checkbox"> Compteur d'eau
+                            individuel</label>
+                        <label class="choice"><input name="waterWell" type="checkbox"> Forage</label>
+                        <label class="choice"><input name="waterTank" type="checkbox"> Château d'eau,
+                            citerne</label>
+                    </div>
+                </fieldset>
+                <fieldset class="choices">
+                    <legend class="choices__legend">Électricité <span class="field__optional">(plusieurs choix
+                        possibles)</span></legend>
+                    <div class="choices__grid">
+                        <label class="choice"><input name="electricityMeter" type="checkbox"> Compteur
+                            électrique</label>
+                        <label class="choice"><input name="dedicatedElectricityMeter" type="checkbox"> Compteur
+                            électrique individuel</label>
+                        <label class="choice"><input name="generatorSet" type="checkbox"> Groupe électrogène</label>
+                        <label class="choice"><input name="solarPanel" type="checkbox"> Panneaux solaires</label>
+                    </div>
+                </fieldset>
+                <!-- A property has one road access: a single choice, sent as the matching boolean. -->
+                <fieldset aria-describedby="roadAccess-error" class="choices" data-group="roadAccess">
+                    <legend class="choices__legend">Accès routier</legend>
+                    <div class="choices__grid">
+                        <label class="choice"><input name="roadAccess" required type="radio" value="roadPaved"> Route
+                            bitumée</label>
+                        <label class="choice"><input name="roadAccess" required type="radio"
+                                                     value="trackAccessibleByCar"> Piste accessible en voiture</label>
+                        <label class="choice"><input name="roadAccess" required type="radio"
+                                                     value="trackInaccessibleByCar"> Piste accessible à pied
+                            seulement</label>
+                    </div>
+                    <p class="field__error" hidden id="roadAccess-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </fieldset>
+                <fieldset class="choices">
+                    <legend class="choices__legend">Sécurité <span class="field__optional">(plusieurs choix
+                        possibles)</span></legend>
+                    <div class="choices__grid">
+                        <label class="choice"><input name="videoSurveillance" type="checkbox"> Vidéosurveillance</label>
+                        <label class="choice"><input name="securityGuard" type="checkbox"> Gardien 24&nbsp;h/24</label>
+                        <label class="choice"><input name="securedFenced" type="checkbox"> Barrière, clôture
+                            sécurisée</label>
+                    </div>
+                </fieldset>
+
+                <div class="form__actions">
+                    <button class="btn btn--outline" data-prev type="button">Précédent</button>
+                    <button aria-disabled="true" class="btn btn--primary" data-next type="button">Suivant
+                    </button>
+                </div>
+            </fieldset>
+
+            <fieldset class="step" data-step="contact" hidden tabindex="-1">
+                <legend class="visually-hidden">Étape 6 sur 7 : vos coordonnées</legend>
+                <h3 aria-hidden="true">Comment votre agent peut-il vous joindre&nbsp;?</h3>
+                <div class="field">
+                    <label class="field__label" for="firstName">Prénom</label>
+                    <input aria-describedby="firstName-error" autocapitalize="words" autocomplete="given-name"
+                           class="input" id="firstName" name="firstName" required type="text">
+                    <p class="field__error" hidden id="firstName-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </div>
+                <div class="field">
+                    <label class="field__label" for="lastName">Nom</label>
+                    <input aria-describedby="lastName-error" autocapitalize="words" autocomplete="family-name"
+                           class="input" id="lastName" name="lastName" required type="text">
+                    <p class="field__error" hidden id="lastName-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </div>
+                <div class="field">
+                    <label class="field__label" for="email">Adresse email</label>
+                    <input aria-describedby="email-error" autocapitalize="off" autocomplete="email" class="input"
+                           id="email" inputmode="email" name="email" required spellcheck="false" type="email">
+                    <p class="field__error" hidden id="email-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </div>
+                <div class="field">
+                    <label class="field__label" for="whatsappNumber">Numéro WhatsApp</label>
+                    <input aria-describedby="whatsappNumber-error" autocomplete="tel" class="input"
+                           id="whatsappNumber" required type="tel">
+                    <input name="whatsappNumber" type="hidden">
+                    <p class="field__error" hidden id="whatsappNumber-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </div>
+                <fieldset aria-describedby="preferredContactPeriod-error" class="choices"
+                          data-group="preferredContactPeriod">
+                    <legend class="choices__legend">Quand préférez-vous être contacté&nbsp;?</legend>
+                    <div class="choices__grid">
+                        <label class="choice"><input name="preferredContactPeriod" required type="radio"
+                                                     value="MORNING"> Le matin</label>
+                        <label class="choice"><input name="preferredContactPeriod" required type="radio"
+                                                     value="AFTERNOON"> L'après-midi</label>
+                        <label class="choice"><input name="preferredContactPeriod" required type="radio"
+                                                     value="EVENING"> Le soir</label>
+                    </div>
+                    <p class="field__error" hidden id="preferredContactPeriod-error">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <span data-error-text></span></p>
+                </fieldset>
+
+                <div class="hint" id="contact-hint">
+                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                        <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/>
+                        <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
+                    </svg>
+                    <div>
+                        <p>Votre agent vous écrit sur WhatsApp. Vos coordonnées ne sont jamais communiquées aux
+                            locataires avant la signature du bail.</p>
+                    </div>
+                </div>
+
+                <div class="alert alert--warning" data-phone-unavailable hidden>
+                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                        <path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-linejoin="round"
+                              stroke-width="1.5"/>
+                        <path d="M10 8v4" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/>
+                        <circle cx="10" cy="14.5" fill="currentColor" r="1"/>
+                    </svg>
+                    <div>
+                        <p class="alert__title">Nous ne pouvons pas vérifier votre numéro pour l'instant</p>
+                        <p>Vérifiez votre connexion internet, puis rechargez la page.</p>
+                    </div>
+                </div>
+
+                <div class="form__actions">
+                    <button class="btn btn--outline" data-prev type="button">Précédent</button>
+                    <button aria-describedby="contact-hint" aria-disabled="true" class="btn btn--primary"
+                            data-next type="button">Suivant
+                    </button>
+                </div>
+            </fieldset>
+
+            <fieldset class="step" data-step="revue" hidden tabindex="-1">
+                <legend class="visually-hidden">Étape 7 sur 7 : revue de votre bien</legend>
+                <h3 aria-hidden="true">Vérifiez votre bien</h3>
+                <p>Relisez avant d'envoyer. Vous pouvez modifier chaque élément.</p>
+
+                <dl class="review">
+                    <div class="review__item">
+                        <dt class="review__term">Bien</dt>
+                        <dd class="review__value">
+                            <p data-review-value="category" hidden></p>
+                            <p class="review__missing" data-review-missing="category" hidden>
+                                <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                    <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor"
+                                            stroke-width="1.5"/>
+                                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                          stroke-width="1.5"/>
+                                </svg>
+                                Information manquante
+                            </p>
+                        </dd>
+                        <dd class="review__value">
+                            <button class="link-button review__edit" data-edit="bien" type="button">Modifier<span
+                                class="visually-hidden"> l'usage du bien</span></button>
+                        </dd>
+                    </div>
+                    <div class="review__item">
+                        <dt class="review__term">Emplacement</dt>
+                        <dd class="review__value">
+                            <p class="review__multiline" data-review-value="location" hidden></p>
+                            <p class="review__missing" data-review-missing="location" hidden>
+                                <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                    <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor"
+                                            stroke-width="1.5"/>
+                                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                          stroke-width="1.5"/>
+                                </svg>
+                                Information manquante
+                            </p>
+                        </dd>
+                        <dd class="review__value">
+                            <button class="link-button review__edit" data-edit="adresse" type="button">Modifier<span
+                                class="visually-hidden"> l'emplacement</span></button>
+                        </dd>
+                    </div>
+                    <div class="review__item">
+                        <dt class="review__term">Conditions</dt>
+                        <dd class="review__value">
+                            <p class="review__multiline" data-review-value="conditions" hidden></p>
+                            <p class="review__missing" data-review-missing="conditions" hidden>
+                                <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                    <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor"
+                                            stroke-width="1.5"/>
+                                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                          stroke-width="1.5"/>
+                                </svg>
+                                Information manquante
+                            </p>
+                        </dd>
+                        <dd class="review__value">
+                            <button class="link-button review__edit" data-edit="conditions" type="button">Modifier<span
+                                class="visually-hidden"> vos conditions</span></button>
+                        </dd>
+                    </div>
+                    <div class="review__item">
+                        <dt class="review__term">Caractéristiques</dt>
+                        <dd class="review__value">
+                            <p data-review-value="property" hidden></p>
+                            <p class="review__missing" data-review-missing="property" hidden>
+                                <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                    <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor"
+                                            stroke-width="1.5"/>
+                                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                          stroke-width="1.5"/>
+                                </svg>
+                                Information manquante
+                            </p>
+                        </dd>
+                        <dd class="review__value">
+                            <button class="link-button review__edit" data-edit="caracteristiques" type="button">
+                                Modifier<span class="visually-hidden"> les caractéristiques</span></button>
+                        </dd>
+                    </div>
+                    <div class="review__item">
+                        <dt class="review__term">Équipements</dt>
+                        <dd class="review__value">
+                            <p data-review-value="amenities" hidden></p>
+                            <p class="review__missing" data-review-missing="amenities" hidden>
+                                <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                    <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor"
+                                            stroke-width="1.5"/>
+                                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                          stroke-width="1.5"/>
+                                </svg>
+                                Information manquante
+                            </p>
+                        </dd>
+                        <dd class="review__value">
+                            <button class="link-button review__edit" data-edit="equipements" type="button">Modifier<span
+                                class="visually-hidden"> les équipements</span></button>
+                        </dd>
+                    </div>
+                    <div class="review__item">
+                        <dt class="review__term">Vos coordonnées</dt>
+                        <dd class="review__value">
+                            <p class="review__multiline" data-review-value="contact" hidden></p>
+                            <p class="review__missing" data-review-missing="contact" hidden>
+                                <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                                    <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor"
+                                            stroke-width="1.5"/>
+                                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                          stroke-width="1.5"/>
+                                </svg>
+                                Information manquante
+                            </p>
+                        </dd>
+                        <dd class="review__value">
+                            <button class="link-button review__edit" data-edit="contact" type="button">Modifier<span
+                                class="visually-hidden"> vos coordonnées</span></button>
+                        </dd>
+                    </div>
+                </dl>
+
+                <div class="alert alert--error" data-incomplete hidden>
+                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                        <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                              stroke-width="1.5"/>
+                    </svg>
+                    <p>Il manque une ou plusieurs informations. Complétez-les pour pouvoir enregistrer votre bien.</p>
+                </div>
+
+                <div class="hint" id="review-hint">
+                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                        <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                        <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/>
+                        <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
+                    </svg>
+                    <div>
+                        <p>L'enregistrement est gratuit et ne vous engage à rien. Rien n'est publié avant que vous
+                            ayez validé l'annonce.</p>
+                    </div>
+                </div>
+
+                <div class="form__actions">
+                    <button class="btn btn--outline" data-prev type="button">Précédent</button>
+                    <button aria-describedby="review-hint" aria-disabled="true" class="btn btn--primary"
+                            data-submit type="submit">Enregistrer mon bien
+                    </button>
+                </div>
+                <p class="visually-hidden" data-sending role="status"></p>
+            </fieldset>
+        </form>
+
+        <section aria-labelledby="confirmation-title" class="confirmation stack" data-confirmation hidden
+                 tabindex="-1">
+            <span class="confirmation__mark"><svg aria-hidden="true" class="confirmation__icon" focusable="false"
+                                                  viewBox="0 0 20 20"><circle cx="10" cy="10" fill="none" r="8.25"
+                                                                            stroke="currentColor" stroke-width="1.5"/><path
+                d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"
+                stroke-width="1.5"/></svg></span>
+            <h2 id="confirmation-title">Bien enregistré</h2>
+            <p>Félicitations&nbsp;! Votre bien est enregistré. Voici la suite pour le mettre en location&nbsp;:</p>
+            <ol class="next-steps">
+                <li>
+                    <div>
+                        <p class="next-steps__title">Un agent vous est attribué</p>
+                        <p>Nous choisissons un Agent Vérifié qui connaît bien votre quartier.</p>
+                    </div>
+                </li>
+                <li>
+                    <div>
+                        <p class="next-steps__title">Il vous contacte pour planifier l'audit</p>
+                        <p>Sur WhatsApp, au <strong data-done-whatsapp>numéro indiqué</strong>, <span
+                            data-done-period>au moment choisi</span>. Le suivi arrive aussi à <strong
+                            data-done-email>votre adresse email</strong>.</p>
+                    </div>
+                </li>
+                <li>
+                    <div>
+                        <p class="next-steps__title">Préparez vos documents</p>
+                        <p>Votre pièce d'identité (CNI ou passeport) et une preuve de propriété&nbsp;: titre foncier,
+                            attestation d'attribution, mandat de gestion ou acte de vente.</p>
+                    </div>
+                </li>
+                <li>
+                    <div>
+                        <p class="next-steps__title">Audit et photos, sans frais</p>
+                        <p>L'agent vérifie vos documents, inspecte le bien (Eneo, Camwater, accès) et réalise les
+                            photos et vidéos HD, sans rien vous demander d'avance.</p>
+                    </div>
+                </li>
+                <li>
+                    <div>
+                        <p class="next-steps__title">Vous validez l'annonce</p>
+                        <p>L'annonce certifiée n'est publiée qu'après votre accord, auprès de locataires vérifiés.</p>
+                    </div>
+                </li>
+            </ol>
+            <div class="hint">
+                <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                    <rect fill="none" height="8" rx="1.5" stroke="currentColor" stroke-width="1.5" width="12" x="4"
+                          y="9"/>
+                    <path d="M7 9V6.5a3 3 0 0 1 6 0V9" fill="none" stroke="currentColor" stroke-linecap="round"
+                          stroke-width="1.5"/>
+                </svg>
+                <div>
+                    <p><strong>Garantie anti-fraude.</strong> Aucun bien n'est publié sans vérification de l'identité
+                        du bailleur et de son titre de propriété. L'audit et la publication sont gratuits&nbsp;; les
+                        frais de service, 1&nbsp;mois de loyer, ne sont dus qu'à la signature du bail.</p>
+                </div>
+            </div>
+            <div class="cta-row">
+                <a class="btn btn--primary" href="https://www.ndopify.com/">Retour à l'accueil</a>
+            </div>
+        </section>
+    </div>
+</main>
+</body>
+</html>

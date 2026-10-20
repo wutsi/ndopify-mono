@@ -13,6 +13,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
     <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/join.css}">
     <link rel="stylesheet" th:href="@{/assets/css/home.css}">
     <script th:src="@{/assets/js/partner-central.js}" defer></script>
     <script th:src="@{/assets/js/mandate.js}" defer></script>
@@ -285,7 +286,7 @@
                         <fieldset class="choices" aria-describedby="cancellationCode-error"
                                   th:attr="aria-invalid=${errors['cancellationCode'] != null ? 'true' : null}">
                             <legend class="choices__legend">Pour quelle raison&nbsp;?</legend>
-                            <div class="choices__grid">
+                            <div class="choices__grid choices__grid--2">
                                 <label class="choice"><input name="cancellationCode" type="radio" value="FOUND_INDEPENDENTLY"
                                                              th:checked="${form.cancellationCode?.name() == 'FOUND_INDEPENDENTLY'}">
                                     Trouvé sans mon aide</label>
