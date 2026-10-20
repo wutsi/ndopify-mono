@@ -198,7 +198,7 @@ object MandateLabels {
             "Catégorie" to (category(mandate.propertyCategory) ?: NONE),
             "Type de propriété" to (PROPERTY_TYPE_LABELS[mandate.propertyType] ?: "Indifférent"),
             ("Meublé" to furniture(mandate.furnitureType)).takeIf { FindPropertyRules.needsFurniture(type) },
-            mandate.rooms?.let { "Chambres" to it }?.takeIf { FindPropertyRules.needsRooms(type) },
+            mandate.rooms?.let { "Chambres" to it }?.takeIf { FindPropertyRules.needsRooms(mandate.propertyCategory, type) },
             ("Parking" to (mandate.parkings?.let { PARKING_VALUES[it] ?: it } ?: "Indifférent"))
                 .takeIf { FindPropertyRules.asksParkings(type) },
             mandate.area?.let { (if (owner) "Surface" else "Surface souhaitée") to formatNumber(it) + " m²" },

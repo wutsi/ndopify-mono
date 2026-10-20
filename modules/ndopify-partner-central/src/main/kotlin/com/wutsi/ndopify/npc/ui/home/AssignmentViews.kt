@@ -60,7 +60,7 @@ object AssignmentViews {
             MandateLabels.category(mandate.propertyCategory)?.let { "Catégorie" to it },
             "Type de propriété" to MandateLabels.propertyType(mandate.propertyType),
             ("Meublé" to MandateLabels.furniture(mandate.furnitureType)).takeIf { FindPropertyRules.needsFurniture(type) },
-            mandate.rooms?.let { "Chambres" to it }?.takeIf { FindPropertyRules.needsRooms(type) },
+            mandate.rooms?.let { "Chambres" to it }?.takeIf { FindPropertyRules.needsRooms(mandate.propertyCategory, type) },
             mandate.parkings?.let { "Parking" to it }?.takeIf { FindPropertyRules.asksParkings(type) },
             mandate.area?.let { (if (owner) "Surface" else "Surface souhaitée") to MandateLabels.formatNumber(it) + " m²" },
         ) + MandateLabels.amenityGroups(mandate)

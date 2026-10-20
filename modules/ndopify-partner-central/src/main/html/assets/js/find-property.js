@@ -101,7 +101,7 @@
         OFFICE: { label: "Bureau", categories: ["COMMERCIAL"] },
         INDUSTRIAL: { label: "Entrepôt, local industriel", categories: ["COMMERCIAL"] },
         BUILDING: { label: "Immeuble", categories: ["COMMERCIAL"] },
-        LAND: { label: "Terrain", categories: ["RESIDENTIAL", "COMMERCIAL"] }
+        LAND: { label: "Terrain", categories: ["COMMERCIAL"] }
     };
 
     var ROOM_LABELS = { "1": "1 chambre", "2": "2 chambres", "3": "3 chambres", "4": "4 chambres", "5+": "5 chambres et +" };
@@ -155,7 +155,7 @@
     }
 
     function needsRooms(a) {
-        return a.propertyCategory === "RESIDENTIAL" && ["APARTMENT", "HOUSE", "VILLA", "DUPLEX"].indexOf(a.propertyType) !== -1;
+        return a.propertyCategory === "RESIDENTIAL" && ["STUDIO", "ROOM"].indexOf(a.propertyType) === -1;
     }
 
     function needsFurniture(a) {

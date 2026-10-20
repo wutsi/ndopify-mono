@@ -31,7 +31,7 @@
     var PHONE_INVALID = "Ce numéro n'est pas un numéro mobile valide. Exemple : 6 77 12 34 56";
 
     // Same rules as FindPropertyRules (needsRooms, needsFurniture, asksParkings).
-    var WITH_ROOMS = ["APARTMENT", "HOUSE", "VILLA", "DUPLEX"];
+    var WITHOUT_ROOMS = ["STUDIO", "ROOM"];
     var WITHOUT_FURNITURE = ["LAND", "BUILDING", "INDUSTRIAL"];
     var WITHOUT_PARKINGS = ["LAND", "ROOM"];
 
@@ -387,7 +387,7 @@
 
         function updateQuestions() {
             var type = checkedType();
-            show("rooms", WITH_ROOMS.indexOf(type) !== -1, true);
+            show("rooms", WITHOUT_ROOMS.indexOf(type) === -1, true);
             show("furnitureType", WITHOUT_FURNITURE.indexOf(type) === -1, true);
             show("parkings", WITHOUT_PARKINGS.indexOf(type) === -1, false);
             areaLabel.textContent = type === "LAND" ? "Surface du terrain minimale" : "Surface minimale";

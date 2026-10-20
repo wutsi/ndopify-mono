@@ -73,7 +73,7 @@ data class PendingMandate(
 
         FindPropertyController.STEP_PROPERTY ->
             FindPropertyRules.propertyType(propertyCategory, propertyType) == null &&
-                (!FindPropertyRules.needsRooms(propertyType) || FindPropertyRules.rooms(rooms) == null) &&
+                (!FindPropertyRules.needsRooms(propertyCategory, propertyType) || FindPropertyRules.rooms(rooms) == null) &&
                 (!FindPropertyRules.needsFurniture(propertyType) || FindPropertyRules.furnitureType(furnitureType) == null) &&
                 FindPropertyRules.area(area) == null
 
@@ -114,7 +114,7 @@ data class PendingMandate(
             furnitureType = FurnitureType.entries
                 .firstOrNull { it.name == furnitureType }
                 ?.takeIf { FindPropertyRules.needsFurniture(propertyType) },
-            rooms = rooms?.takeIf { FindPropertyRules.needsRooms(propertyType) },
+            rooms = rooms?.takeIf { FindPropertyRules.needsRooms(propertyCategory, propertyType) },
             parkings = parkings?.takeIf { FindPropertyRules.asksParkings(propertyType) && it != FindPropertyRules.ANY },
             area = area,
             waterMeter = has("waterMeter"),

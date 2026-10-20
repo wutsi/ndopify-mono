@@ -124,7 +124,7 @@ class AssignmentViewsTest {
 
     @Test
     fun `questions that don't apply to the type are left out`() {
-        val view = AssignmentViews.of(ASSIGNMENT, MANDATE.copy(propertyType = PropertyType.LAND), NAMES, NOW, FORMATTER)
+        val view = AssignmentViews.of(ASSIGNMENT, MANDATE.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = PropertyType.LAND), NAMES, NOW, FORMATTER)
 
         val terms = view.details.map { it.first }
         assertFalse("Chambres" in terms)

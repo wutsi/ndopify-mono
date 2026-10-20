@@ -50,6 +50,10 @@ class FindPropertyRulesTest {
         )
         assertEquals(
             "Choisissez un type de bien proposé.",
+            FindPropertyRules.propertyType(PropertyCategory.RESIDENTIAL, "LAND"),
+        )
+        assertEquals(
+            "Choisissez un type de bien proposé.",
             FindPropertyRules.propertyType(PropertyCategory.RESIDENTIAL, "CASTLE"),
         )
         assertEquals(
@@ -60,9 +64,14 @@ class FindPropertyRulesTest {
 
     @Test
     fun followUps() {
-        assertTrue(FindPropertyRules.needsRooms("APARTMENT"))
-        assertFalse(FindPropertyRules.needsRooms("STUDIO"))
-        assertFalse(FindPropertyRules.needsRooms(null))
+        assertTrue(FindPropertyRules.needsRooms(PropertyCategory.RESIDENTIAL, "APARTMENT"))
+        assertTrue(FindPropertyRules.needsRooms(PropertyCategory.RESIDENTIAL, null))
+        assertTrue(FindPropertyRules.needsRooms(PropertyCategory.RESIDENTIAL, "ANY"))
+        assertFalse(FindPropertyRules.needsRooms(PropertyCategory.RESIDENTIAL, "STUDIO"))
+        assertFalse(FindPropertyRules.needsRooms(PropertyCategory.RESIDENTIAL, "ROOM"))
+        assertFalse(FindPropertyRules.needsRooms(PropertyCategory.COMMERCIAL, null))
+        assertFalse(FindPropertyRules.needsRooms(PropertyCategory.COMMERCIAL, "OFFICE"))
+        assertFalse(FindPropertyRules.needsRooms(null, null))
         assertFalse(FindPropertyRules.needsFurniture("LAND"))
         assertTrue(FindPropertyRules.needsFurniture(null))
         assertTrue(FindPropertyRules.needsFurniture("ANY"))

@@ -139,14 +139,15 @@ class FindPropertyController(
         val area = FindPropertyRules.parseAmount(areaText)?.takeIf { it <= Int.MAX_VALUE }?.toInt()
         val answers = pending.copy(
             propertyType = type,
-            rooms = form.rooms?.takeIf { FindPropertyRules.needsRooms(type) },
+            rooms = form.rooms?.takeIf { FindPropertyRules.needsRooms(pending.propertyCategory, type) },
             furnitureType = form.furnitureType?.takeIf { FindPropertyRules.needsFurniture(type) },
             parkings = form.parkings?.takeIf { it.isNotEmpty() && FindPropertyRules.asksParkings(type) },
             area = area,
         )
         val errors = errors(
             "propertyType" to FindPropertyRules.propertyType(answers.propertyCategory, type),
-            "rooms" to if (FindPropertyRules.needsRooms(type)) FindPropertyRules.rooms(answers.rooms) else null,
+            "rooms" to
+                if (FindPropertyRules.needsRooms(answers.propertyCategory, type)) FindPropertyRules.rooms(answers.rooms) else null,
             "furnitureType" to
                 if (FindPropertyRules.needsFurniture(type)) FindPropertyRules.furnitureType(answers.furnitureType) else null,
             "parkings" to FindPropertyRules.parkings(answers.parkings),
@@ -329,7 +330,7 @@ class FindPropertyController(
         val type = answers.propertyType
         val parts = listOfNotNull(
             MandateLabels.PROPERTY_TYPE_LABELS.entries.firstOrNull { it.key.name == type }?.value ?: "Tout type de bien",
-            MandateLabels.ROOM_LABELS[answers.rooms]?.takeIf { FindPropertyRules.needsRooms(type) },
+            MandateLabels.ROOM_LABELS[answers.rooms]?.takeIf { FindPropertyRules.needsRooms(answers.propertyCategory, type) },
             MandateLabels.FURNITURE_LABELS[answers.furnitureType]?.takeIf { FindPropertyRules.needsFurniture(type) },
             MandateLabels.PARKING_LABELS[answers.parkings]?.takeIf { FindPropertyRules.asksParkings(type) },
             answers.area?.let { MandateLabels.formatNumber(it) + " m² minimum" },

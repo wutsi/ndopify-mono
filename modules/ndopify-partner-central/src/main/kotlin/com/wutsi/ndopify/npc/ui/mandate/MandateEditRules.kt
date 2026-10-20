@@ -37,7 +37,7 @@ object MandateEditRules {
             FindPropertyRules.propertyCategory(form.propertyCategory)?.let { "propertyCategory" to it },
             typeError(form, owner)?.let { "propertyType" to it },
             ("rooms" to "Indiquez le nombre de chambres.")
-                .takeIf { FindPropertyRules.needsRooms(type) && FindPropertyRules.rooms(form.rooms) != null },
+                .takeIf { FindPropertyRules.needsRooms(form.propertyCategory, type) && FindPropertyRules.rooms(form.rooms) != null },
             ("furnitureType" to "Indiquez si le bien est meublé.")
                 .takeIf {
                     FindPropertyRules.needsFurniture(type) &&
@@ -74,7 +74,7 @@ object MandateEditRules {
             furnitureType = form.furnitureType
                 ?.takeIf { FindPropertyRules.needsFurniture(type) && it != ANY }
                 ?.let { FurnitureType.valueOf(it) },
-            rooms = form.rooms?.takeIf { FindPropertyRules.needsRooms(type) },
+            rooms = form.rooms?.takeIf { FindPropertyRules.needsRooms(form.propertyCategory, type) },
             parkings = form.parkings?.ifEmpty { null }?.takeIf { FindPropertyRules.asksParkings(type) && it != ANY },
             area = area(form.area).getOrNull(),
             waterMeter = "waterMeter" in amenities,
@@ -105,7 +105,7 @@ object MandateEditRules {
     /** Each folded group's current value, as the prototype's `SUMMARIES`; [neighborhoods] are the chosen names. */
     fun summaries(form: MandateEditForm, neighborhoods: List<String>, formatter: TenantFormatter): Map<String, String> {
         val type = type(form)
-        val rooms = form.rooms?.takeIf { FindPropertyRules.needsRooms(type) && FindPropertyRules.rooms(it) == null }
+        val rooms = form.rooms?.takeIf { FindPropertyRules.needsRooms(form.propertyCategory, type) && FindPropertyRules.rooms(it) == null }
         val area = area(form.area).getOrNull()
         val amenities = form.amenities.distinct().size
         val price = FindPropertyRules.parseAmount(form.priceAmount)?.takeIf { it > 0 }

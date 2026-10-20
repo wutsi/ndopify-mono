@@ -78,7 +78,7 @@ class MandateEditRulesTest {
     @Test
     fun `errors - valid`() {
         assertEquals(emptyMap(), MandateEditRules.errors(FORM, owner = false, FORMATTER))
-        assertEquals(emptyMap(), MandateEditRules.errors(FORM.copy(propertyType = "ANY", rooms = null), owner = false, FORMATTER))
+        assertEquals(emptyMap(), MandateEditRules.errors(FORM.copy(propertyType = "ANY"), owner = false, FORMATTER))
     }
 
     @Test
@@ -117,10 +117,14 @@ class MandateEditRulesTest {
             "Indiquez le nombre de chambres.",
             MandateEditRules.errors(FORM.copy(rooms = null), owner = false, FORMATTER)["rooms"],
         )
+        assertEquals(
+            "Indiquez le nombre de chambres.",
+            MandateEditRules.errors(FORM.copy(propertyType = "ANY", rooms = null), owner = false, FORMATTER)["rooms"],
+        )
         assertEquals(emptyMap(), MandateEditRules.errors(FORM.copy(propertyType = "STUDIO", rooms = null), owner = false, FORMATTER))
         assertEquals(
             emptyMap(),
-            MandateEditRules.errors(FORM.copy(propertyType = "LAND", rooms = null, furnitureType = null), owner = false, FORMATTER),
+            MandateEditRules.errors(FORM.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = "LAND", rooms = null, furnitureType = null), owner = false, FORMATTER),
         )
     }
 
@@ -205,7 +209,13 @@ class MandateEditRulesTest {
     @Test
     fun `request - drops follow-ups that don't apply`() {
         val request = MandateEditRules.request(
-            FORM.copy(propertyType = "LAND", rooms = "3", furnitureType = "FULLY_FURNISHED", parkings = "2"),
+            FORM.copy(
+                propertyCategory = PropertyCategory.COMMERCIAL,
+                propertyType = "LAND",
+                rooms = "3",
+                furnitureType = "FULLY_FURNISHED",
+                parkings = "2",
+            ),
             MANDATE,
         )
 
@@ -225,7 +235,7 @@ class MandateEditRulesTest {
         assertEquals(null, request.propertyType)
         assertEquals(null, request.furnitureType)
         assertEquals(null, request.parkings)
-        assertEquals(null, request.rooms)
+        assertEquals(FORM.rooms, request.rooms)
         assertEquals(null, request.area)
         assertEquals(null, request.comments)
     }

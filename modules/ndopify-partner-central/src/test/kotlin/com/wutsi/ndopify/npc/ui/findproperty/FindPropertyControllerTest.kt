@@ -182,7 +182,7 @@ class FindPropertyControllerTest {
             PendingMandate.SESSION_ATTRIBUTE,
             complete.copy(
                 propertyType = "ANY",
-                rooms = null,
+                rooms = "2",
                 parkings = null,
                 area = null,
                 furnitureType = "UNFURNISHED"
@@ -191,7 +191,7 @@ class FindPropertyControllerTest {
 
         val result = mvc.perform(get("/find-property?step=review").session(session)).andReturn()
 
-        assertEquals("Tout type de bien · Non meublé", model(result)["propertyLabel"])
+        assertEquals("Tout type de bien · 2 chambres · Non meublé", model(result)["propertyLabel"])
     }
 
     // POST /find-property/need
@@ -401,7 +401,10 @@ class FindPropertyControllerTest {
 
     @Test
     fun propertyLandIgnoresFurnitureAndParkings() {
-        session.setAttribute(PendingMandate.SESSION_ATTRIBUTE, complete.copy(propertyType = null, rooms = null))
+        session.setAttribute(
+            PendingMandate.SESSION_ATTRIBUTE,
+            complete.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = null, rooms = null),
+        )
 
         mvc.perform(
             post("/find-property/property").session(session)
@@ -422,7 +425,7 @@ class FindPropertyControllerTest {
         val result = mvc.perform(post("/find-property/property").session(session)).andReturn()
 
         assertEquals("Indiquez si le bien doit être meublé.", errors(result)["furnitureType"])
-        assertNull(errors(result)["rooms"])
+        assertEquals("Indiquez le nombre de chambres.", errors(result)["rooms"])
         assertNull(errors(result)["propertyType"])
     }
 

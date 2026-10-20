@@ -43,14 +43,17 @@ object FindPropertyRules {
         PropertyType.OFFICE to setOf(PropertyCategory.COMMERCIAL),
         PropertyType.INDUSTRIAL to setOf(PropertyCategory.COMMERCIAL),
         PropertyType.BUILDING to setOf(PropertyCategory.COMMERCIAL),
-        PropertyType.LAND to setOf(PropertyCategory.RESIDENTIAL, PropertyCategory.COMMERCIAL),
+        // Commercial only: nobody rents bare land to live on it (one buys it to build).
+        PropertyType.LAND to setOf(PropertyCategory.COMMERCIAL),
     )
 
-    private val WITH_ROOMS = setOf("APARTMENT", "HOUSE", "VILLA", "DUPLEX")
+    private val WITHOUT_ROOMS = setOf("STUDIO", "ROOM")
     private val WITHOUT_FURNITURE = setOf("LAND", "BUILDING", "INDUSTRIAL")
     private val WITHOUT_PARKINGS = setOf("LAND", "ROOM")
 
-    fun needsRooms(type: String?): Boolean = type in WITH_ROOMS
+    /** A home's bedrooms are asked whatever its type (none and "Indifférent" included), except a studio or a room. */
+    fun needsRooms(category: PropertyCategory?, type: String?): Boolean =
+        category == PropertyCategory.RESIDENTIAL && type !in WITHOUT_ROOMS
 
     fun needsFurniture(type: String?): Boolean = type !in WITHOUT_FURNITURE
 

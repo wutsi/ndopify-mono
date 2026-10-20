@@ -20,7 +20,7 @@
     var SUMMARY_LENGTH = 40;
 
     // FindPropertyRules: the follow-up questions of each type.
-    var WITH_ROOMS = ["APARTMENT", "HOUSE", "VILLA", "DUPLEX"];
+    var WITHOUT_ROOMS = ["STUDIO", "ROOM"];
     var WITHOUT_FURNITURE = ["LAND", "BUILDING", "INDUSTRIAL"];
     var WITHOUT_PARKINGS = ["LAND", "ROOM"];
 
@@ -256,7 +256,7 @@
             });
             var type = checked("propertyType");
             if (type === "ANY") type = null;
-            group("rooms").hidden = WITH_ROOMS.indexOf(type) === -1;
+            group("rooms").hidden = category !== "RESIDENTIAL" || WITHOUT_ROOMS.indexOf(type) !== -1;
             group("furnitureType").hidden = WITHOUT_FURNITURE.indexOf(type) !== -1;
             group("parkings").hidden = WITHOUT_PARKINGS.indexOf(type) !== -1;
         }

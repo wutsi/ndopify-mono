@@ -82,7 +82,7 @@ class PendingMandateTest {
     @Test
     fun furnitureRequiredOnlyWhenTheTypeHasFurniture() {
         assertFalse(COMPLETE.copy(furnitureType = null).isComplete("property"))
-        assertTrue(COMPLETE.copy(propertyType = "LAND", rooms = null, furnitureType = null).isComplete("property"))
+        assertTrue(COMPLETE.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = "LAND", rooms = null, furnitureType = null).isComplete("property"))
     }
 
     @Test
@@ -143,7 +143,7 @@ class PendingMandateTest {
 
     @Test
     fun furnitureAndParkingsNotSentForLand() {
-        val request = COMPLETE.copy(propertyType = "LAND", rooms = null, furnitureType = "FULLY_FURNISHED")
+        val request = COMPLETE.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = "LAND", rooms = null, furnitureType = "FULLY_FURNISHED")
             .toCreateMandateRequest("XAF")
         assertNull(request.furnitureType)
         assertNull(request.parkings)
@@ -153,7 +153,7 @@ class PendingMandateTest {
     fun anyTypeIsSentAsNull() {
         val request = COMPLETE.copy(propertyType = "ANY").toCreateMandateRequest("XAF")
         assertNull(request.propertyType)
-        assertNull(request.rooms)
+        assertEquals(COMPLETE.rooms, request.rooms)
         assertNull(request.furnitureType)
     }
 

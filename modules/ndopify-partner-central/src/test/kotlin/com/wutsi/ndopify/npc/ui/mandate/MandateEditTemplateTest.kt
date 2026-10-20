@@ -152,7 +152,7 @@ class MandateEditTemplateTest {
         // Property: every follow-up question without JS, the types tagged with their categories.
         assertTrue(form.selectFirst("input[name=propertyCategory][value=RESIDENTIAL]")!!.hasAttr("checked"))
         assertTrue(form.selectFirst("input[name=propertyType][value=HOUSE]")!!.hasAttr("checked"))
-        assertEquals("RESIDENTIAL COMMERCIAL", form.selectFirst("input[name=propertyType][value=LAND]")?.parent()?.attr("data-categories"))
+        assertEquals("COMMERCIAL", form.selectFirst("input[name=propertyType][value=LAND]")?.parent()?.attr("data-categories"))
         assertNotNull(form.selectFirst("input[name=propertyType][value=ANY]"))
         assertTrue(form.selectFirst("input[name=rooms][value=3]")!!.hasAttr("checked"))
         assertTrue(form.selectFirst("input[name=furnitureType][value=ANY]")!!.hasAttr("checked"))

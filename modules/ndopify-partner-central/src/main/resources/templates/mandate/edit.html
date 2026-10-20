@@ -163,7 +163,7 @@
                                                                      th:checked="${#strings.equals(answers.propertyType, 'INDUSTRIAL')}"> Entrepôt, local industriel</label>
                                         <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="BUILDING"
                                                                      th:checked="${#strings.equals(answers.propertyType, 'BUILDING')}"> Immeuble</label>
-                                        <label class="choice" data-categories="RESIDENTIAL COMMERCIAL"><input name="propertyType" type="radio" value="LAND"
+                                        <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="LAND"
                                                                      th:checked="${#strings.equals(answers.propertyType, 'LAND')}"> Terrain</label>
                                         <label class="choice" data-categories="RESIDENTIAL COMMERCIAL" th:unless="${owner}"><input name="propertyType" type="radio" value="ANY"
                                                                      th:checked="${#strings.equals(answers.propertyType, 'ANY')}"> Indifférent</label>
