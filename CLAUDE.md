@@ -235,7 +235,7 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `DispatchMandateEndpointTest`, `Decline` / `ExpireAssignmentEndpointTest`) and the listener / job unit tests.
 - **contract** — contracts to be signed by parties (`ContractEntity` + its `ContractPartyEntity`s, UUID ids;
   `/v1/contracts`: search (`id`, `status`, `party-id`, `contract-party-id` lists, newest first; `ContractSummary`, without parties), create,
-  get, `POST /{id}/content`, `POST /{id}/request-signature`, `POST /{id}/sign`). `ContractService.create` checks the type, the parties' roles,
+  get, `POST /{id}/content`, `POST /{id}/request-signature`, `POST /{id}/sign`, `GET /{id}/signatures/{hash}`). `ContractService.create` checks the type, the parties' roles,
   `durationMonths >= 1` (persisted; the request has no dates) and that each `partyId` is a party of the tenant (404
   `PARTY_NOT_FOUND`), and starts the contract as `DRAFT`, without dates nor document, numbered `<prefix>-<year>-<nnnnnn>` by `ContractNumberGenerator` (`BAIL` for a
   `LEASE_AGREEMENT`, else `MNDT`; year in the tenant's `timeZone`): one gapless sequence per tenant, prefix and year in
@@ -270,9 +270,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   under the lock, first one wins. Nothing is locked during the download / render / upload. No PDF (logged) without
   content in the storage, with a content hash mismatch, a signature without hash or salt, or no
   `eSignaturePortalUrl`. `POST /v1/contracts/{id}/signed-content` (`@OpsEndpoint`, admin) generates it again. The
-  verify page isn't built yet.
+  QR code opens ndopify-esignature's verify page.
   **Access** (`ContractAccessService`, checked by `ContractEndpoints`, without lock since a contract's parties never
-  change): every endpoint needs a JWT (401 `AUTH_UNAUTHORIZED`). Get and search are for an admin or one of the
+  change): every endpoint but the signature's verification (`GET /{id}/signatures/{hash}`, public: the contract number, legal name, `signedAt` and `signedContentUrl` of a signed contract party with that hash, else 404 `CONTRACT_SIGNATURE_NOT_FOUND`) needs a JWT (401 `AUTH_UNAUTHORIZED`). Get and search are for an admin or one of the
   contract's parties (JWT user → membership → party), else 403 `CONTRACT_ACCESS_DENIED` (after the 404); a non-admin's
   search is restricted to its own party (`party-id` forced; another party's is a 403). With both `party-id` and
   `contract-party-id`, the contract party must be one of those parties' (same `T_CONTRACT_PARTY` row): a co-party of a
@@ -456,10 +456,10 @@ names and signatures; depends on `ndopify-dto` only, never on partner-central), 
   be resolved, so that an error page still renders.
 - The JWT is kept in the HTTP-only `__nes_access_token` cookie (`AccessTokenService`, `Path=/`, 1 hour like the token's
   TTL) and decoded by `JwtAuthenticationFilter`, like Partner Central's.
-- `SecurityConfiguration` permits only `/assets/**`, `/sign/**` and `/error`; every other path is denied (nothing else
+- `SecurityConfiguration` permits only `/assets/**`, `/sign/**`, `/verify/**` and `/error`; every other path is denied (nothing else
   is served). The 403 / 404 pages (`templates/error/`) show the logo only, no account menu.
 - `client/ndopify/` holds the ndopify-server clients: `NdOtpClient` / `NdAuthClient` (as Partner Central's),
-  `NdContractClient` (get, search incl. `contract-party-id`, `sign`) and the global `NdTenantClient`.
+  `NdContractClient` (get, search incl. `contract-party-id`, `sign`, `getSignature`) and the global `NdTenantClient`.
   `client/ContractContentClient` downloads the contract's `contentUrl`: HTML only, sanitized with Jsoup
   `Safelist.relaxed()` (the page renders it with `th:utext`), null on any failure (the page then can't sign), through
   the plain `contentRestClient` bean (`RestClient.create()`, not the Spring builder) so that the `Authorization` /
@@ -493,8 +493,18 @@ names and signatures; depends on `ndopify-dto` only, never on partner-central), 
   `public/assets/js/esignature.js` only enhances (digit sync + "Suivant", consent enabling, busy state against double
   submit, focus on the code field / confirmation heading); it keeps no state. `SignTemplateTest` renders the template
   with a real Thymeleaf engine.
-- `src/main/html/` (`sign.html` + assets) is the prototype: never serve it, and never delete or "clean up" anything in
-  it; the served page is `templates/sign.html`.
+- The verify page is `VerifyController` (`ui/verify/`, `templates/verify.html`, view model `VerifyView` in `view`),
+  `GET /verify/{contractId}/{signatureHash}`: the page the signed PDF's QR code opens. **Public**: no session, sets no cookie of its own
+  (`JwtAuthenticationFilter` still clears an expired token's; a signed-in visitor's valid token is forwarded on the
+  `getSignature` call, harmless: the tenant comes from the host), no JS (no `<script>`), `noindex` and `no-referrer`, HTTP 200 for both states. The hash is normalized
+  (`trim().lowercase()`); one that isn't 64 hex characters is invalid without calling ndopify-server. Otherwise
+  `NdContractClient.getSignature` (`GET /v1/contracts/{id}/signatures/{hash}`): only ndopify-server's 404 `CONTRACT_SIGNATURE_NOT_FOUND` (null) is the invalid view, any
+  other error (5xx, any other 404 such as an unknown route or a proxy's, other 4xx, I/O) is thrown to Spring Boot's error page, **never** shown as "not valid". Valid
+  whatever the contract's status (the server decides), and the hash printed is the URL's, only once the server matched
+  it. It shows only the contract number, the signer's legal name, the date and time (`TenantFormatter`), the hash
+  and the signed PDF's link (no button without a `signedContentUrl`): never add more.
+- `src/main/html/` (`sign.html`, `verify.html` + assets) is the prototype: never serve it, and never delete or "clean up" anything in
+  it; the served pages are `templates/sign.html` and `templates/verify.html`.
 
 ### Multi-Tenancy — current state
 

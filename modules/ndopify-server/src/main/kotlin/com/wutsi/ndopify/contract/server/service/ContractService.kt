@@ -114,6 +114,16 @@ class ContractService(
         return partyDao.findByContract(contract)
     }
 
+    // The signed party of a contract with that hash: an unknown contract, hash or unsigned party are all the same 404
+    fun findSignature(id: String, hash: String): Pair<ContractEntity, ContractPartyEntity> {
+        val contract = findByIdOrNull(id)
+        val party = contract?.let { partyDao.findByContractAndSignatureHash(it, hash) }
+        if (contract == null || party == null || !party.signed || party.signedAt == null) {
+            throw NotFoundException(error = Error(code = ErrorCode.CONTRACT_SIGNATURE_NOT_FOUND))
+        }
+        return Pair(contract, party)
+    }
+
     @Transactional
     fun create(request: CreateContractRequest): ContractEntity {
         if (request.type == ContractType.UNKNOWN) {

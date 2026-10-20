@@ -1,13 +1,18 @@
 package com.wutsi.ndopify.esignature.client.ndopify
 
 import com.wutsi.ndopify.contract.dto.Contract
+import com.wutsi.ndopify.contract.dto.ContractSignature
 import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.contract.dto.GetContractResponse
+import com.wutsi.ndopify.contract.dto.GetContractSignatureResponse
 import com.wutsi.ndopify.contract.dto.SearchContractRequest
 import com.wutsi.ndopify.contract.dto.SearchContractResponse
 import com.wutsi.ndopify.contract.dto.SignContractRequest
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
+import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.body
 
@@ -50,6 +55,27 @@ class NdContractClient(
             .body<SearchContractResponse>()
             ?.contracts
             ?: emptyList()
+
+    /** Null when ndopify-server answers 404 `CONTRACT_SIGNATURE_NOT_FOUND` for [hash]; any other error, incl. another 404, is thrown. */
+    fun getSignature(id: String, hash: String): ContractSignature? =
+        try {
+            rest.get()
+                .uri("/v1/contracts/{id}/signatures/{hash}", id, hash)
+                .retrieve()
+                .body<GetContractSignatureResponse>()
+                ?.signature
+        } catch (ex: HttpClientErrorException.NotFound) {
+            // Only ndopify-server's own answer is "invalid": an unknown route, a proxy's 404 or a 404 without a
+            // readable body must never read as an invalid signature.
+            if (errorCode(ex) == ErrorCode.CONTRACT_SIGNATURE_NOT_FOUND) null else throw ex
+        }
+
+    private fun errorCode(ex: HttpClientErrorException): String? =
+        try {
+            ex.getResponseBodyAs(ErrorResponse::class.java)?.error?.code
+        } catch (ignored: Exception) {
+            null
+        }
 
     /** [SignContractRequest.partyId] is a *contract party* id; ndopify-server checks it is the caller's. */
     fun sign(id: String, request: SignContractRequest) {

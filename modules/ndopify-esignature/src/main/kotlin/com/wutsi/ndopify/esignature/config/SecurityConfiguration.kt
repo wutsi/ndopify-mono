@@ -23,6 +23,7 @@ class SecurityConfiguration(
                 customizer
                     .requestMatchers("/assets/**").permitAll()
                     .requestMatchers("/sign", "/sign/**").permitAll()
+                    .requestMatchers("/verify/**").permitAll()
                     .requestMatchers("/error").permitAll()
                     .anyRequest().denyAll() // nothing else is served
             }

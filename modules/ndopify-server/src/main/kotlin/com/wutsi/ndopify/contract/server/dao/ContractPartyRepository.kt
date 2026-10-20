@@ -8,4 +8,6 @@ import org.springframework.stereotype.Repository
 @Repository
 interface ContractPartyRepository : CrudRepository<ContractPartyEntity, String> {
     fun findByContract(contract: ContractEntity): List<ContractPartyEntity>
+
+    fun findByContractAndSignatureHash(contract: ContractEntity, signatureHash: String): ContractPartyEntity?
 }
