@@ -8,6 +8,8 @@ import com.wutsi.ndopify.contract.dto.GetContractSignatureResponse
 import com.wutsi.ndopify.contract.dto.SearchContractRequest
 import com.wutsi.ndopify.contract.dto.SearchContractResponse
 import com.wutsi.ndopify.contract.dto.SignContractRequest
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.web.client.HttpClientErrorException
@@ -54,7 +56,7 @@ class NdContractClient(
             ?.contracts
             ?: emptyList()
 
-    /** Null when no signature matches [hash] (404); any other error is thrown. */
+    /** Null when ndopify-server answers 404 `CONTRACT_SIGNATURE_NOT_FOUND` for [hash]; any other error, incl. another 404, is thrown. */
     fun getSignature(id: String, hash: String): ContractSignature? =
         try {
             rest.get()
@@ -63,6 +65,15 @@ class NdContractClient(
                 .body<GetContractSignatureResponse>()
                 ?.signature
         } catch (ex: HttpClientErrorException.NotFound) {
+            // Only ndopify-server's own answer is "invalid": an unknown route, a proxy's 404 or a 404 without a
+            // readable body must never read as an invalid signature.
+            if (errorCode(ex) == ErrorCode.CONTRACT_SIGNATURE_NOT_FOUND) null else throw ex
+        }
+
+    private fun errorCode(ex: HttpClientErrorException): String? =
+        try {
+            ex.getResponseBodyAs(ErrorResponse::class.java)?.error?.code
+        } catch (ignored: Exception) {
             null
         }
 

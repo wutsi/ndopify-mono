@@ -81,7 +81,7 @@
                 </div>
 
                 <!--/* The signed contract's document, as stored by ndopify-server: no button without one. */-->
-                <div class="cta-row" th:if="${view.signedContentUrl != null}">
+                <div class="cta-row" th:if="${!#strings.isEmpty(view.signedContentUrl)}">
                     <a class="btn btn--primary" th:href="${view.signedContentUrl}" download>Télécharger le contrat signé</a>
                 </div>
             </section>

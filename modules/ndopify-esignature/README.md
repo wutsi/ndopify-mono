@@ -31,7 +31,7 @@ whose infrastructure it copies (same class names), minus the agent and login par
   `/verify/{contractId}/{signatureHash}`: the URL the QR code printed next to a signature in the signed PDF opens. It
   shows the contract number, the signer's name, the date and time of the signature, the hash and the signed PDF, from
   ndopify-server's `GET /v1/contracts/{id}/signatures/{hash}`. A malformed hash is reported invalid without calling
-  ndopify-server; a 404 is invalid too, and both are HTTP 200. Any other error shows an error page, never "invalid".
+  ndopify-server; ndopify-server's 404 `CONTRACT_SIGNATURE_NOT_FOUND` is invalid too, and both are HTTP 200. Any other error, incl. any other 404 (unknown route, proxy), shows an error page, never "invalid".
 
 Every step posts without JavaScript; `public/assets/js/esignature.js` only enhances (code digits, consent, busy
 state against double submit, focus).

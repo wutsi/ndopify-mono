@@ -89,6 +89,15 @@ class VerifyTemplateTest {
     }
 
     @Test
+    fun `valid with empty pdf url`() {
+        val page = render(valid.copy(signedContentUrl = ""))
+
+        assertNotNull(page.selectFirst("#valid-title"))
+        assertNull(page.selectFirst("a[download]"))
+        assertNull(page.selectFirst(".cta-row"))
+    }
+
+    @Test
     fun invalid() {
         val page = render(VerifyView(valid = false))
 
