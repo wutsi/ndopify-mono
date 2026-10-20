@@ -73,6 +73,31 @@
         else button.setAttribute("aria-disabled", "true");
     }
 
+    // One post per page: once a form is on its way, its button says so and every submit of the page does nothing
+    // until the next page comes (a second OTP would replace the first one's code). See the pageshow below.
+    var busy = false;
+    var syncs = [];
+
+    function setBusy(button, label) {
+        busy = true;
+        button.setAttribute("aria-disabled", "true");
+        if (!button.hasAttribute("data-label")) button.setAttribute("data-label", button.textContent);
+        button.textContent = label;
+    }
+
+    // Back from the next page restores this one from the cache as it was left: the buttons must work again.
+    window.addEventListener("pageshow", function (event) {
+        if (!event.persisted || !busy) return;
+        busy = false;
+        $all("[data-label]").forEach(function (button) {
+            button.removeAttribute("aria-disabled");
+            button.textContent = button.getAttribute("data-label");
+        });
+        syncs.forEach(function (sync) {
+            sync();
+        });
+    });
+
     function formatTime(ms) {
         var d = new Date(ms);
         var h = d.getHours();
@@ -154,7 +179,7 @@
         }
 
         function sync() {
-            setActive(submit, validity() === "");
+            setActive(submit, !busy && validity() === "");
         }
 
         input.addEventListener("input", function () {
@@ -166,8 +191,12 @@
             if (input.value.trim()) setFieldError(input, error, validity());
         });
 
-        // Validation only: a valid form is submitted to the server as-is.
+        // A valid form is submitted to the server as-is, once.
         form.addEventListener("submit", function (event) {
+            if (busy) {
+                event.preventDefault();
+                return;
+            }
             var message = validity();
             setFieldError(input, error, message);
             if (message) {
@@ -177,10 +206,12 @@
             }
             // Kept for the pages that don't render the agent's email themselves (the header menu falls back to it); kyc.html does.
             store.set(KEYS.email, input.value.trim().toLowerCase());
+            setBusy(submit, "Envoi du code…");
         });
 
         if (!input.value) input.value = store.get(KEYS.email) || "";
         if (input.getAttribute("aria-invalid") === "true") input.focus();
+        syncs.push(sync);
         sync();
     }
 
@@ -219,7 +250,7 @@
         }
 
         function sync() {
-            setActive(submit, validity() === "" && !isExpired());
+            setActive(submit, !busy && validity() === "" && !isExpired());
         }
 
         input.addEventListener("input", function () {
@@ -230,13 +261,34 @@
         });
 
         form.addEventListener("submit", function (event) {
+            if (busy) {
+                event.preventDefault();
+                return;
+            }
             var message = isExpired() ? "Ce code a expiré. Demandez un nouveau code ci-dessous." : validity();
             setFieldError(input, error, message);
             if (message) {
                 event.preventDefault();
                 input.focus();
+                return;
             }
+            setBusy(submit, "Connexion…");
         });
+
+        // "Renvoyer le code" posts the hidden resend form: once, and not while the code is being checked.
+        var resendForm = document.getElementById("resend-form");
+        var resend = $('[form="resend-form"]', root);
+        if (resendForm && resend) {
+            resendForm.addEventListener("submit", function (event) {
+                if (busy) {
+                    event.preventDefault();
+                    return;
+                }
+                setBusy(resend, "Envoi du code…");
+                sync();
+                announce(status, "Envoi d'un nouveau code en cours.");
+            });
+        }
 
         scheduleExpiry();
         if (isExpired()) setFieldError(input, error, "Ce code a expiré. Demandez un nouveau code ci-dessous.");
@@ -244,6 +296,7 @@
             input.select();
             input.focus();
         }
+        syncs.push(sync);
         sync();
     }
 

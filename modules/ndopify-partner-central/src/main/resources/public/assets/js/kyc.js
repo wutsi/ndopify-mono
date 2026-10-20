@@ -263,9 +263,32 @@
         });
     }
 
+    // The rejected case's "Soumettre de nouveaux documents": once, a second press would open a second case.
+    function initRestart(form) {
+        var button = $('[type="submit"]', form);
+        if (!button) return;
+        form.addEventListener("submit", function (event) {
+            if (button.getAttribute("aria-disabled") === "true") {
+                event.preventDefault();
+                return;
+            }
+            button.setAttribute("aria-disabled", "true");
+            button.setAttribute("data-label", button.textContent);
+            button.textContent = "Un instant…";
+        });
+        // Back from the next page restores this one from the cache: the button must work again.
+        window.addEventListener("pageshow", function (event) {
+            if (!event.persisted || !button.hasAttribute("data-label")) return;
+            button.removeAttribute("aria-disabled");
+            button.textContent = button.getAttribute("data-label");
+        });
+    }
+
     document.addEventListener("DOMContentLoaded", function () {
         var page = document.body.getAttribute("data-page");
         if (page !== "kyc" && page !== "profile-photo") return;
+        var restart = $("[data-restart-form]");
+        if (restart) initRestart(restart);
         var form = $("[data-kyc-form]");
         if (!form) return;
         var step = $("[data-step]", form);
