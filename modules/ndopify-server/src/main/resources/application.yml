@@ -63,12 +63,12 @@ spring:
         host: localhost # Local SMTP server mailpit - for testing
         username: user@example.com
         password: secret
-        port: 1025
         test-connection: false
         properties:
             mail:
                 debug: false
                 smtp:
+                    port: 1025
                     from: no-reply@wutsi.com
                     auth: false
                     starttls:
