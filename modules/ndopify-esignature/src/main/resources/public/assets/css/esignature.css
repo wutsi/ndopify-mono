@@ -781,3 +781,19 @@ a:hover {
     padding-top: var(--space-2);
     padding-bottom: var(--space-2);
 }
+
+/* ---------- Verification ---------- */
+/* The result's title is the page's h2, but reads as the alert's title, like the sign page's. */
+h2.alert__title {
+    font-family: var(--font-body);
+    font-size: inherit;
+    font-weight: 600;
+    line-height: inherit;
+}
+
+/* A 64-character SHA-256: monospace, so that it can be compared character by character, and wrapped anywhere on a phone. */
+.hash {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.9375em;
+    overflow-wrap: anywhere;
+}

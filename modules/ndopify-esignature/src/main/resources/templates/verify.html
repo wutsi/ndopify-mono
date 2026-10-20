@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Vérification d'une signature — Ndopify</title>
+    <meta name="description" content="Vérifiez qu'une signature électronique apposée sur un contrat Ndopify est authentique.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="referrer" content="no-referrer">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" th:href="@{/assets/css/esignature.css}">
+</head>
+<!--/*
+    The verification page, /verify/{contractId}/{signatureHash}: the QR code printed next to a signature in the signed
+    contract (VerifyController, view model VerifyView in `view`). Public, no JS: only the state of the result is
+    rendered, and nothing but the five fields of a valid signature. Prototype: src/main/html/verify.html (never served).
+*/-->
+<body data-page="verify">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <!--/* The tenant's logo, falling back to Ndopify's when it has none (or isn't known). */-->
+            <span class="site-header__brand">
+                <img alt="Ndopify" height="40"
+                     th:alt="${#strings.isEmpty(tenant?.name)} ? 'Ndopify' : ${tenant.name}"
+                     th:src="${#strings.isEmpty(tenant?.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}">
+            </span>
+        </div>
+    </header>
+
+    <main id="main" class="page">
+        <div class="column">
+            <div class="page-intro">
+                <h1>Vérification de la signature</h1>
+            </div>
+
+            <!--/* Valid signature */-->
+            <section class="stack" aria-labelledby="valid-title" th:if="${view.valid}">
+                <div class="alert alert--success">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <div>
+                        <h2 id="valid-title" class="alert__title">Cette signature est valide.</h2>
+                        <p>Elle a bien été enregistrée par Ndopify, pour le contrat ci-dessous.</p>
+                    </div>
+                </div>
+
+                <dl class="review">
+                    <div class="review__item">
+                        <dt class="review__term">Numéro du contrat</dt>
+                        <dd class="review__value nowrap" th:text="${view.contractNumber}">MNDT-2026-000042</dd>
+                    </div>
+                    <div class="review__item">
+                        <dt class="review__term">Signataire</dt>
+                        <dd class="review__value" th:text="${view.signerName}">Ray Sponsible</dd>
+                    </div>
+                    <div class="review__item">
+                        <dt class="review__term">Date et heure de la signature</dt>
+                        <dd class="review__value" th:text="${view.signedAt}">18 octobre 2026 à 14&nbsp;h&nbsp;32</dd>
+                    </div>
+                    <div class="review__item">
+                        <dt class="review__term">Hash de la signature</dt>
+                        <dd class="review__value hash" th:text="${view.signatureHash}">9f2c</dd>
+                    </div>
+                </dl>
+
+                <div class="hint">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <div>
+                        <p>Vérifiez que ces informations sont celles du document que vous avez sous les yeux, en
+                            particulier le numéro du contrat et le hash, imprimés à côté du QR&nbsp;code.</p>
+                        <p>Pour comparer le texte, téléchargez le contrat tel qu'il a été signé&nbsp;: il doit être
+                            identique, mot pour mot, à votre document.</p>
+                        <p>Si quelque chose diffère, le document a pu être modifié après sa signature&nbsp;: ne vous y
+                            fiez pas.</p>
+                    </div>
+                </div>
+
+                <!--/* The signed contract's document, as stored by ndopify-server: no button without one. */-->
+                <div class="cta-row" th:if="${view.signedContentUrl != null}">
+                    <a class="btn btn--primary" th:href="${view.signedContentUrl}" download>Télécharger le contrat signé</a>
+                </div>
+            </section>
+
+            <!--/* Invalid signature */-->
+            <section class="stack" aria-labelledby="invalid-title" th:unless="${view.valid}">
+                <div class="alert alert--error">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <div>
+                        <h2 id="invalid-title" class="alert__title">Cette signature n'est pas valide.</h2>
+                        <p>Aucune signature enregistrée par Ndopify ne correspond à ce QR&nbsp;code. Le document que vous
+                            avez sous les yeux n'a pas été signé sur Ndopify, ou il a été modifié.</p>
+                    </div>
+                </div>
+
+                <div class="hint">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <div>
+                        <p>Ne vous fiez pas à ce document. Demandez à la personne qui vous l'a remis l'original reçu par
+                            e-mail, puis scannez à nouveau son QR&nbsp;code.</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+</body>
+</html>
