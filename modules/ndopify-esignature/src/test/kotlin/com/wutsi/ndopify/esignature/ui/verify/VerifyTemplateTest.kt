@@ -14,7 +14,6 @@ import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -63,7 +62,6 @@ class VerifyTemplateTest {
         signerName = "Ray Sponsible",
         signedAt = "18 octobre 2026 à 14:32",
         signatureHash = hash,
-        signedContentUrl = "https://storage.ndopify.cm/contracts/MNDT-2026-000042-abc.pdf",
     )
 
     @Test
@@ -76,25 +74,7 @@ class VerifyTemplateTest {
         val values = page.select("dl.review dd").map { it.text() }
         assertEquals(listOf("MNDT-2026-000042", "Ray Sponsible", "18 octobre 2026 à 14:32", hash), values)
         assertEquals(hash, page.selectFirst(".hash")?.text())
-        assertEquals(valid.signedContentUrl, page.selectFirst("a[download]")?.attr("href"))
-    }
-
-    @Test
-    fun `valid without pdf`() {
-        val page = render(valid.copy(signedContentUrl = null))
-
-        assertNotNull(page.selectFirst("#valid-title"))
         assertNull(page.selectFirst("a[download]"))
-        assertNull(page.selectFirst(".cta-row"))
-    }
-
-    @Test
-    fun `valid with empty pdf url`() {
-        val page = render(valid.copy(signedContentUrl = ""))
-
-        assertNotNull(page.selectFirst("#valid-title"))
-        assertNull(page.selectFirst("a[download]"))
-        assertNull(page.selectFirst(".cta-row"))
     }
 
     @Test

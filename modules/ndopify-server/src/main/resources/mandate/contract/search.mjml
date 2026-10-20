@@ -38,7 +38,7 @@
 
                 <!-- Parties -->
                 <mj-text font-weight="bold">
-                    <h3>ENTRE LES SOUSSIGNÉS :</h3>
+                    <h3>ENTRE LES SOUSSIGNÉS</h3>
                 </mj-text>
                 <mj-text>
                     <ul>
@@ -54,7 +54,7 @@
 
                 <!-- 1. Object -->
                 <mj-text font-weight="bold">
-                    <h3>1. OBJET DU MANDAT</h3>
+                    <h3>OBJET DU MANDAT</h3>
                 </mj-text>
                 <mj-text>
                     Le Mandant confie au Mandataire la mission de rechercher un bien immobilier à louer répondant aux
@@ -206,7 +206,7 @@
 
                 <!-- 2. Duration -->
                 <mj-text font-weight="bold">
-                    <h3>2. DURÉE</h3>
+                    <h3>DURÉE</h3>
                 </mj-text>
                 <mj-text>
                     Le présent mandat est conclu pour une durée de {{duration_months}} mois, à compter de la date de sa
@@ -234,7 +234,7 @@
 
                 <!-- 4. Commitments -->
                 <mj-text font-weight="bold">
-                    <h3>4. ENGAGEMENTS DES PARTIES</h3>
+                    <h3>ENGAGEMENTS DES PARTIES</h3>
                 </mj-text>
                 <mj-text>
                     <ul>

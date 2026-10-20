@@ -29,7 +29,7 @@ whose infrastructure it copies (same class names), minus the agent and login par
 - **Sign-out** — `POST /sign/{id}/logout` ("Utiliser une autre adresse") drops the access-token cookie and the session.
 - **Verify page** (`ui/verify/VerifyController`, `templates/verify.html`) — public, no session, at
   `/verify/{contractId}/{signatureHash}`: the URL the QR code printed next to a signature in the signed PDF opens. It
-  shows the contract number, the signer's name, the date and time of the signature, the hash and the signed PDF, from
+  shows the contract number, the signer's name, the date and time of the signature, and the hash (no download of the signed PDF: the page is public), from
   ndopify-server's `GET /v1/contracts/{id}/signatures/{hash}`. A malformed hash is reported invalid without calling
   ndopify-server; ndopify-server's 404 `CONTRACT_SIGNATURE_NOT_FOUND` is invalid too, and both are HTTP 200. Any other error, incl. any other 404 (unknown route, proxy), shows an error page, never "invalid".
 

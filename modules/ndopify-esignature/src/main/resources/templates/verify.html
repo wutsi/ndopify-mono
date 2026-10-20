@@ -73,16 +73,9 @@
                     <div>
                         <p>Vérifiez que ces informations sont celles du document que vous avez sous les yeux, en
                             particulier le numéro du contrat et le hash, imprimés à côté du QR&nbsp;code.</p>
-                        <p>Pour comparer le texte, téléchargez le contrat tel qu'il a été signé&nbsp;: il doit être
-                            identique, mot pour mot, à votre document.</p>
                         <p>Si quelque chose diffère, le document a pu être modifié après sa signature&nbsp;: ne vous y
                             fiez pas.</p>
                     </div>
-                </div>
-
-                <!--/* The signed contract's document, as stored by ndopify-server: no button without one. */-->
-                <div class="cta-row" th:if="${!#strings.isEmpty(view.signedContentUrl)}">
-                    <a class="btn btn--primary" th:href="${view.signedContentUrl}" download>Télécharger le contrat signé</a>
                 </div>
             </section>
 

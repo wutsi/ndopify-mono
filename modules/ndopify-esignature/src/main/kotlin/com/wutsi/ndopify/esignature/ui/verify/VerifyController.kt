@@ -49,7 +49,6 @@ class VerifyController(
             signerName = signature.legalName,
             signedAt = "${formatter.date(signature.signedAt)} à ${formatter.time(signature.signedAt)}",
             signatureHash = hash,
-            signedContentUrl = signature.signedContentUrl,
         )
     }
 }

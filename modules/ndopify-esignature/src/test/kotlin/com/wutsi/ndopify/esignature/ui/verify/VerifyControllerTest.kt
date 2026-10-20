@@ -67,7 +67,6 @@ class VerifyControllerTest {
         assertEquals("Ray Sponsible", view.signerName)
         assertEquals(FORMATTER.date(signedAt) + " à " + FORMATTER.time(signedAt), view.signedAt)
         assertEquals(hash, view.signatureHash)
-        assertEquals(signature.signedContentUrl, view.signedContentUrl)
     }
 
     @Test

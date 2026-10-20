@@ -501,8 +501,9 @@ names and signatures; depends on `ndopify-dto` only, never on partner-central), 
   `NdContractClient.getSignature` (`GET /v1/contracts/{id}/signatures/{hash}`): only ndopify-server's 404 `CONTRACT_SIGNATURE_NOT_FOUND` (null) is the invalid view, any
   other error (5xx, any other 404 such as an unknown route or a proxy's, other 4xx, I/O) is thrown to Spring Boot's error page, **never** shown as "not valid". Valid
   whatever the contract's status (the server decides), and the hash printed is the URL's, only once the server matched
-  it. It shows only the contract number, the signer's legal name, the date and time (`TenantFormatter`), the hash
-  and the signed PDF's link (no button without a `signedContentUrl`): never add more.
+  it. It shows only the contract number, the signer's legal name, the date and time (`TenantFormatter`) and the hash:
+  never add more, and no link to the signed PDF (whoever has a QR code, ex: a photo of one page, would get the whole
+  contract).
 - `src/main/html/` (`sign.html`, `verify.html` + assets) is the prototype: never serve it, and never delete or "clean up" anything in
   it; the served pages are `templates/sign.html` and `templates/verify.html`.
 
