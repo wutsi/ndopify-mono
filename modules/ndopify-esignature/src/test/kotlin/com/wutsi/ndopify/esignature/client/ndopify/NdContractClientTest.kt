@@ -1,9 +1,11 @@
 package com.wutsi.ndopify.esignature.client.ndopify
 
 import com.wutsi.ndopify.contract.dto.Contract
+import com.wutsi.ndopify.contract.dto.ContractSignature
 import com.wutsi.ndopify.contract.dto.ContractStatus
 import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.contract.dto.GetContractResponse
+import com.wutsi.ndopify.contract.dto.GetContractSignatureResponse
 import com.wutsi.ndopify.contract.dto.SearchContractRequest
 import com.wutsi.ndopify.contract.dto.SearchContractResponse
 import com.wutsi.ndopify.contract.dto.SignContractRequest
@@ -25,6 +27,7 @@ import tools.jackson.databind.json.JsonMapper
 import java.util.Date
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 
 class NdContractClientTest {
     private lateinit var server: MockRestServiceServer
@@ -132,5 +135,48 @@ class NdContractClientTest {
             .andRespond(withStatus(HttpStatus.CONFLICT))
 
         assertFailsWith<HttpClientErrorException.Conflict> { client.sign("abc", SignContractRequest(partyId = "cp-1")) }
+    }
+
+    @Test
+    fun getSignature() {
+        server.expect(requestTo("http://localhost:8080/v1/contracts/c-1/signatures/hash-1"))
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(
+                withSuccess(
+                    JsonMapper.builder().build().writeValueAsString(
+                        GetContractSignatureResponse(
+                            ContractSignature(
+                                contractId = "c-1",
+                                contractNumber = "BAIL-2026-000001",
+                                legalName = "Jean Dupont",
+                                signedAt = Date(4102444800000),
+                            ),
+                        ),
+                    ),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val signature = client.getSignature("c-1", "hash-1")
+
+        server.verify()
+        assertEquals("Jean Dupont", signature?.legalName)
+        assertEquals(4102444800000L, signature?.signedAt?.time)
+    }
+
+    @Test
+    fun `getSignature - not found`() {
+        server.expect(requestTo("http://localhost:8080/v1/contracts/c-1/signatures/hash-1"))
+            .andRespond(withStatus(HttpStatus.NOT_FOUND))
+
+        assertNull(client.getSignature("c-1", "hash-1"))
+    }
+
+    @Test
+    fun `getSignature - server error`() {
+        server.expect(requestTo("http://localhost:8080/v1/contracts/c-1/signatures/hash-1"))
+            .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR))
+
+        assertFailsWith<HttpServerErrorException> { client.getSignature("c-1", "hash-1") }
     }
 }

@@ -1,13 +1,16 @@
 package com.wutsi.ndopify.esignature.client.ndopify
 
 import com.wutsi.ndopify.contract.dto.Contract
+import com.wutsi.ndopify.contract.dto.ContractSignature
 import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.contract.dto.GetContractResponse
+import com.wutsi.ndopify.contract.dto.GetContractSignatureResponse
 import com.wutsi.ndopify.contract.dto.SearchContractRequest
 import com.wutsi.ndopify.contract.dto.SearchContractResponse
 import com.wutsi.ndopify.contract.dto.SignContractRequest
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
+import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.body
 
@@ -50,6 +53,18 @@ class NdContractClient(
             .body<SearchContractResponse>()
             ?.contracts
             ?: emptyList()
+
+    /** Null when no signature matches [hash] (404); any other error is thrown. */
+    fun getSignature(id: String, hash: String): ContractSignature? =
+        try {
+            rest.get()
+                .uri("/v1/contracts/{id}/signatures/{hash}", id, hash)
+                .retrieve()
+                .body<GetContractSignatureResponse>()
+                ?.signature
+        } catch (ex: HttpClientErrorException.NotFound) {
+            null
+        }
 
     /** [SignContractRequest.partyId] is a *contract party* id; ndopify-server checks it is the caller's. */
     fun sign(id: String, request: SignContractRequest) {
