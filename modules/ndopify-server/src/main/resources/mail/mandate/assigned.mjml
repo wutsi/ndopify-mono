@@ -10,7 +10,7 @@
             <mj-section padding="0">
                 <mj-column>
                     <!-- Logo -->
-                    <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="64" height="130" />
+                    <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
 
                     <!-- Divider with class for CSS injection -->
                     <mj-divider css-class="divider"/>

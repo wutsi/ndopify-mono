@@ -20,7 +20,7 @@
             <mj-column>
                 <!-- Logo -->
                 {{#tenant_logo_url}}
-                <mj-image align="center" css-class="logo" src="{{tenant_logo_url}}" alt="Logo"/>
+                <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
                 {{/tenant_logo_url}}
 
                 <!-- Title -->
