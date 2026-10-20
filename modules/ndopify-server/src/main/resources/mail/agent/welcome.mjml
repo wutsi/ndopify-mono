@@ -1,6 +1,6 @@
 <mjml>
     <mj-head>
-        <mj-style>
+        <mj-style inline="inline">
             {{__css__}}
         </mj-style>
     </mj-head>

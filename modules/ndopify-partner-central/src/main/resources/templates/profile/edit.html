@@ -86,6 +86,12 @@
                     </div>
                 </div>
 
+                <!--/* Shown only: changing it must check that the agent owns both the old and the new address. */-->
+                <div class="field" th:if="${email}">
+                    <p class="field__label" id="email-label">Adresse e-mail</p>
+                    <p class="readonly" id="email" aria-labelledby="email-label" th:text="${email}">serge@gmail.com</p>
+                </div>
+
                 <div class="field">
                     <label class="field__label" for="whatsappNumber">Numéro WhatsApp</label>
                     <!--/* E.164 ("+237677123456"): join.js (intl-tel-input) formats and converts it. */-->

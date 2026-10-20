@@ -106,6 +106,7 @@ class ProfileControllerTest {
         assertEquals(emptyMap<String, String>(), errors(result))
         assertNull(model(result)["error"])
         assertEquals("Serge Ngono", model(result)["fullName"])
+        assertEquals("serge@gmail.com", model(result)["email"])
         assertEquals("SN", model(result)["initials"])
         assertEquals(AGENT.party.photoUrl, model(result)["userPhotoUrl"])
         assertEquals(AGENT.party.photoUrl, model(result)["photoUrl"])

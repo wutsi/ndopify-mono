@@ -396,7 +396,7 @@ Package `com.wutsi.ndopify.npc`: `ui/` (MVC controllers + Thymeleaf templates in
   area and biography summary. The signed-in agent is `CurrentAgent` (party → `GET /v1/agents?party-id=` → `GET
   /v1/agents/{id}`): agent and party ids always come from the token, never from a form, since ndopify-server doesn't
   check who updates an agent. The profile pages (`ProfileController`, `ui/profile/`) are open whatever the KYC
-  status: `GET|POST /profile` (`templates/profile/edit.html`, `POST /v1/agents/{id}`; the name isn't editable) and
+  status: `GET|POST /profile` (`templates/profile/edit.html`, `POST /v1/agents/{id}`; the name isn't editable, the party's e-mail is shown read-only until changing it checks ownership of both addresses) and
   `GET|POST /profile/photo` (`templates/profile/photo.html`, sniffed with Tika, 5 Mo, sent to `POST
   /v1/parties/{id}/photo`). Both go back to `/` with a `saved` flash attribute.
   `join.js` and `kyc.js` enhance them (`data-page` `profile-edit` / `profile-photo`). `SectorValidator`

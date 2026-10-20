@@ -201,6 +201,8 @@ class ProfileTemplateTest {
         assertEquals("/profile", form.attr("action"))
         assertEquals("/locations", form.attr("data-locations-url"))
         assertEquals("Serge Ngono", page.selectFirst(".readonly")?.text())
+        assertEquals("serge@gmail.com", page.selectFirst("#email")?.text())
+        assertNull(page.selectFirst("input[name=email]"))
         assertEquals("+237670000001", page.selectFirst("#whatsappNumber")?.attr("value"))
         assertEquals("SENIOR", page.selectFirst("input[name=experienceLevel][checked]")?.attr("value"))
         assertEquals("INDEPENDANT", page.selectFirst("input[name=agentType][checked]")?.attr("value"))
@@ -223,6 +225,15 @@ class ProfileTemplateTest {
         val page = render(get("/profile"))
 
         assertEquals("3", page.selectFirst("form input[type=hidden][name=version]")?.attr("value"))
+    }
+
+    @Test
+    fun `edit - no e-mail`() {
+        doReturn(AGENT.copy(party = AGENT.party.copy(email = ""))).whenever(currentAgent).get()
+
+        val page = render(get("/profile"))
+
+        assertNull(page.selectFirst("#email"))
     }
 
     @Test

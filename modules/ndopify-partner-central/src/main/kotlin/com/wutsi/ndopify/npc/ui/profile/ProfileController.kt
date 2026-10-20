@@ -29,7 +29,8 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
 /**
  * The agent's profile pages, open whatever its KYC status (so it can be completed while the KYC is reviewed):
  * - `profile/edit` (`GET /profile`, `POST /profile`): WhatsApp number, experience, agent type, area and biography.
- *   The name isn't editable: it's the one of the verified identity document.
+ *   The name isn't editable: it's the one of the verified identity document. The e-mail is shown, not editable
+ *   (yet): changing it must check that the agent owns both the old and the new address.
  * - `profile/photo` (`GET /profile/photo`, `POST /profile/photo`): the profile photo, shown to customers.
  * Both go back to the Espace agent with a success message.
  */
@@ -158,6 +159,7 @@ class ProfileController(
     ): String {
         ProfileRules.header(agent, model)
         model.addAttribute("fullName", ProfileRules.fullName(agent))
+        model.addAttribute("email", agent.party.email.ifBlank { null })
         model.addAttribute("photoUrl", agent.party.photoUrl?.ifBlank { null })
         model.addAttribute("answers", answers)
         model.addAttribute("errors", errors)

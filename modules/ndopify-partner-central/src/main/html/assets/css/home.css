@@ -310,6 +310,7 @@
 .mandate-card__next {
     padding-top: var(--space-3);
     border-top: 1px solid var(--color-border);
+    color: var(--color-info-fg); /* dark blue: the agent's next step stands out from the facts above */
 }
 
 /* ---------- Mandate (mandate.html) ---------- */

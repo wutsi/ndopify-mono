@@ -36,6 +36,9 @@ logging:
         com.wutsi: INFO
 
 ndopify:
+    database:
+        pool-size: 16
+
     storage:
         default-type: s3
         s3:
