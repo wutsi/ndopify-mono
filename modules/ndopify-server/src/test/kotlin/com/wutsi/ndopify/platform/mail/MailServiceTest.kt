@@ -8,6 +8,7 @@ import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.mail.MailSendException
 import org.springframework.test.context.ActiveProfiles
 import java.io.File
 import kotlin.test.AfterTest
@@ -115,6 +116,6 @@ class MailServiceTest {
         // Stop
         smtp.stop()
 
-        assertThrows<MessagingException> { service.send(message) }
+        assertThrows<MailSendException> { service.send(message) }
     }
 }
