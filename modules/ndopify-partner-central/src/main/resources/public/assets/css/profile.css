@@ -52,7 +52,7 @@
 
 /* A value the agent can't change (the name, verified by KYC). */
 .readonly {
-    font-weight: 600;
+    font-weight: 400;
 }
 
 /* Same as find-property.css. */
