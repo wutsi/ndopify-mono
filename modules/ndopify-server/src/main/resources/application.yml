@@ -194,7 +194,7 @@ ndopify:
         signature:
             ttl-days: 7                    # The parties have 7 days to sign, from the last request for signature
         expire:
-            cron: "0 0 1 * * ?"            # Every day at 01:00: contracts not signed in time, or past their end date
+            cron: "0 */30 * * * ?"         # Every 30 minutes: contracts not signed in time, or past their end date
 
     mandate:
         assignment:
