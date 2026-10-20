@@ -135,6 +135,12 @@ object MandateLabels {
         else -> "Indifférent"
     }
 
+    /** "150K FCFA par mois", in short for a card. */
+    fun compactPrice(money: Money, formatter: TenantFormatter): String {
+        val period = if (money.periodicity == PeriodicityType.MONTHLY) " par mois" else ""
+        return formatter.compactMoney(money.amount, money.currency) + period
+    }
+
     /** "150 000 FCFA par mois", in the tenant's format. */
     fun price(money: Money, formatter: TenantFormatter): String {
         val period = if (money.periodicity == PeriodicityType.MONTHLY) " par mois" else ""
@@ -174,6 +180,9 @@ object MandateLabels {
     /** "Locataire · Maison", or just "Locataire" without a type. */
     fun title(mandate: Mandate): String =
         listOfNotNull(party(mandate.mandateType), shortPropertyType(mandate.propertyType)).joinToString(" · ")
+
+    /** "152,5K FCFA / mois", in short: the rent of a card's facts. */
+    fun compactRent(money: Money, formatter: TenantFormatter): String = formatter.compactMoney(money.amount, money.currency) + " / mois"
 
     /** "152 500 FCFA / mois", in the tenant's format: the rent of a mandate's criteria. */
     fun rent(money: Money, formatter: TenantFormatter): String = formatter.money(money.amount, money.currency) + " / mois"

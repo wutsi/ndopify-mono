@@ -1,12 +1,14 @@
 package com.wutsi.ndopify.npc.service
 
 import com.wutsi.ndopify.refdata.dto.Tenant
+import java.math.RoundingMode
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
+import kotlin.math.abs
 
 /**
  * Formats dates and amounts with the tenant's rules, as ndopify-server's `TenantFormatter` does in its e-mails: its
@@ -42,6 +44,22 @@ class TenantFormatter(private val tenant: Tenant) {
                 .filter { it.isNotEmpty() }
                 .joinToString("\u00A0")
         }
+
+    /**
+     * An amount in short, for a card ("80K FCFA", "152,5K FCFA", "1,25M FCFA"): thousands as K (one decimal at most),
+     * millions as M (two at most), in the tenant's locale, followed by its currency.
+     */
+    fun compactMoney(amount: Long, currencyCode: String = tenant.currencyCode): String {
+        val (value, suffix, decimals) = when {
+            abs(amount) >= 1_000_000 -> Triple(amount / 1_000_000.0, "M", "##")
+            abs(amount) >= 1_000 -> Triple(amount / 1_000.0, "K", "#")
+            else -> Triple(amount.toDouble(), "", "")
+        }
+        val format = DecimalFormat("0" + if (decimals.isEmpty()) "" else ".$decimals", DecimalFormatSymbols.getInstance(locale))
+        format.roundingMode = RoundingMode.HALF_UP
+        val currency = if (currencyCode == tenant.currencyCode) currency() else currencyCode
+        return listOf(format.format(value) + suffix, currency).filter { it.isNotEmpty() }.joinToString("\u00A0")
+    }
 
     // French groups digits with a narrow no-break space (U+202F): a no-break space instead, which every font has. The
     // pattern's own spaces too, so an amount never wraps.

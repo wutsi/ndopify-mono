@@ -46,6 +46,18 @@ class TenantFormatterTest {
     }
 
     @Test
+    fun `amount in short`() {
+        val formatter = TenantFormatter(TENANT)
+        assertEquals("80K\u00a0FCFA", formatter.compactMoney(80_000))
+        assertEquals("150K\u00a0FCFA", formatter.compactMoney(150_000))
+        assertEquals("152,5K\u00a0FCFA", formatter.compactMoney(152_500))
+        assertEquals("1,25M\u00a0FCFA", formatter.compactMoney(1_250_000))
+        assertEquals("2M\u00a0FCFA", formatter.compactMoney(2_000_000))
+        assertEquals("500\u00a0FCFA", formatter.compactMoney(500))
+        assertEquals("1.5K\u00a0EUR", TenantFormatter(TENANT.copy(locales = listOf("en"))).compactMoney(1500, "EUR"))
+    }
+
+    @Test
     fun currency() {
         assertEquals("FCFA", TenantFormatter(TENANT).currency())
         assertEquals("XAF", TenantFormatter(TENANT.copy(currencySymbol = "")).currency())

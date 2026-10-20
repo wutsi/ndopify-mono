@@ -17,7 +17,13 @@ object MandateCards {
             id = mandate.id,
             title = MandateLabels.title(mandate),
             tag = MandateRules.tag(mandate.status),
-            facts = facts.mapIndexed { i, (term, value) -> if (i == 0) term to sector(mandate, value, city) else term to value },
+            facts = facts.mapIndexed { i, (term, value) ->
+                when (i) {
+                    0 -> term to sector(mandate, value, city)
+                    1 -> term to MandateLabels.compactRent(mandate.price, formatter) // "250K FCFA", short on a card
+                    else -> term to value
+                }
+            },
             nextStep = MandateRules.nextStep(mandate, contract, now, formatter),
         )
     }

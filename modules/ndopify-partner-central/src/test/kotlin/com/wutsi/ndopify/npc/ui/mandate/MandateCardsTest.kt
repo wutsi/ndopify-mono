@@ -70,7 +70,7 @@ class MandateCardsTest {
         assertEquals(
             listOf(
                 "Secteurs" to "Bonapriso, Akwa",
-                "Budget" to "250\u00a0000\u00a0FCFA / mois",
+                "Budget" to "250K\u00a0FCFA / mois",
                 "Emménagement" to "Dans 1 à 3 mois",
             ),
             card.facts,
@@ -99,7 +99,7 @@ class MandateCardsTest {
         assertEquals("Bailleur · Maison", card.title)
         assertEquals(MandateRules.Tag("Actif", "success"), card.tag)
         assertEquals(
-            listOf("Secteur" to "Bonapriso", "Loyer" to "250\u00a0000\u00a0FCFA / mois", "Disponibilité" to "Dans 1 à 3 mois"),
+            listOf("Secteur" to "Bonapriso", "Loyer" to "250K\u00a0FCFA / mois", "Disponibilité" to "Dans 1 à 3 mois"),
             card.facts,
         )
         assertEquals("Trouvez un locataire avant le 28 mars 2027.", card.nextStep)
