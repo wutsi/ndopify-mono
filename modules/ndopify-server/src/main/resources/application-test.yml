@@ -13,9 +13,9 @@ spring:
     jpa:
         show-sql: false
     datasource:
-        url: ${JAWSDB_URL}
-        username: ${JAWSDB_USERNAME}
-        password: ${JAWSDB_PASSWORD}
+        url: ${DB_URL}
+        username: ${DB_USER}
+        password: ${DB_PASSWORD}
 
     mail:
         host: ${SMTP_HOST}

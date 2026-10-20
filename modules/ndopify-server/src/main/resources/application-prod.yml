@@ -13,6 +13,10 @@ spring:
         clean-disabled: true
     jpa:
         show-sql: false
+    datasource:
+        url: ${DB_URL}
+        username: ${DB_USER}
+        password: ${DB_PASSWORD}
 
 springdoc:
     api-docs:

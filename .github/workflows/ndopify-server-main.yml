@@ -105,6 +105,9 @@ jobs:
                     heroku config:set --app ${HEROKU_APP} SPRING_PROFILES_ACTIVE=test
                     heroku config:set --app ${HEROKU_APP} AWS_ACCESS_KEY=${{secrets.AWS_ACCESS_KEY}}
                     heroku config:set --app ${HEROKU_APP} AWS_SECRET_KEY=${{secrets.AWS_SECRET_KEY}}
+                    heroku config:set --app ${HEROKU_APP} DB_URL=${{secrets.DB_URL}}
+                    heroku config:set --app ${HEROKU_APP} DB_USER=${{secrets.DB_USER}}
+                    heroku config:set --app ${HEROKU_APP} DB_PASSWORD=${{secrets.DB_PASSWORD}}
                     heroku config:set --app ${HEROKU_APP} SMTP_USER=${{secrets.SMTP_USER}}
                     heroku config:set --app ${HEROKU_APP} SMTP_PASSWORD=${{secrets.SMTP_PASSWORD}}
                     heroku config:set --app ${HEROKU_APP} SMTP_HOST=${{secrets.SMTP_HOST}}
