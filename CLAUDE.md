@@ -235,7 +235,7 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `DispatchMandateEndpointTest`, `Decline` / `ExpireAssignmentEndpointTest`) and the listener / job unit tests.
 - **contract** — contracts to be signed by parties (`ContractEntity` + its `ContractPartyEntity`s, UUID ids;
   `/v1/contracts`: search (`id`, `status`, `party-id`, `contract-party-id` lists, newest first; `ContractSummary`, without parties), create,
-  get, `POST /{id}/content`, `POST /{id}/request-signature`, `POST /{id}/sign`). `ContractService.create` checks the type, the parties' roles,
+  get, `POST /{id}/content`, `POST /{id}/request-signature`, `POST /{id}/sign`, `GET /{id}/signatures/{hash}`). `ContractService.create` checks the type, the parties' roles,
   `durationMonths >= 1` (persisted; the request has no dates) and that each `partyId` is a party of the tenant (404
   `PARTY_NOT_FOUND`), and starts the contract as `DRAFT`, without dates nor document, numbered `<prefix>-<year>-<nnnnnn>` by `ContractNumberGenerator` (`BAIL` for a
   `LEASE_AGREEMENT`, else `MNDT`; year in the tenant's `timeZone`): one gapless sequence per tenant, prefix and year in
@@ -272,7 +272,7 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `eSignaturePortalUrl`. `POST /v1/contracts/{id}/signed-content` (`@OpsEndpoint`, admin) generates it again. The
   verify page isn't built yet.
   **Access** (`ContractAccessService`, checked by `ContractEndpoints`, without lock since a contract's parties never
-  change): every endpoint needs a JWT (401 `AUTH_UNAUTHORIZED`). Get and search are for an admin or one of the
+  change): every endpoint but the signature's verification (`GET /{id}/signatures/{hash}`, public: the contract number, legal name, `signedAt` and `signedContentUrl` of a signed contract party with that hash, else 404 `CONTRACT_SIGNATURE_NOT_FOUND`) needs a JWT (401 `AUTH_UNAUTHORIZED`). Get and search are for an admin or one of the
   contract's parties (JWT user → membership → party), else 403 `CONTRACT_ACCESS_DENIED` (after the 404); a non-admin's
   search is restricted to its own party (`party-id` forced; another party's is a 403). With both `party-id` and
   `contract-party-id`, the contract party must be one of those parties' (same `T_CONTRACT_PARTY` row): a co-party of a

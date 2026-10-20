@@ -3,6 +3,7 @@ package com.wutsi.ndopify.contract.server.endpoint
 import com.wutsi.ndopify.contract.dto.CreateContractRequest
 import com.wutsi.ndopify.contract.dto.CreateContractResponse
 import com.wutsi.ndopify.contract.dto.GetContractResponse
+import com.wutsi.ndopify.contract.dto.GetContractSignatureResponse
 import com.wutsi.ndopify.contract.dto.SearchContractRequest
 import com.wutsi.ndopify.contract.dto.SearchContractResponse
 import com.wutsi.ndopify.contract.dto.SetContractRequest
@@ -25,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController
 
 /**
  * Only an admin or one of its parties may see a contract, only an admin may change it, and only the party itself may
- * sign ([ContractAccessService]).
+ * sign ([ContractAccessService]), except a signature's verification, which is public.
  */
 @RestController
 @RequestMapping("/v1/contracts")
@@ -55,6 +56,16 @@ class ContractEndpoints(
         val contract = service.findById(id)
         access.ensureCanRead(contract)
         return toResponse(contract)
+    }
+
+    // Public, without access check: the hash is the secret printed in the signed PDF's QR code, and only a few facts are returned
+    @GetMapping("/{id}/signatures/{hash}")
+    fun getSignature(
+        @PathVariable id: String,
+        @PathVariable hash: String,
+    ): GetContractSignatureResponse {
+        val (contract, party) = service.findSignature(id, hash)
+        return GetContractSignatureResponse(signature = mapper.toContractSignature(contract, party))
     }
 
     // The document's URL, while the contract is DRAFT or PENDING_SIGNATURE

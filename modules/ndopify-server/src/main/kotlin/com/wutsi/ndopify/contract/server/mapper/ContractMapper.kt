@@ -2,6 +2,7 @@ package com.wutsi.ndopify.contract.server.mapper
 
 import com.wutsi.ndopify.contract.dto.Contract
 import com.wutsi.ndopify.contract.dto.ContractParty
+import com.wutsi.ndopify.contract.dto.ContractSignature
 import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.contract.server.domain.ContractEntity
 import com.wutsi.ndopify.contract.server.domain.ContractPartyEntity
@@ -42,6 +43,16 @@ class ContractMapper {
             validFrom = entity.validFrom,
             validUntil = entity.validUntil,
             signedAt = entity.signedAt,
+        )
+    }
+
+    fun toContractSignature(contract: ContractEntity, party: ContractPartyEntity): ContractSignature {
+        return ContractSignature(
+            contractId = contract.id,
+            contractNumber = contract.number,
+            legalName = party.legalName,
+            signedAt = party.signedAt!!,
+            signedContentUrl = contract.signedContentUrl,
         )
     }
 
