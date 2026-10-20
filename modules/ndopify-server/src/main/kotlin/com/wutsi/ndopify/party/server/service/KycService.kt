@@ -260,6 +260,11 @@ class KycService(
         return retry(case, KycErrorCode.INTERRUPTED, "Verification interrupted")
     }
 
+    /**
+     * Sends the status email of a resolved case. Called by `KycEventListener` on its own thread, with
+     * `TenantContext` set: the transaction gives the mailet a session to load the case's party.
+     */
+    @Transactional
     fun sendStatusEmail(id: String) {
         val case = findById(id)
         if (case.status == KycStatus.VERIFIED || case.status == KycStatus.REJECTED) {
