@@ -2,7 +2,6 @@ package com.wutsi.ndopify.platform.mail
 
 import jakarta.mail.Message
 import jakarta.mail.Part
-import jakarta.mail.Transport
 import jakarta.mail.internet.MimeBodyPart
 import jakarta.mail.internet.MimeMessage
 import jakarta.mail.internet.MimeMultipart
@@ -11,7 +10,7 @@ import org.springframework.mail.javamail.JavaMailSender
 class MailService(private val mail: JavaMailSender) {
     fun send(email: Email) {
         val msg = createMessage(email)
-        Transport.send(msg)
+        mail.send(msg)
     }
 
     private fun createMessage(message: Email): MimeMessage {
