@@ -313,6 +313,11 @@
     color: var(--color-info-fg); /* dark blue: the agent's next step stands out from the facts above */
 }
 
+/* Montserrat is loaded at 400 and 600 only: 700 would be synthesized */
+.mandate-card__next strong {
+    font-weight: 600;
+}
+
 /* ---------- Mandate (mandate.html) ---------- */
 .back-link {
     margin-bottom: var(--space-3);

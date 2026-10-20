@@ -1485,7 +1485,9 @@
             return p.The + " a jusqu'au " + formatDate(deadline) + " pour signer le mandat.";
         }
         if (state.status === "APPROVED") {
-            return "Mandat signé, valable jusqu'au " + formatDate(addMonths(state.approvedAt, CONTRACT_MONTHS)) + ".";
+            // Signed: what's left is the property (a client) or the tenant (a landlord), within the mandate's validity
+            var find = mandate.party === "bailleur" ? "Trouvez un locataire" : "Trouvez un bien pour " + p.the;
+            return find + " avant le " + formatDate(addMonths(state.approvedAt, CONTRACT_MONTHS)) + ".";
         }
         return "";
     }

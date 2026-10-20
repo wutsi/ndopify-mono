@@ -275,9 +275,8 @@
                                     <dd th:text="${fact.second}">Kotto, Logpom</dd>
                                 </div>
                             </dl>
-                            <p class="mandate-card__next" th:if="${m.nextStep}" th:text="${m.nextStep}">
-                                Contactez le client, puis envoyez-lui le mandat à approuver.
-                            </p>
+                            <p class="mandate-card__next" th:if="${m.nextStep}"><strong>Prochaine étape&nbsp;:</strong>
+                                <span th:text="${m.nextStep}">Contactez le client, puis envoyez-lui le mandat à approuver.</span></p>
                         </article>
                     </li>
                 </ul>

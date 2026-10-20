@@ -218,14 +218,15 @@ class HomeTemplateTest {
         assertEquals("Assigné", card.selectFirst(".status-tag")?.text())
         assertEquals(listOf("Secteurs", "Budget", "Emménagement"), card.select(".assignment__facts dt").map { it.text() })
         assertEquals("Bonapriso, Akwa", card.selectFirst(".assignment__facts dd")?.text())
+        assertEquals("Prochaine étape\u00a0:", card.selectFirst(".mandate-card__next strong")?.wholeText())
         assertEquals(
             "Contactez le client, puis envoyez-lui le mandat à approuver.",
-            card.selectFirst(".mandate-card__next")?.text(),
+            card.selectFirst(".mandate-card__next span")?.text(),
         )
         assertEquals("status-tag status-tag--warning", cards[1].selectFirst(".status-tag")?.className())
         assertEquals(
             "Le client a jusqu'au 19 janv. 2027 pour signer le mandat.",
-            cards[1].selectFirst(".mandate-card__next")?.text(),
+            cards[1].selectFirst(".mandate-card__next span")?.text(),
         )
         assertTrue(page.selectFirst("[data-mandates-empty]")!!.hasAttr("hidden"))
         assertNull(page.selectFirst("[data-mandates-unavailable]"))

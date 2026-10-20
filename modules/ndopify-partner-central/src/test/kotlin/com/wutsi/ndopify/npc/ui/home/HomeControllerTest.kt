@@ -318,7 +318,7 @@ class HomeControllerTest {
         val mandates = mandates(result)
         assertEquals(listOf(203L, 201L, 202L), mandates.map { it.id })
         assertEquals("Secteurs" to "Bonapriso, Akwa", mandates[1].facts[0])
-        assertEquals("Mandat signé, valable jusqu'au 28 mars 2027.", mandates[0].nextStep)
+        assertEquals("Trouvez un bien pour le client avant le 28 mars 2027.", mandates[0].nextStep)
         assertEquals("Le client a jusqu'au 19 janv. 2027 pour signer le mandat.", mandates[2].nextStep)
         assertEquals(false, model(result)["mandatesUnavailable"])
     }
@@ -354,7 +354,7 @@ class HomeControllerTest {
 
         val result = mvc.perform(get("/")).andReturn()
 
-        assertEquals("Mandat signé.", mandates(result).single().nextStep)
+        assertEquals("Trouvez un bien pour le client.", mandates(result).single().nextStep)
     }
 
     @Test
@@ -368,7 +368,7 @@ class HomeControllerTest {
 
         val mandates = mandates(result)
         assertEquals("Le client doit signer le mandat.", mandates[0].nextStep)
-        assertEquals("Mandat signé, valable jusqu'au 28 mars 2027.", mandates[1].nextStep)
+        assertEquals("Trouvez un bien pour le client avant le 28 mars 2027.", mandates[1].nextStep)
     }
 
     @Test

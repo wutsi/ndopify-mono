@@ -189,7 +189,7 @@ ndopify:
     endpoints:
         ops: true                          # @OpsEndpoint endpoints (unauthenticated): off in prod
     database:
-        pool-size: 4
+        pool-size: 8
 
     contract:
         signature:

@@ -2,6 +2,7 @@ package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.contract.dto.Contract
 import com.wutsi.ndopify.contract.dto.ContractSummary
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
@@ -96,10 +97,19 @@ object MandateRules {
                     else -> "${words.theUpper} a jusqu'au ${formatter.date(deadline)} pour signer le mandat."
                 }
             }
-            MandateStatus.APPROVED ->
-                contract?.validUntil
-                    ?.let { "Mandat signé, valable jusqu'au ${formatter.date(it)}." }
-                    ?: "Mandat signé."
+            MandateStatus.APPROVED -> {
+                // Signed: what's left is the property (a search) or the tenant / buyer (a listing), within the
+                // mandate's validity
+                val find = if (mandate.mandateType != MandateType.LISTING) {
+                    "Trouvez un bien pour ${words.the}"
+                } else if (mandate.listingType == ListingType.SALE) {
+                    "Trouvez un acheteur"
+                } else {
+                    "Trouvez un locataire"
+                }
+                val before = contract?.validUntil?.let { " avant le ${formatter.date(it)}" } ?: ""
+                "$find$before."
+            }
             else -> null
         }
     }

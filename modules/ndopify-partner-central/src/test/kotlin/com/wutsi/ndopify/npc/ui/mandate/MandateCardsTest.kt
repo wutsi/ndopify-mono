@@ -102,7 +102,7 @@ class MandateCardsTest {
             listOf("Secteur" to "Bonapriso", "Loyer" to "250\u00a0000\u00a0FCFA / mois", "Disponibilité" to "Dans 1 à 3 mois"),
             card.facts,
         )
-        assertEquals("Mandat signé, valable jusqu'au 28 mars 2027.", card.nextStep)
+        assertEquals("Trouvez un locataire avant le 28 mars 2027.", card.nextStep)
     }
 
     @Test
