@@ -16,22 +16,17 @@ spring:
         url: ${DB_URL}
         username: ${DB_USER}
         password: ${DB_PASSWORD}
-
     mail:
         host: ${SMTP_HOST}
         username: ${SMTP_USER}
         password: ${SMTP_PASSWORD}
-        test-connection: false
+        port: ${SMTP_PORT}
         properties:
             mail:
-                debug: false
                 smtp:
-                    from: no-reply@wutsi.com
-                    port: ${SMTP_PORT}
                     auth: true
                     starttls:
                         enable: true
-                        required: true
 
 swagger:
     protocol: https
