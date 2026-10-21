@@ -1,7 +1,9 @@
 package com.wutsi.ndopify.npc.service
 
 import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
+import java.time.Clock
 import java.time.Instant
+import java.time.LocalDate
 import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -14,6 +16,18 @@ class TenantFormatterTest {
     fun `date in the tenant's format, locale and time zone`() {
         assertEquals("17 oct. 2026", TenantFormatter(TENANT).date(date))
         assertEquals("16 oct. 2026", TenantFormatter(TENANT.copy(timeZone = "America/Toronto")).date(date))
+    }
+
+    @Test
+    fun `local date in the tenant's format and locale`() {
+        assertEquals("03 nov. 2026", TenantFormatter(TENANT).date(LocalDate.of(2026, 11, 3)))
+    }
+
+    @Test
+    fun `today in the tenant's time zone`() {
+        val clock = Clock.fixed(Instant.parse("2026-10-21T23:30:00Z"), java.time.ZoneOffset.UTC)
+
+        assertEquals(LocalDate.of(2026, 10, 22), TenantFormatter(TENANT).today(clock))
     }
 
     @Test

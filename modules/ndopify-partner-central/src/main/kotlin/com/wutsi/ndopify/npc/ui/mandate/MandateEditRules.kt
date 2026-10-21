@@ -94,6 +94,7 @@ object MandateEditRules {
             price = mandate.price.copy(amount = FindPropertyRules.parseAmount(form.priceAmount) ?: mandate.price.amount),
             securityDeposit = mandate.securityDeposit,
             advanceRent = mandate.advanceRent,
+            availableFrom = mandate.availableFrom,
             leaseTerm = mandate.leaseTerm,
             noticePeriod = mandate.noticePeriod,
             movingPeriod = form.movingPeriod ?: MovingPeriod.UNKNOWN,

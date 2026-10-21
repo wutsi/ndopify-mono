@@ -4,6 +4,8 @@ import com.wutsi.ndopify.refdata.dto.Tenant
 import java.math.RoundingMode
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
+import java.time.Clock
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Date
@@ -26,7 +28,14 @@ class TenantFormatter(private val tenant: Tenant) {
     private val zone = ZoneId.of(tenant.timeZone)
 
     fun date(date: Date): String =
-        date.toInstant().atZone(zone).format(DateTimeFormatter.ofPattern(tenant.dateFormat.ifBlank { DEFAULT_DATE_FORMAT }, locale))
+        date.toInstant().atZone(zone).format(dateFormatter())
+
+    fun date(date: LocalDate): String = date.format(dateFormatter())
+
+    /** Today's date in the tenant's time zone. */
+    fun today(clock: Clock): LocalDate = LocalDate.now(clock.withZone(zone))
+
+    private fun dateFormatter() = DateTimeFormatter.ofPattern(tenant.dateFormat.ifBlank { DEFAULT_DATE_FORMAT }, locale)
 
     /** The tenant's currency as its users read it ("FCFA"), for a field's unit or a message. */
     fun currency(): String = tenant.currencySymbol.ifBlank { tenant.currencyCode }

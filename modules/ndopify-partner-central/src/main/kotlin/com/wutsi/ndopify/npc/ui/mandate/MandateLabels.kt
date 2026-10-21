@@ -203,7 +203,10 @@ object MandateLabels {
         return listOfNotNull(
             (if (mandate.neighborhoodIds.size > 1) "Secteurs" else "Secteur") to sector,
             (if (owner) "Loyer" else "Budget") to rent(mandate.price, formatter),
-            (if (owner) "Disponibilité" else "Emménagement") to (MOVE_IN_LABELS[mandate.movingPeriod] ?: NONE),
+            (if (owner) "Disponibilité" else "Emménagement") to (
+                mandate.availableFrom?.takeIf { owner }?.let { "Dès le " + formatter.date(it) }
+                    ?: MOVE_IN_LABELS[mandate.movingPeriod] ?: NONE
+                ),
             "Catégorie" to (category(mandate.propertyCategory) ?: NONE),
             "Type de propriété" to (PROPERTY_TYPE_LABELS[mandate.propertyType] ?: "Indifférent"),
             ("Meublé" to furniture(mandate.furnitureType)).takeIf { FindPropertyRules.needsFurniture(type) },
