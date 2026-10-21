@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>Ndopify — Trouvez votre logement vérifié au Cameroun</title>
+    <meta
+        content="Recherchez un logement audité et accompagné par un agent vérifié. Zéro cash, Pass Visite par Mobile Money, signature de bail en toute confiance."
+        name="description">
+    <!--/* The tenant's logo and icon, falling back to Ndopify's when it has none. */-->
+    <th:block th:with="logoUrl=${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl},
+                       iconUrl=${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
+        <link rel="canonical" th:if="${!#strings.isEmpty(tenant.publicPortalUrl)}" th:href="${tenant.publicPortalUrl}">
+        <meta content="website" property="og:type">
+        <meta content="Ndopify — Logements vérifiés. Locations fiables." property="og:title">
+        <meta
+            content="Recherchez un logement audité et accompagné par un agent vérifié. Zéro cash, Pass Visite par Mobile Money."
+            property="og:description">
+        <meta property="og:image" th:content="${logoUrl}">
+        <meta property="og:url" th:if="${!#strings.isEmpty(tenant.publicPortalUrl)}" th:content="${tenant.publicPortalUrl}">
+        <meta content="summary_large_image" name="twitter:card">
+        <meta content="#1d7edf" name="theme-color">
+        <link rel="icon" th:href="${iconUrl}">
+        <link rel="apple-touch-icon" th:href="${iconUrl}">
+        <link rel="stylesheet" th:href="@{/assets/css/styles.css}">
+        <script type="application/ld+json" th:inline="javascript">
+            {
+                "@context": "https://schema.org",
+                "@type": "Organization",
+                "name": /*[[${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}]]*/ "Ndopify",
+                "url": /*[[${tenant.publicPortalUrl}]]*/ null,
+                "logo": /*[[${logoUrl}]]*/ null
+            }
+        </script>
+    </th:block>
+</head>
+<!--/*
+  The home page, for people looking for a rental (HomeController). Served from the prototype src/main/html/index.html.
+  Every call to action opens Partner Central's "Trouver un bien" wizard (findPropertyUrl), and is left out without it.
+*/-->
+<body data-page="home">
+<a class="skip-link" href="#main">Aller au contenu principal</a>
+<header class="site-header">
+    <a aria-label="Ndopify — accueil" class="site-header__logo" th:href="@{/}">
+        <img alt="Ndopify" height="36" width="140"
+             th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
+             th:src="${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}">
+    </a>
+    <nav aria-label="Navigation principale" class="site-nav">
+        <button aria-controls="primary-nav-list" aria-expanded="false" class="nav-toggle"><span aria-hidden="true"
+                                                                                                class="nav-toggle__icon">☰</span>
+            Locataires
+        </button>
+        <ul class="site-nav__list" id="primary-nav-list">
+            <li><a aria-current="page" th:href="@{/}">Locataires</a></li>
+            <li><a th:href="@{/bailleur}">Propriétaires</a></li>
+            <li><a th:href="@{/agent}">Agents</a></li>
+        </ul>
+    </nav>
+</header>
+
+<main id="main">
+    <section class="section section--default">
+        <div class="container hero">
+            <span class="hero__eyebrow">Agents dédiés, propriétés auditées</span>
+            <h1>Trouvez votre logement en toute confiance</h1>
+            <p class="hero__sub">Confiez votre recherche à un agent dédié dans votre secteur. Logements audités, zéro
+                paiement en cash, suivi jusqu'à la signature.</p>
+            <ul class="proof-stats">
+                <li><strong>100 %</strong>logements audités sur le terrain</li>
+                <li><strong>0 FCFA</strong>en cash versé à un agent</li>
+                <li><strong>1 mois</strong>de loyer en commission, à la signature</li>
+            </ul>
+            <div class="cta-row" th:if="${findPropertyUrl}">
+                <a class="btn btn-primary" th:href="${findPropertyUrl}">Chercher un Logement Vérifié</a>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="garanties-heading" class="section section--secondary">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="garanties-heading">Nos garanties</h2>
+                <p>Chaque étape est conçue pour supprimer le racket des frais de visite et sécuriser votre
+                    recherche.</p>
+            </div>
+            <ul class="card-grid">
+                <li class="card">
+                    <h3 class="card-title">Agent dédié certifié</h3>
+                    <p>Un agent vérifié, expert de votre secteur, vous accompagne du début à la fin.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Logements audités</h3>
+                    <p>Compteurs d'eau et d'électricité vérifiés, photos, vidéos et coordonnées GPS certifiées.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Zéro cash</h3>
+                    <p>Aucun paiement en liquide à l'agent — tout passe par le Pass Visite Mobile Money.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Suivi personnalisé</h3>
+                    <p>Un accompagnement continu jusqu'à la signature du bail et votre aménagement.</p>
+                </li>
+            </ul>
+            <div class="cta-row" th:if="${findPropertyUrl}">
+                <a class="btn btn-primary" th:href="${findPropertyUrl}">Chercher un Logement Vérifié</a>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="comment-heading" class="section section--default">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="comment-heading">Comment ça marche</h2>
+            </div>
+            <ol class="steps">
+                <li><h3>Soumission &amp; Jumelage</h3>
+                    <p>Décrivez votre recherche, nous vous attribuons un agent vérifié de votre secteur.</p></li>
+                <li><h3>Pass Visite Mobile Money</h3>
+                    <p>Activez votre Pass Visite (4 000 à 10 000 FCFA) par MTN ou Orange Money.</p></li>
+                <li><h3>Visites accompagnées</h3>
+                    <p>Votre agent vous fait visiter les logements correspondant à vos critères.</p></li>
+                <li><h3>Aménagement sécurisé</h3>
+                    <p>Signez votre bail en confiance et installez-vous sereinement.</p></li>
+            </ol>
+            <div class="cta-row" th:if="${findPropertyUrl}">
+                <a class="btn btn-primary" th:href="${findPropertyUrl}">Chercher un Logement Vérifié</a>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="faq-heading" class="section section--secondary">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="faq-heading">Questions fréquentes</h2>
+            </div>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-1" aria-expanded="false" class="faq-trigger">Comment Ndopify
+                            sélectionne l'agent qui va m'accompagner ?<span aria-hidden="true" class="chevron">▾</span>
+                        </button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-1"><p>Ndopify vous attribue l'Agent Vérifié le plus
+                        expérimenté dans votre secteur géographique selon vos critères de recherche.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-2" aria-expanded="false" class="faq-trigger">Qu'est-ce qu'un logement
+                            audité ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-2"><p>Un logement audité a subi une inspection technique
+                        complète avec vérification des compteurs d'eau/électricité, photos, vidéos et coordonnées GPS
+                        certifiées.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-3" aria-expanded="false" class="faq-trigger">Comment fonctionne le
+                            Pass Visite ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-3"><p>Le Pass Visite Digital s'active via Mobile Money
+                        (MTN/Orange Money). Il couvre 1 visite (4 000 FCFA) ou 3 visites (10 000 FCFA) de manière
+                        traçable et sécurisée.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-4" aria-expanded="false" class="faq-trigger">Pourquoi faut-il payer
+                            pour visiter un logement ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-4"><p>Le Pass Visite garantit des visites certifiées et
+                        élimine le racket des frais de visite en cash. L'argent reverse une indemnité aux agents.</p>
+                    </div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-5" aria-expanded="false" class="faq-trigger">Quelle commission
+                            dois-je payer à la signature du bail ?<span aria-hidden="true" class="chevron">▾</span>
+                        </button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-5"><p>La commission est d'1 mois de loyer, payable uniquement
+                        à la signature officielle du contrat de bail.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-6" aria-expanded="false" class="faq-trigger">Mes paiements sont-ils
+                            sécurisés ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-6"><p>Oui. Aucun frais de visite n'est réglé en espèces. Le
+                        Pass Visite Digital est votre unique garantie pour des visites certifiées.</p></div>
+                </div>
+            </div>
+            <div class="cta-row" th:if="${findPropertyUrl}">
+                <a class="btn btn-primary" th:href="${findPropertyUrl}">Chercher un Logement Vérifié</a>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <div class="container site-footer__inner">
+        <img alt="Ndopify" height="32" width="32"
+             th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
+             th:src="${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
+        <nav aria-label="Navigation du pied de page">
+            <ul>
+                <li><a th:href="@{/}">Locataires</a></li>
+                <li><a th:href="@{/bailleur}">Propriétaires</a></li>
+                <li><a th:href="@{/agent}">Agents</a></li>
+            </ul>
+        </nav>
+        <small>© 2026 Ndopify. Logements vérifiés. Locations fiables.</small>
+    </div>
+</footer>
+
+<script th:src="@{/assets/js/main.js}"></script>
+</body>
+</html>

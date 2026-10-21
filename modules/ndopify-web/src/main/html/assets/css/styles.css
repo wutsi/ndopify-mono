@@ -471,7 +471,7 @@ fieldset.step h3 { margin-bottom: var(--space-xl); }
 
 /* Footer */
 .site-footer {
-  background: var(--color-bg-secondary);
+  background: var(--surface-low);
   padding-block: var(--space-xl);
   margin-top: 0;
 }
