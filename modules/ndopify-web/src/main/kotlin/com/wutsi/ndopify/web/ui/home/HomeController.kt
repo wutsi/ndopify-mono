@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.web.ui.home
 
 import com.wutsi.ndopify.refdata.dto.Tenant
+import com.wutsi.ndopify.web.ui.layout.PartnerCentralUrls
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.GetMapping
@@ -20,12 +21,7 @@ class HomeController {
 
     @GetMapping("/")
     fun index(model: Model): String {
-        model.addAttribute("findPropertyUrl", findPropertyUrl(model.getAttribute("tenant") as Tenant))
+        model.addAttribute("findPropertyUrl", PartnerCentralUrls.of(model.getAttribute("tenant") as Tenant, "/find-property"))
         return VIEW
     }
-
-    private fun findPropertyUrl(tenant: Tenant): String? =
-        tenant.partnerCentralUrl
-            ?.takeIf { url -> url.isNotBlank() }
-            ?.let { url -> url.trimEnd('/') + "/find-property" }
 }

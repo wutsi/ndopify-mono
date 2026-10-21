@@ -103,7 +103,7 @@ class JoinTemplateTest {
     }
 
     @Test
-    fun `header shows the tenant's logo and a way back to its public portal`() {
+    fun `header shows the tenant's logo and a way back to its public portal's agent page`() {
         val page = render(get("/join"))
 
         val logo = page.selectFirst(".site-header__brand img")!!
@@ -111,7 +111,7 @@ class JoinTemplateTest {
         assertEquals(tenant.name, logo.attr("alt"))
         val exit = assertNotNull(page.selectFirst("[data-exit]"))
         assertEquals("Quitter", exit.text())
-        assertEquals(tenant.publicPortalUrl, exit.attr("href"))
+        assertEquals("https://www.ndopify.com/agent", exit.attr("href"))
     }
 
     @Test
@@ -325,7 +325,7 @@ class JoinTemplateTest {
         assertNull(page.selectFirst("[data-progress-block]"))
         assertNull(page.selectFirst("form"))
         assertEquals("/login", page.selectFirst(".cta-row a")?.attr("href"))
-        assertEquals(tenant.publicPortalUrl, page.selectFirst("[data-exit]")?.attr("href"))
+        assertEquals("https://www.ndopify.com/agent", page.selectFirst("[data-exit]")?.attr("href"))
     }
 
     private fun render(request: MockHttpServletRequestBuilder): Document {

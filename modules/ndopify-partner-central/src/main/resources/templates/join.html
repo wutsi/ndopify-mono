@@ -41,8 +41,8 @@
                  th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify, espace partenaires' : ${tenant.name}"
                  th:src="${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}">
         </a>
-        <!--/* Back to the tenant's public site, from any step; hidden when the tenant has none. */-->
-        <a class="btn btn--outline" data-exit th:href="${tenant.publicPortalUrl}"
+        <!--/* Back to the agents' page of the tenant's public site, from any step; hidden when the tenant has none. */-->
+        <a class="btn btn--outline" data-exit th:href="${tenant.publicPortalUrl} + '/agent'"
            th:unless="${#strings.isEmpty(tenant.publicPortalUrl)}">
             <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
                 <path d="m6 6 8 8M14 6l-8 8" fill="none" stroke="currentColor" stroke-linecap="round"

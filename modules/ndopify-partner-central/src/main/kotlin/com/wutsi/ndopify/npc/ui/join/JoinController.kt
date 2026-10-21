@@ -68,7 +68,7 @@ class JoinController(
         )
     }
 
-    /** The current tenant, for the header on every step: its logo, and "Quitter" back to its public portal. */
+    /** The current tenant, for the header on every step: its logo, and "Quitter" back to its public portal's agent page. */
     @ModelAttribute("tenant")
     fun tenant(): Tenant = tenantContext.getTenant()
 
