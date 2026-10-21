@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title th:text="${step == 'confirmation'} ? 'Bien enregistré — Ndopify' : 'Proposer un bien — Ndopify'">
+        Proposer un bien — Ndopify</title>
+    <meta content="Mettez votre bien en location avec un Agent Vérifié Ndopify de votre quartier : audit et photos gratuits, frais dus seulement à la signature du bail."
+          name="description">
+    <meta content="noindex, nofollow" name="robots">
+    <meta content="#ffffff" name="theme-color">
+    <link rel="icon" th:href="@{/assets/images/icon.png}" type="image/png">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
+    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap"
+          rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/css/intlTelInput.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.css" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/join.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/find-property.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/offer-property.css}">
+    <script defer src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/js/intlTelInput.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.iife.js"></script>
+    <script defer th:src="@{/assets/js/util.js}"></script>
+    <script defer th:src="@{/assets/js/offer-property.js}"></script>
+</head>
+<!--/*
+  One page, seven steps then the confirmation: OfferPropertyController picks the step (model attribute "step") and
+  only renders that one. Each step is its own form, posted to /offer-property/{step}; the answers live in the HTTP
+  session, so a step's fields are pre-filled from "answers" and its errors come from "errors" (field name → message).
+  Without JavaScript every step still works: the features step then shows every follow-up question of the category
+  (the server ignores those that don't apply to the chosen type), and the neighbourhoods of a city are only loaded
+  by offer-property.js (slim-select, GET /locations) — see data-locations-url.
+*/-->
+<body data-page="offer-property">
+<a class="skip-link" href="#main">Aller au contenu</a>
+<header class="site-header">
+    <div class="site-header__inner">
+        <!--/* The tenant's logo, falling back to Ndopify's when it has none. Visitors have no account: no /login. */-->
+        <a class="site-header__brand"
+           th:href="${#strings.isEmpty(tenant.publicPortalUrl)} ? @{/offer-property} : ${tenant.publicPortalUrl}">
+            <img alt="Ndopify, accueil" height="40"
+                 th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify, accueil' : ${tenant.name}"
+                 th:src="${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}">
+        </a>
+        <!--/* Leaving keeps the answers in the session. To the owners' page of the public portal; hidden without one. */-->
+        <a class="btn btn--outline" data-exit th:href="${exitUrl}" th:if="${exitUrl}">
+            <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                <path d="m6 6 8 8M14 6l-8 8" fill="none" stroke="currentColor" stroke-linecap="round"
+                      stroke-width="1.5"/>
+            </svg>
+            Quitter</a>
+    </div>
+</header>
+<main class="page" id="main">
+    <div class="column">
+        <!--/* Steps 1 to 7 */-->
+        <th:block th:if="${step != 'confirmation'}">
+            <div class="page-intro">
+                <h1>Proposer un bien</h1>
+            </div>
+            <div class="progress" data-progress-block>
+                <p class="progress__label" data-progress-label id="progress-label"
+                   th:text="|Étape ${stepNumber} sur ${stepCount}|">Étape 1 sur 7</p>
+                <div aria-labelledby="progress-label" class="progress__track" data-progress role="progressbar"
+                     th:attr="aria-valuemin=1, aria-valuemax=${stepCount}, aria-valuenow=${stepNumber},
+                              aria-valuetext=|Étape ${stepNumber} sur ${stepCount}|">
+                    <div class="progress__bar" data-progress-bar
+                         th:style="|transform: scaleX(${stepNumber * 1.0 / stepCount})|"></div>
+                </div>
+            </div>
+
+            <h2 class="visually-hidden" data-steps-title>Étapes du formulaire</h2>
+
+            <!--/* Step 1: property (POST /offer-property/property) */-->
+            <form class="form" data-offer-form method="post" novalidate th:action="@{/offer-property/property}"
+                  th:if="${step == 'property'}">
+                <input name="returnTo" th:if="${returning}" type="hidden" value="review">
+                <fieldset class="step" data-step="property" tabindex="-1">
+                    <legend class="visually-hidden" th:text="|Étape ${stepNumber} sur ${stepCount} : votre bien|">
+                        Étape 1 sur 7 : votre bien</legend>
+                    <h3 aria-hidden="true">Quel bien souhaitez-vous louer&nbsp;?</h3>
+                    <p>Un Agent Vérifié de votre quartier vérifie votre bien, le photographie et trouve vos locataires.
+                        L'audit et la publication sont gratuits.</p>
+                    <fieldset aria-describedby="propertyCategory-error" class="choices" data-group="propertyCategory"
+                              th:attr="aria-invalid=${errors['propertyCategory'] != null ? 'true' : null}">
+                        <legend class="choices__legend">Pour quel usage&nbsp;?</legend>
+                        <div class="choices__grid">
+                            <label class="choice choice--described">
+                                <input name="propertyCategory" required
+                                       th:checked="${answers.propertyCategory != null and answers.propertyCategory.name() == 'RESIDENTIAL'}"
+                                       type="radio" value="RESIDENTIAL">
+                                <span>Résidentiel <span class="choice__detail">Pour y habiter&nbsp;: chambre,
+                                    studio, appartement, villa, immeuble…</span></span></label>
+                            <label class="choice choice--described">
+                                <input name="propertyCategory" required
+                                       th:checked="${answers.propertyCategory != null and answers.propertyCategory.name() == 'COMMERCIAL'}"
+                                       type="radio" value="COMMERCIAL">
+                                <span>Commercial <span class="choice__detail">Pour une activité&nbsp;: bureau,
+                                    boutique, entrepôt, terrain…</span></span></label>
+                        </div>
+                        <p th:replace="~{:: error('propertyCategory')}"></p>
+                    </fieldset>
+
+                    <div class="form__actions">
+                        <button class="btn btn--primary" data-next
+                                th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
+                        </button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <!--/* Step 2: address (POST /offer-property/address) */-->
+            <form class="form" data-offer-form method="post" novalidate th:action="@{/offer-property/address}"
+                  th:attr="data-locations-url=@{/locations}" th:if="${step == 'address'}">
+                <input name="returnTo" th:if="${returning}" type="hidden" value="review">
+                <fieldset class="step" data-step="address" tabindex="-1">
+                    <legend class="visually-hidden"
+                            th:text="|Étape ${stepNumber} sur ${stepCount} : l'emplacement du bien|">
+                        Étape 2 sur 7 : l'emplacement du bien</legend>
+                    <h3 aria-hidden="true">Où se situe votre bien&nbsp;?</h3>
+                    <p>Nous désignons un agent qui connaît bien ce quartier.</p>
+                    <div class="field">
+                        <label class="field__label" for="cityId">Ville</label>
+                        <!--/* Only the chosen city is rendered: offer-property.js searches the others. */-->
+                        <select aria-describedby="cityId-error" class="input select" id="cityId" name="cityId" required
+                                th:attr="aria-invalid=${errors['cityId'] != null ? 'true' : null}">
+                            <option data-placeholder="true" value="">Choisissez une ville</option>
+                            <option selected th:if="${city != null}" th:text="${city.name}"
+                                    th:value="${city.id}">Yaoundé</option>
+                        </select>
+                        <p th:replace="~{:: error('cityId')}"></p>
+                    </div>
+
+                    <p data-neighborhoods-empty th:hidden="${city != null}">Choisissez d'abord la ville pour voir ses
+                        quartiers.</p>
+
+                    <div class="field" data-group="neighborhoodId" th:hidden="${city == null}">
+                        <label class="field__label" for="neighborhoodId">Quartier</label>
+                        <!--/* Only the chosen neighbourhood is rendered: offer-property.js loads the city's others. */-->
+                        <select aria-describedby="neighborhoodId-error" class="input select" id="neighborhoodId"
+                                name="neighborhoodId" required
+                                th:attr="aria-invalid=${errors['neighborhoodId'] != null ? 'true' : null}">
+                            <option data-placeholder="true" value="">Choisissez le quartier</option>
+                            <option selected th:if="${neighborhood != null}" th:text="${neighborhood.name}"
+                                    th:value="${neighborhood.id}">Bastos</option>
+                        </select>
+                        <p th:replace="~{:: error('neighborhoodId')}"></p>
+                    </div>
+
+                    <div class="form__actions">
+                        <a class="btn btn--outline" data-prev
+                           th:href="${returning} ? @{/offer-property(step='review')} : @{/offer-property}">Précédent</a>
+                        <button class="btn btn--primary" data-next
+                                th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
+                        </button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <!--/* Step 3: terms (POST /offer-property/terms) */-->
+            <form class="form" data-offer-form method="post" novalidate th:action="@{/offer-property/terms}"
+                  th:if="${step == 'terms'}">
+                <input name="returnTo" th:if="${returning}" type="hidden" value="review">
+                <fieldset class="step" data-step="terms" tabindex="-1">
+                    <legend class="visually-hidden"
+                            th:text="|Étape ${stepNumber} sur ${stepCount} : vos conditions financières|">
+                        Étape 3 sur 7 : vos conditions financières</legend>
+                    <h3 aria-hidden="true">Quelles sont vos conditions&nbsp;?</h3>
+                    <p>Le loyer et les garanties que vous demandez, et la date à laquelle le bien est libre.</p>
+                    <div class="field">
+                        <label class="field__label" for="priceAmount">Loyer mensuel souhaité</label>
+                        <div class="input-unit">
+                            <input aria-describedby="priceAmount-error" class="input" id="priceAmount"
+                                   inputmode="numeric" name="priceAmount" required
+                                   th:attr="aria-invalid=${errors['priceAmount'] != null ? 'true' : null}"
+                                   th:value="${answers.priceAmount != null} ? ${#numbers.formatInteger(answers.priceAmount, 1, 'WHITESPACE')} : ''"
+                                   type="text">
+                            <span aria-hidden="true" class="input-unit__suffix"
+                                  th:text="|${currency} / mois|">FCFA / mois</span>
+                        </div>
+                        <p th:replace="~{:: error('priceAmount')}"></p>
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="advanceRent">Avance de loyer exigée <span
+                                class="field__optional">(si applicable)</span></label>
+                        <select aria-describedby="advanceRent-error" class="input select" id="advanceRent"
+                                name="advanceRent"
+                                th:attr="aria-invalid=${errors['advanceRent'] != null ? 'true' : null}">
+                            <option th:selected="${answers.advanceRent == null}" value="">Aucune avance</option>
+                            <option th:each="months : ${#numbers.sequence(1, 12)}"
+                                    th:selected="${answers.advanceRent != null and answers.advanceRent == months}"
+                                    th:text="|${months} mois|" th:value="${months}">1 mois</option>
+                        </select>
+                        <p th:replace="~{:: error('advanceRent')}"></p>
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="securityDeposit">Caution demandée</label>
+                        <select aria-describedby="securityDeposit-error" class="input select" id="securityDeposit"
+                                name="securityDeposit" required
+                                th:attr="aria-invalid=${errors['securityDeposit'] != null ? 'true' : null}">
+                            <option th:selected="${answers.securityDeposit == null}" value="">Choisissez le nombre de
+                                mois</option>
+                            <option th:each="months : ${#numbers.sequence(1, 6)}"
+                                    th:selected="${answers.securityDeposit != null and answers.securityDeposit == months}"
+                                    th:text="|${months} mois|" th:value="${months}">1 mois</option>
+                        </select>
+                        <p th:replace="~{:: error('securityDeposit')}"></p>
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="availableFrom">Disponible à partir du</label>
+                        <input aria-describedby="availableFrom-error" class="input input--date" id="availableFrom"
+                               name="availableFrom" required th:attr="min=${availableMin}, max=${availableMax},
+                                   aria-invalid=${errors['availableFrom'] != null ? 'true' : null}"
+                               th:value="${answers.availableFrom}" type="date">
+                        <p th:replace="~{:: error('availableFrom')}"></p>
+                    </div>
+
+                    <div class="hint" id="conditions-hint">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                            <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
+                        </svg>
+                        <div>
+                            <p>Rien à payer d'avance&nbsp;: les frais de service, 1&nbsp;mois de loyer, ne sont dus
+                                qu'à la signature du bail.</p>
+                        </div>
+                    </div>
+
+                    <div class="form__actions">
+                        <a class="btn btn--outline" data-prev
+                           th:href="${returning} ? @{/offer-property(step='review')} : @{/offer-property(step='address')}">Précédent</a>
+                        <button aria-describedby="conditions-hint" class="btn btn--primary" data-next
+                                th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
+                        </button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <!--/* Step 4: features (POST /offer-property/features) */-->
+            <form class="form" data-offer-form method="post" novalidate th:action="@{/offer-property/features}"
+                  th:if="${step == 'features'}"
+                  th:with="residential=${answers.propertyCategory != null and answers.propertyCategory.name() == 'RESIDENTIAL'}">
+                <input name="returnTo" th:if="${returning}" type="hidden" value="review">
+                <fieldset class="step" data-step="features" tabindex="-1">
+                    <legend class="visually-hidden"
+                            th:text="|Étape ${stepNumber} sur ${stepCount} : les caractéristiques du bien|">
+                        Étape 4 sur 7 : les caractéristiques du bien</legend>
+                    <h3 aria-hidden="true">Décrivez votre bien</h3>
+                    <!--/* Only the types of the category chosen at step 1. "Villa, maison" is one answer, sent as HOUSE. */-->
+                    <fieldset aria-describedby="propertyType-error" class="choices" data-group="propertyType"
+                              th:attr="aria-invalid=${errors['propertyType'] != null ? 'true' : null}">
+                        <legend class="choices__legend">Type de bien</legend>
+                        <div class="choices__grid">
+                            <label class="choice" th:each="type : ${propertyTypes}"><input name="propertyType" required
+                                    th:checked="${answers.propertyType == type.name()}" th:value="${type.name()}"
+                                    type="radio" value="APARTMENT"> <th:block th:text="${propertyTypeLabels.get(type)}">Appartement</th:block></label>
+                        </div>
+                        <p th:replace="~{:: error('propertyType')}"></p>
+                    </fieldset>
+
+                    <!--/* The follow-up questions: offer-property.js hides those that don't apply to the type. */-->
+                    <fieldset aria-describedby="furnitureType-error" class="choices" data-group="furnitureType"
+                              th:attr="aria-invalid=${errors['furnitureType'] != null ? 'true' : null}"
+                              th:if="${residential}">
+                        <legend class="choices__legend">Ameublement</legend>
+                        <div class="choices__grid choices__grid--2">
+                            <label class="choice"><input name="furnitureType" required
+                                                         th:checked="${answers.furnitureType == 'UNFURNISHED'}"
+                                                         type="radio" value="UNFURNISHED"> Non meublé</label>
+                            <label class="choice"><input name="furnitureType" required
+                                                         th:checked="${answers.furnitureType == 'FULLY_FURNISHED'}"
+                                                         type="radio" value="FULLY_FURNISHED"> Meublé</label>
+                        </div>
+                        <p th:replace="~{:: error('furnitureType')}"></p>
+                    </fieldset>
+
+                    <fieldset aria-describedby="rooms-error" class="choices" data-group="rooms"
+                              th:attr="aria-invalid=${errors['rooms'] != null ? 'true' : null}"
+                              th:if="${residential}">
+                        <legend class="choices__legend">Nombre de chambres</legend>
+                        <div class="choices__grid">
+                            <label class="choice" th:each="rooms : ${ {'1', '2', '3', '4'} }"><input name="rooms" required
+                                    th:checked="${answers.rooms == rooms}" th:value="${rooms}" type="radio" value="1">
+                                <th:block th:text="${rooms}">1</th:block></label>
+                            <label class="choice"><input name="rooms" required th:checked="${answers.rooms == '5+'}"
+                                                         type="radio" value="5+"> 5&nbsp;et&nbsp;+</label>
+                        </div>
+                        <p th:replace="~{:: error('rooms')}"></p>
+                    </fieldset>
+
+                    <!--/* "Non" is stored as 0 places; hasParking only exists in the form. */-->
+                    <fieldset aria-describedby="hasParking-error" class="choices" data-group="hasParking"
+                              th:attr="aria-invalid=${errors['hasParking'] != null ? 'true' : null}"
+                              th:if="${residential}">
+                        <legend class="choices__legend">Parking ou garage</legend>
+                        <div class="choices__grid choices__grid--2">
+                            <label class="choice"><input name="hasParking" required
+                                                         th:checked="${answers.parkings == '1' or answers.parkings == '2' or answers.parkings == '3+'}"
+                                                         type="radio" value="YES"> Oui</label>
+                            <label class="choice"><input name="hasParking" required
+                                                         th:checked="${answers.parkings == '0'}"
+                                                         type="radio" value="NO"> Non</label>
+                        </div>
+                        <p th:replace="~{:: error('hasParking')}"></p>
+                    </fieldset>
+
+                    <fieldset aria-describedby="parkings-error" class="choices" data-group="parkings"
+                              th:attr="aria-invalid=${errors['parkings'] != null ? 'true' : null}"
+                              th:if="${residential}">
+                        <legend class="choices__legend">Combien de places&nbsp;?</legend>
+                        <div class="choices__grid">
+                            <label class="choice"><input name="parkings" required
+                                                         th:checked="${answers.parkings == '1'}"
+                                                         type="radio" value="1"> 1</label>
+                            <label class="choice"><input name="parkings" required
+                                                         th:checked="${answers.parkings == '2'}"
+                                                         type="radio" value="2"> 2</label>
+                            <label class="choice"><input name="parkings" required
+                                                         th:checked="${answers.parkings == '3+'}"
+                                                         type="radio" value="3+"> 3&nbsp;et&nbsp;+</label>
+                        </div>
+                        <p th:replace="~{:: error('parkings')}"></p>
+                    </fieldset>
+
+                    <div class="field" data-group="area" th:unless="${residential}">
+                        <label class="field__label" data-area-label for="area">Surface estimée</label>
+                        <div class="input-unit">
+                            <input aria-describedby="area-error" class="input" id="area" inputmode="numeric"
+                                   name="area" required
+                                   th:attr="aria-invalid=${errors['area'] != null ? 'true' : null}"
+                                   th:value="${answers.area != null} ? ${#numbers.formatInteger(answers.area, 1, 'WHITESPACE')} : ''"
+                                   type="text">
+                            <span aria-hidden="true" class="input-unit__suffix">m²</span>
+                        </div>
+                        <p th:replace="~{:: error('area')}"></p>
+                    </div>
+
+                    <div class="form__actions">
+                        <a class="btn btn--outline" data-prev
+                           th:href="${returning} ? @{/offer-property(step='review')} : @{/offer-property(step='terms')}">Précédent</a>
+                        <button class="btn btn--primary" data-next
+                                th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
+                        </button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <!--/* Step 5: amenities (POST /offer-property/amenities) — every box posts amenities=<name> */-->
+            <form class="form" data-offer-form method="post" novalidate th:action="@{/offer-property/amenities}"
+                  th:if="${step == 'amenities'}">
+                <input name="returnTo" th:if="${returning}" type="hidden" value="review">
+                <fieldset class="step" data-step="amenities" tabindex="-1">
+                    <legend class="visually-hidden"
+                            th:text="|Étape ${stepNumber} sur ${stepCount} : les équipements du bien|">
+                        Étape 5 sur 7 : les équipements du bien</legend>
+                    <h3 aria-hidden="true">Quels sont les équipements du bien&nbsp;?</h3>
+                    <p>Cochez ce que le bien a déjà. Votre agent le vérifie lors de la visite d'audit.</p>
+                    <fieldset class="choices">
+                        <legend class="choices__legend">Eau <span class="field__optional">(plusieurs choix
+                            possibles)</span></legend>
+                        <div class="choices__grid">
+                            <label class="choice"><input name="amenities" th:checked="${answers.amenities.contains('waterMeter')}"
+                                                         type="checkbox" value="waterMeter"> Compteur d'eau</label>
+                            <label class="choice"><input name="amenities"
+                                                         th:checked="${answers.amenities.contains('dedicatedWaterMeter')}"
+                                                         type="checkbox" value="dedicatedWaterMeter"> Compteur d'eau
+                                individuel</label>
+                            <label class="choice"><input name="amenities" th:checked="${answers.amenities.contains('waterWell')}"
+                                                         type="checkbox" value="waterWell"> Forage</label>
+                            <label class="choice"><input name="amenities" th:checked="${answers.amenities.contains('waterTank')}"
+                                                         type="checkbox" value="waterTank"> Château d'eau,
+                                citerne</label>
+                        </div>
+                    </fieldset>
+                    <fieldset class="choices">
+                        <legend class="choices__legend">Électricité <span class="field__optional">(plusieurs choix
+                            possibles)</span></legend>
+                        <div class="choices__grid">
+                            <label class="choice"><input name="amenities"
+                                                         th:checked="${answers.amenities.contains('electricityMeter')}"
+                                                         type="checkbox" value="electricityMeter"> Compteur
+                                électrique</label>
+                            <label class="choice"><input name="amenities"
+                                                         th:checked="${answers.amenities.contains('dedicatedElectricityMeter')}"
+                                                         type="checkbox" value="dedicatedElectricityMeter"> Compteur
+                                électrique individuel</label>
+                            <label class="choice"><input name="amenities" th:checked="${answers.amenities.contains('generatorSet')}"
+                                                         type="checkbox" value="generatorSet"> Groupe électrogène</label>
+                            <label class="choice"><input name="amenities" th:checked="${answers.amenities.contains('solarPanel')}"
+                                                         type="checkbox" value="solarPanel"> Panneaux solaires</label>
+                        </div>
+                    </fieldset>
+                    <!--/* A property has one road access: a single choice. */-->
+                    <fieldset aria-describedby="roadAccess-error" class="choices" data-group="roadAccess"
+                              th:attr="aria-invalid=${errors['roadAccess'] != null ? 'true' : null}">
+                        <legend class="choices__legend">Accès routier</legend>
+                        <div class="choices__grid">
+                            <label class="choice"><input name="roadAccess" required
+                                                         th:checked="${answers.roadAccess == 'roadPaved'}"
+                                                         type="radio" value="roadPaved"> Route bitumée</label>
+                            <label class="choice"><input name="roadAccess" required
+                                                         th:checked="${answers.roadAccess == 'trackAccessibleByCar'}"
+                                                         type="radio" value="trackAccessibleByCar"> Piste accessible
+                                en voiture</label>
+                            <label class="choice"><input name="roadAccess" required
+                                                         th:checked="${answers.roadAccess == 'trackInaccessibleByCar'}"
+                                                         type="radio" value="trackInaccessibleByCar"> Piste accessible
+                                à pied seulement</label>
+                        </div>
+                        <p th:replace="~{:: error('roadAccess')}"></p>
+                    </fieldset>
+                    <fieldset class="choices">
+                        <legend class="choices__legend">Sécurité <span class="field__optional">(plusieurs choix
+                            possibles)</span></legend>
+                        <div class="choices__grid">
+                            <label class="choice"><input name="amenities"
+                                                         th:checked="${answers.amenities.contains('videoSurveillance')}"
+                                                         type="checkbox" value="videoSurveillance">
+                                Vidéosurveillance</label>
+                            <label class="choice"><input name="amenities" th:checked="${answers.amenities.contains('securityGuard')}"
+                                                         type="checkbox" value="securityGuard"> Gardien
+                                24&nbsp;h/24</label>
+                            <label class="choice"><input name="amenities" th:checked="${answers.amenities.contains('securedFenced')}"
+                                                         type="checkbox" value="securedFenced"> Barrière, clôture
+                                sécurisée</label>
+                        </div>
+                    </fieldset>
+
+                    <div class="form__actions">
+                        <a class="btn btn--outline" data-prev
+                           th:href="${returning} ? @{/offer-property(step='review')} : @{/offer-property(step='features')}">Précédent</a>
+                        <button class="btn btn--primary" data-next
+                                th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
+                        </button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <!--/* Step 6: contact (POST /offer-property/contact) */-->
+            <form class="form" data-offer-form method="post" novalidate th:action="@{/offer-property/contact}"
+                  th:if="${step == 'contact'}">
+                <input name="returnTo" th:if="${returning}" type="hidden" value="review">
+                <fieldset class="step" data-step="contact" tabindex="-1">
+                    <legend class="visually-hidden" th:text="|Étape ${stepNumber} sur ${stepCount} : vos coordonnées|">
+                        Étape 6 sur 7 : vos coordonnées</legend>
+                    <h3 aria-hidden="true">Comment votre agent peut-il vous joindre&nbsp;?</h3>
+                    <div class="field">
+                        <label class="field__label" for="firstName">Prénom</label>
+                        <input aria-describedby="firstName-error" autocapitalize="words" autocomplete="given-name"
+                               class="input" id="firstName" name="firstName" required
+                               th:attr="aria-invalid=${errors['firstName'] != null ? 'true' : null}"
+                               th:value="${answers.firstName}" type="text">
+                        <p th:replace="~{:: error('firstName')}"></p>
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="lastName">Nom</label>
+                        <input aria-describedby="lastName-error" autocapitalize="words" autocomplete="family-name"
+                               class="input" id="lastName" name="lastName" required
+                               th:attr="aria-invalid=${errors['lastName'] != null ? 'true' : null}"
+                               th:value="${answers.lastName}" type="text">
+                        <p th:replace="~{:: error('lastName')}"></p>
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="email">Adresse email</label>
+                        <input aria-describedby="email-error" autocapitalize="off" autocomplete="email" class="input"
+                               id="email" inputmode="email" name="email" required spellcheck="false"
+                               th:attr="aria-invalid=${errors['email'] != null ? 'true' : null}"
+                               th:value="${answers.email}" type="email">
+                        <p th:replace="~{:: error('email')}"></p>
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="whatsappNumber">Numéro WhatsApp</label>
+                        <!--/* E.164 ("+237677123456"): offer-property.js (intl-tel-input) formats and converts it. */-->
+                        <input aria-describedby="whatsappNumber-error" autocomplete="tel" class="input"
+                               id="whatsappNumber" name="whatsappNumber" required
+                               th:attr="aria-invalid=${errors['whatsappNumber'] != null ? 'true' : null}"
+                               th:value="${answers.whatsappNumber}" type="tel">
+                        <p th:replace="~{:: error('whatsappNumber')}"></p>
+                    </div>
+                    <fieldset aria-describedby="preferredContactPeriod-error" class="choices"
+                              data-group="preferredContactPeriod"
+                              th:attr="aria-invalid=${errors['preferredContactPeriod'] != null ? 'true' : null}">
+                        <legend class="choices__legend">Quand préférez-vous être contacté&nbsp;?</legend>
+                        <div class="choices__grid">
+                            <label class="choice"><input name="preferredContactPeriod" required
+                                                         th:checked="${answers.preferredContactPeriod != null and answers.preferredContactPeriod.name() == 'MORNING'}"
+                                                         type="radio" value="MORNING"> Le matin</label>
+                            <label class="choice"><input name="preferredContactPeriod" required
+                                                         th:checked="${answers.preferredContactPeriod != null and answers.preferredContactPeriod.name() == 'AFTERNOON'}"
+                                                         type="radio" value="AFTERNOON"> L'après-midi</label>
+                            <label class="choice"><input name="preferredContactPeriod" required
+                                                         th:checked="${answers.preferredContactPeriod != null and answers.preferredContactPeriod.name() == 'EVENING'}"
+                                                         type="radio" value="EVENING"> Le soir</label>
+                        </div>
+                        <p th:replace="~{:: error('preferredContactPeriod')}"></p>
+                    </fieldset>
+
+                    <div class="hint" id="contact-hint">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                            <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
+                        </svg>
+                        <div>
+                            <p>Votre agent vous écrit sur WhatsApp. Vos coordonnées ne sont jamais communiquées aux
+                                locataires avant la signature du bail.</p>
+                        </div>
+                    </div>
+
+                    <div class="alert alert--warning" data-phone-unavailable hidden>
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-linejoin="round"
+                                  stroke-width="1.5"/>
+                            <path d="M10 8v4" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                            <circle cx="10" cy="14.5" fill="currentColor" r="1"/>
+                        </svg>
+                        <div>
+                            <p class="alert__title">Nous ne pouvons pas vérifier votre numéro pour l'instant</p>
+                            <p>Vérifiez votre connexion internet, puis rechargez la page.</p>
+                        </div>
+                    </div>
+
+                    <div class="form__actions">
+                        <a class="btn btn--outline" data-prev
+                           th:href="${returning} ? @{/offer-property(step='review')} : @{/offer-property(step='amenities')}">Précédent</a>
+                        <button aria-describedby="contact-hint" class="btn btn--primary" data-next
+                                th:text="${returning} ? 'Revenir à la revue' : 'Suivant'" type="submit">Suivant
+                        </button>
+                    </div>
+                </fieldset>
+            </form>
+
+            <!--/* Step 7: review (POST /offer-property/review) — only reachable once every answer is in the session */-->
+            <form class="form" data-offer-form method="post" novalidate th:action="@{/offer-property/review}"
+                  th:if="${step == 'review'}">
+                <fieldset class="step" data-step="review" tabindex="-1">
+                    <legend class="visually-hidden"
+                            th:text="|Étape ${stepNumber} sur ${stepCount} : revue de votre bien|">
+                        Étape 7 sur 7 : revue de votre bien</legend>
+                    <h3 aria-hidden="true">Vérifiez votre bien</h3>
+                    <p>Relisez avant d'envoyer. Vous pouvez modifier chaque élément.</p>
+
+                    <dl class="review">
+                        <div class="review__item">
+                            <dt class="review__term">Bien</dt>
+                            <dd class="review__value">
+                                <p data-review-value="category" th:text="${categoryLabel}">Location, usage résidentiel</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/offer-property(step='property', returnTo='review')}">Modifier<span
+                                        class="visually-hidden"> l'usage du bien</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Emplacement</dt>
+                            <dd class="review__value">
+                                <!--/* Without the names (ndopify-server unreachable), the edit link still works. */-->
+                                <p class="review__multiline" data-review-value="location"
+                                   th:text="${locationLabel} ?: 'Emplacement choisi'">Bastos, Yaoundé</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/offer-property(step='address', returnTo='review')}">Modifier<span
+                                        class="visually-hidden"> l'emplacement</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Conditions</dt>
+                            <dd class="review__value">
+                                <p class="review__multiline" data-review-value="terms"><th:block
+                                        th:each="line, iter : ${termsLines}"><span th:text="${line}">150 000 FCFA par
+                                    mois</span><br th:unless="${iter.last}"></th:block></p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/offer-property(step='terms', returnTo='review')}">Modifier<span
+                                        class="visually-hidden"> vos conditions</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Caractéristiques</dt>
+                            <dd class="review__value">
+                                <p data-review-value="property" th:text="${propertyLabel}">Appartement · 3 chambres</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/offer-property(step='features', returnTo='review')}">Modifier<span
+                                        class="visually-hidden"> les caractéristiques</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Équipements</dt>
+                            <dd class="review__value">
+                                <p data-review-value="amenities"
+                                   th:text="${#strings.isEmpty(amenitiesLabel)} ? 'Aucun équipement' : ${amenitiesLabel}">
+                                    Route bitumée, Compteur d'eau</p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/offer-property(step='amenities', returnTo='review')}">Modifier<span
+                                        class="visually-hidden"> les équipements</span></a>
+                            </dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Vos coordonnées</dt>
+                            <dd class="review__value">
+                                <p class="review__multiline" data-review-value="contact"><th:block
+                                        th:each="line, iter : ${contactLines}"><span th:text="${line}">Ray
+                                    Sponsible</span><br th:unless="${iter.last}"></th:block></p>
+                            </dd>
+                            <dd class="review__value">
+                                <a class="link-button review__edit"
+                                   th:href="@{/offer-property(step='contact', returnTo='review')}">Modifier<span
+                                        class="visually-hidden"> vos coordonnées</span></a>
+                            </dd>
+                        </div>
+                    </dl>
+
+                    <!--/* The submission failed: the answers are still in the session, ready to be sent again. */-->
+                    <div class="alert alert--error" data-submit-error role="alert" th:if="${error != null}">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                        </svg>
+                        <div>
+                            <p class="alert__title" th:text="${error}">Envoi impossible pour le moment.</p>
+                        </div>
+                    </div>
+
+                    <div class="hint" id="review-hint">
+                        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+                            <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round"
+                                  stroke-width="1.5"/>
+                            <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
+                        </svg>
+                        <div>
+                            <p>L'enregistrement est gratuit et ne vous engage à rien. Rien n'est publié avant que vous
+                                ayez validé l'annonce.</p>
+                        </div>
+                    </div>
+
+                    <div class="form__actions">
+                        <a class="btn btn--outline" data-prev th:href="@{/offer-property(step='contact')}">Précédent</a>
+                        <button aria-describedby="review-hint" class="btn btn--primary" data-submit type="submit">
+                            Enregistrer mon bien
+                        </button>
+                    </div>
+                    <p class="visually-hidden" data-sending role="status"></p>
+                </fieldset>
+            </form>
+        </th:block>
+
+        <!--/* Confirmation — only rendered while a saved listing is in the session */-->
+        <section aria-labelledby="confirmation-title" class="confirmation stack" data-confirmation tabindex="-1"
+                 th:if="${step == 'confirmation'}">
+            <span class="confirmation__mark"><svg aria-hidden="true" class="confirmation__icon" focusable="false"
+                                                  viewBox="0 0 20 20"><circle cx="10" cy="10" fill="none" r="8.25"
+                                                                            stroke="currentColor" stroke-width="1.5"/><path
+                d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-linecap="round"
+                stroke-linejoin="round" stroke-width="1.5"/></svg></span>
+            <h2 id="confirmation-title">Bien enregistré</h2>
+            <p>Félicitations&nbsp;! Votre bien est enregistré. Voici la suite pour le mettre en location&nbsp;:</p>
+            <ol class="next-steps">
+                <li>
+                    <div>
+                        <p class="next-steps__title">Un agent vous est attribué</p>
+                        <p>Nous choisissons un Agent Vérifié qui connaît bien votre quartier.</p>
+                    </div>
+                </li>
+                <li>
+                    <div>
+                        <p class="next-steps__title">Il vous contacte pour planifier l'audit</p>
+                        <p>Sur WhatsApp, au <strong data-done-whatsapp data-phone th:text="${whatsappNumber}">numéro
+                            indiqué</strong>, <span data-done-period
+                                                    th:text="${contactPeriodLabel} ?: 'au moment choisi'">au moment
+                            choisi</span>. Le suivi arrive aussi à <strong data-done-email th:text="${maskedEmail}">votre
+                            adresse email</strong>.</p>
+                    </div>
+                </li>
+                <li>
+                    <div>
+                        <p class="next-steps__title">Préparez vos documents</p>
+                        <p>Votre pièce d'identité (CNI ou passeport) et une preuve de propriété&nbsp;: titre foncier,
+                            attestation d'attribution, mandat de gestion ou acte de vente.</p>
+                    </div>
+                </li>
+                <li>
+                    <div>
+                        <p class="next-steps__title">Audit et photos, sans frais</p>
+                        <p>L'agent vérifie vos documents, inspecte le bien (Eneo, Camwater, accès) et réalise les
+                            photos et vidéos HD, sans rien vous demander d'avance.</p>
+                    </div>
+                </li>
+                <li>
+                    <div>
+                        <p class="next-steps__title">Vous validez l'annonce</p>
+                        <p>L'annonce certifiée n'est publiée qu'après votre accord, auprès de locataires vérifiés.</p>
+                    </div>
+                </li>
+            </ol>
+            <div class="hint">
+                <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+                    <rect fill="none" height="8" rx="1.5" stroke="currentColor" stroke-width="1.5" width="12" x="4"
+                          y="9"/>
+                    <path d="M7 9V6.5a3 3 0 0 1 6 0V9" fill="none" stroke="currentColor" stroke-linecap="round"
+                          stroke-width="1.5"/>
+                </svg>
+                <div>
+                    <p><strong>Garantie anti-fraude.</strong> Aucun bien n'est publié sans vérification de l'identité
+                        du bailleur et de son titre de propriété. L'audit et la publication sont gratuits&nbsp;; les
+                        frais de service, 1&nbsp;mois de loyer, ne sont dus qu'à la signature du bail.</p>
+                </div>
+            </div>
+            <div class="cta-row" th:if="${exitUrl}">
+                <a class="btn btn--primary" th:href="${exitUrl}">Retour à l'accueil</a>
+            </div>
+        </section>
+    </div>
+</main>
+
+<!--/* A field's error, shown when "errors" has a message for it: th:replace="~{:: error('field')}". */-->
+<th:block th:remove="all">
+    <p class="field__error" th:fragment="error(field)" th:hidden="${errors.get(field) == null}" th:id="|${field}-error|">
+        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
+                  stroke-width="1.5"/>
+        </svg>
+        <span data-error-text th:text="${errors.get(field)}"></span></p>
+</th:block>
+</body>
+</html>

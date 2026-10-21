@@ -1,0 +1,19 @@
+/*
+ * Ndopify Partner Central — "Proposer un bien" wizard (templates/offer-property.html).
+ * Loaded after partner-central.css, join.css and find-property.css (choices, input units, review layout,
+ * next steps); uses their tier-2 semantic tokens only, no new colours.
+ */
+
+/* The native date picker keeps the pill of .input; its calendar icon stays the browser's. */
+.input--date {
+    font-variant-numeric: tabular-nums;
+}
+
+.input--date::-webkit-date-and-time-value {
+    text-align: left;
+}
+
+/* The anti-fraud guarantee under the next steps reads as a paragraph, not as the centred confirmation text. */
+.confirmation .hint {
+    text-align: left;
+}
