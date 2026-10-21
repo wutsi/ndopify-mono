@@ -19,7 +19,7 @@ Early-stage. Only five modules exist today — there is no SDK or tracking-serve
 | [ndopify-server](modules/ndopify-server)                   | REST API backend (Spring Boot)                                                           |
 | [ndopify-partner-central](modules/ndopify-partner-central) | Agent-facing web app (Spring Boot + Thymeleaf, French): sign-up, e-mail OTP sign-in, KYC, mandate offers and follow-up, plus the public *Trouver un bien* wizard |
 | [ndopify-esignature](modules/ndopify-esignature)           | Signer-facing contract sign page (Spring Boot + Thymeleaf, French): e-mail OTP sign-in, read and sign a contract |
-| [ndopify-website](modules/ndopify-website)                 | Static marketing + lead-capture website (plain HTML/CSS/JS, French) — not a Maven module |
+| [ndopify-website](modules/ndopify-web)                 | Static marketing + lead-capture website (plain HTML/CSS/JS, French) — not a Maven module |
 
 ### Module Dependency
 

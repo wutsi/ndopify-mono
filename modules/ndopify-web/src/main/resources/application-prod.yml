@@ -1,0 +1,13 @@
+management:
+    endpoint:
+        health:
+            show-details: never
+    endpoints:
+        web:
+            exposure:
+                include: "health"
+
+ndopify:
+    server:
+        api:
+            base-url: ${NDOPIFY_SERVER_URL}

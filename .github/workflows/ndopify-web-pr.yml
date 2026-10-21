@@ -1,0 +1,44 @@
+name: ndopify-web-pr
+
+on:
+    pull_request:
+        paths:
+            - 'modules/ndopify-web/**'
+            - '.github/workflows/ndopify-web-pr.yml'
+            - '!modules/ndopify-web/*.md'
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+
+        steps:
+            -   uses: actions/checkout@v7
+            -   name: JDK
+                uses: actions/setup-java@v6
+                with:
+                    distribution: 'zulu'
+                    java-version: 17
+
+            -   name: Build
+                env:
+                    GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+                run: |
+                    mvn -q -s settings.xml --non-recursive install
+                    cd modules/ndopify-web
+                    mvn -Dspring.datasource.username=root -Dspring.datasource.password=root -q -s ../../settings.xml install
+
+            -   name: Add coverage to PR
+                id: jacoco
+                uses: madrapps/jacoco-report@v1.8.0
+                with:
+                    paths: |
+                        ${{ github.workspace }}/modules/ndopify-web/target/site/jacoco/jacoco.xml
+                    token: ${{ secrets.GITHUB_TOKEN }}
+                    min-coverage-overall: 90
+                    min-coverage-changed-files: 90
+
+            -   name: Upload JaCoCo Report
+                uses: actions/upload-artifact@v7
+                with:
+                    name: jacoco-report
+                    path: modules/ndopify-web/target/site/jacoco/**/*
