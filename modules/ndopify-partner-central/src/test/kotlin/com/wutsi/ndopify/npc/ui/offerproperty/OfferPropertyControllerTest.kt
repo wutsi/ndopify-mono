@@ -374,6 +374,8 @@ class OfferPropertyControllerTest {
 
         assertEquals("features", model(result)["step"])
         assertEquals("Indiquez le nombre de places.", errors(result)["parkings"])
+        assertNull(errors(result)["hasParking"])
+        assertEquals("YES", model(result)["hasParking"])
         assertNull(pending()?.propertyType)
     }
 
@@ -385,7 +387,9 @@ class OfferPropertyControllerTest {
             features("propertyType" to "APARTMENT", "furnitureType" to "UNFURNISHED", "rooms" to "2"),
         ).andReturn()
 
-        assertEquals("Indiquez si le bien a un parking ou un garage.", errors(result)["parkings"])
+        assertEquals("Indiquez si le bien a un parking ou un garage.", errors(result)["hasParking"])
+        assertNull(errors(result)["parkings"])
+        assertNull(model(result)["hasParking"])
     }
 
     @Test

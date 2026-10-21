@@ -9,6 +9,7 @@ import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.npc.ui.findproperty.SubmittedMandate
 import com.wutsi.ndopify.npc.ui.join.JoinRules
+import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.npc.ui.login.LoginController
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.refdata.dto.Location
@@ -48,6 +49,8 @@ class OfferPropertyController(
     private val tenantContext: TenantContext,
     private val clock: Clock,
 ) {
+    private val sector = SectorValidator(locationClient, tenantContext)
+
     companion object {
         private val LOGGER = LoggerFactory.getLogger(OfferPropertyController::class.java)
 
@@ -206,14 +209,19 @@ class OfferPropertyController(
             "furnitureType" to OfferPropertyRules.furnitureType(answers.furnitureType)
                 .takeIf { OfferPropertyRules.needsFurniture(category, type) },
             "rooms" to OfferPropertyRules.rooms(answers.rooms).takeIf { OfferPropertyRules.needsRooms(category, type) },
+            // No answer is the "Parking ou garage" question's error; the places' own is under "Combien de places ?".
+            "hasParking" to OfferPropertyRules.PARKING_ANSWER_REQUIRED
+                .takeIf { needsParking && hasParking != HAS_PARKING && hasParking != HAS_NO_PARKING },
             "parkings" to when {
-                !needsParking -> null
-                hasParking == HAS_PARKING && places == null -> "Indiquez le nombre de places."
+                !needsParking || (hasParking != HAS_PARKING && hasParking != HAS_NO_PARKING) -> null
+                hasParking == HAS_PARKING && places == null -> OfferPropertyRules.PARKING_PLACES_REQUIRED
                 else -> OfferPropertyRules.parkings(answers.parkings)
             },
             // Something typed that isn't a usable number is an error too, not a silent "no area".
             "area" to if (!needsArea) null else OfferPropertyRules.area(area ?: 0.takeIf { areaText.isNotEmpty() }),
         )
+        // The posted choice, so that "Oui" stays checked when only its places are missing (never on a redirect).
+        if (errors.isNotEmpty()) model.addAttribute("hasParking", hasParking)
         return save(STEP_FEATURES, answers, errors, returnTo, session, model)
     }
 
@@ -414,20 +422,12 @@ class OfferPropertyController(
         )
 
     /** The city must be one of the tenant's cities, and the neighbourhood one of that city's. */
-    private fun addressErrors(cityId: Long, neighborhoodId: Long): Map<String, String> {
-        val locations = locations(listOf(cityId, neighborhoodId))
-        val city = locations[cityId]
-        if (city == null || city.type != LocationType.CITY || city.country != tenantContext.getTenant().countryCode) {
-            return mapOf("cityId" to "Cette ville n'est pas proposée. Choisissez-en une dans la liste.")
+    private fun addressErrors(cityId: Long, neighborhoodId: Long): Map<String, String> =
+        sector.errors(cityId, listOf(neighborhoodId)).mapKeys { (key, _) ->
+            if (key == "neighborhoodIds") "neighborhoodId" else key
+        }.mapValues { (key, message) ->
+            if (key == "neighborhoodId") "Choisissez un quartier de la ville sélectionnée." else message
         }
-
-        val neighborhood = locations[neighborhoodId]
-        return if (neighborhood != null && neighborhood.type == LocationType.NEIGHBORHOOD && neighborhood.parentId == cityId) {
-            emptyMap()
-        } else {
-            mapOf("neighborhoodId" to "Choisissez un quartier de la ville sélectionnée.")
-        }
-    }
 
     /**
      * The names to show, best effort: when ndopify-server is down, the page (and the review's "Envoi impossible")
@@ -435,18 +435,11 @@ class OfferPropertyController(
      */
     private fun namesOrEmpty(ids: List<Long>): Map<Long, Location> =
         try {
-            locations(ids)
+            sector.locations(ids)
         } catch (ex: RestClientException) {
             LOGGER.warn("Unable to load the locations $ids", ex)
             emptyMap()
         }
-
-    private fun locations(ids: List<Long>): Map<Long, Location> {
-        if (ids.isEmpty()) return emptyMap()
-        return locationClient.search(SearchLocationRequest(ids = ids.distinct(), limit = ids.size))
-            .locations
-            .associateBy { location -> location.id }
-    }
 
     /** A number of months: [blank] when nothing was posted, 0 (invalid) for something that isn't a number. */
     private fun months(value: String?, blank: Int?): Int? {

@@ -145,11 +145,14 @@ object OfferPropertyRules {
 
     fun rooms(value: String?): String? = if (value in ROOMS) null else "Indiquez le nombre de chambres."
 
+    const val PARKING_ANSWER_REQUIRED = "Indiquez si le bien a un parking ou un garage."
+    const val PARKING_PLACES_REQUIRED = "Indiquez le nombre de places."
+
     /** [NO_PARKING] ("Non") or a number of places; no answer at all asks whether there is a parking. */
     fun parkings(value: String?): String? = when {
-        value.isNullOrEmpty() -> "Indiquez si le bien a un parking ou un garage."
+        value.isNullOrEmpty() -> PARKING_ANSWER_REQUIRED
         value == NO_PARKING || value in PARKINGS -> null
-        else -> "Indiquez le nombre de places."
+        else -> PARKING_PLACES_REQUIRED
     }
 
     fun area(value: Int?): String? = when {

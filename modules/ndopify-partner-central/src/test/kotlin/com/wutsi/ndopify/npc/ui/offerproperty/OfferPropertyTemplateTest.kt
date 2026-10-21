@@ -239,6 +239,38 @@ class OfferPropertyTemplateTest {
     }
 
     @Test
+    fun `features step shows the missing parking answer under its own question`() {
+        val page = render(
+            post("/offer-property/features")
+                .param("propertyType", "APARTMENT").param("furnitureType", "UNFURNISHED").param("rooms", "2"),
+        )
+
+        val error = page.selectFirst("#hasParking-error")!!
+        assertFalse(error.hasAttr("hidden"))
+        assertEquals("Indiquez si le bien a un parking ou un garage.", error.selectFirst("[data-error-text]")!!.text())
+        assertEquals("true", page.selectFirst("[data-group=hasParking]")!!.attr("aria-invalid"))
+        assertTrue(page.selectFirst("#parkings-error")!!.hasAttr("hidden"))
+        assertFalse(page.selectFirst("[data-group=parkings]")!!.hasAttr("aria-invalid"))
+    }
+
+    @Test
+    fun `features step keeps Oui checked and asks for the places`() {
+        val page = render(
+            post("/offer-property/features").param("propertyType", "APARTMENT").param("furnitureType", "UNFURNISHED")
+                .param("rooms", "2").param("hasParking", "YES"),
+        )
+
+        assertTrue(page.selectFirst("input[name=hasParking][value=YES]")!!.hasAttr("checked"))
+        assertFalse(page.selectFirst("input[name=hasParking][value=NO]")!!.hasAttr("checked"))
+        val error = page.selectFirst("#parkings-error")!!
+        assertFalse(error.hasAttr("hidden"))
+        assertEquals("Indiquez le nombre de places.", error.selectFirst("[data-error-text]")!!.text())
+        assertEquals("true", page.selectFirst("[data-group=parkings]")!!.attr("aria-invalid"))
+        assertTrue(page.selectFirst("#hasParking-error")!!.hasAttr("hidden"))
+        assertFalse(page.selectFirst("[data-group=hasParking]")!!.hasAttr("aria-invalid"))
+    }
+
+    @Test
     fun `features step without JS shows every residential question`() {
         val page = render(get("/offer-property?step=features"))
 

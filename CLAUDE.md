@@ -311,7 +311,7 @@ logged, never rethrown. Tests must wait for the mail (`smtp.waitForIncomingEmail
 `BaseEndpointIntegrationTest.tearDown` waits for the running async tasks, so a test's mail can't reach the next one.
 
 **Optimistic locking**: `MandateEntity`, `AgentEntity`, `ContractEntity`, `KycCaseEntity` and `AssignmentEntity` are
-`@Version`-ed (`version` column, `V7_2`). Hibernate checks it on flush (`UPDATE ... WHERE version = ?`), so it only
+`@Version`-ed (`version` column, `V7_0` / `V7_1`). Hibernate checks it on flush (`UPDATE ... WHERE version = ?`), so it only
 catches concurrent transactions; `ControllerErrorHandler` turns the `ObjectOptimisticLockingFailureException` into a
 409 named after the entity (`MANDATE_VERSION_CONFLICT`, `AGENT_VERSION_CONFLICT`, `CONTRACT_VERSION_CONFLICT`,
 `KYC_CASE_VERSION_CONFLICT`; `ASSIGNMENT_NOT_PENDING` for an offer). Across requests, `Mandate` / `Agent` expose

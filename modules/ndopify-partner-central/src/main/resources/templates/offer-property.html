@@ -300,10 +300,10 @@
                         <legend class="choices__legend">Parking ou garage</legend>
                         <div class="choices__grid choices__grid--2">
                             <label class="choice"><input name="hasParking" required
-                                                         th:checked="${answers.parkings == '1' or answers.parkings == '2' or answers.parkings == '3+'}"
+                                                         th:checked="${hasParking != null ? hasParking == 'YES' : (answers.parkings == '1' or answers.parkings == '2' or answers.parkings == '3+')}"
                                                          type="radio" value="YES"> Oui</label>
                             <label class="choice"><input name="hasParking" required
-                                                         th:checked="${answers.parkings == '0'}"
+                                                         th:checked="${hasParking != null ? hasParking == 'NO' : answers.parkings == '0'}"
                                                          type="radio" value="NO"> Non</label>
                         </div>
                         <p th:replace="~{:: error('hasParking')}"></p>
