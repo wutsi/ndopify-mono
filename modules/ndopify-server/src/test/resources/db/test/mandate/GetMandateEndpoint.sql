@@ -30,7 +30,7 @@ INSERT INTO T_MANDATE(
     electricity_meter, dedicated_electricity_meter, generator_set, solar_panel,
     road_paved, track_accessible_by_car, track_inaccessible_by_car,
     secured_fenced, security_guard, video_surveillance,
-    price, price_periodicity_type, currency_code, security_deposit, advance_rent, lease_term, notice_period, moving_period,
+    price, price_periodicity_type, currency_code, security_deposit, advance_rent, lease_term, notice_period, moving_period, available_from,
     preferred_contact_period, comments, created_at, modified_at
 ) VALUES
     (1, 1, 10, null, 'RESIDENTIAL', 'PENDING_ASSIGNMENT', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT',
@@ -39,7 +39,7 @@ INSERT INTO T_MANDATE(
      true, false, true, true,
      false, true, false,
      true, true, true,
-     150000, 'MONTHLY', 'XAF', 2, 3, 12, 1, 'WITHIN_3_MONTHS',
+     150000, 'MONTHLY', 'XAF', 2, 3, 12, 1, 'WITHIN_3_MONTHS', '2026-11-03',
      'MORNING', 'Close to the market', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (2, 2, 90, null, 'RESIDENTIAL', 'PENDING_ASSIGNMENT', 'TENANT', 'SEARCH', 2370201, 'APARTMENT',
      null, null, null, null,
@@ -47,7 +47,7 @@ INSERT INTO T_MANDATE(
      false, false, false, false,
      false, false, false,
      false, false, false,
-     100000, 'MONTHLY', 'XAF', null, null, null, null, 'UNKNOWN',
+     100000, 'MONTHLY', 'XAF', null, null, null, null, 'UNKNOWN', null,
      null, null, '2024-06-10 00:00:00', '2024-06-10 00:00:00');
 
 INSERT INTO T_MANDATE_NEIGHBORHOOD(mandate_id, neighborhood_id) VALUES

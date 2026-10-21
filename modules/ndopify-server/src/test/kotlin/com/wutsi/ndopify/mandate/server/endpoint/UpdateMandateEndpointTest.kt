@@ -19,6 +19,7 @@ import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
+import java.time.LocalDate
 import javax.sql.DataSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -64,6 +65,7 @@ class UpdateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         advanceRent = null,
         leaseTerm = null,
         movingPeriod = MovingPeriod.AFTER_3_MONTHS,
+        availableFrom = LocalDate.of(2027, 1, 15),
         noticePeriod = null,
         comments = "Ocean view",
     )
@@ -110,8 +112,21 @@ class UpdateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertNull(mandate.leaseTerm)
         assertNull(mandate.noticePeriod)
         assertEquals(request.movingPeriod, mandate.movingPeriod)
+        assertEquals(request.availableFrom, mandate.availableFrom)
         assertEquals(ContactPeriodType.entries[1], mandate.preferredContactPeriod)
         assertEquals(request.comments, mandate.comments)
+    }
+
+    @Test
+    fun `update without availableFrom clears it`() {
+        ds.connection.use {
+            it.createStatement().executeUpdate("UPDATE T_MANDATE SET available_from = '2026-11-03' WHERE id = 1")
+        }
+
+        val response = rest.postForEntity("/v1/mandates/1", request.copy(availableFrom = null), Any::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertNull(dao.findById(1L).get().availableFrom)
     }
 
     @Test

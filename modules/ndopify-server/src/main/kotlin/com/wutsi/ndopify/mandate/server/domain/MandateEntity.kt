@@ -21,6 +21,7 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.Table
 import jakarta.persistence.Version
 import org.hibernate.annotations.TenantId
+import java.time.LocalDate
 import java.util.Date
 
 @Entity
@@ -87,6 +88,7 @@ data class MandateEntity(
     val leaseTerm: Int? = null,
     val noticePeriod: Int? = null,
     val movingPeriod: MovingPeriod = MovingPeriod.UNKNOWN,
+    val availableFrom: LocalDate? = null,
 
     val preferredContactPeriod: ContactPeriodType? = null,
     val comments: String? = null,

@@ -7,6 +7,7 @@ import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.refdata.dto.Money
+import java.time.LocalDate
 import java.util.Date
 
 data class Mandate(
@@ -53,6 +54,7 @@ data class Mandate(
     val leaseTerm: Int? = null,
     val noticePeriod: Int? = null,
     val movingPeriod: MovingPeriod = MovingPeriod.UNKNOWN,
+    val availableFrom: LocalDate? = null,
 
     val preferredContactPeriod: ContactPeriodType? = null,
 

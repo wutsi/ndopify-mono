@@ -1,0 +1,1 @@
+ALTER TABLE T_MANDATE ADD COLUMN available_from DATE;

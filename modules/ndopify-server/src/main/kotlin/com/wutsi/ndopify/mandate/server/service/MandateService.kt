@@ -166,6 +166,7 @@ class MandateService(
                 leaseTerm = request.leaseTerm,
                 noticePeriod = request.noticePeriod,
                 movingPeriod = request.movingPeriod,
+                availableFrom = request.availableFrom,
                 preferredContactPeriod = request.preferredContactPeriod,
                 comments = request.comments,
                 createdAt = now,
@@ -231,6 +232,7 @@ class MandateService(
                 leaseTerm = request.leaseTerm,
                 noticePeriod = request.noticePeriod,
                 movingPeriod = request.movingPeriod,
+                availableFrom = request.availableFrom,
                 comments = request.comments,
                 modifiedAt = Date(clock.millis()),
             )
