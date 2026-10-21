@@ -184,7 +184,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
 - **mandate** — a customer's search request (`MandateEntity`; `/v1/mandates`: get, search, create, update).
   `MandateService.create` finds or creates the customer from the request's contact fields and starts the mandate
   as `PENDING_ASSIGNMENT`. It only checks that the contact fields aren't empty (`@NotEmpty`): categories, cities,
-  neighbourhoods, prices and enums aren't validated server-side yet. Tenant-scoped.
+  neighbourhoods, prices and enums aren't validated server-side yet. `availableFrom` (`V7_2`) is a LISTING's
+  availability date (the date from which the property can be let): stored and returned, not checked by the server.
+  Tenant-scoped.
   **Access** (`MandateAccessService`): every endpoint but create (public) and the ops ones needs a JWT (401
   `AUTH_UNAUTHORIZED`), and the caller must be an admin (`CallerService.isAdmin`: `admin-console` token with the
   `admin` role, `RoleCode`) or the mandate's agent (JWT user → membership → party → agent), else 403
@@ -348,7 +350,7 @@ Package `com.wutsi.ndopify.npc`: `ui/` (MVC controllers + Thymeleaf templates in
   HTTP-only `__npc_access_token` cookie (`AccessTokenService`) and decoded by `JwtAuthenticationFilter`, which clears
   the cookie of a token that doesn't decode (expired) and marks the request `ACCESS_TOKEN_REJECTED`, so that
   `AuthorizationClientHttpRequestInterceptor` doesn't forward it (ndopify-server would answer 401); everything
-  except `/assets/**`, `/login/**`, `/error`, `/locations/**`, `/join/**`, `/find-property/**` requires authentication. `/logout` clears the cookie and session.
+  except `/assets/**`, `/login/**`, `/error`, `/locations/**`, `/join/**`, `/find-property/**`, `/offer-property/**` requires authentication. `/logout` clears the cookie and session.
   The header's account menu (`<nav class="user-menu">`) is wrapped in `th:if="${signedIn}"`, a model attribute
   that `SignedInAdvice` (`ui/layout/`) sets on every page: give any new page's menu the same guard.
 - Tenant is resolved by `TenantContext` matching the request URL against each active tenant's `partnerCentralUrl`
@@ -381,6 +383,17 @@ Package `com.wutsi.ndopify.npc`: `ui/` (MVC controllers + Thymeleaf templates in
   as `null`. Without JS the property step shows every follow-up question of the category and the server ignores
   those that don't apply to the type; `public/assets/js/find-property.js` hides them. Prototype:
   `src/main/html/find-property.html`.
+- *Proposer un bien* is `OfferPropertyController` (`ui/offerproperty/`), a **public** wizard for owners offering a
+  property for rent, built like *Trouver un bien*: one page (`templates/offer-property.html`), seven steps
+  (`property` → `address` → `terms` → `features` → `amenities` → `contact` → `review`), `POST /offer-property/{step}`
+  validates (`OfferPropertyRules`, the only validation a listing gets) into the session's `PendingListing`, and the
+  review submits it as a LISTING / RENTAL mandate with a MONTHLY price in the tenant's currency (`NdMandateClient` →
+  `POST /v1/mandates`), then shows the confirmation while a `SubmittedMandate` is in the session. `availableFrom` must
+  be between today and 365 days later, in the tenant's time zone (`Clock`, so a saved date can expire). The header's
+  *Quitter* and the confirmation's CTA go to `{publicPortalUrl}/owner` (none without a `publicPortalUrl`). Without JS
+  every step posts; `public/assets/js/offer-property.js` only enhances (city / neighbourhood slim-select over
+  `/locations`, "150 000", questions of the type, E.164 WhatsApp), mirroring `OfferPropertyRules`. Prototype:
+  `src/main/html/offer-property.html`.
 - KYC is `KycController` (`ui/kyc/`), one page (`templates/kyc.html`), reached from the Espace agent's banner. Wizard steps `front` →
   `back` → `selfie` → `review`: `GET /kyc?step=…` shows a step (never past the first photo the case lacks) and
   `POST /kyc/{step}` uploads that photo straight to the agent's PENDING case (`NdKycClient`), so the case is the
