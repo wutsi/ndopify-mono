@@ -15,7 +15,7 @@ class SecurityConfiguration {
         return http
             .authorizeHttpRequests { customizer ->
                 customizer
-                    .requestMatchers("/", "/agent").permitAll()
+                    .requestMatchers("/", "/agent", "/owner").permitAll()
                     .requestMatchers("/assets/**").permitAll()
                     .requestMatchers("/error").permitAll()
                     .anyRequest().denyAll() // nothing else is served

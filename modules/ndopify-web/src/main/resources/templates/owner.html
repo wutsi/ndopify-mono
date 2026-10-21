@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>Ndopify — Louez votre bien sans tracasserie</title>
+    <meta
+        content="Publiez votre bien gratuitement avec Ndopify : audit et kit média offerts, locataires vérifiés, vous gardez 100% du contrôle sur l'encaissement."
+        name="description">
+    <!--/* The tenant's logo and icon, falling back to Ndopify's when it has none. */-->
+    <th:block th:with="logoUrl=${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl},
+                       iconUrl=${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
+        <link rel="canonical" th:if="${!#strings.isEmpty(tenant.publicPortalUrl)}" th:href="${tenant.publicPortalUrl} + '/owner'">
+        <meta content="website" property="og:type">
+        <meta content="Ndopify — Louez votre bien rapidement et sans tracasserie" property="og:title">
+        <meta content="Audit et kit média 100% gratuits, locataires qualifiés, souveraineté totale sur vos loyers."
+              property="og:description">
+        <meta property="og:image" th:content="${logoUrl}">
+        <meta property="og:url" th:if="${!#strings.isEmpty(tenant.publicPortalUrl)}" th:content="${tenant.publicPortalUrl} + '/owner'">
+        <meta content="summary_large_image" name="twitter:card">
+        <meta content="#1d7edf" name="theme-color">
+        <link rel="icon" th:href="${iconUrl}">
+        <link rel="apple-touch-icon" th:href="${iconUrl}">
+        <link rel="stylesheet" th:href="@{/assets/css/styles.css}">
+        <script type="application/ld+json" th:inline="javascript">
+            {
+                "@context": "https://schema.org",
+                "@type": "Organization",
+                "name": /*[[${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}]]*/ "Ndopify",
+                "url": /*[[${tenant.publicPortalUrl}]]*/ null,
+                "logo": /*[[${logoUrl}]]*/ null
+            }
+        </script>
+    </th:block>
+</head>
+<!--/*
+  The page for property owners (OwnerController). Served from the prototype src/main/html/bailleur.html.
+  Every call to action opens Partner Central's offer-property page (offerPropertyUrl), and is left out without it.
+*/-->
+<body data-page="owner">
+<a class="skip-link" href="#main">Aller au contenu principal</a>
+<header class="site-header">
+    <a aria-label="Ndopify — accueil" class="site-header__logo" th:href="@{/}">
+        <img alt="Ndopify" height="36" width="140"
+             th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
+             th:src="${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}">
+    </a>
+    <nav aria-label="Navigation principale" class="site-nav">
+        <button aria-controls="primary-nav-list" aria-expanded="false" class="nav-toggle"><span aria-hidden="true"
+                                                                                                class="nav-toggle__icon">☰</span>
+            Propriétaires
+        </button>
+        <ul class="site-nav__list" id="primary-nav-list">
+            <li><a th:href="@{/}">Locataires</a></li>
+            <li><a aria-current="page" th:href="@{/owner}">Propriétaires</a></li>
+            <li><a th:href="@{/agent}">Agents</a></li>
+        </ul>
+    </nav>
+</header>
+
+<main id="main">
+    <section class="section section--default">
+        <div class="container hero">
+            <span class="hero__eyebrow">Agents dédiés, locataires vérifiés</span>
+            <h1>Louez votre bien rapidement et sans tracasserie</h1>
+            <p class="hero__sub">Confiez votre logement à un agent dédié dans votre secteur. Candidats vérifiés, zéro
+                frais avant signature.</p>
+            <ul class="proof-stats">
+                <li><strong>0 FCFA</strong>pour l'audit et le kit média</li>
+                <li><strong>100 %</strong>du contrôle sur l'encaissement</li>
+                <li><strong>1 mois</strong>de loyer en commission, à la signature</li>
+            </ul>
+            <div class="cta-row" th:if="${offerPropertyUrl}">
+                <a class="btn btn-primary" th:href="${offerPropertyUrl}">Proposer mon bien</a>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="garanties-heading" class="section section--secondary">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="garanties-heading">Nos garanties</h2>
+                <p>Un service pensé pour vous faire gagner du temps sans jamais perdre le contrôle de votre bien.</p>
+            </div>
+            <ul class="card-grid">
+                <li class="card">
+                    <h3 class="card-title">Agent dédié expert du quartier</h3>
+                    <p>Un agent vérifié qui connaît votre secteur s'occupe de votre dossier.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Audit &amp; kit média gratuits</h3>
+                    <p>Photos, vidéos et vérifications techniques réalisées sans aucun frais.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Locataires qualifiés</h3>
+                    <p>Vous ne recevez que des candidats vérifiés et solvables.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Souveraineté totale</h3>
+                    <p>Vous conservez 100 % du contrôle direct sur l'encaissement de vos loyers.</p>
+                </li>
+            </ul>
+            <div class="cta-row" th:if="${offerPropertyUrl}">
+                <a class="btn btn-primary" th:href="${offerPropertyUrl}">Proposer mon bien</a>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="comment-heading" class="section section--default">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="comment-heading">Comment ça marche</h2>
+            </div>
+            <ol class="steps">
+                <li><h3>Soumission &amp; Jumelage</h3>
+                    <p>Décrivez votre bien, nous vous attribuons un agent dédié de votre secteur.</p></li>
+                <li><h3>Audit &amp; Publication</h3>
+                    <p>Votre agent audite gratuitement le bien puis publie l'annonce certifiée.</p></li>
+                <li><h3>Sélection des candidats</h3>
+                    <p>Vous consultez les dossiers vérifiés et choisissez votre locataire.</p></li>
+                <li><h3>Signature &amp; Encaissement</h3>
+                    <p>Vous signez le bail et percevez directement vos loyers.</p></li>
+            </ol>
+            <div class="cta-row" th:if="${offerPropertyUrl}">
+                <a class="btn btn-primary" th:href="${offerPropertyUrl}">Proposer mon bien</a>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="faq-heading" class="section section--secondary">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="faq-heading">Questions fréquentes</h2>
+            </div>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-1" aria-expanded="false" class="faq-trigger">Pourquoi est-ce gratuit
+                            ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-1"><p>Ndopify monétise via la commission à la signature du
+                        bail (1 mois de loyer). L'audit et le kit média gratuits garantissent des locataires solvables
+                        vérifiés.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-2" aria-expanded="false" class="faq-trigger">Qui touche l'argent de
+                            mes loyers ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-2"><p>Vous percevez directement vos loyers via Mobile Money,
+                        virement ou espèces. Vous conservez 100 % du contrôle sur l'encaissement.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-3" aria-expanded="false" class="faq-trigger">Comment sont
+                            sélectionnés les locataires ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-3"><p>Les locataires sont vérifiés et solvables. Vous
+                        consultez leurs dossiers et validez le candidat idéal avant signature.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-4" aria-expanded="false" class="faq-trigger">Comment est sélectionné
+                            l'agent qui m'accompagne ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-4"><p>Ndopify vous attribue un Agent Vérifié expert de votre
+                        quartier, choisi selon vos critères et sa spécialité.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-5" aria-expanded="false" class="faq-trigger">Que se passe-t-il
+                            pendant l'audit de mon logement ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-5"><p>L'agent vérifie l'identité et le titre de propriété,
+                        inspecte les accès (eau, électricité, routes), puis réalise photos HD et vidéos.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-6" aria-expanded="false" class="faq-trigger">Combien de temps avant
+                            la première visite ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-6"><p>Votre agent vous contacte par WhatsApp/téléphone après
+                        le jumelage pour planifier l'audit dans les meilleurs délais.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-7" aria-expanded="false" class="faq-trigger">Que se passe-t-il lors
+                            de la signature du bail ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-7"><p>Vous validez l'annonce certifiée, recevez les loyers
+                        directement, et Ndopify perçoit 1 mois de loyer en commission unique.</p></div>
+                </div>
+            </div>
+            <div class="cta-row" th:if="${offerPropertyUrl}">
+                <a class="btn btn-primary" th:href="${offerPropertyUrl}">Proposer mon bien</a>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <div class="container site-footer__inner">
+        <img alt="Ndopify" height="32" width="32"
+             th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
+             th:src="${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
+        <nav aria-label="Navigation du pied de page">
+            <ul>
+                <li><a th:href="@{/}">Locataires</a></li>
+                <li><a th:href="@{/owner}">Propriétaires</a></li>
+                <li><a th:href="@{/agent}">Agents</a></li>
+            </ul>
+        </nav>
+        <small>© 2026 Ndopify. Logements vérifiés. Locations fiables.</small>
+    </div>
+</footer>
+
+<script th:src="@{/assets/js/main.js}"></script>
+</body>
+</html>
