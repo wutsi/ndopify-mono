@@ -155,17 +155,20 @@
 
     /*
      * Keeps the step's [data-next] in sync with its enabled [required] fields — read on every refresh, since the
-     * property step makes questions required or not as the type changes. Returns the refresh, for the changes no
-     * input/change event reports (a value set by script, slim-select reloading its options).
+     * property step makes questions required or not as the type changes — and inactive while a field is
+     * [data-loading] (slim-select disables it meanwhile, which would drop it from the required ones). Returns the
+     * refresh, for the changes no input/change event reports (a value set by script, slim-select reloading its
+     * options).
      */
     function initNext(form) {
         var next = $("[data-next]", form);
         if (!next) return function () {};
 
         function refresh() {
-            setActive(next, $all("[required]:not(:disabled)", form).every(function (field) {
-                return isFilled(form, field);
-            }));
+            setActive(next, !$("[data-loading]", form) &&
+                $all("[required]:not(:disabled)", form).every(function (field) {
+                    return isFilled(form, field);
+                }));
         }
 
         form.addEventListener("input", refresh);
@@ -296,10 +299,13 @@
                 refresh();
                 return;
             }
+            neighborhoodSelect.setAttribute("data-loading", "");
             neighborhoods.slim.disable();
+            refresh();
             searchAllLocations(url, { type: "NEIGHBORHOOD", "parent-id": cityId }).then(
                 function (locations) {
                     if (request !== pending) return; // the city changed again meanwhile
+                    neighborhoodSelect.removeAttribute("data-loading");
                     var options = locations.map(function (location) {
                         return toOption(location, String(location.id) === keep);
                     });
@@ -310,7 +316,9 @@
                 },
                 function () {
                     if (request !== pending) return;
+                    neighborhoodSelect.removeAttribute("data-loading");
                     neighborhoods.slim.enable();
+                    refresh();
                     setFieldError(neighborhoods.control, neighborhoodError,
                         "Nous ne pouvons pas charger les quartiers pour l'instant. Rechargez la page.");
                 }
