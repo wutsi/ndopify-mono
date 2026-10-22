@@ -13,8 +13,6 @@ import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.npc.ui.login.LoginController
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.refdata.dto.Location
-import com.wutsi.ndopify.refdata.dto.LocationType
-import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
 import com.wutsi.ndopify.refdata.dto.Tenant
 import jakarta.servlet.http.HttpSession
 import org.slf4j.LoggerFactory

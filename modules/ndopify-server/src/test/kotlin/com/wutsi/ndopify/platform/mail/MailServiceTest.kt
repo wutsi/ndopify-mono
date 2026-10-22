@@ -3,7 +3,6 @@ package com.wutsi.ndopify.platform.mail
 import com.icegreen.greenmail.util.GreenMail
 import com.icegreen.greenmail.util.ServerSetupTest
 import jakarta.mail.Message.RecipientType
-import jakarta.mail.MessagingException
 import org.junit.jupiter.api.assertThrows
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
