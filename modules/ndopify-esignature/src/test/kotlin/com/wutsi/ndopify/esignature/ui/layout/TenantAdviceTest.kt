@@ -5,9 +5,9 @@ import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.wutsi.ndopify.esignature.service.TenantContext
 import com.wutsi.ndopify.esignature.service.TenantFixtures
+import org.junit.jupiter.api.assertThrows
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 class TenantAdviceTest {
     @Test
@@ -23,6 +23,8 @@ class TenantAdviceTest {
             on { getTenant() } doThrow IllegalStateException("No tenant found for URL: http://localhost/sign/cp-1")
         }
 
-        assertNull(TenantAdvice(context).tenant())
+        assertThrows<IllegalStateException> {
+            TenantAdvice(context).tenant()
+        }
     }
 }
