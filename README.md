@@ -1,8 +1,8 @@
 # ndopify-mono
 
 Maven monorepo for Ndopify — a multi-tenant rental platform built on mobile-money agents: agents and their KYC
-verification, customers' property-search mandates dispatched to those agents, contracts signed online, and
-mobile-money payment integrations across Africa.
+verification, mandates (tenants searching for a property, owners offering one for rent) dispatched to those agents,
+contracts signed online, and mobile-money payment integrations across Africa.
 
 [![main](https://github.com/wutsi/ndopify-mono/actions/workflows/_main.yml/badge.svg)](https://github.com/wutsi/ndopify-mono/actions/workflows/_main.yml)
 [![pr](https://github.com/wutsi/ndopify-mono/actions/workflows/_pr.yml/badge.svg)](https://github.com/wutsi/ndopify-mono/actions/workflows/_pr.yml)
@@ -17,9 +17,9 @@ Early-stage. Only five modules exist today — there is no SDK or tracking-serve
 |------------------------------------------------------------|------------------------------------------------------------------------------------------|
 | [ndopify-dto](modules/ndopify-dto)                         | Shared request/response DTOs and contracts — no business logic                           |
 | [ndopify-server](modules/ndopify-server)                   | REST API backend (Spring Boot)                                                           |
-| [ndopify-partner-central](modules/ndopify-partner-central) | Agent-facing web app (Spring Boot + Thymeleaf, French): sign-up, e-mail OTP sign-in, KYC, mandate offers and follow-up, plus the public *Trouver un bien* wizard |
-| [ndopify-esignature](modules/ndopify-esignature)           | Signer-facing contract sign page (Spring Boot + Thymeleaf, French): e-mail OTP sign-in, read and sign a contract |
-| [ndopify-website](modules/ndopify-web)                 | Static marketing + lead-capture website (plain HTML/CSS/JS, French) — not a Maven module |
+| [ndopify-partner-central](modules/ndopify-partner-central) | Agent-facing web app (Spring Boot + Thymeleaf, French): sign-up, e-mail OTP sign-in, KYC, mandate offers and follow-up, plus the public *Trouver un bien* and *Proposer un bien* wizards |
+| [ndopify-esignature](modules/ndopify-esignature)           | Signer-facing contract sign page (Spring Boot + Thymeleaf, French): e-mail OTP sign-in, read and sign a contract, plus the public verify page of a signature's QR code |
+| [ndopify-website](modules/ndopify-website)                 | Static marketing + lead-capture website (plain HTML/CSS/JS, French) — not a Maven module |
 
 ### Module Dependency
 
@@ -58,11 +58,13 @@ layering (`endpoint` → `service` → `dao` → `domain`, plus `mapper` for ent
   cases are verified through pluggable `KycVerifier` strategies (identification, mobile-money, manual); data is
   extracted from identity-document images by an LLM (`IdentificationInfoExtractorAi`).
 - **agent** — mobile-money agents: create, update, get and search, plus a welcome e-mail on registration.
-- **customer** — people looking for a property.
-- **mandate** — a customer's search request, offered by `MandateDispatcher` to the best-scoring agent of its city,
-  then followed by that agent up to its contract's signature and its closing.
-- **contract** — contracts to be signed by their parties on ndopify-esignature; the last required signature makes
-  them `SIGNED`.
+- **customer** — the people behind the mandates: tenants looking for a property, owners offering one.
+- **mandate** — a customer's mandate: a `SEARCH` (a tenant's request) or a `LISTING` (an owner's property for rent).
+  Offered by `MandateDispatcher` to the best-scoring agent of its city, then followed by that agent up to its
+  contract's signature and its closing. Its e-mails (offer, assignment, approval) have a template per mandate type.
+- **contract** — contracts to be signed by their parties on ndopify-esignature: a mandate's contract is generated
+  from its type's template (search mandate, or exclusive listing mandate), and the last required signature makes it
+  `SIGNED`, with a signed PDF whose QR codes open the signatures' verify page.
 - **error** — shared exception types and a global error handler.
 
 A non-domain **`platform`** package holds shared infrastructure: the mobile-money gateway integration
