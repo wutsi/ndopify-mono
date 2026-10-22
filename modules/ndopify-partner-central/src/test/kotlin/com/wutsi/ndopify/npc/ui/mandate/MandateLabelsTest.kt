@@ -10,6 +10,7 @@ import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -150,6 +151,22 @@ class MandateLabelsTest {
             ),
             MandateLabels.criteria(mandate, LOCATIONS, FORMATTER),
         )
+    }
+
+    @Test
+    fun `criteria - landlord, availability date`() {
+        val with = Mandate(mandateType = MandateType.LISTING, cityId = 1, availableFrom = LocalDate.of(2026, 11, 3), movingPeriod = MovingPeriod.AFTER_3_MONTHS)
+        val without = with.copy(availableFrom = null)
+
+        assertEquals("Disponibilité" to "Dès le 03 nov. 2026", MandateLabels.criteria(with, LOCATIONS, FORMATTER)[2])
+        assertEquals("Disponibilité" to "Dans plus de 3 mois", MandateLabels.criteria(without, LOCATIONS, FORMATTER)[2])
+    }
+
+    @Test
+    fun `criteria - client ignores the availability date`() {
+        val mandate = Mandate(mandateType = MandateType.SEARCH, cityId = 1, availableFrom = LocalDate.of(2026, 11, 3), movingPeriod = MovingPeriod.AFTER_3_MONTHS)
+
+        assertEquals("Emménagement" to "Dans plus de 3 mois", MandateLabels.criteria(mandate, LOCATIONS, FORMATTER)[2])
     }
 
     @Test

@@ -12,7 +12,6 @@
 
     var STEPS = ["bien", "adresse", "conditions", "caracteristiques", "equipements", "contact", "revue"];
     var REVIEW = STEPS.length - 1;
-    var MAX_ADDRESS = 200;
     var MAX_ADVANCE_MONTHS = 12;
     var MAX_DEPOSIT_MONTHS = 6;
     // How far ahead the availability date may be (days).
@@ -510,7 +509,7 @@
             case "bien":
                 return !!CATEGORY_LABELS[a.propertyCategory];
             case "adresse":
-                return a.cityId > 0 && a.neighborhoodId > 0 && (a.address || "").length <= MAX_ADDRESS;
+                return a.cityId > 0 && a.neighborhoodId > 0;
             case "conditions":
                 return a.priceAmount >= MIN_RENT &&
                     monthsValid(a.advanceRent, 1, MAX_ADVANCE_MONTHS) &&
@@ -543,7 +542,7 @@
     /*
      * The saved answers as a CreateMandateRequest (ndopify-dto). Questions that don't apply to the chosen
      * property are sent as null even if an earlier answer is still in the session.
-     * Not in CreateMandateRequest yet: address and availableFrom.
+     * Not in CreateMandateRequest yet: availableFrom.
      */
     function toRequest(a) {
         var request = {
@@ -552,7 +551,6 @@
             propertyCategory: a.propertyCategory,
             cityId: a.cityId,
             neighbourhoodIds: [a.neighborhoodId],
-            address: a.address || null,
             propertyType: a.propertyType,
             furnitureType: needsFurniture(a) ? a.furnitureType : null,
             rooms: needsRooms(a) ? a.rooms : null,
@@ -601,8 +599,6 @@
         var neighborhoodSelect = $("#neighborhoodId");
         var group = $('[data-group="neighborhoodId"]');
         var empty = $("[data-neighborhoods-empty]");
-        var address = $("#address");
-        var counter = $("[data-address-counter]");
 
         var city = slimSelect(citySelect, {
             placeholderText: "Choisissez une ville",
@@ -612,14 +608,6 @@
             placeholderText: "Choisissez le quartier",
             ariaLabel: "Quartier"
         });
-
-        address.value = answers.address || "";
-
-        function updateCounter() {
-            counter.textContent = address.value.length + " sur " + MAX_ADDRESS + " caractères";
-        }
-        address.addEventListener("input", updateCounter);
-        updateCounter();
 
         function cityId() {
             return Number(citySelect.value) || 0;
@@ -688,8 +676,7 @@
             collect: function () {
                 return {
                     cityId: cityId(),
-                    neighborhoodId: neighborhoodId(),
-                    address: address.value.trim().slice(0, MAX_ADDRESS)
+                    neighborhoodId: neighborhoodId()
                 };
             }
         };
@@ -940,9 +927,7 @@
 
         function describeLocation(a) {
             if (!locationNames[a.cityId] || !locationNames[a.neighborhoodId]) return "";
-            var lines = [locationNames[a.neighborhoodId] + ", " + locationNames[a.cityId]];
-            if (a.address) lines.push(a.address);
-            return lines.join("\n");
+            return locationNames[a.neighborhoodId] + ", " + locationNames[a.cityId];
         }
 
         function describeConditions(a) {

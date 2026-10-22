@@ -207,6 +207,13 @@ class MandateEditRulesTest {
     }
 
     @Test
+    fun `request - keeps the availability date of the mandate`() {
+        val date = java.time.LocalDate.of(2026, 11, 3)
+
+        assertEquals(date, MandateEditRules.request(FORM, MANDATE.copy(availableFrom = date)).availableFrom)
+    }
+
+    @Test
     fun `request - drops follow-ups that don't apply`() {
         val request = MandateEditRules.request(
             FORM.copy(

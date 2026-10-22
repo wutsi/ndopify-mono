@@ -6,6 +6,7 @@ import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.refdata.dto.Money
+import java.time.LocalDate
 
 data class UpdateMandateRequest(
     val propertyCategory: PropertyCategory = PropertyCategory.UNKNOWN,
@@ -44,6 +45,7 @@ data class UpdateMandateRequest(
     val leaseTerm: Int? = null,
     val noticePeriod: Int? = null,
     val movingPeriod: MovingPeriod = MovingPeriod.UNKNOWN,
+    val availableFrom: LocalDate? = null,
 
     val comments: String? = null,
 

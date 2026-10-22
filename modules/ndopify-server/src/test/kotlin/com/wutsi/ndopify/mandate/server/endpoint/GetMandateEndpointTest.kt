@@ -16,6 +16,7 @@ import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
+import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -69,6 +70,7 @@ class GetMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(12, mandate.leaseTerm)
         assertEquals(1, mandate.noticePeriod)
         assertEquals(MovingPeriod.WITHIN_3_MONTHS, mandate.movingPeriod)
+        assertEquals(LocalDate.of(2026, 11, 3), mandate.availableFrom)
         assertEquals(ContactPeriodType.entries[1], mandate.preferredContactPeriod)
         assertEquals("Close to the market", mandate.comments)
     }

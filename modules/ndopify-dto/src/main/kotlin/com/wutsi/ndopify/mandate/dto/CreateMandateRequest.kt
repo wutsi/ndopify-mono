@@ -8,6 +8,7 @@ import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.refdata.dto.Money
 import jakarta.validation.constraints.NotEmpty
+import java.time.LocalDate
 
 data class CreateMandateRequest(
     val propertyCategory: PropertyCategory = PropertyCategory.UNKNOWN,
@@ -47,6 +48,7 @@ data class CreateMandateRequest(
     val leaseTerm: Int? = null,
     val noticePeriod: Int? = null,
     val movingPeriod: MovingPeriod = MovingPeriod.UNKNOWN,
+    val availableFrom: LocalDate? = null,
 
     @get:NotEmpty val firstName: String = "",
     @get:NotEmpty val lastName: String = "",

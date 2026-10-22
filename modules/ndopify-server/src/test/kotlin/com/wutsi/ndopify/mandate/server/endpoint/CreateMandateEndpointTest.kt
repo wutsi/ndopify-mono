@@ -23,6 +23,7 @@ import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
+import java.time.LocalDate
 import javax.sql.DataSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -74,6 +75,7 @@ class CreateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         advanceRent = 3,
         leaseTerm = 12,
         movingPeriod = MovingPeriod.WITHIN_1_MONTH,
+        availableFrom = LocalDate.of(2026, 11, 3),
         noticePeriod = 1,
         firstName = "Ray",
         lastName = "Sponsible",
@@ -125,6 +127,7 @@ class CreateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(request.leaseTerm, mandate.leaseTerm)
         assertEquals(request.noticePeriod, mandate.noticePeriod)
         assertEquals(request.movingPeriod, mandate.movingPeriod)
+        assertEquals(request.availableFrom, mandate.availableFrom)
         assertEquals(request.preferredContactPeriod, mandate.preferredContactPeriod)
         assertEquals(request.comments, mandate.comments)
 

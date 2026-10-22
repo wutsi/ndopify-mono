@@ -45,6 +45,7 @@ class MandateMapper {
             leaseTerm = entity.leaseTerm,
             noticePeriod = entity.noticePeriod,
             movingPeriod = entity.movingPeriod,
+            availableFrom = entity.availableFrom,
             preferredContactPeriod = entity.preferredContactPeriod,
             comments = entity.comments,
             createdAt = entity.createdAt,
