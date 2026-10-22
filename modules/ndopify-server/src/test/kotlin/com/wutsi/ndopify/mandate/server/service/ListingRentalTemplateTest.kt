@@ -86,7 +86,17 @@ class ListingRentalTemplateTest {
             "Portail bleu",
             "6 mois, à compter de la date de sa",
             "s'interdit de louer le bien", // Exclusive
-            "1 mois de loyer",
+            "<b>Visite d'évaluation</b>",
+            "à photographier l'intérieur et",
+            "sur le site de Ndopify et ses supports de diffusion",
+            "L'adresse exacte",
+            "n'est pas publiée",
+            "dès la location du bien ou à la fin du mandat",
+            "données à titre indicatif",
+            "<b>Mise à jour des informations</b>",
+            "sans qu'il soit nécessaire de signer un nouveau mandat",
+            "requiert l'accord écrit du Mandant",
+            "1 mois du loyer stipulé dans le bail",
         ).forEach { text -> assertTrue(html.contains(text), "missing: $text") }
     }
 

@@ -1,6 +1,7 @@
 <mjml>
     <!--
-        Mandat exclusif de mise en location. Every value is a ready-to-print string (labels, amounts and dates already
+        Mandat exclusif de mise en location. The property's description is the owner's declaration: the audit visit
+        can correct it (article 5), its financial terms only change with the owner's written agreement. Every value is a ready-to-print string (labels, amounts and dates already
         formatted in French); optional fields are mustache sections, left out when the mandate doesn't set them:
         - contract: contract_number, contract_date, duration_months
         - parties: client_name (the owner), client_phone, client_email, tenant_name, tenant_logo_url, agent_name
@@ -204,6 +205,15 @@
                 </mj-text>
                 {{/has_contact}}
 
+                <!-- The description above is declared by the owner: the audit visit can change it (see 5) -->
+                <mj-text>
+                    <i>
+                        Les informations ci-dessus sont celles déclarées par le Mandant à la signature du présent mandat.
+                        Elles sont données à titre indicatif et peuvent être corrigées ou complétées à l'issue de la
+                        visite d'évaluation (article 5).
+                    </i>
+                </mj-text>
+
                 <!-- 2. Duration -->
                 <mj-text font-weight="bold">
                     <h3>2. DURÉE</h3>
@@ -233,15 +243,56 @@
                             <b>Frais de dossier</b> : Gratuit.
                         </li>
                         <li>
-                            <b>Commission de succès</b> : 1 mois de loyer, exigible uniquement à la signature effective
-                            du contrat de bail avec un locataire présenté par le Mandataire.
+                            <b>Commission de succès</b> : 1 mois du loyer stipulé dans le bail, exigible uniquement à la
+                            signature effective du contrat de bail avec un locataire présenté par le Mandataire.
                         </li>
                     </ul>
                 </mj-text>
 
-                <!-- 5. Commitments -->
+                <!-- 5. Audit visit, photographs and online publication -->
                 <mj-text font-weight="bold">
-                    <h3>5. ENGAGEMENTS DES PARTIES</h3>
+                    <h3>5. VISITE D'ÉVALUATION ET PUBLICATION</h3>
+                </mj-text>
+                <mj-text>
+                    <ul>
+                        <li>
+                            <b>Visite d'évaluation</b> : le Mandant autorise le Mandataire à visiter le bien, à une date
+                            convenue entre les parties, afin d'en vérifier les caractéristiques et l'état avant sa
+                            mise en location.
+                        </li>
+                        <li>
+                            <b>Mise à jour des informations</b> : à l'issue de cette visite, le Mandataire peut corriger
+                            ou compléter la description du bien (caractéristiques, équipements, état, adresse et
+                            localisation), sans qu'il soit nécessaire de signer un nouveau mandat. L'annonce est établie
+                            à partir des informations ainsi vérifiées, que le Mandant peut consulter et dont il peut
+                            demander la rectification.
+                        </li>
+                        <li>
+                            <b>Conditions financières</b> : toute modification du loyer, de la caution ou de l'avance sur
+                            loyer requiert l'accord écrit du Mandant, donné par tout moyen écrit (e-mail, message). Elle
+                            ne modifie pas les autres termes du présent mandat.
+                        </li>
+                        <li>
+                            <b>Photographies</b> : le Mandant autorise le Mandataire à photographier l'intérieur et
+                            l'extérieur du bien. Le Mandataire veille à ce qu'aucune personne, ni aucun document ou
+                            effet personnel, n'y soit reconnaissable.
+                        </li>
+                        <li>
+                            <b>Publication en ligne</b> : le Mandant autorise le Mandataire à publier une annonce du bien
+                            sur le site de {{tenant_name}} et ses supports de diffusion : description, photographies,
+                            conditions de location et localisation approximative (ville et quartier). L'adresse exacte
+                            n'est pas publiée ; elle n'est communiquée qu'aux candidats locataires, pour les visites.
+                        </li>
+                        <li>
+                            <b>Durée de l'autorisation</b> : cette autorisation vaut pour la durée du mandat. L'annonce
+                            est retirée dès la location du bien ou à la fin du mandat.
+                        </li>
+                    </ul>
+                </mj-text>
+
+                <!-- 6. Commitments -->
+                <mj-text font-weight="bold">
+                    <h3>6. ENGAGEMENTS DES PARTIES</h3>
                 </mj-text>
                 <mj-text>
                     <ul>
@@ -251,8 +302,9 @@
                             d'accepter ou de refuser.
                         </li>
                         <li>
-                            Le Mandant déclare être propriétaire du bien, ou habilité à le louer, et garantit
-                            l'exactitude des informations ci-dessus.
+                            Le Mandant déclare être propriétaire du bien, ou habilité à le louer, garantit
+                            l'exactitude des informations qu'il fournit, et informe le Mandataire de tout changement
+                            les concernant pendant la durée du mandat.
                         </li>
                         <li>
                             Le Mandant s'engage à permettre les visites du bien et à verser la commission convenue si

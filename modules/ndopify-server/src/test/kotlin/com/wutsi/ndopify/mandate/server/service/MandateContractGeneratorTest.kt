@@ -218,7 +218,9 @@ class MandateContractGeneratorTest {
             "Le matin",
             "6 mois, à compter de la date de sa",
             "EXCLUSIVITÉ",
-            "1 mois de loyer",
+            "1 mois du loyer stipulé dans le bail",
+            "VISITE D'ÉVALUATION ET PUBLICATION",
+            "sur le site de Ndopify et ses supports de diffusion",
         ).forEach { text -> assertTrue(html.contains(text), "missing: $text") }
         listOf(
             "RECHERCHE IMMOBILIÈRE",
