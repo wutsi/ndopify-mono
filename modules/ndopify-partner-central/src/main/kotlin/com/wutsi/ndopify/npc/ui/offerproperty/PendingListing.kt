@@ -45,7 +45,7 @@ data class PendingListing(
         const val SESSION_ATTRIBUTE = "npc.pending-listing"
     }
 
-    private fun has(amenity: String): Boolean = amenities.contains(amenity)
+    fun has(amenity: String): Boolean = amenities.contains(amenity)
 
     fun isComplete(step: String, today: LocalDate): Boolean = when (step) {
         OfferPropertyRules.STEP_PROPERTY -> OfferPropertyRules.propertyCategory(propertyCategory) == null

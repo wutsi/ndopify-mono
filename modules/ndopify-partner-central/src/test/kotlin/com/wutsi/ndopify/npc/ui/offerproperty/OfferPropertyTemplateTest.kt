@@ -329,6 +329,20 @@ class OfferPropertyTemplateTest {
         assertEquals(3, page.select("input[name=roadAccess]").size)
     }
 
+    // emptySet() is Kotlin's EmptySet, whose contains(String) SpEL can't call: the first visit has no amenity yet.
+    @Test
+    fun `amenities step renders without any amenity`() {
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            complete.copy(roadAccess = null, amenities = emptySet()),
+        )
+
+        val page = render(get("/offer-property?step=amenities"))
+
+        assertEquals(11, page.select("input[name=amenities]").size)
+        assertTrue(page.select("input[name=amenities][checked]").isEmpty())
+    }
+
     @Test
     fun `contact step pre-fills the answers`() {
         val page = render(get("/offer-property?step=contact"))

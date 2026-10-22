@@ -364,15 +364,15 @@
                         <legend class="choices__legend">Eau <span class="field__optional">(plusieurs choix
                             possibles)</span></legend>
                         <div class="choices__grid">
-                            <label class="choice"><input name="amenities" th:checked="${answers.amenities.contains('waterMeter')}"
+                            <label class="choice"><input name="amenities" th:checked="${answers.has('waterMeter')}"
                                                          type="checkbox" value="waterMeter"> Compteur d'eau</label>
                             <label class="choice"><input name="amenities"
-                                                         th:checked="${answers.amenities.contains('dedicatedWaterMeter')}"
+                                                         th:checked="${answers.has('dedicatedWaterMeter')}"
                                                          type="checkbox" value="dedicatedWaterMeter"> Compteur d'eau
                                 individuel</label>
-                            <label class="choice"><input name="amenities" th:checked="${answers.amenities.contains('waterWell')}"
+                            <label class="choice"><input name="amenities" th:checked="${answers.has('waterWell')}"
                                                          type="checkbox" value="waterWell"> Forage</label>
-                            <label class="choice"><input name="amenities" th:checked="${answers.amenities.contains('waterTank')}"
+                            <label class="choice"><input name="amenities" th:checked="${answers.has('waterTank')}"
                                                          type="checkbox" value="waterTank"> Château d'eau,
                                 citerne</label>
                         </div>
@@ -382,16 +382,16 @@
                             possibles)</span></legend>
                         <div class="choices__grid">
                             <label class="choice"><input name="amenities"
-                                                         th:checked="${answers.amenities.contains('electricityMeter')}"
+                                                         th:checked="${answers.has('electricityMeter')}"
                                                          type="checkbox" value="electricityMeter"> Compteur
                                 électrique</label>
                             <label class="choice"><input name="amenities"
-                                                         th:checked="${answers.amenities.contains('dedicatedElectricityMeter')}"
+                                                         th:checked="${answers.has('dedicatedElectricityMeter')}"
                                                          type="checkbox" value="dedicatedElectricityMeter"> Compteur
                                 électrique individuel</label>
-                            <label class="choice"><input name="amenities" th:checked="${answers.amenities.contains('generatorSet')}"
+                            <label class="choice"><input name="amenities" th:checked="${answers.has('generatorSet')}"
                                                          type="checkbox" value="generatorSet"> Groupe électrogène</label>
-                            <label class="choice"><input name="amenities" th:checked="${answers.amenities.contains('solarPanel')}"
+                            <label class="choice"><input name="amenities" th:checked="${answers.has('solarPanel')}"
                                                          type="checkbox" value="solarPanel"> Panneaux solaires</label>
                         </div>
                     </fieldset>
@@ -419,13 +419,13 @@
                             possibles)</span></legend>
                         <div class="choices__grid">
                             <label class="choice"><input name="amenities"
-                                                         th:checked="${answers.amenities.contains('videoSurveillance')}"
+                                                         th:checked="${answers.has('videoSurveillance')}"
                                                          type="checkbox" value="videoSurveillance">
                                 Vidéosurveillance</label>
-                            <label class="choice"><input name="amenities" th:checked="${answers.amenities.contains('securityGuard')}"
+                            <label class="choice"><input name="amenities" th:checked="${answers.has('securityGuard')}"
                                                          type="checkbox" value="securityGuard"> Gardien
                                 24&nbsp;h/24</label>
-                            <label class="choice"><input name="amenities" th:checked="${answers.amenities.contains('securedFenced')}"
+                            <label class="choice"><input name="amenities" th:checked="${answers.has('securedFenced')}"
                                                          type="checkbox" value="securedFenced"> Barrière, clôture
                                 sécurisée</label>
                         </div>
