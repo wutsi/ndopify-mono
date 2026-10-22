@@ -33,6 +33,7 @@ class MandateContractGenerator(
     companion object {
         private val TEMPLATES = mapOf(
             MandateType.SEARCH to "/mandate/contract/search.mjml",
+            MandateType.LISTING to "/mandate/contract/listing.mjml",
         )
 
         private val CATEGORIES = mapOf(
@@ -174,6 +175,7 @@ class MandateContractGenerator(
             "lease_term" to months(mandate.leaseTerm),
             "notice_period" to months(mandate.noticePeriod),
             "moving_period" to MOVING_PERIODS[mandate.movingPeriod],
+            "available_from" to mandate.availableFrom?.let { date -> formatter.date(date) },
 
             // Contact
             "has_contact" to (contactPeriod != null || comments != null),

@@ -26,6 +26,7 @@ import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import dev.jcputney.mjml.MjmlRenderer
 import java.time.Instant
+import java.time.LocalDate
 import java.util.Date
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -184,9 +185,56 @@ class MandateContractGeneratorTest {
     }
 
     @Test
+    fun `listing mandate`() {
+        val listing = mandate.copy(
+            mandateType = MandateType.LISTING,
+            neighborhoodIds = listOf(111L),
+            leaseTerm = null,
+            noticePeriod = null,
+            availableFrom = LocalDate.parse("2026-11-01"),
+            comments = null,
+        )
+
+        val html = generator.generate(listing, contract)
+
+        listOf(
+            "MANDAT EXCLUSIF DE MISE EN LOCATION",
+            "MNDT-2026-000001",
+            "Date : 17/10/2026",
+            "<b>Le Mandant (Propriétaire)</b> : Ray Sponsible",
+            "+237671234567",
+            "représenté par Kim Possible",
+            "rechercher un locataire",
+            "Appartement",
+            "2 chambres",
+            "75 m²",
+            "<b>Quartier</b> : Bastos",
+            "Les équipements du bien",
+            "Groupe électrogène",
+            "<b>Loyer demandé</b> : 150 000 XAF / mois",
+            "<b>Caution</b> : 2 mois",
+            "<b>Avance sur loyer</b> : 3 mois",
+            "<b>Disponible à partir du</b> : 01/11/2026",
+            "Le matin",
+            "6 mois, à compter de la date de sa",
+            "EXCLUSIVITÉ",
+            "1 mois de loyer",
+        ).forEach { text -> assertTrue(html.contains(text), "missing: $text") }
+        listOf(
+            "RECHERCHE IMMOBILIÈRE",
+            "Loyer maximum",
+            "Durée du bail",
+            "Préavis",
+            "Emménagement",
+            "Commentaires",
+            "Frais de visites",
+        ).forEach { text -> assertFalse(html.contains(text), "unexpected: $text") }
+    }
+
+    @Test
     fun `no template for the mandate type`() {
         assertFailsWith<IllegalArgumentException> {
-            generator.generate(mandate.copy(mandateType = MandateType.LISTING), contract)
+            generator.generate(mandate.copy(mandateType = MandateType.UNKNOWN), contract)
         }
     }
 }
