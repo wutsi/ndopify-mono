@@ -229,7 +229,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `AssignmentEventListener` on `AssignmentClosedEvent` (decline, expiry), and by `MandateJobs`: `expire` (PENDING
   offers past `expiresAt` → EXPIRED, re-dispatched) and `dispatch` (mandates waiting without a PENDING offer: came at
   night, had no candidate, or their re-dispatch failed). Each offer publishes `AssignmentCreatedEvent`:
-  `MandateOfferMailet` e-mails the agent the mandate and its deadline (`mail/mandate/offer.mjml`). The dispatch always
+  `MandateOfferMailet` e-mails the agent the mandate and its deadline (`mail/mandate/offer.mjml`). The mandate e-mails
+  (offer, assigned, approved) have a template per mandate type: a LISTING one uses `<name>_listing.mjml` (the owner's
+  property, its rent or price), anything else `<name>.mjml`; type-specific wording goes in the template, not the mailet. The dispatch always
   runs: there's no switch to turn it off. Two ops endpoints (`@OpsEndpoint`, see `platform/endpoint`): `POST
   /v1/mandates/{id}/dispatch` (offers a mandate now, same rules) and `POST /v1/assignments/{id}/expire` (expires an
   offer now). Config: `ndopify.mandate.assignment.*`. `MandateDispatcherTest` covers every case of the algorithm —

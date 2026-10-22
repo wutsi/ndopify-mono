@@ -3,6 +3,7 @@ package com.wutsi.ndopify.refdata.server.service
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Date
@@ -25,6 +26,10 @@ class TenantFormatter(private val tenant: TenantEntity) {
     private val zone = ZoneId.of(tenant.timeZone)
 
     fun date(date: Date): String = format(date, tenant.dateFormat.ifBlank { DEFAULT_DATE_FORMAT })
+
+    // A calendar date (ex: a listing's availability): no time zone to apply
+    fun date(date: LocalDate): String =
+        date.format(DateTimeFormatter.ofPattern(tenant.dateFormat.ifBlank { DEFAULT_DATE_FORMAT }, locale))
 
     fun time(date: Date): String = format(date, tenant.timeFormat.ifBlank { DEFAULT_TIME_FORMAT })
 

@@ -33,7 +33,7 @@ class AcceptAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest()
         assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received")
         val messages = smtp.receivedMessages
         assertEquals(1, messages.size)
-        assertEquals("Ndopify: Un agent a été assigné à votre mandat", messages[0].subject)
+        assertEquals("Ndopify: Un agent a été assigné à votre mandat à Yaounde", messages[0].subject)
         assertEquals("Ray Sponsible <ray.sponsible@gmail.com>", messages[0].allRecipients.single().toString())
 
         val body = messages[0].content.toString()

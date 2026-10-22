@@ -1,0 +1,85 @@
+<mjml>
+    <mj-head>
+        <mj-style inline="inline">
+            {{__css__}}
+        </mj-style>
+    </mj-head>
+    <mj-body css-class="body">
+        <mj-section css-class="main-content">
+            <mj-column>
+                <!-- Logo -->
+                <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
+
+                <!-- Divider with class for CSS injection -->
+                <mj-divider css-class="divider"/>
+
+                <!-- Body Text -->
+                <mj-text>
+                    Bonjour <strong>{{recipient_name}}</strong>,
+                </mj-text>
+                <mj-text>
+                    Un propriétaire souhaite mettre son bien en location à <strong>{{city}}</strong>, et nous vous
+                    proposons son mandat en exclusivité.
+                </mj-text>
+
+                <!-- In an mj-text: MJML drops raw HTML outside of it -->
+                <mj-text>
+                    <ul>
+                        <li>
+                            <b>Bien</b>: {{listing_type}}{{#property_type}} - {{property_type}}{{/property_type}}
+                        </li>
+                        {{#rooms}}
+                        <li>
+                            <b>Pièces</b>: {{rooms}}
+                        </li>
+                        {{/rooms}}
+                        <li>
+                            <b>Ville</b>: {{city}}
+                        </li>
+                        {{#neighbourhoods}}
+                        <li>
+                            <b>Quartier(s)</b>: {{neighbourhoods}}
+                        </li>
+                        {{/neighbourhoods}}
+                        {{#area}}
+                        <li>
+                            <b>Surface</b>: {{area}} m²
+                        </li>
+                        {{/area}}
+                        <li>
+                            <b>{{price_label}}</b>: {{price}}
+                        </li>
+                        {{#available_from}}
+                        <li>
+                            <b>Disponible à partir du</b>: {{available_from}}
+                        </li>
+                        {{/available_from}}
+                    </ul>
+                </mj-text>
+
+                <mj-text font-weight="bold">
+                    Vous avez jusqu'au <span class="text-primary">{{deadline_date}} à {{deadline_time}}</span> pour accepter ce mandat. Passé ce
+                    délai, il sera proposé à un autre
+                    agent.
+                </mj-text>
+
+                {{#offer_url}}
+                <!-- Button with class for CSS injection -->
+                <mj-spacer/>
+                <mj-button href="{{offer_url}}" css-class="btn-primary" align="center">
+                    Voir le mandat
+                </mj-button>
+                <mj-spacer/>
+                {{/offer_url}}
+
+                <!-- Sign-off -->
+                <mj-spacer/>
+                <mj-text>
+                    Cordialement,
+                    <br/>
+                    L'équipe {{tenant_name}}
+                </mj-text>
+            </mj-column>
+        </mj-section>
+    </mj-body>
+</mjml>

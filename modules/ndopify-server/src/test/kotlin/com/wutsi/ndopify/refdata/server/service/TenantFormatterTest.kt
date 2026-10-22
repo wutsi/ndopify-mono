@@ -2,6 +2,7 @@ package com.wutsi.ndopify.refdata.server.service
 
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import java.time.Instant
+import java.time.LocalDate
 import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -24,6 +25,11 @@ class TenantFormatterTest {
     @Test
     fun `date in the tenant's format, locale and time zone`() {
         assertEquals("17 oct. 2026", TenantFormatter(tenant).date(date))
+    }
+
+    @Test
+    fun `calendar date in the tenant's format and locale`() {
+        assertEquals("16 oct. 2026", TenantFormatter(tenant).date(LocalDate.parse("2026-10-16")))
     }
 
     @Test

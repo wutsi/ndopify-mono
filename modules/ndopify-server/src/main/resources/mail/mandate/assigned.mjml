@@ -20,8 +20,8 @@
                         Bonjour <strong>{{recipient_name}}</strong>,
                     </mj-text>
                     <mj-text>
-                        Nous vous remercions d'avoir fait confiance à Ndopify pour votre recherche immobilière. Nous
-                        avons le plaisir de vous informer qu'un agent a été officiellement assigné à votre mandat.
+                        Nous vous remercions d'avoir fait confiance à {{tenant_name}} pour votre recherche immobilière.
+                        Nous avons le plaisir de vous informer qu'un agent a été officiellement assigné à votre mandat.
                     </mj-text>
                     <mj-text>
                         Voici les informations de votre agent dédié :

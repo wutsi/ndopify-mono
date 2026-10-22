@@ -24,11 +24,8 @@ class MandateApprovedMailet(
 ) {
     companion object {
         const val SUBJECT = "{{tenant_name}}: Votre mandat à {{city}} est approuvé"
-
-        private const val NEXT_STEP_SEARCH =
-            "Vous pouvez maintenant démarrer la recherche et organiser les visites avec votre client."
-        private const val NEXT_STEP_LISTING =
-            "Vous pouvez maintenant commercialiser le bien et organiser les visites avec les candidats."
+        const val TEMPLATE = "/mail/mandate/approved.mjml"
+        const val TEMPLATE_LISTING = "/mail/mandate/approved_listing.mjml"
     }
 
     fun send(mandate: MandateEntity, contract: ContractEntity, customer: CustomerEntity, agent: AgentEntity) {
@@ -43,24 +40,28 @@ class MandateApprovedMailet(
                 recipient = Receipient(email = party.email, displayName = fullName),
                 subject = SUBJECT.replace("{{tenant_name}}", tenant.name).replace("{{city}}", city),
                 body = mailBodyResolver.resolve(
-                    path = "/mail/mandate/approved.mjml",
+                    path = if (listing) TEMPLATE_LISTING else TEMPLATE,
                     context = mapOf(
                         "tenant_logo_url" to tenant.logoUrl,
                         "tenant_name" to tenant.name,
                         "recipient_name" to fullName,
                         "customer_name" to customer.party.fullName(),
                         "contract_number" to contract.number,
-                        "criteria_label" to if (listing) "Bien" else "Recherche",
                         "listing_type" to MandateMailLabels.listingType(mandate),
                         "property_type" to MandateMailLabels.propertyType(mandate),
                         "city" to city,
                         "neighbourhoods" to MandateMailLabels.neighbourhoods(mandate, locationService),
-                        "budget" to MandateMailLabels.budget(mandate, formatter),
                         "valid_from" to contract.validFrom?.let { date -> formatter.date(date) },
                         "valid_until" to contract.validUntil?.let { date -> formatter.date(date) },
-                        "next_step" to if (listing) NEXT_STEP_LISTING else NEXT_STEP_SEARCH,
                         "mandate_url" to tenant.partnerCentralUrl?.let { url -> "$url/mandates/${mandate.id}" },
-                    )
+                    ) + if (listing) {
+                        mapOf(
+                            "price_label" to MandateMailLabels.priceLabel(mandate),
+                            "price" to MandateMailLabels.budget(mandate, formatter),
+                        )
+                    } else {
+                        mapOf("budget" to MandateMailLabels.budget(mandate, formatter))
+                    }
                 )
             )
         )

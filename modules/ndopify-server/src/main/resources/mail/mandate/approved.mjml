@@ -27,7 +27,7 @@
                 <mj-text>
                     <ul>
                         <li>
-                            <b>{{criteria_label}}</b>: {{listing_type}}{{#property_type}} - {{property_type}}{{/property_type}}
+                            <b>Recherche</b>: {{listing_type}}{{#property_type}} - {{property_type}}{{/property_type}}
                         </li>
                         <li>
                             <b>Ville</b>: {{city}}
@@ -52,8 +52,8 @@
                     Prochaine étape :
                 </mj-text>
                 <mj-text>
-                    {{next_step}} Une fois l'affaire conclue, clôturez le mandat dans votre Espace agent en indiquant
-                    le prix final.
+                    Vous pouvez maintenant démarrer la recherche et organiser les visites avec votre client.
+                    Une fois l'affaire conclue, clôturez le mandat dans votre Espace agent en indiquant le prix final.
                 </mj-text>
 
                 {{#mandate_url}}

@@ -1,0 +1,78 @@
+<mjml>
+    <mj-head>
+        <mj-style inline="inline">
+            {{__css__}}
+        </mj-style>
+    </mj-head>
+    <mj-body css-class="body">
+        <mj-section css-class="main-content">
+            <mj-column>
+                <!-- Logo -->
+                <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
+
+                <!-- Divider with class for CSS injection -->
+                <mj-divider css-class="divider"/>
+
+                <!-- Body Text -->
+                <mj-text>
+                    Bonjour <strong>{{recipient_name}}</strong>,
+                </mj-text>
+                <mj-text>
+                    Bonne nouvelle : <strong>{{customer_name}}</strong> a signé le mandat de mise en location
+                    n° <strong>{{contract_number}}</strong>. Votre mandat est désormais
+                    <span class="text-primary"><strong>approuvé</strong></span>.
+                </mj-text>
+
+                <!-- In an mj-text: MJML drops raw HTML outside of it -->
+                <mj-text>
+                    <ul>
+                        <li>
+                            <b>Bien</b>: {{listing_type}}{{#property_type}} - {{property_type}}{{/property_type}}
+                        </li>
+                        <li>
+                            <b>Ville</b>: {{city}}
+                        </li>
+                        {{#neighbourhoods}}
+                        <li>
+                            <b>Quartier(s)</b>: {{neighbourhoods}}
+                        </li>
+                        {{/neighbourhoods}}
+                        <li>
+                            <b>{{price_label}}</b>: {{price}}
+                        </li>
+                        {{#valid_until}}
+                        <li>
+                            <b>Contrat valable</b>: du {{valid_from}} au {{valid_until}}
+                        </li>
+                        {{/valid_until}}
+                    </ul>
+                </mj-text>
+
+                <mj-text font-weight="bold" font-size="18px">
+                    Prochaine étape :
+                </mj-text>
+                <mj-text>
+                    Vous pouvez maintenant commercialiser le bien et organiser les visites avec les candidats.
+                    Une fois l'affaire conclue, clôturez le mandat dans votre Espace agent en indiquant le prix final.
+                </mj-text>
+
+                {{#mandate_url}}
+                <!-- Button with class for CSS injection -->
+                <mj-spacer/>
+                <mj-button href="{{mandate_url}}" css-class="btn-primary" align="center">
+                    Voir le mandat
+                </mj-button>
+                <mj-spacer/>
+                {{/mandate_url}}
+
+                <!-- Sign-off -->
+                <mj-spacer/>
+                <mj-text>
+                    Cordialement,
+                    <br/>
+                    L'équipe {{tenant_name}}
+                </mj-text>
+            </mj-column>
+        </mj-section>
+    </mj-body>
+</mjml>

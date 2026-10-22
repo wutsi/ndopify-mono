@@ -10,6 +10,7 @@ import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.domain.AssignmentEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
@@ -21,6 +22,7 @@ import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Date
@@ -75,10 +77,13 @@ class MandateOfferMailetTest {
         doReturn("<html>offer</html>").whenever(mailBodyResolver).resolve(any(), any())
     }
 
-    private fun context(assignment: AssignmentEntity = this.assignment): Map<String, Any?> {
+    private fun context(
+        assignment: AssignmentEntity = this.assignment,
+        template: String = "/mail/mandate/offer.mjml",
+    ): Map<String, Any?> {
         mailet.send(assignment, agent)
         val context = argumentCaptor<Map<String, Any?>>()
-        verify(mailBodyResolver).resolve(eq("/mail/mandate/offer.mjml"), context.capture())
+        verify(mailBodyResolver).resolve(eq(template), context.capture())
         return context.firstValue
     }
 
@@ -106,8 +111,17 @@ class MandateOfferMailetTest {
         verify(mailService).send(email.capture())
         assertEquals("kim.possible@gmail.com", email.firstValue.recipient.email)
         assertEquals("Kim Possible", email.firstValue.recipient.displayName)
-        assertEquals("Ndopify: Un nouveau mandat vous est proposé à Yaounde", email.firstValue.subject)
+        assertEquals("Ndopify: Un nouveau mandat vous est proposé à Bastos, Mvan (Yaounde)", email.firstValue.subject)
         assertEquals("<html>offer</html>", email.firstValue.body)
+    }
+
+    @Test
+    fun `no neighbourhoods - the city in the subject`() {
+        mailet.send(assignment.copy(mandate = mandate.copy(neighborhoodIds = emptyList())), agent)
+
+        val email = argumentCaptor<Email>()
+        verify(mailService).send(email.capture())
+        assertEquals("Ndopify: Un nouveau mandat vous est proposé à Yaounde", email.firstValue.subject)
     }
 
     @Test
@@ -146,6 +160,64 @@ class MandateOfferMailetTest {
 
         assertEquals("Achat", context["listing_type"])
         assertEquals("1 500 000 XAF", context["budget"])
+    }
+
+    @Test
+    fun `a listing - its template, with its rent, area and availability`() {
+        val listing = mandate.copy(
+            mandateType = MandateType.LISTING,
+            price = 150000,
+            area = 85,
+            availableFrom = LocalDate.parse("2026-11-01"),
+        )
+
+        val context = context(assignment.copy(mandate = listing), "/mail/mandate/offer_listing.mjml")
+
+        assertEquals(
+            mapOf(
+                "tenant_logo_url" to "https://cdn.ndopify.com/logo.png",
+                "tenant_name" to "Ndopify",
+                "recipient_name" to "Kim Possible",
+                "listing_type" to "Location",
+                "property_type" to "Appartement",
+                "rooms" to "2",
+                "city" to "Yaounde",
+                "neighbourhoods" to "Bastos, Mvan",
+                "deadline_date" to "15/10/2026",
+                "deadline_time" to "13:00",
+                "offer_url" to "https://partner.ndopify.com",
+                "price_label" to "Loyer",
+                "price" to "150 000 XAF / mois",
+                "area" to 85,
+                "available_from" to "01/11/2026",
+            ),
+            context,
+        )
+    }
+
+    @Test
+    fun `a listing for sale - sold, at its price`() {
+        val listing = mandate.copy(
+            mandateType = MandateType.LISTING,
+            listingType = ListingType.SALE,
+            pricePeriodicityType = PeriodicityType.NONE,
+        )
+
+        val context = context(assignment.copy(mandate = listing), "/mail/mandate/offer_listing.mjml")
+
+        assertEquals("Vente", context["listing_type"])
+        assertEquals("Prix", context["price_label"])
+        assertEquals("1 500 000 XAF", context["price"])
+    }
+
+    @Test
+    fun `a listing without area nor availability`() {
+        val listing = mandate.copy(mandateType = MandateType.LISTING)
+
+        val context = context(assignment.copy(mandate = listing), "/mail/mandate/offer_listing.mjml")
+
+        assertEquals(null, context["area"])
+        assertEquals(null, context["available_from"])
     }
 
     @Test

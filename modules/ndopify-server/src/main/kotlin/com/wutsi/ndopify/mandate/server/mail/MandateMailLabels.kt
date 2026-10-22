@@ -2,6 +2,7 @@ package com.wutsi.ndopify.mandate.server.mail
 
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.server.service.LocationService
@@ -31,8 +32,17 @@ internal object MandateMailLabels {
         PeriodicityType.YEARLY to "an",
     )
 
+    // A customer searching buys, an owner listing sells
     fun listingType(mandate: MandateEntity): String =
-        if (mandate.listingType == ListingType.SALE) "Achat" else "Location"
+        when {
+            mandate.listingType != ListingType.SALE -> "Location"
+            mandate.mandateType == MandateType.LISTING -> "Vente"
+            else -> "Achat"
+        }
+
+    // A listing's price: its rent, or its sale price
+    fun priceLabel(mandate: MandateEntity): String =
+        if (mandate.listingType == ListingType.SALE) "Prix" else "Loyer"
 
     fun propertyType(mandate: MandateEntity): String? =
         mandate.propertyType?.let { PROPERTY_TYPES[it] }
@@ -42,6 +52,12 @@ internal object MandateMailLabels {
             .mapNotNull { id -> locationService.findByIdOrNull(id)?.name }
             .joinToString(", ")
             .ifEmpty { null }
+
+    // Where the mandate is, for a subject. Ex: "Bastos, Mvan (Yaounde)", or "Yaounde" without neighbourhoods
+    fun place(mandate: MandateEntity, city: String, locationService: LocationService): String {
+        val neighbourhoods = neighbourhoods(mandate, locationService) ?: return city
+        return if (city.isEmpty()) neighbourhoods else "$neighbourhoods ($city)"
+    }
 
     // Ex: 150 000 FCFA / mois
     fun budget(mandate: MandateEntity, formatter: TenantFormatter): String {

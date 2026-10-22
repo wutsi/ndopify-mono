@@ -88,10 +88,14 @@ class MandateApprovedMailetTest {
         doReturn("<html>approved</html>").whenever(mailBodyResolver).resolve(any(), any())
     }
 
-    private fun context(mandate: MandateEntity = this.mandate, contract: ContractEntity = this.contract): Map<String, Any?> {
+    private fun context(
+        mandate: MandateEntity = this.mandate,
+        contract: ContractEntity = this.contract,
+        template: String = "/mail/mandate/approved.mjml",
+    ): Map<String, Any?> {
         mailet.send(mandate, contract, customer, agent)
         val context = argumentCaptor<Map<String, Any?>>()
-        verify(mailBodyResolver).resolve(eq("/mail/mandate/approved.mjml"), context.capture())
+        verify(mailBodyResolver).resolve(eq(template), context.capture())
         return context.firstValue
     }
 
@@ -104,7 +108,6 @@ class MandateApprovedMailetTest {
                 "recipient_name" to "Kim Possible",
                 "customer_name" to "Ray Sponsible",
                 "contract_number" to "MNDT-2026-000001",
-                "criteria_label" to "Recherche",
                 "listing_type" to "Location",
                 "property_type" to "Appartement",
                 "city" to "Yaounde",
@@ -112,7 +115,6 @@ class MandateApprovedMailetTest {
                 "budget" to "1 500 000 XAF / mois",
                 "valid_from" to "15/10/2026",
                 "valid_until" to "15/04/2027",
-                "next_step" to "Vous pouvez maintenant démarrer la recherche et organiser les visites avec votre client.",
                 "mandate_url" to "https://partner.ndopify.com/mandates/1",
             ),
             context(),
@@ -127,14 +129,15 @@ class MandateApprovedMailetTest {
     }
 
     @Test
-    fun `a listing mandate`() {
-        val context = context(mandate.copy(mandateType = MandateType.LISTING))
+    fun `a listing mandate - its template, with its rent`() {
+        val listing = mandate.copy(mandateType = MandateType.LISTING, price = 150000)
 
-        assertEquals("Bien", context["criteria_label"])
-        assertEquals(
-            "Vous pouvez maintenant commercialiser le bien et organiser les visites avec les candidats.",
-            context["next_step"],
-        )
+        val context = context(listing, template = "/mail/mandate/approved_listing.mjml")
+
+        assertEquals("Location", context["listing_type"])
+        assertEquals("Loyer", context["price_label"])
+        assertEquals("150 000 XAF / mois", context["price"])
+        assertNull(context["budget"])
     }
 
     @Test
