@@ -352,6 +352,11 @@ class OfferPropertyTemplateTest {
         assertTrue(value(page, "property").startsWith("Appartement"))
         assertEquals("Route bitumée, Compteur d'eau", value(page, "amenities"))
         assertTrue(value(page, "contact").contains("ray@gmail.com"))
+        // Only the WhatsApp line is formatted by offer-property.js.
+        assertEquals(
+            listOf("+237670000001"),
+            page.select("[data-review-value=contact] [data-phone]").map { it.text() },
+        )
         assertEquals(
             listOf("property", "address", "terms", "features", "amenities", "contact")
                 .map { "/offer-property?step=$it&returnTo=review" },

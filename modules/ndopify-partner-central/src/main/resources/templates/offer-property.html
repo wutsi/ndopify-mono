@@ -613,7 +613,9 @@
                             <dt class="review__term">Vos coordonnées</dt>
                             <dd class="review__value">
                                 <p class="review__multiline" data-review-value="contact"><th:block
-                                        th:each="line, iter : ${contactLines}"><span th:text="${line}">Ray
+                                        th:each="line, iter : ${contactLines}"><span
+                                        th:attr="data-phone=${line == answers.whatsappNumber ? 'true' : null}"
+                                        th:text="${line}">Ray
                                     Sponsible</span><br th:unless="${iter.last}"></th:block></p>
                             </dd>
                             <dd class="review__value">
