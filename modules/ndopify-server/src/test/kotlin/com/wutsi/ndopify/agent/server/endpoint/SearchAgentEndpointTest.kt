@@ -141,4 +141,12 @@ class SearchAgentEndpointTest : AbstractAgentEndpointTest() {
         val agentIds = response.body!!.agents.map { it.id }
         assertEquals(listOf(4L), agentIds)
     }
+
+    @Test
+    fun `query count does not grow with the number of agents`() {
+        val one = countQueries { rest.getForEntity("/v1/agents?id=1", SearchAgentResponse::class.java) }
+        val all = countQueries { rest.getForEntity("/v1/agents", SearchAgentResponse::class.java) }
+
+        assertEquals(one, all)
+    }
 }

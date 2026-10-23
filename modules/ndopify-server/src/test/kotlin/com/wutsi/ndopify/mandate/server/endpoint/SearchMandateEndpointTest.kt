@@ -100,6 +100,14 @@ class SearchMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(listOf(4L), search("").map { it.id })
     }
 
+    @Test
+    fun `query count does not grow with the number of mandates`() {
+        val one = countQueries { search("id=1") }
+        val all = countQueries { search("") }
+
+        assertEquals(one, all)
+    }
+
     private fun search(query: String) =
         rest.getForEntity("/v1/mandates?$query", SearchMandateResponse::class.java).body!!.mandates
 }

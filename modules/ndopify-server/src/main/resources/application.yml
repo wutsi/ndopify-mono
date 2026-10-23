@@ -49,6 +49,9 @@ spring:
         properties:
             hibernate:
                 dialect: org.hibernate.dialect.MySQLDialect
+                # Loads lazy collections / associations of up to 50 entities in one query (WHERE id IN ...),
+                # rather than one query per entity (N+1). See BaseEndpointIntegrationTest.countQueries
+                default_batch_fetch_size: 50
 
     jackson:
         default-property-inclusion: non_null

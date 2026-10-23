@@ -3,7 +3,9 @@ package com.wutsi.ndopify
 import com.icegreen.greenmail.util.GreenMail
 import com.icegreen.greenmail.util.ServerSetupTest
 import com.wutsi.ndopify.common.dto.HttpHeader
+import jakarta.persistence.EntityManagerFactory
 import org.apache.commons.io.IOUtils
+import org.hibernate.SessionFactory
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.beans.factory.annotation.Value
@@ -48,6 +50,9 @@ abstract class BaseEndpointIntegrationTest : ClientHttpRequestInterceptor {
     @Autowired
     private lateinit var taskExecutor: ThreadPoolTaskExecutor
 
+    @Autowired
+    private lateinit var entityManagerFactory: EntityManagerFactory
+
     private val folder = File(File(System.getProperty("user.home")), "__ndopify")
 
     override fun intercept(
@@ -87,6 +92,17 @@ abstract class BaseEndpointIntegrationTest : ClientHttpRequestInterceptor {
         while ((pool.activeCount > 0 || pool.queue.isNotEmpty()) && System.currentTimeMillis() < deadline) {
             Thread.sleep(10)
         }
+    }
+
+    /**
+     * The number of SQL statements [block] runs (Hibernate statistics, on in the `qa` profile), to catch N+1 queries.
+     */
+    protected fun countQueries(block: () -> Unit): Long {
+        val statistics = entityManagerFactory.unwrap(SessionFactory::class.java).statistics
+        check(statistics.isStatisticsEnabled) { "hibernate.generate_statistics is off" }
+        statistics.clear()
+        block()
+        return statistics.prepareStatementCount
     }
 
     protected fun download(
