@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.config.platform
 
+import com.wutsi.ndopify.platform.ai.ChatClientHealthEndpointGroupsPostProcessor
 import com.wutsi.ndopify.platform.ai.ChatClientHealthIndicator
 import org.springframework.ai.chat.client.ChatClient
 import org.springframework.ai.chat.model.ChatModel
@@ -13,4 +14,8 @@ class AIConfiguration(private val chatClientBuilder: ChatClient.Builder, val cha
 
     @Bean
     fun chatClientHealthIndicator(): ChatClientHealthIndicator = ChatClientHealthIndicator(chatClient(), chatModel)
+
+    @Bean
+    fun chatClientHealthEndpointGroupsPostProcessor(): ChatClientHealthEndpointGroupsPostProcessor =
+        ChatClientHealthEndpointGroupsPostProcessor()
 }

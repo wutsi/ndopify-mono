@@ -184,6 +184,9 @@ management:
     endpoint:
         health:
             show-details: always
+            group:
+                llm:                        # The LLM is out of the default group, see ChatClientHealthEndpointGroupsPostProcessor
+                    include: "chatClient"
         info:
             git:
                 mode: full
