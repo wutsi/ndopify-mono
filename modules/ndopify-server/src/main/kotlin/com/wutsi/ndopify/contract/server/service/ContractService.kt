@@ -358,6 +358,15 @@ class ContractService(
         }
     }
 
+    /** The SIGNED contracts without signed PDF, signed between [from] (included) and [to], oldest signature first. */
+    fun findIdsWithoutSignedContent(from: Date, to: Date): List<String> =
+        dao.findIdsWithoutSignedContent(
+            signed = ContractStatus.SIGNED,
+            from = from,
+            to = to,
+            page = PageRequest.of(0, BATCH_SIZE),
+        )
+
     /**
      * Expires a contract, locked like a signature so that it can't expire while its last party signs it. Checked
      * again once locked: false if it was signed (or its signature requested again) in the meantime. Publishes a

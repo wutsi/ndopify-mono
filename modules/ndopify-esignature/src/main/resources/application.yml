@@ -19,6 +19,9 @@ spring:
 
 server:
     port: 8083
+    # Behind a proxy (Heroku's router), Tomcat's RemoteIpValve sets the client's IP, scheme and host from the
+    # X-Forwarded-* headers, trusted only from internal proxies (server.tomcat.remoteip.internal-proxies).
+    forward-headers-strategy: native
     error:
         whitelabel:
             enabled: false

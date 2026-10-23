@@ -92,10 +92,24 @@ spring:
             max-request-size: 10240KB
 
     task:
+        execution:
+            thread-name-prefix: "ndopify-async-"
+            pool:
+                core-size: 4
+                max-size: 16
+                queue-capacity: 100
+                keep-alive: 60s
+                allow-core-thread-timeout: true
+            shutdown:
+                await-termination: true
+                await-termination-period: 30s
         scheduling:
             thread-name-prefix: "ndopify-job-"
             pool:
                 size: 4
+            shutdown:
+                await-termination: true
+                await-termination-period: 30s
 
 server:
     port: 8080
@@ -205,6 +219,10 @@ ndopify:
             ttl-days: 7                    # The parties have 7 days to sign, from the last request for signature
         expire:
             cron: "0 */15 * * * ?"         # Every 15 minutes: contracts not signed in time, or past their end date
+        signed-content:
+            cron: "0 0 * * * ?"            # Every hour: signed contracts whose PDF wasn't generated on their signature
+            delay-minutes: 10              # Not before 10 minutes after the signature, the time for the listener to do it
+            window-days: 7                 # Given up 7 days after the signature (logged on each run until then)
 
     mandate:
         assignment:

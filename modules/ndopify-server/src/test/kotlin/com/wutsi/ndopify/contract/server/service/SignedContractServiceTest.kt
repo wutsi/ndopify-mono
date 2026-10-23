@@ -23,6 +23,7 @@ import com.wutsi.ndopify.refdata.server.service.TenantService
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.URL
+import java.time.Clock
 import java.util.Date
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
@@ -62,11 +63,16 @@ class SignedContractServiceTest {
     private val contractService = mock<ContractService>()
     private val tenantService = mock<TenantService>()
     private val renderer = mock<SignedContractRenderer>()
+    private val clock = mock<Clock>()
+    private val now = 1792330320000L
     private val service = SignedContractService(
         contractService = contractService,
         tenantService = tenantService,
         storageProvider = StorageServiceProvider(StorageType.LOCAL, storage, storage),
         renderer = renderer,
+        clock = clock,
+        delayMinutes = 10,
+        windowDays = 7,
     )
 
     private val tenant = TenantEntity(
@@ -272,6 +278,43 @@ class SignedContractServiceTest {
         doReturn(listOf(customer.copy(signatureSalt = null))).whenever(contractService).findParties(any())
 
         assertNothingGenerated(contract)
+    }
+
+    @Test
+    fun `generateMissing - the contracts signed in the window`() {
+        doReturn(now).whenever(clock).millis()
+        doReturn(listOf("c1")).whenever(contractService).findIdsWithoutSignedContent(any(), any())
+
+        assertEquals(1, service.generateMissing())
+
+        // Signed 7 days to 10 minutes ago
+        verify(contractService).findIdsWithoutSignedContent(
+            Date(now - 7 * 24 * 60 * 60 * 1000L),
+            Date(now - 10 * 60 * 1000L),
+        )
+        assertEquals(1, pdfPaths().size)
+    }
+
+    @Test
+    fun `generateMissing - a failing contract doesn't stop the others`() {
+        doReturn(now).whenever(clock).millis()
+        doReturn(listOf("c0", "c1", "c2")).whenever(contractService).findIdsWithoutSignedContent(any(), any())
+        doAnswer { throw IllegalStateException("boom") }.whenever(contractService).findById("c0")
+        doReturn(contract.copy(id = "c2", status = ContractStatus.CANCELLED)).whenever(contractService).findById("c2")
+
+        assertEquals(1, service.generateMissing()) // c1 only: c0 failed, c2 was skipped
+
+        verify(contractService).setSignedContent(eq("c1"), any(), any())
+    }
+
+    @Test
+    fun `generateMissing - nothing to generate`() {
+        doReturn(now).whenever(clock).millis()
+        doReturn(emptyList<String>()).whenever(contractService).findIdsWithoutSignedContent(any(), any())
+
+        assertEquals(0, service.generateMissing())
+
+        verify(renderer, never()).render(any(), any())
     }
 
     private fun assertNothingGenerated(contract: ContractEntity) {

@@ -28,4 +28,14 @@ interface ContractRepository : CrudRepository<ContractEntity, String>, JpaSpecif
         """
     )
     fun findIdsToExpire(pending: ContractStatus, signed: ContractStatus, now: Date, page: Pageable): List<String>
+
+    // The signed contracts still without signed PDF, signed between from and to
+    @Query(
+        """
+        SELECT c.id FROM ContractEntity c
+        WHERE c.status = :signed AND c.signedContentUrl IS NULL AND c.signedAt >= :from AND c.signedAt < :to
+        ORDER BY c.signedAt
+        """
+    )
+    fun findIdsWithoutSignedContent(signed: ContractStatus, from: Date, to: Date, page: Pageable): List<String>
 }

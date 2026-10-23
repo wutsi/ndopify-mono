@@ -5,6 +5,7 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.contract.server.service.ContractService
+import com.wutsi.ndopify.contract.server.service.SignedContractService
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
@@ -16,8 +17,9 @@ import kotlin.test.assertNull
 
 class ContractJobsTest {
     private val service = mock<ContractService>()
+    private val signedContractService = mock<SignedContractService>()
     private val tenantService = mock<TenantService>()
-    private val jobs = ContractJobs(service, tenantService)
+    private val jobs = ContractJobs(service, signedContractService, tenantService)
 
     // The tenant set in TenantContext on each call
     private val tenants = mutableListOf<Long?>()
@@ -54,6 +56,33 @@ class ContractJobsTest {
         }.whenever(service).expireDue()
 
         jobs.expire()
+
+        assertEquals(listOf<Long?>(1L, 2L), tenants)
+        assertNull(TenantContext.get())
+    }
+
+    @Test
+    fun `generateSignedContent - each active tenant, with its tenant set`() {
+        doAnswer {
+            tenants.add(TenantContext.get())
+            1
+        }.whenever(signedContractService).generateMissing()
+
+        jobs.generateSignedContent()
+
+        assertEquals(listOf<Long?>(1L, 2L), tenants)
+        assertNull(TenantContext.get())
+    }
+
+    @Test
+    fun `generateSignedContent - a failing tenant doesn't stop the others`() {
+        doAnswer {
+            tenants.add(TenantContext.get())
+            if (TenantContext.get() == 1L) throw IllegalStateException("boom")
+            0
+        }.whenever(signedContractService).generateMissing()
+
+        jobs.generateSignedContent()
 
         assertEquals(listOf<Long?>(1L, 2L), tenants)
         assertNull(TenantContext.get())

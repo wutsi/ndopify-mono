@@ -376,8 +376,8 @@ class SignControllerTest {
                 .param("consent", "yes")
                 .param("contentUrl", CONTENT_URL)
                 .param("partyId", "cp-other")
-                .header("X-Forwarded-For", "41.202.1.2, 10.0.0.1")
-                .header(HttpHeaders.USER_AGENT, "Mozilla/5.0"),
+                .header(HttpHeaders.USER_AGENT, "Mozilla/5.0")
+                .with { it.apply { remoteAddr = "41.202.1.2" } },
         ).andReturn()
 
         val request = argumentCaptor<SignContractRequest>()
@@ -387,11 +387,15 @@ class SignControllerTest {
     }
 
     @Test
-    fun `signs with remote address without proxy`() {
+    fun `ignores a client-supplied X-Forwarded-For`() {
         signIn()
         givenContract(CONTRACT)
 
-        mvc.perform(signPost().with { it.apply { remoteAddr = "41.202.1.3" } }).andReturn()
+        mvc.perform(
+            signPost()
+                .header("X-Forwarded-For", "1.2.3.4")
+                .with { it.apply { remoteAddr = "41.202.1.3" } },
+        ).andReturn()
 
         val request = argumentCaptor<SignContractRequest>()
         verify(contractClient).sign(eq(CONTRACT.id), request.capture())

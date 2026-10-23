@@ -48,7 +48,8 @@ class ContractEventListener(
     /**
      * Generates the signed PDF of the contract, once its last signature is committed, so that the signer doesn't wait
      * for it. Same thread handling as [onSignatureRequested]. A failure is only logged — the contract stays SIGNED,
-     * without signed PDF, until `POST /v1/contracts/{id}/signed-content` generates it.
+     * without signed PDF, until `ContractJobs.generateSignedContent` (or `POST /v1/contracts/{id}/signed-content`)
+     * generates it.
      */
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)

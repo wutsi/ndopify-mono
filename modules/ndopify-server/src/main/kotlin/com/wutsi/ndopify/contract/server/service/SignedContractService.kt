@@ -6,9 +6,12 @@ import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.server.service.TenantFormatter
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.slf4j.LoggerFactory
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
+import java.time.Clock
+import java.util.Date
 import java.util.UUID
 
 /**
@@ -29,9 +32,35 @@ class SignedContractService(
     private val tenantService: TenantService,
     private val storageProvider: StorageServiceProvider,
     private val renderer: SignedContractRenderer,
+    private val clock: Clock,
+    @param:Value("\${ndopify.contract.signed-content.delay-minutes}") private val delayMinutes: Long,
+    @param:Value("\${ndopify.contract.signed-content.window-days}") private val windowDays: Long,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(SignedContractService::class.java)
+    }
+
+    /**
+     * Generates the signed PDF of the contracts that still have none: the PDF of a last signature is generated once, by
+     * `ContractEventListener.onSigned`, and is lost when it fails or the server stops before it runs. Only the contracts
+     * signed more than [delayMinutes] ago, so that the listener's own run isn't raced (harmless: first one wins), and less
+     * than [windowDays] ago, so that a contract that can't be generated (no content, hash mismatch...) isn't retried
+     * forever. Each contract on its own, so that one failing doesn't stop the others. Returns how many were generated.
+     */
+    fun generateMissing(): Int {
+        val now = clock.millis()
+        val ids = contractService.findIdsWithoutSignedContent(
+            from = Date(now - windowDays * 24 * 60 * 60 * 1000),
+            to = Date(now - delayMinutes * 60 * 1000),
+        )
+        return ids.count { id ->
+            try {
+                generate(id) != null
+            } catch (ex: Exception) {
+                LOGGER.warn("Contract#$id - Unable to generate the signed content", ex)
+                false
+            }
+        }
     }
 
     /**

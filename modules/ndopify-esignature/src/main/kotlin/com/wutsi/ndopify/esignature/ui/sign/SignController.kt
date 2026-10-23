@@ -201,8 +201,7 @@ class SignController(
                 contract.id,
                 SignContractRequest(
                     partyId = contractPartyId,
-                    ipAddress = request.getHeader("X-Forwarded-For")?.substringBefore(',')?.trim()?.ifEmpty { null }
-                        ?: request.remoteAddr,
+                    ipAddress = request.remoteAddr, // The client's, behind a proxy: server.forward-headers-strategy
                     userAgent = request.getHeader(HttpHeaders.USER_AGENT),
                     contentHash = view.contentHash!!, // Set since canSign
                 ),

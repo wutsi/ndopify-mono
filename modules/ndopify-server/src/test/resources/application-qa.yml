@@ -24,6 +24,8 @@ ndopify:
     contract:
         expire:
             cron: "-" # Never on its own: tests call ContractJobs
+        signed-content:
+            cron: "-" # Never on its own: tests call ContractJobs
     mandate:
         assignment:
             jitter: 0 # Deterministic scores
