@@ -28,6 +28,7 @@ object ErrorCode {
     val CONTRACT_NOT_DRAFT = "$PREFIX:contract:not-draft"
     val CONTRACT_NOT_PENDING = "$PREFIX:contract:not-pending"
     val CONTRACT_CANCELLED = "$PREFIX:contract:cancelled"
+    val CONTRACT_CONTENT_MISMATCH = "$PREFIX:contract:content-mismatch"
     val CONTRACT_ALREADY_SIGNED = "$PREFIX:contract:already-signed"
     val CONTRACT_EXPIRED = "$PREFIX:contract:expired"
     val CONTRACT_PARTY_NOT_FOUND = "$PREFIX:contract:party-not-found"

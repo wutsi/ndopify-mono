@@ -7,5 +7,4 @@ data class ContractSignature(
     val contractNumber: String = "",
     val legalName: String = "",
     val signedAt: Date = Date(),
-    val signedContentUrl: String? = null,
 )
