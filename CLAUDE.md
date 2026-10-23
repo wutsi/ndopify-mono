@@ -261,7 +261,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `ContractSignatureMailet` e-mails each unsigned party whose `signatureRequired` is set (`mail/contract/signature_request.mjml`) its deadline and a single button, never
   the document's URL: the page it opens shows the contract and signs it, `{eSignaturePortalUrl}/sign/{contractPartyId}` (no button without an
   `eSignaturePortalUrl`), served by ndopify-esignature. Sign takes a *contract party* id (`SignContractRequest.partyId`), locks the
-  contract (`findByIdForUpdate`), then 409 `CONTRACT_NOT_PENDING` / `CONTRACT_EXPIRED` (past `signatureDeadline`) /
+  contract (`findByIdForUpdate`), after a 400 `HTTP_INVALID_PARAMETER` for an `ipAddress` that isn't an IPv4 / IPv6
+  address (`InetAddressValidator`, no DNS) or over 45 characters, or a `userAgent` over 1024 (`@Size` on the request), then 409 `CONTRACT_NOT_PENDING` / `CONTRACT_EXPIRED` (past `signatureDeadline`) /
   `CONTRACT_PARTY_SIGNATURE_NOT_REQUIRED` / `CONTRACT_PARTY_ALREADY_SIGNED` / `CONTRACT_CONTENT_MISMATCH`: the request's
   `contentHash` (required, 400 if empty; the SHA-256 of the content the signer was shown, case-insensitive) must be the
   contract's `contentHash`, so a contract without one (ex: content set by `POST /{id}/content`) can't be signed; the last signature of the parties whose

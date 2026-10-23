@@ -62,10 +62,15 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @TempDir
     lateinit var dir: File
 
-    private fun request(partyId: String, contentHash: String = CONTENT_HASH) = SignContractRequest(
+    private fun request(
+        partyId: String,
+        contentHash: String = CONTENT_HASH,
+        ipAddress: String? = "192.168.1.10",
+        userAgent: String? = "Mozilla/5.0 (iPhone)",
+    ) = SignContractRequest(
         partyId = partyId,
-        ipAddress = "192.168.1.10",
-        userAgent = "Mozilla/5.0 (iPhone)",
+        ipAddress = ipAddress,
+        userAgent = userAgent,
         contentHash = contentHash,
     )
 
@@ -248,6 +253,58 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `IPv6 address`() {
+        val ipAddress = "2001:db8:85a3::8a2e:370:7334"
+        val response = rest.postForEntity("/v1/contracts/c-1/sign", request("cp-11", ipAddress = ipAddress), Any::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(ipAddress, partyDao.findById("cp-11").get().ipAddress)
+    }
+
+    @Test
+    fun `longest user agent`() {
+        val userAgent = "a".repeat(1024)
+        val response = rest.postForEntity("/v1/contracts/c-1/sign", request("cp-11", userAgent = userAgent), Any::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(userAgent, partyDao.findById("cp-11").get().userAgent)
+    }
+
+    @Test
+    fun `without IP address nor user agent`() {
+        val response = rest.postForEntity(
+            "/v1/contracts/c-1/sign",
+            request("cp-11", ipAddress = null, userAgent = null),
+            Any::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertTrue(partyDao.findById("cp-11").get().signed)
+    }
+
+    @Test
+    fun `IP address too long`() {
+        assertInvalid(request("cp-11", ipAddress = "1".repeat(46)))
+    }
+
+    @Test
+    fun `IPv6 address with a scope too long`() {
+        assertInvalid(request("cp-11", ipAddress = "fe80::1%" + "e".repeat(45)))
+    }
+
+    @Test
+    fun `not an IP address`() {
+        assertInvalid(request("cp-11", ipAddress = "localhost"), "ipAddress")
+        assertInvalid(request("cp-11", ipAddress = "256.1.1.1"), "ipAddress")
+        assertInvalid(request("cp-11", ipAddress = ""), "ipAddress")
+    }
+
+    @Test
+    fun `user agent too long`() {
+        assertInvalid(request("cp-11", userAgent = "a".repeat(1025)))
+    }
+
+    @Test
     fun `contract already signed`() {
         assertConflict("c-3", "cp-31", ErrorCode.CONTRACT_NOT_PENDING)
     }
@@ -303,5 +360,14 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(code, response.body?.error?.code)
         assertEquals(status, dao.findById(contractId).get().status)
         assertEquals(signedAt, partyDao.findById(partyId).get().signedAt)
+    }
+
+    private fun assertInvalid(request: SignContractRequest, parameter: String? = null) {
+        val response = rest.postForEntity("/v1/contracts/c-1/sign", request, ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
+        parameter?.let { assertEquals(it, response.body?.error?.parameter?.name) }
+        assertFalse(partyDao.findById(request.partyId).get().signed)
     }
 }

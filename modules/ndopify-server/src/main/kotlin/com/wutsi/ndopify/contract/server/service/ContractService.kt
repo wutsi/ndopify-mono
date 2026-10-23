@@ -28,6 +28,7 @@ import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
+import org.apache.commons.validator.routines.InetAddressValidator
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
@@ -251,6 +252,7 @@ class ContractService(
      */
     @Transactional
     fun sign(id: String, request: SignContractRequest): ContractEntity {
+        validate(request)
         val contract = findByIdForUpdate(id)
         if (contract.status != ContractStatus.PENDING_SIGNATURE) {
             throw ConflictException(error = Error(code = ErrorCode.CONTRACT_NOT_PENDING))
@@ -405,6 +407,14 @@ class ContractService(
             ContractStatus.SIGNED -> throw ConflictException(Error(code = ErrorCode.CONTRACT_ALREADY_SIGNED))
             ContractStatus.DRAFT, ContractStatus.PENDING_SIGNATURE -> {}
             else -> throw ConflictException(Error(code = ErrorCode.CONTRACT_NOT_PENDING))
+        }
+    }
+
+    // The signature's evidence: a real address (no DNS lookup). Its length is checked by SignContractRequest's @Size
+    private fun validate(request: SignContractRequest) {
+        val ipAddress = request.ipAddress
+        if (ipAddress != null && !InetAddressValidator.getInstance().isValid(ipAddress)) {
+            throw invalidParameter("ipAddress", ipAddress)
         }
     }
 
