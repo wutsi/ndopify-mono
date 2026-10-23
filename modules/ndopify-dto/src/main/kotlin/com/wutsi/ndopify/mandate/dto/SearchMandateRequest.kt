@@ -12,6 +12,7 @@ data class SearchMandateRequest(
     @param:BindParam("mandate-type") val mandateType: MandateType? = null,
     @param:BindParam("listing-type") val listingType: ListingType? = null,
     @param:BindParam("status") val statuses: List<MandateStatus> = emptyList(),
+    @param:BindParam("offered-to") val offeredTo: Long? = null, // The mandates with a PENDING offer to this agent
 
     val limit: Int = 20,
     val offset: Int = 0,

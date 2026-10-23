@@ -7,7 +7,6 @@ data class ContractSummary(
     val number: String = "",
     val type: ContractType = ContractType.UNKNOWN,
     val status: ContractStatus = ContractStatus.UNKNOWN,
-    val signedContentUrl: String? = null, // The signed PDF, once all parties signed
     val createdAt: Date = Date(),
     val durationMonths: Int = 0,
     val signatureRequestedAt: Date? = null, // When the signature was last requested
