@@ -1,4 +1,10 @@
 spring:
+    http:
+        clients:
+            # Boot's HttpClientSettings: the Spring-built clients, and the MTN HttpClient (MoMoConfiguration).
+            connect-timeout: 5s
+            read-timeout: 30s
+
     ai:
         #        openai:
         #            api-key: ${KIMI_API_KEY}

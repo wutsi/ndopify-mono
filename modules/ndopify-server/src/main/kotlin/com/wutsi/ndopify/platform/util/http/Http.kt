@@ -7,19 +7,19 @@ import java.net.http.HttpRequest
 import java.net.http.HttpRequest.BodyPublishers
 import java.net.http.HttpRequest.Builder
 import java.net.http.HttpResponse
+import java.time.Duration
 
 open class Http(
     private val client: HttpClient,
     private val objectMapper: JsonMapper,
+    private val readTimeout: Duration? = null,
 ) {
     open fun <T> get(
         uri: String,
         responseType: Class<T>,
         headers: Map<String, String?>,
     ): T? {
-        val request = HttpRequest.newBuilder()
-            .uri(URI(uri))
-            .headers(headers + mapOf("Content-Type" to "application/json"))
+        val request = newRequest(uri, headers)
             .GET()
             .build()
 
@@ -33,13 +33,19 @@ open class Http(
         headers: Map<String, String?>,
     ): T? {
         val requestBody = objectMapper.writeValueAsString(requestPayload)
-        val request = HttpRequest.newBuilder()
-            .uri(URI(uri))
-            .headers(headers + mapOf("Content-Type" to "application/json"))
+        val request = newRequest(uri, headers)
             .POST(BodyPublishers.ofString(requestBody))
             .build()
 
         return handle(responseType, request)
+    }
+
+    private fun newRequest(uri: String, headers: Map<String, String?>): Builder {
+        val builder = HttpRequest.newBuilder()
+            .uri(URI(uri))
+            .headers(headers + mapOf("Content-Type" to "application/json"))
+        readTimeout?.let { builder.timeout(it) }
+        return builder
     }
 
     private fun <T> handle(

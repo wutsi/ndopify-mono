@@ -249,8 +249,8 @@ class GeonamesImporter(
         LOGGER.info("Downloading $url")
         val cnn = url.openConnection() as HttpURLConnection
         try {
-            cnn.connectTimeout = readTimeout
-            cnn.readTimeout = connectTimeout
+            cnn.connectTimeout = connectTimeout
+            cnn.readTimeout = readTimeout
             val input = cnn.inputStream
             input.use {
                 val file = Files.createTempFile(UUID.randomUUID().toString(), extension).toFile()

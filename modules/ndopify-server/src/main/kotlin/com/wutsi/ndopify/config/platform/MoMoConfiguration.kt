@@ -10,6 +10,8 @@ import com.wutsi.ndopify.platform.momo.mtn.impl.MtnUserProviderSandbox
 import com.wutsi.ndopify.platform.momo.mtn.model.MtnEnvironment
 import com.wutsi.ndopify.platform.util.http.Http
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.http.client.HttpClientSettings
+import org.springframework.boot.http.client.JdkHttpClientBuilder
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import tools.jackson.databind.json.JsonMapper
@@ -23,7 +25,8 @@ class MoMoConfiguration(
     @param:Value("\${ndopify.mobile-money.mtn.collection.api-key}") private val collectionApiKey: String,
     @param:Value("\${ndopify.mobile-money.mtn.collection.subscription-key}") private val collectionSubscriptionKey: String,
 
-    private val objectMapper: JsonMapper
+    private val objectMapper: JsonMapper,
+    private val httpClientSettings: HttpClientSettings,
 ) {
     @Bean
     fun moMoGatewayProvider(): MoMoGatewayProvider {
@@ -49,11 +52,12 @@ class MoMoConfiguration(
     fun mtnCollectionProduct(): MtnCollectionProduct {
         val env = getMTNEnvironment()
         val http = Http(
-            client = HttpClient.newBuilder()
-                .version(HttpClient.Version.HTTP_1_1)
-                .followRedirects(HttpClient.Redirect.NORMAL)
-                .build(),
+            // The JDK client has no read timeout of its own: Http sets it on each request
+            client = JdkHttpClientBuilder()
+                .withCustomizer { builder -> builder.version(HttpClient.Version.HTTP_1_1) }
+                .build(httpClientSettings.withReadTimeout(null)),
             objectMapper = objectMapper,
+            readTimeout = httpClientSettings.readTimeout(),
         )
         return MtnCollectionProduct(
             environment = env,

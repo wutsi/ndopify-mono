@@ -1,4 +1,11 @@
 spring:
+    http:
+        clients:
+            # Spring-built RestClients (Spring Boot's HttpClientSettings); RestConfiguration applies the same to the
+            # clients it builds by hand.
+            connect-timeout: 5s
+            read-timeout: 30s
+
     jackson:
         default-property-inclusion: non_null
         use-jackson2-defaults: true
