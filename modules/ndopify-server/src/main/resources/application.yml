@@ -195,7 +195,7 @@ ndopify:
         signature:
             ttl-days: 7                    # The parties have 7 days to sign, from the last request for signature
         expire:
-            cron: "0 */30 * * * ?"         # Every 30 minutes: contracts not signed in time, or past their end date
+            cron: "0 */15 * * * ?"         # Every 15 minutes: contracts not signed in time, or past their end date
 
     mandate:
         assignment:
@@ -211,7 +211,7 @@ ndopify:
             expire:
                 cron: "0 */15 * * * ?"     # Every 15 minutes: offers past their TTL go to the next agent
             dispatch:
-                cron: "0 */30 * * * ?"     # Every 30 minutes: mandates that came at night, or had no candidate
+                cron: "0 */15 * * * ?"     # Every 15 minutes: mandates that came at night, or had no candidate
         contract:
             duration-months: 6             # A mandate's contract is valid for 6 months from its signature
 
