@@ -26,6 +26,9 @@ abstract class AuthorizationAwareEndpointIntegrationTest : TenantAwareEndpointIn
     // The token's roles: override with RoleCode.ADMIN to call as an admin of the admin console
     protected open val roles: Array<String> = arrayOf("ROLE_USER")
 
+    // The token's application: override with ApplicationCode.E_SIGNATURE to call as the e-signature portal
+    protected open val application: String = ApplicationCode.ADMIN_CONSOLE
+
     @BeforeEach
     override fun setUp() {
         anonymousUser = false
@@ -39,7 +42,7 @@ abstract class AuthorizationAwareEndpointIntegrationTest : TenantAwareEndpointIn
         execution: ClientHttpRequestExecution
     ): ClientHttpResponse {
         if (!this.anonymousUser) {
-            val accessToken = createAccessToken()
+            val accessToken = createAccessToken(application)
             // set, not add: the interceptors of earlier test instances still run, and this one (the last) must win
             request.headers.set(HttpHeaders.AUTHORIZATION, "Bearer $accessToken")
         } else {

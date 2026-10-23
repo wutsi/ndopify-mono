@@ -14,6 +14,7 @@ import com.wutsi.ndopify.contract.server.dao.ContractPartyRepository
 import com.wutsi.ndopify.contract.server.dao.ContractRepository
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.refdata.dto.ApplicationCode
 import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -38,9 +39,13 @@ class ContractAccessEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     private lateinit var partyDao: ContractPartyRepository
 
     private var admin = false
+    private var app = ApplicationCode.ADMIN_CONSOLE
 
     override val roles: Array<String>
         get() = if (admin) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
+
+    override val application: String
+        get() = app
 
     private fun signAsAdmin() {
         admin = true
@@ -163,6 +168,8 @@ class ContractAccessEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
     @Test
     fun `party signs its contract`() {
+        app = ApplicationCode.E_SIGNATURE
+
         val response = rest.postForEntity("/v1/contracts/c-1/sign", sign("cp-1"), Any::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
@@ -171,6 +178,8 @@ class ContractAccessEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
     @Test
     fun `party can't sign for another party`() {
+        app = ApplicationCode.E_SIGNATURE
+
         assertDenied(rest.postForEntity("/v1/contracts/c-2/sign", sign("cp-2"), ErrorResponse::class.java))
         assertFalse(partyDao.findById("cp-2").get().signed)
     }
@@ -178,6 +187,7 @@ class ContractAccessEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Test
     fun `admin can't sign for a party`() {
         signAsAdmin()
+        app = ApplicationCode.E_SIGNATURE
 
         assertDenied(rest.postForEntity("/v1/contracts/c-1/sign", sign("cp-1"), ErrorResponse::class.java))
         assertFalse(partyDao.findById("cp-1").get().signed)
@@ -186,6 +196,23 @@ class ContractAccessEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Test
     fun `user without party can't sign`() {
         userId = 13L
+        app = ApplicationCode.E_SIGNATURE
+
+        assertDenied(rest.postForEntity("/v1/contracts/c-1/sign", sign("cp-1"), ErrorResponse::class.java))
+        assertFalse(partyDao.findById("cp-1").get().signed)
+    }
+
+    @Test
+    fun `party can't sign its contract from partner central`() {
+        app = ApplicationCode.PARTNER_CENTRAL
+
+        assertDenied(rest.postForEntity("/v1/contracts/c-1/sign", sign("cp-1"), ErrorResponse::class.java))
+        assertFalse(partyDao.findById("cp-1").get().signed)
+    }
+
+    @Test
+    fun `party can't sign its contract from the admin console`() {
+        app = ApplicationCode.ADMIN_CONSOLE
 
         assertDenied(rest.postForEntity("/v1/contracts/c-1/sign", sign("cp-1"), ErrorResponse::class.java))
         assertFalse(partyDao.findById("cp-1").get().signed)

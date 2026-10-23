@@ -5,13 +5,14 @@ import com.wutsi.ndopify.contract.server.domain.ContractEntity
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.ForbiddenException
+import com.wutsi.ndopify.refdata.dto.ApplicationCode
 import com.wutsi.ndopify.security.server.service.CallerService
 import org.springframework.stereotype.Service
 
 /**
  * Who may see or change a contract, which holds its parties' legal data: an admin (see [CallerService.isAdmin]) or
- * one of its parties may see it, only an admin may change it, and only the party itself may sign, never an admin on
- * its behalf. 401 without a token, 403 CONTRACT_ACCESS_DENIED otherwise. Only for the API's callers: the server's own
+ * one of its parties may see it, only an admin may change it, and only the party itself may sign, from the
+ * e-signature portal, never an admin on its behalf. 401 without a token, 403 CONTRACT_ACCESS_DENIED otherwise. Only for the API's callers: the server's own
  * calls (MandateService, jobs) aren't checked. Checked by the endpoints, without the contract's lock: its parties
  * never change.
  */
@@ -39,11 +40,18 @@ class ContractAccessService(
     }
 
     /**
-     * The caller's party must be the contract party's (`contractPartyId`): no admin bypass, a signature is personal. A
-     * contract party the contract doesn't have is left to [ContractService.sign] (404 CONTRACT_PARTY_NOT_FOUND).
+     * The caller must be signed in to the e-signature portal, the only application that shows the contract and the
+     * signer's consent, and its party must be the contract party's (`contractPartyId`): no admin bypass, a signature is
+     * personal. A contract party the contract doesn't have is left to [ContractService.sign] (404
+     * CONTRACT_PARTY_NOT_FOUND).
      */
     fun ensureCanSign(contract: ContractEntity, contractPartyId: String) {
-        val partyId = callerService.findPartyIdOrNull(callerService.getPrincipal())
+        val principal = callerService.getPrincipal()
+        if (principal.getApplication() != ApplicationCode.E_SIGNATURE) {
+            throw accessDenied()
+        }
+
+        val partyId = callerService.findPartyIdOrNull(principal)
         val party = contractService.findParties(contract).find { party -> party.id == contractPartyId }
         if (party != null && (partyId == null || party.partyId != partyId)) {
             throw accessDenied()

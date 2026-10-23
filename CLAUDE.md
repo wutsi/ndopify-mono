@@ -295,7 +295,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `contract-party-id`, the contract party must be one of those parties' (same `T_CONTRACT_PARTY` row): a co-party of a
   contract finds nothing with another party's contract-party id (the sign page's `not-yours`). Create, content and
   request-signature are admin-only (`MandateService` calls the service directly, unchecked). Sign is only for the
-  party itself (the JWT's party must be the contract party's `partyId`): **no admin bypass, nobody signs on another's
+  party itself, from the e-signature portal (the JWT's application must be `e-signature`, else 403
+  `CONTRACT_ACCESS_DENIED`, and its party the contract party's `partyId`): **no admin bypass, nobody signs on another's
   behalf** — never add one. `request-signature` gives each party asked to sign
   (`signatureRequired`, not signed yet) a membership of the tenant, as its party, with `e-signature` access
   (`ContractSignerService`, in the request's transaction, before the save): the one it has (an agent), else the user of

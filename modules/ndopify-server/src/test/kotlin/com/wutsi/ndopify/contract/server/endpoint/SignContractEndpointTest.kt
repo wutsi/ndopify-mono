@@ -14,6 +14,7 @@ import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.platform.storage.local.StorageServiceLocal
+import com.wutsi.ndopify.refdata.dto.ApplicationCode
 import org.junit.jupiter.api.io.TempDir
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -39,6 +40,8 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         private const val SIGNATURE_HASH = "3333333333333333333333333333333333333333333333333333333333333333" // cp-21's
         private const val CONTENT_HASH = "1111111111111111111111111111111111111111111111111111111111111111" // Of every contract but c-10
     }
+
+    override val application = ApplicationCode.E_SIGNATURE
 
     @Autowired
     private lateinit var dao: ContractRepository
