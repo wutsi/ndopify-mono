@@ -110,7 +110,7 @@
         <kotlinpoet.version>1.18.1</kotlinpoet.version>
         <ktlint.version>1.8.0</ktlint.version>
         <lettuce.version>7.4.0.RELEASE</lettuce.version>
-        <libphonenumber.version>9.0.41</libphonenumber.version>
+        <libphonenumber.version>9.0.42</libphonenumber.version>
         <mjml-java.version>1.0.2</mjml-java.version>
         <mobiledetect.version>1.1.1</mobiledetect.version>
         <mustache.version>0.9.14</mustache.version>
@@ -125,7 +125,7 @@
         <slf4j.version>2.0.17</slf4j.version>
         <spring.version>7.0.5</spring.version>
         <spring-boot.version>4.0.3</spring-boot.version>
-        <spring-ai.version>2.0.1</spring-ai.version>
+        <spring-ai.version>2.0.2</spring-ai.version>
         <spring-mobile-device.version>2.0.0.M3</spring-mobile-device.version>
         <spring-security.version>7.0.3</spring-security.version>
         <spring-tx.version>2.4.5</spring-tx.version>
