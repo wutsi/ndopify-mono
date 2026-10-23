@@ -108,6 +108,7 @@ jobs:
                     SMTP_PASSWORD: ${{secrets.SMTP_PASSWORD}}
                     SMTP_HOST: ${{secrets.SMTP_HOST}}
                     SMTP_PORT: ${{secrets.SMTP_PORT}}
+                    JWT_SECRET: ${{secrets.JWT_SECRET}}
                 run: |
                     curl https://cli-assets.heroku.com/install.sh | sh
                     curl -L -O https://github.com/heroku/heroku-jvm-application-deployer/releases/download/v4.0.14/heroku-jvm-application-deployer-4.0.14.jar
@@ -125,4 +126,5 @@ jobs:
                     heroku config:set --app "$HEROKU_APP" SMTP_PASSWORD="$SMTP_PASSWORD"
                     heroku config:set --app "$HEROKU_APP" SMTP_HOST="$SMTP_HOST"
                     heroku config:set --app "$HEROKU_APP" SMTP_PORT="$SMTP_PORT"
+                    heroku config:set --app "$HEROKU_APP" JWT_SECRET="$JWT_SECRET"
                     java -jar heroku-jvm-application-deployer-4.0.14.jar --app=${HEROKU_APP} ndopify-server.jar

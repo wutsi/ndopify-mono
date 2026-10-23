@@ -38,6 +38,9 @@ springdoc:
 ndopify:
     endpoints:
         ops: false                         # The @OpsEndpoint endpoints are unauthenticated
+    security:
+        jwt:
+            secret: ${JWT_SECRET}          # No default: the server doesn't start without it
 
     database:
         pool-size: 16

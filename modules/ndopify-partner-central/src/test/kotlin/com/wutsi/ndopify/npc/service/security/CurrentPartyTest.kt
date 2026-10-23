@@ -31,7 +31,7 @@ class CurrentPartyTest {
     private fun signIn(userId: Long, partyId: Long? = null) {
         val token = JWT.create().withIssuer(JwtDecoder.ISSUER).withClaim(JwtPrincipal.CLAIM_USER_ID, userId)
             .withClaim(JwtPrincipal.CLAIM_PARTY_ID, partyId)
-            .sign(Algorithm.none())
+            .sign(Algorithm.HMAC256("any-secret")) // ndopify-server signs with HS256
         SecurityContextHolder.setContext(SecurityContextImpl(JwtAuthentication(JwtPrincipal(JWT.decode(token)))))
     }
 

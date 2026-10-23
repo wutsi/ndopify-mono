@@ -1,5 +1,9 @@
 package com.wutsi.ndopify.security.server.service
 
+import com.auth0.jwt.JWT
+import com.auth0.jwt.algorithms.Algorithm
+import com.auth0.jwt.exceptions.AlgorithmMismatchException
+import com.auth0.jwt.exceptions.SignatureVerificationException
 import com.auth0.jwt.exceptions.TokenExpiredException
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.whenever
@@ -7,6 +11,7 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.ForbiddenException
 import com.wutsi.ndopify.error.server.exception.UnauthorizedException
 import com.wutsi.ndopify.refdata.dto.ApplicationCode
+import com.wutsi.ndopify.security.dto.JwtPrincipal
 import jakarta.servlet.http.HttpServletRequest
 import org.mockito.Mockito.mock
 import java.time.Clock
@@ -18,7 +23,11 @@ import kotlin.test.assertNull
 class AccessTokenServiceTest {
     private val clock = mock<Clock>()
     private val request = mock<HttpServletRequest>()
-    private val service = AccessTokenService(clock, request)
+    private val service = AccessTokenService(clock, request, SECRET)
+
+    companion object {
+        private const val SECRET = "test-secret-not-for-prod-0123456789abcdef"
+    }
 
     @Test
     fun create() {
@@ -75,6 +84,25 @@ class AccessTokenServiceTest {
         )
 
         assertFailsWith<TokenExpiredException> { service.decode(token) }
+    }
+
+    @Test
+    fun `unsigned token`() {
+        val token = forgedToken().sign(Algorithm.none())
+
+        assertFailsWith<AlgorithmMismatchException> { service.decode(token) }
+    }
+
+    @Test
+    fun `token signed with another secret`() {
+        val token = forgedToken().sign(Algorithm.HMAC256("another-secret-not-for-prod-0123456789abc"))
+
+        assertFailsWith<SignatureVerificationException> { service.decode(token) }
+    }
+
+    @Test
+    fun `secret too short`() {
+        assertFailsWith<IllegalArgumentException> { AccessTokenService(clock, request, "short-secret") }
     }
 
     @Test
@@ -154,4 +182,10 @@ class AccessTokenServiceTest {
 
         assertEquals(ErrorCode.AUTH_UNAUTHORIZED, ex.error.code)
     }
+
+    private fun forgedToken() = JWT.create()
+        .withIssuer(AccessTokenService.ISSUER)
+        .withClaim(JwtPrincipal.CLAIM_USER_ID, 111L)
+        .withClaim(JwtPrincipal.CLAIM_TENANT_ID, 222L)
+        .withArrayClaim(JwtPrincipal.CLAIM_ROLE, arrayOf("admin"))
 }

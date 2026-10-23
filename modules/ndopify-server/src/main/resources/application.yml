@@ -214,6 +214,9 @@ logging:
 ndopify:
     endpoints:
         ops: true                          # @OpsEndpoint endpoints (unauthenticated): off in prod
+    security:
+        jwt:
+            secret: local-dev-secret-not-for-prod-0123456789 # Dummy: test and prod use the JWT_SECRET env variable
     database:
         pool-size: 8
 

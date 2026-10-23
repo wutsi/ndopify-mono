@@ -55,7 +55,7 @@ class SignedInAdviceTest {
     companion object {
         fun signIn(userId: Long = 11L): JwtAuthentication {
             val token = JWT.create().withIssuer(JwtDecoder.ISSUER).withClaim(JwtPrincipal.CLAIM_USER_ID, userId)
-                .sign(Algorithm.none())
+                .sign(Algorithm.HMAC256("any-secret")) // ndopify-server signs with HS256
             val authentication = JwtAuthentication(JwtPrincipal(JWT.decode(token)))
             SecurityContextHolder.setContext(SecurityContextImpl(authentication))
             return authentication

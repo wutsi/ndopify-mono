@@ -21,6 +21,9 @@ spring:
                         required: false
 
 ndopify:
+    security:
+        jwt:
+            secret: qa-secret-not-for-prod-0123456789abcdef
     contract:
         expire:
             cron: "-" # Never on its own: tests call ContractJobs

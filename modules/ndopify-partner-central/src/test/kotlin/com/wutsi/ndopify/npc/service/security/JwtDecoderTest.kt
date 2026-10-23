@@ -3,7 +3,6 @@ package com.wutsi.ndopify.npc.service.security
 import com.auth0.jwt.JWT
 import com.auth0.jwt.JWTCreator
 import com.auth0.jwt.algorithms.Algorithm
-import com.auth0.jwt.exceptions.AlgorithmMismatchException
 import com.auth0.jwt.exceptions.IncorrectClaimException
 import com.auth0.jwt.exceptions.JWTDecodeException
 import com.auth0.jwt.exceptions.TokenExpiredException
@@ -18,9 +17,14 @@ import kotlin.test.assertFailsWith
 class JwtDecoderTest {
     private val decoder = JwtDecoder()
 
+    companion object {
+        // ndopify-server's algorithm, with any secret: the signature isn't checked here
+        private val ALGORITHM = Algorithm.HMAC256("any-secret")
+    }
+
     @Test
     fun `decodes the claims of a partner-central token`() {
-        val principal = decoder.decode(token().sign(Algorithm.none()))
+        val principal = decoder.decode(token().sign(ALGORITHM))
 
         assertEquals(11L, principal.getUserId())
         assertEquals(1L, principal.getTenantId())
@@ -37,21 +41,21 @@ class JwtDecoderTest {
             .withSubject("11")
             .withClaim(JwtPrincipal.CLAIM_USER_ID, 11L)
             .withClaim(JwtPrincipal.CLAIM_APPLICATION, ApplicationCode.PARTNER_CENTRAL)
-            .sign(Algorithm.none())
+            .sign(ALGORITHM)
 
         assertEquals(null, decoder.decode(accessToken).getTenantId())
     }
 
     @Test
     fun `decodes a token without expiry`() {
-        val principal = decoder.decode(token(expiresAt = null).sign(Algorithm.none()))
+        val principal = decoder.decode(token(expiresAt = null).sign(ALGORITHM))
 
         assertEquals(11L, principal.getUserId())
     }
 
     @Test
     fun `rejects a token of another application`() {
-        val accessToken = token(application = ApplicationCode.ADMIN_CONSOLE).sign(Algorithm.none())
+        val accessToken = token(application = ApplicationCode.ADMIN_CONSOLE).sign(ALGORITHM)
 
         val ex = assertFailsWith<IncorrectClaimException> { decoder.decode(accessToken) }
         assertEquals(JwtPrincipal.CLAIM_APPLICATION, ex.claimName)
@@ -59,30 +63,37 @@ class JwtDecoderTest {
 
     @Test
     fun `rejects a token without application`() {
-        val accessToken = token(application = null).sign(Algorithm.none())
+        val accessToken = token(application = null).sign(ALGORITHM)
 
         assertFailsWith<IncorrectClaimException> { decoder.decode(accessToken) }
     }
 
     @Test
-    fun `rejects a token of another issuer`() {
-        val accessToken = token(issuer = "Koki").sign(Algorithm.none())
+    fun `doesn't check the issuer, ndopify-server does`() {
+        val accessToken = token(issuer = "Koki").sign(ALGORITHM)
 
-        assertFailsWith<IncorrectClaimException> { decoder.decode(accessToken) }
+        assertEquals(11L, decoder.decode(accessToken).getUserId())
     }
 
     @Test
     fun `rejects an expired token`() {
-        val accessToken = token(expiresAt = Instant.now().minusSeconds(60)).sign(Algorithm.none())
+        val accessToken = token(expiresAt = Instant.now().minusSeconds(60)).sign(ALGORITHM)
 
         assertFailsWith<TokenExpiredException> { decoder.decode(accessToken) }
     }
 
     @Test
-    fun `rejects a token signed with another algorithm`() {
-        val accessToken = token().sign(Algorithm.HMAC256("secret"))
+    fun `doesn't check the algorithm, ndopify-server does`() {
+        val accessToken = token().sign(Algorithm.none())
 
-        assertFailsWith<AlgorithmMismatchException> { decoder.decode(accessToken) }
+        assertEquals(11L, decoder.decode(accessToken).getUserId())
+    }
+
+    @Test
+    fun `doesn't check the signature, ndopify-server does`() {
+        val accessToken = token().sign(Algorithm.HMAC256("another-secret"))
+
+        assertEquals(11L, decoder.decode(accessToken).getUserId())
     }
 
     @Test

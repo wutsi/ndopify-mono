@@ -125,7 +125,7 @@ class JwtAuthenticationFilterTest {
             .withClaim(JwtPrincipal.CLAIM_APPLICATION, "e-signature")
             .withArrayClaim(JwtPrincipal.CLAIM_ROLE, emptyArray<String>())
             .apply { expiresAt?.let { withExpiresAt(it) } }
-            .sign(Algorithm.none())
+            .sign(Algorithm.HMAC256("any-secret")) // ndopify-server signs with HS256
 
     private fun assertChainCalled() {
         assertNotNull(chain.request, "the filter chain must continue")

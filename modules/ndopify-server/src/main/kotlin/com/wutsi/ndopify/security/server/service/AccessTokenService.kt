@@ -9,17 +9,35 @@ import com.wutsi.ndopify.error.server.exception.ForbiddenException
 import com.wutsi.ndopify.error.server.exception.UnauthorizedException
 import com.wutsi.ndopify.security.dto.JwtPrincipal
 import jakarta.servlet.http.HttpServletRequest
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.time.Clock
 import java.time.Instant
 
+/**
+ * Issues and verifies the access tokens, signed with HS256. The secret (`ndopify.security.jwt.secret`) is a dummy one
+ * in local dev and tests, and the `JWT_SECRET` environment variable on deployed servers. Only ndopify-server has it:
+ * Partner Central and the e-signature portal read the claims without checking the signature, ndopify-server checks it
+ * on each of their calls.
+ */
 @Service
 open class AccessTokenService(
     private val clock: Clock,
     private val request: HttpServletRequest,
+    @Value("\${ndopify.security.jwt.secret}") secret: String,
 ) {
     companion object {
         const val ISSUER = "Ndopify"
+        const val MIN_SECRET_BYTES = 32 // HS256's key size
+    }
+
+    private val algorithm: Algorithm
+
+    init {
+        require(secret.toByteArray().size >= MIN_SECRET_BYTES) {
+            "ndopify.security.jwt.secret must have at least $MIN_SECRET_BYTES bytes"
+        }
+        algorithm = Algorithm.HMAC256(secret)
     }
 
     fun create(
@@ -45,8 +63,8 @@ open class AccessTokenService(
         if (tenantId != null) {
             builder.withClaim(JwtPrincipal.CLAIM_TENANT_ID, tenantId)
         }
-        // So that a client knows its party without looking up the user. The server itself doesn't trust it (the token
-        // isn't signed yet): CallerService still finds the party through the membership.
+        // So that a client knows its party without looking up the user. The server itself doesn't rely on it:
+        // CallerService still finds the party through the membership.
         if (partyId != null) {
             builder.withClaim(JwtPrincipal.CLAIM_PARTY_ID, partyId)
         }
@@ -85,6 +103,6 @@ open class AccessTokenService(
     }
 
     private fun getAlgorithm(): Algorithm {
-        return Algorithm.none()
+        return algorithm
     }
 }

@@ -1,5 +1,9 @@
 package com.wutsi.ndopify.npc.ui.layout
 
+import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.never
+import com.nhaarman.mockitokotlin2.verify
+import com.wutsi.ndopify.npc.service.security.AccessTokenService
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.test.web.servlet.MockMvc
@@ -23,9 +27,11 @@ class HttpClientErrorHandlerTest {
             throw HttpClientErrorException.create(HttpStatus.valueOf(status), "", HttpHeaders.EMPTY, ByteArray(0), null)
     }
 
+    private val accessTokenService = mock<AccessTokenService>()
+
     private val mvc: MockMvc = MockMvcBuilders
         .standaloneSetup(FailingController())
-        .setControllerAdvice(HttpClientErrorHandler())
+        .setControllerAdvice(HttpClientErrorHandler(accessTokenService))
         .build()
 
     private fun status(status: Int): Int = mvc.perform(get("/failing/$status")).andReturn().response.status
@@ -33,6 +39,16 @@ class HttpClientErrorHandlerTest {
     @Test
     fun forbidden() {
         assertEquals(403, status(403))
+        verify(accessTokenService, never()).remove()
+    }
+
+    @Test
+    fun `unauthorized - signs out`() {
+        val response = mvc.perform(get("/failing/401")).andReturn().response
+
+        assertEquals(302, response.status)
+        assertEquals("/login", response.redirectedUrl)
+        verify(accessTokenService).remove()
     }
 
     @Test

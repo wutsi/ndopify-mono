@@ -94,6 +94,8 @@ and the module POMs):
 
 - An SMTP server on `localhost:1025` (e.g. Mailpit) to receive e-mails sent by `ndopify-server` (agent welcome,
   OTP codes) — see `spring.mail` in `application.yml`.
+- No JWT secret to set: `application.yml` has a dummy `ndopify.security.jwt.secret` (deployed servers use
+  `JWT_SECRET`, see *Token signing* below).
 - `KIMI_API_KEY` for identity-document extraction: `ndopify-server` uses Spring AI's OpenAI-compatible client
   (`spring.ai.openai`, pointed at Moonshot/Kimi) in `IdentificationInfoExtractorAi`.
 
@@ -156,8 +158,8 @@ Current domains:
   member of the tenant gets 404 `USER_NOT_FOUND`. `POST /v1/auth` exchanges credentials for a JWT:
   `AbstractAuthenticator` requires a tenant (400 `HTTP_MISSING_PARAMETER` otherwise), finds the user by e-mail
   (global), then its membership of the tenant (`AUTH_ACCESS_DENIED` without one), whose roles go in the token, with
-  its party's id (`partyId` claim, `JwtPrincipal.getPartyId`; none for a party-less member): for clients only, the
-  server never trusts it (unsigned token) and `CallerService` still goes through the membership. A
+  its party's id (`partyId` claim, `JwtPrincipal.getPartyId`; none for a party-less member): for clients only:
+  `CallerService` still goes through the membership. A
   person in two tenants has one user, one set of credentials, and a membership (party, roles) in each. Nothing
   creates a membership on sign-in (not even Google One Tap): only registration (`AgentService.create`) does, and a request
   for signature (`ContractSignerService`), for the parties asked to sign, with `e-signature` access.
@@ -589,11 +591,17 @@ Tenancy is enforced via **Hibernate's built-in multi-tenancy mechanism**, not ha
   are no cross-tenant users: a user only sees the tenants it has a membership of. `T_USER.tenant_id`,
   `T_USER.party_id` and `T_USER_APPLICATION.user_id` are left over from before memberships (`V7_0`), no longer
   mapped or written, and still to be dropped.
-- **Known, not-yet-closed gap**: tenant *resolution* itself isn't trustworthy yet. JWTs are issued via
-  `Algorithm.none()` (unsigned, in `AccessTokenService` — and `ndopify-partner-central`'s `JwtDecoder` decodes them the
-  same way), so a caller can forge a token of any user and tenant, which the authentication above accepts. The
-  `@TenantId` mechanism above correctly isolates data *once a tenant is resolved*, but signing the tokens is separate,
-  future work.
+- **Token signing**: `AccessTokenService` signs and verifies the JWTs with HS256 (`ndopify.security.jwt.secret`, at
+  least 32 bytes, else the server doesn't start): a dummy secret in `application.yml` (local dev) and
+  `application-qa.yml` (tests), the `JWT_SECRET` environment variable in `application-test.yml` / `application-prod.yml`
+  (no default: the server doesn't start without it), set on Heroku by `ndopify-server-main.yml` from the GitHub secret
+  `JWT_SECRET`. A token not signed with it (incl. `alg: none`) is a 401 `AUTH_UNAUTHORIZED`. Only ndopify-server has
+  the secret: Partner Central's and the e-signature portal's `JwtDecoder` read the claims **without checking the
+  signature** (only the expiry and the application; not the algorithm nor the issuer, which anyone can write), and
+  rely on ndopify-server checking it on each
+  of their calls: their `HttpClientErrorHandler` answers a 401 from it by clearing the cookie (back to `/login`, or the
+  sign link / verify page). So a web app never acts on a claim alone, only uses it to pick what to ask ndopify-server.
+  Changing `JWT_SECRET` signs everyone out.
 
 ### Testing Patterns
 

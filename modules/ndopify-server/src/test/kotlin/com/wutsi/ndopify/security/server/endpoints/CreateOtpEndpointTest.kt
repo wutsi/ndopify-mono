@@ -21,6 +21,7 @@ import jakarta.mail.internet.InternetAddress
 import jakarta.mail.internet.MimeMessage
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.resttestclient.TestRestTemplate
 import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
@@ -56,6 +57,9 @@ class CreateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
 
     @Autowired
     private lateinit var passwordEncryptor: PasswordEncryptor
+
+    @Value("\${ndopify.security.jwt.secret}")
+    private lateinit var jwtSecret: String
 
     @BeforeEach
     override fun setUp() {
@@ -255,9 +259,26 @@ class CreateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
             .withClaim(JwtPrincipal.CLAIM_USER_ID, 1L)
             .withClaim(JwtPrincipal.CLAIM_TENANT_ID, TENANT_ID)
             .withExpiresAt(Instant.now().minusSeconds(60))
+            .sign(Algorithm.HMAC256(jwtSecret))
+
+        assertUnauthorized(expired)
+    }
+
+    @Test
+    fun `unsigned token is unauthorized, though the endpoint is public`() {
+        val unsigned = JWT.create()
+            .withIssuer(AccessTokenService.ISSUER)
+            .withClaim(JwtPrincipal.CLAIM_USER_ID, 1L)
+            .withClaim(JwtPrincipal.CLAIM_TENANT_ID, TENANT_ID)
+            .withExpiresAt(Instant.now().plusSeconds(3600))
             .sign(Algorithm.none())
+
+        assertUnauthorized(unsigned)
+    }
+
+    private fun assertUnauthorized(accessToken: String) {
         val headers = HttpHeaders().apply {
-            setBearerAuth(expired)
+            setBearerAuth(accessToken)
             set(HttpHeader.TENANT_ID, TENANT_ID.toString())
         }
 

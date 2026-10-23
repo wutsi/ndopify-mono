@@ -38,6 +38,9 @@ logging:
 ndopify:
     database:
         pool-size: 16
+    security:
+        jwt:
+            secret: ${JWT_SECRET}          # No default: the server doesn't start without it
 
     storage:
         default-type: s3
