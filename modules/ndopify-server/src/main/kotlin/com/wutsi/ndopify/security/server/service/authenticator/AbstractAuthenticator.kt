@@ -55,6 +55,7 @@ abstract class AbstractAuthenticator(
             roles = userApplication.roles.map { role -> role.code }.toTypedArray(),
             tenantId = membership.tenantId,
             ttlSeconds = 60 * 60, // 1 hour
+            partyId = membership.party?.id,
         )
     }
 

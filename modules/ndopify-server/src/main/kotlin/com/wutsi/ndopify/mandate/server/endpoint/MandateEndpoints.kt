@@ -1,5 +1,9 @@
 package com.wutsi.ndopify.mandate.server.endpoint
 
+import com.wutsi.ndopify.contract.dto.ContractSummary
+import com.wutsi.ndopify.contract.dto.SearchContractRequest
+import com.wutsi.ndopify.contract.server.mapper.ContractMapper
+import com.wutsi.ndopify.contract.server.service.ContractService
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
 import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
@@ -9,6 +13,7 @@ import com.wutsi.ndopify.mandate.dto.GetMandateResponse
 import com.wutsi.ndopify.mandate.dto.SearchMandateRequest
 import com.wutsi.ndopify.mandate.dto.SearchMandateResponse
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
+import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.mandate.server.mapper.MandateMapper
 import com.wutsi.ndopify.mandate.server.service.MandateAccessService
 import com.wutsi.ndopify.mandate.server.service.MandateService
@@ -33,12 +38,17 @@ class MandateEndpoints(
     private val service: MandateService,
     private val access: MandateAccessService,
     private val mapper: MandateMapper,
+    private val contractService: ContractService,
+    private val contractMapper: ContractMapper,
 ) {
     @GetMapping
     fun search(@ModelAttribute request: SearchMandateRequest): SearchMandateResponse {
         val restricted = access.restrict(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
         val mandates = service.search(restricted)
-        return SearchMandateResponse(mandates = mandates.map { mandate -> mapper.toMandateSummary(mandate) })
+        val contracts = contracts(mandates)
+        return SearchMandateResponse(
+            mandates = mandates.map { mandate -> mapper.toMandateSummary(mandate, mandate.contractId?.let { contracts[it] }) }
+        )
     }
 
     @GetMapping("/{id}")
@@ -86,5 +96,16 @@ class MandateEndpoints(
     @PostMapping("/{id}/close")
     fun close(@PathVariable id: Long, @RequestBody request: CloseMandateRequest) {
         service.close(id, request)
+    }
+
+    /**
+     * The contracts of the mandates, by id, in one query. Nothing the caller couldn't read: a mandate's agent is a party
+     * of its contract, and a mandate only gets one once assigned (so not while it's only offered).
+     */
+    private fun contracts(mandates: List<MandateEntity>): Map<String, ContractSummary> {
+        val ids = mandates.mapNotNull { mandate -> mandate.contractId }.distinct()
+        if (ids.isEmpty()) return emptyMap()
+        return contractService.search(SearchContractRequest(ids = ids, limit = ids.size))
+            .associate { contract -> contract.id to contractMapper.toContractSummary(contract) }
     }
 }

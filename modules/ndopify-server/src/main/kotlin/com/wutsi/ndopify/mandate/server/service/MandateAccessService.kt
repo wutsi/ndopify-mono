@@ -51,8 +51,8 @@ class MandateAccessService(
     }
 
     /**
-     * The search the caller may run: an admin's as is, an agent's restricted to its own mandates (403 if it asks for
-     * another agent's).
+     * The search the caller may run: an admin's as is, an agent's restricted to its own mandates, or to those offered
+     * to it (`offered-to`, PENDING offers: the ones [ensureCanRead] lets it see). 403 if it asks for another agent's.
      */
     fun restrict(request: SearchMandateRequest): SearchMandateRequest {
         val principal = callerService.getPrincipal()
@@ -61,10 +61,10 @@ class MandateAccessService(
         }
 
         val agentId = findAgentId(principal) ?: throw accessDenied()
-        if (request.agentIds.any { id -> id != agentId }) {
+        if (request.agentIds.any { id -> id != agentId } || (request.offeredTo != null && request.offeredTo != agentId)) {
             throw accessDenied()
         }
-        return request.copy(agentIds = listOf(agentId))
+        return if (request.offeredTo != null) request else request.copy(agentIds = listOf(agentId))
     }
 
     private fun findAgentId(principal: JwtPrincipal): Long? {

@@ -11,8 +11,19 @@ import org.springframework.stereotype.Service
 class CurrentParty(private val userClient: NdUserClient) {
     /** Null when nobody is signed in, or the user is gone or has no party: those must sign in again. */
     fun get(): Party? {
-        val principal = SecurityContextHolder.getContext().authentication?.principal as? JwtPrincipal
-            ?: return null
+        val principal = principal() ?: return null
         return userClient.get(principal.getUserId())?.party
     }
+
+    /**
+     * The party's id, from the token without any call; looked up like [get] for a token issued before it carried one.
+     * Null when nobody is signed in, or the user has no party.
+     */
+    fun id(): Long? {
+        val principal = principal() ?: return null
+        return principal.getPartyId() ?: get()?.id
+    }
+
+    private fun principal(): JwtPrincipal? =
+        SecurityContextHolder.getContext().authentication?.principal as? JwtPrincipal
 }

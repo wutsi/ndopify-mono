@@ -1,7 +1,11 @@
 package com.wutsi.ndopify.mandate.server.endpoint
 
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
+import com.wutsi.ndopify.contract.dto.ContractStatus
+import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.MovingPeriod
+import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
@@ -9,8 +13,11 @@ import com.wutsi.ndopify.mandate.dto.SearchMandateResponse
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.test.context.jdbc.Sql
+import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -36,6 +43,48 @@ class SearchMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(150000L, mandate.price.amount)
         assertEquals("XAF", mandate.price.currency)
         assertEquals(PeriodicityType.MONTHLY, mandate.price.periodicity)
+        assertEquals(PropertyCategory.RESIDENTIAL, mandate.propertyCategory)
+        assertEquals(FurnitureType.FULLY_FURNISHED, mandate.furnitureType)
+        assertEquals("1", mandate.parkings)
+        assertEquals(80, mandate.area)
+        assertTrue(mandate.waterMeter)
+        assertTrue(mandate.generatorSet)
+        assertTrue(mandate.roadPaved)
+        assertTrue(mandate.securityGuard)
+        assertFalse(mandate.solarPanel)
+        assertEquals(MovingPeriod.WITHIN_1_MONTH, mandate.movingPeriod)
+        assertNull(mandate.contract)
+    }
+
+    @Test
+    fun `never its contract's signed PDF link`() {
+        val json = rest.getForEntity("/v1/mandates?id=3", String::class.java).body!!
+
+        assertFalse(json.contains("signedContentUrl"))
+        assertFalse(json.contains("MNDT-2024-000003.pdf"))
+    }
+
+    @Test
+    fun `listing's availability date`() {
+        assertEquals(LocalDate.of(2024, 7, 1), search("id=2").single().availableFrom)
+    }
+
+    @Test
+    fun `with its contract`() {
+        val mandates = search("id=2&id=3")
+
+        assertEquals("c-2", mandates[0].contract?.id)
+        assertEquals(ContractStatus.DRAFT, mandates[0].contract?.status)
+        assertNull(mandates[0].contract?.signatureDeadline)
+
+        val contract = mandates[1].contract!!
+        assertEquals("c-3", contract.id)
+        assertEquals("MNDT-2024-000003", contract.number)
+        assertEquals(ContractStatus.SIGNED, contract.status)
+        assertNotNull(contract.signatureRequestedAt)
+        assertNotNull(contract.signatureDeadline)
+        assertNotNull(contract.validFrom)
+        assertNotNull(contract.validUntil)
     }
 
     @Test
@@ -102,7 +151,8 @@ class SearchMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
     @Test
     fun `query count does not grow with the number of mandates`() {
-        val one = countQueries { search("id=1") }
+        // One with a contract: their contracts come in one query, whatever their number
+        val one = countQueries { search("id=3") }
         val all = countQueries { search("") }
 
         assertEquals(one, all)

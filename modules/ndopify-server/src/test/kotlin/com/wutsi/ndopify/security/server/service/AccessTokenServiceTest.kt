@@ -30,10 +30,12 @@ class AccessTokenServiceTest {
             userId = 111L,
             roles = arrayOf("ADMIN", "SUPPORT_MANAGER"),
             tenantId = 222L,
-            ttlSeconds = 3600
+            ttlSeconds = 3600,
+            partyId = 333L,
         )
 
         val principal = service.decode(token)
+        assertEquals(333L, principal.getPartyId())
         assertEquals(ApplicationCode.ADMIN_CONSOLE, principal.getApplication())
         assertEquals("111", principal.getSubject())
         assertEquals(111L, principal.getUserId())
@@ -56,6 +58,7 @@ class AccessTokenServiceTest {
 
         val principal = service.decode(token)
         assertNull(principal.getTenantId())
+        assertNull(principal.getPartyId())
     }
 
     @Test

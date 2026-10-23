@@ -15,7 +15,7 @@ class CurrentAgent(
 ) {
     /** Null when nobody is signed in, or the user has no party or isn't an agent: those must sign in again. */
     fun get(): Agent? {
-        val party = currentParty.get() ?: return null
-        return agentClient.findByPartyId(party.id)
+        val partyId = currentParty.id() ?: return null
+        return agentClient.findByPartyId(partyId)
     }
 }

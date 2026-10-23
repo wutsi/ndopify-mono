@@ -8,12 +8,12 @@ import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
-import com.wutsi.ndopify.contract.dto.SearchContractRequest
+import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
+import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateSummary
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
-import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
@@ -23,6 +23,7 @@ import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.ASSIGNMENT
 import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.MANDATE
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardView
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest
+import com.wutsi.ndopify.npc.ui.mandate.MandateSummariesTest
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
 import com.wutsi.ndopify.party.dto.KycCase
@@ -31,12 +32,10 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.EnumSource
-import org.springframework.http.HttpStatus
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.MvcResult
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
-import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.servlet.view.InternalResourceViewResolver
 import java.time.Clock
@@ -51,7 +50,6 @@ class HomeControllerTest {
     private val tenantContext = mock<TenantContext>()
     private val assignmentClient = mock<NdAssignmentClient>()
     private val mandateClient = mock<NdMandateClient>()
-    private val contractClient = mock<NdContractClient>()
     private val clock = mock<Clock>()
     private lateinit var mvc: MockMvc
 
@@ -68,7 +66,6 @@ class HomeControllerTest {
             kycClient,
             assignmentClient,
             mandateClient,
-            contractClient,
             locationClient,
             tenantContext,
             clock,
@@ -181,15 +178,21 @@ class HomeControllerTest {
 
     // Mandats proposés
 
+    private fun offered(vararg mandates: Mandate) {
+        doReturn(mandates.map { MandateSummariesTest.summary(it) }).whenever(mandateClient).offered(AGENT.id)
+    }
+
     @Test
     fun `offers shown`() {
         val other = ASSIGNMENT.copy(id = 8, mandateId = 102)
         doReturn(listOf(ASSIGNMENT, other)).whenever(assignmentClient).pending(AGENT.id)
-        doReturn(MANDATE).whenever(mandateClient).get(101)
-        doReturn(MANDATE.copy(id = 102)).whenever(mandateClient).get(102)
+        offered(MANDATE.copy(id = 102), MANDATE)
 
         val result = mvc.perform(get("/")).andReturn()
 
+        // Their mandates in one search, whatever its order
+        verify(mandateClient).offered(AGENT.id)
+        verify(mandateClient, never()).get(any())
         val assignments = assignments(result)
         assertEquals(listOf(7L, 8L), assignments.map { it.id })
         assertEquals("Bonapriso, Akwa", assignments[0].sector)
@@ -202,6 +205,7 @@ class HomeControllerTest {
         val result = mvc.perform(get("/")).andReturn()
 
         assertEquals(emptyList(), assignments(result))
+        verify(mandateClient, never()).offered(any())
     }
 
     @Test
@@ -212,15 +216,14 @@ class HomeControllerTest {
         val result = mvc.perform(get("/")).andReturn()
 
         assertEquals(emptyList(), assignments(result))
-        verify(mandateClient, never()).get(any())
+        verify(mandateClient, never()).offered(any())
     }
 
     @Test
-    fun `one mandate unavailable - the other offers still show`() {
+    fun `mandate not returned - the other offers still show`() {
         doReturn(listOf(ASSIGNMENT, ASSIGNMENT.copy(id = 8, mandateId = 102)))
             .whenever(assignmentClient).pending(AGENT.id)
-        doThrow(HttpClientErrorException(HttpStatus.NOT_FOUND)).whenever(mandateClient).get(101)
-        doReturn(MANDATE.copy(id = 102)).whenever(mandateClient).get(102)
+        offered(MANDATE.copy(id = 102))
 
         val result = mvc.perform(get("/")).andReturn()
 
@@ -239,9 +242,21 @@ class HomeControllerTest {
     }
 
     @Test
+    fun `offered mandates unavailable - page still shown`() {
+        doReturn(listOf(ASSIGNMENT)).whenever(assignmentClient).pending(AGENT.id)
+        doThrow(ResourceAccessException("timeout")).whenever(mandateClient).offered(any())
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        assertEquals("index", result.modelAndView?.viewName)
+        assertEquals(emptyList(), assignments(result))
+        assertEquals(true, model(result)["assignmentsUnavailable"])
+    }
+
+    @Test
     fun `location names unavailable - offers still shown`() {
         doReturn(listOf(ASSIGNMENT)).whenever(assignmentClient).pending(AGENT.id)
-        doReturn(MANDATE).whenever(mandateClient).get(101)
+        offered(MANDATE)
         whenever(locationClient.search(any())).thenThrow(ResourceAccessException("timeout"))
 
         val result = mvc.perform(get("/")).andReturn()
@@ -262,7 +277,7 @@ class HomeControllerTest {
     @Test
     fun `decline confirmation`() {
         doReturn(listOf(ASSIGNMENT)).whenever(assignmentClient).pending(AGENT.id)
-        doReturn(MANDATE).whenever(mandateClient).get(101)
+        offered(MANDATE)
 
         val result = mvc.perform(get("/").param("decline", "7")).andReturn()
 
@@ -272,7 +287,7 @@ class HomeControllerTest {
     @Test
     fun `decline confirmation - unknown offer ignored`() {
         doReturn(listOf(ASSIGNMENT)).whenever(assignmentClient).pending(AGENT.id)
-        doReturn(MANDATE).whenever(mandateClient).get(101)
+        offered(MANDATE)
 
         val result = mvc.perform(get("/").param("decline", "999")).andReturn()
 
@@ -282,7 +297,7 @@ class HomeControllerTest {
     @Test
     fun `decline confirmation - malformed id ignored`() {
         doReturn(listOf(ASSIGNMENT)).whenever(assignmentClient).pending(AGENT.id)
-        doReturn(MANDATE).whenever(mandateClient).get(101)
+        offered(MANDATE)
 
         val result = mvc.perform(get("/").param("decline", "abc")).andReturn()
 
@@ -297,24 +312,23 @@ class HomeControllerTest {
     private val pending = assigned.copy(id = 202, status = MandateStatus.PENDING_APPROVAL, contractId = "c-202")
     private val approved = assigned.copy(id = 203, status = MandateStatus.APPROVED, contractId = "c-203")
 
-    private fun active(vararg ids: Long) {
-        doReturn(ids.map { MandateSummary(id = it) }).whenever(mandateClient).active(AGENT.id)
+    private fun active(vararg mandates: Pair<Mandate, ContractSummary?>) {
+        doReturn(mandates.map { (mandate, contract) -> MandateSummariesTest.summary(mandate, contract) })
+            .whenever(mandateClient).active(AGENT.id)
     }
 
     @Test
     fun `mandates shown`() {
-        active(203, 201, 202)
-        doReturn(assigned).whenever(mandateClient).get(201)
-        doReturn(pending).whenever(mandateClient).get(202)
-        doReturn(approved).whenever(mandateClient).get(203)
-        doReturn(listOf(MandateCardsTest.CONTRACT_SUMMARY.copy(id = "c-203"), MandateCardsTest.CONTRACT_2027.copy(id = "c-202")))
-            .whenever(contractClient).search(any())
+        active(
+            approved to MandateCardsTest.CONTRACT_SUMMARY.copy(id = "c-203"),
+            assigned to null,
+            pending to MandateCardsTest.CONTRACT_2027.copy(id = "c-202"),
+        )
 
         val result = mvc.perform(get("/")).andReturn()
 
-        // One search for every contract, in the mandates' order
-        verify(contractClient).search(SearchContractRequest(ids = listOf("c-203", "c-202"), limit = 2))
-        verify(contractClient, never()).get(any())
+        // Everything in the search: neither the mandates nor their contracts are loaded one by one
+        verify(mandateClient, never()).get(any())
         val mandates = mandates(result)
         assertEquals(listOf(203L, 201L, 202L), mandates.map { it.id })
         assertEquals("Secteurs" to "Bonapriso, Akwa", mandates[1].facts[0])
@@ -324,51 +338,14 @@ class HomeControllerTest {
     }
 
     @Test
-    fun `contract only fetched for mandates sent to the customer`() {
-        active(201)
-        doReturn(assigned.copy(contractId = "c-201")).whenever(mandateClient).get(201)
-
-        mvc.perform(get("/")).andReturn()
-
-        verify(contractClient, never()).search(any())
-    }
-
-    @Test
-    fun `one mandate unavailable - the others still show`() {
-        active(201, 202)
-        doThrow(HttpClientErrorException(HttpStatus.NOT_FOUND)).whenever(mandateClient).get(201)
-        doReturn(pending).whenever(mandateClient).get(202)
-        doReturn(listOf(MandateCardsTest.CONTRACT_2027.copy(id = "c-202"))).whenever(contractClient).search(any())
-
-        val result = mvc.perform(get("/")).andReturn()
-
-        assertEquals(listOf(202L), mandates(result).map { it.id })
-        verify(contractClient).search(SearchContractRequest(ids = listOf("c-202"), limit = 1))
-    }
-
-    @Test
-    fun `contract unavailable - card kept without the date`() {
-        active(203)
-        doReturn(approved).whenever(mandateClient).get(203)
-        doThrow(ResourceAccessException("timeout")).whenever(contractClient).search(any())
-
-        val result = mvc.perform(get("/")).andReturn()
-
-        assertEquals("Trouvez un bien pour le client.", mandates(result).single().nextStep)
-    }
-
-    @Test
-    fun `contract not returned - card kept without the date`() {
-        active(202, 203)
-        doReturn(pending).whenever(mandateClient).get(202)
-        doReturn(approved).whenever(mandateClient).get(203)
-        doReturn(listOf(MandateCardsTest.CONTRACT_SUMMARY.copy(id = "c-203"))).whenever(contractClient).search(any())
+    fun `contract without dates - card kept without the date`() {
+        active(pending to MandateCardsTest.CONTRACT_SUMMARY.copy(id = "c-202", signatureDeadline = null), approved to null)
 
         val result = mvc.perform(get("/")).andReturn()
 
         val mandates = mandates(result)
         assertEquals("Le client doit signer le mandat.", mandates[0].nextStep)
-        assertEquals("Trouvez un bien pour le client avant le 28 mars 2027.", mandates[1].nextStep)
+        assertEquals("Trouvez un bien pour le client.", mandates[1].nextStep)
     }
 
     @Test
@@ -385,9 +362,8 @@ class HomeControllerTest {
     @Test
     fun `location names fetched once for offers and mandates`() {
         doReturn(listOf(ASSIGNMENT)).whenever(assignmentClient).pending(AGENT.id)
-        doReturn(MANDATE).whenever(mandateClient).get(101)
-        active(201)
-        doReturn(assigned).whenever(mandateClient).get(201)
+        offered(MANDATE)
+        active(assigned to null)
 
         val result = mvc.perform(get("/")).andReturn()
 

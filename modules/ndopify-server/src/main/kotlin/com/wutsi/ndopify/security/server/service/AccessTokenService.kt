@@ -28,6 +28,7 @@ open class AccessTokenService(
         roles: Array<String>,
         tenantId: Long?,
         ttlSeconds: Int,
+        partyId: Long? = null,
     ): String {
         val algo = getAlgorithm()
         val now = clock.millis()
@@ -43,6 +44,11 @@ open class AccessTokenService(
 
         if (tenantId != null) {
             builder.withClaim(JwtPrincipal.CLAIM_TENANT_ID, tenantId)
+        }
+        // So that a client knows its party without looking up the user. The server itself doesn't trust it (the token
+        // isn't signed yet): CallerService still finds the party through the membership.
+        if (partyId != null) {
+            builder.withClaim(JwtPrincipal.CLAIM_PARTY_ID, partyId)
         }
 
         return builder.sign(algo)

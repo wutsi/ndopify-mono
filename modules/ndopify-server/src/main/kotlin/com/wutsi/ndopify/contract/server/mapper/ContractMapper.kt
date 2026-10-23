@@ -35,7 +35,6 @@ class ContractMapper {
             number = entity.number,
             type = entity.type,
             status = entity.status,
-            signedContentUrl = entity.signedContentUrl,
             createdAt = entity.createdAt,
             durationMonths = entity.durationMonths,
             signatureRequestedAt = entity.signatureRequestedAt,

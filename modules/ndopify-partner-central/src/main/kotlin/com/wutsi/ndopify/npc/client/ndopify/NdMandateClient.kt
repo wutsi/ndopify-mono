@@ -61,6 +61,15 @@ class NdMandateClient(
             ?.mandates
             ?: emptyList()
 
+    /** The mandates offered to the agent (a PENDING offer), in one call. */
+    fun offered(agentId: Long): List<MandateSummary> =
+        rest.get()
+            .uri("/v1/mandates?offered-to={agentId}", agentId)
+            .retrieve()
+            .body<SearchMandateResponse>()
+            ?.mandates
+            ?: emptyList()
+
     fun update(id: Long, request: UpdateMandateRequest) {
         rest.post().uri("/v1/mandates/{id}", id).body(request).retrieve().toBodilessEntity()
     }

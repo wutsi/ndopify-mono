@@ -10,6 +10,7 @@ import java.time.Instant
 import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -22,6 +23,15 @@ class SearchContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         get() = if (admin) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
 
     @Test
+    fun `never the signed PDF's link`() {
+        // c-2 has one: only GET /v1/contracts/{id} gives it, to the contract's parties
+        val json = rest.getForEntity("/v1/contracts", String::class.java).body!!
+
+        assertFalse(json.contains("signedContentUrl"))
+        assertFalse(json.contains("MNDT-2024-000002.pdf"))
+    }
+
+    @Test
     fun all() {
         val contracts = search("")
         assertEquals(listOf("c-3", "c-2", "c-1"), contracts.map { it.id }) // Newest first
@@ -31,8 +41,6 @@ class SearchContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(ContractType.SEARCH, contract.type)
         assertEquals(ContractStatus.SIGNED, contract.status)
         assertEquals(12, contract.durationMonths)
-        assertEquals("https://cdn.ndopify.com/contracts/MNDT-2024-000002.pdf", contract.signedContentUrl)
-        assertNull(contracts[0].signedContentUrl)
         assertEquals(Date.from(Instant.parse("2024-05-25T00:00:00Z")), contract.signatureRequestedAt)
         assertNotNull(contract.signatureDeadline)
         assertNotNull(contract.validFrom)

@@ -2,12 +2,9 @@ package com.wutsi.ndopify.npc.ui.home
 
 import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.contract.dto.ContractSummary
-import com.wutsi.ndopify.contract.dto.SearchContractRequest
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
-import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
-import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
@@ -18,6 +15,7 @@ import com.wutsi.ndopify.npc.ui.kyc.KycRules
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardView
 import com.wutsi.ndopify.npc.ui.mandate.MandateCards
+import com.wutsi.ndopify.npc.ui.mandate.MandateSummaries
 import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.refdata.dto.Location
@@ -42,7 +40,6 @@ class HomeController(
     private val kycClient: NdKycClient,
     private val assignmentClient: NdAssignmentClient,
     private val mandateClient: NdMandateClient,
-    private val contractClient: NdContractClient,
     locationClient: NdLocationClient,
     private val tenantContext: TenantContext,
     private val clock: Clock,
@@ -57,9 +54,6 @@ class HomeController(
         const val KYC_TODO = "todo"
         const val KYC_PENDING = "pending"
         const val KYC_REJECTED = "rejected"
-
-        // Sent to the customer: the card's next step needs the contract's dates.
-        private val SENT = setOf(MandateStatus.PENDING_APPROVAL, MandateStatus.APPROVED)
     }
 
     private val sector = SectorValidator(locationClient, tenantContext)
@@ -103,66 +97,36 @@ class HomeController(
     }
 
     /**
-     * The offers still open, newest first; null when they can't be had. An offer whose mandate can't be loaded is
-     * left out, so one bad mandate doesn't hide the others.
+     * The offers still open, newest first, with their mandates (one search for all of them); null when they can't be
+     * had. An offer whose mandate isn't returned (no longer offered since) is left out.
      */
-    private fun offers(agent: Agent, now: Long): List<Pair<AssignmentSummary, Mandate>>? {
-        val open =
-            try {
-                assignmentClient.pending(agent.id).filter { AssignmentViews.isOpen(it, now) }
-            } catch (ex: RestClientException) {
-                LOGGER.warn("No offers for agent ${agent.id}: ${ex.message}")
-                return null
+    private fun offers(agent: Agent, now: Long): List<Pair<AssignmentSummary, Mandate>>? =
+        try {
+            val open = assignmentClient.pending(agent.id).filter { AssignmentViews.isOpen(it, now) }
+            if (open.isEmpty()) {
+                emptyList()
+            } else {
+                val mandates = mandateClient.offered(agent.id).associateBy { it.id }
+                open.mapNotNull { assignment ->
+                    mandates[assignment.mandateId]?.let { summary -> assignment to MandateSummaries.toMandate(summary) }
+                }
             }
-
-        return open.mapNotNull { assignment ->
-            try {
-                assignment to mandateClient.get(assignment.mandateId)
-            } catch (ex: RestClientException) {
-                LOGGER.warn("No mandate ${assignment.mandateId} for offer ${assignment.id}: ${ex.message}")
-                null
-            }
+        } catch (ex: RestClientException) {
+            LOGGER.warn("No offers for agent ${agent.id}: ${ex.message}")
+            null
         }
-    }
 
     /**
-     * The agent's mandates in progress, in the search's order, each with its contract once sent to the customer (for
-     * the signature deadline or the end of validity); null when they can't be had. The summary lacks the moving date,
-     * so each mandate is loaded: one that can't be is left out. Their contracts come in one search: without it, the
-     * cards are shown without them.
+     * The agent's mandates in progress, in the search's order, each with its contract (for the signature deadline or
+     * the end of validity), all in the search; null when they can't be had.
      */
-    private fun mandates(agent: Agent): List<Pair<Mandate, ContractSummary?>>? {
-        val summaries =
-            try {
-                mandateClient.active(agent.id)
-            } catch (ex: RestClientException) {
-                LOGGER.warn("No mandates for agent ${agent.id}: ${ex.message}")
-                return null
-            }
-
-        val mandates = summaries.mapNotNull { summary ->
-            try {
-                mandateClient.get(summary.id)
-            } catch (ex: RestClientException) {
-                LOGGER.warn("No mandate ${summary.id} for agent ${agent.id}: ${ex.message}")
-                null
-            }
-        }
-        val contracts = contracts(mandates)
-        return mandates.map { mandate -> mandate to mandate.contractId?.let { contracts[it] } }
-    }
-
-    /** The contracts of the mandates sent to the customer, by id. */
-    private fun contracts(mandates: List<Mandate>): Map<String, ContractSummary> {
-        val ids = mandates.filter { it.status in SENT }.mapNotNull { it.contractId }.distinct()
-        if (ids.isEmpty()) return emptyMap()
-        return try {
-            contractClient.search(SearchContractRequest(ids = ids, limit = ids.size)).associateBy { it.id }
+    private fun mandates(agent: Agent): List<Pair<Mandate, ContractSummary?>>? =
+        try {
+            mandateClient.active(agent.id).map { summary -> MandateSummaries.toMandate(summary) to summary.contract }
         } catch (ex: RestClientException) {
-            LOGGER.warn("No contracts for the mandates $ids: ${ex.message}")
-            emptyMap()
+            LOGGER.warn("No mandates for agent ${agent.id}: ${ex.message}")
+            null
         }
-    }
 
     /** One lookup for every card; without the names, the cards still show (no sector). */
     private fun names(ids: List<Long>): Map<Long, Location> =

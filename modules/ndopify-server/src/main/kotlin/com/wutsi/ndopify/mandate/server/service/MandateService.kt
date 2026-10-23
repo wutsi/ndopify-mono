@@ -98,6 +98,17 @@ class MandateService(
             if (request.statuses.isNotEmpty()) {
                 predicates.add(root.get<Any>("status").`in`(request.statuses))
             }
+            request.offeredTo?.let { agentId ->
+                // A subquery rather than a join: the mandates offered to the agent, whatever its other offers
+                val sub = query!!.subquery(Long::class.java)
+                val assignment = sub.from(AssignmentEntity::class.java)
+                sub.select(assignment.get<MandateEntity>("mandate").get("id"))
+                    .where(
+                        cb.equal(assignment.get<Long>("agentId"), agentId),
+                        cb.equal(assignment.get<Any>("status"), AssignmentStatus.PENDING),
+                    )
+                predicates.add(root.get<Long>("id").`in`(sub))
+            }
 
             cb.and(*predicates.toTypedArray())
         }

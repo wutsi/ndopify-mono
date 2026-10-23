@@ -95,6 +95,26 @@ class MandateAccessEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `agent searches the mandates offered to it`() {
+        // Not the one it accepted (its own), nor the one it declined
+        assertEquals(listOf(3L), search("offered-to=20").map { it.id })
+        assertEquals(listOf(3L), search("offered-to=20&id=3&id=4").map { it.id })
+    }
+
+    @Test
+    fun `agent can't search the mandates offered to another agent`() {
+        assertDenied(rest.getForEntity("/v1/mandates?offered-to=30", ErrorResponse::class.java))
+        assertDenied(rest.getForEntity("/v1/mandates?offered-to=20&agent-id=30", ErrorResponse::class.java))
+    }
+
+    @Test
+    fun `admin searches the mandates offered to an agent`() {
+        admin = true
+
+        assertEquals(listOf(3L), search("offered-to=20").map { it.id })
+    }
+
+    @Test
     fun `user who isn't an agent can't search`() {
         userId = 13L
 

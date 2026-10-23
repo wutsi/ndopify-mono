@@ -25,8 +25,14 @@ INSERT INTO T_USER (id, email, deleted, created_at, deleted_at) VALUES
   (7, 'other-tenant@gmail.com', false, NOW(), NULL),
   (8, 'signer@gmail.com', false, NOW(), NULL);
 
+-- 1's membership has a party (its id goes in the token), the others none
+INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name) VALUES
+    (100, 1, 'ray.sponsible@gmail.com', 'Ray', 'Sponsible');
+
+INSERT INTO T_MEMBERSHIP (id, tenant_id, user_id, party_id) VALUES
+  (1, 1, 1, 100);
+
 INSERT INTO T_MEMBERSHIP (id, tenant_id, user_id) VALUES
-  (1, 1, 1),
   (2, 1, 2),
   (3, 1, 3),
   (4, 1, 4),

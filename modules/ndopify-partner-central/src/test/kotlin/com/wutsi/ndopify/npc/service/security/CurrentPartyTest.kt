@@ -28,8 +28,9 @@ class CurrentPartyTest {
         SecurityContextHolder.clearContext()
     }
 
-    private fun signIn(userId: Long) {
+    private fun signIn(userId: Long, partyId: Long? = null) {
         val token = JWT.create().withIssuer(JwtDecoder.ISSUER).withClaim(JwtPrincipal.CLAIM_USER_ID, userId)
+            .withClaim(JwtPrincipal.CLAIM_PARTY_ID, partyId)
             .sign(Algorithm.none())
         SecurityContextHolder.setContext(SecurityContextImpl(JwtAuthentication(JwtPrincipal(JWT.decode(token)))))
     }
@@ -61,6 +62,36 @@ class CurrentPartyTest {
     @Test
     fun anonymous() {
         assertNull(currentParty.get())
+        verify(userClient, never()).get(any())
+    }
+
+    @Test
+    fun `id from the token, without any call`() {
+        signIn(11L, partyId = 100L)
+
+        assertEquals(100L, currentParty.id())
+        verify(userClient, never()).get(any())
+    }
+
+    @Test
+    fun `id looked up for a token without party`() {
+        signIn(11L)
+        doReturn(User(id = 11L, party = Party(id = 100L))).whenever(userClient).get(11L)
+
+        assertEquals(100L, currentParty.id())
+    }
+
+    @Test
+    fun `no id for a user without party`() {
+        signIn(11L)
+        doReturn(User(id = 11L, party = null)).whenever(userClient).get(11L)
+
+        assertNull(currentParty.id())
+    }
+
+    @Test
+    fun `no id when anonymous`() {
+        assertNull(currentParty.id())
         verify(userClient, never()).get(any())
     }
 }

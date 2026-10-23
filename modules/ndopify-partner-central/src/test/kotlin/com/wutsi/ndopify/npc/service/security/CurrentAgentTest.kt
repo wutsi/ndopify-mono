@@ -8,7 +8,6 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
-import com.wutsi.ndopify.party.dto.Party
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -20,7 +19,7 @@ class CurrentAgentTest {
 
     @Test
     fun agent() {
-        doReturn(Party(id = 100L)).whenever(currentParty).get()
+        doReturn(100L).whenever(currentParty).id()
         doReturn(Agent(id = 20L)).whenever(agentClient).findByPartyId(100L)
 
         assertEquals(20L, currentAgent.get()?.id)
@@ -28,7 +27,7 @@ class CurrentAgentTest {
 
     @Test
     fun `party is not an agent`() {
-        doReturn(Party(id = 100L)).whenever(currentParty).get()
+        doReturn(100L).whenever(currentParty).id()
         doReturn(null).whenever(agentClient).findByPartyId(100L)
 
         assertNull(currentAgent.get())
@@ -36,7 +35,7 @@ class CurrentAgentTest {
 
     @Test
     fun `nobody signed in`() {
-        doReturn(null).whenever(currentParty).get()
+        doReturn(null).whenever(currentParty).id()
 
         assertNull(currentAgent.get())
         verify(agentClient, never()).findByPartyId(any())

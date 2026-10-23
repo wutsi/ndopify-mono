@@ -9,7 +9,6 @@ import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateSummary
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
-import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
@@ -21,6 +20,7 @@ import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.MANDATE
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdviceTest
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest
+import com.wutsi.ndopify.npc.ui.mandate.MandateSummariesTest
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
 import com.wutsi.ndopify.party.dto.KycStatus
@@ -56,7 +56,6 @@ class HomeTemplateTest {
     private val kycClient = mock<NdKycClient>()
     private val assignmentClient = mock<NdAssignmentClient>()
     private val mandateClient = mock<NdMandateClient>()
-    private val contractClient = mock<NdContractClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
@@ -69,13 +68,16 @@ class HomeTemplateTest {
         doReturn(AGENT).whenever(currentAgent).get()
         doReturn(AssignmentViewsTest.NOW).whenever(clock).millis()
         doReturn(listOf(ASSIGNMENT)).whenever(assignmentClient).pending(AGENT.id)
-        doReturn(MANDATE).whenever(mandateClient).get(101)
-        doReturn(listOf(MandateSummary(id = 201), MandateSummary(id = 202)))
-            .whenever(mandateClient).active(AGENT.id)
-        doReturn(MandateCardsTest.MANDATE).whenever(mandateClient).get(201)
-        doReturn(MandateCardsTest.MANDATE.copy(id = 202, status = MandateStatus.PENDING_APPROVAL, contractId = "c-202"))
-            .whenever(mandateClient).get(202)
-        doReturn(listOf(MandateCardsTest.CONTRACT_2027.copy(id = "c-202"))).whenever(contractClient).search(any())
+        doReturn(listOf(MandateSummariesTest.summary(MANDATE))).whenever(mandateClient).offered(AGENT.id)
+        doReturn(
+            listOf(
+                MandateSummariesTest.summary(MandateCardsTest.MANDATE),
+                MandateSummariesTest.summary(
+                    MandateCardsTest.MANDATE.copy(id = 202, status = MandateStatus.PENDING_APPROVAL),
+                    MandateCardsTest.CONTRACT_2027.copy(id = "c-202"),
+                ),
+            ),
+        ).whenever(mandateClient).active(AGENT.id)
 
         val engine = SpringTemplateEngine().apply {
             setTemplateResolver(
@@ -97,7 +99,6 @@ class HomeTemplateTest {
                     kycClient,
                     assignmentClient,
                     mandateClient,
-                    contractClient,
                     locationClient,
                     tenantContext,
                     clock

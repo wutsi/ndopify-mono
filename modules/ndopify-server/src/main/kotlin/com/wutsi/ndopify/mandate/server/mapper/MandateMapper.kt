@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.mandate.server.mapper
 
+import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateSummary
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
@@ -60,7 +61,8 @@ class MandateMapper {
         )
     }
 
-    fun toMandateSummary(entity: MandateEntity): MandateSummary {
+    /** [contract] is the mandate's, loaded with the others of the search. */
+    fun toMandateSummary(entity: MandateEntity, contract: ContractSummary?): MandateSummary {
         return MandateSummary(
             id = entity.id ?: -1,
             customerId = entity.customerId,
@@ -68,11 +70,32 @@ class MandateMapper {
             status = entity.status,
             mandateType = entity.mandateType,
             listingType = entity.listingType,
+            propertyCategory = entity.propertyCategory,
             propertyType = entity.propertyType,
             cityId = entity.cityId,
             neighborhoodIds = entity.neighborhoodIds,
+            furnitureType = entity.furnitureType,
             rooms = entity.rooms,
+            parkings = entity.parkings,
+            area = entity.area,
+            waterMeter = entity.waterMeter,
+            dedicatedWaterMeter = entity.dedicatedWaterMeter,
+            waterTank = entity.waterTank,
+            waterWell = entity.waterWell,
+            electricityMeter = entity.electricityMeter,
+            dedicatedElectricityMeter = entity.dedicatedElectricityMeter,
+            generatorSet = entity.generatorSet,
+            solarPanel = entity.solarPanel,
+            roadPaved = entity.roadPaved,
+            trackAccessibleByCar = entity.trackAccessibleByCar,
+            trackInaccessibleByCar = entity.trackInaccessibleByCar,
+            securedFenced = entity.securedFenced,
+            securityGuard = entity.securityGuard,
+            videoSurveillance = entity.videoSurveillance,
             price = toPrice(entity),
+            movingPeriod = entity.movingPeriod,
+            availableFrom = entity.availableFrom,
+            contract = contract,
             createdAt = entity.createdAt,
             modifiedAt = entity.modifiedAt,
         )

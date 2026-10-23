@@ -69,6 +69,7 @@ class AuthenticateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(ApplicationCode.PARTNER_CENTRAL, principal.getApplication())
         assertEquals(TENANT_ID, principal.getTenantId())
         assertEquals(listOf("AGENT"), principal.getRoles().toList())
+        assertEquals(100L, principal.getPartyId())
 
         val authFactor = authFactorRepository.findById(1L).get()
         assertNotNull(authFactor.lastLoggedInAt)
@@ -193,6 +194,7 @@ class AuthenticateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(8L, principal.getUserId())
         assertEquals(ApplicationCode.E_SIGNATURE, principal.getApplication())
         assertEquals(TENANT_ID, principal.getTenantId())
+        assertNull(principal.getPartyId()) // Its membership has no party
     }
 
     @Test

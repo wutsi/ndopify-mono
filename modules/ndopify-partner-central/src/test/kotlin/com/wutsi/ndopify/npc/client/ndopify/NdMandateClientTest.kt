@@ -148,6 +148,23 @@ class NdMandateClientTest {
     }
 
     @Test
+    fun offered() {
+        server.expect(requestTo("http://localhost:8080/v1/mandates?offered-to=20"))
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(
+                withSuccess(
+                    json(SearchMandateResponse(listOf(MandateSummary(id = 101, status = MandateStatus.PENDING_ASSIGNMENT)))),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val mandates = client.offered(20)
+
+        server.verify()
+        assertEquals(listOf(101L), mandates.map { it.id })
+    }
+
+    @Test
     fun update() {
         server.expect(requestTo("http://localhost:8080/v1/mandates/101"))
             .andExpect(method(HttpMethod.POST))

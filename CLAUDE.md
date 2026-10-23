@@ -155,7 +155,9 @@ Current domains:
   but an SMTP failure no longer does — the code is committed and the user asks for a new one; a user who isn't a
   member of the tenant gets 404 `USER_NOT_FOUND`. `POST /v1/auth` exchanges credentials for a JWT:
   `AbstractAuthenticator` requires a tenant (400 `HTTP_MISSING_PARAMETER` otherwise), finds the user by e-mail
-  (global), then its membership of the tenant (`AUTH_ACCESS_DENIED` without one), whose roles go in the token. A
+  (global), then its membership of the tenant (`AUTH_ACCESS_DENIED` without one), whose roles go in the token, with
+  its party's id (`partyId` claim, `JwtPrincipal.getPartyId`; none for a party-less member): for clients only, the
+  server never trusts it (unsigned token) and `CallerService` still goes through the membership. A
   person in two tenants has one user, one set of credentials, and a membership (party, roles) in each. Nothing
   creates a membership on sign-in (not even Google One Tap): only registration (`AgentService.create`) does, and a request
   for signature (`ContractSignerService`), for the parties asked to sign, with `e-signature` access.
@@ -192,7 +194,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `admin` role, `RoleCode`) or the mandate's agent (JWT user → membership → party → agent), else 403
   `MANDATE_ACCESS_DENIED`, after the 404 and before any 409. The agent it's offered to (PENDING assignment) may also
   get it, not change it. An agent's search is restricted to its own mandates (`agent-id` forced; another agent's is a
-  403). Reads are checked by `MandateEndpoints`, changes by `MandateService` (under the mandate's lock); the server's own
+  403), or with `offered-to` (its own id only, else 403) to the mandates with a PENDING offer to it: those it may get.
+  A search's `MandateSummary` has what a card shows (criteria, amenities, `movingPeriod`, `availableFrom`) and its
+  `contract` (`ContractSummary`, the contracts of the page in one query), not the terms nor the customer's comments. Reads are checked by `MandateEndpoints`, changes by `MandateService` (under the mandate's lock); the server's own
   reads (dispatch, listeners, jobs) aren't. Partner Central has no admin role: admins only exist in the admin console.
   `POST /{id}/request-approval` (ASSIGNED or PENDING_APPROVAL, else 409 `MANDATE_CANNOT_BE_APPROVED`) →
   `PENDING_APPROVAL`, its contract's content generated and stored, and its signature requested, in 3 transactions so that
@@ -274,7 +278,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `{number}-{token}.pdf` and `{number}-{token}-signature-{n}.png`, `token` random per run (the storage is public and the
   directory is guessable from a QR code; concurrent runs never overwrite each other), never named after the contract
   party (its id is the secret of the sign link); `ContractService.setSignedContent` then saves
-  `signedContentUrl` (in `Contract` / `ContractSummary`) and `signedContentHash` (SHA-256 of the PDF, stored only)
+  `signedContentUrl` (in `Contract` only, never in `ContractSummary`: a search, or a mandate search's embedded
+  contract, mustn't hand out the signed PDF's link) and `signedContentHash` (SHA-256 of the PDF, stored only)
   under the lock, first one wins. Nothing is locked during the download / render / upload. No PDF (logged) without
   content in the storage, with a content hash mismatch, a signature without hash or salt, or no
   `eSignaturePortalUrl`. `POST /v1/contracts/{id}/signed-content` (`@OpsEndpoint`, admin) generates it again. The
@@ -418,8 +423,8 @@ Package `com.wutsi.ndopify.npc`: `ui/` (MVC controllers + Thymeleaf templates in
 - Login redirects to `/`, the *Espace agent* (`HomeController`, `ui/home/`, `templates/index.html`), whatever the
   KYC status: an agent who isn't `VERIFIED` gets a banner linking to `/kyc`, worded after its newest case (documents
   to send, under review, rejected), since the party's status only changes on verification. Its profile section shows the agent's photo, name,
-  area and biography summary. The signed-in agent is `CurrentAgent` (party → `GET /v1/agents?party-id=` → `GET
-  /v1/agents/{id}`): agent and party ids always come from the token, never from a form, since ndopify-server doesn't
+  area and biography summary. The signed-in agent is `CurrentAgent` (`CurrentParty.id()`, the token's `partyId`, or
+  `GET /v1/users/{id}` for a token without it → `GET /v1/agents?party-id=` → `GET /v1/agents/{id}`): agent and party ids always come from the token, never from a form, since ndopify-server doesn't
   check who updates an agent. The profile pages (`ProfileController`, `ui/profile/`) are open whatever the KYC
   status: `GET|POST /profile` (`templates/profile/edit.html`, `POST /v1/agents/{id}`; the name isn't editable, the party's e-mail is shown read-only until changing it checks ownership of both addresses) and
   `GET|POST /profile/photo` (`templates/profile/photo.html`, sniffed with Tika, 5 Mo, sent to `POST
@@ -428,8 +433,9 @@ Package `com.wutsi.ndopify.npc`: `ui/` (MVC controllers + Thymeleaf templates in
   (`ui/location/`) is the city/neighbourhood check shared with the join wizard.
   A VERIFIED agent's Espace agent also lists the mandates offered to it (*Mandats proposés*): `HomeController` reads
   its PENDING assignments (`NdAssignmentClient` → `GET /v1/assignments?agent-id=&status=PENDING`, leaving out those
-  past `expiresAt`), each one's mandate (`GET /v1/mandates/{id}`, one call per offer, at most `max-load`; one that
-  fails is left out) and the location names in one lookup, into `AssignmentView`s (`AssignmentViews`): no customer
+  past `expiresAt`), their mandates in one search (`GET /v1/mandates?offered-to=`, skipped without offer; an offer
+  whose mandate isn't returned is left out, a failure is the section's "unavailable"), turned into `Mandate`s by
+  `ui/mandate/MandateSummaries` for the labels, and the location names in one lookup, into `AssignmentView`s (`AssignmentViews`): no customer
   data (no id, no comments) before acceptance. `AssignmentController` posts `POST /assignments/{id}/accept|decline`
   and goes back to `/#assignments-title` with an `assignment` flash attribute (`accepted`, `declined`, `closed` for a 403/404/409,
   `error`); ndopify-server checks the caller is the offer's agent. Without JS, "Refuser" opens the confirmation via
@@ -437,9 +443,8 @@ Package `com.wutsi.ndopify.npc`: `ui/` (MVC controllers + Thymeleaf templates in
   are shared with the find-property review in `ui/mandate/MandateLabels`.
 - A VERIFIED agent's Espace agent also lists its mandates in progress (*Mes mandats*): `HomeController` reads
   `GET /v1/mandates?agent-id=&status=ASSIGNED&status=PENDING_APPROVAL&status=APPROVED` (search order, capped at 20),
-  then one `GET /v1/mandates/{id}` per card (the summary lacks the moving date; one that fails is left out) plus, in
-  one `GET /v1/contracts?id=…` for all the cards, the contracts of those PENDING_APPROVAL / APPROVED, for the next
-  step's date (without it, the cards show no date); the location names
+  one call for every card: each summary carries its contract, for the next step's date (a card shows none without
+  it); the location names
   of offers and mandates come in one lookup. Cards are `MandateCards` → `MandateCardView`; statuses, tags, party
   wording ("le client" / "le bailleur", after `mandateType`), dates and next
   steps are `ui/mandate/MandateRules`. Each card opens the mandate page, `MandateController` (`ui/mandate/`,
