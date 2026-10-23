@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.platform.config
+package com.wutsi.ndopify.config.platform
 
 import com.wutsi.ndopify.platform.momo.MoMoGatewayProvider
 import com.wutsi.ndopify.platform.momo.mtn.MoMoGatewayMtn

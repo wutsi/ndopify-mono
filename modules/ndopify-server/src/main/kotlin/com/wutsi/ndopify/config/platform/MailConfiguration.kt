@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.platform.config
+package com.wutsi.ndopify.config.platform
 
 import com.github.mustachejava.DefaultMustacheFactory
 import com.github.mustachejava.MustacheFactory

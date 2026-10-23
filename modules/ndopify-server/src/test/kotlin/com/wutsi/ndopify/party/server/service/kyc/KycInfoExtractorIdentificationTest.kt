@@ -22,7 +22,7 @@ import kotlin.test.assertEquals
 
 class KycInfoExtractorIdentificationTest {
     private val chatModel = mock<ChatModel>()
-    private val extractor = KycInfoExtractorIdentification(ChatClient.builder(chatModel), Clock.systemUTC())
+    private val extractor = KycInfoExtractorIdentification(ChatClient.builder(chatModel).build(), Clock.systemUTC())
     private val fmt = SimpleDateFormat("yyyy-MM-dd")
 
     @BeforeEach

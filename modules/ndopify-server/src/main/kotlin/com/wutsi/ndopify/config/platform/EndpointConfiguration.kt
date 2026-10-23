@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.platform.config
+package com.wutsi.ndopify.config.platform
 
 import com.wutsi.ndopify.platform.endpoint.OpsEndpointHandlerMapping
 import org.springframework.beans.factory.annotation.Value

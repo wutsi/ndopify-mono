@@ -1,4 +1,4 @@
-package com.wutsi.ndopify.platform.config
+package com.wutsi.ndopify.config.platform
 
 import com.amazonaws.services.s3.AmazonS3
 import com.amazonaws.services.s3.AmazonS3ClientBuilder

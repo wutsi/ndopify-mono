@@ -13,7 +13,7 @@ import java.time.LocalDate
 
 @Service
 class KycInfoExtractorIdentification(
-    private val chatClientBuilder: ChatClient.Builder,
+    private val client: ChatClient,
     private val clock: Clock,
 ) : KycInfoExtractor {
     companion object {
@@ -59,8 +59,6 @@ class KycInfoExtractorIdentification(
             - Today's date is {{TODAY}}.
         """
     }
-
-    private val client = chatClientBuilder.build()
 
     override fun extract(images: List<File>): KycInfo {
         val instructions = PROMPT
