@@ -8,6 +8,7 @@ import com.wutsi.ndopify.mandate.server.domain.AssignmentEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.party.server.domain.KycCaseEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
+import org.springframework.dao.CannotAcquireLockException
 import org.springframework.http.HttpStatus
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.orm.ObjectOptimisticLockingFailureException
@@ -35,5 +36,16 @@ class ControllerErrorHandlerTest {
             assertEquals(HttpStatus.CONFLICT, response.statusCode, type.simpleName)
             assertEquals(code, response.body?.error?.code, type.simpleName)
         }
+    }
+
+    @Test
+    fun `lock not acquired - 409`() {
+        val response = handler.onPessimisticLockingFailureException(
+            MockHttpServletRequest(),
+            CannotAcquireLockException("Deadlock found when trying to get lock"),
+        )
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.HTTP_VERSION_CONFLICT, response.body?.error?.code)
     }
 }

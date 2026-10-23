@@ -17,6 +17,7 @@ import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.party.server.domain.KycCaseEntity
 import com.wutsi.ndopify.platform.logger.KVLogger
 import jakarta.servlet.http.HttpServletRequest
+import org.springframework.dao.PessimisticLockingFailureException
 import org.springframework.http.HttpStatus
 import org.springframework.http.HttpStatus.BAD_REQUEST
 import org.springframework.http.HttpStatus.CONFLICT
@@ -83,6 +84,21 @@ class ControllerErrorHandler(private val logger: KVLogger) {
                 KycCaseEntity::class.java.name -> ErrorCode.KYC_CASE_VERSION_CONFLICT
                 else -> ErrorCode.HTTP_VERSION_CONFLICT
             },
+            status = CONFLICT,
+            e = e,
+            message = e.message,
+        )
+
+    // A row lock not acquired (a deadlock, or a lock wait timeout) by concurrent requests: the caller's transaction is
+    // rolled back, and can be retried once the data it read has been reloaded
+    @ExceptionHandler(PessimisticLockingFailureException::class)
+    fun onPessimisticLockingFailureException(
+        request: HttpServletRequest,
+        e: PessimisticLockingFailureException,
+    ): ResponseEntity<ErrorResponse> =
+        handleException(
+            request,
+            code = ErrorCode.HTTP_VERSION_CONFLICT,
             status = CONFLICT,
             e = e,
             message = e.message,

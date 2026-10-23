@@ -3,9 +3,12 @@ package com.wutsi.ndopify.esignature.ui.sign
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.wutsi.ndopify.contract.dto.ContractStatus
+import com.wutsi.ndopify.esignature.client.ContractContent
 import com.wutsi.ndopify.esignature.service.TenantContext
 import com.wutsi.ndopify.esignature.service.TenantFixtures.TENANT
 import com.wutsi.ndopify.esignature.ui.sign.SignFixtures.AGENT
+import com.wutsi.ndopify.esignature.ui.sign.SignFixtures.CONTENT
+import com.wutsi.ndopify.esignature.ui.sign.SignFixtures.CONTENT_HASH
 import com.wutsi.ndopify.esignature.ui.sign.SignFixtures.CONTENT_HTML
 import com.wutsi.ndopify.esignature.ui.sign.SignFixtures.CONTENT_URL
 import com.wutsi.ndopify.esignature.ui.sign.SignFixtures.CONTRACT
@@ -30,9 +33,9 @@ class SignViewsTest {
     private val views = SignViews(Clock.fixed(NOW, ZoneOffset.UTC), tenantContext)
 
     private val fetched = mutableListOf<String>()
-    private val fetch: (String) -> String? = { url ->
+    private val fetch: (String) -> ContractContent? = { url ->
         fetched.add(url)
-        CONTENT_HTML
+        CONTENT
     }
 
     @Test
@@ -49,6 +52,7 @@ class SignViewsTest {
         assertEquals("18 oct. 2026", view.signDate)
         assertEquals(CONTENT_HTML, view.contentHtml)
         assertEquals(CONTENT_URL, view.contentUrl)
+        assertEquals(CONTENT_HASH, view.contentHash)
         assertTrue(view.canSign)
         assertEquals(listOf(CONTENT_URL), fetched)
     }
@@ -60,6 +64,7 @@ class SignViewsTest {
         assertEquals(SignView.STEP_SIGN, view.step)
         assertNull(view.contentHtml)
         assertNull(view.contentUrl)
+        assertNull(view.contentHash)
         assertFalse(view.canSign)
     }
 

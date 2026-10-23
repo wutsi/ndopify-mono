@@ -52,7 +52,6 @@ class ContractMapper {
             contractNumber = contract.number,
             legalName = party.legalName,
             signedAt = party.signedAt!!,
-            signedContentUrl = contract.signedContentUrl,
         )
     }
 

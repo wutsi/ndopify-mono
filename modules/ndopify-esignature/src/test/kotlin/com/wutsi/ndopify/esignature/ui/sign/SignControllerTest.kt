@@ -18,6 +18,7 @@ import com.wutsi.ndopify.contract.dto.SignContractRequest
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.esignature.client.ContractContent
 import com.wutsi.ndopify.esignature.client.ContractContentClient
 import com.wutsi.ndopify.esignature.client.ndopify.NdAuthClient
 import com.wutsi.ndopify.esignature.client.ndopify.NdContractClient
@@ -26,6 +27,8 @@ import com.wutsi.ndopify.esignature.service.TenantContext
 import com.wutsi.ndopify.esignature.service.TenantFixtures.TENANT
 import com.wutsi.ndopify.esignature.service.security.AccessTokenService
 import com.wutsi.ndopify.esignature.service.security.JwtAuthentication
+import com.wutsi.ndopify.esignature.ui.sign.SignFixtures.CONTENT
+import com.wutsi.ndopify.esignature.ui.sign.SignFixtures.CONTENT_HASH
 import com.wutsi.ndopify.esignature.ui.sign.SignFixtures.CONTENT_HTML
 import com.wutsi.ndopify.esignature.ui.sign.SignFixtures.CONTENT_URL
 import com.wutsi.ndopify.esignature.ui.sign.SignFixtures.CONTRACT
@@ -92,7 +95,7 @@ class SignControllerTest {
             .setViewResolvers(InternalResourceViewResolver("/templates/", ".html"))
             .build()
         session = MockHttpSession()
-        doReturn(CONTENT_HTML).whenever(contentClient).fetch(CONTENT_URL)
+        doReturn(CONTENT).whenever(contentClient).fetch(CONTENT_URL)
     }
 
     @AfterEach
@@ -379,7 +382,7 @@ class SignControllerTest {
 
         val request = argumentCaptor<SignContractRequest>()
         verify(contractClient).sign(eq(CONTRACT.id), request.capture())
-        assertEquals(SignContractRequest(CONTRACT_PARTY_ID, "41.202.1.2", "Mozilla/5.0"), request.firstValue)
+        assertEquals(SignContractRequest(CONTRACT_PARTY_ID, "41.202.1.2", "Mozilla/5.0", CONTENT_HASH), request.firstValue)
         assertEquals("redirect:$path?step=done", result.modelAndView?.viewName)
     }
 
@@ -400,7 +403,7 @@ class SignControllerTest {
         signIn()
         val newUrl = "https://storage.ndopify.cm/contracts/MNDT-2026-000042-v2.html"
         givenContract(CONTRACT.copy(contentUrl = newUrl))
-        doReturn("<p>Nouvelle version</p>").whenever(contentClient).fetch(newUrl)
+        doReturn(ContractContent("<p>Nouvelle version</p>", "2".repeat(64))).whenever(contentClient).fetch(newUrl)
 
         val result = mvc.perform(signPost()).andReturn() // Posts the URL of the version shown before
 
@@ -465,6 +468,20 @@ class SignControllerTest {
         givenContract(signed())
         val done = mvc.perform(get(path).param("step", "done")).andReturn()
         assertEquals(SignView.STEP_DONE, view(done).step)
+    }
+
+    @Test
+    fun `content not the contract's is shown again`() {
+        signIn()
+        givenContract(CONTRACT)
+        doThrow(error(HttpStatus.CONFLICT, ErrorCode.CONTRACT_CONTENT_MISMATCH))
+            .whenever(contractClient).sign(any(), any())
+
+        val result = mvc.perform(signPost()).andReturn()
+
+        assertEquals("sign", result.modelAndView?.viewName)
+        assertEquals(SignView.STEP_SIGN, view(result).step)
+        assertEquals(SignController.CONTENT_CHANGED, model(result)["error"])
     }
 
     @Test

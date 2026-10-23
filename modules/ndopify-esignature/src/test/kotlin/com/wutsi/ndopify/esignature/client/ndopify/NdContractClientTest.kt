@@ -124,10 +124,10 @@ class NdContractClientTest {
         server.expect(requestTo("http://localhost:8080/v1/contracts/abc/sign"))
             .andExpect(method(HttpMethod.POST))
             .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-            .andExpect(content().json("""{"partyId":"cp-1","ipAddress":"1.2.3.4","userAgent":"Firefox"}""", true))
+            .andExpect(content().json("""{"partyId":"cp-1","ipAddress":"1.2.3.4","userAgent":"Firefox","contentHash":"abc123"}""", true))
             .andRespond(withSuccess())
 
-        client.sign("abc", SignContractRequest(partyId = "cp-1", ipAddress = "1.2.3.4", userAgent = "Firefox"))
+        client.sign("abc", SignContractRequest(partyId = "cp-1", ipAddress = "1.2.3.4", userAgent = "Firefox", contentHash = "abc123"))
 
         server.verify()
     }

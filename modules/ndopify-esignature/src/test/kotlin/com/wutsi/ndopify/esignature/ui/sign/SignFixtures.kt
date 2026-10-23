@@ -5,6 +5,7 @@ import com.wutsi.ndopify.contract.dto.ContractParty
 import com.wutsi.ndopify.contract.dto.ContractPartyRole
 import com.wutsi.ndopify.contract.dto.ContractStatus
 import com.wutsi.ndopify.contract.dto.ContractType
+import com.wutsi.ndopify.esignature.client.ContractContent
 import java.time.Instant
 import java.util.Date
 
@@ -16,6 +17,8 @@ object SignFixtures {
     const val CONTRACT_PARTY_ID = "cp-customer"
     const val CONTENT_URL = "https://storage.ndopify.cm/contracts/MNDT-2026-000042.html"
     const val CONTENT_HTML = "<h3>Mandat de recherche</h3><p>Le Mandant confie au Mandataire…</p>"
+    const val CONTENT_HASH = "4f1c0a7e3b2d9c8e5a6f1b0d2c3e4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f"
+    val CONTENT = ContractContent(html = CONTENT_HTML, hash = CONTENT_HASH)
 
     val CUSTOMER = ContractParty(
         id = CONTRACT_PARTY_ID,

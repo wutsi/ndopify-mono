@@ -5,6 +5,7 @@ import com.wutsi.ndopify.contract.dto.ContractParty
 import com.wutsi.ndopify.contract.dto.ContractPartyRole
 import com.wutsi.ndopify.contract.dto.ContractStatus
 import com.wutsi.ndopify.contract.dto.ContractType
+import com.wutsi.ndopify.esignature.client.ContractContent
 import com.wutsi.ndopify.esignature.service.TenantContext
 import com.wutsi.ndopify.esignature.service.TenantFormatter
 import com.wutsi.ndopify.esignature.ui.sign.SignView.Companion.BLOCKED_CANCELLED
@@ -62,7 +63,7 @@ class SignViews(
         contract: Contract?,
         contractPartyId: String,
         requestedStep: String?,
-        fetchContent: (String) -> String?,
+        fetchContent: (String) -> ContractContent?,
     ): SignView {
         // Not found by a search restricted to the caller's party: the link is someone else's
         contract ?: return SignView(step = STEP_BLOCKED, blocked = BLOCKED_NOT_YOURS)
@@ -111,7 +112,7 @@ class SignViews(
         )
     }
 
-    private fun sign(contract: Contract, party: ContractParty, content: String?, now: Date): SignView {
+    private fun sign(contract: Contract, party: ContractParty, content: ContractContent?, now: Date): SignView {
         val formatter = formatter()
         return SignView(
             step = STEP_SIGN,
@@ -122,8 +123,9 @@ class SignViews(
             signerName = party.legalName,
             signerFirstName = firstName(party),
             signDate = formatter.date(now),
-            contentHtml = content,
+            contentHtml = content?.html,
             contentUrl = contract.contentUrl?.takeIf { content != null },
+            contentHash = content?.hash,
             // Never signable unseen
             canSign = content != null,
         )

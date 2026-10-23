@@ -206,7 +206,12 @@ class ContractAccessEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         rest.getForEntity("/v1/contracts?$query", SearchContractResponse::class.java).body!!.contracts
 
     private fun sign(partyId: String) =
-        SignContractRequest(partyId = partyId, ipAddress = "10.0.0.1", userAgent = "Mozilla/5.0")
+        SignContractRequest(
+            partyId = partyId,
+            ipAddress = "10.0.0.1",
+            userAgent = "Mozilla/5.0",
+            contentHash = "1111111111111111111111111111111111111111111111111111111111111111",
+        )
 
     private fun assertDenied(response: ResponseEntity<ErrorResponse>) {
         assertEquals(HttpStatus.FORBIDDEN, response.statusCode)

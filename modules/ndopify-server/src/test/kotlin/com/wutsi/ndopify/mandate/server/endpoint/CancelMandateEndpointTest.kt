@@ -1,6 +1,8 @@
 package com.wutsi.ndopify.mandate.server.endpoint
 
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
+import com.wutsi.ndopify.contract.dto.ContractStatus
+import com.wutsi.ndopify.contract.server.dao.ContractRepository
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
@@ -28,6 +30,9 @@ class CancelMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Autowired
     private lateinit var assignmentDao: AssignmentRepository
 
+    @Autowired
+    private lateinit var contractDao: ContractRepository
+
     private val request = CancelMandateRequest(
         cancellationCode = MandateCancellationCode.FOUND_INDEPENDENTLY,
         cancellationReason = "J'ai trouvé un appartement par un ami",
@@ -48,6 +53,22 @@ class CancelMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertNull(mandate.finalPrice)
 
         assertEquals(AssignmentStatus.ACCEPTED, assignmentDao.findById(2L).get().status)
+        assertEquals(ContractStatus.CANCELLED, contractDao.findById("c-2").get().status)
+    }
+
+    @Test
+    fun `the draft contract is cancelled`() {
+        assertContractStatus(5L, "c-5", ContractStatus.CANCELLED)
+    }
+
+    @Test
+    fun `the contract waiting for signature is cancelled`() {
+        assertContractStatus(6L, "c-6", ContractStatus.CANCELLED)
+    }
+
+    @Test
+    fun `the expired contract stays expired`() {
+        assertContractStatus(7L, "c-7", ContractStatus.EXPIRED)
     }
 
     @Test
@@ -89,6 +110,14 @@ class CancelMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Test
     fun `mandate from another tenant is not found`() {
         assertNotFound(9L)
+    }
+
+    private fun assertContractStatus(id: Long, contractId: String, status: ContractStatus) {
+        val response = rest.postForEntity("/v1/mandates/$id/cancel", request, Any::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(MandateStatus.CANCELLED, dao.findById(id).get().status)
+        assertEquals(status, contractDao.findById(contractId).get().status)
     }
 
     private fun assertConflict(id: Long, status: MandateStatus) {

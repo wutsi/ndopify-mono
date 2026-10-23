@@ -12,6 +12,8 @@ import org.springframework.test.web.client.match.MockRestRequestMatchers.request
 import org.springframework.test.web.client.response.MockRestResponseCreators.withStatus
 import org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess
 import org.springframework.web.client.RestClient
+import java.security.MessageDigest
+import java.util.HexFormat
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
@@ -40,7 +42,7 @@ class ContractContentClientTest {
                 ),
             )
 
-        val html = client.fetch(url)
+        val html = client.fetch(url)?.html
 
         server.verify()
         assertEquals("<h4>Article 1</h4><p>Hello</p>", html?.replace(Regex(">\\s+<"), "><")?.trim())
@@ -56,7 +58,7 @@ class ContractContentClientTest {
                 ),
             )
 
-        val html = client.fetch(url)
+        val html = client.fetch(url)?.html
 
         assertTrue(html != null)
         assertFalse(html.contains("script"))
@@ -77,12 +79,24 @@ class ContractContentClientTest {
                 ),
             )
 
-        val html = client.fetch(url)
+        val html = client.fetch(url)?.html
 
         assertTrue(html != null)
         assertTrue(html.contains("class=\"mj-column\""))
         assertTrue(html.contains("style=\"text-align:center\""))
         assertTrue(html.contains("style=\"font-size:13px\""))
+    }
+
+    @Test
+    fun `hash of the bytes downloaded, not of the html shown`() {
+        val body = "<html><head><title>x</title></head><body><p>Café</p></body></html>"
+        server.expect(requestTo(url)).andRespond(withSuccess(body, MediaType.parseMediaType("text/html;charset=UTF-8")))
+
+        val content = client.fetch(url)
+
+        val bytes = body.toByteArray(Charsets.UTF_8)
+        assertEquals(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)), content?.hash)
+        assertEquals("<p>Café</p>", content?.html)
     }
 
     @Test
@@ -106,7 +120,7 @@ class ContractContentClientTest {
             .andExpect(headerDoesNotExist("X-Tenant-ID"))
             .andRespond(withSuccess("<body><p>ok</p></body>", MediaType.TEXT_HTML))
 
-        assertEquals("<p>ok</p>", client.fetch(url))
+        assertEquals("<p>ok</p>", client.fetch(url)?.html)
         server.verify()
     }
 }

@@ -246,8 +246,9 @@ class MandateService(
      * 1. Under the mandate's lock, its contract: the current one, or a new one (none yet, or expired), linked to the
      *    mandate right away. A concurrent request waits for the lock, then reuses it: never 2 contracts for a mandate.
      * 2. Its content, generated from the mandate (read-only), then uploaded outside any transaction.
-     * 3. Under the mandate's lock again: the content is set, the mandate is PENDING_APPROVAL and the signature is
-     *    requested. 409 MANDATE_VERSION_CONFLICT if the mandate changed since 2: the content would be stale.
+     * 3. Under the contract's lock, then the mandate's again (the order of a signature, so that they can't deadlock):
+     *    the content is set, the mandate is PENDING_APPROVAL and the signature is requested. 409
+     *    MANDATE_VERSION_CONFLICT if the mandate changed since 2: the content would be stale.
      * A failure after 1 leaves the mandate as it was, with its DRAFT contract, which the next request reuses.
      * Not @Transactional: each step is its own transaction.
      */
@@ -270,11 +271,12 @@ class MandateService(
      */
     @Transactional
     fun onContractSigned(contractId: String): MandateEntity? {
-        val mandate = dao.findByContractId(contractId)
+        var mandate = dao.findByContractId(contractId)
         if (mandate == null || mandate.status != MandateStatus.PENDING_APPROVAL) {
             return null
         }
 
+        mandate = dao.findByIdForUpdate(mandate.id!!)!!
         val now = Date(clock.millis())
         val approved = dao.save(
             mandate.copy(
@@ -338,13 +340,22 @@ class MandateService(
 
     /**
      * Cancels a mandate that isn't closed yet, whatever its status. Its PENDING offer, if any, is expired so the agent
-     * can no longer accept it (not re-dispatched: no AssignmentClosedEvent). Locked, so it can't be closed meanwhile.
+     * can no longer accept it (not re-dispatched: no AssignmentClosedEvent), and its contract, if any, is cancelled so
+     * the customer can no longer sign it. Locked, so it can't be closed meanwhile. The contract is locked (and
+     * cancelled) before the mandate, like a signature does: a failed check below rolls its cancellation back.
      */
     @Transactional
     fun cancel(id: Long, request: CancelMandateRequest): MandateEntity {
+        val contractId = findById(id).contractId
+        contractId?.let { contractService.cancel(it) }
+
         val mandate = findByIdForUpdate(id)
         access.ensureCanUpdate(mandate)
         ensureNotClosed(mandate)
+        if (mandate.contractId != contractId) {
+            // Linked meanwhile by request-approval's step 1: a DRAFT, which can't be signed, so locking it now is safe
+            mandate.contractId?.let { contractService.cancel(it) }
+        }
 
         val now = Date(clock.millis())
         assignmentDao.findByMandateAndStatusIn(mandate, listOf(AssignmentStatus.PENDING)).forEach { assignment ->
@@ -442,6 +453,7 @@ class MandateService(
         url: String,
         contentHash: String,
     ): MandateEntity {
+        contractService.findByIdForUpdate(contractId) // Before the mandate, like a signature
         val mandate = findByIdForUpdate(id)
         ensureCanBeApproved(mandate)
         if (mandate.version != version) {

@@ -18,6 +18,8 @@ data class SignView(
     val contentHtml: String? = null,
     // The URL of the content shown, posted back by the sign form: null unless the sign step shows content
     val contentUrl: String? = null,
+    // The hash of the content shown, sent with the signature: never rendered
+    val contentHash: String? = null,
     val canSign: Boolean = false,
     val maskedEmail: String? = null,
     val codeExpiresAt: String? = null,

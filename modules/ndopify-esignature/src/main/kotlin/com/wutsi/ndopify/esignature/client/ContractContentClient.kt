@@ -8,6 +8,8 @@ import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
 import java.net.URI
+import java.security.MessageDigest
+import java.util.HexFormat
 
 /**
  * Downloads a contract's document (`Contract.contentUrl`, in file storage) to show it in the sign page. HTML only,
@@ -27,15 +29,24 @@ class ContractContentClient(
                 .addAttributes(":all", "style", "class", "align", "valign")
     }
 
-    /** The contract's document (HTML), cleaned to be shown in the page. Null when it can't be: the page then can't sign. */
-    fun fetch(url: String): String? =
+    /**
+     * The contract's document (HTML), cleaned to be shown in the page, and the hash of its bytes as stored. Null when
+     * it can't be shown: the page then can't sign.
+     */
+    fun fetch(url: String): ContractContent? =
         try {
-            val response = rest.get().uri(URI.create(url)).retrieve().toEntity(String::class.java)
-            if (response.headers.contentType?.isCompatibleWith(MediaType.TEXT_HTML) != true) {
+            val response = rest.get().uri(URI.create(url)).retrieve().toEntity(ByteArray::class.java)
+            val contentType = response.headers.contentType
+            val bytes = response.body
+            if (contentType?.isCompatibleWith(MediaType.TEXT_HTML) != true || bytes == null) {
                 null
             } else {
                 // Body only, and no script or event handler: the page renders it with th:utext
-                response.body?.let { html -> Jsoup.clean(Jsoup.parse(html).body().html(), SAFELIST) }
+                val html = String(bytes, contentType.charset ?: Charsets.UTF_8)
+                ContractContent(
+                    html = Jsoup.clean(Jsoup.parse(html).body().html(), SAFELIST),
+                    hash = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)),
+                )
             }
         } catch (ex: Exception) {
             LOGGER.warn("Unable to fetch the contract content: $url", ex)

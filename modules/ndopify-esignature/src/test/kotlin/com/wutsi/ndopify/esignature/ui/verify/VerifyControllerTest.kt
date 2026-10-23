@@ -41,7 +41,6 @@ class VerifyControllerTest {
         contractNumber = "MNDT-2026-000042",
         legalName = "Ray Sponsible",
         signedAt = signedAt,
-        signedContentUrl = "https://storage.ndopify.cm/contracts/MNDT-2026-000042-abc.pdf",
     )
 
     @BeforeEach

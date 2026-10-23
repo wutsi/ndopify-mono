@@ -43,7 +43,8 @@ import java.time.Duration
  * 2. Code: `GET ?step=code`, only while a [PendingSignature] of this link is in the session; `POST /verify` exchanges
  *    the code for an `e-signature` access token, kept in the cookie.
  * 3. Signed in: the contract (or why it can't be signed, see [SignViews]); `POST /` signs it, then `?step=done`, but
- *    only the version the page showed: the form posts back the shown `contentUrl`, compared to the contract's.
+ *    only the version the page showed: the form posts back the shown `contentUrl`, compared to the contract's, and the
+ *    signature carries the hash of the content shown, which ndopify-server checks against the contract's.
  *
  * Nothing about the contract is shown before sign-in. The contract party is the URL's, the contract the one ndopify-server
  * finds for it among the signer's own: never a form field.
@@ -203,10 +204,16 @@ class SignController(
                     ipAddress = request.getHeader("X-Forwarded-For")?.substringBefore(',')?.trim()?.ifEmpty { null }
                         ?: request.remoteAddr,
                     userAgent = request.getHeader(HttpHeaders.USER_AGENT),
+                    contentHash = view.contentHash!!, // Set since canSign
                 ),
             )
         } catch (ex: HttpClientErrorException) {
             warn(ex)
+            // Not the content ndopify-server has for the contract: the signer must read the new one
+            if (errorCode(ex) == ErrorCode.CONTRACT_CONTENT_MISMATCH) {
+                model.addAttribute("error", CONTENT_CHANGED)
+                return render(contractPartyId, view, model)
+            }
             if (ex.statusCode.value() !in SIGN_SETTLED) {
                 model.addAttribute("error", SIGN_FAILED)
                 return render(contractPartyId, view, model)

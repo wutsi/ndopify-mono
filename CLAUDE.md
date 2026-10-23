@@ -208,7 +208,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `POST /{id}/close` (APPROVED only, else 409 `MANDATE_NOT_APPROVED`) → `CLOSED` with `finalPrice`, `closedAt` and
   `age`: whole days from `approvedAt` to closing, the time a mandate takes to close. `POST /{id}/cancel` (any status but
   CLOSED / CANCELLED: 409 `MANDATE_ALREADY_CLOSED`) → `CANCELLED` with `cancellationCode` (default `OTHER`),
-  `cancellationReason` and `closedAt` (no age), and expires its PENDING offer, without re-dispatch. Both lock the
+  `cancellationReason` and `closedAt` (no age), expires its PENDING offer, without re-dispatch, and cancels its contract
+  (`ContractService.cancel`, in the same transaction: a DRAFT, PENDING_SIGNATURE or SIGNED one becomes `CANCELLED`; an
+  EXPIRED one is left as is; the contract is locked before the mandate, see *Lock order*). Both lock the
   mandate and publish `MandateClosedEvent` (no listener yet). Accepting an offer of a mandate that's no longer
   `PENDING_ASSIGNMENT` is 409 `ASSIGNMENT_NOT_PENDING`.
   Offers of a mandate to agents are `AssignmentEntity` (`T_ASSIGNMENT`, `@Version`-ed; `/v1/assignments`: search
@@ -256,7 +258,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   the document's URL: the page it opens shows the contract and signs it, `{eSignaturePortalUrl}/sign/{contractPartyId}` (no button without an
   `eSignaturePortalUrl`), served by ndopify-esignature. Sign takes a *contract party* id (`SignContractRequest.partyId`), locks the
   contract (`findByIdForUpdate`), then 409 `CONTRACT_NOT_PENDING` / `CONTRACT_EXPIRED` (past `signatureDeadline`) /
-  `CONTRACT_PARTY_SIGNATURE_NOT_REQUIRED` / `CONTRACT_PARTY_ALREADY_SIGNED`; the last signature of the parties whose
+  `CONTRACT_PARTY_SIGNATURE_NOT_REQUIRED` / `CONTRACT_PARTY_ALREADY_SIGNED` / `CONTRACT_CONTENT_MISMATCH`: the request's
+  `contentHash` (required, 400 if empty; the SHA-256 of the content the signer was shown, case-insensitive) must be the
+  contract's `contentHash`, so a contract without one (ex: content set by `POST /{id}/content`) can't be signed; the last signature of the parties whose
   `signatureRequired` is set (default `true`; at least one per contract, else 400) makes it `SIGNED`, valid from then (`validFrom`) for its
   `durationMonths` (`validUntil`, months added in the tenant's `timeZone`).
   **Signed PDF.** The last signature's `ContractSignedEvent` is also handled by `ContractEventListener.onSigned`
@@ -276,7 +280,7 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `eSignaturePortalUrl`. `POST /v1/contracts/{id}/signed-content` (`@OpsEndpoint`, admin) generates it again. The
   QR code opens ndopify-esignature's verify page.
   **Access** (`ContractAccessService`, checked by `ContractEndpoints`, without lock since a contract's parties never
-  change): every endpoint but the signature's verification (`GET /{id}/signatures/{hash}`, public: the contract number, legal name, `signedAt` and `signedContentUrl` of a signed contract party with that hash, else 404 `CONTRACT_SIGNATURE_NOT_FOUND`) needs a JWT (401 `AUTH_UNAUTHORIZED`). Get and search are for an admin or one of the
+  change): every endpoint but the signature's verification (`GET /{id}/signatures/{hash}`, public: the contract number, legal name and `signedAt` of a signed contract party (never the signed PDF: whoever has a QR code would get the whole contract) with that hash, else 404 `CONTRACT_SIGNATURE_NOT_FOUND`) needs a JWT (401 `AUTH_UNAUTHORIZED`). Get and search are for an admin or one of the
   contract's parties (JWT user → membership → party), else 403 `CONTRACT_ACCESS_DENIED` (after the 404); a non-admin's
   search is restricted to its own party (`party-id` forced; another party's is a 403). With both `party-id` and
   `contract-party-id`, the contract party must be one of those parties' (same `T_CONTRACT_PARTY` row): a co-party of a
@@ -311,6 +315,12 @@ not an e-mail, not transactional) follows the same listener pattern. The service
 entered *after* `TenantContext` is set since Hibernate resolves the tenant when the session opens. Failures are
 logged, never rethrown. Tests must wait for the mail (`smtp.waitForIncomingEmail`);
 `BaseEndpointIntegrationTest.tearDown` waits for the running async tasks, so a test's mail can't reach the next one.
+
+**Lock order**: a write that locks both a mandate and its contract locks the **contract first**, the order of a
+signature (`ContractService.sign`, then `MandateService.onContractSigned`): `MandateService.cancel` and
+request-approval's step (3) (`ContractService.findByIdForUpdate`). The reverse order deadlocks with a last signature.
+`ControllerErrorHandler` answers a lock not acquired (`PessimisticLockingFailureException`: deadlock, lock wait timeout)
+with 409 `HTTP_VERSION_CONFLICT` rather than 500.
 
 **Optimistic locking**: `MandateEntity`, `AgentEntity`, `ContractEntity`, `KycCaseEntity` and `AssignmentEntity` are
 `@Version`-ed (`version` column, `V7_0` / `V7_1`). Hibernate checks it on flush (`UPDATE ... WHERE version = ?`), so it only
@@ -495,8 +505,10 @@ names and signatures; depends on `ndopify-dto` only, never on partner-central), 
   (`SignView.contentUrl`, the version shown; only compared, never used to find anything) is still the contract's: else
   the sign step again, with the new content, and "Le contrat a été modifié depuis son affichage…". Then it needs
   `consent=yes`, signs as the URL's contract party with the first
-  `X-Forwarded-For` (else `remoteAddr`) and the `User-Agent`, and goes to `?step=done`, also on a 403 / 404 / 409
-  (a double tap's `CONTRACT_PARTY_ALREADY_SIGNED`: the done or blocked view says which). `POST /logout` ("Utiliser une
+  `X-Forwarded-For` (else `remoteAddr`), the `User-Agent` and the `contentHash` of the content fetched
+  (`ContractContentClient.fetch` returns a `ContractContent`: the sanitized HTML plus the SHA-256 of the raw bytes
+  downloaded, never of the sanitized HTML), and goes to `?step=done`, also on a 403 / 404 / 409 (but a 409
+  `CONTRACT_CONTENT_MISMATCH`, shown as "Le contrat a été modifié…" on the sign step; a double tap's `CONTRACT_PARTY_ALREADY_SIGNED`: the done or blocked view says which). `POST /logout` ("Utiliser une
   autre adresse") clears the cookie and the session. Its warn logs carry ndopify-server's status and error code only,
   never the response body (which can name the e-mail).
 - `templates/sign.html` renders only the current step (`th:if` on `view.step`), "Étape N sur 3" included, one

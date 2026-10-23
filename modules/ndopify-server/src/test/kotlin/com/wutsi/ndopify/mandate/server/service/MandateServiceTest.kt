@@ -4,8 +4,10 @@ import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.inOrder
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
+import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
@@ -69,6 +71,12 @@ class MandateServiceTest {
     private val day = 24L * 60 * 60 * 1000
     private val now = 1_800_000_000_000L
 
+    private fun givenMandate(mandate: MandateEntity) {
+        doReturn(Optional.of(mandate)).whenever(dao).findById(1L)
+        doReturn(mandate).whenever(dao).findByIdForUpdate(1L)
+        doReturn(emptyList<Any>()).whenever(assignmentDao).findByMandateAndStatusIn(any(), any())
+    }
+
     private fun mandate(status: MandateStatus, approvedAt: Date? = null) = MandateEntity(
         id = 1L,
         status = status,
@@ -128,8 +136,7 @@ class MandateServiceTest {
 
     @Test
     fun `cancel - publishes the event`() {
-        doReturn(mandate(MandateStatus.ASSIGNED)).whenever(dao).findByIdForUpdate(1L)
-        doReturn(emptyList<Any>()).whenever(assignmentDao).findByMandateAndStatusIn(any(), any())
+        givenMandate(mandate(MandateStatus.ASSIGNED))
 
         val cancelled = service.cancel(1L, CancelMandateRequest(cancellationReason = "  "))
 
@@ -142,8 +149,41 @@ class MandateServiceTest {
     }
 
     @Test
+    fun `cancel - cancels its contract before locking the mandate`() {
+        givenMandate(mandate(MandateStatus.PENDING_APPROVAL).copy(contractId = "c-1"))
+
+        service.cancel(1L, CancelMandateRequest())
+
+        val order = inOrder(contractService, dao)
+        order.verify(contractService).cancel("c-1")
+        order.verify(dao).findByIdForUpdate(1L)
+        verify(contractService, times(1)).cancel(any())
+    }
+
+    @Test
+    fun `cancel - also cancels the contract linked meanwhile`() {
+        doReturn(Optional.of(mandate(MandateStatus.ASSIGNED))).whenever(dao).findById(1L)
+        doReturn(mandate(MandateStatus.ASSIGNED).copy(contractId = "c-2")).whenever(dao).findByIdForUpdate(1L)
+        doReturn(emptyList<Any>()).whenever(assignmentDao).findByMandateAndStatusIn(any(), any())
+
+        service.cancel(1L, CancelMandateRequest())
+
+        verify(contractService).cancel("c-2")
+        verify(contractService, times(1)).cancel(any())
+    }
+
+    @Test
+    fun `cancel - without contract`() {
+        givenMandate(mandate(MandateStatus.ASSIGNED))
+
+        service.cancel(1L, CancelMandateRequest())
+
+        verify(contractService, never()).cancel(any())
+    }
+
+    @Test
     fun `cancel - already closed`() {
-        doReturn(mandate(MandateStatus.CLOSED)).whenever(dao).findByIdForUpdate(1L)
+        givenMandate(mandate(MandateStatus.CLOSED))
 
         assertFailsWith<ConflictException> { service.cancel(1L, CancelMandateRequest()) }
         verify(eventPublisher, never()).publishEvent(any())
@@ -152,6 +192,7 @@ class MandateServiceTest {
     @Test
     fun `contract signed - approves the mandate and publishes the event`() {
         doReturn(mandate(MandateStatus.PENDING_APPROVAL)).whenever(dao).findByContractId("c-1")
+        doReturn(mandate(MandateStatus.PENDING_APPROVAL)).whenever(dao).findByIdForUpdate(1L)
 
         val approved = service.onContractSigned("c-1")
 

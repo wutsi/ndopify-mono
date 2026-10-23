@@ -37,6 +37,7 @@ import kotlin.test.assertTrue
 class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     companion object {
         private const val SIGNATURE_HASH = "3333333333333333333333333333333333333333333333333333333333333333" // cp-21's
+        private const val CONTENT_HASH = "1111111111111111111111111111111111111111111111111111111111111111" // Of every contract but c-10
     }
 
     @Autowired
@@ -58,10 +59,11 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @TempDir
     lateinit var dir: File
 
-    private fun request(partyId: String) = SignContractRequest(
+    private fun request(partyId: String, contentHash: String = CONTENT_HASH) = SignContractRequest(
         partyId = partyId,
         ipAddress = "192.168.1.10",
         userAgent = "Mozilla/5.0 (iPhone)",
+        contentHash = contentHash,
     )
 
     @Test
@@ -104,7 +106,7 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertNotNull(contract.signedAt)
         assertTrue(partyDao.findByContract(contract).all { party -> party.signed })
 
-        // Signed without content hash (null): hashed all the same. The earlier signature's hash is left as it was
+        // The earlier signature's hash is left as it was
         val party = partyDao.findById("cp-22").get()
         assertEquals(ContractHasher.signatureHash(contract, party), party.signatureHash)
         assertEquals(SIGNATURE_HASH, partyDao.findById("cp-21").get().signatureHash)
@@ -135,10 +137,15 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         doReturn(storage).whenever(storageProvider).get()
         val content = "<html><body><p>Mandat</p></body></html>".toByteArray()
         storage.store("mandates/2/c-2.html", ByteArrayInputStream(content), "text/html")
-        jdbc.update("UPDATE T_CONTRACT SET content_url=? WHERE id='c-2'", storage.publicUrl("mandates/2/c-2.html").toString())
+        val contentHash = ContractHasher.contentHash(content)
+        jdbc.update(
+            "UPDATE T_CONTRACT SET content_url=?, content_hash=? WHERE id='c-2'",
+            storage.publicUrl("mandates/2/c-2.html").toString(),
+            contentHash,
+        )
         userId = 12L
 
-        rest.postForEntity("/v1/contracts/c-2/sign", request("cp-22"), Any::class.java)
+        rest.postForEntity("/v1/contracts/c-2/sign", request("cp-22", contentHash), Any::class.java)
 
         // Asynchronously, after the signature's commit
         var url: String? = null
@@ -209,6 +216,35 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `content hash of the content shown, in any case`() {
+        val response = rest.postForEntity("/v1/contracts/c-1/sign", request("cp-11", " ${CONTENT_HASH.uppercase()} "), Any::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertTrue(partyDao.findById("cp-11").get().signed)
+    }
+
+    @Test
+    fun `content hash of another content`() {
+        assertConflict("c-1", "cp-11", ErrorCode.CONTRACT_CONTENT_MISMATCH, "2".repeat(64))
+        assertFalse(partyDao.findById("cp-11").get().signed)
+    }
+
+    @Test
+    fun `contract without content hash`() {
+        assertConflict("c-10", "cp-101", ErrorCode.CONTRACT_CONTENT_MISMATCH)
+        assertFalse(partyDao.findById("cp-101").get().signed)
+    }
+
+    @Test
+    fun `without content hash`() {
+        val response = rest.postForEntity("/v1/contracts/c-1/sign", request("cp-11", ""), ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
+        assertFalse(partyDao.findById("cp-11").get().signed)
+    }
+
+    @Test
     fun `contract already signed`() {
         assertConflict("c-3", "cp-31", ErrorCode.CONTRACT_NOT_PENDING)
     }
@@ -250,13 +286,13 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(ErrorCode.CONTRACT_NOT_FOUND, response.body?.error?.code)
     }
 
-    private fun assertConflict(contractId: String, partyId: String, code: String) {
+    private fun assertConflict(contractId: String, partyId: String, code: String, contentHash: String = CONTENT_HASH) {
         val status = dao.findById(contractId).get().status
         val signedAt = partyDao.findById(partyId).get().signedAt
 
         val response = rest.postForEntity(
             "/v1/contracts/$contractId/sign",
-            request(partyId),
+            request(partyId, contentHash),
             ErrorResponse::class.java,
         )
 

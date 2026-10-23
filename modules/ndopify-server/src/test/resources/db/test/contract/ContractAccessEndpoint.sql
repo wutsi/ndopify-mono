@@ -19,10 +19,10 @@ INSERT INTO T_MEMBERSHIP (id, tenant_id, user_id, party_id, deleted) VALUES
     (14, 1, 14, null, false);
 
 -- c-1: party 100's; c-2: party 101's; c-3: party 100's, draft
-INSERT INTO T_CONTRACT(id, tenant_id, number, type, status, content_url, duration_months, signature_deadline, created_at) VALUES
-    ('c-1', 1, 'MNDT-2024-000001', 'SEARCH', 'PENDING_SIGNATURE', 'https://cdn.ndopify.com/contracts/c-1.pdf', 6, '2099-06-01 00:00:00', '2024-05-20 00:00:00'),
-    ('c-2', 1, 'MNDT-2024-000002', 'SEARCH', 'PENDING_SIGNATURE', 'https://cdn.ndopify.com/contracts/c-2.pdf', 6, '2099-06-01 00:00:00', '2024-05-21 00:00:00'),
-    ('c-3', 1, 'MNDT-2024-000003', 'SEARCH', 'DRAFT', null, 6, null, '2024-05-22 00:00:00');
+INSERT INTO T_CONTRACT(id, tenant_id, number, type, status, content_url, content_hash, duration_months, signature_deadline, created_at) VALUES
+    ('c-1', 1, 'MNDT-2024-000001', 'SEARCH', 'PENDING_SIGNATURE', 'https://cdn.ndopify.com/contracts/c-1.pdf', '1111111111111111111111111111111111111111111111111111111111111111', 6, '2099-06-01 00:00:00', '2024-05-20 00:00:00'),
+    ('c-2', 1, 'MNDT-2024-000002', 'SEARCH', 'PENDING_SIGNATURE', 'https://cdn.ndopify.com/contracts/c-2.pdf', '1111111111111111111111111111111111111111111111111111111111111111', 6, '2099-06-01 00:00:00', '2024-05-21 00:00:00'),
+    ('c-3', 1, 'MNDT-2024-000003', 'SEARCH', 'DRAFT', null, null, 6, null, '2024-05-22 00:00:00');
 
 INSERT INTO T_CONTRACT_PARTY(id, tenant_id, contract_id, party_id, role, legal_name, legal_email, signed) VALUES
     ('cp-1', 1, 'c-1', 100, 'MANDATOR', 'Ray Sponsible', 'ray.sponsible@gmail.com', false),

@@ -20,16 +20,27 @@ INSERT INTO T_AGENT(id, tenant_id, party_id, city_id) VALUES
     (20, 1, 200, 2370201),
     (90, 2, 900, 2370201);
 
+-- The mandates' contracts. 5: draft   6: waiting for the customer's signature   2: signed   7: expired
+INSERT INTO T_CONTRACT(id, tenant_id, number, type, status, content_url, duration_months) VALUES
+    ('c-2', 1, 'MNDT-2026-000002', 'SEARCH', 'SIGNED', 'https://cdn.ndopify.com/2.html', 6),
+    ('c-5', 1, 'MNDT-2026-000005', 'SEARCH', 'DRAFT', null, 6),
+    ('c-6', 1, 'MNDT-2026-000006', 'SEARCH', 'PENDING_SIGNATURE', 'https://cdn.ndopify.com/6.html', 6),
+    ('c-7', 1, 'MNDT-2026-000007', 'SEARCH', 'EXPIRED', 'https://cdn.ndopify.com/7.html', 6);
+
 -- 1: waiting for an agent, with a PENDING offer   2: approved   3: closed   4: cancelled   9: other tenant
+-- 5: assigned, with a draft contract   6: waiting for approval   7: assigned, with an expired contract
 INSERT INTO T_MANDATE(
-    id, tenant_id, customer_id, agent_id, status, mandate_type, listing_type, city_id, property_type,
+    id, tenant_id, customer_id, agent_id, contract_id, status, mandate_type, listing_type, city_id, property_type,
     rooms, price, price_periodicity_type, currency_code, created_at, modified_at, approved_at, closed_at
 ) VALUES
-    (1, 1, 10, null, 'PENDING_ASSIGNMENT', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', '2024-06-01 00:00:00', '2024-06-10 00:00:00', null, null),
-    (2, 1, 10, 20, 'APPROVED', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', '2024-06-01 00:00:00', '2024-06-10 00:00:00', '2024-06-10 00:00:00', null),
-    (3, 1, 10, 20, 'CLOSED', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', '2024-06-01 00:00:00', '2024-06-10 00:00:00', '2024-06-10 00:00:00', '2024-06-20 00:00:00'),
-    (4, 1, 10, 20, 'CANCELLED', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', '2024-06-01 00:00:00', '2024-06-10 00:00:00', null, '2024-06-20 00:00:00'),
-    (9, 2, 90, 90, 'APPROVED', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', '2024-06-01 00:00:00', '2024-06-10 00:00:00', '2024-06-10 00:00:00', null);
+    (1, 1, 10, null, null, 'PENDING_ASSIGNMENT', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', '2024-06-01 00:00:00', '2024-06-10 00:00:00', null, null),
+    (2, 1, 10, 20, 'c-2', 'APPROVED', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', '2024-06-01 00:00:00', '2024-06-10 00:00:00', '2024-06-10 00:00:00', null),
+    (5, 1, 10, 20, 'c-5', 'ASSIGNED', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', '2024-06-01 00:00:00', '2024-06-10 00:00:00', null, null),
+    (6, 1, 10, 20, 'c-6', 'PENDING_APPROVAL', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', '2024-06-01 00:00:00', '2024-06-10 00:00:00', null, null),
+    (7, 1, 10, 20, 'c-7', 'ASSIGNED', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', '2024-06-01 00:00:00', '2024-06-10 00:00:00', null, null),
+    (3, 1, 10, 20, null, 'CLOSED', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', '2024-06-01 00:00:00', '2024-06-10 00:00:00', '2024-06-10 00:00:00', '2024-06-20 00:00:00'),
+    (4, 1, 10, 20, null, 'CANCELLED', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', '2024-06-01 00:00:00', '2024-06-10 00:00:00', null, '2024-06-20 00:00:00'),
+    (9, 2, 90, 90, null, 'APPROVED', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', '2024-06-01 00:00:00', '2024-06-10 00:00:00', '2024-06-10 00:00:00', null);
 
 -- 1: offered to agent 20, not answered yet   2: accepted
 INSERT INTO T_ASSIGNMENT(id, tenant_id, mandate_id, agent_id, status, score, created_at, modified_at, expires_at) VALUES

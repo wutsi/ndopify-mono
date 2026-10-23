@@ -245,7 +245,8 @@ class ContractService(
 
     /**
      * Records the signature of one of the contract's parties ([SignContractRequest.partyId] is a contract party id).
-     * Only a party whose signature is required can sign. The contract is SIGNED once all those parties have signed, and publishes a [ContractSignedEvent]: it's valid from
+     * Only a party whose signature is required can sign, and only the contract's content: [SignContractRequest.contentHash]
+     * must be its `contentHash`, so a contract without one can't be signed. The contract is SIGNED once all those parties have signed, and publishes a [ContractSignedEvent]: it's valid from
      * this last signature, for its `durationMonths` (added in the tenant's time zone, so a month ends on the same day).
      */
     @Transactional
@@ -268,6 +269,11 @@ class ContractService(
         }
         if (party.signed) {
             throw ConflictException(error = Error(code = ErrorCode.CONTRACT_PARTY_ALREADY_SIGNED))
+        }
+        // Only the content the signer was shown, and only a content whose hash is known: it's in the signature's hash
+        val contentHash = contract.contentHash
+        if (contentHash == null || !contentHash.equals(request.contentHash.trim(), ignoreCase = true)) {
+            throw ConflictException(error = Error(code = ErrorCode.CONTRACT_CONTENT_MISMATCH))
         }
 
         val signed = party.copy(
@@ -315,6 +321,22 @@ class ContractService(
     }
 
     /**
+     * Cancels a contract that is still in force or can still be signed (DRAFT, PENDING_SIGNATURE, SIGNED): it can no
+     * longer be signed, nor expired by `ContractJobs`. An EXPIRED or CANCELLED one is returned unchanged. Locked like a
+     * signature, so that its last party can't sign it meanwhile. Called by `MandateService.cancel`, under the mandate's
+     * lock.
+     */
+    @Transactional
+    fun cancel(id: String): ContractEntity {
+        val contract = findByIdForUpdate(id)
+        return when (contract.status) {
+            ContractStatus.DRAFT, ContractStatus.PENDING_SIGNATURE, ContractStatus.SIGNED ->
+                dao.save(contract.copy(status = ContractStatus.CANCELLED))
+            else -> contract
+        }
+    }
+
+    /**
      * Expires the contracts not signed by all their parties before their deadline, and the signed ones past their end
      * date. Each one in its own transaction, so one failing contract doesn't roll back the others. Returns how many
      * expired.
@@ -356,10 +378,12 @@ class ContractService(
     }
 
     /**
-     * Every write of a contract locks it first (content, request for signature, signature, expiry), so that they're
-     * serialized: each one checks the status the previous one left, rather than failing on its version.
+     * Every write of a contract locks it first (content, request for signature, signature, expiry, cancellation), so that they're
+     * serialized: each one checks the status the previous one left, rather than failing on its version. Public for
+     * the mandate's writes that also change its contract: they lock the contract before the mandate, in the order of
+     * a signature (`sign`, then `MandateService.onContractSigned`), so that they can't deadlock with it.
      */
-    private fun findByIdForUpdate(id: String): ContractEntity {
+    fun findByIdForUpdate(id: String): ContractEntity {
         return dao.findByIdForUpdate(id)
             ?: throw NotFoundException(error = Error(code = ErrorCode.CONTRACT_NOT_FOUND))
     }

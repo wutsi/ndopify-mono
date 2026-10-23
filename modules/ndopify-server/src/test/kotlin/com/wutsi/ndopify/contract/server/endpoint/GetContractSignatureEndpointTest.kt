@@ -11,7 +11,6 @@ import java.time.Instant
 import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/contract/GetContractSignatureEndpoint.sql"])
 class GetContractSignatureEndpointTest : TenantAwareEndpointIntegrationTest() {
@@ -34,7 +33,6 @@ class GetContractSignatureEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals("MNDT-2026-000042", signature.contractNumber)
         assertEquals("Ray Sponsible", signature.legalName)
         assertEquals(Date.from(Instant.parse("2026-10-18T14:32:00Z")), signature.signedAt)
-        assertEquals("https://s3.example/c/MNDT-2026-000042-t0k3n.pdf", signature.signedContentUrl)
     }
 
     @Test
@@ -45,7 +43,7 @@ class GetContractSignatureEndpointTest : TenantAwareEndpointIntegrationTest() {
 
         val signature = ObjectMapper().readTree(response.body).get("signature")
         assertEquals(
-            setOf("contractId", "contractNumber", "legalName", "signedAt", "signedContentUrl"),
+            setOf("contractId", "contractNumber", "legalName", "signedAt"),
             signature.fieldNames().asSequence().toSet(),
         )
     }
@@ -55,7 +53,7 @@ class GetContractSignatureEndpointTest : TenantAwareEndpointIntegrationTest() {
         val response = rest.getForEntity("/v1/contracts/c-110/signatures/$HASH_C", GetContractSignatureResponse::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
-        assertNull(response.body!!.signature.signedContentUrl)
+        assertEquals("MNDT-2026-000043", response.body!!.signature.contractNumber)
     }
 
     @Test
