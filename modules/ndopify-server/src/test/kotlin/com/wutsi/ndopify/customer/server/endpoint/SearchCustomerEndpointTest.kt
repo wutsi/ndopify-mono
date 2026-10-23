@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.customer.server.endpoint
 
-import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
+import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.customer.dto.SearchCustomerResponse
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
@@ -9,7 +9,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/customer/SearchCustomerEndpoint.sql"])
-class SearchCustomerEndpointTest : TenantAwareEndpointIntegrationTest() {
+class SearchCustomerEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Test
     fun all() {
         val response = rest.getForEntity("/v1/customers", SearchCustomerResponse::class.java)

@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.party.endpoint
 
-import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
+import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.SearchPartyResponse
 import org.springframework.http.HttpStatus
@@ -11,7 +11,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/party/SearchPartyEndpoint.sql"])
-class SearchPartyEndpointTest : TenantAwareEndpointIntegrationTest() {
+class SearchPartyEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Test
     fun search() {
         val response = rest.getForEntity("/v1/parties", SearchPartyResponse::class.java)

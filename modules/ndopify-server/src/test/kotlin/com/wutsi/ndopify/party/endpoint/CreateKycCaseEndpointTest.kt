@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.party.endpoint
 
-import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
+import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.dto.CreateKycCaseRequest
@@ -16,7 +16,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/party/CreateKycCaseEndpoint.sql"])
-class CreateKycCaseEndpointTest : TenantAwareEndpointIntegrationTest() {
+class CreateKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Autowired
     private lateinit var dao: KycCaseRepository
 

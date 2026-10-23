@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.mandate.server.endpoint
 
-import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
+import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
@@ -14,7 +14,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/GetAssignmentEndpoint.sql"])
-class GetAssignmentEndpointTest : TenantAwareEndpointIntegrationTest() {
+class GetAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Test
     fun get() {
         val response = rest.getForEntity("/v1/assignments/1", GetAssignmentResponse::class.java)

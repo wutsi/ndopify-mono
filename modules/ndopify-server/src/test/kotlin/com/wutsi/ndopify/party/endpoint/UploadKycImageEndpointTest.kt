@@ -7,7 +7,7 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
-import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
+import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.dto.IdentificationType
@@ -36,7 +36,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/party/UploadKycImageEndpoint.sql"])
-class UploadKycImageEndpointTest : TenantAwareEndpointIntegrationTest() {
+class UploadKycImageEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Autowired
     private lateinit var caseDao: KycCaseRepository
 

@@ -162,8 +162,8 @@ Current domains:
   creates a membership on sign-in (not even Google One Tap): only registration (`AgentService.create`) does, and a request
   for signature (`ContractSignerService`), for the parties asked to sign, with `e-signature` access.
   `GET /v1/users/{id}` (`UserEndpoints`) returns the user with its party in the current tenant embedded, and 404
-  `USER_NOT_FOUND` for a user who isn't a member of it. Like the rest of the API, it isn't authorized yet
-  (`permitAll`). A party's e-mail is its contact e-mail in the tenant, not synced to the user's (global) login
+  `USER_NOT_FOUND` for a user who isn't a member of it. It needs a token (see *Authentication* below) but
+  doesn't check whose user it is yet. A party's e-mail is its contact e-mail in the tenant, not synced to the user's (global) login
   e-mail.
 - **party** — `Party`, `Identification` (+ uploaded `IdentificationImage`s), `KycCase` / `KycVerification`, and
   `PaymentMethod`. KYC cases are verified by pluggable `KycVerifier` strategies (`KycVerifierIdentification`,
@@ -189,7 +189,7 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   neighbourhoods, prices and enums aren't validated server-side yet. `availableFrom` (`V7_2`) is a LISTING's
   availability date (the date from which the property can be let): stored and returned, not checked by the server.
   Tenant-scoped.
-  **Access** (`MandateAccessService`): every endpoint but create (public) and the ops ones needs a JWT (401
+  **Access** (`MandateAccessService`): every endpoint but create (public) needs a JWT (401
   `AUTH_UNAUTHORIZED`), and the caller must be an admin (`CallerService.isAdmin`: `admin-console` token with the
   `admin` role, `RoleCode`) or the mandate's agent (JWT user → membership → party → agent), else 403
   `MANDATE_ACCESS_DENIED`, after the 404 and before any 409. The agent it's offered to (PENDING assignment) may also
@@ -356,8 +356,9 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
 - `platform/endpoint` — `@OpsEndpoint`: marks an operational endpoint method (ex: dispatching a mandate by hand).
   `OpsEndpointHandlerMapping` (wired by `EndpointConfiguration`) doesn't map them unless `ndopify.endpoints.ops` is
   `true` (default config; `false` in `application-prod.yml`, and when missing): the route doesn't exist, and
-  `ControllerErrorHandler` answers 404 `HTTP_NOT_FOUND` for an unknown path (`NoResourceFoundException`). They're
-  unauthenticated, like the rest of the API for now: mark any endpoint that mustn't be open in prod with it.
+  `ControllerErrorHandler` answers 404 `HTTP_NOT_FOUND` for an unknown path (`NoResourceFoundException`). They need a
+  token (any user's: none checks a role yet), like every non-public endpoint: mark any endpoint that mustn't be open
+  in prod with it.
 
 ### `ndopify-partner-central`
 
@@ -552,12 +553,22 @@ Tenancy is enforced via **Hibernate's built-in multi-tenancy mechanism**, not ha
 - `TenantIdentifierResolver` (`platform/tenant/jpa/TenantIdentifierResolver.kt`) implements Hibernate's
   `CurrentTenantIdentifierResolver<Long>`, resolving from `TenantContext` and failing closed to `NO_TENANT = -1L`
   when unset.
-- `TenantContextFilter` (`platform/tenant/servlet/TenantContextFilter.kt`), registered at
-  `Ordered.HIGHEST_PRECEDENCE` via `platform/config/TenantConfiguration.kt`, populates `TenantContext` per request —
-  preferring the tenant claim on the decoded JWT (`JwtPrincipal.CLAIM_TENANT_ID` / `AccessTokenService`) and falling
-  back to the `X-Tenant-ID` header (`HttpHeader.TENANT_ID` in `ndopify-dto`) if there's no principal. A token that
-  doesn't decode (expired, malformed) is a 401 `AUTH_UNAUTHORIZED`, even on a public endpoint, never a fallback to
-  the header.
+- `TenantContextFilter` (`security/server/servlet/TenantContextFilter.kt`), registered via
+  `config/TenantConfiguration.kt`, populates `TenantContext` per request from the tenant claim of the decoded JWT
+  (`JwtPrincipal.CLAIM_TENANT_ID` / `AccessTokenService`); an `X-Tenant-ID` header (`HttpHeader.TENANT_ID` in
+  `ndopify-dto`) naming another tenant is a 403 `AUTH_ACCESS_DENIED`. Only without a token (or with one without
+  tenant), and only on a `PublicEndpoints.TENANT` endpoint, does the tenant come from the header; any other is a 401
+  `AUTH_UNAUTHORIZED`, so that the header never opens a tenant's data. A token that doesn't decode (expired,
+  malformed) is a 401 `AUTH_UNAUTHORIZED`, even on a public endpoint, never a fallback to the header.
+- **Authentication**: `SecurityConfiguration` denies by default: every endpoint needs a token
+  (`JwtAuthenticationFilter` authenticates a decoded `Authorization: Bearer` one) but `PublicEndpoints`, the single
+  list shared with `TenantContextFilter`: `GLOBAL` (refdata, Swagger, storage, actuator, `/error`; no tenant) and
+  `TENANT` (`POST /v1/otp`, `POST /v1/auth`, `POST /v1/agents`, `POST /v1/mandates`,
+  `GET /v1/contracts/{id}/signatures/{hash}`: called before the caller has a token). Without a token, anything else,
+  incl. an unknown path, is a 401 `AUTH_UNAUTHORIZED` (`ErrorResponse`, through `ControllerErrorHandler`). A new
+  endpoint called before sign-in must be added to `PublicEndpoints.TENANT`. Authentication only: who may do what is
+  still each domain's access service (`MandateAccessService`, `ContractAccessService`...), and many endpoints have none
+  yet.
 - Any JPA entity annotated `org.hibernate.annotations.@TenantId` is automatically filtered by Hibernate for every
   query against it — no `CriteriaBuilder` predicate, repository override, or service-level check needed. Today
   that's `PartyEntity`, `PaymentMethodEntity`, `IdentificationEntity`, `IdentificationImageEntity`, `KycCaseEntity`,
@@ -578,10 +589,9 @@ Tenancy is enforced via **Hibernate's built-in multi-tenancy mechanism**, not ha
   mapped or written, and still to be dropped.
 - **Known, not-yet-closed gap**: tenant *resolution* itself isn't trustworthy yet. JWTs are issued via
   `Algorithm.none()` (unsigned, in `AccessTokenService` — and `ndopify-partner-central`'s `JwtDecoder` decodes them the
-  same way), and `SecurityConfiguration` currently `permitAll()`s every
-  request — there is no Spring Security authentication enforced at the filter-chain level. A caller can set
-  `X-Tenant-ID` to whatever it wants. The `@TenantId` mechanism above correctly isolates data *once a tenant is
-  resolved*, but closing the resolution/authentication gap is separate, future work.
+  same way), so a caller can forge a token of any user and tenant, which the authentication above accepts. The
+  `@TenantId` mechanism above correctly isolates data *once a tenant is resolved*, but signing the tokens is separate,
+  future work.
 
 ### Testing Patterns
 
@@ -595,7 +605,8 @@ Base classes (`src/test/kotlin/com/wutsi/ndopify/`):
 - `BaseEndpointIntegrationTest` — `@SpringBootTest(webEnvironment = RANDOM_PORT)` + `TestRestTemplate`, injects the
   `X-Device-ID` header via a `ClientHttpRequestInterceptor`.
 - `TenantAwareEndpointIntegrationTest` — extends `BaseEndpointIntegrationTest`, additionally injects
-  `X-Tenant-ID: 1` (override via `ignoreTenantIdHeader = true` in a test to omit it).
+  `X-Tenant-ID: 1` (override via `ignoreTenantIdHeader = true` in a test to omit it). Without a token, only for the
+  public endpoints (`PublicEndpoints`): any other gets a 401.
 
 - `AuthorizationAwareEndpointIntegrationTest` — extends `TenantAwareEndpointIntegrationTest`, additionally sends an
   `Authorization: Bearer` JWT (user `11`, tenant `1`, `admin-console` by default) minted via `AccessTokenService`;

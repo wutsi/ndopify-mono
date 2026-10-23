@@ -143,6 +143,7 @@ class AcceptAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest()
     }
 
     private fun assertStatus(id: Long, status: AssignmentStatus) {
+        anonymousUser = false // reading the assignment needs a token
         val assignment = rest.getForEntity("/v1/assignments/$id", GetAssignmentResponse::class.java).body!!.assignment
         assertEquals(status, assignment.status)
     }

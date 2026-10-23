@@ -19,10 +19,10 @@ import org.springframework.web.filter.OncePerRequestFilter
 import org.springframework.web.servlet.HandlerExceptionResolver
 
 /**
- * Resolves the tenant id from the JWT claim when present, falling back to the [HttpHeader.TENANT_ID] header
- * otherwise. The header fallback is a deliberately weaker trust signal than the JWT claim (unsigned, same as
- * the claim itself today) — it exists only to keep the header-based tenant convention already documented in
- * CLAUDE.md working until real JWT signing is in place.
+ * Resolves the tenant id from the JWT claim when present. Without a token, only a [PublicEndpoints.TENANT] endpoint
+ * (called before the caller has one: OTP, sign-in, registration...) takes it from the [HttpHeader.TENANT_ID] header;
+ * any other is a 401 `AUTH_UNAUTHORIZED`, so that the header never opens a tenant's data. With a token, a header naming
+ * another tenant is a 403 `AUTH_ACCESS_DENIED`.
  *
  * A request without a valid tenant is rejected here, before the DispatcherServlet: the error goes through
  * [exceptionResolver] (Spring MVC's, so `ControllerErrorHandler`) to get the same [ErrorResponse] as an endpoint's.
@@ -34,30 +34,7 @@ class TenantContextFilter(
     private val tenantService: TenantService,
     private val exceptionResolver: HandlerExceptionResolver,
 ) : OncePerRequestFilter() {
-    companion object {
-        // Global reference data: not tenant-scoped, called before a tenant is known (ex: Partner Central's GET /v1/tenants)
-        private val EXCLUDED_PATHS = listOf(
-            "/v1/tenants",
-            "/v1/locations",
-            "/v1/applications",
-
-            // Swagger UI (springdoc.swagger-ui.path) and the OpenAPI docs it loads
-            "/api.html",
-            "/swagger-ui",
-            "/v3/api-docs",
-
-            // Local storage
-            "/storage",
-
-            // Actuator
-            "/actuator",
-        )
-    }
-
-    override fun shouldNotFilter(request: HttpServletRequest): Boolean {
-        val path = request.requestURI.removePrefix(request.contextPath)
-        return EXCLUDED_PATHS.any { path == it || path.startsWith("$it/") }
-    }
+    override fun shouldNotFilter(request: HttpServletRequest): Boolean = PublicEndpoints.isGlobal(request)
 
     override fun doFilterInternal(
         request: HttpServletRequest,
@@ -80,9 +57,17 @@ class TenantContextFilter(
     }
 
     private fun resolveTenant(request: HttpServletRequest): TenantEntity {
-        val id = resolveFromPrincipal()
-            ?: resolveFromHeader(request)
-            ?: throw BadRequestException(Error(code = ErrorCode.TENANT_MISSING_HEADER))
+        val headerTenantId = resolveFromHeader(request)
+        val id = resolveFromPrincipal()?.also { principalTenantId ->
+            if (headerTenantId != null && headerTenantId != principalTenantId) {
+                throw ForbiddenException(Error(code = ErrorCode.AUTH_ACCESS_DENIED))
+            }
+        } ?: if (PublicEndpoints.isTenant(request)) {
+            headerTenantId ?: throw BadRequestException(Error(code = ErrorCode.TENANT_MISSING_HEADER))
+        } else {
+            // A token without tenant (never issued: signing in requires one) is no better than none
+            throw UnauthorizedException(Error(code = ErrorCode.AUTH_UNAUTHORIZED))
+        }
 
         val tenant = tenantService.findByIdOrNull(id)
             ?: throw BadRequestException(Error(code = ErrorCode.TENANT_ID_NOT_VALID))

@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.security.server.endpoints
 
-import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
+import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.security.dto.GetUserResponse
@@ -11,7 +11,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/security/GetUserEndpoint.sql"])
-class GetUserEndpointTest : TenantAwareEndpointIntegrationTest() {
+class GetUserEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Test
     fun get() {
         val response = rest.getForEntity("/v1/users/1", GetUserResponse::class.java)

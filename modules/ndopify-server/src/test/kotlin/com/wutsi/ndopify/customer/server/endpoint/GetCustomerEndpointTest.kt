@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.customer.server.endpoint
 
-import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
+import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.customer.dto.GetCustomerResponse
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
@@ -10,7 +10,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/customer/GetCustomerEndpoint.sql"])
-class GetCustomerEndpointTest : TenantAwareEndpointIntegrationTest() {
+class GetCustomerEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Test
     fun get() {
         val response = rest.getForEntity("/v1/customers/1", GetCustomerResponse::class.java)

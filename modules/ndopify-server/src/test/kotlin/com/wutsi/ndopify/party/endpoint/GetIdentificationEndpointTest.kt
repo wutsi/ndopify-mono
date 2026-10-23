@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.party.endpoint
 
-import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
+import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.dto.GetIdentificationResponse
@@ -12,7 +12,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/party/GetIdentificationEndpoint.sql"])
-class GetIdentificationEndpointTest : TenantAwareEndpointIntegrationTest() {
+class GetIdentificationEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Test
     fun get() {
         val response = rest.getForEntity("/v1/identifications/id-100", GetIdentificationResponse::class.java)

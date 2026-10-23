@@ -27,6 +27,7 @@ import jakarta.servlet.FilterChain
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.CsvSource
 import org.junit.jupiter.params.provider.ValueSource
 import org.mockito.Mockito.verifyNoInteractions
 import org.springframework.mock.web.MockHttpServletRequest
@@ -81,8 +82,8 @@ class TenantContextFilterTest {
     }
 
     @Test
-    fun `falls back to the tenant id header when there is no principal`() {
-        val request = request(tenantHeader = "200")
+    fun `falls back to the tenant id header on a public endpoint when there is no principal`() {
+        val request = publicRequest(tenantHeader = "200")
 
         filter.doFilter(request, response, chain)
 
@@ -91,20 +92,33 @@ class TenantContextFilterTest {
     }
 
     @Test
-    fun `tenant of the principal takes precedence over the header`() {
+    fun `header naming the tenant of the principal is accepted`() {
         givenPrincipalTenant(100L)
 
-        filter.doFilter(request(tenantHeader = "200"), response, chain)
+        filter.doFilter(request(tenantHeader = "100"), response, chain)
 
         assertEquals(100L, tenantIdDuringChain)
-        verify(tenantService, never()).findByIdOrNull(200L)
     }
 
     @Test
-    fun `principal without tenant falls back to the header`() {
+    fun `principal without tenant falls back to the header on a public endpoint`() {
         givenPrincipalTenant(null)
 
-        filter.doFilter(request(tenantHeader = "200"), response, chain)
+        filter.doFilter(publicRequest(tenantHeader = "200"), response, chain)
+
+        assertEquals(200L, tenantIdDuringChain)
+    }
+
+    @ParameterizedTest
+    @CsvSource(
+        "POST, /v1/otp",
+        "POST, /v1/auth",
+        "POST, /v1/agents",
+        "POST, /v1/mandates",
+        "GET, /v1/contracts/c-1/signatures/abc",
+    )
+    fun `public endpoints take the tenant from the header`(method: String, path: String) {
+        filter.doFilter(request(method = method, uri = path, tenantHeader = "200"), response, chain)
 
         assertEquals(200L, tenantIdDuringChain)
     }
@@ -123,29 +137,64 @@ class TenantContextFilterTest {
 
     // Rejections
 
+    @ParameterizedTest
+    @CsvSource(
+        "GET, /v1/agents",
+        "GET, /v1/agents/1",
+        "POST, /v1/agents/1",
+        "GET, /v1/mandates",
+        "POST, /v1/mandates/1/close",
+        "GET, /v1/otp",
+        "GET, /v1/contracts/c-1",
+        "GET, /v1/kyc/cases",
+    )
+    fun `header without principal is unauthorized on a protected endpoint`(method: String, path: String) {
+        val ex = assertRejected(request(method = method, uri = path, tenantHeader = "200"), ErrorCode.AUTH_UNAUTHORIZED)
+
+        assertTrue(ex is UnauthorizedException)
+        verifyNoInteractions(tenantService)
+    }
+
     @Test
-    fun `no principal nor header is a bad request`() {
-        assertRejected(request(), ErrorCode.TENANT_MISSING_HEADER)
+    fun `principal without tenant is unauthorized on a protected endpoint`() {
+        givenPrincipalTenant(null)
+
+        assertRejected(request(tenantHeader = "200"), ErrorCode.AUTH_UNAUTHORIZED)
+    }
+
+    @Test
+    fun `header naming another tenant than the principal's is forbidden`() {
+        givenPrincipalTenant(100L)
+
+        val ex = assertRejected(request(tenantHeader = "200"), ErrorCode.AUTH_ACCESS_DENIED)
+
+        assertTrue(ex is ForbiddenException)
+        verifyNoInteractions(tenantService)
+    }
+
+    @Test
+    fun `no principal nor header is a bad request on a public endpoint`() {
+        assertRejected(publicRequest(), ErrorCode.TENANT_MISSING_HEADER)
     }
 
     @ParameterizedTest
     @ValueSource(strings = ["", "abc", "1.5"])
     fun `header that is not a number is a bad request`(header: String) {
-        assertRejected(request(tenantHeader = header), ErrorCode.TENANT_MISSING_HEADER)
+        assertRejected(publicRequest(tenantHeader = header), ErrorCode.TENANT_MISSING_HEADER)
     }
 
     @Test
     fun `unknown tenant is a bad request`() {
         doReturn(null).whenever(tenantService).findByIdOrNull(999L)
 
-        assertRejected(request(tenantHeader = "999"), ErrorCode.TENANT_ID_NOT_VALID)
+        assertRejected(publicRequest(tenantHeader = "999"), ErrorCode.TENANT_ID_NOT_VALID)
     }
 
     @Test
     fun `inactive tenant is a bad request`() {
         doReturn(TenantEntity(id = 300L, active = false)).whenever(tenantService).findByIdOrNull(300L)
 
-        assertRejected(request(tenantHeader = "300"), ErrorCode.TENANT_NOT_ACTIVE)
+        assertRejected(publicRequest(tenantHeader = "300"), ErrorCode.TENANT_NOT_ACTIVE)
     }
 
     @Test
@@ -173,7 +222,7 @@ class TenantContextFilterTest {
         doReturn(null).whenever(exceptionResolver).resolveException(any(), any(), anyOrNull(), any())
 
         val ex = assertFailsWith<BadRequestException> {
-            filter.doFilter(request(), response, chain)
+            filter.doFilter(publicRequest(), response, chain)
         }
 
         assertEquals(ErrorCode.TENANT_MISSING_HEADER, ex.error.code)
@@ -199,6 +248,7 @@ class TenantContextFilterTest {
             "/v3/api-docs",
             "/v3/api-docs/swagger-config",
             "/v3/api-docs/agent",
+            "/error",
         ],
     )
     fun `refdata and swagger paths are not filtered`(path: String) {
@@ -232,13 +282,16 @@ class TenantContextFilterTest {
     @ParameterizedTest
     @ValueSource(strings = ["/v1/tenantsfoo", "/v1/locations-x", "/v2/locations", "/v1/agents", "/v1/tenant", "/api.htmlx", "/swagger-uix", "/v3/api-docsx"])
     fun `paths that only look like excluded ones are filtered`(path: String) {
-        assertRejected(request(uri = path), ErrorCode.TENANT_MISSING_HEADER)
+        assertRejected(request(uri = path), ErrorCode.AUTH_UNAUTHORIZED)
     }
 
-    private fun request(uri: String = "/v1/agents", tenantHeader: String? = null) =
-        MockHttpServletRequest("GET", uri).apply {
+    private fun request(method: String = "GET", uri: String = "/v1/agents", tenantHeader: String? = null) =
+        MockHttpServletRequest(method, uri).apply {
             tenantHeader?.let { addHeader(HttpHeader.TENANT_ID, it) }
         }
+
+    private fun publicRequest(tenantHeader: String? = null) =
+        request(method = "POST", uri = "/v1/otp", tenantHeader = tenantHeader)
 
     private fun givenPrincipalTenant(tenantId: Long?) {
         val principal = mock<JwtPrincipal>()

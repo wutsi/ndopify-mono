@@ -7,7 +7,7 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
-import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
+import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.dto.GetKycImageUrlResponse
@@ -23,7 +23,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/party/GetKycImageUrlEndpoint.sql"])
-class GetKycImageUrlEndpointTest : TenantAwareEndpointIntegrationTest() {
+class GetKycImageUrlEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @MockitoBean
     private lateinit var storageProvider: StorageServiceProvider
 

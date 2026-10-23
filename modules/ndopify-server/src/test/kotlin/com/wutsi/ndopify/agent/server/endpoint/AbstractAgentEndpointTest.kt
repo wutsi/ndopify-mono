@@ -1,11 +1,11 @@
 package com.wutsi.ndopify.agent.server.endpoint
 
-import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
+import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import org.springframework.beans.factory.annotation.Autowired
 import javax.sql.DataSource
 import kotlin.test.assertEquals
 
-abstract class AbstractAgentEndpointTest : TenantAwareEndpointIntegrationTest() {
+abstract class AbstractAgentEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Autowired
     private lateinit var ds: DataSource
 

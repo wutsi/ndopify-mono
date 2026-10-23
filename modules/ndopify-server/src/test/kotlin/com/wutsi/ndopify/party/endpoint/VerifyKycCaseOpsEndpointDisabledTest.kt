@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.party.endpoint
 
-import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
+import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.party.dto.GetKycCaseResponse
@@ -17,7 +17,7 @@ import kotlin.test.assertEquals
  */
 @Sql(value = ["/db/test/clean.sql", "/db/test/party/VerifyKycCaseEndpoint.sql"])
 @TestPropertySource(properties = ["ndopify.endpoints.ops=false"])
-class VerifyKycCaseOpsEndpointDisabledTest : TenantAwareEndpointIntegrationTest() {
+class VerifyKycCaseOpsEndpointDisabledTest : AuthorizationAwareEndpointIntegrationTest() {
     @Test
     fun `not served`() {
         val response = rest.postForEntity("/v1/kyc/cases/kyc-case-submitted/verify", null, ErrorResponse::class.java)

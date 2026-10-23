@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.mandate.server.endpoint
 
-import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
+import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
@@ -14,7 +14,7 @@ import kotlin.test.assertEquals
 /** With `ndopify.endpoints.ops=false` (as in prod), `POST /v1/assignments/{id}/expire` doesn't exist. */
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/ExpireAssignmentEndpoint.sql"])
 @TestPropertySource(properties = ["ndopify.endpoints.ops=false"])
-class ExpireAssignmentOpsEndpointDisabledTest : TenantAwareEndpointIntegrationTest() {
+class ExpireAssignmentOpsEndpointDisabledTest : AuthorizationAwareEndpointIntegrationTest() {
     @Test
     fun `not served`() {
         val response = rest.postForEntity("/v1/assignments/1/expire", null, ErrorResponse::class.java)

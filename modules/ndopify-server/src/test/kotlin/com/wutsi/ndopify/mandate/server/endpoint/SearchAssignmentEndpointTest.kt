@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.mandate.server.endpoint
 
-import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
+import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
 import com.wutsi.ndopify.mandate.dto.SearchAssignmentResponse
 import org.springframework.http.HttpStatus
@@ -11,7 +11,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/SearchAssignmentEndpoint.sql"])
-class SearchAssignmentEndpointTest : TenantAwareEndpointIntegrationTest() {
+class SearchAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Test
     fun `all, newest first`() {
         val assignments = search("")
