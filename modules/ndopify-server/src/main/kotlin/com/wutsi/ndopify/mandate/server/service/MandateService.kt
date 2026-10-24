@@ -100,7 +100,7 @@ class MandateService(
             }
             request.offeredTo?.let { agentId ->
                 // A subquery rather than a join: the mandates offered to the agent, whatever its other offers
-                val sub = query!!.subquery(Long::class.java)
+                val sub = query.subquery(Long::class.java)
                 val assignment = sub.from(AssignmentEntity::class.java)
                 sub.select(assignment.get<MandateEntity>("mandate").get("id"))
                     .where(

@@ -38,7 +38,8 @@ import kotlin.test.assertTrue
 class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     companion object {
         private const val SIGNATURE_HASH = "3333333333333333333333333333333333333333333333333333333333333333" // cp-21's
-        private const val CONTENT_HASH = "1111111111111111111111111111111111111111111111111111111111111111" // Of every contract but c-10
+        private const val CONTENT_HASH =
+            "1111111111111111111111111111111111111111111111111111111111111111" // Of every contract but c-10
     }
 
     override val application = ApplicationCode.E_SIGNATURE
@@ -120,7 +121,7 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(SIGNATURE_HASH, partyDao.findById("cp-21").get().signatureHash)
 
         // Valid from the last signature, for its 6 months (in the tenant's time zone)
-        assertEquals(contract.signedAt?.time, contract.validFrom?.time)
+        assertEquals(contract.signedAt.time, contract.validFrom?.time)
         val validUntil = contract.validFrom!!.toInstant().atZone(ZoneId.of("Africa/Douala")).plusMonths(6).toInstant()
         assertEquals(Date.from(validUntil).time, contract.validUntil?.time)
 
@@ -225,7 +226,11 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
     @Test
     fun `content hash of the content shown, in any case`() {
-        val response = rest.postForEntity("/v1/contracts/c-1/sign", request("cp-11", " ${CONTENT_HASH.uppercase()} "), Any::class.java)
+        val response = rest.postForEntity(
+            "/v1/contracts/c-1/sign",
+            request("cp-11", " ${CONTENT_HASH.uppercase()} "),
+            Any::class.java
+        )
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertTrue(partyDao.findById("cp-11").get().signed)
@@ -255,7 +260,8 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Test
     fun `IPv6 address`() {
         val ipAddress = "2001:db8:85a3::8a2e:370:7334"
-        val response = rest.postForEntity("/v1/contracts/c-1/sign", request("cp-11", ipAddress = ipAddress), Any::class.java)
+        val response =
+            rest.postForEntity("/v1/contracts/c-1/sign", request("cp-11", ipAddress = ipAddress), Any::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(ipAddress, partyDao.findById("cp-11").get().ipAddress)
@@ -264,7 +270,8 @@ class SignContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Test
     fun `longest user agent`() {
         val userAgent = "a".repeat(1024)
-        val response = rest.postForEntity("/v1/contracts/c-1/sign", request("cp-11", userAgent = userAgent), Any::class.java)
+        val response =
+            rest.postForEntity("/v1/contracts/c-1/sign", request("cp-11", userAgent = userAgent), Any::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(userAgent, partyDao.findById("cp-11").get().userAgent)

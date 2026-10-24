@@ -1,16 +1,16 @@
 package com.wutsi.ndopify.party.dto
 
 /**
- * Lifecycle of a KYC case: PENDING (the agent uploads the documents) → SUBMITTED (sent for review, documents
- * frozen) → IN_PROGRESS (picked up by the offline verification) → VERIFIED / REJECTED / REQUIRES_MANUAL_REVIEW.
+ * Lifecycle of a KYC case: PENDING_VERIFICATION (the agent uploads the documents) → SUBMITTED (sent for review, documents
+ * frozen) → UNDER_VERIFICATION (picked up by the offline verification) → VERIFIED / REJECTED / REQUIRES_MANUAL_VERIFICATION.
  */
 enum class KycStatus {
     UNKNOWN,
-    PENDING,
+    PENDING_VERIFICATION,
     SUBMITTED,
-    IN_PROGRESS,
+    UNDER_VERIFICATION,
     VERIFIED,
     REJECTED,
-    REQUIRES_MANUAL_REVIEW,
+    REQUIRES_MANUAL_VERIFICATION,
     CANCELLED,
 }

@@ -39,6 +39,9 @@ object PublicEndpoints {
         matcher.matcher(HttpMethod.POST, "/v1/auth"),
         matcher.matcher(HttpMethod.POST, "/v1/agents"), // Partner Central's registration
         matcher.matcher(HttpMethod.POST, "/v1/mandates"), // Partner Central's public wizards
+        matcher.matcher(HttpMethod.GET, "/v1/listings"), // Listings are public: search and get
+        matcher.matcher(HttpMethod.GET, "/v1/listings/*"),
+        matcher.matcher(HttpMethod.GET, "/v1/listings/*/images"),
         matcher.matcher(HttpMethod.GET, "/v1/contracts/*/signatures/*"), // e-signature's verify page
     )
 

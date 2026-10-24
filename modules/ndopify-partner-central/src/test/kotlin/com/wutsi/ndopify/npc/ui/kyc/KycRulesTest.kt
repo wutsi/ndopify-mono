@@ -17,11 +17,11 @@ class KycRulesTest {
     @Test
     fun status() {
         assertNull(KycRules.status(null))
-        assertNull(KycRules.status(KycCase(status = KycStatus.PENDING)))
+        assertNull(KycRules.status(KycCase(status = KycStatus.PENDING_VERIFICATION)))
         assertNull(KycRules.status(KycCase(status = KycStatus.CANCELLED)))
         assertEquals("pending", KycRules.status(KycCase(status = KycStatus.SUBMITTED)))
-        assertEquals("pending", KycRules.status(KycCase(status = KycStatus.IN_PROGRESS)))
-        assertEquals("pending", KycRules.status(KycCase(status = KycStatus.REQUIRES_MANUAL_REVIEW)))
+        assertEquals("pending", KycRules.status(KycCase(status = KycStatus.UNDER_VERIFICATION)))
+        assertEquals("pending", KycRules.status(KycCase(status = KycStatus.REQUIRES_MANUAL_VERIFICATION)))
         assertEquals("pending", KycRules.status(KycCase(status = KycStatus.UNKNOWN)))
         assertEquals("verified", KycRules.status(KycCase(status = KycStatus.VERIFIED)))
         assertEquals("rejected", KycRules.status(KycCase(status = KycStatus.REJECTED)))
@@ -31,7 +31,7 @@ class KycRulesTest {
     fun `photos of a pending case only`() {
         val images = listOf(front, back)
 
-        assertEquals(setOf(KycImageType.FRONT, KycImageType.BACK), KycRules.photos(KycCase(status = KycStatus.PENDING, images = images)).keys)
+        assertEquals(setOf(KycImageType.FRONT, KycImageType.BACK), KycRules.photos(KycCase(status = KycStatus.PENDING_VERIFICATION, images = images)).keys)
         assertTrue(KycRules.photos(KycCase(status = KycStatus.REJECTED, images = images)).isEmpty())
         assertTrue(KycRules.photos(null).isEmpty())
     }

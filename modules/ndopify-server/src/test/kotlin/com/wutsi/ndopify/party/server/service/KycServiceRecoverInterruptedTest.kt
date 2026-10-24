@@ -49,7 +49,7 @@ class KycServiceRecoverInterruptedTest : BaseEndpointIntegrationTest() {
         service.recoverInterrupted()
 
         val case = case("kyc-case-interrupted-last-retry")
-        assertEquals(KycStatus.REQUIRES_MANUAL_REVIEW, case.status)
+        assertEquals(KycStatus.REQUIRES_MANUAL_VERIFICATION, case.status)
         assertEquals(3, case.retries)
         assertEquals(KycErrorCode.INTERRUPTED, case.errorCode)
     }
@@ -69,7 +69,7 @@ class KycServiceRecoverInterruptedTest : BaseEndpointIntegrationTest() {
         service.recoverInterrupted()
 
         val case = case("kyc-case-in-progress")
-        assertEquals(KycStatus.IN_PROGRESS, case.status)
+        assertEquals(KycStatus.UNDER_VERIFICATION, case.status)
         assertNull(case.retries)
     }
 
@@ -88,7 +88,7 @@ class KycServiceRecoverInterruptedTest : BaseEndpointIntegrationTest() {
 
         TenantContext.set(2L)
         val case = case("kyc-case-other-tenant")
-        assertEquals(KycStatus.IN_PROGRESS, case.status)
+        assertEquals(KycStatus.UNDER_VERIFICATION, case.status)
         assertNull(case.retries)
     }
 }

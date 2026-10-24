@@ -39,7 +39,7 @@ class CloseMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(mandate.closedAt, mandate.modifiedAt)
 
         // Days from its approval (2024-06-10) to now
-        val age = Duration.ofMillis(mandate.closedAt!!.time - mandate.approvedAt!!.time).toDays().toInt()
+        val age = Duration.ofMillis(mandate.closedAt.time - mandate.approvedAt!!.time).toDays().toInt()
         assertEquals(age, mandate.age)
         assertNull(mandate.cancellationCode)
     }

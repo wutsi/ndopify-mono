@@ -34,12 +34,12 @@ class NdKycClientTest {
     fun current() {
         server.expect(requestTo("http://localhost:8080/v1/kyc/cases?partyId=100&limit=1"))
             .andExpect(method(HttpMethod.GET))
-            .andRespond(withSuccess("""{"cases":[{"id":"case-1","partyId":100,"status":"PENDING","createdAt":0,"updatedAt":0}]}""", MediaType.APPLICATION_JSON))
+            .andRespond(withSuccess("""{"cases":[{"id":"case-1","partyId":100,"status":"PENDING_VERIFICATION","createdAt":0,"updatedAt":0}]}""", MediaType.APPLICATION_JSON))
         server.expect(requestTo("http://localhost:8080/v1/kyc/cases/case-1"))
             .andExpect(method(HttpMethod.GET))
             .andRespond(
                 withSuccess(
-                    """{"case":{"id":"case-1","partyId":100,"identificationType":"NATIONAL_ID","status":"PENDING","createdAt":0,"updatedAt":0,"verifications":[],"images":[{"id":"img-1","caseId":"case-1","identificationType":"NATIONAL_ID","imageType":"FRONT","createdAt":0,"modifiedAt":0}]}}""",
+                    """{"case":{"id":"case-1","partyId":100,"identificationType":"NATIONAL_ID","status":"PENDING_VERIFICATION","createdAt":0,"updatedAt":0,"verifications":[],"images":[{"id":"img-1","caseId":"case-1","identificationType":"NATIONAL_ID","imageType":"FRONT","createdAt":0,"modifiedAt":0}]}}""",
                     MediaType.APPLICATION_JSON,
                 ),
             )
@@ -47,7 +47,7 @@ class NdKycClientTest {
         val case = client.current(100)
 
         assertEquals("case-1", case?.id)
-        assertEquals(KycStatus.PENDING, case?.status)
+        assertEquals(KycStatus.PENDING_VERIFICATION, case?.status)
         assertEquals(listOf(KycImageType.FRONT), case?.images?.map { it.imageType })
         server.verify()
     }

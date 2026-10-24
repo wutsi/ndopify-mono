@@ -17,7 +17,7 @@ INSERT INTO T_PAYMENT_METHOD(id, tenant_id, party_id, number, type, status, crea
 
 INSERT INTO T_KYC_CASE(id, tenant_id, party_id,  score, status, error_code, created_at, modified_at) VALUES
     ('kyc-case-100', 1, 100, 80, 'VERIFIED', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    ('kyc-case-200', 1, 100, NULL, 'PENDING', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    ('kyc-case-200', 1, 100, NULL, 'PENDING_VERIFICATION', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     ('kyc-case-900', 2, 900, 80, 'VERIFIED', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00');
 
 INSERT INTO T_KYC_VERIFICATION(id, case_id, type, status, score, error_code, created_at, modified_at) VALUES

@@ -72,7 +72,7 @@ class KycCaseVerifierMoMo(
         val gateway = gatewayProvider.getByPhoneNumber(paymentMethod.number)
         if (gateway == null) {
             return verification.copy(
-                status = KycStatus.REQUIRES_MANUAL_REVIEW,
+                status = KycStatus.REQUIRES_MANUAL_VERIFICATION,
                 modifiedAt = Date(clock.millis())
             )
         }

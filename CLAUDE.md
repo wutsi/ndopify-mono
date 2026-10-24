@@ -171,10 +171,10 @@ Current domains:
   `PaymentMethod`. KYC cases are verified by pluggable `KycVerifier` strategies (`KycVerifierIdentification`,
   `KycVerifierMoMo`, `KycVerifierManual`) selected via `KycVerifierProvider`. Identity-document data is extracted
   by `IdentificationInfoExtractorAi` (LLM via Spring AI), behind `IdentificationInfoExtractorProvider`.
-  KYC case lifecycle: `PENDING` (images uploaded via `/v1/kyc/cases/{id}/images/upload`) → `POST
+  KYC case lifecycle: `PENDING_VERIFICATION` (images uploaded via `/v1/kyc/cases/{id}/images/upload`) → `POST
   /v1/kyc/cases/{id}/submit` → `SUBMITTED` (requires FRONT, plus BACK for two-sided documents: `NATIONAL_ID`,
   `DRIVER_LICENSE`, `RESIDENT_CARD`; SELFIE optional server-side, Partner Central requires it; images frozen) →
-  `POST .../verify` → `IN_PROGRESS` → `VERIFIED` / `REJECTED`, which publishes a `KycCaseCompletedEvent`: the
+  `POST .../verify` → `UNDER_VERIFICATION` → `VERIFIED` / `REJECTED`, which publishes a `KycCaseCompletedEvent`: the
 status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint or `KycJobs` verified the case. `GET /v1/kyc/cases` returns the newest case first.
   Verification runs offline (`KycJobs`), never from a UI: `POST .../verify` is an `@OpsEndpoint`, off in prod.
   Tenant-scoped (see Multi-Tenancy below).
@@ -422,10 +422,10 @@ Package `com.wutsi.ndopify.npc`: `ui/` (MVC controllers + Thymeleaf templates in
   `src/main/html/offer-property.html`.
 - KYC is `KycController` (`ui/kyc/`), one page (`templates/kyc.html`), reached from the Espace agent's banner. Wizard steps `front` →
   `back` → `selfie` → `review`: `GET /kyc?step=…` shows a step (never past the first photo the case lacks) and
-  `POST /kyc/{step}` uploads that photo straight to the agent's PENDING case (`NdKycClient`), so the case is the
+  `POST /kyc/{step}` uploads that photo straight to the agent's PENDING_VERIFICATION case (`NdKycClient`), so the case is the
   state and the session holds no photos; `POST /kyc/review` submits it. The party is found by looking up the
   signed-in user (`CurrentParty` → `GET /v1/users/{id}`) and taking its newest case (`GET /v1/kyc/cases`, newest
-  first). Once the case is no longer PENDING the page is a status view (`?step=confirmation` right after
+  first). Once the case is no longer PENDING_VERIFICATION the page is a status view (`?step=confirmation` right after
   submitting); `POST /kyc/restart` opens a new case after a rejection. A user with no party goes to `/logout`.
   Photos are sniffed with Tika (`tika-core`) and capped at 5 Mo (`KycUploadErrorHandler` catches the multipart
   limit). `public/assets/js/kyc.js` only enhances (shrinks photos, in-page selfie camera); every step posts without it.

@@ -31,11 +31,11 @@ import org.springframework.web.multipart.MultipartFile
 /**
  * The agent's identity verification, on a single page (`kyc.html`), in three views:
  * - wizard: four steps, [STEPS] (front → back → selfie → review). `GET /kyc?step=…` shows a step. Each upload
- *   step posts its photo to `POST /kyc/{step}`, which adds it straight to the agent's PENDING case on
+ *   step posts its photo to `POST /kyc/{step}`, which adds it straight to the agent's PENDING_VERIFICATION case on
  *   ndopify-server, so the case is the wizard's state and the session holds no photos. `POST /kyc/review`
  *   submits the case.
  * - confirmation: `?step=confirmation`, right after submitting (while [SubmittedKyc] is in the session).
- * - status: once the case is no longer PENDING (pending / verified / rejected), whatever the URL says. A rejected
+ * - status: once the case is no longer PENDING_VERIFICATION (pending / verified / rejected), whatever the URL says. A rejected
  *   case can be restarted (`POST /kyc/restart`), which opens a new case.
  *
  * The URL is never trusted: a step is only shown once the case has every photo before it.
@@ -132,7 +132,7 @@ class KycController(
     fun submit(session: HttpSession, model: Model): String {
         val party = currentParty.get() ?: return SIGN_OUT
         val case = kycClient.current(party.id)
-        if (case?.status != KycStatus.PENDING) return "redirect:/kyc"
+        if (case?.status != KycStatus.PENDING_VERIFICATION) return "redirect:/kyc"
 
         val photos = KycRules.photos(case)
         val firstIncomplete = KycRules.firstIncompleteStep(photos.keys)
@@ -161,13 +161,13 @@ class KycController(
     }
 
     /**
-     * The PENDING case photos go to: the current one, or a new one when the agent has none yet (or it was
+     * The PENDING_VERIFICATION case photos go to: the current one, or a new one when the agent has none yet (or it was
      * cancelled). Null once the current case has been submitted, since its photos can't change any more.
      */
     private fun openCase(partyId: Long): KycCase? {
         val case = kycClient.current(partyId)
         return when (case?.status) {
-            KycStatus.PENDING -> case
+            KycStatus.PENDING_VERIFICATION -> case
             null, KycStatus.CANCELLED -> kycClient.get(kycClient.create(partyId))
             else -> null
         }

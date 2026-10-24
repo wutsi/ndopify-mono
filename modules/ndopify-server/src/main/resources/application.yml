@@ -254,7 +254,7 @@ ndopify:
                 url-ttl-seconds: 3600   # 1h
             verify:
                 cron: "0 */15 * * * ?"    # Every 15 minutes
-                in-progress-timeout-minutes: 15  # A case IN_PROGRESS for longer was interrupted: it's retried
+                in-progress-timeout-minutes: 15  # A case UNDER_VERIFICATION for longer was interrupted: it's retried
 
     storage:
         default-type: local

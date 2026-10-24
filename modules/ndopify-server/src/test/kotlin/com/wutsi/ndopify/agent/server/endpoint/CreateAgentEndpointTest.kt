@@ -95,7 +95,7 @@ class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
         assertEquals(request.firstName, party?.firstName)
         assertEquals(request.lastName, party?.lastName)
         assertEquals(request.email.lowercase(), party?.email)
-        assertEquals(KycStatus.PENDING, party?.kycStatus)
+        assertEquals(KycStatus.PENDING_VERIFICATION, party?.kycStatus)
 
         val paymentMethod = paymentMethodService.findByParty(party!!).first()
         assertEquals(TENANT_ID, paymentMethod.tenantId)
@@ -109,7 +109,7 @@ class CreateAgentEndpointTest : AbstractAgentEndpointTest() {
         val case = cases.first()
         assertEquals(TENANT_ID, case.tenantId)
         assertEquals(party.id, case.party.id)
-        assertEquals(KycStatus.PENDING, case.status)
+        assertEquals(KycStatus.PENDING_VERIFICATION, case.status)
         assertEquals(IdentificationType.NATIONAL_ID, case.identificationType)
 
         val user = userService.findByPartyIdOrNull(party.id!!)

@@ -168,7 +168,7 @@ class KycCaseVerifierMoMoTest {
 
         val result = verifier.verify(case)[0]
 
-        assertEquals(KycStatus.REQUIRES_MANUAL_REVIEW, result.status)
+        assertEquals(KycStatus.REQUIRES_MANUAL_VERIFICATION, result.status)
         assertNull(result.score)
         assertNull(result.errorCode)
         verify(gateway, never()).kycMatch(any())

@@ -51,7 +51,7 @@ class KycControllerTest {
     private val back = KycImage(id = "img-back", imageType = KycImageType.BACK)
     private val selfie = KycImage(id = "img-selfie", imageType = KycImageType.SELFIE)
 
-    private fun case(status: KycStatus = KycStatus.PENDING, images: List<KycImage> = emptyList(), errorCode: String? = null) =
+    private fun case(status: KycStatus = KycStatus.PENDING_VERIFICATION, images: List<KycImage> = emptyList(), errorCode: String? = null) =
         KycCase(id = "case-1", partyId = PARTY_ID, status = status, images = images, errorCode = errorCode)
 
     private fun given(case: KycCase?) {
@@ -318,7 +318,7 @@ class KycControllerTest {
     fun `no case yet - one is opened`() {
         given(null)
         doReturn("case-new").whenever(kycClient).create(PARTY_ID)
-        doReturn(KycCase(id = "case-new", status = KycStatus.PENDING)).whenever(kycClient).get("case-new")
+        doReturn(KycCase(id = "case-new", status = KycStatus.PENDING_VERIFICATION)).whenever(kycClient).get("case-new")
 
         mvc.perform(multipart("/kyc/front").file(photo(jpeg)).session(session)).andReturn()
 
@@ -468,7 +468,7 @@ class KycControllerTest {
 
     @Test
     fun `restart a pending case - nothing created`() {
-        given(case(status = KycStatus.PENDING))
+        given(case(status = KycStatus.PENDING_VERIFICATION))
 
         mvc.perform(post("/kyc/restart").session(session)).andReturn()
 

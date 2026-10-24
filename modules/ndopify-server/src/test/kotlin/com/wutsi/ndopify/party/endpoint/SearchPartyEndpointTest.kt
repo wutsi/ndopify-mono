@@ -25,7 +25,7 @@ class SearchPartyEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals("Ray", ray.firstName)
         assertEquals("Sponsible", ray.lastName)
         assertEquals("ray.sponsible@gmail.com", ray.email)
-        assertEquals(KycStatus.PENDING, ray.kycStatus)
+        assertEquals(KycStatus.PENDING_VERIFICATION, ray.kycStatus)
         assertEquals("https://img.com/ray.png", ray.photoUrl)
 
         assertNull(parties[1].photoUrl)

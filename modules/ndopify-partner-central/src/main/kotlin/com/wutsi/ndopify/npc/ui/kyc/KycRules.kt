@@ -33,19 +33,19 @@ object KycRules {
 
     /**
      * The status panel shown instead of the wizard, or null while the agent still has documents to send: no case
-     * yet, a PENDING one, or a cancelled one (the next upload opens a new case). Any status this page doesn't
+     * yet, a PENDING_VERIFICATION one, or a cancelled one (the next upload opens a new case). Any status this page doesn't
      * know about reads as "en attente", since there is nothing for the agent to do.
      */
     fun status(case: KycCase?): String? = when (case?.status) {
-        null, KycStatus.PENDING, KycStatus.CANCELLED -> null
+        null, KycStatus.PENDING_VERIFICATION, KycStatus.CANCELLED -> null
         KycStatus.VERIFIED -> STATUS_VERIFIED
         KycStatus.REJECTED -> STATUS_REJECTED
         else -> STATUS_PENDING
     }
 
-    /** The photos already in the case, by type. Only a PENDING case's photos count: the others are frozen. */
+    /** The photos already in the case, by type. Only a PENDING_VERIFICATION case's photos count: the others are frozen. */
     fun photos(case: KycCase?): Map<KycImageType, KycImage> =
-        if (case?.status == KycStatus.PENDING) case.images.associateBy { image -> image.imageType } else emptyMap()
+        if (case?.status == KycStatus.PENDING_VERIFICATION) case.images.associateBy { image -> image.imageType } else emptyMap()
 
     /** The first upload step whose photo is missing, or the review once they're all in. */
     fun firstIncompleteStep(photos: Set<KycImageType>): String =

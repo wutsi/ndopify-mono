@@ -183,14 +183,14 @@ class AgentService(
     @Transactional
     fun sendWelcomeEmail(agentId: Long) {
         val agent = findById(agentId)
-        if (agent.party.kycStatus != KycStatus.PENDING) {
+        if (agent.party.kycStatus != KycStatus.PENDING_VERIFICATION) {
             return
         }
 
         val kyc = kycService.search(
             SearchKycCaseRequest(
                 partyId = agent.party.id,
-                statuses = listOf(KycStatus.PENDING),
+                statuses = listOf(KycStatus.PENDING_VERIFICATION),
                 limit = 1
             )
         ).firstOrNull()

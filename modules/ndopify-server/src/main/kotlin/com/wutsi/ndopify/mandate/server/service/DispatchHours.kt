@@ -15,8 +15,8 @@ import java.time.ZonedDateTime
  */
 @Service
 class DispatchHours(
-    @param:Value("\${ndopify.mandate.assignment.night.start}") nightStart: String,
-    @param:Value("\${ndopify.mandate.assignment.night.end}") nightEnd: String,
+    @Value("\${ndopify.mandate.assignment.night.start}") nightStart: String,
+    @Value("\${ndopify.mandate.assignment.night.end}") nightEnd: String,
 ) {
     private val start = LocalTime.parse(nightStart)
     private val end = LocalTime.parse(nightEnd)

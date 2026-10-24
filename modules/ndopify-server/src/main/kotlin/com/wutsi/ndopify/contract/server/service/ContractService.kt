@@ -74,14 +74,14 @@ class ContractService(
             }
             if (request.partyIds.isNotEmpty()) {
                 // A subquery rather than a join: a party appearing twice in a contract mustn't return it twice
-                val sub = query!!.subquery(String::class.java)
+                val sub = query.subquery(String::class.java)
                 val party = sub.from(ContractPartyEntity::class.java)
                 sub.select(party.get<ContractEntity>("contract").get("id"))
                     .where(party.get<Long>("partyId").`in`(request.partyIds))
                 predicates.add(root.get<String>("id").`in`(sub))
             }
             if (request.contractPartyIds.isNotEmpty()) {
-                val sub = query!!.subquery(String::class.java)
+                val sub = query.subquery(String::class.java)
                 val party = sub.from(ContractPartyEntity::class.java)
                 // With parties too (always for a non-admin, forced to its own party), on the same row: the
                 // contract party must be one of those parties', not just any party of the same contract
@@ -334,6 +334,7 @@ class ContractService(
         return when (contract.status) {
             ContractStatus.DRAFT, ContractStatus.PENDING_SIGNATURE, ContractStatus.SIGNED ->
                 dao.save(contract.copy(status = ContractStatus.CANCELLED))
+
             else -> contract
         }
     }

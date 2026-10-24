@@ -170,7 +170,7 @@ class ProfileTemplateTest {
 
     @Test
     fun `home - not verified yet - KYC banner`() {
-        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING))).whenever(currentAgent).get()
+        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING_VERIFICATION))).whenever(currentAgent).get()
         val banners = mapOf(
             null to ("todo" to "Vérifier mon identité"),
             KycStatus.SUBMITTED to ("pending" to "Voir le statut de mon dossier"),

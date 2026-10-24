@@ -324,7 +324,7 @@ class VerifyKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(HttpStatus.OK, response.statusCode)
         assertCase(KycStatus.SUBMITTED, null, errorCode = KycErrorCode.GATEWAY_ERROR)
         assertRetry(1, "Gateway down")
-        assertPartyKycStatus(KycStatus.PENDING)
+        assertPartyKycStatus(KycStatus.PENDING_VERIFICATION)
         assertPaymentMethodStatus(PaymentMethodStatus.PENDING_VERIFICATION)
 
         verify(selfieVerifier, never()).verify(any())
@@ -354,7 +354,7 @@ class VerifyKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(HttpStatus.OK, response.statusCode)
         assertCase(KycStatus.SUBMITTED, null, errorCode = KycErrorCode.GATEWAY_ERROR)
         assertEquals(1, dao.findById("kyc-case-submitted").orElseThrow().retries)
-        assertPartyKycStatus(KycStatus.PENDING)
+        assertPartyKycStatus(KycStatus.PENDING_VERIFICATION)
 
         verify(selfieVerifier, never()).verify(any())
         verify(paymentMethodVerifier, never()).verify(any())
@@ -378,9 +378,9 @@ class VerifyKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         val response = verify("kyc-case-last-retry")
 
         assertEquals(HttpStatus.OK, response.statusCode)
-        assertCase(KycStatus.REQUIRES_MANUAL_REVIEW, null, "kyc-case-last-retry", KycErrorCode.GATEWAY_ERROR)
+        assertCase(KycStatus.REQUIRES_MANUAL_VERIFICATION, null, "kyc-case-last-retry", KycErrorCode.GATEWAY_ERROR)
         assertRetry(3, "Gateway down", "kyc-case-last-retry")
-        assertPartyKycStatus(KycStatus.PENDING)
+        assertPartyKycStatus(KycStatus.PENDING_VERIFICATION)
     }
 
     @Test
@@ -442,7 +442,7 @@ class VerifyKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
         assertEquals(ErrorCode.KYC_CASE_NOT_SUBMITTED, response.body?.error?.code)
 
-        assertCase(KycStatus.PENDING, null, "kyc-case-pending")
+        assertCase(KycStatus.PENDING_VERIFICATION, null, "kyc-case-pending")
         assertNoVerifierCalled()
         assertNoEmail()
     }
@@ -512,7 +512,7 @@ class VerifyKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(HttpStatus.OK, response.statusCode)
         assertCase(KycStatus.SUBMITTED, null, errorCode = KycErrorCode.GATEWAY_ERROR)
         assertTrue(verificationDao.findAll().none { it.case.id == "kyc-case-submitted" })
-        assertPartyKycStatus(KycStatus.PENDING)
+        assertPartyKycStatus(KycStatus.PENDING_VERIFICATION)
         assertPaymentMethodStatus(PaymentMethodStatus.PENDING_VERIFICATION)
     }
 }

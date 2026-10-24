@@ -67,7 +67,7 @@ class SubmitKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertTrue(case.modifiedAt.after(SimpleDateFormat("yyyy-MM-dd").parse("2024-06-10")))
 
         // The party's KYC status only changes once the case is verified.
-        assertEquals(KycStatus.PENDING, partyDao.findById(100L).orElseThrow().kycStatus)
+        assertEquals(KycStatus.PENDING_VERIFICATION, partyDao.findById(100L).orElseThrow().kycStatus)
     }
 
     @Test
@@ -84,7 +84,7 @@ class SubmitKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
         assertEquals(ErrorCode.KYC_CASE_MISSING_IDENTIFICATION_IMAGE, response.body?.error?.code)
-        assertStatus(KycStatus.PENDING, "kyc-case-missing-back")
+        assertStatus(KycStatus.PENDING_VERIFICATION, "kyc-case-missing-back")
     }
 
     @Test
@@ -93,7 +93,7 @@ class SubmitKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
         assertEquals(ErrorCode.KYC_CASE_MISSING_IDENTIFICATION_IMAGE, response.body?.error?.code)
-        assertStatus(KycStatus.PENDING, "kyc-case-back-no-content")
+        assertStatus(KycStatus.PENDING_VERIFICATION, "kyc-case-back-no-content")
     }
 
     @Test
@@ -110,7 +110,7 @@ class SubmitKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
         assertEquals(ErrorCode.KYC_CASE_MISSING_IDENTIFICATION_IMAGE, response.body?.error?.code)
-        assertStatus(KycStatus.PENDING, "kyc-case-passport-no-front")
+        assertStatus(KycStatus.PENDING_VERIFICATION, "kyc-case-passport-no-front")
     }
 
     @Test

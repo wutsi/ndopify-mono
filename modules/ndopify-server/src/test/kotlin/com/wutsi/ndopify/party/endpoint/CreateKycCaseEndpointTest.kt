@@ -34,7 +34,7 @@ class CreateKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         val caseId = response.body?.caseId
         val case = dao.findById(caseId!!).orElseThrow()
         assertEquals(100L, case.party.id)
-        assertEquals(KycStatus.PENDING, case.status)
+        assertEquals(KycStatus.PENDING_VERIFICATION, case.status)
         assertEquals(IdentificationType.RESIDENT_CARD, case.identificationType)
         assertNull(case.score)
         assertNull(case.errorCode)

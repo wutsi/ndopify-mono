@@ -9,12 +9,14 @@ import org.springframework.stereotype.Service
 
 @Service
 class MandateMapper {
-    fun toMandate(entity: MandateEntity): Mandate {
+    /** [listingId] is the mandate's listing, if it has one. */
+    fun toMandate(entity: MandateEntity, listingId: Long? = null): Mandate {
         return Mandate(
             id = entity.id ?: -1,
             customerId = entity.customerId,
             agentId = entity.agentId,
             contractId = entity.contractId,
+            listingId = listingId,
             propertyCategory = entity.propertyCategory,
             status = entity.status,
             mandateType = entity.mandateType,
