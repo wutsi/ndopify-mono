@@ -26,7 +26,7 @@ class AuthenticatorProviderTest {
 
     @Test
     fun otp() {
-        assertEquals(otp, provider.get(AuthType.OTP))
+        assertEquals(null, provider.get(AuthType.OTP))
     }
 
     @Test

@@ -7,6 +7,8 @@ import com.wutsi.ndopify.contract.dto.ContractStatus
 import com.wutsi.ndopify.contract.dto.ContractType
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.FurnitureType
+import com.wutsi.ndopify.listing.dto.ImageStatus
+import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
@@ -55,6 +57,12 @@ class ContactPeriodTypeConverter : EnumConverter<ContactPeriodType>(ContactPerio
 
 @Converter(autoApply = true)
 class FurnitureTypeConverter : EnumConverter<FurnitureType>(FurnitureType::class.java, null)
+
+@Converter(autoApply = true)
+class ImageStatusConverter : EnumConverter<ImageStatus>(ImageStatus::class.java, ImageStatus.UNKNOWN)
+
+@Converter(autoApply = true)
+class ListingStatusConverter : EnumConverter<ListingStatus>(ListingStatus::class.java, ListingStatus.UNKNOWN)
 
 @Converter(autoApply = true)
 class ListingTypeConverter : EnumConverter<ListingType>(ListingType::class.java, ListingType.UNKNOWN)

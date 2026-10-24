@@ -16,7 +16,7 @@ class AuthenticatorProvider(
         return when (type) {
             AuthType.PASSWORD -> password
             AuthType.GOOGLE_ONE_TAP -> googleOneTap
-            AuthType.OTP -> otp
+            AuthType.OTP -> null // Not supported until we support OneTap verification in GoogleOneTapAuthenticator
             else -> null
         }
     }

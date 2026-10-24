@@ -1,7 +1,8 @@
 # Code review: quality, architecture, security (2026-10-23)
 
 Reviewed at commit `84f027d`, 71 commits after the previous review (`90f32c2`,
-[2026-10-20](2026-10-20-code-review.md)). Every earlier finding was checked again. New since then:
+[2026-10-20](2026-10-20-code-review.md)). **Rescanned at `0ab6347`** (10 commits later, same day) plus the uncommitted
+working tree; see *Update at `0ab6347`* just below. Every earlier finding was checked again. New since the previous review:
 
 - the `ndopify-web` module (Spring Boot + Thymeleaf public site, port 8082), which replaced the static `ndopify-website`;
 - the public *Proposer un bien* wizard (`OfferPropertyController`) and LISTING mandates (`availableFrom`, listing contract);
@@ -25,6 +26,71 @@ Paths are relative to `modules/`. Short prefixes:
 - `E` = `ndopify-esignature/src/main/kotlin/com/wutsi/ndopify/esignature`
 - `W` = `ndopify-web/src/main/kotlin/com/wutsi/ndopify/web`
 - `T` = `ndopify-server/src/test/kotlin/com/wutsi/ndopify`
+
+## Update at `0ab6347`
+
+The 10 commits are `03a85fd` "improve security", `c185ade`, `bd65880`, `6ebf37c`, `3006560` "update endpoints",
+`a9c2eec` "sign the jwt", and the DTO `0.0.62` release. They touch authentication only (67 files, about half of them
+tests). Nothing in mandate, dispatch, KYC, the front-end wizards or web changed, so every finding not listed here is
+**unchanged**. CI on `main` at `0ab6347`: partner-central and e-signature **green**; the server run was still in progress
+(`3006560` green).
+
+**Fixed:**
+- **S1 (unsigned tokens):** HS256 with `ndopify.security.jwt.secret`, at least 32 bytes or the server doesn't start
+  (`S/security/server/service/AccessTokenService.kt:37-41`). `test` and `prod` take `JWT_SECRET` with no default, and
+  `ndopify-server-main.yml` sets it on Heroku. Partner Central and e-signature no longer verify with `Algorithm.none()`:
+  they decode the claims (expiry and application only, documented in `JwtDecoder`), and a 401 from the server clears
+  the cookie (`HttpClientErrorHandler.unauthorized`). This works because each claim they use (`partyId`, the user id)
+  is only used to choose what to ask the server, and the server checks the signature again.
+- **`anyRequest().permitAll()`:** every endpoint needs a token except `PublicEndpoints`
+  (`S/security/server/servlet/PublicEndpoints.kt`): GLOBAL (refdata, Swagger, storage, actuator, `/error`) and TENANT
+  (`POST /v1/otp`, `/v1/auth`, `/v1/agents`, `/v1/mandates`, `GET /v1/contracts/*/signatures/*`). The 401 goes through
+  `ControllerErrorHandler`.
+- **`X-Tenant-ID` trusted:** the header is used only on a TENANT public endpoint without a token. With a token, a
+  different header is a 403. Elsewhere without a token, the response is a 401 (`TenantContextFilter.kt:59-73`).
+- **N-S2 step (1):** `ensureCanSign` requires an `e-signature` token (`ContractAccessService.kt:48-52`), so a One Tap
+  token can no longer sign. Steps (2) and (3) are still open, see below.
+- **N-S3 (server):** `ipAddress` is `@Size(max = 45)` and must be an IPv4 / IPv6 address (`InetAddressValidator`, no
+  DNS); `userAgent` is `@Size(max = 1024)` (`SignContractRequest.kt`, `ContractService.kt:413-420`).
+- **N-A1:** signatures no longer rest on unsigned tokens and `permitAll`.
+- **X-P1, mostly:** `ChatClientHealthEndpointGroupsPostProcessor` removes `chatClient` from the default group. The
+  default group no longer calls the LLM and no longer goes DOWN when the LLM does. The rest of the finding is below.
+
+**Changed severity or scope:**
+
+| ID | Now | Why |
+|---|---|---|
+| N-S2 | **High → Medium** | Signing is closed. Still open: One Tap trusts the `sub` the caller sends (`GoogleOneTapAuthenticator.kt:62-68`) and grants `public-portal` (`...OrCreate`, `:70-75`). A `public-portal` token for an agent's e-mail is a real, signed token, and only contract signing and admin checks look at the application. Mandate reads, offer accept / decline and `POST /v1/agents/{id}` don't, so anyone can still act as any agent. **Fix:** remove `GOOGLE_ONE_TAP` from `public-portal` (a migration) until the ID token is verified. Don't do it by disabling OTP (**X-S6**). |
+| S2 (open endpoints) | High, **narrower** | They now need a token, but **any** token from the tenant: a customer who signed in to the e-signature portal by OTP, or a One Tap token, can still `POST /v1/agents/{id}` with their own `whatsappNumber`, and read customers, parties, KYC cases and images. The list of endpoints is unchanged. |
+| Ops endpoints | Medium, **narrower** | They need a token, but any user's (none checks a role). They are still mapped on the deployed `test` profile (X-P2). **Fix:** `callerService.isAdmin` in each one, as `POST /v1/contracts/{id}/signed-content` already does. |
+| X-P1 | **High → Low** | `/actuator/health/llm` is still public (`PublicEndpoints.GLOBAL` has `/actuator/**`), has no cache, and shows the provider's error (`withException`, `show-details: always` outside `prod`). A curl loop on it still runs up the bill. **Fix:** keep the group out of the exposure, or `show-details: when-authorized` plus a role, and cache the result for about 5 minutes. |
+| M3 | Medium, **server side now explicit** | `PublicEndpoints.GLOBAL` opens all of `/actuator/**`, and the base `application.yml:196` exposes `beans`, `flyway`, `mappings` and `scheduledtasks`. The deployed `test` profile doesn't narrow this. Before, `permitAll` exposed the same thing implicitly. **Fix:** only `/actuator/health` and `/actuator/info` public, or `exposure.include: health` in the base file. |
+| X-Q2 | Medium, **partly fixed** | CLAUDE.md now describes the signed tokens, `PublicEndpoints` and the tenant filter. Still out of date: the static `ndopify-website` (`CLAUDE.md:15`, `:686`), "no `CONTRIBUTING.md`" (`:89`), `KIMI_API_KEY` / `IdentificationInfoExtractorAi` (`:99-100`, `:173`). |
+
+**New:**
+
+| ID | Sev | Issue | Where | Fix |
+|---|---|---|---|---|
+| **X-S6** | **High (uncommitted)** | **The working tree turns off OTP sign-in, not One Tap.** `AuthType.OTP -> null`, with the comment "Not supported until we support OneTap verification in GoogleOneTapAuthenticator", and the test now asserts `null` for OTP. OTP is the **only** sign-in of Partner Central and the e-signature portal, so this change stops every agent from signing in and every customer from signing. Meanwhile `GOOGLE_ONE_TAP -> googleOneTap` stays on: the hole the comment talks about stays open. | `S/security/server/service/AuthenticatorProvider.kt:19`, `T/security/server/service/AuthenticatorProviderTest.kt:29` | Revert the OTP line and its test. If the goal is to disable One Tap, set `AuthType.GOOGLE_ONE_TAP -> null` (and its test), or better, remove it from `public-portal`'s `auth_types` (N-S2). |
+| X-S7 | Low | **A token the server rejects blocks sign-in until the cookie expires.** Partner Central's and e-signature's interceptors forward the cookie's token on `POST /v1/otp` and `/v1/auth`. A token that hasn't expired but the server rejects (every token issued before `a9c2eec`, which were `alg: none`, or any token after a `JWT_SECRET` change) gets a 401 even on these public endpoints (`TenantContextFilter.kt:82-90`). `LoginController.kt:90,120` and `SignController.kt:121,162` catch every `HttpClientErrorException`, so the 401 never reaches `HttpClientErrorHandler.unauthorized`. The user sees "Cette adresse email n'est pas valide!" (or OTP_FAILED), and the cookie isn't cleared. Visiting `/` (or the sign link) clears it, so a user can get out of it, but only by accident. | `B/ui/login/LoginController.kt:88-97,108-125`, `E/ui/sign/SignController.kt:119-128,149-166` | Don't send `Authorization` on `/v1/otp` and `/v1/auth`. Or rethrow `HttpClientErrorException.Unauthorized` in those catches. |
+| X-S8 | Low | The server's `getPrincipalOrNull` still puts the JWT library's message in a 403 `AUTH_UNAUTHORIZED` (`AccessTokenService.kt:90-102`). It isn't reached today: `JwtAuthenticationFilter` turns a bad token into a 401 first, and `TenantContextFilter` hides the message. It is one refactor away from leaking again (M4). | `S/security/server/service/AccessTokenService.kt:90-102` | Return the 401 here, with no message. |
+
+**Checked and fine in the new code:**
+- `JWT.require(HMAC256).withIssuer(...)` checks the signature, `exp` and the issuer. `alg: none` and other algorithms
+  are refused (`AccessTokenServiceTest`).
+- `JwtAuthenticationFilter` runs before `AnonymousAuthenticationFilter`. `TenantContextFilter` (a plain
+  `FilterRegistrationBean`, lowest precedence) runs after Spring Security, so a bad token on a protected endpoint is a
+  401 before any tenant lookup.
+- E-signature's `unauthorized()` redirects only to `/sign/{id}` or `/verify/...` taken from its own URI, so it isn't an
+  open redirect.
+- No secret is logged; the dummy secrets are clearly marked and differ between local and QA.
+- The tests cover the new behaviour: `AccessControlEndpointTest`, `JwtAuthenticationFilterTest`,
+  `TenantContextFilterTest`, the `SignContractEndpointTest` application and IP cases, and the LLM group.
+- JUnit assertions: still **10 files**, none of them new.
+
+**Recommended order, updated:** (0) **revert X-S6** before committing; (1) N-S2 step (2): remove One Tap from
+`public-portal`; (2) admin checks on the ops endpoints, and M3 / X-P1: narrow `/actuator/**`; (3) X-E1; (4) X-A1 + X-C1;
+then the rest of the list below, with S1 struck off "Larger work".
 
 ## Summary
 
