@@ -121,7 +121,7 @@ class KycService(
             KycCaseEntity(
                 party = party,
                 identificationType = identificationType,
-                status = KycStatus.PENDING,
+                status = KycStatus.PENDING_VERIFICATION,
                 createdAt = now,
                 modifiedAt = now,
             )
@@ -136,7 +136,7 @@ class KycService(
     ): KycImageEntity {
         ensureImage(file)
 
-        // Images can only be added or replaced while the case is PENDING: once submitted, the documents under
+        // Images can only be added or replaced while the case is PENDING_VERIFICATION: once submitted, the documents under
         // review (or already reviewed) must not change.
         val case = findById(id)
         ensureStatusIsPending(case)
@@ -185,7 +185,7 @@ class KycService(
     }
 
     /**
-     * Sends a case for review: PENDING → SUBMITTED. Its documents are frozen from then on, and the offline
+     * Sends a case for review: PENDING_VERIFICATION → SUBMITTED. Its documents are frozen from then on, and the offline
      * verification (see [verify]) picks it up. Requires the document's front, and its back for two-sided
      * documents (see [requiredImages]). The selfie is optional.
      */
@@ -207,7 +207,7 @@ class KycService(
      * Verifies a SUBMITTED case. Never triggered by the UI: run offline, on the cases sent for review.
      *
      * Runs in 3 steps, so that no DB transaction is open during the verifiers' I/O (storage, LLM, MoMo):
-     * 1. [claim] the case (SUBMITTED → IN_PROGRESS), in a short transaction;
+     * 1. [claim] the case (SUBMITTED → UNDER_VERIFICATION), in a short transaction;
      * 2. run the verifiers, outside any transaction: they return their results unsaved;
      * 3. [complete] the case with these results in a short transaction, or [retry] it if a verifier failed.
      */
@@ -217,7 +217,7 @@ class KycService(
         val verifications = try {
             LOGGER.info(">>> KYC#$id - Verifying identification, selfie and payment methods")
             // Checked before the other verifiers (no need to call them), and here rather than in complete(): failing
-            // there would leave the case IN_PROGRESS
+            // there would leave the case UNDER_VERIFICATION
             val idVerifications = verify(case, KycVerificationType.IDENTIFICATION)
             check(idVerifications.isNotEmpty()) { "Case#$id has no identification verification" }
 
@@ -239,24 +239,24 @@ class KycService(
     }
 
     /**
-     * Sends back for verification the cases left IN_PROGRESS for more than [inProgressTimeoutMinutes]: their
+     * Sends back for verification the cases left UNDER_VERIFICATION for more than [inProgressTimeoutMinutes]: their
      * verification was interrupted between [claim] and [complete] (e.g. the server stopped). Counted as a failed
-     * attempt, so a case whose verification keeps getting interrupted ends up REQUIRES_MANUAL_REVIEW.
+     * attempt, so a case whose verification keeps getting interrupted ends up REQUIRES_MANUAL_VERIFICATION.
      */
     fun recoverInterrupted(): List<KycCaseEntity> {
         val cutoff = Date(clock.millis() - inProgressTimeoutMinutes * 60_000)
-        return dao.findByStatusAndModifiedAtBefore(KycStatus.IN_PROGRESS, cutoff)
+        return dao.findByStatusAndModifiedAtBefore(KycStatus.UNDER_VERIFICATION, cutoff)
             .mapNotNull { case -> tx.execute { recoverInterrupted(case.id, cutoff) } }
     }
 
     private fun recoverInterrupted(id: String, cutoff: Date): KycCaseEntity? {
         // Checked again under the lock: the verification may have completed since the case was listed
         val case = dao.findForUpdateById(id) ?: return null
-        if (case.status != KycStatus.IN_PROGRESS || !case.modifiedAt.before(cutoff)) {
+        if (case.status != KycStatus.UNDER_VERIFICATION || !case.modifiedAt.before(cutoff)) {
             return null
         }
 
-        LOGGER.warn(">>> KYC#$id - Verification interrupted, IN_PROGRESS since ${case.modifiedAt}")
+        LOGGER.warn(">>> KYC#$id - Verification interrupted, UNDER_VERIFICATION since ${case.modifiedAt}")
         return retry(case, KycErrorCode.INTERRUPTED, "Verification interrupted")
     }
 
@@ -273,7 +273,7 @@ class KycService(
     }
 
     private fun claim(id: String): KycCaseEntity {
-        // Locked, so that the job and the endpoint can't both claim the case: the 2nd waits, then sees IN_PROGRESS
+        // Locked, so that the job and the endpoint can't both claim the case: the 2nd waits, then sees UNDER_VERIFICATION
         val case = dao.findForUpdateById(id)
             ?: throw NotFoundException(
                 error = Error(
@@ -286,7 +286,7 @@ class KycService(
         LOGGER.info(">>> KYC#$id - Starting verification")
         return dao.save(
             case.copy(
-                status = KycStatus.IN_PROGRESS,
+                status = KycStatus.UNDER_VERIFICATION,
                 errorCode = null,
                 errorMessage = null,
                 modifiedAt = Date(clock.millis()),
@@ -311,7 +311,7 @@ class KycService(
         val retries = (case.retries ?: 0) + 1
         return dao.save(
             case.copy(
-                status = if (retries < MAX_RETRIES) KycStatus.SUBMITTED else KycStatus.REQUIRES_MANUAL_REVIEW,
+                status = if (retries < MAX_RETRIES) KycStatus.SUBMITTED else KycStatus.REQUIRES_MANUAL_VERIFICATION,
                 retries = retries,
                 errorCode = errorCode,
                 errorMessage = errorMessage,
@@ -397,7 +397,7 @@ class KycService(
     }
 
     private fun ensureStatusIsPending(case: KycCaseEntity) {
-        if (case.status != KycStatus.PENDING) {
+        if (case.status != KycStatus.PENDING_VERIFICATION) {
             throw BadRequestException(
                 error = Error(code = ErrorCode.KYC_CASE_NOT_PENDING)
             )

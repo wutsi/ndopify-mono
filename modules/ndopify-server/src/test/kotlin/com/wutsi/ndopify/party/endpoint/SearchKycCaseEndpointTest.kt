@@ -33,7 +33,7 @@ class SearchKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Test
     fun `filter by status`() {
         val response = rest.getForEntity(
-            "/v1/kyc/cases?statuses=PENDING",
+            "/v1/kyc/cases?statuses=PENDING_VERIFICATION",
             SearchKycCaseResponse::class.java,
         )
 
@@ -47,7 +47,7 @@ class SearchKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Test
     fun `filter by multiple statuses`() {
         val response = rest.getForEntity(
-            "/v1/kyc/cases?statuses=PENDING&statuses=VERIFIED",
+            "/v1/kyc/cases?statuses=PENDING_VERIFICATION&statuses=VERIFIED",
             SearchKycCaseResponse::class.java,
         )
 

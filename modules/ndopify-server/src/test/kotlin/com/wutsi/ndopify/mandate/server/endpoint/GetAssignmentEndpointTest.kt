@@ -29,7 +29,7 @@ class GetAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(0.75, assignment.score)
         assertEquals("2024-06-10 10:00", format(assignment.createdAt))
         assertEquals("2024-06-10 10:30", format(assignment.modifiedAt))
-        assertEquals("2024-06-10 11:00", format(assignment.expiresAt!!))
+        assertEquals("2024-06-10 11:00", format(assignment.expiresAt))
     }
 
     @Test

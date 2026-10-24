@@ -149,11 +149,11 @@ class UploadKycImageEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         verify(storage, never()).store(any(), any(), any())
     }
 
-    // Every status but PENDING, so a status added to KycStatus later is covered too (with a fixture row).
+    // Every status but PENDING_VERIFICATION, so a status added to KycStatus later is covered too (with a fixture row).
     @ParameterizedTest
-    @EnumSource(value = KycStatus::class, names = ["PENDING"], mode = EnumSource.Mode.EXCLUDE)
+    @EnumSource(value = KycStatus::class, names = ["PENDING_VERIFICATION"], mode = EnumSource.Mode.EXCLUDE)
     fun `case not pending - bad request, documents frozen`(status: KycStatus) {
-        val caseId = "kyc-case-100-" + status.name.lowercase().replace('_', '-')
+        val caseId = "case-" + status.name.lowercase().replace('_', '-')
         assertEquals(status, caseDao.findById(caseId).orElseThrow().status)
 
         val response = rest.postForEntity(

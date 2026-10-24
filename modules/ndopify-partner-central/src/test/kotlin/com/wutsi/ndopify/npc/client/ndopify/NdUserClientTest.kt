@@ -33,7 +33,7 @@ class NdUserClientTest {
             .andExpect(method(HttpMethod.GET))
             .andRespond(
                 withSuccess(
-                    """{"user":{"id":11,"email":"ray@gmail.com","party":{"id":100,"firstName":"Ray","lastName":"Sponsible","email":"ray@gmail.com","kycStatus":"PENDING","createdAt":0,"modifiedAt":0},"createdAt":0}}""",
+                    """{"user":{"id":11,"email":"ray@gmail.com","party":{"id":100,"firstName":"Ray","lastName":"Sponsible","email":"ray@gmail.com","kycStatus":"PENDING_VERIFICATION","createdAt":0,"modifiedAt":0},"createdAt":0}}""",
                     MediaType.APPLICATION_JSON,
                 ),
             )

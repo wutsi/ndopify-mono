@@ -124,13 +124,13 @@ class HomeControllerTest {
     }
 
     private fun notVerified(case: KycCase?): MvcResult {
-        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING))).whenever(currentAgent).get()
+        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING_VERIFICATION))).whenever(currentAgent).get()
         doReturn(case).whenever(kycClient).current(100L)
         return mvc.perform(get("/")).andReturn()
     }
 
     @ParameterizedTest
-    @EnumSource(value = KycStatus::class, names = ["PENDING", "CANCELLED"])
+    @EnumSource(value = KycStatus::class, names = ["PENDING_VERIFICATION", "CANCELLED"])
     fun `not verified - documents to send`(status: KycStatus) {
         val result = notVerified(KycCase(id = "case-1", status = status))
 
@@ -144,7 +144,7 @@ class HomeControllerTest {
     }
 
     @ParameterizedTest
-    @EnumSource(value = KycStatus::class, names = ["SUBMITTED", "IN_PROGRESS", "REQUIRES_MANUAL_REVIEW"])
+    @EnumSource(value = KycStatus::class, names = ["SUBMITTED", "UNDER_VERIFICATION", "REQUIRES_MANUAL_VERIFICATION"])
     fun `not verified - under review`(status: KycStatus) {
         assertEquals(HomeController.KYC_PENDING, model(notVerified(KycCase(id = "case-1", status = status)))["kyc"])
     }
@@ -158,7 +158,7 @@ class HomeControllerTest {
 
     @Test
     fun `not verified - case unavailable - banner still shown`() {
-        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING))).whenever(currentAgent).get()
+        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING_VERIFICATION))).whenever(currentAgent).get()
         whenever(kycClient.current(any())).thenThrow(ResourceAccessException("timeout"))
 
         val result = mvc.perform(get("/")).andReturn()
@@ -266,7 +266,7 @@ class HomeControllerTest {
 
     @Test
     fun `not verified - no offers section`() {
-        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING))).whenever(currentAgent).get()
+        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING_VERIFICATION))).whenever(currentAgent).get()
 
         val result = mvc.perform(get("/")).andReturn()
 
@@ -375,7 +375,7 @@ class HomeControllerTest {
 
     @Test
     fun `not verified - no mandates section`() {
-        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING))).whenever(currentAgent).get()
+        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING_VERIFICATION))).whenever(currentAgent).get()
 
         val result = mvc.perform(get("/")).andReturn()
 

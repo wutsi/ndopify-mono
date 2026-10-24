@@ -18,7 +18,7 @@ INSERT INTO T_LOCATION(id, parent_fk, type, country, name, ascii_name) VALUES
 INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name, kyc_status, created_at, modified_at) VALUES
     (100, 1, 'ray.sponsible@gmail.com', 'Ray', 'Sponsible', 'VERIFIED', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (101, 1, 'kim.possible@gmail.com', 'Kim', 'Possible', 'REJECTED', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    (102, 1, 'ash.ketchum@gmail.com', 'Ash', 'Ketchum', 'PENDING', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (102, 1, 'ash.ketchum@gmail.com', 'Ash', 'Ketchum', 'PENDING_VERIFICATION', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (900, 2, 'other.tenant@example.com', 'Other', 'Tenant', 'VERIFIED', '2024-06-10 00:00:00', '2024-06-10 00:00:00');
 
 INSERT INTO T_AGENT (id, tenant_id, party_id, city_id, created_at, modified_at) VALUES

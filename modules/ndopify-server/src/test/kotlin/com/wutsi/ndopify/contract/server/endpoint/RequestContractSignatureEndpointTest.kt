@@ -58,7 +58,7 @@ class RequestContractSignatureEndpointTest : AuthorizationAwareEndpointIntegrati
         val contract = dao.findById("c-1").get()
         assertEquals(ContractStatus.PENDING_SIGNATURE, contract.status)
         assertDeadlineIn7Days(contract.signatureDeadline!!.time)
-        assertDeadline7DaysAfterRequest(contract.signatureRequestedAt!!.time, contract.signatureDeadline!!.time)
+        assertDeadline7DaysAfterRequest(contract.signatureRequestedAt!!.time, contract.signatureDeadline.time)
 
         // Each party is asked to sign, asynchronously
         assertTrue(smtp.waitForIncomingEmail(5000, 2), "no email received")
@@ -76,7 +76,7 @@ class RequestContractSignatureEndpointTest : AuthorizationAwareEndpointIntegrati
         assertTrue(body.contains("Ray Sponsible"))
         assertTrue(body.contains("Mandat de recherche"))
         assertFalse(body.contains("https://cdn.ndopify.com/contracts/c-1.pdf")) // Only reached through the sign page
-        val deadline = contract.signatureDeadline!!.toInstant().atZone(ZoneId.of("Africa/Douala"))
+        val deadline = contract.signatureDeadline.toInstant().atZone(ZoneId.of("Africa/Douala"))
         // The fixture leaves the tenant's date_format to the T_TENANT default
         assertTrue(body.contains(deadline.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))))
         assertTrue(body.contains("https://sign.ndopify.com/sign/cp-11"))
@@ -96,7 +96,7 @@ class RequestContractSignatureEndpointTest : AuthorizationAwareEndpointIntegrati
         assertEquals(ContractStatus.PENDING_SIGNATURE, contract.status)
         assertDeadlineIn7Days(contract.signatureDeadline!!.time) // Was past
         assertTrue(contract.signatureRequestedAt!!.after(Date.from(Instant.parse("2024-05-20T00:00:00Z")))) // Replaced
-        assertDeadline7DaysAfterRequest(contract.signatureRequestedAt!!.time, contract.signatureDeadline!!.time)
+        assertDeadline7DaysAfterRequest(contract.signatureRequestedAt.time, contract.signatureDeadline.time)
 
         // Only the party that hasn't signed yet is asked again
         assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received")

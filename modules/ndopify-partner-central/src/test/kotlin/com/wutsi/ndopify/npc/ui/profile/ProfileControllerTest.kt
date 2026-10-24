@@ -117,7 +117,7 @@ class ProfileControllerTest {
 
     @Test
     fun `edit - open before the KYC is verified`() {
-        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING))).whenever(currentAgent).get()
+        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING_VERIFICATION))).whenever(currentAgent).get()
 
         val result = mvc.perform(get("/profile")).andReturn()
 
@@ -310,7 +310,7 @@ class ProfileControllerTest {
 
     @Test
     fun `upload - not verified yet - back to the Espace agent too`() {
-        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING))).whenever(currentAgent).get()
+        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING_VERIFICATION))).whenever(currentAgent).get()
 
         val result = mvc.perform(upload(jpeg)).andReturn()
 

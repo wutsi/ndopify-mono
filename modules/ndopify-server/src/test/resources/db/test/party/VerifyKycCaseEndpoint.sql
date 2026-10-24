@@ -8,19 +8,19 @@ INSERT INTO T_TENANT(id, name, domain_name, locales, country_code) VALUES
 
 
 INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name, kyc_status, created_at, modified_at) VALUES
-    (100, 1, 'pending@gmail.com', 'Pending', 'Party', 'PENDING', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (100, 1, 'pending@gmail.com', 'Pending', 'Party', 'PENDING_VERIFICATION', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (300, 1, 'already.verified@gmail.com', 'Already', 'Verified', 'VERIFIED', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (400, 1, 'already.joined@gmail.com', 'Already', 'Joined', 'SUBMITTED', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (500, 1, 'not.an.agent@gmail.com', 'Not', 'Agent', 'SUBMITTED', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    (900, 2, 'other.tenant@gmail.com', 'Other', 'Tenant', 'PENDING', '2024-06-10 00:00:00', '2024-06-10 00:00:00');
+    (900, 2, 'other.tenant@gmail.com', 'Other', 'Tenant', 'PENDING_VERIFICATION', '2024-06-10 00:00:00', '2024-06-10 00:00:00');
 
 INSERT INTO T_KYC_CASE(id, tenant_id, party_id, identification_type, score, status, retries, error_code, error_message, created_at, modified_at) VALUES
     ('kyc-case-submitted', 1, 100, 'NATIONAL_ID', NULL, 'SUBMITTED', NULL, NULL, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     ('kyc-case-retried', 1, 100, 'NATIONAL_ID', NULL, 'SUBMITTED', 1, 'GATEWAY_ERROR', 'Previous failure', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     ('kyc-case-last-retry', 1, 100, 'NATIONAL_ID', NULL, 'SUBMITTED', 2, 'GATEWAY_ERROR', 'Previous failure', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    ('kyc-case-pending', 1, 300, 'NATIONAL_ID', NULL, 'PENDING', NULL, NULL, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    ('kyc-case-pending', 1, 300, 'NATIONAL_ID', NULL, 'PENDING_VERIFICATION', NULL, NULL, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     ('kyc-case-already-verified', 1, 300, 'NATIONAL_ID', 95, 'VERIFIED', NULL, NULL, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    ('kyc-case-other-tenant', 2, 900, 'NATIONAL_ID', NULL, 'PENDING', NULL, NULL, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    ('kyc-case-other-tenant', 2, 900, 'NATIONAL_ID', NULL, 'PENDING_VERIFICATION', NULL, NULL, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     ('kyc-case-already-joined', 1, 400, 'NATIONAL_ID', NULL, 'SUBMITTED', NULL, NULL, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     ('kyc-case-not-an-agent', 1, 500, 'NATIONAL_ID', NULL, 'SUBMITTED', NULL, NULL, NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00');
 

@@ -58,7 +58,7 @@ class NdKycClient(
                 ?: GetKycCaseResponse()
             ).case
 
-    /** Opens a new PENDING case for [partyId] and returns its id. */
+    /** Opens a new PENDING_VERIFICATION case for [partyId] and returns its id. */
     fun create(partyId: Long): String =
         rest.post()
             .uri("/v1/kyc/cases")
@@ -69,7 +69,7 @@ class NdKycClient(
             ?: ""
 
     /**
-     * Adds (or replaces) the [imageType] photo of a PENDING case. [mimeType] is sent as the part's content type: the
+     * Adds (or replaces) the [imageType] photo of a PENDING_VERIFICATION case. [mimeType] is sent as the part's content type: the
      * server rejects anything that isn't `image/` with `IDENTIFICATION_IMAGE_INVALID_MIME_TYPE`.
      */
     fun upload(caseId: String, imageType: KycImageType, content: ByteArray, mimeType: String) {
@@ -93,7 +93,7 @@ class NdKycClient(
             .toBodilessEntity()
     }
 
-    /** PENDING → SUBMITTED. Fails with `KYC_CASE_NOT_PENDING` or `KYC_CASE_MISSING_IDENTIFICATION_IMAGE`. */
+    /** PENDING_VERIFICATION → SUBMITTED. Fails with `KYC_CASE_NOT_PENDING` or `KYC_CASE_MISSING_IDENTIFICATION_IMAGE`. */
     fun submit(caseId: String) {
         rest.post()
             .uri("/v1/kyc/cases/{id}/submit", caseId)

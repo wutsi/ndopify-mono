@@ -65,7 +65,7 @@ class GetKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals("kyc-case-200", case.id)
         assertEquals(100L, case.partyId)
         assertNull(case.score)
-        assertEquals(KycStatus.PENDING, case.status)
+        assertEquals(KycStatus.PENDING_VERIFICATION, case.status)
         assertEquals(0, case.verifications.size)
         assertEquals(0, case.images.size)
     }

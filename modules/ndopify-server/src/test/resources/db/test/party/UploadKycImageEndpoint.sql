@@ -12,16 +12,16 @@ INSERT INTO T_IDENTIFICATION(id, tenant_id, party_id, type, issuing_country_code
     ('identification-900', 2, 900, 'NATIONAL_ID', 'CM', 'PENDING_VERIFICATION', '2024-06-10 00:00:00', '2024-06-10 00:00:00');
 
 INSERT INTO T_KYC_CASE(id, tenant_id, party_id, score, status, error_code, created_at, modified_at) VALUES
-    ('kyc-case-100', 1, 100, NULL, 'PENDING', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    -- One case per status other than PENDING: none of them accepts images.
-    ('kyc-case-100-unknown', 1, 100, NULL, 'UNKNOWN', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    ('kyc-case-100-submitted', 1, 100, NULL, 'SUBMITTED', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    ('kyc-case-100-in-progress', 1, 100, NULL, 'IN_PROGRESS', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    ('kyc-case-100-verified', 1, 100, NULL, 'VERIFIED', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    ('kyc-case-100-rejected', 1, 100, NULL, 'REJECTED', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    ('kyc-case-100-requires-manual-review', 1, 100, NULL, 'REQUIRES_MANUAL_REVIEW', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    ('kyc-case-100-cancelled', 1, 100, NULL, 'CANCELLED', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
-    ('kyc-case-900', 2, 900, NULL, 'PENDING', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00');
+    ('kyc-case-100', 1, 100, NULL, 'PENDING_VERIFICATION', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    -- One case per status other than PENDING_VERIFICATION: none of them accepts images.
+    ('case-unknown', 1, 100, NULL, 'UNKNOWN', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    ('case-submitted', 1, 100, NULL, 'SUBMITTED', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    ('case-under-verification', 1, 100, NULL, 'UNDER_VERIFICATION', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    ('case-verified', 1, 100, NULL, 'VERIFIED', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    ('case-rejected', 1, 100, NULL, 'REJECTED', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    ('case-requires-manual-verification', 1, 100, NULL, 'REQUIRES_MANUAL_VERIFICATION', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    ('case-cancelled', 1, 100, NULL, 'CANCELLED', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    ('kyc-case-900', 2, 900, NULL, 'PENDING_VERIFICATION', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00');
 
 INSERT INTO T_KYC_IMAGE(id, tenant_id, case_id, identification_type, image_type, storage_type, path, mime_type, created_at, modified_at) VALUES
     ('kyc-image-100-back', 1, 'kyc-case-100', 'NATIONAL_ID', 'BACK', 'LOCAL', 'kyc/kyc-case-100/images/kyc-image-100-back.png', 'image/png', '2024-06-10 00:00:00', '2024-06-10 00:00:00');

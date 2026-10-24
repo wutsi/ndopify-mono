@@ -33,7 +33,7 @@ class SearchAssignmentEndpointTest : AuthorizationAwareEndpointIntegrationTest()
         val fmt = SimpleDateFormat("yyyy-MM-dd HH:mm")
         fmt.timeZone = TimeZone.getTimeZone("UTC")
         assertEquals("2024-06-10 13:00", fmt.format(assignment.createdAt))
-        assertEquals("2024-06-10 14:00", fmt.format(assignment.expiresAt!!))
+        assertEquals("2024-06-10 14:00", fmt.format(assignment.expiresAt))
     }
 
     @Test

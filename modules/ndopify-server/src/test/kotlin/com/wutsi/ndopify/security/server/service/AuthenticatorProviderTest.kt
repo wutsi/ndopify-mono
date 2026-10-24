@@ -1,7 +1,6 @@
 package com.wutsi.ndopify.security.server.service
 
 import com.wutsi.ndopify.refdata.dto.AuthType
-import com.wutsi.ndopify.security.server.service.authenticator.GoogleOneTapAuthenticator
 import com.wutsi.ndopify.security.server.service.authenticator.OtpAuthenticator
 import com.wutsi.ndopify.security.server.service.authenticator.PasswordAuthenticator
 import org.junit.jupiter.api.Test
@@ -10,9 +9,8 @@ import kotlin.test.assertEquals
 
 class AuthenticatorProviderTest {
     private val password = mock<PasswordAuthenticator>()
-    private val googleOneTap = mock<GoogleOneTapAuthenticator>()
     private val otp = mock<OtpAuthenticator>()
-    private val provider = AuthenticatorProvider(password, googleOneTap, otp)
+    private val provider = AuthenticatorProvider(password, otp)
 
     @Test
     fun password() {
@@ -21,12 +19,12 @@ class AuthenticatorProviderTest {
 
     @Test
     fun googleOneTag() {
-        assertEquals(googleOneTap, provider.get(AuthType.GOOGLE_ONE_TAP))
+        assertEquals(null, provider.get(AuthType.GOOGLE_ONE_TAP))
     }
 
     @Test
     fun otp() {
-        assertEquals(null, provider.get(AuthType.OTP))
+        assertEquals(otp, provider.get(AuthType.OTP))
     }
 
     @Test

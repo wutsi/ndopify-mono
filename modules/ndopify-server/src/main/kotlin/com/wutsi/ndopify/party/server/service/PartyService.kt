@@ -81,7 +81,7 @@ class PartyService(
                 firstName = request.firstName,
                 lastName = request.lastName,
                 email = request.email.lowercase(),
-                kycStatus = KycStatus.PENDING,
+                kycStatus = KycStatus.PENDING_VERIFICATION,
                 createdAt = now,
                 modifiedAt = now,
             )

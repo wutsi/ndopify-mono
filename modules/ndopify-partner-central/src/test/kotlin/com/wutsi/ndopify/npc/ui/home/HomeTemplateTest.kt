@@ -178,7 +178,7 @@ class HomeTemplateTest {
 
     @Test
     fun `not verified - no section`() {
-        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING))).whenever(currentAgent).get()
+        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING_VERIFICATION))).whenever(currentAgent).get()
         doThrow(ResourceAccessException("no case")).whenever(kycClient).current(any())
 
         val page = render(get("/"))
@@ -260,7 +260,7 @@ class HomeTemplateTest {
 
     @Test
     fun `not verified - no mandates section`() {
-        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING))).whenever(currentAgent).get()
+        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING_VERIFICATION))).whenever(currentAgent).get()
         doThrow(ResourceAccessException("no case")).whenever(kycClient).current(any())
 
         assertNull(render(get("/")).selectFirst("#mandates-title"))

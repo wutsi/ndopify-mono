@@ -56,7 +56,7 @@ class KycTemplateTest {
     // Magic numbers are enough for Tika to tell the type from the bytes.
     private val pdf = "%PDF-1.4\n".toByteArray() + ByteArray(64)
 
-    private fun case(status: KycStatus = KycStatus.PENDING, images: List<KycImage> = emptyList(), errorCode: String? = null) =
+    private fun case(status: KycStatus = KycStatus.PENDING_VERIFICATION, images: List<KycImage> = emptyList(), errorCode: String? = null) =
         KycCase(id = "case-1", partyId = PARTY_ID, status = status, images = images, errorCode = errorCode)
 
     private fun given(case: KycCase?) {
@@ -209,7 +209,7 @@ class KycTemplateTest {
 
     @Test
     fun `pending status`() {
-        given(case(status = KycStatus.IN_PROGRESS))
+        given(case(status = KycStatus.UNDER_VERIFICATION))
 
         val page = render(get("/kyc"))
 

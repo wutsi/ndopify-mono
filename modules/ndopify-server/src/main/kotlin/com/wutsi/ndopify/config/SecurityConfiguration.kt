@@ -16,7 +16,6 @@ import org.springframework.security.config.http.SessionCreationPolicy
 import org.springframework.security.web.SecurityFilterChain
 import org.springframework.security.web.authentication.AnonymousAuthenticationFilter
 import org.springframework.web.servlet.HandlerExceptionResolver
-import kotlin.jvm.java
 
 /**
  * Every endpoint needs a token but [PublicEndpoints]. A request without one gets 401 `AUTH_UNAUTHORIZED`, through
@@ -26,7 +25,7 @@ import kotlin.jvm.java
 @Configuration
 open class SecurityConfiguration(
     private val accessTokenService: AccessTokenService,
-    @Qualifier("handlerExceptionResolver") private val exceptionResolver: HandlerExceptionResolver,
+    @param:Qualifier("handlerExceptionResolver") private val exceptionResolver: HandlerExceptionResolver,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(SecurityConfiguration::class.java)
