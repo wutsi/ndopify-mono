@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="assets/css/rejoindre.css">
     <link rel="stylesheet" href="assets/css/find-property.css">
     <link rel="stylesheet" href="assets/css/home.css">
+    <link rel="stylesheet" href="assets/css/listing.css">
     <script src="assets/js/partner-central.js" defer></script>
 </head>
 <!--
@@ -28,6 +29,8 @@
       - Modifier le mandat (Assigné, En approbation): an outline button next to the step's one (under it on
         phones), to mandate/edit.html.
         Not available once approved. Edited while En approbation, the panel asks to send it again.
+      - Créer l'annonce (Actif, a landlord's LISTING mandate only): creates its listing, to complete during the
+        visit of the property (listing.html); the step's main button until the listing is sent.
       - Fermer (Actif: lease signed, with the agreed rent) and Annuler (any step: no lease, with a reason, danger
         style): two buttons at the bottom of the page, since they're rare and final.
     PROTOTYPE: ?id=201, 202 or 203, or 101, 102 and 103 once accepted on index.html; any other mandate shows the
@@ -152,6 +155,17 @@
 
                     <div class="mandate-panel" hidden data-panel="APPROVED">
                         <p>Signé le <span data-approved-at></span> · valable jusqu'au <strong data-valid-until></strong>.</p>
+                        <!--
+                            A landlord's mandate only (LISTING): its listing. "Créer l'annonce" (POST /v1/listings) opens
+                            listing.html; once created, the line says where it stands and the link opens it.
+                        -->
+                        <div class="mandate-listing" hidden data-listing-actions>
+                            <p data-listing-text></p>
+                            <div class="mandate-panel__actions">
+                                <button type="button" class="btn btn--primary" data-listing-create>Créer l'annonce</button>
+                                <a class="btn btn--primary" hidden data-listing-link>Continuer l'annonce</a>
+                            </div>
+                        </div>
                         <details class="assignment__details">
                             <summary>Et ensuite&nbsp;?</summary>
                             <div class="assignment__details-body">

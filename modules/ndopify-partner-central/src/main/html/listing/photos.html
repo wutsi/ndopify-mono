@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Photos — Ndopify Partner Central</title>
+    <meta name="description" content="Les photos du bien, prises pendant la visite.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="../assets/images/icon.png">
+    <link rel="apple-touch-icon" href="../assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="../assets/css/partner-central.css">
+    <link rel="stylesheet" href="../assets/css/rejoindre.css">
+    <link rel="stylesheet" href="../assets/css/find-property.css">
+    <link rel="stylesheet" href="../assets/css/home.css">
+    <link rel="stylesheet" href="../assets/css/listing.css">
+    <script src="../assets/js/partner-central.js" defer></script>
+</head>
+<!--
+    Listing section "Photos": taken during the visit, each sent as soon as it's taken (POST
+    /v1/listings/{id}/images/upload: JPEG, PNG or WEBP, 5 Mo at most), so a visit cut short loses nothing. 5 at least
+    for the checklist, 20 at most. "Prendre une photo" opens the camera (capture), "Choisir dans la galerie" several
+    files. A photo refused by the check shows its reason (ImageStatus.REJECTED, errorMessage) and no longer counts.
+    No "Enregistrer": the photos are already sent; "Terminé" goes back to the checklist.
+    Once sent (en vérification, publiée), the section is read-only: only the answers given, no action.
+    PROTOTYPE: ?id= of a listing (see listing.html). Saved in the
+    session (KEYS.listings), the section is then "Vérifié" on the checklist.
+-->
+<body data-page="listing-section" data-section="photos">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" href="../index.html">
+                <img src="../assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <span aria-hidden="true" data-user-initials>NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li class="user-menu__email" data-user-email></li>
+                    <li><a class="user-menu__item" href="../profile/edit.html">Profil</a></li>
+                    <li><a class="user-menu__item" href="../login.html" data-logout>Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="back-link"><a href="../listing.html" data-back-link>← Retour à l'annonce</a></p>
+
+            <!-- Locked: not the agent's listing, or sent since (nothing changes during the check). -->
+            <div class="alert alert--warning" hidden data-section-locked>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <h1 class="alert__title" data-section-locked-title>Cette annonce n'est pas disponible</h1>
+                    <p data-section-locked-text>Une annonce se crée depuis un mandat de bailleur approuvé.</p>
+                </div>
+            </div>
+
+            <div class="stack" hidden data-section-content>
+                <div class="page-intro">
+                    <h1>Photos</h1>
+                    <p class="mandate__meta" data-section-meta></p>
+                    <p>Au moins 5 photos nettes, prises à la lumière du jour.</p>
+                </div>
+                <!-- Sent or published: the section as it was sent, read-only. -->
+                <div class="hint" hidden data-section-readonly>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <p data-section-readonly-text></p>
+                </div>
+                <ul class="photo-tips">
+                    <li>La façade et l'entrée, de jour.</li>
+                    <li>Chaque pièce&nbsp;: salon, chambres, cuisine, salles de bain.</li>
+                    <li>Les équipements visibles&nbsp;: compteurs, citerne, groupe, parking.</li>
+                </ul>
+
+                <div class="photo-actions" data-photo-actions>
+                    <label class="btn btn--primary">Prendre une photo
+                        <input class="upload__input" type="file" accept="image/*" capture="environment"
+                               aria-describedby="photos-error" data-photo-input></label>
+                    <label class="btn btn--outline">Choisir dans la galerie
+                        <input class="upload__input" type="file" accept="image/jpeg,image/png,image/webp" multiple
+                               aria-describedby="photos-error" data-photo-input></label>
+                </div>
+                <p class="field__error" id="photos-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+
+                <p class="checklist__progress" data-photo-count></p>
+                <p class="visually-hidden" aria-live="polite" data-photo-live></p>
+                <ul class="photos" data-photos></ul>
+                <template data-photo-template>
+                    <li class="photo">
+                        <img src="data:," alt="" width="480" height="480">
+                        <p class="photo__note" data-photo-note></p>
+                        <button type="button" class="photo__delete" data-photo-delete><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="m6 6 8 8M14 6l-8 8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+                    </li>
+                </template>
+
+                <div class="form__actions">
+                    <a class="btn btn--primary" href="../listing.html" data-back-link>Terminé</a>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

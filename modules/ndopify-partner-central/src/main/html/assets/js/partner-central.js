@@ -33,7 +33,9 @@
         // Ids of the mandates the agent accepted: their details (mandate.html) are unlocked.
         accepted: "npc.mandates.accepted",
         // Status and dates of each of the agent's mandates, as changed on mandate.html (see stateOf).
-        mandates: "npc.mandates.state"
+        mandates: "npc.mandates.state",
+        // The listings of the agent's approved LISTING mandates, by id (see createListing).
+        listings: "npc.listings"
     };
 
     /* ---------- Storage (fails soft: private mode, quota) ---------- */
@@ -461,12 +463,13 @@
     }
 
     /* ---------- Image downscale for the review slide ---------- */
-    function toThumbnail(file, callback) {
+    // max: the longest side, in pixels (1000 by default).
+    function toThumbnail(file, callback, max) {
         var reader = new FileReader();
         reader.onload = function () {
             var img = new Image();
             img.onload = function () {
-                var max = 1000;
+                max = max || 1000;
                 var scale = Math.min(1, max / Math.max(img.width, img.height));
                 var canvas = document.createElement("canvas");
                 canvas.width = Math.round(img.width * scale);
@@ -1207,7 +1210,8 @@
                 area: 30,
                 amenities: ["waterMeter", "electricityMeter", "trackAccessibleByCar", "securedFenced"],
                 price: 75000,
-                movingPeriod: "WITHIN_3_MONTHS"
+                movingPeriod: "WITHIN_3_MONTHS",
+                securityDeposit: 2
             }
         },
         103: {
@@ -1300,7 +1304,10 @@
                 amenities: ["dedicatedWaterMeter", "waterWell", "dedicatedElectricityMeter", "generatorSet",
                     "roadPaved", "securityGuard", "videoSurveillance"],
                 price: 300000,
-                movingPeriod: "WITHIN_1_MONTH"
+                movingPeriod: "WITHIN_1_MONTH",
+                // The landlord's terms (offer-property.html), copied into the listing (see createListing)
+                securityDeposit: 3,
+                advanceRent: 6
             }
         }
     };
@@ -1474,7 +1481,7 @@
     }
 
     // The card's one-line next step on index.html.
-    function nextStep(mandate, state) {
+    function nextStep(mandate, state, id) {
         var p = partyWords(mandate);
         if (state.status === "ASSIGNED") {
             return "Contactez " + p.the + ", puis envoyez-lui le mandat à approuver.";
@@ -1485,6 +1492,13 @@
             return p.The + " a jusqu'au " + formatDate(deadline) + " pour signer le mandat.";
         }
         if (state.status === "APPROVED") {
+            // A landlord's property is let through its listing: created, completed on site, then published
+            var listing = mandate.party === "bailleur" ? listingOf(id) : null;
+            if (mandate.party === "bailleur" && !listing) return "Créez l'annonce du bien, puis visitez-le pour la compléter.";
+            if (listing && listing.status === "DRAFT") {
+                return listing.rejection ? "Annonce à corriger : voyez les points signalés." : "Complétez l'annonce, puis envoyez-la pour vérification.";
+            }
+            if (listing && listing.status === "PENDING") return "Annonce en vérification : elle sera publiée sous peu.";
             // Signed: what's left is the property (a client) or the tenant (a landlord), within the mandate's validity
             var find = mandate.party === "bailleur" ? "Trouvez un locataire" : "Trouvez un bien pour " + p.the;
             return find + " avant le " + formatDate(addMonths(state.approvedAt, CONTRACT_MONTHS)) + ".";
@@ -1528,7 +1542,7 @@
                 facts.appendChild(div);
             });
             setStatusTag($("[data-status-tag]", item), state.status);
-            $("[data-next-step]", item).textContent = nextStep(MANDATES[id], state);
+            $("[data-next-step]", item).textContent = nextStep(MANDATES[id], state, id);
         }
 
         function card(id) {
@@ -1616,7 +1630,7 @@
             el.textContent = SIGNATURE_TTL_DAYS;
         });
         $("[data-approved-next]").textContent = mandate.party === "bailleur"
-            ? "Présentez le bien aux locataires et organisez les visites."
+            ? "Créez l'annonce et visitez le bien pour la compléter ; une fois publiée, organisez les visites."
             : "Proposez des biens au client et organisez les visites.";
 
         $('[data-contact="name"]').textContent = c.name;
@@ -1744,10 +1758,54 @@
                 reason.hidden = !state.cancellationReason;
             }
 
+            renderListing();
+
             $("[data-close]").hidden = closed;
             // Before its approval a mandate can't be closed with a lease (409 MANDATE_NOT_APPROVED): only cancelled.
             $('[data-close-open="close"]').hidden = state.status !== "APPROVED";
         }
+
+        // The listing of an approved LISTING mandate: "Créer l'annonce", then its status and a link to it.
+        var listingBox = $("[data-listing-actions]");
+        var listingCreate = $("[data-listing-create]", listingBox);
+        var listingLink = $("[data-listing-link]", listingBox);
+
+        function renderListing() {
+            var show = canList(id);
+            listingBox.hidden = !show;
+            if (!show) return;
+            var listing = listingOf(id);
+            listingCreate.hidden = !!listing;
+            listingLink.hidden = !listing;
+            var text = $("[data-listing-text]", listingBox);
+            if (!listing) {
+                text.textContent = "Visitez le bien pour vérifier ses caractéristiques et prendre les photos : " +
+                    "l'annonce est publiée une fois vérifiée.";
+                return;
+            }
+            var tag = listingTag(listing);
+            listingLink.href = "listing.html?id=" + encodeURIComponent(listing.id);
+            listingLink.textContent = listing.status === "DRAFT"
+                ? (listing.rejection ? "Corriger l'annonce" : "Continuer l'annonce") : "Voir l'annonce";
+            listingLink.className = "btn " + (listing.status === "DRAFT" ? "btn--primary" : "btn--outline");
+            text.textContent = tag === "PUBLISHED" ? "Annonce publiée le " + formatDate(listing.publishedAt) + "."
+                : tag === "PENDING" ? "Annonce envoyée le " + formatDate(listing.submittedAt) + ", en vérification."
+                    : tag === "REJECTED" ? "Annonce à corriger : " + listing.rejection.reason
+                        : "Annonce en brouillon : " + (missingSections(listing).length
+                            ? "encore à faire, " + missingSections(listing).join(", ") + "."
+                            : "prête à être envoyée.");
+        }
+
+        // PROTOTYPE: simulates POST /v1/listings { mandateId }, then opens the listing.
+        listingCreate.addEventListener("click", function () {
+            if (!isActive(listingCreate)) return;
+            setActive(listingCreate, false);
+            listingCreate.textContent = "Création…";
+            window.setTimeout(function () {
+                var listing = listingOf(id) || createListing(id);
+                window.location.href = "listing.html?id=" + encodeURIComponent(listing.id);
+            }, 500);
+        });
 
         function update(changes) {
             var state = stateOf(id);
@@ -2160,13 +2218,862 @@
     }
 
 
+    /*
+     * ---------- listing.html, listing/*.html — the listing of an approved LISTING mandate ----------
+     * The agent creates it from the mandate (POST /v1/listings: a DRAFT, pre-filled from the landlord's answers),
+     * visits the property, checks each section of the checklist (POST /v1/listings/{id}) and adds the photos
+     * (POST /v1/listings/{id}/images/upload), then sends it to be checked. Once checked, it's published, its title,
+     * summary and description written by AI from the audit and the photos: the agent never writes them.
+     * PROTOTYPE: ndopify-server has neither a submit nor a publish endpoint yet, nor any check that the mandate is an
+     * approved LISTING one; "PENDING" stands for the listing being checked.
+     */
+    var LISTING_SECTIONS = [
+        { key: "location", label: "Emplacement", page: "emplacement.html" },
+        { key: "gps", label: "Position GPS", page: "position.html" },
+        { key: "property", label: "Le bien", page: "bien.html" },
+        { key: "amenities", label: "Eau, électricité, accès", page: "equipements.html" },
+        { key: "terms", label: "Loyer et conditions", page: "conditions.html" },
+        { key: "photos", label: "Photos", page: "photos.html" },
+        { key: "remarks", label: "Vos remarques", page: "remarques.html", optional: true }
+    ];
+    var MIN_LISTING_PHOTOS = 5;
+    var MAX_LISTING_PHOTOS = 20;
+    // A DRAFT sent back by the check is "À corriger" (see listingTag).
+    var LISTING_TAGS = {
+        DRAFT: ["Brouillon", "info"],
+        REJECTED: ["À corriger", "warning"],
+        PENDING: ["En vérification", "warning"],
+        PUBLISHED: ["Publiée", "success"]
+    };
+    var LISTING_FURNITURE_LABELS = { FULLY_FURNISHED: "Meublé", UNFURNISHED: "Non meublé" };
+    var ROAD_ACCESS_KEYS = ["roadPaved", "trackAccessibleByCar", "trackInaccessibleByCar"];
+    var SECTION_SAVED = {
+        location: "Emplacement enregistré.",
+        gps: "Position GPS enregistrée.",
+        property: "Caractéristiques du bien enregistrées.",
+        amenities: "Équipements enregistrés.",
+        terms: "Loyer et conditions enregistrés.",
+        remarks: "Remarques enregistrées."
+    };
+
+    function listings() {
+        try {
+            return JSON.parse(store.get(KEYS.listings)) || {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    // false when the session is full (photos)
+    function saveListing(listing) {
+        var all = listings();
+        all[listing.id] = listing;
+        return store.set(KEYS.listings, JSON.stringify(all));
+    }
+
+    // A mandate has one listing at most (409 LISTING_ALREADY_EXISTS).
+    function listingOf(mandateId) {
+        var all = listings();
+        var id = Object.keys(all).filter(function (key) {
+            return all[key].mandateId === String(mandateId);
+        })[0];
+        return id ? all[id] : null;
+    }
+
+    // Only an approved LISTING mandate (a landlord's) gets a listing.
+    function canList(mandateId) {
+        return ownsMandate(mandateId) && MANDATES[mandateId].party === "bailleur" &&
+            stateOf(mandateId).status === "APPROVED";
+    }
+
+    function listingTag(listing) {
+        return listing.status === "DRAFT" && listing.rejection ? "REJECTED" : listing.status;
+    }
+
+    // A mandate's count ("2", or "3+" for 3 or more) as a number, as ListingService.create does: 3
+    function countOf(value) {
+        var n = parseInt(value, 10);
+        return isNaN(n) ? null : n;
+    }
+
+    function isoDate(ms) {
+        var d = new Date(ms);
+        return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" +
+            String(d.getDate()).padStart(2, "0");
+    }
+
+    function plural(n, one, many) {
+        return n + " " + (n > 1 ? many : one);
+    }
+
+    // PROTOTYPE: simulates POST /v1/listings { mandateId }. "owner" keeps the landlord's answers, so that each section
+    // shows what the agent changed.
+    function createListing(mandateId) {
+        var f = fieldsOf(mandateId);
+        var fields = {
+            city: f.city,
+            neighbourhood: f.neighbourhoods[0] || "",
+            landmark: "",
+            accessDirections: "",
+            latitude: null,
+            longitude: null,
+            // Not in UpdateListingRequest: shown next to the position only
+            accuracy: null,
+            propertyCategory: f.propertyCategory,
+            propertyType: f.propertyType,
+            furnitureType: f.furnitureType || null,
+            rooms: countOf(f.rooms),
+            bathrooms: null,
+            livingRooms: null,
+            kitchens: null,
+            parkings: countOf(f.parkings),
+            area: f.area || null,
+            levels: null,
+            floorLevel: null,
+            amenities: f.amenities.slice(),
+            price: f.price,
+            securityDeposit: f.securityDeposit || null,
+            advanceRent: f.advanceRent || null,
+            leaseTerm: null,
+            noticePeriod: null,
+            // PROTOTYPE: the mandates of this prototype have no availableFrom (V7_2)
+            availableFrom: f.availableFrom || isoDate(Date.now() + 14 * DAY_MS),
+            agentRemarks: ""
+        };
+        var ids = Object.keys(listings()).map(Number);
+        var listing = {
+            id: ids.length ? Math.max.apply(null, ids) + 1 : 501,
+            mandateId: String(mandateId),
+            status: "DRAFT",
+            createdAt: Date.now(),
+            fields: fields,
+            owner: JSON.parse(JSON.stringify(fields)),
+            // When each section was last saved: a section counts once the agent has checked it on site
+            checked: {},
+            // { id, src, status: PENDING_VERIFICATION | VERIFIED | REJECTED, errorMessage? }, oldest first
+            photos: []
+        };
+        saveListing(listing);
+        return listing;
+    }
+
+    function goodPhotos(listing) {
+        return listing.photos.filter(function (photo) {
+            return photo.status !== "REJECTED";
+        }).length;
+    }
+
+    function sectionDone(listing, key) {
+        // A photo refused by the check is deleted (or replaced) before sending again
+        if (key === "photos") return goodPhotos(listing) >= MIN_LISTING_PHOTOS && goodPhotos(listing) === listing.photos.length;
+        if (key === "remarks") return true;
+        return !!listing.checked[key];
+    }
+
+    // What's left before sending: "Emplacement, 2 photos".
+    function missingSections(listing) {
+        return LISTING_SECTIONS.filter(function (s) {
+            return !s.optional && !sectionDone(listing, s.key);
+        }).map(function (s) {
+            if (s.key !== "photos") return s.label;
+            var refused = listing.photos.length - goodPhotos(listing);
+            var short = MIN_LISTING_PHOTOS - goodPhotos(listing);
+            return [refused ? (refused > 1 ? "les photos refusées" : "la photo refusée") : null,
+                short > 0 ? plural(short, "photo", "photos") : null].filter(Boolean).join(", ");
+        });
+    }
+
+    function listingTitle(listing) {
+        var f = listing.fields;
+        var type = PROPERTY_TYPE_SHORT[f.propertyType] || PROPERTY_TYPE_LABELS[f.propertyType] || "Bien";
+        return type + ", " + (f.neighbourhood || f.city);
+    }
+
+    function amenityLabels(keys) {
+        var labels = [];
+        AMENITY_GROUPS.forEach(function (group) {
+            group[1].forEach(function (a) {
+                if (keys.indexOf(a[0]) !== -1) labels.push(a[1]);
+            });
+        });
+        return labels;
+    }
+
+    // The checklist row's one line: the section's main values.
+    function sectionSummary(listing, key) {
+        var f = listing.fields;
+        switch (key) {
+            case "location":
+                return [f.neighbourhood, f.landmark || "Point de repère à noter"].join(" · ");
+            case "gps":
+                return f.latitude != null
+                    ? f.latitude.toFixed(5) + ", " + f.longitude.toFixed(5) + (f.accuracy ? " (± " + f.accuracy + " m)" : "")
+                    : "À relever devant l'entrée du bien";
+            case "property":
+                return [PROPERTY_TYPE_LABELS[f.propertyType], f.rooms != null ? plural(f.rooms, "chambre", "chambres") : null,
+                    f.area ? f.area + " m²" : null].filter(Boolean).join(" · ");
+            case "amenities":
+                var road = f.amenities.filter(function (a) {
+                    return ROAD_ACCESS_KEYS.indexOf(a) !== -1;
+                });
+                var others = f.amenities.length - road.length;
+                return [road.length ? amenityLabels(road)[0] : "Accès à préciser",
+                    others ? plural(others, "équipement", "équipements") : "aucun équipement"].join(" · ");
+            case "terms":
+                return f.price.toLocaleString("fr-FR") + " FCFA / mois" +
+                    (f.securityDeposit ? " · caution " + f.securityDeposit + " mois" : "");
+            case "photos":
+                var n = goodPhotos(listing);
+                return (n ? plural(n, "photo", "photos") : "Aucune photo") +
+                    (n < MIN_LISTING_PHOTOS ? " · " + MIN_LISTING_PHOTOS + " au moins" : "");
+            default:
+                return f.agentRemarks || "Aucune remarque";
+        }
+    }
+
+    // [label, tag style] of a checklist row.
+    function sectionState(listing, key) {
+        var done = sectionDone(listing, key);
+        if (key === "remarks") return listing.fields.agentRemarks ? ["Ajoutées", "success"] : ["Facultatif", "neutral"];
+        if (done) return ["Vérifié", "success"];
+        if (listing.rejection && listing.rejection.sections.indexOf(key) !== -1) return ["À corriger", "warning"];
+        return [key === "photos" ? "À compléter" : "À vérifier", "warning"];
+    }
+
+    // PROTOTYPE: what the publishing's AI could write from the audit and the photos.
+    function generatedText(listing) {
+        var f = listing.fields;
+        var type = PROPERTY_TYPE_LABELS[f.propertyType] || "Bien";
+        var rooms = f.rooms ? " " + plural(f.rooms, "chambre", "chambres") : "";
+        var features = amenityLabels(f.amenities).slice(0, 3).join(", ").toLowerCase();
+        return {
+            title: type + rooms + " à louer à " + f.neighbourhood,
+            summary: type + (f.area ? " de " + f.area + " m²" : "") + " à " + f.neighbourhood + ", " + f.city +
+                (f.landmark ? ", " + f.landmark.charAt(0).toLowerCase() + f.landmark.slice(1) : "") + ". " +
+                (features ? features.charAt(0).toUpperCase() + features.slice(1) + ". " : "") +
+                "Disponible à partir du " + formatDate(new Date(f.availableFrom + "T00:00").getTime()) + "."
+        };
+    }
+
+    function initListing() {
+        var params = new URLSearchParams(window.location.search);
+        var id = params.get("id");
+        var listing = listings()[id];
+        if (!listing || !ownsMandate(listing.mandateId)) {
+            $("[data-listing-locked]").hidden = false;
+            return;
+        }
+        var mandateLink = "mandate.html?id=" + encodeURIComponent(listing.mandateId);
+        $all("[data-mandate-link]").forEach(function (a) {
+            a.href = mandateLink;
+        });
+        $("[data-listing-mandate]").textContent = listing.mandateId;
+        $("[data-listing-created]").textContent = formatDate(listing.createdAt);
+
+        var flash = $("[data-listing-flash]");
+        var list = $("[data-checklist]");
+        var template = $("[data-checklist-template]");
+        var submit = $("[data-listing-submit]");
+        var missing = $("[data-listing-missing]");
+
+        function showFlash(text) {
+            $("[data-listing-flash-text]").textContent = text;
+            flash.hidden = false;
+            flash.focus();
+        }
+
+        function render() {
+            listing = listings()[id];
+            var tag = listingTag(listing);
+            var editable = listing.status === "DRAFT";
+            document.title = "Annonce · " + listingTitle(listing) + " — Ndopify Partner Central";
+            $("[data-listing-title]").textContent = "Annonce · " + listingTitle(listing);
+            var tagEl = $("[data-listing-tag]");
+            tagEl.textContent = LISTING_TAGS[tag][0];
+            tagEl.className = "status-tag status-tag--" + LISTING_TAGS[tag][1];
+
+            $all("[data-listing-panel]").forEach(function (panel) {
+                panel.hidden = panel.getAttribute("data-listing-panel") !== tag;
+            });
+            if (listing.rejection) $("[data-rejection-reason]").textContent = listing.rejection.reason;
+            if (listing.submittedAt) $("[data-submitted-at]").textContent = formatDate(listing.submittedAt);
+            if (listing.status === "PUBLISHED") {
+                var text = generatedText(listing);
+                $("[data-published-at]").textContent = formatDate(listing.publishedAt);
+                $("[data-generated-title]").textContent = text.title;
+                $("[data-generated-summary]").textContent = text.summary;
+            }
+
+            var done = LISTING_SECTIONS.filter(function (s) {
+                return !s.optional && sectionDone(listing, s.key);
+            }).length;
+            $("[data-checklist-progress]").textContent = done + " sections sur " +
+                (LISTING_SECTIONS.length - 1) + " vérifiées";
+
+            // Each row opens its section: to edit it while a draft, to view it (read-only) once sent
+            list.textContent = "";
+            LISTING_SECTIONS.forEach(function (s) {
+                var item = template.content.firstElementChild.cloneNode(true);
+                var row = document.createElement("a");
+                row.className = "checklist__row";
+                row.href = "listing/" + s.page + "?id=" + encodeURIComponent(id);
+                while (item.firstChild) row.appendChild(item.firstChild);
+                item.appendChild(row);
+                $("[data-section-title]", item).textContent = s.label;
+                $("[data-section-summary]", item).textContent = sectionSummary(listing, s.key);
+                var state = sectionState(listing, s.key);
+                var stateEl = $("[data-section-state]", item);
+                stateEl.textContent = state[0];
+                stateEl.className = "status-tag status-tag--" + state[1];
+                list.appendChild(item);
+            });
+
+            var left = missingSections(listing);
+            $("[data-listing-send]").hidden = !editable;
+            setActive(submit, left.length === 0);
+            missing.textContent = left.length ? "Encore à faire : " + left.join(", ") + "." :
+                "Tout est vérifié : vous pouvez envoyer l'annonce.";
+        }
+
+        function update(changes) {
+            var current = listings()[id];
+            Object.keys(changes).forEach(function (key) {
+                current[key] = changes[key];
+            });
+            saveListing(current);
+            render();
+        }
+
+        // PROTOTYPE: there's no submit endpoint yet (see above).
+        submit.addEventListener("click", function () {
+            if (!isActive(submit)) {
+                missing.focus();
+                return;
+            }
+            setActive(submit, false);
+            submit.textContent = "Envoi…";
+            window.setTimeout(function () {
+                submit.textContent = "Envoyer pour vérification";
+                update({ status: "PENDING", submittedAt: Date.now(), rejection: null });
+                showFlash("Annonce envoyée. Nous vous préviendrons dès sa publication.");
+            }, 600);
+        });
+
+        // PROTOTYPE: the check publishes the listing, its texts written by AI.
+        $("[data-simulate-publish]").addEventListener("click", function () {
+            var photos = listings()[id].photos.map(function (photo) {
+                photo.status = "VERIFIED";
+                return photo;
+            });
+            update({ status: "PUBLISHED", publishedAt: Date.now(), photos: photos });
+            showFlash("L'annonce est publiée.");
+        });
+
+        // PROTOTYPE: the check sends it back, with a photo refused and the landmark to make clearer.
+        $("[data-simulate-rejection]").addEventListener("click", function () {
+            var current = listings()[id];
+            var photo = current.photos.filter(function (p) {
+                return p.status !== "REJECTED";
+            })[0];
+            if (photo) {
+                photo.status = "REJECTED";
+                photo.errorMessage = "Photo floue : reprenez-la à la lumière du jour.";
+            }
+            delete current.checked.location;
+            current.status = "DRAFT";
+            current.rejection = {
+                at: Date.now(),
+                reason: "Une photo est floue, et le point de repère ne suffit pas pour trouver le bien.",
+                sections: ["location", "photos"]
+            };
+            saveListing(current);
+            render();
+            showFlash("L'annonce vous a été renvoyée pour correction.");
+        });
+
+        render();
+        $("[data-listing]").hidden = false;
+
+        var saved = params.get("saved");
+        if (saved && SECTION_SAVED[saved]) {
+            showFlash(SECTION_SAVED[saved]);
+            params.delete("saved");
+            window.history.replaceState(null, "", window.location.pathname + "?" + params.toString());
+        }
+    }
+
+    /* listing/*.html: one section of the checklist. Its form only holds the section's fields. */
+
+    // The questions of "Le bien" that apply to a property type (as offer-property.js: LAND is commercial).
+    var LISTING_APPLIES = {
+        furniture: function (a) {
+            return a.propertyCategory === "RESIDENTIAL" && a.propertyType !== "BUILDING";
+        },
+        rooms: function (a) {
+            return a.propertyCategory === "RESIDENTIAL" && ["ROOM", "STUDIO", "BUILDING"].indexOf(a.propertyType) === -1;
+        },
+        bathrooms: function (a) {
+            return a.propertyType !== "LAND";
+        },
+        kitchens: function (a) {
+            return a.propertyCategory === "RESIDENTIAL" && ["ROOM", "BUILDING"].indexOf(a.propertyType) === -1;
+        },
+        parkings: function (a) {
+            return a.propertyType !== "ROOM";
+        },
+        levels: function (a) {
+            return ["HOUSE", "DUPLEX", "BUILDING"].indexOf(a.propertyType) !== -1;
+        },
+        floorLevel: function (a) {
+            return ["ROOM", "STUDIO", "APARTMENT", "OFFICE", "RETAIL"].indexOf(a.propertyType) !== -1;
+        }
+    };
+
+    function fillListingForm(form, f) {
+        $all("input, select, textarea", form).forEach(function (el) {
+            var name = el.name;
+            if (!name) return;
+            if (el.type === "checkbox") el.checked = f.amenities.indexOf(name) !== -1;
+            else if (name === "roadAccess") el.checked = f.amenities.indexOf(el.value) !== -1;
+            else if (el.type === "radio") el.checked = String(f[name]) === el.value;
+            else if (el.getAttribute("data-kind") === "amount") el.value = f[name] ? f[name].toLocaleString("fr-FR") : "";
+            else el.value = f[name] == null ? "" : f[name];
+        });
+    }
+
+    // The section's values, as UpdateListingRequest names them. A question hidden for the type is saved empty.
+    function readListingForm(form) {
+        var values = {};
+        var amenities = null;
+        $all("input, select, textarea", form).forEach(function (el) {
+            var name = el.name;
+            if (!name) return;
+            var hidden = !!el.closest("[hidden]");
+            if (el.type === "checkbox" || name === "roadAccess") {
+                amenities = amenities || [];
+                if (el.checked && !hidden) amenities.push(el.type === "checkbox" ? name : el.value);
+                return;
+            }
+            if (el.type === "radio") {
+                if (!(name in values)) values[name] = null;
+                if (el.checked && !hidden) values[name] = el.value;
+                return;
+            }
+            var v = hidden ? "" : el.value.trim();
+            var kind = el.getAttribute("data-kind");
+            if (kind === "amount") values[name] = parseAmount(v);
+            else if (kind === "int") values[name] = v === "" ? null : /^\d+$/.test(v) ? parseInt(v, 10) : NaN;
+            else if (kind === "number") values[name] = v === "" ? null : Number(v);
+            else values[name] = v;
+        });
+        if (amenities) values.amenities = amenities;
+        return values;
+    }
+
+    function ownerText(name, value) {
+        switch (name) {
+            case "propertyCategory":
+                return CATEGORY_LABELS[value];
+            case "propertyType":
+                return PROPERTY_TYPE_LABELS[value];
+            case "furnitureType":
+                return LISTING_FURNITURE_LABELS[value];
+            case "price":
+                return value.toLocaleString("fr-FR") + " FCFA / mois";
+            case "securityDeposit":
+            case "advanceRent":
+                return value + " mois";
+            case "area":
+                return value + " m²";
+            case "availableFrom":
+                return formatDate(new Date(value + "T00:00").getTime());
+            case "amenities":
+                return amenityLabels(value).join(", ") || "aucun équipement";
+            default:
+                return String(value);
+        }
+    }
+
+    // "Indiqué par le propriétaire : …" under each field the agent changed from the landlord's answer.
+    function syncOwnerHints(form, owner) {
+        var values = readListingForm(form);
+        $all("[data-owner-for]", form).forEach(function (hint) {
+            var name = hint.getAttribute("data-owner-for");
+            var was = owner[name];
+            var now = values[name];
+            var same = name === "amenities"
+                ? was.slice().sort().join() === (now || []).slice().sort().join()
+                : String(was == null ? "" : was) === String(now == null ? "" : now);
+            hint.hidden = was == null || was === "" || same;
+            hint.textContent = "Indiqué par le propriétaire : " + (was == null ? "" : ownerText(name, was));
+        });
+    }
+
+    // [name, message] of each invalid field.
+    var LISTING_RULES = {
+        location: function (v) {
+            var errors = [];
+            if (!v.neighbourhood) errors.push(["neighbourhood", "Choisissez le quartier du bien."]);
+            if (!v.landmark) errors.push(["landmark", "Indiquez un point de repère connu : école, carrefour, commerce…"]);
+            return errors;
+        },
+        gps: function (v) {
+            return v.latitude == null ? [["latitude", "Relevez la position GPS depuis le bien."]] : [];
+        },
+        property: function (v, form) {
+            var errors = [];
+            function shown(name) {
+                var el = $('[name="' + name + '"]', form);
+                return el && !el.closest("[hidden]");
+            }
+            if (!v.propertyCategory) errors.push(["propertyCategory", "Choisissez l'usage du bien."]);
+            if (!v.propertyType) errors.push(["propertyType", "Choisissez le type de bien."]);
+            if (shown("furnitureType") && !v.furnitureType) {
+                errors.push(["furnitureType", "Indiquez si le bien est meublé."]);
+            }
+            ["rooms", "bathrooms", "livingRooms", "kitchens", "parkings", "levels", "floorLevel", "area"]
+                .forEach(function (name) {
+                    if (!shown(name)) return;
+                    var required = ["rooms", "bathrooms", "area"].indexOf(name) !== -1;
+                    if (v[name] == null && required) errors.push([name, "Indiquez ce nombre, compté sur place."]);
+                    else if (isNaN(v[name])) errors.push([name, "Indiquez un nombre entier."]);
+                    else if (name === "area" && !(v.area > 0)) errors.push([name, "Indiquez la surface en m²."]);
+                });
+            return errors;
+        },
+        amenities: function (v) {
+            var road = (v.amenities || []).filter(function (a) {
+                return ROAD_ACCESS_KEYS.indexOf(a) !== -1;
+            });
+            return road.length ? [] : [["roadAccess", "Indiquez l'accès routier au bien."]];
+        },
+        terms: function (v) {
+            var errors = [];
+            if (v.price === null) errors.push(["price", "Indiquez le loyer mensuel."]);
+            else if (isNaN(v.price)) errors.push(["price", "Indiquez le loyer en chiffres, en FCFA par mois."]);
+            if (!v.securityDeposit) errors.push(["securityDeposit", "Choisissez la caution demandée."]);
+            if (!v.availableFrom) errors.push(["availableFrom", "Indiquez la date à laquelle le bien est libre."]);
+            else if (new Date(v.availableFrom + "T00:00").getTime() > Date.now() + 365 * DAY_MS) {
+                errors.push(["availableFrom", "Choisissez une date dans les 12 prochains mois."]);
+            }
+            return errors;
+        },
+        remarks: function () {
+            return [];
+        }
+    };
+
+    function showListingErrors(form, errors) {
+        $all(".field__error", form).forEach(function (el) {
+            el.hidden = true;
+        });
+        $all("[aria-invalid]", form).forEach(function (el) {
+            el.removeAttribute("aria-invalid");
+        });
+        errors.forEach(function (error) {
+            var input = $('[data-field="' + error[0] + '"]', form) || $('[name="' + error[0] + '"]', form);
+            setFieldError(input, $("#" + error[0] + "-error", form), error[1]);
+        });
+        if (errors.length) {
+            var first = $('[data-field="' + errors[0][0] + '"]', form) || $('[name="' + errors[0][0] + '"]', form);
+            first.focus();
+        }
+    }
+
+    function initListingProperty(form) {
+        function sync() {
+            var category = ($('[name="propertyCategory"]:checked', form) || {}).value;
+            $all('[name="propertyType"]', form).forEach(function (radio) {
+                var fits = radio.closest("[data-categories]").getAttribute("data-categories").split(" ")
+                    .indexOf(category) !== -1;
+                radio.closest(".choice").hidden = !fits;
+                if (!fits) radio.checked = false;
+            });
+            var a = {
+                propertyCategory: category,
+                propertyType: ($('[name="propertyType"]:checked', form) || {}).value
+            };
+            $all("[data-applies]", form).forEach(function (el) {
+                el.hidden = !a.propertyType || !LISTING_APPLIES[el.getAttribute("data-applies")](a);
+            });
+        }
+        $all('[name="propertyCategory"], [name="propertyType"]', form).forEach(function (radio) {
+            radio.addEventListener("change", sync);
+        });
+        sync();
+    }
+
+    function initListingGps(form) {
+        var button = $("[data-gps]", form);
+        var result = $("[data-gps-result]", form);
+        var weak = $("[data-gps-weak]", form);
+        var error = $("#latitude-error", form);
+
+        function show() {
+            var lat = form.elements.latitude.value;
+            var lng = form.elements.longitude.value;
+            var accuracy = Number(form.elements.accuracy.value);
+            result.hidden = !lat;
+            if (!lat) return;
+            $("[data-gps-coords]", result).textContent = Number(lat).toFixed(5) + ", " + Number(lng).toFixed(5) +
+                (accuracy ? " (± " + accuracy + " m)" : "");
+            $("[data-gps-map]", result).href = "https://www.openstreetmap.org/?mlat=" + lat + "&mlon=" + lng +
+                "#map=18/" + lat + "/" + lng;
+            // Indoors or under a roof the phone guesses: the agent takes it again outside, at the door
+            weak.hidden = !(accuracy > 50);
+            button.textContent = "Relever à nouveau";
+        }
+
+        function set(coords) {
+            form.elements.latitude.value = coords.latitude;
+            form.elements.longitude.value = coords.longitude;
+            form.elements.accuracy.value = Math.round(coords.accuracy);
+            setFieldError(button, error, null);
+            show();
+        }
+
+        button.addEventListener("click", function () {
+            if (!navigator.geolocation) {
+                setFieldError(button, error, "Ce navigateur ne donne pas la position : utilisez celui de votre téléphone.");
+                return;
+            }
+            var label = button.textContent;
+            setActive(button, false);
+            button.textContent = "Localisation…";
+            navigator.geolocation.getCurrentPosition(function (position) {
+                setActive(button, true);
+                set(position.coords);
+            }, function (e) {
+                setActive(button, true);
+                button.textContent = label;
+                setFieldError(button, error, e.code === 1
+                    ? "Autorisez l'accès à votre position dans le navigateur, puis réessayez."
+                    : "Position introuvable : sortez devant l'entrée du bien et réessayez.");
+            }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+        });
+
+        // PROTOTYPE: a position in Bonapriso, for a computer without GPS.
+        $("[data-simulate-gps]", form).addEventListener("click", function () {
+            set({ latitude: 4.0335 + Math.random() / 1000, longitude: 9.6942 + Math.random() / 1000, accuracy: 8 });
+        });
+
+        show();
+    }
+
+    function initListingPhotos(listing, readonly) {
+        var grid = $("[data-photos]");
+        var template = $("[data-photo-template]");
+        var count = $("[data-photo-count]");
+        var error = $("#photos-error");
+        var inputs = $all("[data-photo-input]");
+        var live = $("[data-photo-live]");
+        var pending = 0;
+
+        function render() {
+            listing = listings()[listing.id];
+            grid.textContent = "";
+            listing.photos.forEach(function (photo, i) {
+                var item = template.content.firstElementChild.cloneNode(true);
+                var img = $("img", item);
+                img.src = photo.src;
+                img.alt = "Photo " + (i + 1);
+                var rejected = photo.status === "REJECTED";
+                item.classList.toggle("photo--rejected", rejected);
+                var note = $("[data-photo-note]", item);
+                note.textContent = rejected ? photo.errorMessage : photo.status === "VERIFIED" ? "Vérifiée" : "Envoyée";
+                $("[data-photo-delete]", item).hidden = !!readonly;
+                $("[data-photo-delete]", item).setAttribute("aria-label", "Supprimer la photo " + (i + 1));
+                $("[data-photo-delete]", item).addEventListener("click", function () {
+                    // PROTOTYPE: ndopify-server can't delete a listing's image yet.
+                    var current = listings()[listing.id];
+                    current.photos = current.photos.filter(function (p) {
+                        return p.id !== photo.id;
+                    });
+                    saveListing(current);
+                    render();
+                    announce(live, "Photo " + (i + 1) + " supprimée.");
+                });
+                grid.appendChild(item);
+            });
+            for (var n = 0; n < pending; n++) {
+                var placeholder = document.createElement("li");
+                placeholder.className = "photo photo--pending";
+                placeholder.textContent = "Envoi…";
+                grid.appendChild(placeholder);
+            }
+            var good = goodPhotos(listing);
+            var refused = listing.photos.length - good;
+            count.textContent = plural(good, "photo", "photos") + (readonly ? "" : refused
+                ? " · supprimez " + (refused > 1 ? "les photos refusées" : "la photo refusée") + " et reprenez-la"
+                : good < MIN_LISTING_PHOTOS ? " · encore " + (MIN_LISTING_PHOTOS - good) + " au moins"
+                    : " · c'est suffisant, ajoutez-en si utile");
+            var full = listing.photos.length + pending >= MAX_LISTING_PHOTOS;
+            inputs.forEach(function (input) {
+                input.disabled = full;
+            });
+        }
+
+        // Each photo is sent as soon as it's taken, so a visit cut short loses nothing.
+        function add(file) {
+            if (ACCEPTED_TYPES.indexOf(file.type) === -1) {
+                setFieldError(inputs[0], error, file.name + " n'est pas une photo JPEG, PNG ou WEBP.");
+                return;
+            }
+            if (file.size > MAX_FILE_BYTES) {
+                setFieldError(inputs[0], error, file.name + " dépasse 5 Mo.");
+                return;
+            }
+            if (listings()[listing.id].photos.length + pending >= MAX_LISTING_PHOTOS) {
+                setFieldError(inputs[0], error, MAX_LISTING_PHOTOS + " photos au plus.");
+                return;
+            }
+            pending++;
+            render();
+            // PROTOTYPE: simulates POST /v1/listings/{id}/images/upload, kept small for the session's storage
+            toThumbnail(file, function (src) {
+                window.setTimeout(function () {
+                    pending--;
+                    var current = listings()[listing.id];
+                    if (src) {
+                        current.photos.push({ id: Date.now() + Math.random(), src: src, status: "PENDING_VERIFICATION" });
+                        if (!saveListing(current)) {
+                            setFieldError(inputs[0], error, "Mémoire du prototype pleine : supprimez des photos.");
+                        }
+                    } else {
+                        setFieldError(inputs[0], error, file.name + " ne peut pas être lue.");
+                    }
+                    render();
+                    announce(live, count.textContent);
+                }, 400);
+            }, 480);
+        }
+
+        if (readonly) {
+            $("[data-photo-actions]").hidden = true;
+            $(".photo-tips").hidden = true;
+            $(".form__actions [data-back-link]").textContent = "Retour à l'annonce";
+        }
+        inputs.forEach(function (input) {
+            input.addEventListener("change", function () {
+                setFieldError(inputs[0], error, null);
+                Array.prototype.forEach.call(input.files, add);
+                input.value = "";
+            });
+        });
+        render();
+    }
+
+    // A sent section: its answers only (the choices not taken and the empty fields left out), nothing to act on.
+    function showListingReadonly(form, listing) {
+        syncOwnerHints(form, listing.owner);
+        form.classList.add("listing-readonly");
+        $all(".field, fieldset.choices", form).forEach(function (group) {
+            var answered = $all("input, select, textarea", group).some(function (el) {
+                return el.type === "checkbox" || el.type === "radio" ? el.checked : el.value.trim() !== "";
+            });
+            if (!answered) group.hidden = true;
+        });
+        $all("input, select, textarea, button", form).forEach(function (el) {
+            el.disabled = true;
+        });
+        $all("[data-gps], [data-gps-prototype], [data-gps-hint], [data-gps-weak], [data-section-submit]", form)
+            .forEach(function (el) {
+                el.hidden = true;
+            });
+        $all(".form__actions [data-back-link]", form).forEach(function (a) {
+            a.textContent = "Retour à l'annonce";
+            a.className = "btn btn--primary";
+        });
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+        });
+    }
+
+    function initListingSection() {
+        var section = document.body.getAttribute("data-section");
+        var id = new URLSearchParams(window.location.search).get("id");
+        var listing = listings()[id];
+        var back = "../listing.html?id=" + encodeURIComponent(id);
+        $all("[data-back-link]").forEach(function (a) {
+            a.href = back;
+        });
+        var locked = $("[data-section-locked]");
+        if (!listing || !ownsMandate(listing.mandateId)) {
+            locked.hidden = false;
+            return;
+        }
+        // Sent: nothing changes during the check nor once published, the section is only shown
+        var readonly = listing.status !== "DRAFT";
+        if (readonly) {
+            $("[data-section-readonly-text]").textContent = (listing.status === "PUBLISHED"
+                ? "Annonce publiée le " + formatDate(listing.publishedAt)
+                : "Annonce en vérification depuis le " + formatDate(listing.submittedAt)) +
+                " : voici ce que vous avez relevé, il ne peut plus être modifié.";
+            $("[data-section-readonly]").hidden = false;
+            // The instruction is for the visit
+            $("[data-section-content] .page-intro > p:last-child").hidden = true;
+        }
+        document.title = $("[data-section-content] h1").textContent + " · " + listingTitle(listing) + " — Ndopify Partner Central";
+        $("[data-section-meta]").textContent = "Annonce · " + listingTitle(listing) + " · mandat n° " +
+            listing.mandateId;
+        $("[data-section-content]").hidden = false;
+        if (section === "photos") {
+            initListingPhotos(listing, readonly);
+            return;
+        }
+
+        var form = $("[data-section-form]");
+        fillListingForm(form, listing.fields);
+        if (section === "property") initListingProperty(form);
+        if (section === "gps") initListingGps(form);
+        if (readonly) {
+            showListingReadonly(form, listing);
+            return;
+        }
+        if (section === "terms") form.elements.availableFrom.min = isoDate(Date.now());
+        function sync(event) {
+            syncOwnerHints(form, listing.owner);
+            // A field's error goes once it's changed
+            var name = event && event.target.name;
+            var error = name && $("#" + name + "-error", form);
+            if (error) setFieldError(event.target, error, null);
+        }
+        form.addEventListener("input", sync);
+        form.addEventListener("change", sync);
+        sync();
+
+        var submit = $("[data-section-submit]", form);
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            if (!isActive(submit)) return;
+            var values = readListingForm(form);
+            var errors = LISTING_RULES[section](values, form);
+            showListingErrors(form, errors);
+            if (errors.length) return;
+            // PROTOTYPE: simulates POST /v1/listings/{id} (UpdateListingRequest: every field, with the version)
+            setActive(submit, false);
+            submit.textContent = "Enregistrement…";
+            window.setTimeout(function () {
+                var current = listings()[id];
+                Object.keys(values).forEach(function (key) {
+                    current.fields[key] = values[key];
+                });
+                current.checked[section] = Date.now();
+                saveListing(current);
+                window.location.href = back + "&saved=" + section;
+            }, 500);
+        });
+    }
+
     /* ---------- Boot ---------- */
     var pages = {
         login: initLogin,
         "kyc-wizard": initKycWizard,
         "agent-home": initAgentHome,
         mandate: initMandate,
-        "mandate-edit": initMandateEdit
+        "mandate-edit": initMandateEdit,
+        listing: initListing,
+        "listing-section": initListingSection
     };
 
     document.addEventListener("DOMContentLoaded", function () {

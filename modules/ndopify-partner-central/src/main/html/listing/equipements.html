@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Eau, électricité, accès — Ndopify Partner Central</title>
+    <meta name="description" content="Les équipements du bien, vérifiés sur place : eau, électricité, accès routier et sécurité.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="../assets/images/icon.png">
+    <link rel="apple-touch-icon" href="../assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="../assets/css/partner-central.css">
+    <link rel="stylesheet" href="../assets/css/rejoindre.css">
+    <link rel="stylesheet" href="../assets/css/find-property.css">
+    <link rel="stylesheet" href="../assets/css/home.css">
+    <link rel="stylesheet" href="../assets/css/listing.css">
+    <script src="../assets/js/partner-central.js" defer></script>
+</head>
+<!--
+    Listing section "Eau, électricité, accès": the amenities of UpdateListingRequest, pre-filled with the landlord's,
+    as offer-property.html groups them. The road access is one answer (a radio, required); the rest are checkboxes.
+    One line at the bottom recalls the landlord's answers once they differ.
+    Once sent (en vérification, publiée), the section is read-only: only the answers given, no action.
+    PROTOTYPE: ?id= of a listing (see listing.html). Saved in the
+    session (KEYS.listings), the section is then "Vérifié" on the checklist.
+-->
+<body data-page="listing-section" data-section="amenities">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" href="../index.html">
+                <img src="../assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <span aria-hidden="true" data-user-initials>NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li class="user-menu__email" data-user-email></li>
+                    <li><a class="user-menu__item" href="../profile/edit.html">Profil</a></li>
+                    <li><a class="user-menu__item" href="../login.html" data-logout>Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="back-link"><a href="../listing.html" data-back-link>← Retour à l'annonce</a></p>
+
+            <!-- Locked: not the agent's listing, or sent since (nothing changes during the check). -->
+            <div class="alert alert--warning" hidden data-section-locked>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <h1 class="alert__title" data-section-locked-title>Cette annonce n'est pas disponible</h1>
+                    <p data-section-locked-text>Une annonce se crée depuis un mandat de bailleur approuvé.</p>
+                </div>
+            </div>
+
+            <div class="stack" hidden data-section-content>
+                <div class="page-intro">
+                    <h1>Eau, électricité, accès</h1>
+                    <p class="mandate__meta" data-section-meta></p>
+                    <p>Cochez ce que vous constatez sur place, pas seulement ce qu'annonce le propriétaire.</p>
+                </div>
+                <!-- Sent or published: the section as it was sent, read-only. -->
+                <div class="hint" hidden data-section-readonly>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <p data-section-readonly-text></p>
+                </div>
+                <form class="form stack" novalidate data-section-form>
+                    <fieldset class="choices">
+                        <legend class="choices__legend">Eau <span class="field__optional">(plusieurs choix possibles)</span></legend>
+                        <div class="choices__grid">
+                                <label class="choice"><input name="waterMeter" type="checkbox"> Compteur d'eau</label>
+                                <label class="choice"><input name="dedicatedWaterMeter" type="checkbox"> Compteur d'eau individuel</label>
+                                <label class="choice"><input name="waterWell" type="checkbox"> Forage</label>
+                                <label class="choice"><input name="waterTank" type="checkbox"> Château d'eau, citerne</label>
+                        </div>
+                    </fieldset>
+                    <fieldset class="choices">
+                        <legend class="choices__legend">Électricité <span class="field__optional">(plusieurs choix possibles)</span></legend>
+                        <div class="choices__grid">
+                                <label class="choice"><input name="electricityMeter" type="checkbox"> Compteur électrique</label>
+                                <label class="choice"><input name="dedicatedElectricityMeter" type="checkbox"> Compteur électrique individuel</label>
+                                <label class="choice"><input name="generatorSet" type="checkbox"> Groupe électrogène</label>
+                                <label class="choice"><input name="solarPanel" type="checkbox"> Panneaux solaires</label>
+                        </div>
+                    </fieldset>
+                    <fieldset class="choices" aria-describedby="roadAccess-error">
+                        <legend class="choices__legend">Accès routier</legend>
+                        <div class="choices__grid">
+                                <label class="choice"><input name="roadAccess" type="radio" value="roadPaved"> Route bitumée</label>
+                                <label class="choice"><input name="roadAccess" type="radio" value="trackAccessibleByCar"> Piste accessible en voiture</label>
+                                <label class="choice"><input name="roadAccess" type="radio" value="trackInaccessibleByCar"> Piste accessible à pied seulement</label>
+                        </div>
+                        <p class="field__error" id="roadAccess-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                    </fieldset>
+                    <fieldset class="choices">
+                        <legend class="choices__legend">Sécurité <span class="field__optional">(plusieurs choix possibles)</span></legend>
+                        <div class="choices__grid">
+                                <label class="choice"><input name="videoSurveillance" type="checkbox"> Vidéosurveillance</label>
+                                <label class="choice"><input name="securityGuard" type="checkbox"> Gardien 24&nbsp;h/24</label>
+                                <label class="choice"><input name="securedFenced" type="checkbox"> Barrière, clôture sécurisée</label>
+                        </div>
+                    </fieldset>
+                    <p class="owner-value" hidden data-owner-for="amenities"></p>
+
+                    <div class="form__actions">
+                        <a class="btn btn--outline" href="../listing.html" data-back-link>Annuler</a>
+                        <button type="submit" class="btn btn--primary" data-section-submit>Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

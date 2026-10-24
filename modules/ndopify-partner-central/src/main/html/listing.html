@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Annonce — Ndopify Partner Central</title>
+    <meta name="description" content="L'annonce d'un bien sous mandat : la visite du bien, section par section, puis l'envoi pour vérification.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="assets/images/icon.png">
+    <link rel="apple-touch-icon" href="assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="assets/css/partner-central.css">
+    <link rel="stylesheet" href="assets/css/rejoindre.css">
+    <link rel="stylesheet" href="assets/css/find-property.css">
+    <link rel="stylesheet" href="assets/css/home.css">
+    <link rel="stylesheet" href="assets/css/listing.css">
+    <script src="assets/js/partner-central.js" defer></script>
+</head>
+<!--
+    Listing page: the listing of an approved LISTING mandate, created by mandate.html's "Créer l'annonce" (POST
+    /v1/listings, a DRAFT pre-filled from the landlord's answers). The agent completes it during the visit of the
+    property, as a checklist: each row opens its section (listing/*.html), in any order and over several visits, and
+    a section counts once the agent has saved it on site (the landlord's answers alone don't make it "Vérifié").
+    The photos count once there are 5. "Envoyer pour vérification" stays inactive until every section but the
+    remarks is done, and says what's left. Sent, the listing is read-only while it's checked; then it's published,
+    its title, summary and description written by AI from the audit and the photos, or sent back "À corriger" with
+    the reason and the sections to fix.
+    PROTOTYPE: ?id= of a listing created from mandate.html?id=203 (or 102 once accepted and signed); any other shows
+    the locked view. The listing is kept in the session (KEYS.listings). "Simuler la publication" / "Simuler un refus"
+    stand for the check, which ndopify-server doesn't have yet.
+-->
+<body data-page="listing">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" href="index.html">
+                <img src="assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <span aria-hidden="true" data-user-initials>NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li class="user-menu__email" data-user-email></li>
+                    <li><a class="user-menu__item" href="profile/edit.html">Profil</a></li>
+                    <li><a class="user-menu__item" href="login.html" data-logout>Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column column--wide">
+            <p class="back-link"><a href="index.html#mandates-title" data-mandate-link>← Retour au mandat</a></p>
+
+            <!-- Locked: no such listing, or not one of the agent's mandates. -->
+            <div class="alert alert--warning" hidden data-listing-locked>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <h1 class="alert__title">Cette annonce n'est pas disponible</h1>
+                    <p>Une annonce se crée depuis un mandat de bailleur approuvé, dans votre espace agent.</p>
+                </div>
+            </div>
+
+            <div class="stack" hidden data-listing>
+                <div class="page-intro mandate-intro">
+                    <div class="mandate-intro__head">
+                        <h1 data-listing-title>Annonce</h1>
+                        <p class="status-tag" data-listing-tag></p>
+                    </div>
+                    <p class="mandate__meta">Mandat n° <span data-listing-mandate></span> · annonce créée le
+                        <span data-listing-created></span></p>
+                </div>
+
+                <!-- Outcome of the last action (section saved, sent, published, sent back). -->
+                <div class="alert alert--success" role="status" tabindex="-1" hidden data-listing-flash>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <p data-listing-flash-text></p>
+                </div>
+
+                <!-- One panel per status, above the checklist. -->
+                <div class="hint" hidden data-listing-panel="DRAFT">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <p>Sur place, vérifiez chaque section et prenez les photos. Les réponses du propriétaire sont
+                        déjà remplies&nbsp;: corrigez ce qui ne correspond pas.</p>
+                </div>
+
+                <div class="alert alert--warning" hidden data-listing-panel="REJECTED">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                    <div>
+                        <p class="alert__title">Annonce à corriger</p>
+                        <p data-rejection-reason></p>
+                        <p>Corrigez les sections signalées, puis renvoyez-la.</p>
+                    </div>
+                </div>
+
+                <div class="alert alert--info" hidden data-listing-panel="PENDING">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <div>
+                        <p class="alert__title">En vérification</p>
+                        <p>Envoyée le <span data-submitted-at></span>. Nous vérifions l'annonce et les photos,
+                            puis rédigeons son titre et sa description à partir de votre visite.</p>
+                        <p class="mandate-panel__prototype">
+                            <button type="button" class="link-button" data-simulate-publish>Simuler la publication (prototype)</button>
+                            ·
+                            <button type="button" class="link-button" data-simulate-rejection>Simuler un refus (prototype)</button>
+                        </p>
+                    </div>
+                </div>
+
+                <div class="alert alert--success" hidden data-listing-panel="PUBLISHED">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <div>
+                        <p class="alert__title">Publiée le <span data-published-at></span></p>
+                        <p>Le titre et la description ont été rédigés à partir de votre visite et de vos photos.</p>
+                    </div>
+                </div>
+
+                <section class="home-section" hidden data-listing-panel="PUBLISHED" aria-labelledby="generated-title">
+                    <h2 id="generated-title">Ce que voient les locataires</h2>
+                    <div class="listing-generated">
+                        <p><strong data-generated-title></strong></p>
+                        <p data-generated-summary></p>
+                    </div>
+                </section>
+
+                <section class="home-section" aria-labelledby="checklist-title">
+                    <h2 id="checklist-title">La visite du bien</h2>
+                    <p class="checklist__progress" data-checklist-progress></p>
+                    <ol class="checklist" data-checklist></ol>
+                    <!-- One row per section: a link while it's a draft, the values only once sent. -->
+                    <template data-checklist-template>
+                        <li>
+                            <span class="checklist__title" data-section-title></span>
+                            <span class="status-tag" data-section-state></span>
+                            <span class="checklist__summary" data-section-summary></span>
+                        </li>
+                    </template>
+                </section>
+
+                <section class="home-section listing-send" aria-label="Envoi de l'annonce" data-listing-send>
+                    <button type="button" class="btn btn--primary btn--block" aria-describedby="listing-missing"
+                            data-listing-submit>Envoyer pour vérification</button>
+                    <p class="listing-send__missing" id="listing-missing" tabindex="-1" data-listing-missing></p>
+                </section>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

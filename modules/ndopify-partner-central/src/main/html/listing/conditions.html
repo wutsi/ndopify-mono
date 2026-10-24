@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Loyer et conditions — Ndopify Partner Central</title>
+    <meta name="description" content="Le loyer et les conditions de location convenus avec le propriétaire.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="../assets/images/icon.png">
+    <link rel="apple-touch-icon" href="../assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="../assets/css/partner-central.css">
+    <link rel="stylesheet" href="../assets/css/rejoindre.css">
+    <link rel="stylesheet" href="../assets/css/find-property.css">
+    <link rel="stylesheet" href="../assets/css/home.css">
+    <link rel="stylesheet" href="../assets/css/listing.css">
+    <script src="../assets/js/partner-central.js" defer></script>
+</head>
+<!--
+    Listing section "Loyer et conditions": every term can change from the mandate, the rent too, to what the agent
+    agreed with the landlord; the landlord's answer shows under each one changed. Required: the monthly rent (in the
+    tenant's currency, MONTHLY), the deposit and the date the property is free (within 12 months). Lease term and
+    notice period are the agent's, in months.
+    Once sent (en vérification, publiée), the section is read-only: only the answers given, no action.
+    PROTOTYPE: ?id= of a listing (see listing.html). Saved in the
+    session (KEYS.listings), the section is then "Vérifié" on the checklist.
+-->
+<body data-page="listing-section" data-section="terms">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" href="../index.html">
+                <img src="../assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <span aria-hidden="true" data-user-initials>NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li class="user-menu__email" data-user-email></li>
+                    <li><a class="user-menu__item" href="../profile/edit.html">Profil</a></li>
+                    <li><a class="user-menu__item" href="../login.html" data-logout>Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="back-link"><a href="../listing.html" data-back-link>← Retour à l'annonce</a></p>
+
+            <!-- Locked: not the agent's listing, or sent since (nothing changes during the check). -->
+            <div class="alert alert--warning" hidden data-section-locked>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <h1 class="alert__title" data-section-locked-title>Cette annonce n'est pas disponible</h1>
+                    <p data-section-locked-text>Une annonce se crée depuis un mandat de bailleur approuvé.</p>
+                </div>
+            </div>
+
+            <div class="stack" hidden data-section-content>
+                <div class="page-intro">
+                    <h1>Loyer et conditions</h1>
+                    <p class="mandate__meta" data-section-meta></p>
+                    <p>Indiquez les conditions convenues avec le propriétaire&nbsp;: elles peuvent différer du mandat.</p>
+                </div>
+                <!-- Sent or published: the section as it was sent, read-only. -->
+                <div class="hint" hidden data-section-readonly>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <p data-section-readonly-text></p>
+                </div>
+                <form class="form stack" novalidate data-section-form>
+                    <div class="field">
+                        <label class="field__label" for="price">Loyer mensuel</label>
+                        <div class="input-unit">
+                            <input class="input" id="price" name="price" type="text" inputmode="numeric" autocomplete="off"
+                                   data-kind="amount" aria-describedby="price-error">
+                            <span aria-hidden="true" class="input-unit__suffix">FCFA / mois</span>
+                        </div>
+                        <p class="owner-value" hidden data-owner-for="price"></p>
+                        <p class="field__error" id="price-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="securityDeposit">Caution</label>
+                        <select class="input select" id="securityDeposit" name="securityDeposit" data-kind="int" aria-describedby="securityDeposit-error">
+                            <option value="">Choisissez le nombre de mois</option>
+                            <option value="1">1 mois</option>
+                            <option value="2">2 mois</option>
+                            <option value="3">3 mois</option>
+                            <option value="4">4 mois</option>
+                            <option value="5">5 mois</option>
+                            <option value="6">6 mois</option>
+                        </select>
+                        <p class="owner-value" hidden data-owner-for="securityDeposit"></p>
+                        <p class="field__error" id="securityDeposit-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="advanceRent">Avance de loyer <span class="field__optional">(si applicable)</span></label>
+                        <select class="input select" id="advanceRent" name="advanceRent" data-kind="int">
+                            <option value="">Aucune avance</option>
+                            <option value="1">1 mois</option>
+                            <option value="2">2 mois</option>
+                            <option value="3">3 mois</option>
+                            <option value="4">4 mois</option>
+                            <option value="5">5 mois</option>
+                            <option value="6">6 mois</option>
+                            <option value="7">7 mois</option>
+                            <option value="8">8 mois</option>
+                            <option value="9">9 mois</option>
+                            <option value="10">10 mois</option>
+                            <option value="11">11 mois</option>
+                            <option value="12">12 mois</option>
+                        </select>
+                        <p class="owner-value" hidden data-owner-for="advanceRent"></p>
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="leaseTerm">Durée du bail <span class="field__optional">(facultatif)</span></label>
+                        <select class="input select" id="leaseTerm" name="leaseTerm" data-kind="int">
+                            <option value="">Non précisée</option>
+                            <option value="6">6 mois</option>
+                            <option value="12">12 mois</option>
+                            <option value="24">24 mois</option>
+                            <option value="36">36 mois</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="noticePeriod">Préavis de départ <span class="field__optional">(facultatif)</span></label>
+                        <select class="input select" id="noticePeriod" name="noticePeriod" data-kind="int">
+                            <option value="">Non précisé</option>
+                            <option value="1">1 mois</option>
+                            <option value="2">2 mois</option>
+                            <option value="3">3 mois</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="availableFrom">Disponible à partir du</label>
+                        <input class="input input--date" id="availableFrom" name="availableFrom" type="date"
+                               aria-describedby="availableFrom-error">
+                        <p class="owner-value" hidden data-owner-for="availableFrom"></p>
+                        <p class="field__error" id="availableFrom-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                    </div>
+
+                    <div class="form__actions">
+                        <a class="btn btn--outline" href="../listing.html" data-back-link>Annuler</a>
+                        <button type="submit" class="btn btn--primary" data-section-submit>Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

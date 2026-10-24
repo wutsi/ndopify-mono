@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Le bien — Ndopify Partner Central</title>
+    <meta name="description" content="Les caractéristiques du bien, comptées sur place : type, pièces, surface.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="../assets/images/icon.png">
+    <link rel="apple-touch-icon" href="../assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="../assets/css/partner-central.css">
+    <link rel="stylesheet" href="../assets/css/rejoindre.css">
+    <link rel="stylesheet" href="../assets/css/find-property.css">
+    <link rel="stylesheet" href="../assets/css/home.css">
+    <link rel="stylesheet" href="../assets/css/listing.css">
+    <script src="../assets/js/partner-central.js" defer></script>
+</head>
+<!--
+    Listing section "Le bien": the property as the agent counts it on site. Pre-filled with the landlord's answers
+    (category, type, furnishing, rooms, parking, area); bathrooms, living rooms, kitchens, levels and floor are the
+    agent's. Only the questions of the type show (LISTING_APPLIES, as offer-property.js): a hidden one is saved
+    empty. Required: category, type, furnishing, rooms, bathrooms (where they apply) and the area.
+    Once sent (en vérification, publiée), the section is read-only: only the answers given, no action.
+    PROTOTYPE: ?id= of a listing (see listing.html). Saved in the
+    session (KEYS.listings), the section is then "Vérifié" on the checklist.
+-->
+<body data-page="listing-section" data-section="property">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" href="../index.html">
+                <img src="../assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <span aria-hidden="true" data-user-initials>NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li class="user-menu__email" data-user-email></li>
+                    <li><a class="user-menu__item" href="../profile/edit.html">Profil</a></li>
+                    <li><a class="user-menu__item" href="../login.html" data-logout>Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="back-link"><a href="../listing.html" data-back-link>← Retour à l'annonce</a></p>
+
+            <!-- Locked: not the agent's listing, or sent since (nothing changes during the check). -->
+            <div class="alert alert--warning" hidden data-section-locked>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <h1 class="alert__title" data-section-locked-title>Cette annonce n'est pas disponible</h1>
+                    <p data-section-locked-text>Une annonce se crée depuis un mandat de bailleur approuvé.</p>
+                </div>
+            </div>
+
+            <div class="stack" hidden data-section-content>
+                <div class="page-intro">
+                    <h1>Le bien</h1>
+                    <p class="mandate__meta" data-section-meta></p>
+                    <p>Comptez les pièces sur place et corrigez ce qui ne correspond pas aux réponses du propriétaire.</p>
+                </div>
+                <!-- Sent or published: the section as it was sent, read-only. -->
+                <div class="hint" hidden data-section-readonly>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <p data-section-readonly-text></p>
+                </div>
+                <form class="form stack" novalidate data-section-form>
+                    <fieldset class="choices" aria-describedby="propertyCategory-error">
+                        <legend class="choices__legend">Usage</legend>
+                        <div class="choices__grid choices__grid--2">
+                                <label class="choice"><input name="propertyCategory" type="radio" value="RESIDENTIAL"> Résidentiel</label>
+                                <label class="choice"><input name="propertyCategory" type="radio" value="COMMERCIAL"> Commercial</label>
+                        </div>
+                        <p class="owner-value" hidden data-owner-for="propertyCategory"></p>
+                        <p class="field__error" id="propertyCategory-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                    </fieldset>
+                    <fieldset class="choices" aria-describedby="propertyType-error">
+                        <legend class="choices__legend">Type de bien</legend>
+                        <div class="choices__grid choices__grid--2">
+                                <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="APARTMENT"> Appartement</label>
+                                <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="HOUSE"> Maison</label>
+                                <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="VILLA"> Villa</label>
+                                <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="DUPLEX"> Duplex</label>
+                                <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="STUDIO"> Studio</label>
+                                <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="ROOM"> Chambre</label>
+                                <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="BUILDING"> Immeuble entier</label>
+                                <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="OFFICE"> Bureau</label>
+                                <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="RETAIL"> Boutique, local commercial</label>
+                                <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="INDUSTRIAL"> Entrepôt, local industriel</label>
+                                <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="LAND"> Terrain</label>
+                        </div>
+                        <p class="owner-value" hidden data-owner-for="propertyType"></p>
+                        <p class="field__error" id="propertyType-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                    </fieldset>
+                    <fieldset class="choices" aria-describedby="furnitureType-error" data-applies="furniture">
+                        <legend class="choices__legend">Ameublement</legend>
+                        <div class="choices__grid choices__grid--2">
+                                <label class="choice"><input name="furnitureType" type="radio" value="UNFURNISHED"> Non meublé</label>
+                                <label class="choice"><input name="furnitureType" type="radio" value="FULLY_FURNISHED"> Meublé</label>
+                        </div>
+                        <p class="owner-value" hidden data-owner-for="furnitureType"></p>
+                        <p class="field__error" id="furnitureType-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                    </fieldset>
+
+                    <div class="count-grid">
+                        <div class="field" data-applies="rooms">
+                            <label class="field__label" for="rooms">Chambres</label>
+                            <input class="input" id="rooms" name="rooms" type="text" inputmode="numeric" autocomplete="off"
+                                   data-kind="int" aria-describedby="rooms-error">
+                            <p class="owner-value" hidden data-owner-for="rooms"></p>
+                            <p class="field__error" id="rooms-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                        </div>
+                        <div class="field" data-applies="rooms">
+                            <label class="field__label" for="livingRooms">Salons <span class="field__optional">(facultatif)</span></label>
+                            <input class="input" id="livingRooms" name="livingRooms" type="text" inputmode="numeric" autocomplete="off"
+                                   data-kind="int" aria-describedby="livingRooms-error">
+                            
+                            <p class="field__error" id="livingRooms-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                        </div>
+                        <div class="field" data-applies="bathrooms">
+                            <label class="field__label" for="bathrooms">Salles de bain, douches</label>
+                            <input class="input" id="bathrooms" name="bathrooms" type="text" inputmode="numeric" autocomplete="off"
+                                   data-kind="int" aria-describedby="bathrooms-error">
+                            
+                            <p class="field__error" id="bathrooms-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                        </div>
+                        <div class="field" data-applies="kitchens">
+                            <label class="field__label" for="kitchens">Cuisines <span class="field__optional">(facultatif)</span></label>
+                            <input class="input" id="kitchens" name="kitchens" type="text" inputmode="numeric" autocomplete="off"
+                                   data-kind="int" aria-describedby="kitchens-error">
+                            
+                            <p class="field__error" id="kitchens-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                        </div>
+                        <div class="field" data-applies="parkings">
+                            <label class="field__label" for="parkings">Places de parking <span class="field__optional">(facultatif)</span></label>
+                            <input class="input" id="parkings" name="parkings" type="text" inputmode="numeric" autocomplete="off"
+                                   data-kind="int" aria-describedby="parkings-error">
+                            <p class="owner-value" hidden data-owner-for="parkings"></p>
+                            <p class="field__error" id="parkings-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                        </div>
+                        <div class="field" data-applies="levels">
+                            <label class="field__label" for="levels">Niveaux <span class="field__optional">(facultatif)</span></label>
+                            <input class="input" id="levels" name="levels" type="text" inputmode="numeric" autocomplete="off"
+                                   data-kind="int" aria-describedby="levels-error">
+                            
+                            <p class="field__error" id="levels-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                        </div>
+                        <div class="field" data-applies="floorLevel">
+                            <label class="field__label" for="floorLevel">Étage <span class="field__optional">(0&nbsp;: rez-de-chaussée)</span></label>
+                            <input class="input" id="floorLevel" name="floorLevel" type="text" inputmode="numeric" autocomplete="off"
+                                   data-kind="int" aria-describedby="floorLevel-error">
+                            
+                            <p class="field__error" id="floorLevel-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="field__label" for="area">Surface</label>
+                        <div class="input-unit">
+                            <input class="input" id="area" name="area" type="text" inputmode="numeric" autocomplete="off"
+                                   data-kind="int" aria-describedby="area-error">
+                            <span aria-hidden="true" class="input-unit__suffix">m²</span>
+                        </div>
+                        <p class="owner-value" hidden data-owner-for="area"></p>
+                        <p class="field__error" id="area-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                    </div>
+
+                    <div class="form__actions">
+                        <a class="btn btn--outline" href="../listing.html" data-back-link>Annuler</a>
+                        <button type="submit" class="btn btn--primary" data-section-submit>Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
