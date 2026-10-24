@@ -185,7 +185,7 @@ management:
         health:
             show-details: always
             group:
-                llm:                        # The LLM is out of the default group, see ChatClientHealthEndpointGroupsPostProcessor
+                llm: # The LLM is out of the default group, see ChatClientHealthEndpointGroupsPostProcessor
                     include: "chatClient"
         info:
             git:
@@ -239,7 +239,7 @@ ndopify:
             nearby-max-neighborhoods: 20   # Only the nearest ones (searchNearest returns them nearest first)
             manual-after-days: 3           # Without an agent after 3 days, the mandate goes to MANUAL_ASSIGNMENT
             night: # No offer, and the TTL is paused, from start to end (tenant's local time)
-                start: "23:00"
+                start: "06:59"
                 end: "07:00"
             expire:
                 cron: "0 */15 * * * ?"     # Every 15 minutes: offers past their TTL go to the next agent

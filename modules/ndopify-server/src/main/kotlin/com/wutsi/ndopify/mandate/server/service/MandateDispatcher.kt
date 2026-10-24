@@ -108,7 +108,8 @@ class MandateDispatcher(
         }
 
         val distances = distances(mandate)
-        val best = score(mandate, findCandidates(mandate, distances), distances).maxByOrNull { it.second }
+        val candidates = findCandidates(mandate, distances)
+        val best = score(mandate, candidates, distances).maxByOrNull { it.second }
         if (best == null) {
             logger.add("no_candidate", true)
             return null

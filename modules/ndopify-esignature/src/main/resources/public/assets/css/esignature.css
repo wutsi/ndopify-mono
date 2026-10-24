@@ -663,9 +663,7 @@ a:hover {
  * nested scroll area is hard to use one-handed and hides how long the text is.
  */
 .contract {
-    padding: var(--space-4) clamp(var(--space-3), 4vw, var(--space-5));
     border: 1px solid var(--color-border-strong);
-    background: var(--color-surface);
     line-height: 1.6;
     overflow-wrap: anywhere;
 }
