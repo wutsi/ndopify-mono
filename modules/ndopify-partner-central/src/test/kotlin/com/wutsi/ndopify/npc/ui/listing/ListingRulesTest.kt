@@ -51,6 +51,10 @@ class ListingRulesTest {
         assertEquals(ListingRules.Tag("En vérification", "warning"), ListingRules.tag(ListingStatus.PUBLISHING))
         assertEquals(ListingRules.Tag("Publiée", "success"), ListingRules.tag(ListingStatus.PUBLISHED))
         assertEquals(ListingRules.Tag("Fermée", "neutral"), ListingRules.tag(ListingStatus.RENTED))
+        assertEquals(ListingRules.Tag("Fermée", "neutral"), ListingRules.tag(ListingStatus.SOLD))
+        assertEquals(ListingRules.Tag("Fermée", "neutral"), ListingRules.tag(ListingStatus.EXPIRED))
+        assertEquals(ListingRules.Tag("Fermée", "neutral"), ListingRules.tag(ListingStatus.CANCELLED))
+        assertEquals(ListingRules.Tag("En attente", "warning"), ListingRules.tag(ListingStatus.PENDING))
     }
 
     @Test
@@ -77,6 +81,23 @@ class ListingRulesTest {
         }
 
         assertTrue(ListingRules.complete(listing.copy(sections = sections)))
+    }
+
+    @Test
+    fun `complete - a section the server says is required`() {
+        val listing = ListingViewsTest.COMPLETE
+        val sections = listing.sections.map {
+            if (it.section == ListingSection.REMARKS) it.copy(status = ListingSectionStatus.TO_VERIFY, required = true) else it
+        }
+
+        assertFalse(ListingRules.complete(listing.copy(sections = sections)))
+        assertTrue(ListingRules.required(listing.copy(sections = sections), ListingSection.REMARKS))
+        assertFalse(ListingRules.required(listing, ListingSection.REMARKS))
+    }
+
+    @Test
+    fun `required - a section the server doesn't list`() {
+        assertTrue(ListingRules.required(Listing(), ListingSection.GPS))
     }
 
     @Test

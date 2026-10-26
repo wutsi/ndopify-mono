@@ -28,9 +28,6 @@ object ListingRules {
     /** The sections saved with a form: the photos are uploaded instead. */
     val FORM_SECTIONS: List<ListingSection> = SECTIONS - ListingSection.PHOTOS
 
-    /** Not needed to send the listing. */
-    val OPTIONAL_SECTIONS: Set<ListingSection> = setOf(ListingSection.REMARKS)
-
     val LABELS: Map<ListingSection, String> = linkedMapOf(
         ListingSection.LOCATION to "Emplacement",
         ListingSection.GPS to "Position GPS",
@@ -51,7 +48,11 @@ object ListingRules {
     private val PUBLISHED_TAG = Tag("Publiée", "success")
 
     // Rented, sold, expired, cancelled: no wording in the prototype, which stops at the publication.
+    private val CLOSED = setOf(ListingStatus.RENTED, ListingStatus.SOLD, ListingStatus.EXPIRED, ListingStatus.CANCELLED)
     private val CLOSED_TAG = Tag("Fermée", "neutral")
+
+    // PENDING (and UNKNOWN, never shown: the page is then locked): no code sets it yet, neither closed nor sent.
+    private val PENDING_TAG = Tag("En attente", "warning")
 
     /** The URL's name of a section: `/listings/{id}/location`. */
     fun slug(section: ListingSection): String = section.name.lowercase()
@@ -63,7 +64,8 @@ object ListingRules {
         status == ListingStatus.DRAFT -> DRAFT_TAG
         sent(status) -> SENT_TAG
         status == ListingStatus.PUBLISHED -> PUBLISHED_TAG
-        else -> CLOSED_TAG
+        status in CLOSED -> CLOSED_TAG
+        else -> PENDING_TAG
     }
 
     /** Being checked by Ndopify: sent, not published yet. */
@@ -73,9 +75,16 @@ object ListingRules {
     fun done(listing: Listing, section: ListingSection): Boolean =
         listing.sections.any { it.section == section && it.status == ListingSectionStatus.VERIFIED }
 
-    /** Every section but the optional ones done: the listing can be sent. */
+    /**
+     * Needed to send the listing, as ndopify-server's checklist says (`ListingSectionSummary.required`: only REMARKS
+     * isn't, today); a section it doesn't list is.
+     */
+    fun required(listing: Listing, section: ListingSection): Boolean =
+        listing.sections.firstOrNull { it.section == section }?.required ?: true
+
+    /** Every required section done: the listing can be sent. Without its checklist, it can't be told: no. */
     fun complete(listing: Listing): Boolean =
-        SECTIONS.filter { it !in OPTIONAL_SECTIONS }.all { done(listing, it) }
+        listing.sections.isNotEmpty() && SECTIONS.filter { required(listing, it) }.all { done(listing, it) }
 
     /** Only a DRAFT changes: nothing does while it's checked, nor once published. */
     fun editable(listing: Listing): Boolean = listing.status == ListingStatus.DRAFT

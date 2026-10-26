@@ -36,7 +36,7 @@ object ListingViews {
         formatter: TenantFormatter,
     ): ListingView {
         val editable = ListingRules.editable(listing)
-        val required = ListingRules.SECTIONS.filter { it !in ListingRules.OPTIONAL_SECTIONS }
+        val required = ListingRules.SECTIONS.filter { ListingRules.required(listing, it) }
         val done = required.count { ListingRules.done(listing, it) }
         val left = required.filter { !ListingRules.done(listing, it) }.map { missing(it, images) }
         val published = listing.status == ListingStatus.PUBLISHED
@@ -105,7 +105,7 @@ object ListingViews {
             listing == null -> null
             draft -> {
                 val left = ListingRules.SECTIONS
-                    .filter { it !in ListingRules.OPTIONAL_SECTIONS && !ListingRules.done(listing, it) }
+                    .filter { ListingRules.required(listing, it) && !ListingRules.done(listing, it) }
                     .map { ListingRules.LABELS.getValue(it) }
                 "Annonce en brouillon : " +
                     if (left.isEmpty()) "prête à être envoyée." else "encore à faire, ${left.joinToString(", ")}."
@@ -166,7 +166,7 @@ object ListingViews {
         ListingSection.PROPERTY -> listOfNotNull(
             listing.propertyType?.let { MandateLabels.PROPERTY_TYPE_LABELS[it] },
             listing.rooms?.let { plural(it, "chambre", "chambres") },
-            listing.area?.let { "${MandateLabels.formatNumber(it)} m²" },
+            listing.area?.let { "${formatter.count(it.toLong())} m²" },
         ).joinToString(" · ")
 
         ListingSection.AMENITIES -> {
@@ -197,7 +197,8 @@ object ListingViews {
     }
 
     private fun state(listing: Listing, section: ListingSection): ListingRules.Tag = when {
-        section == ListingSection.REMARKS -> if (listing.agentRemarks != null) REMARKS_ADDED else OPTIONAL
+        section == ListingSection.REMARKS && !ListingRules.required(listing, section) ->
+            if (listing.agentRemarks != null) REMARKS_ADDED else OPTIONAL
         ListingRules.done(listing, section) -> VERIFIED
         section == ListingSection.PHOTOS -> TO_COMPLETE
         else -> TO_VERIFY

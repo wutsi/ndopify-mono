@@ -30,6 +30,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.client.HttpServerErrorException
 import org.thymeleaf.spring6.SpringTemplateEngine
 import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
@@ -195,7 +196,9 @@ class ListingTemplateTest {
     fun outcome() {
         val page = render(outcome = ListingController.SENT)
 
-        val flash = page.selectFirst("[data-listing-flash]")!!
+        assertEquals(1, page.select("[data-listing-flash]").size)
+        val flash = page.selectFirst("[data-listing] > [data-listing-flash]")!!
+        assertEquals("page-intro mandate-intro", flash.previousElementSibling()?.className())
         assertEquals("alert alert--success", flash.className())
         assertEquals("status", flash.attr("role"))
         assertEquals("Annonce envoyée. Nous vous préviendrons dès sa publication.", flash.text())
@@ -207,6 +210,41 @@ class ListingTemplateTest {
 
         assertEquals("alert alert--error", flash.className())
         assertEquals("alert", flash.attr("role"))
+    }
+
+    @Test
+    fun `locked - with outcome`() {
+        doReturn(LISTING.copy(agentId = 999)).whenever(listingClient).get(501)
+
+        val page = render(outcome = ListingController.CHANGED)
+
+        assertNotNull(page.selectFirst("[data-listing-locked]"))
+        assertEquals(
+            "Cette annonce a changé entre-temps : vérifiez son état avant de recommencer.",
+            page.selectFirst("[data-listing-flash]")?.text(),
+        )
+    }
+
+    @Test
+    fun unavailable() {
+        doThrow(HttpServerErrorException(HttpStatus.SERVICE_UNAVAILABLE)).whenever(listingClient).get(501)
+
+        val page = render()
+
+        assertNull(page.selectFirst("[data-listing-locked]"))
+        assertEquals(
+            "Annonce indisponible pour le moment Réessayez dans quelques instants.",
+            page.selectFirst("[data-listing-unavailable]")?.text(),
+        )
+        assertEquals("/#mandates-title", page.selectFirst(".back-link a")?.attr("href"))
+    }
+
+    @Test
+    fun pending() {
+        val page = render(COMPLETE.copy(status = ListingStatus.PENDING))
+
+        assertEquals("En attente", page.selectFirst(".mandate-intro .status-tag")?.text())
+        assertTrue(page.select("[data-listing-panel]").isEmpty())
     }
 
     @Test

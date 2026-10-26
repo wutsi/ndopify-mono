@@ -34,6 +34,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.client.HttpServerErrorException
 import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.servlet.view.InternalResourceViewResolver
 import kotlin.test.assertEquals
@@ -119,6 +120,42 @@ class ListingControllerTest {
     }
 
     @Test
+    fun `show - server error is unavailable, not locked`() {
+        doThrow(HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR)).whenever(listingClient).get(501)
+
+        val result = mvc.perform(get("/listings/501")).andReturn()
+
+        assertEquals("listing", result.modelAndView?.viewName)
+        assertEquals(true, model(result)["unavailable"])
+        assertNull(model(result)["locked"])
+    }
+
+    @Test
+    fun `show - network error is unavailable`() {
+        doThrow(ResourceAccessException("down")).whenever(listingClient).get(501)
+
+        assertEquals(true, model(mvc.perform(get("/listings/501")).andReturn())["unavailable"])
+    }
+
+    @Test
+    fun `show - unknown status is locked`() {
+        doReturn(LISTING.copy(status = ListingStatus.UNKNOWN)).whenever(listingClient).get(501)
+
+        assertEquals(true, model(mvc.perform(get("/listings/501")).andReturn())["locked"])
+    }
+
+    @Test
+    fun `show - outcome on the locked view`() {
+        doReturn(LISTING.copy(agentId = 999)).whenever(listingClient).get(501)
+
+        val result = mvc.perform(get("/listings/501").flashAttr(ListingController.OUTCOME, ListingController.CHANGED))
+            .andReturn()
+
+        assertEquals(true, model(result)["locked"])
+        assertEquals("warning", model(result)["outcomeStyle"])
+    }
+
+    @Test
     fun `show - malformed id is locked`() {
         val result = mvc.perform(get("/listings/abc")).andReturn()
 
@@ -191,6 +228,22 @@ class ListingControllerTest {
     }
 
     @Test
+    fun `send - incomplete for the server`() {
+        doReturn(COMPLETE).whenever(listingClient).get(501)
+        doThrow(conflict(ErrorCode.LISTING_INCOMPLETE)).whenever(listingClient).verify(501)
+
+        assertEquals(ListingController.INCOMPLETE, flash(mvc.perform(post("/listings/501/verify")).andReturn()))
+    }
+
+    @Test
+    fun `send - malformed id`() {
+        val result = mvc.perform(post("/listings/abc/verify")).andReturn()
+
+        verify(listingClient, never()).get(any())
+        assertEquals("redirect:/", result.modelAndView?.viewName)
+    }
+
+    @Test
     fun `send - failure`() {
         doReturn(COMPLETE).whenever(listingClient).get(501)
         doThrow(ResourceAccessException("down")).whenever(listingClient).verify(501)
@@ -257,6 +310,35 @@ class ListingControllerTest {
 
         verify(listingClient, never()).create(any())
         assertEquals(MandateController.CHANGED, result.flashMap[MandateController.OUTCOME])
+    }
+
+    @Test
+    fun `create - mandate not the agent's for the server`() {
+        doThrow(HttpClientErrorException(HttpStatus.FORBIDDEN)).whenever(mandateClient).get(203)
+
+        val result = mvc.perform(post("/mandates/203/listing")).andReturn()
+
+        verify(listingClient, never()).create(any())
+        assertEquals("redirect:/mandates/203", result.modelAndView?.viewName)
+        assertEquals(MandateController.CHANGED, result.flashMap[MandateController.OUTCOME])
+    }
+
+    @Test
+    fun `create - no listing id returned`() {
+        doReturn(-1L).whenever(listingClient).create(203)
+
+        val result = mvc.perform(post("/mandates/203/listing")).andReturn()
+
+        assertEquals("redirect:/mandates/203", result.modelAndView?.viewName)
+        assertEquals(MandateController.FAILED, result.flashMap[MandateController.OUTCOME])
+    }
+
+    @Test
+    fun `create - malformed id`() {
+        val result = mvc.perform(post("/mandates/abc/listing")).andReturn()
+
+        verify(mandateClient, never()).get(any())
+        assertEquals("redirect:/", result.modelAndView?.viewName)
     }
 
     @Test

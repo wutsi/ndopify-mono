@@ -27,7 +27,8 @@
   refused. "Envoyer pour vérification" (POST /listings/{id}/verify) stays inactive until every section but the
   remarks is done, and says what's left; without JS it still posts, and the controller refuses it. Sent, the listing
   is read-only while it's checked, then published with its title and summary written by Ndopify.
-  "listing" is the ListingView, absent when "locked" (not found, or not the agent's). "outcomeText" / "outcomeStyle"
+  "listing" is the ListingView, absent when "locked" (not found, or not the agent's) or "unavailable"
+  (ndopify-server couldn't answer). "outcomeText" / "outcomeStyle"
   are the last action's outcome (flash attribute "outcome", worded by ListingController).
 */-->
 <body data-page="listing">
@@ -57,6 +58,27 @@
             <p class="back-link"><a th:href="${listing} ? @{/mandates/{id}(id=${listing.mandateId})} : @{/#mandates-title}"
                                     th:text="${listing} ? '← Retour au mandat' : '← Retour à l\'espace agent'">← Retour au mandat</a></p>
 
+            <!--
+                Outcome of the last action (sent, or why it couldn't be): under the title, or first on the locked or
+                unavailable view (a fragment, used twice).
+            -->
+            <th:block th:if="${listing == null}"><div th:fragment="flash" th:if="${outcomeText}" th:class="|alert alert--${outcomeStyle}|" tabindex="-1"
+                 th:attr="role=${outcomeStyle == 'error'} ? 'alert' : 'status'" data-listing-flash>
+                <svg th:if="${outcomeStyle == 'success'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <svg th:if="${outcomeStyle == 'warning'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <svg th:if="${outcomeStyle == 'error'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <p data-listing-flash-text th:text="${outcomeText}">Annonce envoyée.</p>
+            </div></th:block>
+
+            <!-- Unavailable: ndopify-server couldn't answer. Not the locked view: the listing may be there. -->
+            <div class="alert alert--error" role="alert" th:if="${unavailable}" data-listing-unavailable>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <div>
+                    <h1 class="alert__title">Annonce indisponible pour le moment</h1>
+                    <p>Réessayez dans quelques instants.</p>
+                </div>
+            </div>
+
             <!-- Locked: no such listing, or not one of the agent's mandates. -->
             <div class="alert alert--warning" th:if="${locked}" data-listing-locked>
                 <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
@@ -76,14 +98,7 @@
                         <span th:text="${l.createdAt}">20 oct. 2026</span></p>
                 </div>
 
-                <!-- Outcome of the last action (sent, or why it couldn't be). -->
-                <div th:if="${outcomeText}" th:class="|alert alert--${outcomeStyle}|" tabindex="-1"
-                     th:attr="role=${outcomeStyle == 'error'} ? 'alert' : 'status'" data-listing-flash>
-                    <svg th:if="${outcomeStyle == 'success'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    <svg th:if="${outcomeStyle == 'warning'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
-                    <svg th:if="${outcomeStyle == 'error'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                    <p data-listing-flash-text th:text="${outcomeText}">Annonce envoyée.</p>
-                </div>
+                <div th:replace="~{:: flash}"></div>
 
                 <!-- One panel per status, above the checklist. -->
                 <div class="hint" th:if="${l.panel == 'DRAFT'}" data-listing-panel="DRAFT">

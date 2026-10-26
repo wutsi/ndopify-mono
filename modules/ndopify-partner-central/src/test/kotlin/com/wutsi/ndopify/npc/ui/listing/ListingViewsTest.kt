@@ -229,6 +229,25 @@ class ListingViewsTest {
     }
 
     @Test
+    fun `area in the tenant's format`() {
+        val view = of(LISTING.copy(area = 1200))
+
+        assertEquals("Appartement · 2 chambres · 1\u00a0200 m²", row(view, ListingSection.PROPERTY).summary)
+    }
+
+    @Test
+    fun `required sections are the server's`() {
+        val sections = LISTING.sections.map {
+            if (it.section == ListingSection.REMARKS) it.copy(required = true) else it
+        }
+        val view = of(LISTING.copy(sections = sections))
+
+        assertEquals("1 sections sur 7 vérifiées", view.progress)
+        assertTrue(view.missing.endsWith(", Vos remarques."))
+        assertEquals(ListingRules.Tag("À vérifier", "warning"), row(view, ListingSection.REMARKS).state)
+    }
+
+    @Test
     fun `no names`() {
         val view = ListingViews.of(LISTING, IMAGES, emptyMap(), formatter)
 

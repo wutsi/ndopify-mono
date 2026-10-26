@@ -4,6 +4,7 @@ import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.Listing
+import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
@@ -49,6 +50,7 @@ class ListingController(
 
         const val VIEW = "listing"
         const val SIGN_OUT = "redirect:/logout"
+        const val HOME = "redirect:/"
 
         const val OUTCOME = "outcome"
         const val SENT = "sent"
@@ -57,6 +59,9 @@ class ListingController(
         const val INCOMPLETE = "incomplete"
         const val CHANGED = "changed"
         const val FAILED = "error"
+
+        // The listing couldn't be loaded (5xx, network): not the locked view, it may be there
+        const val UNAVAILABLE = "unavailable"
 
         // 403: no longer the agent's; 404: gone; 409: changed since the page was shown
         private val CHANGED_STATUSES = setOf(403, 404, 409)
@@ -70,18 +75,23 @@ class ListingController(
         val agent = currentAgent.get() ?: return SIGN_OUT
         ProfileRules.header(agent, model)
 
-        val listing = id.toLongOrNull()?.let { load(it, agent) } ?: return locked(model)
+        (model.getAttribute(OUTCOME) as? String)?.let { outcome(it, model) }
+        val listing = id.toLongOrNull()?.let { load(it, agent, model) } ?: return locked(model)
         val images = lookup("images of listing ${listing.id}") { listingClient.images(listing.id) }
         val view = ListingViews.of(listing, images, locations(listing), formatter())
         model.addAttribute("listing", view)
-        (model.getAttribute(OUTCOME) as? String)?.let { outcome(it, model) }
         return VIEW
     }
 
-    /** Checked here too: without JS the inactive button still posts. ndopify-server moves it to UNDER_VERIFICATION. */
+    /**
+     * Checked here too: without JS the inactive button still posts. ndopify-server moves it to UNDER_VERIFICATION,
+     * and checks the checklist again (409 LISTING_INCOMPLETE, ex: a photo refused meanwhile). A hand-edited [id] goes
+     * back to the Espace agent.
+     */
     @PostMapping("/listings/{id}/verify")
-    fun send(@PathVariable id: Long, redirect: RedirectAttributes): String {
+    fun send(@PathVariable("id") value: String, redirect: RedirectAttributes): String {
         val agent = currentAgent.get() ?: return SIGN_OUT
+        val id = value.toLongOrNull() ?: return HOME
 
         val outcome =
             try {
@@ -96,7 +106,11 @@ class ListingController(
                 }
             } catch (ex: HttpClientErrorException) {
                 LOGGER.warn("Listing $id not sent: ${ex.statusCode}")
-                if (ex.statusCode.value() in CHANGED_STATUSES) CHANGED else FAILED
+                when {
+                    errorCode(ex) == ErrorCode.LISTING_INCOMPLETE -> INCOMPLETE
+                    ex.statusCode.value() in CHANGED_STATUSES -> CHANGED
+                    else -> FAILED
+                }
             } catch (ex: RestClientException) {
                 LOGGER.error("Listing $id not sent", ex)
                 FAILED
@@ -107,11 +121,13 @@ class ListingController(
 
     /**
      * Opens the listing of an approved LISTING mandate of the agent, creating it the first time. One created meanwhile
-     * (ndopify-server's 409 LISTING_ALREADY_EXISTS, ex: from another tab) is opened instead.
+     * (ndopify-server's 409 LISTING_ALREADY_EXISTS, ex: from another tab) is opened instead. A hand-edited [id] goes
+     * back to the Espace agent.
      */
     @PostMapping("/mandates/{id}/listing")
-    fun create(@PathVariable id: Long, redirect: RedirectAttributes): String {
+    fun create(@PathVariable("id") value: String, redirect: RedirectAttributes): String {
         val agent = currentAgent.get() ?: return SIGN_OUT
+        val id = value.toLongOrNull() ?: return HOME
 
         val outcome =
             try {
@@ -120,7 +136,10 @@ class ListingController(
                     MandateController.CHANGED
                 } else {
                     val listingId = mandate.listingId ?: listingClient.create(id)
-                    return "redirect:/listings/$listingId"
+                    // No id in ndopify-server's answer: nothing to open
+                    if (listingId > 0) return "redirect:/listings/$listingId"
+                    LOGGER.error("No listing id returned for mandate $id")
+                    MandateController.FAILED
                 }
             } catch (ex: HttpClientErrorException) {
                 LOGGER.warn("No listing created for mandate $id: ${ex.statusCode}")
@@ -163,16 +182,23 @@ class ListingController(
     }
 
     private fun locked(model: Model): String {
-        model.addAttribute("locked", true)
+        if (model.getAttribute(UNAVAILABLE) != true) model.addAttribute("locked", true)
         return VIEW
     }
 
-    /** The agent's listing; null when it can't be had or is another agent's. */
-    private fun load(id: Long, agent: Agent): Listing? =
+    /**
+     * The agent's listing; null when it can't be had: locked when it's not found or another agent's (or a status the
+     * page doesn't know), [UNAVAILABLE] when ndopify-server can't answer, since retrying may then help.
+     */
+    private fun load(id: Long, agent: Agent, model: Model): Listing? =
         try {
-            listingClient.get(id).takeIf { it.agentId == agent.id }
+            listingClient.get(id).takeIf { it.agentId == agent.id && it.status != ListingStatus.UNKNOWN }
+        } catch (ex: HttpClientErrorException) {
+            LOGGER.warn("No listing $id: ${ex.statusCode}")
+            null
         } catch (ex: RestClientException) {
-            LOGGER.warn("No listing $id: ${ex.message}")
+            LOGGER.error("No listing $id", ex)
+            model.addAttribute(UNAVAILABLE, true)
             null
         }
 
