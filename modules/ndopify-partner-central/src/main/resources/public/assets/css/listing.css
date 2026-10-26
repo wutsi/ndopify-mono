@@ -161,6 +161,11 @@ a.checklist__row:focus-visible {
     object-fit: cover;
 }
 
+.photo__link:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
 .photo__note {
     padding: var(--space-1) var(--space-2);
     font-size: var(--step-hint);
@@ -202,6 +207,114 @@ a.checklist__row:focus-visible {
 .photo__delete:focus-visible {
     outline: 2px solid var(--color-focus);
     outline-offset: 2px;
+}
+
+/* Viewer: a photo full screen, the others beside it in a strip that swipes (listing.js builds it). */
+html:has(.viewer[open]) {
+    overflow: hidden;
+}
+
+.viewer {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: var(--color-overlay);
+    color: var(--color-on-overlay);
+}
+
+.viewer[open] {
+    display: flex;
+}
+
+.viewer__track {
+    display: flex;
+    flex: 1;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+}
+
+.viewer__track::-webkit-scrollbar {
+    display: none;
+}
+
+.viewer__slide {
+    display: flex;
+    flex: 0 0 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-5) var(--space-2);
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+}
+
+.viewer__slide img {
+    max-width: 100%;
+    max-height: calc(100vh - 8rem);
+    max-height: calc(100dvh - 8rem);
+    object-fit: contain;
+}
+
+.viewer__slide figcaption {
+    font-size: var(--step-hint);
+}
+
+.viewer__count {
+    position: absolute;
+    top: var(--space-3);
+    left: var(--space-3);
+    margin: 0;
+    font-size: var(--step-hint);
+}
+
+.viewer__button {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--target);
+    height: var(--target);
+    border: 1px solid var(--color-border-strong);
+    border-radius: 50%;
+    background: var(--color-bg);
+    color: var(--color-fg);
+    cursor: pointer;
+}
+
+.viewer__button:disabled {
+    visibility: hidden;
+}
+
+.viewer__button:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
+.viewer__close {
+    top: var(--space-2);
+    right: var(--space-2);
+}
+
+.viewer__prev,
+.viewer__next {
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.viewer__prev {
+    left: var(--space-2);
+}
+
+.viewer__next {
+    right: var(--space-2);
 }
 
 .photo-tips {

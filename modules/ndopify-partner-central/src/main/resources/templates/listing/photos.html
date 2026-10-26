@@ -25,7 +25,7 @@
   the SectionView (absent when "locked" or "unavailable"), "photos" the PhotosView, "photoError" why the last upload
   or deletion failed. Without JS, the photos taken or chosen are sent with "Envoyer les photos" (POST, multipart, one
   or several "photo" files); listing.js shrinks each and sends it as soon as it's chosen. Each photo is deleted with
-  its own form. Once sent ("section.editable" false), the photos are only shown.
+  its own form, and opens full size in a new tab (listing.js: in a full-screen viewer instead). Once sent ("section.editable" false), the photos are only shown.
 */-->
 <body data-page="listing-photos" th:attr="data-section=${section} ? 'photos' : null">
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -113,7 +113,9 @@
                 <p class="visually-hidden" aria-live="polite" data-photo-live></p>
                 <ul class="photos" data-photos>
                     <li th:each="photo : ${p.photos}" th:class="${photo.rejected} ? 'photo photo--rejected' : 'photo'">
-                        <img th:src="${photo.url}" th:alt="${photo.alt}" width="480" height="480" loading="lazy">
+                        <a class="photo__link" th:href="${photo.url}" target="_blank" rel="noopener" data-photo-link>
+                            <img th:src="${photo.url}" th:alt="${photo.alt}" width="480" height="480" loading="lazy">
+                            <span class="visually-hidden">(nouvel onglet)</span></a>
                         <p class="photo__note" th:text="${photo.note}" data-photo-note>Envoyée</p>
                         <form th:if="${e}" method="post" th:action="@{/listings/{id}/photos/{image}/delete(id=${s.listingId}, image=${photo.id})}"
                               data-photo-delete-form>

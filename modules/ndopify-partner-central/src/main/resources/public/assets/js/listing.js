@@ -7,7 +7,9 @@
  * - sections: a button that posted is disabled ("Enregistrement…"), a field's error goes once it's changed; "Le bien"
  *   shows the types of the chosen category and the questions of the type only; "Position GPS" takes the phone's
  *   position (the typed latitude / longitude stay the fallback), with its accuracy and a map link;
- * - photos: each photo taken or chosen is checked, shrunk and sent at once, without "Envoyer les photos".
+ * - photos: each photo taken or chosen is checked, shrunk and sent at once, without "Envoyer les photos"; a photo
+ *   opens in a full-screen viewer (a <dialog>), swiped or browsed with its buttons and the arrow keys, instead of a
+ *   new tab.
  * Ported from the prototype (src/main/html/assets/js/partner-central.js: initListing, initListingSection,
  * initListingProperty, initListingGps, initListingPhotos).
  */
@@ -233,7 +235,131 @@
         img.src = url;
     }
 
+    // The viewer: the photos side by side in a scroll-snap strip, so a swipe moves to the next one natively
+    function initViewer() {
+        var links = $all("[data-photo-link]");
+        // Without <dialog>, each photo still opens in a new tab
+        if (!links.length || typeof HTMLDialogElement !== "function") return;
+        var smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        // The photo shown, and the one the strip is moving to (a second press while it slides goes one further)
+        var current = 0;
+        var target = 0;
+
+        function el(tag, className, text) {
+            var node = document.createElement(tag);
+            if (className) node.className = className;
+            if (text) node.textContent = text;
+            return node;
+        }
+
+        function button(className, label, icon) {
+            var node = el("button", "viewer__button " + className);
+            node.type = "button";
+            node.setAttribute("aria-label", label);
+            node.innerHTML = '<svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="' +
+                icon + '" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" ' +
+                'stroke-linejoin="round"/></svg>';
+            return node;
+        }
+
+        var dialog = el("dialog", "viewer");
+        dialog.setAttribute("aria-label", "Photos de l'annonce");
+        var count = el("p", "viewer__count");
+        count.setAttribute("aria-live", "polite");
+        var track = el("div", "viewer__track");
+        var prev = button("viewer__prev", "Photo précédente", "m12 5-5 5 5 5");
+        var next = button("viewer__next", "Photo suivante", "m8 5 5 5-5 5");
+        var close = button("viewer__close", "Fermer", "m6 6 8 8M14 6l-8 8");
+
+        links.forEach(function (link, i) {
+            var thumb = $("img", link);
+            var note = $("[data-photo-note]", link.closest("li"));
+            var slide = el("figure", "viewer__slide");
+            var img = el("img");
+            img.src = link.href;
+            img.alt = thumb.alt;
+            img.loading = "lazy";
+            slide.appendChild(img);
+            if (note) slide.appendChild(el("figcaption", null, note.textContent));
+            track.appendChild(slide);
+
+            // With JS the photo opens here: the "(nouvel onglet)" hint is for browsers without it
+            var hint = $(".visually-hidden", link);
+            if (hint) link.removeChild(hint);
+            link.setAttribute("aria-haspopup", "dialog");
+            link.addEventListener("click", function (event) {
+                // Ctrl/Cmd/Shift-click still opens the photo in a tab
+                if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
+                event.preventDefault();
+                open(i);
+            });
+        });
+        [count, track, prev, next, close].forEach(function (node) {
+            dialog.appendChild(node);
+        });
+        document.body.appendChild(dialog);
+
+        function show(i) {
+            current = i;
+            count.textContent = "Photo " + (i + 1) + " sur " + links.length;
+            // At the first or last photo, its button goes: the focus moves to the other one first, not to the page
+            var first = i === 0;
+            var last = i === links.length - 1;
+            if (document.activeElement === prev && first) (last ? close : next).focus();
+            if (document.activeElement === next && last) (first ? close : prev).focus();
+            prev.disabled = first;
+            next.disabled = last;
+        }
+
+        function go(step) {
+            var i = target + step;
+            if (i < 0 || i >= links.length) return;
+            target = i;
+            track.scrollTo({ left: i * track.clientWidth, behavior: smooth ? "smooth" : "auto" });
+        }
+
+        function open(i) {
+            dialog.showModal();
+            track.scrollLeft = i * track.clientWidth;
+            target = i;
+            show(i);
+            close.focus();
+        }
+
+        // A swipe or a button scrolls the strip: the photo shown is the one it stopped on
+        var frame = 0;
+        track.addEventListener("scroll", function () {
+            window.cancelAnimationFrame(frame);
+            frame = window.requestAnimationFrame(function () {
+                var i = Math.round(track.scrollLeft / track.clientWidth);
+                if (i !== current) show(i);
+                if (Math.abs(track.scrollLeft - i * track.clientWidth) < 1) target = i;
+            });
+        });
+        prev.addEventListener("click", function () {
+            go(-1);
+        });
+        next.addEventListener("click", function () {
+            go(1);
+        });
+        close.addEventListener("click", function () {
+            dialog.close();
+        });
+        document.addEventListener("keydown", function (event) {
+            if (!dialog.open) return;
+            if (event.key === "ArrowLeft") go(-1);
+            else if (event.key === "ArrowRight") go(1);
+            else return;
+            event.preventDefault();
+        });
+        // Back on the page, the focus is on the photo the agent stopped on
+        dialog.addEventListener("close", function () {
+            links[current].focus();
+        });
+    }
+
     function initPhotos() {
+        initViewer();
         var form = $("[data-photo-form]");
         if (!form) return;
         var inputs = $all("[data-photo-input]", form);

@@ -22,8 +22,3 @@ CREATE TABLE T_ASSIGNMENT(
     CONSTRAINT FK_ASSIGNMENT_tenant FOREIGN KEY(tenant_id) REFERENCES T_TENANT(id),
     PRIMARY KEY(id)
 ) ENGINE = InnoDB;
-
-ALTER TABLE T_AGENT ADD COLUMN last_assigned_at DATETIME;
-
--- 1..5 stars; 3 = unrated (neutral in the dispatch score)
-ALTER TABLE T_AGENT ADD COLUMN rating DOUBLE NOT NULL DEFAULT 3.0;

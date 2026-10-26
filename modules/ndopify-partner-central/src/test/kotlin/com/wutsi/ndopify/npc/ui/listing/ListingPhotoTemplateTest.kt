@@ -115,6 +115,12 @@ class ListingPhotoTemplateTest {
         assertEquals(3, photos.size)
         assertEquals("https://cdn/1.jpg", photos[0].selectFirst("img")?.attr("src"))
         assertEquals("Photo 1", photos[0].selectFirst("img")?.attr("alt"))
+        // Each photo opens full size in a new tab
+        val link = photos[0].selectFirst("a[data-photo-link]")!!
+        assertEquals("https://cdn/1.jpg", link.attr("href"))
+        assertEquals("_blank", link.attr("target"))
+        assertEquals("noopener", link.attr("rel"))
+        assertNotNull(link.selectFirst("img"))
         assertEquals("Envoyée", photos[0].selectFirst("[data-photo-note]")?.text())
         assertEquals("Vérifiée", photos[1].selectFirst("[data-photo-note]")?.text())
         assertTrue(photos[2].hasClass("photo--rejected"))
