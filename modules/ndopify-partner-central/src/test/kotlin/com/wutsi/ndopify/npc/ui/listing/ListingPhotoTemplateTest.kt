@@ -86,6 +86,7 @@ class ListingPhotoTemplateTest {
 
         assertEquals("Photos · Annonce · Appartement, Bonapriso — Ndopify Partner Central", page.title())
         assertEquals("listing-photos", page.body().attr("data-page"))
+        assertNotNull(page.selectFirst("script[src=/assets/js/listing.js]"))
         assertEquals("Photos", page.selectFirst("h1")?.text())
         assertEquals("Au moins 5 photos nettes, prises à la lumière du jour.", page.selectFirst("[data-section-instruction]")?.text())
         assertEquals("/listings/501", page.selectFirst(".back-link a")?.attr("href"))
