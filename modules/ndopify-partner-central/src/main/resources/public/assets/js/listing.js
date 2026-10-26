@@ -17,6 +17,8 @@
     // ListingRules
     var MAX_PHOTOS = 20;
     var MAX_PHOTO_BYTES = 5 * 1024 * 1024;
+    // The photos posted together: under spring.servlet.multipart.max-request-size (10 Mo), with room for the rest
+    var MAX_REQUEST_BYTES = 9 * 1024 * 1024;
     var PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
     // A shrunk photo's longest side: sharp enough for a listing, light enough to send many at once
     var MAX_SIDE = 1600;
@@ -146,9 +148,10 @@
         var result = $("[data-gps-result]", form);
         var weak = $("[data-gps-weak]", form);
         var error = $("#latitude-error", form);
+        var manual = $("[data-gps-manual]", form);
 
-        // The phone gives the position: the typed one is only the fallback
-        $("[data-gps-manual]", form).hidden = true;
+        // The phone gives the position: the typed one is only the fallback, back when it can't be had
+        manual.hidden = true;
         button.hidden = false;
 
         function show() {
@@ -179,6 +182,7 @@
             }, function (e) {
                 button.disabled = false;
                 button.textContent = label;
+                manual.hidden = false;
                 setFieldError(button, error, e.code === 1
                     ? "Autorisez l'accès à votre position dans le navigateur, puis réessayez."
                     : "Position introuvable : sortez devant l'entrée du bien et réessayez.");
@@ -283,20 +287,22 @@
                 })[0];
                 if (wrong) return fail(wrong.name + " n'est pas une photo JPEG, PNG ou WEBP.");
 
+                // One after another: a phone decoding 20 full-size photos at once runs out of memory
                 var shrunk = [];
-                var left = files.length;
-                files.forEach(function (file, i) {
-                    shrink(file, function (small) {
-                        shrunk[i] = small || file;
-                        left--;
-                        if (left > 0) return;
-                        var heavy = shrunk.filter(function (photo) {
-                            return photo.size > MAX_PHOTO_BYTES;
-                        })[0];
-                        if (heavy) return fail(heavy.name + " dépasse 5 Mo.");
-                        send(input, shrunk);
+                var total = 0;
+                (function next(i) {
+                    if (i === files.length) return send(input, shrunk);
+                    shrink(files[i], function (small) {
+                        var photo = small || files[i];
+                        if (photo.size > MAX_PHOTO_BYTES) return fail(photo.name + " dépasse 5 Mo.");
+                        total += photo.size;
+                        if (total > MAX_REQUEST_BYTES) {
+                            return fail("Ces photos sont trop lourdes ensemble : choisissez-en moins à la fois.");
+                        }
+                        shrunk.push(photo);
+                        next(i + 1);
                     });
-                });
+                })(0);
             });
         });
 

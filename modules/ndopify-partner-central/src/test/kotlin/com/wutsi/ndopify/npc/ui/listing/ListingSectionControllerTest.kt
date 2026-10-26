@@ -26,6 +26,8 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AKWA
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BASTOS
 import com.wutsi.ndopify.refdata.dto.Location
+import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
+import com.wutsi.ndopify.refdata.dto.SearchLocationResponse
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus
@@ -121,6 +123,25 @@ class ListingSectionControllerTest {
         val result = mvc.perform(get("/listings/501/location")).andReturn()
 
         assertEquals("Douala", model(result)["city"])
+        @Suppress("UNCHECKED_CAST")
+        assertEquals(listOf("Akwa", "Bonapriso"), (model(result)["neighborhoods"] as List<Location>).map { it.name })
+    }
+
+    @Test
+    fun `show - location keeps the listing's neighbourhood past the city's first ones`() {
+        // The city search is capped: the listing's (and the landlord's) neighbourhood may not be in it
+        whenever(locationClient.search(any())).thenAnswer { invocation ->
+            val request = invocation.getArgument<SearchLocationRequest>(0)
+            val locations = if (request.parentId != null) {
+                ProfileFixtures.LOCATIONS.filter { it.id == AKWA }
+            } else {
+                ProfileFixtures.LOCATIONS.filter { request.ids.contains(it.id) }
+            }
+            SearchLocationResponse(locations = locations)
+        }
+
+        val result = mvc.perform(get("/listings/501/location")).andReturn()
+
         @Suppress("UNCHECKED_CAST")
         assertEquals(listOf("Akwa", "Bonapriso"), (model(result)["neighborhoods"] as List<Location>).map { it.name })
     }

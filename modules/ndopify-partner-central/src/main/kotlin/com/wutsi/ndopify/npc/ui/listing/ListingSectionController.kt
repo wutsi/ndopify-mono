@@ -203,9 +203,12 @@ class ListingSectionController(
         return VIEW
     }
 
-    // The city's neighbourhoods, by name; the listing's own one at least when they can't be loaded
+    /**
+     * The city's neighbourhoods, by name. The search is capped ([MAX_NEIGHBORHOODS]): the listing's, the posted and the
+     * landlord's ones of the city (in [locations]) are always added, so the current answer can be kept.
+     */
     private fun neighborhoods(listing: Listing, locations: Map<Long, Location>): List<Location> {
-        val all = lookup("neighbourhoods of city ${listing.cityId}") {
+        val city = lookup("neighbourhoods of city ${listing.cityId}") {
             locationClient.search(
                 SearchLocationRequest(
                     parentId = listing.cityId,
@@ -213,8 +216,9 @@ class ListingSectionController(
                     limit = MAX_NEIGHBORHOODS,
                 ),
             ).locations
-        } ?: listOfNotNull(listing.neighborhoodId?.let { locations[it] })
-        return all.sortedBy { it.name }
+        }.orEmpty()
+        val known = locations.values.filter { it.type == LocationType.NEIGHBORHOOD && it.parentId == listing.cityId }
+        return (city + known).distinctBy { it.id }.sortedBy { it.name }
     }
 
     private fun unavailable(result: ListingAccess.Result, model: Model): String {
