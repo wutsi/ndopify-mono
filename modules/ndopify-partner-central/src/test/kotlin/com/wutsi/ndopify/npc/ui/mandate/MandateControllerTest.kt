@@ -17,14 +17,18 @@ import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
 import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
+import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
+import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest
+import com.wutsi.ndopify.npc.ui.listing.MandateListingView
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.CONTRACT
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.MANDATE
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.NOW
@@ -62,6 +66,7 @@ class MandateControllerTest {
     private val contractClient = mock<NdContractClient>()
     private val customerClient = mock<NdCustomerClient>()
     private val assignmentClient = mock<NdAssignmentClient>()
+    private val listingClient = mock<NdListingClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
@@ -83,6 +88,7 @@ class MandateControllerTest {
             contractClient,
             customerClient,
             assignmentClient,
+            listingClient,
             locationClient,
             tenantContext,
             clock,
@@ -110,6 +116,36 @@ class MandateControllerTest {
         assertEquals("SN", model(result)["initials"])
         assertNull(model(result)["locked"])
         assertNull(model(result)["end"])
+    }
+
+    @Test
+    fun `approved landlord - listing`() {
+        doReturn(APPROVED.copy(mandateType = MandateType.LISTING, listingId = 501)).whenever(mandateClient).get(201)
+        doReturn(ListingViewsTest.LISTING).whenever(listingClient).get(501)
+
+        val view = model(mvc.perform(get("/mandates/201")).andReturn())["mandateListing"] as MandateListingView
+
+        assertEquals("/listings/501", view.url)
+        assertEquals("Continuer l'annonce", view.action)
+    }
+
+    @Test
+    fun `approved landlord - listing unavailable`() {
+        doReturn(APPROVED.copy(mandateType = MandateType.LISTING, listingId = 501)).whenever(mandateClient).get(201)
+        doThrow(ResourceAccessException("down")).whenever(listingClient).get(501)
+
+        val view = model(mvc.perform(get("/mandates/201")).andReturn())["mandateListing"] as MandateListingView
+
+        assertEquals("/listings/501", view.url)
+        assertNull(view.text)
+    }
+
+    @Test
+    fun `approved search - no listing`() {
+        doReturn(APPROVED).whenever(mandateClient).get(201)
+
+        assertNull(model(mvc.perform(get("/mandates/201")).andReturn())["mandateListing"])
+        verify(listingClient, never()).get(any())
     }
 
     @Test

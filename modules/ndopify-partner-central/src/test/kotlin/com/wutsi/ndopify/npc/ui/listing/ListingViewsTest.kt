@@ -9,6 +9,9 @@ import com.wutsi.ndopify.listing.dto.ListingSectionSummary
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.mandate.dto.Mandate
+import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
 import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
@@ -231,5 +234,78 @@ class ListingViewsTest {
 
         assertEquals("Annonce · Appartement", view.title)
         assertEquals("Derrière l'école publique", row(view, ListingSection.LOCATION).summary)
+    }
+
+    private val approved = Mandate(id = 203, status = MandateStatus.APPROVED, mandateType = MandateType.LISTING)
+
+    @Test
+    fun `mandate - no listing yet`() {
+        val view = ListingViews.forMandate(approved, null, formatter)!!
+
+        assertNull(view.url)
+        assertEquals("/mandates/203/listing", view.createUrl)
+        assertEquals("Créer l'annonce", view.action)
+        assertEquals(
+            "Visitez le bien pour vérifier ses caractéristiques et prendre les photos : " +
+                "l'annonce est publiée une fois vérifiée.",
+            view.text,
+        )
+        assertTrue(view.primary)
+    }
+
+    @Test
+    fun `mandate - draft`() {
+        val view = ListingViews.forMandate(approved.copy(listingId = 501), LISTING, formatter)!!
+
+        assertEquals("/listings/501", view.url)
+        assertEquals("Continuer l'annonce", view.action)
+        assertEquals(
+            "Annonce en brouillon : encore à faire, Position GPS, Le bien, Eau, électricité, accès, " +
+                "Loyer et conditions, Photos.",
+            view.text,
+        )
+        assertTrue(view.primary)
+    }
+
+    @Test
+    fun `mandate - draft ready`() {
+        val view = ListingViews.forMandate(approved.copy(listingId = 501), COMPLETE, formatter)!!
+
+        assertEquals("Annonce en brouillon : prête à être envoyée.", view.text)
+    }
+
+    @Test
+    fun `mandate - sent`() {
+        val listing = COMPLETE.copy(status = ListingStatus.UNDER_VERIFICATION, modifiedAt = SENT)
+        val view = ListingViews.forMandate(approved.copy(listingId = 501), listing, formatter)!!
+
+        assertEquals("Annonce envoyée le 22 oct. 2026, en vérification.", view.text)
+        assertEquals("Voir l'annonce", view.action)
+        assertFalse(view.primary)
+    }
+
+    @Test
+    fun `mandate - published`() {
+        val listing = COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT)
+        val view = ListingViews.forMandate(approved.copy(listingId = 501), listing, formatter)!!
+
+        assertEquals("Annonce publiée le 22 oct. 2026.", view.text)
+        assertEquals("Voir l'annonce", view.action)
+    }
+
+    @Test
+    fun `mandate - listing unavailable`() {
+        val view = ListingViews.forMandate(approved.copy(listingId = 501), null, formatter)!!
+
+        assertEquals("/listings/501", view.url)
+        assertNull(view.text)
+        assertEquals("Voir l'annonce", view.action)
+        assertFalse(view.primary)
+    }
+
+    @Test
+    fun `mandate - none for a search or before approval`() {
+        assertNull(ListingViews.forMandate(approved.copy(mandateType = MandateType.SEARCH), null, formatter))
+        assertNull(ListingViews.forMandate(approved.copy(status = MandateStatus.PENDING_APPROVAL), null, formatter))
     }
 }

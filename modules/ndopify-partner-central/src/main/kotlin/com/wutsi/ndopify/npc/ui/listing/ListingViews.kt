@@ -5,6 +5,9 @@ import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingSection
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.mandate.dto.Mandate
+import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.refdata.dto.Location
@@ -74,6 +77,50 @@ object ListingViews {
             },
             editable = editable,
             sendable = editable && left.isEmpty(),
+        )
+    }
+
+    /**
+     * The listing's line on the page of [mandate] (the prototype's `renderListing`); null for a mandate that has none
+     * to have: a search, or a landlord's not signed yet. [listing] is null before it's created, or when it can't be
+     * loaded (only the link is then shown). The photos aren't loaded here: what's left names the section only.
+     */
+    fun forMandate(mandate: Mandate, listing: Listing?, formatter: TenantFormatter): MandateListingView? {
+        if (mandate.mandateType != MandateType.LISTING || mandate.status != MandateStatus.APPROVED) return null
+
+        val createUrl = "/mandates/${mandate.id}/listing"
+        val listingId = mandate.listingId
+            ?: return MandateListingView(
+                url = null,
+                createUrl = createUrl,
+                text = "Visitez le bien pour vérifier ses caractéristiques et prendre les photos : " +
+                    "l'annonce est publiée une fois vérifiée.",
+                action = "Créer l'annonce",
+                primary = true,
+            )
+
+        val url = "/listings/$listingId"
+        val draft = listing != null && ListingRules.editable(listing)
+        val text = when {
+            listing == null -> null
+            draft -> {
+                val left = ListingRules.SECTIONS
+                    .filter { it !in ListingRules.OPTIONAL_SECTIONS && !ListingRules.done(listing, it) }
+                    .map { ListingRules.LABELS.getValue(it) }
+                "Annonce en brouillon : " +
+                    if (left.isEmpty()) "prête à être envoyée." else "encore à faire, ${left.joinToString(", ")}."
+            }
+            ListingRules.sent(listing.status) -> "Annonce envoyée le ${formatter.date(listing.modifiedAt)}, en vérification."
+            listing.status == ListingStatus.PUBLISHED ->
+                listing.publishedAt?.let { "Annonce publiée le ${formatter.date(it)}." } ?: "Annonce publiée."
+            else -> null
+        }
+        return MandateListingView(
+            url = url,
+            createUrl = createUrl,
+            text = text,
+            action = if (draft) "Continuer l'annonce" else "Voir l'annonce",
+            primary = draft,
         )
     }
 

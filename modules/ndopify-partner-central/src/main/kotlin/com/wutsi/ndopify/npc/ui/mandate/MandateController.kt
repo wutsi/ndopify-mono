@@ -4,6 +4,7 @@ import com.wutsi.ndopify.contract.dto.Contract
 import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
 import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
@@ -13,12 +14,14 @@ import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
+import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
+import com.wutsi.ndopify.npc.ui.listing.ListingViews
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import com.wutsi.ndopify.refdata.dto.Location
@@ -52,6 +55,9 @@ import java.time.Clock
  * The edit page (`mandate/edit.html`) is only for a mandate the customer hasn't signed ([MandateRules.EDITABLE]),
  * checked again when it's saved since ndopify-server's update doesn't check the status.
  *
+ * A landlord's signed mandate also shows its listing ([ListingViews.forMandate]): "Créer l'annonce", posted to
+ * `ListingController`, then where the listing stands.
+ *
  * Out of scope for now (and not checked by ndopify-server either): that the mandate is the signed-in agent's.
  */
 @Controller
@@ -62,6 +68,7 @@ class MandateController(
     private val contractClient: NdContractClient,
     private val customerClient: NdCustomerClient,
     private val assignmentClient: NdAssignmentClient,
+    private val listingClient: NdListingClient,
     locationClient: NdLocationClient,
     private val tenantContext: TenantContext,
     private val clock: Clock,
@@ -294,6 +301,7 @@ class MandateController(
         model.addAttribute("form", form)
         model.addAttribute("errors", errors)
         model.addAttribute("currency", formatter().currency())
+        model.addAttribute("mandateListing", ListingViews.forMandate(mandate, listing(mandate), formatter()))
         (model.getAttribute(OUTCOME) as? String)?.let { outcome -> outcome(outcome, view, model) }
         return VIEW
     }
@@ -422,6 +430,13 @@ class MandateController(
     private fun contract(mandate: Mandate): Contract? {
         val id = mandate.contractId ?: return null
         return lookup("contract $id of mandate ${mandate.id}") { contractClient.get(id) }
+    }
+
+    /** A landlord's signed mandate only: its listing, null before it's created or when it can't be loaded. */
+    private fun listing(mandate: Mandate): Listing? {
+        if (mandate.mandateType != MandateType.LISTING || mandate.status != MandateStatus.APPROVED) return null
+        val id = mandate.listingId ?: return null
+        return lookup("listing $id of mandate ${mandate.id}") { listingClient.get(id) }
     }
 
     private fun customer(mandate: Mandate): Customer? =

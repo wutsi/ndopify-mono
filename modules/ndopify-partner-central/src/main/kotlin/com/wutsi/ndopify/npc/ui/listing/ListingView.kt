@@ -47,3 +47,18 @@ data class ChecklistRow(
     val summary: String,
     val state: ListingRules.Tag,
 )
+
+/**
+ * The listing's line on the mandate page (an approved LISTING mandate only): "Créer l'annonce" (a form posting to
+ * [createUrl]) until it exists, then where it stands and a link to it ([url]).
+ */
+data class MandateListingView(
+    /** Null until the listing exists. */
+    val url: String?,
+    val createUrl: String,
+    /** Null when the listing couldn't be loaded: only the link is shown. */
+    val text: String?,
+    val action: String,
+    /** The step's main button while there's something for the agent to do. */
+    val primary: Boolean,
+)
