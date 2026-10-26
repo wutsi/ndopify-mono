@@ -20,6 +20,9 @@ import java.time.LocalDate
 object ListingRules {
     /** Same as ndopify-server's `ListingSectionService.MIN_PHOTOS`. */
     const val MIN_PHOTOS = 5
+    const val MAX_PHOTOS = 20
+    const val MAX_PHOTO_BYTES = 5L * 1024 * 1024
+    val PHOTO_MIME_TYPES = setOf("image/jpeg", "image/png", "image/webp")
 
     const val MAX_LANDMARK = 100
     const val MAX_ACCESS_DIRECTIONS = 500

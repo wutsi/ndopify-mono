@@ -84,3 +84,23 @@ data class TypeChoice(
     val category: String,
     val label: String,
 )
+
+/** The photos page's list (`listing/photos.html`): the photos, oldest first, and where they stand. */
+data class PhotosView(
+    val photos: List<PhotoView>,
+    /** "3 photos · encore 2 au moins". */
+    val count: String,
+    /** [ListingRules.MAX_PHOTOS] photos: nothing more can be added. */
+    val full: Boolean,
+)
+
+data class PhotoView(
+    val id: Long,
+    val url: String,
+    /** "Photo 2". */
+    val alt: String,
+    /** "Envoyée", "Vérifiée", or why it was refused. */
+    val note: String,
+    val rejected: Boolean,
+    val deleteLabel: String,
+)

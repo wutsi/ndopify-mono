@@ -124,6 +124,37 @@ object ListingViews {
         types.map { type -> TypeChoice(type.name, category.name, TYPE_LABELS.getValue(type)) }
     }
 
+    /** The photos page's list (the prototype's `initListingPhotos`): what's left to do only while it's a draft. */
+    fun photos(images: List<ListingImage>, editable: Boolean): PhotosView {
+        val good = good(images)
+        val refused = images.size - good
+        val left = when {
+            !editable -> ""
+            refused > 0 -> " · supprimez ${if (refused > 1) "les photos refusées" else "la photo refusée"} et reprenez-la"
+            good < ListingRules.MIN_PHOTOS -> " · encore ${ListingRules.MIN_PHOTOS - good} au moins"
+            else -> " · c'est suffisant, ajoutez-en si utile"
+        }
+        return PhotosView(
+            photos = images.mapIndexed { i, image ->
+                val rejected = image.status == ImageStatus.REJECTED
+                PhotoView(
+                    id = image.id,
+                    url = image.url,
+                    alt = "Photo ${i + 1}",
+                    note = when {
+                        rejected -> image.errorMessage?.ifBlank { null } ?: "Refusée"
+                        image.status == ImageStatus.VERIFIED -> "Vérifiée"
+                        else -> "Envoyée"
+                    },
+                    rejected = rejected,
+                    deleteLabel = "Supprimer la photo ${i + 1}",
+                )
+            },
+            count = plural(good, "photo", "photos") + left,
+            full = images.size >= ListingRules.MAX_PHOTOS,
+        )
+    }
+
     /** A section's page: its title, the listing it's of, and, once sent, why it's read-only. */
     fun section(
         listing: Listing,

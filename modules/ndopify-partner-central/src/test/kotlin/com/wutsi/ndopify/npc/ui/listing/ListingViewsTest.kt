@@ -381,6 +381,42 @@ class ListingViewsTest {
         assertEquals(emptyMap(), ListingViews.ownerHints(form, null, locations, formatter))
     }
 
+    @Test
+    fun photos() {
+        val view = ListingViews.photos(IMAGES, editable = true)
+
+        assertEquals(listOf(1L, 2L, 3L), view.photos.map { it.id })
+        assertEquals(listOf("Photo 1", "Photo 2", "Photo 3"), view.photos.map { it.alt })
+        assertEquals(listOf("Envoyée", "Vérifiée", "Floue"), view.photos.map { it.note })
+        assertEquals(listOf(false, false, true), view.photos.map { it.rejected })
+        assertEquals("Supprimer la photo 3", view.photos[2].deleteLabel)
+        assertEquals("2 photos · supprimez la photo refusée et reprenez-la", view.count)
+        assertFalse(view.full)
+    }
+
+    @Test
+    fun `photos - counts`() {
+        fun count(good: Int, refused: Int = 0, editable: Boolean = true): String {
+            val images = (1..good).map { ListingImage(id = it.toLong(), status = ImageStatus.VERIFIED) } +
+                (1..refused).map { ListingImage(id = 100L + it, status = ImageStatus.REJECTED) }
+            return ListingViews.photos(images, editable).count
+        }
+
+        assertEquals("0 photo · encore 5 au moins", count(0))
+        assertEquals("1 photo · encore 4 au moins", count(1))
+        assertEquals("5 photos · c'est suffisant, ajoutez-en si utile", count(5))
+        assertEquals("6 photos · supprimez les photos refusées et reprenez-la", count(6, refused = 2))
+        assertEquals("3 photos", count(3, editable = false))
+    }
+
+    @Test
+    fun `photos - full at 20`() {
+        val images = (1L..20L).map { ListingImage(id = it, status = ImageStatus.VERIFIED) }
+
+        assertTrue(ListingViews.photos(images, editable = true).full)
+        assertEquals("Refusée", ListingViews.photos(listOf(ListingImage(id = 1, status = ImageStatus.REJECTED)), true).photos[0].note)
+    }
+
     private val approved = Mandate(id = 203, status = MandateStatus.APPROVED, mandateType = MandateType.LISTING)
 
     @Test
