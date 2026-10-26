@@ -399,12 +399,12 @@
     <!--/* A count of "Le bien": a whole number, as typed. */-->
     <input th:fragment="count(field, value)" class="input" th:id="${field}" th:name="${field}" type="text" inputmode="numeric"
            autocomplete="off" data-kind="int" th:value="${value}" th:disabled="${!section.editable}"
-           th:attr="aria-describedby=|${field}-error|, aria-invalid=${errors[field] != null} ? 'true' : null">
+           th:attr="aria-describedby=|${field}-error|, aria-invalid=${errors.get(field) != null} ? 'true' : null">
 
     <!--/* An amenity's checkbox; once sent, only those checked. */-->
     <label th:fragment="amenity(field, checked)" class="choice" th:if="${section.editable or checked}"><input
            th:name="${field}" type="checkbox" value="true" th:checked="${checked}" th:disabled="${!section.editable}">
-        <th:block th:text="${amenityLabels[field]}">Compteur d'eau</th:block></label>
+        <th:block th:text="${amenityLabels.get(field)}">Compteur d'eau</th:block></label>
 </th:block>
 </body>
 </html>

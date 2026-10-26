@@ -213,6 +213,45 @@ class ListingSectionTemplateTest {
     }
 
     @Test
+    fun `amenities - labels`() {
+        val form = form(render("amenities"))
+
+        val groups = form.select("fieldset.choices")
+        assertEquals(
+            listOf("Compteur d'eau", "Compteur d'eau individuel", "Forage", "Château d'eau, citerne"),
+            groups[0].select("label.choice").map { it.text() },
+            groups[0].outerHtml(),
+        )
+        assertEquals(
+            listOf("Compteur électrique", "Compteur électrique individuel", "Groupe électrogène", "Panneaux solaires"),
+            groups[1].select("label.choice").map { it.text() },
+        )
+        assertEquals(
+            // Jsoup reads the no-break space of "24 h/24" as a space
+            listOf("Vidéosurveillance", "Gardien 24 h/24", "Barrière, clôture sécurisée"),
+            groups[3].select("label.choice").map { it.text().replace('\u00a0', ' ') },
+        )
+    }
+
+    @Test
+    fun `property - a count's error marks it invalid`() {
+        val page = render(
+            post("/listings/501/property")
+                .param("version", "2")
+                .param("propertyCategory", "RESIDENTIAL")
+                .param("propertyType", "APARTMENT")
+                .param("furnitureType", "UNFURNISHED")
+                .param("rooms", "abc")
+                .param("bathrooms", "1")
+                .param("area", "85"),
+        )
+
+        assertEquals("Indiquez un nombre entier.", page.selectFirst("#rooms-error")?.text())
+        assertEquals("true", page.selectFirst("input[name=rooms]")?.attr("aria-invalid"))
+        assertFalse(page.selectFirst("input[name=area]")!!.hasAttr("aria-invalid"))
+    }
+
+    @Test
     fun terms() {
         val form = form(render("terms"))
 
