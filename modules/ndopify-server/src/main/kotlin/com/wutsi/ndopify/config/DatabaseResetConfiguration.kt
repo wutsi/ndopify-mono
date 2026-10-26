@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Profile
 
 @Configuration
-@Profile("none")
+@Profile("test")
 open class DatabaseResetConfiguration {
     @Bean
     fun cleanAndMigrateStrategy(): FlywayMigrationStrategy {
