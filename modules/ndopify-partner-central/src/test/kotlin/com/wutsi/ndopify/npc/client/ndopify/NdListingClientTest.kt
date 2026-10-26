@@ -4,8 +4,11 @@ import com.wutsi.ndopify.listing.dto.GetListingResponse
 import com.wutsi.ndopify.listing.dto.ImageStatus
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
+import com.wutsi.ndopify.listing.dto.ListingSection
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.SearchListingImageResponse
+import com.wutsi.ndopify.listing.dto.UpdateListingRequest
+import org.hamcrest.Matchers
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpMethod
@@ -107,6 +110,42 @@ class NdListingClientTest {
         assertEquals(1, images.size)
         assertEquals(ImageStatus.REJECTED, images[0].status)
         assertEquals("Floue", images[0].errorMessage)
+        server.verify()
+    }
+
+    @Test
+    fun update() {
+        server.expect(requestTo("http://localhost:8080/v1/listings/501"))
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+            .andExpect(content().json("""{"version":3,"section":"GPS","latitude":4.0335,"longitude":9.6942}"""))
+            .andRespond(withSuccess())
+
+        client.update(501, UpdateListingRequest(version = 3, section = ListingSection.GPS, latitude = 4.0335, longitude = 9.6942))
+        server.verify()
+    }
+
+    @Test
+    fun upload() {
+        server.expect(requestTo("http://localhost:8080/v1/listings/501/images/upload"))
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(content().contentTypeCompatibleWith(MediaType.MULTIPART_FORM_DATA))
+            .andExpect(content().string(Matchers.containsString("name=\"multipartFile\"")))
+            .andExpect(content().string(Matchers.containsString("filename=\"salon.jpg\"")))
+            .andExpect(content().string(Matchers.containsString("Content-Type: image/jpeg")))
+            .andRespond(withSuccess())
+
+        client.upload(501, byteArrayOf(1, 2, 3), "image/jpeg", "salon.jpg")
+        server.verify()
+    }
+
+    @Test
+    fun deleteImage() {
+        server.expect(requestTo("http://localhost:8080/v1/listings/images/7"))
+            .andExpect(method(HttpMethod.DELETE))
+            .andRespond(withSuccess())
+
+        client.deleteImage(7)
         server.verify()
     }
 
