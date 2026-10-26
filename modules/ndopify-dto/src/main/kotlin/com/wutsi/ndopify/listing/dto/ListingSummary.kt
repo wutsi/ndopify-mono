@@ -13,7 +13,7 @@ data class ListingSummary(
     val status: ListingStatus = ListingStatus.UNKNOWN,
 
     val cityId: Long = -1,
-    val neighborhoodId: Long = -1,
+    val neighborhoodId: Long? = null,
 
     val propertyType: PropertyType? = null,
     val furnitureType: FurnitureType? = null,

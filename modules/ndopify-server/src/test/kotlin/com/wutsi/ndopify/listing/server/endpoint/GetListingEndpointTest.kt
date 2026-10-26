@@ -5,6 +5,8 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.GetListingResponse
+import com.wutsi.ndopify.listing.dto.ListingSection
+import com.wutsi.ndopify.listing.dto.ListingSectionStatus
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
@@ -19,6 +21,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/listing/GetListingEndpoint.sql"])
@@ -82,6 +85,30 @@ class GetListingEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals("Two rooms in Bastos", listing.summary)
         assertEquals("A long description", listing.description)
         assertNotNull(listing.publishedAt)
+
+        assertEquals(ListingSection.entries.drop(1), listing.sections.map { it.section })
+        val sections = listing.sections.associateBy { it.section }
+        assertEquals(ListingSectionStatus.VERIFIED, sections[ListingSection.LOCATION]?.status)
+        assertNotNull(sections[ListingSection.LOCATION]?.verifiedAt)
+        assertEquals(ListingSectionStatus.TO_VERIFY, sections[ListingSection.GPS]?.status)
+        assertNull(sections[ListingSection.GPS]?.verifiedAt)
+        assertEquals(ListingSectionStatus.TO_VERIFY, sections[ListingSection.PROPERTY]?.status)
+        assertEquals(ListingSectionStatus.TO_VERIFY, sections[ListingSection.AMENITIES]?.status)
+        assertEquals(ListingSectionStatus.VERIFIED, sections[ListingSection.TERMS]?.status)
+        assertEquals(ListingSectionStatus.VERIFIED, sections[ListingSection.PHOTOS]?.status)
+        assertNull(sections[ListingSection.PHOTOS]?.verifiedAt)
+        assertEquals(ListingSectionStatus.TO_VERIFY, sections[ListingSection.REMARKS]?.status)
+        assertTrue(listing.sections.filter { it.section != ListingSection.REMARKS }.all { it.required })
+        assertFalse(sections[ListingSection.REMARKS]!!.required)
+    }
+
+    @Test
+    fun `photos - one rejected`() {
+        val response = rest.getForEntity("/v1/listings/101", GetListingResponse::class.java)
+
+        val sections = response.body!!.listing.sections.associateBy { it.section }
+        assertEquals(ListingSectionStatus.TO_VERIFY, sections[ListingSection.PHOTOS]?.status)
+        assertTrue(sections.values.all { it.status == ListingSectionStatus.TO_VERIFY })
     }
 
     @Test

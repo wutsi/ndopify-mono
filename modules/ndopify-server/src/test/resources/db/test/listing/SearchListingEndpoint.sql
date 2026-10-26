@@ -66,7 +66,7 @@ INSERT INTO T_LISTING(
      300000, 'XAF', 'MONTHLY', null, null, null, null,
      null, null, null, null, null,
      '2026-10-01 10:00:00', '2026-10-01 10:00:00', null),
-    (102, 1, 0, 3, 20, 'RESIDENTIAL', 'SALE', 'PUBLISHED', 2220957, -1,
+    (102, 1, 0, 3, 20, 'RESIDENTIAL', 'SALE', 'PUBLISHED', 2220957, null,
      null, null, null, null,
      'APARTMENT', null, 3, 1, 1, 1, null, 120, null, null,
      false, false, false, false,

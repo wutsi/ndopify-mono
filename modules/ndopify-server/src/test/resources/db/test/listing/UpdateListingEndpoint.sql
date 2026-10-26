@@ -7,7 +7,8 @@ INSERT INTO T_LOCATION(id, parent_fk, type, country, name, ascii_name) VALUES
     (2370201, NULL, 'CITY', 'CM', 'Yaounde', 'Yaounde'),
     (2220957, NULL, 'CITY', 'CM', 'Douala', 'Douala'),
     (111, 2370201, 'NEIGHBORHOOD', 'CM', 'Bastos', 'Bastos'),
-    (222, 2370201, 'NEIGHBORHOOD', 'CM', 'Mvan', 'Mvan');
+    (222, 2370201, 'NEIGHBORHOOD', 'CM', 'Mvan', 'Mvan'),
+    (333, 2220957, 'NEIGHBORHOOD', 'CM', 'Akwa', 'Akwa');
 
 -- 100: customer (owner)   200: agent 20   900: other tenant
 INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name) VALUES
@@ -33,7 +34,7 @@ INSERT INTO T_MANDATE(
     (3, 1, 10, 20, 'RESIDENTIAL', 'APPROVED', 'LISTING', 'SALE', 2220957, 80000000, 'NONE', 'XAF'),
     (9, 2, 90, 90, 'RESIDENTIAL', 'APPROVED', 'LISTING', 'RENTAL', 2370201, 100000, 'MONTHLY', 'XAF');
 
--- 100: published apartment in Bastos   101: draft house in Mvan   102: published, for sale in Douala   900: other tenant
+-- 100: draft apartment in Bastos   101: draft house in Mvan   102: published, for sale in Douala   900: other tenant
 INSERT INTO T_LISTING(
     id, tenant_id, version, mandate_id, agent_id, property_category, listing_type, status, city_id, neighborhood_id,
     landmark, access_directions, longitude, latitude,
@@ -46,7 +47,7 @@ INSERT INTO T_LISTING(
     available_from, agent_remarks, title, summary, description,
     created_at, modified_at, published_at
 ) VALUES
-    (100, 1, 3, 1, 20, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 111,
+    (100, 1, 3, 1, 20, 'RESIDENTIAL', 'RENTAL', 'DRAFT', 2370201, 111,
      'Near the embassy', 'Second street on the left', 11.5, 3.9,
      'APARTMENT', 'FULLY_FURNISHED', 2, 1, 1, 1, 1, 75, 1, 3,
      true, true, false, false,
@@ -66,7 +67,7 @@ INSERT INTO T_LISTING(
      300000, 'XAF', 'MONTHLY', null, null, null, null,
      null, null, null, null, null,
      '2026-10-01 10:00:00', '2026-10-01 10:00:00', null),
-    (102, 1, 0, 3, 20, 'RESIDENTIAL', 'SALE', 'PUBLISHED', 2220957, -1,
+    (102, 1, 0, 3, 20, 'RESIDENTIAL', 'SALE', 'PUBLISHED', 2220957, null,
      null, null, null, null,
      'APARTMENT', null, 3, 1, 1, 1, null, 120, null, null,
      false, false, false, false,
@@ -86,3 +87,7 @@ INSERT INTO T_LISTING(
      100000, 'XAF', 'MONTHLY', null, null, null, null,
      null, null, null, null, null,
      '2026-10-01 10:00:00', '2026-10-01 10:00:00', '2026-10-01 10:00:00');
+
+-- 100: its location already verified
+INSERT INTO T_LISTING_SECTION(id, tenant_id, listing_id, section, verified_at) VALUES
+    (1000, 1, 100, 'LOCATION', '2026-10-02 10:00:00');

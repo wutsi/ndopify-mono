@@ -50,7 +50,7 @@ data class ListingEntity(
     val status: ListingStatus = ListingStatus.UNKNOWN,
 
     val cityId: Long = -1,
-    val neighborhoodId: Long = -1,
+    val neighborhoodId: Long? = null,
     val landmark: String? = null,
     val accessDirections: String? = null,
 

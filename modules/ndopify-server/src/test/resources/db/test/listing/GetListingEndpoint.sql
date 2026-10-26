@@ -66,7 +66,7 @@ INSERT INTO T_LISTING(
      300000, 'XAF', 'MONTHLY', null, null, null, null,
      null, null, null, null, null,
      '2026-10-01 10:00:00', '2026-10-01 10:00:00', null),
-    (102, 1, 0, 3, 20, 'RESIDENTIAL', 'SALE', 'PUBLISHED', 2220957, -1,
+    (102, 1, 0, 3, 20, 'RESIDENTIAL', 'SALE', 'PUBLISHED', 2220957, null,
      null, null, null, null,
      'APARTMENT', null, 3, 1, 1, 1, null, 120, null, null,
      false, false, false, false,
@@ -86,3 +86,20 @@ INSERT INTO T_LISTING(
      100000, 'XAF', 'MONTHLY', null, null, null, null,
      null, null, null, null, null,
      '2026-10-01 10:00:00', '2026-10-01 10:00:00', '2026-10-01 10:00:00');
+
+-- 100: location and terms verified, 5 photos (none rejected), so photos verified too   101: 5 photos, one rejected
+INSERT INTO T_LISTING_SECTION(id, tenant_id, listing_id, section, verified_at) VALUES
+    (1000, 1, 100, 'LOCATION', '2026-10-02 10:00:00'),
+    (1001, 1, 100, 'TERMS', '2026-10-02 11:00:00');
+
+INSERT INTO T_LISTING_IMAGE(id, tenant_id, listing_id, path, url, status) VALUES
+    (1000, 1, 100, 'listings/100/images/1.png', 'https://localhost/listings/100/images/1.png', 'VERIFIED'),
+    (1001, 1, 100, 'listings/100/images/2.png', 'https://localhost/listings/100/images/2.png', 'VERIFIED'),
+    (1002, 1, 100, 'listings/100/images/3.png', 'https://localhost/listings/100/images/3.png', 'PENDING_VERIFICATION'),
+    (1003, 1, 100, 'listings/100/images/4.png', 'https://localhost/listings/100/images/4.png', 'PENDING_VERIFICATION'),
+    (1004, 1, 100, 'listings/100/images/5.png', 'https://localhost/listings/100/images/5.png', 'VERIFIED'),
+    (1010, 1, 101, 'listings/101/images/1.png', 'https://localhost/listings/101/images/1.png', 'VERIFIED'),
+    (1011, 1, 101, 'listings/101/images/2.png', 'https://localhost/listings/101/images/2.png', 'VERIFIED'),
+    (1012, 1, 101, 'listings/101/images/3.png', 'https://localhost/listings/101/images/3.png', 'REJECTED'),
+    (1013, 1, 101, 'listings/101/images/4.png', 'https://localhost/listings/101/images/4.png', 'VERIFIED'),
+    (1014, 1, 101, 'listings/101/images/5.png', 'https://localhost/listings/101/images/5.png', 'VERIFIED');

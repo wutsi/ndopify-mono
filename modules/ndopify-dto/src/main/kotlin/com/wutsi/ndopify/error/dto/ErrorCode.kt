@@ -64,6 +64,7 @@ object ErrorCode {
     val LISTING_NOT_FOUND = "$PREFIX:listing:not-found"
     val LISTING_ALREADY_EXISTS = "$PREFIX:listing:already-exists"
     val LISTING_VERSION_CONFLICT = "$PREFIX:listing:version-conflict"
+    val LISTING_NOT_DRAFT = "$PREFIX:listing:not-draft"
     val LISTING_IMAGE_NOT_FOUND = "$PREFIX:listing-image:not-found"
 
     val LOCATION_NOT_FOUND = "$PREFIX:location:not-found"

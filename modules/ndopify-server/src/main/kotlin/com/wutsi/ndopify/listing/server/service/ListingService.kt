@@ -3,16 +3,23 @@ package com.wutsi.ndopify.listing.server.service
 import com.wutsi.ndopify.agent.server.service.AgentService
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.Parameter
+import com.wutsi.ndopify.error.dto.ParameterType
+import com.wutsi.ndopify.error.server.exception.BadRequestException
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.listing.dto.CreateListingRequest
+import com.wutsi.ndopify.listing.dto.ListingSection
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.SearchListingRequest
 import com.wutsi.ndopify.listing.dto.UpdateListingRequest
 import com.wutsi.ndopify.listing.server.dao.ListingRepository
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.mandate.server.service.MandateService
+import com.wutsi.ndopify.refdata.dto.LocationType
+import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
@@ -29,6 +36,8 @@ class ListingService(
     private val dao: ListingRepository,
     private val mandateService: MandateService,
     private val agentService: AgentService,
+    private val sectionService: ListingSectionService,
+    private val locationService: LocationService,
     private val clock: Clock,
 ) {
     /** Newest first. */
@@ -124,7 +133,8 @@ class ListingService(
                 propertyCategory = mandate.propertyCategory,
                 listingType = mandate.listingType,
                 cityId = mandate.cityId,
-                neighborhoodId = mandate.neighborhoodIds.firstOrNull() ?: -1,
+                // The mandate's neighbourhoods aren't checked: its first one of the city, if any
+                neighborhoodId = mandate.neighborhoodIds.firstOrNull { id -> isNeighborhood(id, mandate.cityId) },
                 propertyType = mandate.propertyType,
                 furnitureType = mandate.furnitureType,
                 rooms = count(mandate.rooms),
@@ -159,61 +169,113 @@ class ListingService(
     }
 
     /**
-     * Updates the listing's property and terms, whatever its status. With a [UpdateListingRequest.version], it must be
-     * the listing's (409 LISTING_VERSION_CONFLICT otherwise).
+     * Saves one section of a DRAFT listing, which is then VERIFIED on its checklist: only the section's fields, as
+     * sent (a null clears an optional field). 409 LISTING_VERSION_CONFLICT if [UpdateListingRequest.version] isn't
+     * the listing's, 409 LISTING_NOT_DRAFT once sent; then 400 for no section, PHOTOS (uploaded, not saved), a
+     * required field missing or a neighbourhood that isn't one of the listing's city. The city never changes: it's
+     * the mandate's, the agent's area.
      */
     @Transactional
     fun update(id: Long, request: UpdateListingRequest): ListingEntity {
         val listing = findById(id)
-        if (request.version != null && request.version != listing.version) {
+        if (request.version != listing.version) {
             throw ConflictException(Error(ErrorCode.LISTING_VERSION_CONFLICT))
         }
-        return dao.save(
-            listing.copy(
-                propertyCategory = request.propertyCategory,
-                propertyType = request.propertyType,
-                cityId = request.cityId,
-                neighborhoodId = request.neighborhoodId,
-                landmark = request.landmark,
-                accessDirections = request.accessDirections,
-                longitude = request.longitude,
-                latitude = request.latitude,
+        if (listing.status != ListingStatus.DRAFT) {
+            throw ConflictException(Error(ErrorCode.LISTING_NOT_DRAFT))
+        }
+
+        val updated = when (request.section) {
+            ListingSection.LOCATION -> listing.copy(
+                neighborhoodId = required(
+                    "neighborhoodId",
+                    request.neighborhoodId?.takeIf { id -> isNeighborhood(id, listing.cityId) }
+                ),
+                landmark = required("landmark", request.landmark?.trim()?.ifEmpty { null }),
+                accessDirections = request.accessDirections?.trim()?.ifEmpty { null },
+            )
+
+            ListingSection.GPS -> listing.copy(
+                latitude = required("latitude", request.latitude?.takeIf { it in -90.0..90.0 }),
+                longitude = required("longitude", request.longitude?.takeIf { it in -180.0..180.0 }),
+            )
+
+            ListingSection.PROPERTY -> listing.copy(
+                propertyCategory = required(
+                    "propertyCategory",
+                    request.propertyCategory?.takeIf { it != PropertyCategory.UNKNOWN }
+                ),
+                propertyType = required("propertyType", request.propertyType),
                 furnitureType = request.furnitureType,
                 rooms = request.rooms,
                 bathrooms = request.bathrooms,
                 livingRooms = request.livingRooms,
                 kitchens = request.kitchens,
                 parkings = request.parkings,
-                area = request.area,
+                area = required("area", request.area?.takeIf { it > 0 }),
                 levels = request.levels,
                 floorLevel = request.floorLevel,
-                waterMeter = request.waterMeter,
-                dedicatedWaterMeter = request.dedicatedWaterMeter,
-                waterTank = request.waterTank,
-                waterWell = request.waterWell,
-                electricityMeter = request.electricityMeter,
-                dedicatedElectricityMeter = request.dedicatedElectricityMeter,
-                generatorSet = request.generatorSet,
-                solarPanel = request.solarPanel,
-                roadPaved = request.roadPaved,
-                trackAccessibleByCar = request.trackAccessibleByCar,
-                trackInaccessibleByCar = request.trackInaccessibleByCar,
-                securedFenced = request.securedFenced,
-                securityGuard = request.securityGuard,
-                videoSurveillance = request.videoSurveillance,
-                price = request.price,
-                currencyCode = request.currencyCode,
-                pricePeriodicityType = request.pricePeriodicityType,
-                securityDeposit = request.securityDeposit,
+            )
+
+            ListingSection.AMENITIES -> {
+                // The road access is one answer
+                val roadAccess = listOf(request.roadPaved, request.trackAccessibleByCar, request.trackInaccessibleByCar)
+                if (roadAccess.count { it == true } != 1) {
+                    throw invalid("roadPaved")
+                }
+                listing.copy(
+                    waterMeter = request.waterMeter == true,
+                    dedicatedWaterMeter = request.dedicatedWaterMeter == true,
+                    waterTank = request.waterTank == true,
+                    waterWell = request.waterWell == true,
+                    electricityMeter = request.electricityMeter == true,
+                    dedicatedElectricityMeter = request.dedicatedElectricityMeter == true,
+                    generatorSet = request.generatorSet == true,
+                    solarPanel = request.solarPanel == true,
+                    roadPaved = request.roadPaved == true,
+                    trackAccessibleByCar = request.trackAccessibleByCar == true,
+                    trackInaccessibleByCar = request.trackInaccessibleByCar == true,
+                    securedFenced = request.securedFenced == true,
+                    securityGuard = request.securityGuard == true,
+                    videoSurveillance = request.videoSurveillance == true,
+                )
+            }
+
+            ListingSection.TERMS -> listing.copy(
+                price = required("price", request.price?.takeIf { it > 0 }),
+                securityDeposit = required("securityDeposit", request.securityDeposit?.takeIf { it >= 0 }),
                 advanceRent = request.advanceRent,
                 leaseTerm = request.leaseTerm,
                 noticePeriod = request.noticePeriod,
-                availableFrom = request.availableFrom,
-                agentRemarks = request.agentRemarks,
-                modifiedAt = Date(clock.millis()),
+                availableFrom = required("availableFrom", request.availableFrom),
             )
-        )
+
+            ListingSection.REMARKS -> listing.copy(
+                agentRemarks = request.agentRemarks?.trim()?.ifEmpty { null },
+            )
+
+            ListingSection.PHOTOS, ListingSection.UNKNOWN -> throw invalid("section")
+        }
+
+        val now = Date(clock.millis())
+        sectionService.verify(id, request.section, now)
+        return dao.save(updated.copy(modifiedAt = now))
     }
+
+    // A neighbourhood of the city
+    private fun isNeighborhood(id: Long, cityId: Long): Boolean {
+        val location = locationService.findByIdOrNull(id)
+        return location?.type == LocationType.NEIGHBORHOOD && location.parentId == cityId
+    }
+
+    private fun <T> required(name: String, value: T?): T = value ?: throw invalid(name)
+
+    private fun invalid(name: String) = BadRequestException(
+        Error(
+            code = ErrorCode.HTTP_INVALID_PARAMETER,
+            parameter = Parameter(name = name, type = ParameterType.PARAMETER_TYPE_PAYLOAD),
+        )
+    )
 
     // A mandate's count ("2", or "2+" for 2 or more) as a number: 2
     private fun count(value: String?): Int? = value?.trim()?.removeSuffix("+")?.toIntOrNull()

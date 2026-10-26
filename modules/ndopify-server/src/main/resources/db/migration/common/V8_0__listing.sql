@@ -11,7 +11,7 @@ CREATE TABLE T_LISTING(
   status                  VARCHAR(30) DEFAULT NULL,
 
   city_id                 BIGINT NOT NULL,
-  neighborhood_id         BIGINT NOT NULL DEFAULT -1, -- -1 when not known: no foreign key
+  neighborhood_id         BIGINT,
   landmark                VARCHAR(255),
   access_directions       TEXT,
 
@@ -73,6 +73,7 @@ CREATE TABLE T_LISTING(
   CONSTRAINT FK_LISTING_mandate FOREIGN KEY(mandate_id) REFERENCES T_MANDATE(id),
   CONSTRAINT FK_LISTING_agent FOREIGN KEY(agent_id) REFERENCES T_AGENT(id),
   CONSTRAINT FK_LISTING_city FOREIGN KEY(city_id) REFERENCES T_LOCATION(id),
+  CONSTRAINT FK_LISTING_neighborhood FOREIGN KEY(neighborhood_id) REFERENCES T_LOCATION(id),
   PRIMARY KEY(id)
 ) ENGINE = InnoDB;
 

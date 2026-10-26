@@ -5,8 +5,10 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
 import com.wutsi.ndopify.error.dto.ParameterType
 import com.wutsi.ndopify.error.server.exception.BadRequestException
+import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.listing.dto.ImageStatus
+import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.SearchListingImageRequest
 import com.wutsi.ndopify.listing.server.dao.ListingImageRepository
 import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
@@ -73,6 +75,20 @@ class ListingImageService(
                 modifiedAt = now,
             )
         )
+    }
+
+    /**
+     * Removes a photo of a DRAFT listing (409 LISTING_NOT_DRAFT once sent), 404 LISTING_IMAGE_NOT_FOUND for an unknown
+     * image. The file stays in the storage: StorageService can't delete one.
+     */
+    @Transactional
+    fun delete(id: Long) {
+        val image = dao.findById(id).orElse(null)
+            ?: throw NotFoundException(error = Error(code = ErrorCode.LISTING_IMAGE_NOT_FOUND))
+        if (listingService.findById(image.listingId).status != ListingStatus.DRAFT) {
+            throw ConflictException(Error(ErrorCode.LISTING_NOT_DRAFT))
+        }
+        dao.delete(image)
     }
 
     private fun ensureImage(file: MultipartFile): String {

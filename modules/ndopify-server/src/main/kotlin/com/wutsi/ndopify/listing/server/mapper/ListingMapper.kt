@@ -2,6 +2,7 @@ package com.wutsi.ndopify.listing.server.mapper
 
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
+import com.wutsi.ndopify.listing.dto.ListingSectionSummary
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
@@ -9,7 +10,7 @@ import org.springframework.stereotype.Service
 
 @Service
 class ListingMapper {
-    fun toListing(entity: ListingEntity): Listing {
+    fun toListing(entity: ListingEntity, sections: List<ListingSectionSummary>): Listing {
         return Listing(
             id = entity.id ?: -1,
             version = entity.version ?: 0,
@@ -57,6 +58,7 @@ class ListingMapper {
             noticePeriod = entity.noticePeriod,
             availableFrom = entity.availableFrom,
             agentRemarks = entity.agentRemarks,
+            sections = sections,
             title = entity.title,
             summary = entity.summary,
             description = entity.description,

@@ -79,6 +79,18 @@ class CreateListingEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `neighborhood of another city - none`() {
+        val response = rest.postForEntity(
+            "/v1/listings",
+            CreateListingRequest(mandateId = 4),
+            CreateListingResponse::class.java
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertNull(dao.findById(response.body!!.listingId!!).get().neighborhoodId)
+    }
+
+    @Test
     fun `anonymous - 401`() {
         anonymousUser = true
 

@@ -16,7 +16,7 @@ data class Listing(
     val status: ListingStatus = ListingStatus.UNKNOWN,
 
     val cityId: Long = -1,
-    val neighborhoodId: Long = -1,
+    val neighborhoodId: Long? = null,
     val landmark: String? = null,
     val accessDirections: String? = null,
 
@@ -63,6 +63,9 @@ data class Listing(
     val availableFrom: LocalDate? = null,
 
     val agentRemarks: String? = null,
+
+    // The checklist, in ListingSection's order
+    val sections: List<ListingSectionSummary> = emptyList(),
 
     val title: String? = null,
     val summary: String? = null,

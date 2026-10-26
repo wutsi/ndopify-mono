@@ -10,9 +10,11 @@ import com.wutsi.ndopify.listing.dto.SearchListingResponse
 import com.wutsi.ndopify.listing.dto.UpdateListingRequest
 import com.wutsi.ndopify.listing.server.mapper.ListingMapper
 import com.wutsi.ndopify.listing.server.service.ListingImageService
+import com.wutsi.ndopify.listing.server.service.ListingSectionService
 import com.wutsi.ndopify.listing.server.service.ListingService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.validation.Valid
+import org.springframework.web.bind.annotation.DeleteMapping
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PathVariable
@@ -32,6 +34,7 @@ class ListingEndpoints(
     private val service: ListingService,
     private val mapper: ListingMapper,
     private val imageService: ListingImageService,
+    private val sectionService: ListingSectionService,
 ) {
     @GetMapping
     fun search(@ModelAttribute request: SearchListingRequest): SearchListingResponse {
@@ -41,7 +44,8 @@ class ListingEndpoints(
 
     @GetMapping("/{id}")
     fun get(@PathVariable id: Long): GetListingResponse {
-        return GetListingResponse(listing = mapper.toListing(service.findById(id)))
+        val listing = service.findById(id)
+        return GetListingResponse(listing = mapper.toListing(listing, sectionService.summaries(id)))
     }
 
     @PostMapping
@@ -62,6 +66,12 @@ class ListingEndpoints(
         @RequestParam(required = false) multipartFile: MultipartFile,
     ) {
         imageService.upload(id, multipartFile)
+    }
+
+    /** Removes a photo of a DRAFT listing. */
+    @DeleteMapping("/images/{id}")
+    fun deleteImage(@PathVariable id: Long) {
+        imageService.delete(id)
     }
 
     /** The listing's images, oldest first. */
