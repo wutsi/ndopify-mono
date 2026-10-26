@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${section} ? ${section.pageTitle} : 'Annonce — Ndopify Partner Central'">Annonce — Ndopify Partner Central</title>
+    <meta name="description" content="Les photos de l'annonce, prises pendant la visite du bien.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/join.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/find-property.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/home.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/listing.css}">
+    <script th:src="@{/assets/js/partner-central.js}" defer></script>
+    <script th:src="@{/assets/js/listing.js}" defer></script>
+</head>
+<!--/*
+  The photos of a listing's checklist (ListingPhotoController), from the prototype's listing/photos.html: "section" is
+  the SectionView (absent when "locked" or "unavailable"), "photos" the PhotosView, "photoError" why the last upload
+  or deletion failed. Without JS, the photos taken or chosen are sent with "Envoyer les photos" (POST, multipart, one
+  or several "photo" files); listing.js shrinks each and sends it as soon as it's chosen. Each photo is deleted with
+  its own form, and opens full size in a new tab (listing.js: in a full-screen viewer instead). Once sent ("section.editable" false), the photos are only shown.
+*/-->
+<body data-page="listing-photos" th:attr="data-section=${section} ? 'photos' : null">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" th:href="@{/}">
+                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte" th:if="${signedIn}">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <img class="user-menu__photo" th:if="${userPhotoUrl}" th:src="${userPhotoUrl}" alt="" width="44" height="44"
+                         data-user-photo>
+                    <span aria-hidden="true" data-user-initials th:unless="${userPhotoUrl}" th:text="${initials}">NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li><a class="user-menu__item" th:href="@{/profile}">Profil</a></li>
+                    <li><a class="user-menu__item" data-logout th:href="@{/logout}">Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="back-link"><a th:href="${section} ? @{/listings/{id}(id=${section.listingId})} : @{/#mandates-title}"
+                                    th:text="${section} ? '← Retour à l\'annonce' : '← Retour à l\'espace agent'">← Retour à l'annonce</a></p>
+
+            <!-- Locked: not the agent's listing, or not found. -->
+            <div class="alert alert--warning" th:if="${locked}" data-section-locked>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <h1 class="alert__title">Cette annonce n'est pas disponible</h1>
+                    <p>Une annonce se crée depuis un mandat de bailleur approuvé.</p>
+                </div>
+            </div>
+
+            <!-- Unavailable: ndopify-server couldn't answer. -->
+            <div class="alert alert--error" role="alert" th:if="${unavailable}" data-section-unavailable>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <div>
+                    <h1 class="alert__title">Annonce indisponible pour le moment</h1>
+                    <p>Réessayez dans quelques instants.</p>
+                </div>
+            </div>
+
+            <div class="stack" th:if="${section}" th:with="s=${section}, e=${section.editable}, p=${photos}" data-section-content>
+                <div class="page-intro">
+                    <h1 th:text="${s.heading}">Photos</h1>
+                    <p class="mandate__meta" th:text="${s.meta}" data-section-meta>Annonce · Appartement, Bonapriso · mandat n° 203</p>
+                    <p th:if="${e}" data-section-instruction>Au moins 5 photos nettes, prises à la lumière du jour.</p>
+                </div>
+
+                <!-- Sent or published: the photos as they were sent, read-only. -->
+                <div class="hint" th:if="${s.readonlyText}" data-section-readonly>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <p th:text="${s.readonlyText}">Annonce en vérification depuis le 22 oct. 2026 : voici ce que vous avez relevé.</p>
+                </div>
+
+                <th:block th:if="${e}">
+                    <ul class="photo-tips">
+                        <li>La façade et l'entrée, de jour.</li>
+                        <li>Chaque pièce&nbsp;: salon, chambres, cuisine, salles de bain.</li>
+                        <li>Les équipements visibles&nbsp;: compteurs, citerne, groupe, parking.</li>
+                    </ul>
+
+                    <form method="post" enctype="multipart/form-data" th:action="@{/listings/{id}/photos(id=${s.listingId})}" data-photo-form>
+                        <div class="photo-actions" data-photo-actions>
+                            <label class="btn btn--primary">Prendre une photo
+                                <input class="upload__input" type="file" name="photo" accept="image/*" capture="environment"
+                                       aria-describedby="photos-error" th:disabled="${p.full}" data-photo-input></label>
+                            <label class="btn btn--outline">Choisir dans la galerie
+                                <input class="upload__input" type="file" name="photo" accept="image/jpeg,image/png,image/webp" multiple
+                                       aria-describedby="photos-error" th:disabled="${p.full}" data-photo-input></label>
+                        </div>
+                        <!-- Without JS: listing.js sends each photo as soon as it's chosen, and hides this button. -->
+                        <button type="submit" class="btn btn--outline" th:disabled="${p.full}" data-photo-submit>Envoyer les photos</button>
+                    </form>
+                </th:block>
+                <p class="field__error" id="photos-error" role="alert" th:hidden="${photoError == null}">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <span data-error-text th:text="${photoError}"></span></p>
+
+                <p class="checklist__progress" th:text="${p.count}" data-photo-count>0 photo · encore 5 au moins</p>
+                <p class="visually-hidden" aria-live="polite" data-photo-live></p>
+                <ul class="photos" data-photos>
+                    <li th:each="photo : ${p.photos}" th:class="${photo.rejected} ? 'photo photo--rejected' : 'photo'">
+                        <a class="photo__link" th:href="${photo.url}" target="_blank" rel="noopener" data-photo-link>
+                            <img th:src="${photo.url}" th:alt="${photo.alt}" width="480" height="480" loading="lazy">
+                            <span class="visually-hidden">(nouvel onglet)</span></a>
+                        <p class="photo__note" th:text="${photo.note}" data-photo-note>Envoyée</p>
+                        <form th:if="${e}" method="post" th:action="@{/listings/{id}/photos/{image}/delete(id=${s.listingId}, image=${photo.id})}"
+                              data-photo-delete-form>
+                            <button type="submit" class="photo__delete" th:attr="aria-label=${photo.deleteLabel}" data-photo-delete><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="m6 6 8 8M14 6l-8 8" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+                        </form>
+                    </li>
+                </ul>
+
+                <div class="form__actions">
+                    <a class="btn btn--primary" th:href="@{/listings/{id}(id=${s.listingId})}" th:text="${e} ? 'Terminé' : 'Retour à l\'annonce'"
+                       data-back-link>Terminé</a>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

@@ -24,6 +24,21 @@ class KycUploadErrorHandlerTest {
     }
 
     @Test
+    fun `listing photos - back to their page with the size error`() {
+        assertEquals(
+            "redirect:/listings/501/photos?error=too-large",
+            handler.tooLarge(MockHttpServletRequest("POST", "/listings/501/photos"), ex),
+        )
+    }
+
+    @Test
+    fun `listing photos - hand-edited path not handled here`() {
+        assertFailsWith<MaxUploadSizeExceededException> {
+            handler.tooLarge(MockHttpServletRequest("POST", "/listings/abc/photos"), ex)
+        }
+    }
+
+    @Test
     fun `any other upload - not handled here`() {
         assertFailsWith<MaxUploadSizeExceededException> {
             handler.tooLarge(MockHttpServletRequest("POST", "/somewhere/else"), ex)

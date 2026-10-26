@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${listing} ? |${listing.title} — Ndopify Partner Central| : 'Annonce — Ndopify Partner Central'">Annonce — Ndopify Partner Central</title>
+    <meta name="description" content="L'annonce d'un bien sous mandat : la visite du bien, section par section, puis l'envoi pour vérification.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/join.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/find-property.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/home.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/listing.css}">
+    <script th:src="@{/assets/js/partner-central.js}" defer></script>
+    <script th:src="@{/assets/js/listing.js}" defer></script>
+</head>
+<!--/*
+  The listing of an approved LISTING mandate (ListingController), created from the mandate page's "Créer l'annonce"
+  (POST /mandates/{id}/listing: a DRAFT, pre-filled from the landlord's answers). The agent completes it during the
+  visit of the property, as a checklist: each row opens its section (/listings/{id}/{section}), in any order and over
+  several visits, and a section counts once the agent has saved it on site. The photos count once there are 5, none
+  refused. "Envoyer pour vérification" (POST /listings/{id}/verify) stays inactive until every section but the
+  remarks is done, and says what's left; without JS it still posts, and the controller refuses it. Sent, the listing
+  is read-only while it's checked, then published with its title and summary written by Ndopify.
+  "listing" is the ListingView, absent when "locked" (not found, or not the agent's) or "unavailable"
+  (ndopify-server couldn't answer). "outcomeText" / "outcomeStyle"
+  are the last action's outcome (flash attribute "outcome", worded by ListingController).
+*/-->
+<body data-page="listing">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" th:href="@{/}">
+                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte" th:if="${signedIn}">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <img class="user-menu__photo" th:if="${userPhotoUrl}" th:src="${userPhotoUrl}" alt="" width="44" height="44"
+                         data-user-photo>
+                    <span aria-hidden="true" data-user-initials th:unless="${userPhotoUrl}" th:text="${initials}">NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li><a class="user-menu__item" th:href="@{/profile}">Profil</a></li>
+                    <li><a class="user-menu__item" data-logout th:href="@{/logout}">Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column column--wide">
+            <p class="back-link"><a th:href="${listing} ? @{/mandates/{id}(id=${listing.mandateId})} : @{/#mandates-title}"
+                                    th:text="${listing} ? '← Retour au mandat' : '← Retour à l\'espace agent'">← Retour au mandat</a></p>
+
+            <!--
+                Outcome of the last action (sent, or why it couldn't be): under the title, or first on the locked or
+                unavailable view (a fragment, used twice).
+            -->
+            <th:block th:if="${listing == null}"><div th:fragment="flash" th:if="${outcomeText}" th:class="|alert alert--${outcomeStyle}|" tabindex="-1"
+                 th:attr="role=${outcomeStyle == 'error'} ? 'alert' : 'status'" data-listing-flash>
+                <svg th:if="${outcomeStyle == 'success'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                <svg th:if="${outcomeStyle == 'warning'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <svg th:if="${outcomeStyle == 'error'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <p data-listing-flash-text th:text="${outcomeText}">Annonce envoyée.</p>
+            </div></th:block>
+
+            <!-- Unavailable: ndopify-server couldn't answer. Not the locked view: the listing may be there. -->
+            <div class="alert alert--error" role="alert" th:if="${unavailable}" data-listing-unavailable>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <div>
+                    <h1 class="alert__title">Annonce indisponible pour le moment</h1>
+                    <p>Réessayez dans quelques instants.</p>
+                </div>
+            </div>
+
+            <!-- Locked: no such listing, or not one of the agent's mandates. -->
+            <div class="alert alert--warning" th:if="${locked}" data-listing-locked>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <h1 class="alert__title">Cette annonce n'est pas disponible</h1>
+                    <p>Une annonce se crée depuis un mandat de bailleur approuvé, dans votre espace agent.</p>
+                </div>
+            </div>
+
+            <div class="stack" th:if="${listing}" th:with="l=${listing}" data-listing>
+                <div class="page-intro mandate-intro">
+                    <div class="mandate-intro__head">
+                        <h1 th:text="${l.title}">Annonce</h1>
+                        <p th:class="|status-tag status-tag--${l.tag.style}|" th:text="${l.tag.label}">Brouillon</p>
+                    </div>
+                    <p class="mandate__meta">Mandat n° <span th:text="${l.mandateId}">203</span> · annonce créée le
+                        <span th:text="${l.createdAt}">20 oct. 2026</span></p>
+                </div>
+
+                <div th:replace="~{:: flash}"></div>
+
+                <!-- One panel per status, above the checklist. -->
+                <div class="hint" th:if="${l.panel == 'DRAFT'}" data-listing-panel="DRAFT">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <p>Sur place, vérifiez chaque section et prenez les photos. Les réponses du propriétaire sont
+                        déjà remplies&nbsp;: corrigez ce qui ne correspond pas.</p>
+                </div>
+                <div class="alert alert--info" th:if="${l.panel == 'SENT'}" data-listing-panel="SENT">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <div>
+                        <p class="alert__title">En vérification</p>
+                        <p>Envoyée le <span th:text="${l.sentAt}">22 oct. 2026</span>. Nous vérifions l'annonce et les photos,
+                            puis rédigeons son titre et sa description à partir de votre visite.</p>
+                    </div>
+                </div>
+                <div class="alert alert--success" th:if="${l.panel == 'PUBLISHED'}" data-listing-panel="PUBLISHED">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <div>
+                        <p class="alert__title">Publiée<th:block th:if="${l.publishedAt}"> le <span th:text="${l.publishedAt}">22 oct. 2026</span></th:block></p>
+                        <p>Le titre et la description ont été rédigés à partir de votre visite et de vos photos.</p>
+                    </div>
+                </div>
+                <section class="home-section" th:if="${l.panel == 'PUBLISHED' and l.generatedTitle != null}"
+                         data-listing-panel="PUBLISHED" aria-labelledby="generated-title">
+                    <h2 id="generated-title">Ce que voient les locataires</h2>
+                    <div class="listing-generated">
+                        <p><strong th:text="${l.generatedTitle}" data-generated-title></strong></p>
+                        <p th:if="${l.generatedSummary}" th:text="${l.generatedSummary}" data-generated-summary></p>
+                    </div>
+                </section>
+
+                <section class="home-section" aria-labelledby="checklist-title">
+                    <h2 id="checklist-title">La visite du bien</h2>
+                    <p class="checklist__progress" th:text="${l.progress}" data-checklist-progress>1 sections sur 6 vérifiées</p>
+                    <!-- One row per section: to edit it while a draft, to view it (read-only) once sent. -->
+                    <ol class="checklist" data-checklist>
+                        <li th:each="row : ${l.rows}">
+                            <a class="checklist__row" th:href="@{${row.url}}">
+                                <span class="checklist__title" th:text="${row.label}" data-section-title>Emplacement</span>
+                                <span th:class="|status-tag status-tag--${row.state.style}|" th:text="${row.state.label}"
+                                      data-section-state>À vérifier</span>
+                                <span class="checklist__summary" th:text="${row.summary}" data-section-summary></span>
+                            </a>
+                        </li>
+                    </ol>
+                </section>
+
+                <section class="home-section listing-send" aria-label="Envoi de l'annonce" th:if="${l.editable}" data-listing-send>
+                    <form method="post" th:action="@{/listings/{id}/verify(id=${l.id})}" data-listing-send-form>
+                        <button type="submit" class="btn btn--primary btn--block" aria-describedby="listing-missing"
+                                th:attr="aria-disabled=${l.sendable} ? null : 'true'" data-listing-submit>Envoyer pour vérification</button>
+                    </form>
+                    <p class="listing-send__missing" id="listing-missing" tabindex="-1" th:text="${l.missing}"
+                       data-listing-missing></p>
+                </section>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

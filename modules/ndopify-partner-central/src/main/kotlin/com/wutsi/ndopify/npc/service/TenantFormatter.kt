@@ -70,6 +70,14 @@ class TenantFormatter(private val tenant: Tenant) {
         return listOf(format.format(value) + suffix, currency).filter { it.isNotEmpty() }.joinToString("\u00A0")
     }
 
+    /** A count in the tenant's `numberFormat`, without decimals ("1 200", for an area in m²). */
+    fun count(value: Long): String {
+        val format = DecimalFormat(tenant.numberFormat.ifBlank { DEFAULT_NUMBER_FORMAT }, DecimalFormatSymbols.getInstance(locale))
+        format.minimumFractionDigits = 0
+        format.maximumFractionDigits = 0
+        return format.format(value).replace('\u202F', '\u00A0').replace(' ', '\u00A0')
+    }
+
     // French groups digits with a narrow no-break space (U+202F): a no-break space instead, which every font has. The
     // pattern's own spaces too, so an amount never wraps.
     private fun number(amount: Long, pattern: String): String =

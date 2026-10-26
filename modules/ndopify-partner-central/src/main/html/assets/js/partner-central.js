@@ -2420,7 +2420,7 @@
                 return [road.length ? amenityLabels(road)[0] : "Accès à préciser",
                     others ? plural(others, "équipement", "équipements") : "aucun équipement"].join(" · ");
             case "terms":
-                return f.price.toLocaleString("fr-FR") + " FCFA / mois" +
+                return formatRent(f.price) +
                     (f.securityDeposit ? " · caution " + f.securityDeposit + " mois" : "");
             case "photos":
                 var n = goodPhotos(listing);

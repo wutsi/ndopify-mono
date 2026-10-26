@@ -10,6 +10,7 @@ import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
+import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantContext
@@ -59,6 +60,7 @@ class MandateEditTemplateTest {
     private val contractClient = mock<NdContractClient>()
     private val customerClient = mock<NdCustomerClient>()
     private val assignmentClient = mock<NdAssignmentClient>()
+    private val listingClient = mock<NdListingClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
@@ -96,6 +98,7 @@ class MandateEditTemplateTest {
                     contractClient,
                     customerClient,
                     assignmentClient,
+                    listingClient,
                     locationClient,
                     tenantContext,
                     clock,

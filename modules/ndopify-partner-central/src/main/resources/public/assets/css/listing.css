@@ -1,0 +1,349 @@
+/*
+ * Ndopify Partner Central — a mandate's listing (templates/listing.html, templates/listing/*.html), and its line on
+ * the mandate page (templates/mandate.html).
+ * Loaded after partner-central.css, join.css, find-property.css and home.css; uses their tier-2 semantic tokens
+ * only, no new colours. Ported from the prototype (src/main/html/assets/css/listing.css).
+ */
+
+/* templates/mandate.html: the listing's line and button, under the Actif step's dates. */
+.mandate-listing > * + * {
+    margin-top: var(--space-3);
+}
+
+.status-tag--neutral {
+    color: var(--color-fg);
+}
+
+/* ---------- The checklist (listing.html) ---------- */
+.checklist {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.checklist > li + li {
+    margin-top: var(--space-2);
+}
+
+/* Each row opens its section: title and state on one line, the section's values under them. */
+.checklist__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    column-gap: var(--space-3);
+    row-gap: var(--space-1);
+    min-height: var(--target);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: inherit;
+    text-decoration: none;
+    transition: border-color var(--duration) var(--ease-out);
+}
+
+a.checklist__row:hover {
+    border-color: var(--color-fg);
+}
+
+a.checklist__row:hover .checklist__title {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
+a.checklist__row:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
+.checklist__title {
+    font-weight: 600;
+}
+
+.checklist__summary {
+    grid-column: 1 / -1;
+    overflow: hidden;
+    font-size: var(--step-hint);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.checklist__progress,
+.listing-send__missing {
+    font-size: var(--step-hint);
+}
+
+.listing-send > * + * {
+    margin-top: var(--space-3);
+}
+
+/* What the publishing wrote, quoted as it will appear. */
+.listing-generated {
+    padding: var(--space-3) var(--space-4);
+    border-left: 3px solid var(--color-success-fg);
+    background: var(--color-surface-alt);
+}
+
+.listing-generated > * + * {
+    margin-top: var(--space-2);
+}
+
+/* ---------- A section (listing/*.html) ---------- */
+
+/* Under a field the agent changed: the landlord's answer, for the check. */
+.owner-value {
+    font-size: var(--step-hint);
+    color: var(--color-info-fg);
+}
+
+.gps__result > * + * {
+    margin-top: var(--space-1);
+}
+
+.gps__coords {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+/* Counts side by side from 480px: they're short. */
+.count-grid {
+    display: grid;
+    gap: var(--space-4);
+}
+
+@media (min-width: 480px) {
+    .count-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.count-grid .field[hidden] {
+    display: none;
+}
+
+/* ---------- Photos (listing/photos.html) ---------- */
+.photo-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+}
+
+.photo-actions .btn {
+    position: relative;
+}
+
+@media (max-width: 479px) {
+    .photo-actions .btn {
+        flex: 1 1 100%;
+    }
+}
+
+.photos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr));
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.photo {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-alt);
+}
+
+.photo img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+}
+
+.photo__link:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
+.photo__note {
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--step-hint);
+}
+
+.photo--pending {
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+    font-size: var(--step-hint);
+}
+
+.photo--rejected {
+    border-color: var(--color-error-fg);
+}
+
+.photo--rejected .photo__note {
+    background: var(--color-error-bg);
+    color: var(--color-error-fg);
+}
+
+/* Delete: a round button on the photo's corner, thumb-sized. */
+.photo__delete {
+    position: absolute;
+    top: var(--space-1);
+    right: var(--space-1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--target);
+    height: var(--target);
+    border: 1px solid var(--color-border-strong);
+    border-radius: 50%;
+    background: var(--color-bg);
+    color: var(--color-fg);
+    cursor: pointer;
+}
+
+.photo__delete:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
+/* Viewer: a photo full screen, the others beside it in a strip that swipes (listing.js builds it). */
+html:has(.viewer[open]) {
+    overflow: hidden;
+}
+
+.viewer {
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: var(--color-overlay);
+    color: var(--color-on-overlay);
+}
+
+.viewer[open] {
+    display: flex;
+}
+
+.viewer__track {
+    display: flex;
+    flex: 1;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+}
+
+.viewer__track::-webkit-scrollbar {
+    display: none;
+}
+
+.viewer__slide {
+    display: flex;
+    flex: 0 0 100%;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-2);
+    margin: 0;
+    padding: var(--space-5) var(--space-2);
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+}
+
+.viewer__slide img {
+    max-width: 100%;
+    max-height: calc(100vh - 8rem);
+    max-height: calc(100dvh - 8rem);
+    object-fit: contain;
+}
+
+.viewer__slide figcaption {
+    font-size: var(--step-hint);
+}
+
+.viewer__count {
+    position: absolute;
+    top: var(--space-3);
+    left: var(--space-3);
+    margin: 0;
+    font-size: var(--step-hint);
+}
+
+.viewer__button {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--target);
+    height: var(--target);
+    border: 1px solid var(--color-border-strong);
+    border-radius: 50%;
+    background: var(--color-bg);
+    color: var(--color-fg);
+    cursor: pointer;
+}
+
+.viewer__button:disabled {
+    visibility: hidden;
+}
+
+.viewer__button:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
+.viewer__close {
+    top: var(--space-2);
+    right: var(--space-2);
+}
+
+.viewer__prev,
+.viewer__next {
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.viewer__prev {
+    left: var(--space-2);
+}
+
+.viewer__next {
+    right: var(--space-2);
+}
+
+.photo-tips {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.photo-tips li + li {
+    margin-top: var(--space-1);
+}
+
+/* A sent section (listing/*.html): the answers stay legible, not greyed like a disabled control. */
+.listing-readonly .choice:has(input:disabled),
+.listing-readonly .input:disabled {
+    color: var(--color-fg);
+    cursor: default;
+    opacity: 1;
+}
+
+.listing-readonly .choice:has(input:disabled):hover {
+    border-color: var(--color-border-strong);
+}
+
+.listing-readonly .field[hidden],
+.listing-readonly .choices[hidden] {
+    display: none;
+}
+
+/* Only the answers given: the choices not taken are left out. */
+.listing-readonly .choice:not(:has(input:checked)) {
+    display: none;
+}

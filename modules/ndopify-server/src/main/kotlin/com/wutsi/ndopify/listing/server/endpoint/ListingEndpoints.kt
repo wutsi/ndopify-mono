@@ -59,6 +59,12 @@ class ListingEndpoints(
         service.update(id, request)
     }
 
+    /** Sends a DRAFT listing for verification, once its checklist is done (see [ListingService.verify]). */
+    @PostMapping("/{id}/verify")
+    fun verify(@PathVariable id: Long) {
+        service.verify(id)
+    }
+
     /** Uploads a photo (multipart, a JPEG, PNG or WEBP image), PENDING_VERIFICATION. */
     @PostMapping("/{id}/images/upload")
     fun upload(
