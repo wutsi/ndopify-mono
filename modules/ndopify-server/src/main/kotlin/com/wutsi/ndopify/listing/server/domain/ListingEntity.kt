@@ -8,6 +8,8 @@ import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import com.wutsi.ndopify.util.jpa.StringListConverter
+import jakarta.persistence.Convert
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
@@ -106,4 +108,7 @@ data class ListingEntity(
     val modifiedAt: Date = Date(),
     val publishedAt: Date? = null,
     val closedAt: Date? = null,
+
+    @Convert(StringListConverter::class)
+    val errors: List<String> = emptyList()
 )

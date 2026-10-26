@@ -59,9 +59,10 @@ CREATE TABLE T_LISTING(
 
   agent_remarks           TEXT,
 
-  title                   VARCHAR(255),
-  summary                 TEXT,
+  title                   VARCHAR(100),
+  summary                 VARCHAR(255),
   description             TEXT,
+  errors                  VARCHAR(255),
 
   created_at              DATETIME DEFAULT NOW(),
   modified_at             DATETIME NOT NULL DEFAULT now() ON UPDATE now(),

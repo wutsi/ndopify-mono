@@ -26,6 +26,11 @@ data class ListingImageEntity(
     val url: String = "",
     val mimeType: String? = null,
     val status: ImageStatus = ImageStatus.UNKNOWN,
+    val title: String? = null,
+    val description: String? = null,
+    val width: Int? = null,
+    val height: Int? = null,
+    val retries: Int? = null,
     val errorMessage: String? = null,
 
     val createdAt: Date = Date(),

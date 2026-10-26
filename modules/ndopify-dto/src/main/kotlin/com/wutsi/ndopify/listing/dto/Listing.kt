@@ -70,6 +70,7 @@ data class Listing(
     val title: String? = null,
     val summary: String? = null,
     val description: String? = null,
+    val errors: List<String> = emptyList(),
 
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),

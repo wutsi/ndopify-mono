@@ -7,9 +7,14 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface ListingImageRepository : CrudRepository<ListingImageEntity, Long> {
+    fun findByListingIdAndStatus(listingId: Long, status: ImageStatus): List<ListingImageEntity>
+
     fun findByListingIdOrderById(listingId: Long): List<ListingImageEntity>
 
-    fun findByListingIdAndStatusInOrderById(listingId: Long, statuses: Collection<ImageStatus>): List<ListingImageEntity>
+    fun findByListingIdAndStatusInOrderById(
+        listingId: Long,
+        statuses: Collection<ImageStatus>
+    ): List<ListingImageEntity>
 
     fun findByIdAndListingId(id: Long, listingId: Long): ListingImageEntity?
 }

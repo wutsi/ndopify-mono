@@ -6,6 +6,11 @@ CREATE TABLE T_LISTING_IMAGE(
   path                    VARCHAR(255) NOT NULL,
   url                     VARCHAR(1024) NOT NULL,
   mime_type               VARCHAR(100),
+  title                   VARCHAR(100),
+  description             VARCHAR(255),
+  width                   INT,
+  height                  INT,
+  retries                 INT,
   status                  VARCHAR(30) DEFAULT NULL,
   error_message           TEXT,
 
