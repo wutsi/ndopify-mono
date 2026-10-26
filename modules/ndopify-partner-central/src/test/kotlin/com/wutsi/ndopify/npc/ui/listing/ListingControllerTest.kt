@@ -180,6 +180,21 @@ class ListingControllerTest {
     }
 
     @Test
+    fun `show - section saved`() {
+        val result = mvc.perform(get("/listings/501").flashAttr(ListingController.OUTCOME, "saved-amenities")).andReturn()
+
+        assertEquals("Équipements enregistrés.", model(result)["outcomeText"])
+        assertEquals("success", model(result)["outcomeStyle"])
+    }
+
+    @Test
+    fun `show - unknown outcome`() {
+        val result = mvc.perform(get("/listings/501").flashAttr(ListingController.OUTCOME, "saved-garden")).andReturn()
+
+        assertNull(model(result)["outcomeText"])
+    }
+
+    @Test
     fun send() {
         doReturn(COMPLETE).whenever(listingClient).get(501)
 

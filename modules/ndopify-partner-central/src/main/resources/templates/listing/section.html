@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${section} ? ${section.pageTitle} : 'Annonce — Ndopify Partner Central'">Annonce — Ndopify Partner Central</title>
+    <meta name="description" content="Une section de l'annonce, vérifiée sur place pendant la visite du bien.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/join.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/find-property.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/home.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/listing.css}">
+    <script th:src="@{/assets/js/partner-central.js}" defer></script>
+    <script th:src="@{/assets/js/listing.js}" defer></script>
+</head>
+<!--/*
+  One section of a listing's checklist (ListingSectionController), from the prototype's listing/emplacement.html,
+  position.html, bien.html, equipements.html, conditions.html and remarques.html: "section" is the SectionView (absent
+  when "locked" or "unavailable"), "answers" the ListingSectionForm shown (the listing's, or what was posted with its
+  "errors"), "error" why it couldn't be saved, "ownerHints" the landlord's answer of each field the agent changed.
+  The form posts the listing's version it was shown with. Every page works without JS: the GPS position can be typed,
+  and every question of "Le bien" is shown (ListingRules.applies ignores those of another type); listing.js only
+  enhances. Once sent ("section.editable" false), the section is only shown: its answers, nothing to act on.
+*/-->
+<body data-page="listing-section" th:attr="data-section=${section} ? ${section.slug} : null, data-currency=${currency}">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" th:href="@{/}">
+                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte" th:if="${signedIn}">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <img class="user-menu__photo" th:if="${userPhotoUrl}" th:src="${userPhotoUrl}" alt="" width="44" height="44"
+                         data-user-photo>
+                    <span aria-hidden="true" data-user-initials th:unless="${userPhotoUrl}" th:text="${initials}">NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li><a class="user-menu__item" th:href="@{/profile}">Profil</a></li>
+                    <li><a class="user-menu__item" data-logout th:href="@{/logout}">Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="back-link"><a th:href="${section} ? @{/listings/{id}(id=${section.listingId})} : @{/#mandates-title}"
+                                    th:text="${section} ? '← Retour à l\'annonce' : '← Retour à l\'espace agent'">← Retour à l'annonce</a></p>
+
+            <!-- Locked: not the agent's listing, or not found. -->
+            <div class="alert alert--warning" th:if="${locked}" data-section-locked>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <h1 class="alert__title">Cette annonce n'est pas disponible</h1>
+                    <p>Une annonce se crée depuis un mandat de bailleur approuvé.</p>
+                </div>
+            </div>
+
+            <!-- Unavailable: ndopify-server couldn't answer. -->
+            <div class="alert alert--error" role="alert" th:if="${unavailable}" data-section-unavailable>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <div>
+                    <h1 class="alert__title">Annonce indisponible pour le moment</h1>
+                    <p>Réessayez dans quelques instants.</p>
+                </div>
+            </div>
+
+            <div class="stack" th:if="${section}" th:with="s=${section}, e=${section.editable}, a=${answers}" data-section-content>
+                <div class="page-intro">
+                    <h1 th:text="${s.heading}">Le bien</h1>
+                    <p class="mandate__meta" th:text="${s.meta}" data-section-meta>Annonce · Appartement, Bonapriso · mandat n° 203</p>
+                    <!-- The instruction is for the visit: not once sent. -->
+                    <p th:if="${e}" th:switch="${s.slug}" data-section-instruction>
+                        <th:block th:case="'location'">Vérifiez le quartier, et notez ce qui aidera les locataires à trouver le bien.</th:block>
+                        <th:block th:case="'gps'">Placez-vous devant l'entrée du bien, à l'extérieur, puis relevez sa position.</th:block>
+                        <th:block th:case="'property'">Comptez les pièces sur place et corrigez ce qui ne correspond pas aux réponses du propriétaire.</th:block>
+                        <th:block th:case="'amenities'">Cochez ce que vous constatez sur place, pas seulement ce qu'annonce le propriétaire.</th:block>
+                        <th:block th:case="'terms'">Indiquez les conditions convenues avec le propriétaire&nbsp;: elles peuvent différer du mandat.</th:block>
+                        <th:block th:case="'remarks'">Ce que l'équipe qui vérifie l'annonce doit savoir.</th:block>
+                    </p>
+                </div>
+
+                <!-- Sent or published: the section as it was sent, read-only. -->
+                <div class="hint" th:if="${s.readonlyText}" data-section-readonly>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <p th:text="${s.readonlyText}">Annonce en vérification depuis le 22 oct. 2026 : voici ce que vous avez relevé, il ne peut plus être modifié.</p>
+                </div>
+
+                <!-- Why it couldn't be saved (changed meanwhile, or ndopify-server unavailable): the answers are kept. -->
+                <div class="alert alert--error" role="alert" tabindex="-1" th:if="${error}" data-section-error>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <p th:text="${error}">Enregistrement impossible pour le moment.</p>
+                </div>
+
+                <form method="post" th:action="@{/listings/{id}/{slug}(id=${s.listingId}, slug=${s.slug})}" novalidate
+                      th:class="${e} ? 'form stack' : 'form stack listing-readonly'" data-section-form>
+                    <input type="hidden" name="version" th:value="${a.version}">
+
+                    <!--/* ---------- Emplacement ---------- */-->
+                    <th:block th:if="${s.slug == 'location'}">
+                        <div class="field">
+                            <label class="field__label" for="city">Ville</label>
+                            <input class="input" id="city" type="text" readonly th:value="${city}" th:disabled="${!e}">
+                        </div>
+                        <div class="field" th:if="${e or !#strings.isEmpty(a.neighborhoodId)}">
+                            <label class="field__label" for="neighborhoodId">Quartier</label>
+                            <select class="input select" id="neighborhoodId" name="neighborhoodId" aria-describedby="neighborhoodId-error"
+                                    th:disabled="${!e}" th:attr="aria-invalid=${errors['neighborhoodId'] != null} ? 'true' : null">
+                                <option value="">Choisissez le quartier</option>
+                                <option th:each="n : ${neighborhoods}" th:value="${n.id}" th:text="${n.name}"
+                                        th:selected="${a.neighborhoodId == '' + n.id}">Bonapriso</option>
+                            </select>
+                            <p class="owner-value" th:if="${ownerHints['neighborhoodId']}" th:text="${ownerHints['neighborhoodId']}" data-owner-for="neighborhoodId"></p>
+                            <p th:replace="~{:: error('neighborhoodId')}"></p>
+                        </div>
+                        <div class="field" th:if="${e or !#strings.isEmpty(a.landmark)}">
+                            <label class="field__label" for="landmark">Point de repère</label>
+                            <input class="input" id="landmark" name="landmark" type="text" maxlength="100" autocomplete="off"
+                                   aria-describedby="landmark-hint landmark-error" th:value="${a.landmark}" th:disabled="${!e}"
+                                   th:attr="aria-invalid=${errors['landmark'] != null} ? 'true' : null">
+                            <p class="field__optional" id="landmark-hint" th:if="${e}">Un lieu que tout le monde connaît&nbsp;: «&nbsp;Derrière
+                                l'école publique de Bonapriso&nbsp;».</p>
+                            <p th:replace="~{:: error('landmark')}"></p>
+                        </div>
+                        <div class="field" th:if="${e or !#strings.isEmpty(a.accessDirections)}">
+                            <label class="field__label" for="accessDirections">Comment y accéder <span class="field__optional">(facultatif)</span></label>
+                            <textarea class="input input--textarea" id="accessDirections" name="accessDirections" rows="3"
+                                      maxlength="500" aria-describedby="accessDirections-error" th:text="${a.accessDirections}" th:disabled="${!e}"
+                                      th:attr="aria-invalid=${errors['accessDirections'] != null} ? 'true' : null"></textarea>
+                            <p th:replace="~{:: error('accessDirections')}"></p>
+                        </div>
+                    </th:block>
+
+                    <!--/*
+                      ---------- Position GPS ----------
+                      Without JS, the position is typed; listing.js hides these fields behind "Relever ma position ici".
+                    */-->
+                    <th:block th:if="${s.slug == 'gps'}">
+                        <div class="field gps">
+                            <p class="field__optional" id="gps-hint" th:if="${e}" data-gps-hint>Les locataires et les visiteurs s'en serviront pour trouver le
+                                bien&nbsp;: vérifiez-la sur la carte avant d'enregistrer.</p>
+                            <div class="count-grid" data-gps-manual>
+                                <div class="field">
+                                    <label class="field__label" for="latitude">Latitude</label>
+                                    <input class="input" id="latitude" name="latitude" type="text" inputmode="decimal" autocomplete="off"
+                                           aria-describedby="gps-hint latitude-error" th:value="${a.latitude}" th:disabled="${!e}"
+                                           th:attr="aria-invalid=${errors['latitude'] != null} ? 'true' : null">
+                                </div>
+                                <div class="field">
+                                    <label class="field__label" for="longitude">Longitude</label>
+                                    <input class="input" id="longitude" name="longitude" type="text" inputmode="decimal" autocomplete="off"
+                                           aria-describedby="gps-hint latitude-error" th:value="${a.longitude}" th:disabled="${!e}">
+                                </div>
+                            </div>
+                            <input name="accuracy" type="hidden">
+                            <div class="gps__result" th:hidden="${#strings.isEmpty(a.latitude) or #strings.isEmpty(a.longitude)}" data-gps-result>
+                                <p class="gps__coords" th:text="|${a.latitude}, ${a.longitude}|" data-gps-coords></p>
+                                <p><a target="_blank" rel="noopener" data-gps-map
+                                      th:href="|https://www.openstreetmap.org/?mlat=${a.latitude}&mlon=${a.longitude}#map=18/${a.latitude}/${a.longitude}|">Voir sur la carte</a></p>
+                            </div>
+                            <p class="owner-value" hidden data-gps-weak>Précision faible&nbsp;: relevez à nouveau la position à
+                                l'extérieur, devant l'entrée.</p>
+                            <button type="button" class="btn btn--outline" hidden th:if="${e}"
+                                    aria-describedby="gps-hint latitude-error" data-gps data-field="latitude">Relever ma position ici</button>
+                            <p th:replace="~{:: error('latitude')}"></p>
+                        </div>
+                    </th:block>
+
+                    <!--/* ---------- Le bien ---------- */-->
+                    <th:block th:if="${s.slug == 'property'}">
+                        <fieldset class="choices" aria-describedby="propertyCategory-error">
+                            <legend class="choices__legend">Usage</legend>
+                            <div class="choices__grid choices__grid--2">
+                                <label class="choice" th:if="${e or a.propertyCategory == 'RESIDENTIAL'}"><input name="propertyCategory" type="radio" value="RESIDENTIAL"
+                                       th:checked="${a.propertyCategory == 'RESIDENTIAL'}" th:disabled="${!e}"> Résidentiel</label>
+                                <label class="choice" th:if="${e or a.propertyCategory == 'COMMERCIAL'}"><input name="propertyCategory" type="radio" value="COMMERCIAL"
+                                       th:checked="${a.propertyCategory == 'COMMERCIAL'}" th:disabled="${!e}"> Commercial</label>
+                            </div>
+                            <p class="owner-value" th:if="${ownerHints['propertyCategory']}" th:text="${ownerHints['propertyCategory']}" data-owner-for="propertyCategory"></p>
+                            <p th:replace="~{:: error('propertyCategory')}"></p>
+                        </fieldset>
+                        <fieldset class="choices" aria-describedby="propertyType-error">
+                            <legend class="choices__legend">Type de bien</legend>
+                            <div class="choices__grid choices__grid--2">
+                                <label class="choice" th:each="t : ${types}" th:if="${e or a.propertyType == t.value}" th:attr="data-categories=${t.category}"><input
+                                       name="propertyType" type="radio" th:value="${t.value}" th:checked="${a.propertyType == t.value}"
+                                       th:disabled="${!e}"> <th:block th:text="${t.label}">Appartement</th:block></label>
+                            </div>
+                            <p class="owner-value" th:if="${ownerHints['propertyType']}" th:text="${ownerHints['propertyType']}" data-owner-for="propertyType"></p>
+                            <p th:replace="~{:: error('propertyType')}"></p>
+                        </fieldset>
+                        <fieldset class="choices" aria-describedby="furnitureType-error" data-applies="furniture" th:if="${e or !#strings.isEmpty(a.furnitureType)}">
+                            <legend class="choices__legend">Ameublement</legend>
+                            <div class="choices__grid choices__grid--2">
+                                <label class="choice" th:if="${e or a.furnitureType == 'UNFURNISHED'}"><input name="furnitureType" type="radio" value="UNFURNISHED"
+                                       th:checked="${a.furnitureType == 'UNFURNISHED'}" th:disabled="${!e}"> Non meublé</label>
+                                <label class="choice" th:if="${e or a.furnitureType == 'FULLY_FURNISHED'}"><input name="furnitureType" type="radio" value="FULLY_FURNISHED"
+                                       th:checked="${a.furnitureType == 'FULLY_FURNISHED'}" th:disabled="${!e}"> Meublé</label>
+                            </div>
+                            <p class="owner-value" th:if="${ownerHints['furnitureType']}" th:text="${ownerHints['furnitureType']}" data-owner-for="furnitureType"></p>
+                            <p th:replace="~{:: error('furnitureType')}"></p>
+                        </fieldset>
+                        <div class="count-grid">
+                            <div class="field" data-applies="rooms" th:if="${e or !#strings.isEmpty(a.rooms)}">
+                                <label class="field__label" for="rooms">Chambres</label>
+                                <input th:replace="~{:: count('rooms', ${a.rooms})}">
+                                <p class="owner-value" th:if="${ownerHints['rooms']}" th:text="${ownerHints['rooms']}" data-owner-for="rooms"></p>
+                                <p th:replace="~{:: error('rooms')}"></p>
+                            </div>
+                            <div class="field" data-applies="rooms" th:if="${e or !#strings.isEmpty(a.livingRooms)}">
+                                <label class="field__label" for="livingRooms">Salons <span class="field__optional">(facultatif)</span></label>
+                                <input th:replace="~{:: count('livingRooms', ${a.livingRooms})}">
+                                <p th:replace="~{:: error('livingRooms')}"></p>
+                            </div>
+                            <div class="field" data-applies="bathrooms" th:if="${e or !#strings.isEmpty(a.bathrooms)}">
+                                <label class="field__label" for="bathrooms">Salles de bain, douches</label>
+                                <input th:replace="~{:: count('bathrooms', ${a.bathrooms})}">
+                                <p th:replace="~{:: error('bathrooms')}"></p>
+                            </div>
+                            <div class="field" data-applies="kitchens" th:if="${e or !#strings.isEmpty(a.kitchens)}">
+                                <label class="field__label" for="kitchens">Cuisines <span class="field__optional">(facultatif)</span></label>
+                                <input th:replace="~{:: count('kitchens', ${a.kitchens})}">
+                                <p th:replace="~{:: error('kitchens')}"></p>
+                            </div>
+                            <div class="field" data-applies="parkings" th:if="${e or !#strings.isEmpty(a.parkings)}">
+                                <label class="field__label" for="parkings">Places de parking <span class="field__optional">(facultatif)</span></label>
+                                <input th:replace="~{:: count('parkings', ${a.parkings})}">
+                                <p class="owner-value" th:if="${ownerHints['parkings']}" th:text="${ownerHints['parkings']}" data-owner-for="parkings"></p>
+                                <p th:replace="~{:: error('parkings')}"></p>
+                            </div>
+                            <div class="field" data-applies="levels" th:if="${e or !#strings.isEmpty(a.levels)}">
+                                <label class="field__label" for="levels">Niveaux <span class="field__optional">(facultatif)</span></label>
+                                <input th:replace="~{:: count('levels', ${a.levels})}">
+                                <p th:replace="~{:: error('levels')}"></p>
+                            </div>
+                            <div class="field" data-applies="floorLevel" th:if="${e or !#strings.isEmpty(a.floorLevel)}">
+                                <label class="field__label" for="floorLevel">Étage <span class="field__optional">(0&nbsp;: rez-de-chaussée)</span></label>
+                                <input th:replace="~{:: count('floorLevel', ${a.floorLevel})}">
+                                <p th:replace="~{:: error('floorLevel')}"></p>
+                            </div>
+                        </div>
+                        <div class="field" th:if="${e or !#strings.isEmpty(a.area)}">
+                            <label class="field__label" for="area">Surface</label>
+                            <div class="input-unit">
+                                <input th:replace="~{:: count('area', ${a.area})}">
+                                <span aria-hidden="true" class="input-unit__suffix">m²</span>
+                            </div>
+                            <p class="owner-value" th:if="${ownerHints['area']}" th:text="${ownerHints['area']}" data-owner-for="area"></p>
+                            <p th:replace="~{:: error('area')}"></p>
+                        </div>
+                    </th:block>
+
+                    <!--/* ---------- Eau, électricité, accès ---------- */-->
+                    <th:block th:if="${s.slug == 'amenities'}">
+                        <fieldset class="choices" th:if="${e or a.waterMeter or a.dedicatedWaterMeter or a.waterWell or a.waterTank}">
+                            <legend class="choices__legend">Eau <span class="field__optional">(plusieurs choix possibles)</span></legend>
+                            <div class="choices__grid">
+                                <label class="choice" th:replace="~{:: amenity('waterMeter', ${a.waterMeter})}"></label>
+                                <label class="choice" th:replace="~{:: amenity('dedicatedWaterMeter', ${a.dedicatedWaterMeter})}"></label>
+                                <label class="choice" th:replace="~{:: amenity('waterWell', ${a.waterWell})}"></label>
+                                <label class="choice" th:replace="~{:: amenity('waterTank', ${a.waterTank})}"></label>
+                            </div>
+                        </fieldset>
+                        <fieldset class="choices" th:if="${e or a.electricityMeter or a.dedicatedElectricityMeter or a.generatorSet or a.solarPanel}">
+                            <legend class="choices__legend">Électricité <span class="field__optional">(plusieurs choix possibles)</span></legend>
+                            <div class="choices__grid">
+                                <label class="choice" th:replace="~{:: amenity('electricityMeter', ${a.electricityMeter})}"></label>
+                                <label class="choice" th:replace="~{:: amenity('dedicatedElectricityMeter', ${a.dedicatedElectricityMeter})}"></label>
+                                <label class="choice" th:replace="~{:: amenity('generatorSet', ${a.generatorSet})}"></label>
+                                <label class="choice" th:replace="~{:: amenity('solarPanel', ${a.solarPanel})}"></label>
+                            </div>
+                        </fieldset>
+                        <fieldset class="choices" aria-describedby="roadAccess-error" th:if="${e or !#strings.isEmpty(a.roadAccess)}">
+                            <legend class="choices__legend">Accès routier</legend>
+                            <div class="choices__grid">
+                                <label class="choice" th:if="${e or a.roadAccess == 'roadPaved'}"><input name="roadAccess" type="radio" value="roadPaved"
+                                       th:checked="${a.roadAccess == 'roadPaved'}" th:disabled="${!e}"> Route bitumée</label>
+                                <label class="choice" th:if="${e or a.roadAccess == 'trackAccessibleByCar'}"><input name="roadAccess" type="radio" value="trackAccessibleByCar"
+                                       th:checked="${a.roadAccess == 'trackAccessibleByCar'}" th:disabled="${!e}"> Piste accessible en voiture</label>
+                                <label class="choice" th:if="${e or a.roadAccess == 'trackInaccessibleByCar'}"><input name="roadAccess" type="radio" value="trackInaccessibleByCar"
+                                       th:checked="${a.roadAccess == 'trackInaccessibleByCar'}" th:disabled="${!e}"> Piste accessible à pied seulement</label>
+                            </div>
+                            <p th:replace="~{:: error('roadAccess')}"></p>
+                        </fieldset>
+                        <fieldset class="choices" th:if="${e or a.videoSurveillance or a.securityGuard or a.securedFenced}">
+                            <legend class="choices__legend">Sécurité <span class="field__optional">(plusieurs choix possibles)</span></legend>
+                            <div class="choices__grid">
+                                <label class="choice" th:replace="~{:: amenity('videoSurveillance', ${a.videoSurveillance})}"></label>
+                                <label class="choice" th:replace="~{:: amenity('securityGuard', ${a.securityGuard})}"></label>
+                                <label class="choice" th:replace="~{:: amenity('securedFenced', ${a.securedFenced})}"></label>
+                            </div>
+                        </fieldset>
+                        <p class="owner-value" th:if="${ownerHints['amenities']}" th:text="${ownerHints['amenities']}" data-owner-for="amenities"></p>
+                    </th:block>
+
+                    <!--/* ---------- Loyer et conditions ---------- */-->
+                    <th:block th:if="${s.slug == 'terms'}">
+                        <div class="field" th:if="${e or !#strings.isEmpty(a.price)}">
+                            <label class="field__label" for="price">Loyer mensuel</label>
+                            <div class="input-unit">
+                                <input class="input" id="price" name="price" type="text" inputmode="numeric" autocomplete="off"
+                                       data-kind="amount" aria-describedby="price-error" th:value="${a.price}" th:disabled="${!e}"
+                                       th:attr="aria-invalid=${errors['price'] != null} ? 'true' : null"><span aria-hidden="true" class="input-unit__suffix"
+                                      th:text="|${currency} / mois|">FCFA / mois</span>
+                            </div>
+                            <p class="owner-value" th:if="${ownerHints['price']}" th:text="${ownerHints['price']}" data-owner-for="price"></p>
+                            <p th:replace="~{:: error('price')}"></p>
+                        </div>
+                        <div class="field" th:if="${e or !#strings.isEmpty(a.securityDeposit)}">
+                            <label class="field__label" for="securityDeposit">Caution</label>
+                            <select class="input select" id="securityDeposit" name="securityDeposit" aria-describedby="securityDeposit-error"
+                                    th:disabled="${!e}" th:attr="aria-invalid=${errors['securityDeposit'] != null} ? 'true' : null">
+                                <option value="">Choisissez le nombre de mois</option>
+                                <option th:each="n : ${#numbers.sequence(1, 6)}" th:value="${n}" th:text="|${n} mois|"
+                                        th:selected="${a.securityDeposit == '' + n}">1 mois</option>
+                            </select>
+                            <p class="owner-value" th:if="${ownerHints['securityDeposit']}" th:text="${ownerHints['securityDeposit']}" data-owner-for="securityDeposit"></p>
+                            <p th:replace="~{:: error('securityDeposit')}"></p>
+                        </div>
+                        <div class="field" th:if="${e or !#strings.isEmpty(a.advanceRent)}">
+                            <label class="field__label" for="advanceRent">Avance de loyer <span class="field__optional">(si applicable)</span></label>
+                            <select class="input select" id="advanceRent" name="advanceRent" aria-describedby="advanceRent-error" th:disabled="${!e}">
+                                <option value="">Aucune avance</option>
+                                <option th:each="n : ${#numbers.sequence(1, 12)}" th:value="${n}" th:text="|${n} mois|"
+                                        th:selected="${a.advanceRent == '' + n}">1 mois</option>
+                            </select>
+                            <p class="owner-value" th:if="${ownerHints['advanceRent']}" th:text="${ownerHints['advanceRent']}" data-owner-for="advanceRent"></p>
+                            <p th:replace="~{:: error('advanceRent')}"></p>
+                        </div>
+                        <div class="field" th:if="${e or !#strings.isEmpty(a.leaseTerm)}">
+                            <label class="field__label" for="leaseTerm">Durée du bail <span class="field__optional">(facultatif)</span></label>
+                            <select class="input select" id="leaseTerm" name="leaseTerm" aria-describedby="leaseTerm-error" th:disabled="${!e}">
+                                <option value="">Non précisée</option>
+                                <option th:each="n : ${ {6, 12, 24, 36} }" th:value="${n}" th:text="|${n} mois|"
+                                        th:selected="${a.leaseTerm == '' + n}">6 mois</option>
+                            </select>
+                            <p th:replace="~{:: error('leaseTerm')}"></p>
+                        </div>
+                        <div class="field" th:if="${e or !#strings.isEmpty(a.noticePeriod)}">
+                            <label class="field__label" for="noticePeriod">Préavis de départ <span class="field__optional">(facultatif)</span></label>
+                            <select class="input select" id="noticePeriod" name="noticePeriod" aria-describedby="noticePeriod-error" th:disabled="${!e}">
+                                <option value="">Non précisé</option>
+                                <option th:each="n : ${#numbers.sequence(1, 3)}" th:value="${n}" th:text="|${n} mois|"
+                                        th:selected="${a.noticePeriod == '' + n}">1 mois</option>
+                            </select>
+                            <p th:replace="~{:: error('noticePeriod')}"></p>
+                        </div>
+                        <div class="field" th:if="${e or !#strings.isEmpty(a.availableFrom)}">
+                            <label class="field__label" for="availableFrom">Disponible à partir du</label>
+                            <input class="input input--date" id="availableFrom" name="availableFrom" type="date"
+                                   aria-describedby="availableFrom-error" th:value="${a.availableFrom}" th:max="${maxDate}" th:disabled="${!e}"
+                                   th:attr="aria-invalid=${errors['availableFrom'] != null} ? 'true' : null">
+                            <p class="owner-value" th:if="${ownerHints['availableFrom']}" th:text="${ownerHints['availableFrom']}" data-owner-for="availableFrom"></p>
+                            <p th:replace="~{:: error('availableFrom')}"></p>
+                        </div>
+                    </th:block>
+
+                    <!--/* ---------- Vos remarques ---------- */-->
+                    <th:block th:if="${s.slug == 'remarks'}">
+                        <div class="field">
+                            <label class="field__label" for="agentRemarks">Remarques <span class="field__optional">(facultatif)</span></label>
+                            <textarea class="input input--textarea" id="agentRemarks" name="agentRemarks" rows="6"
+                                      maxlength="1000" aria-describedby="agentRemarks-hint agentRemarks-error" th:text="${a.agentRemarks}"
+                                      th:disabled="${!e}" th:attr="aria-invalid=${errors['agentRemarks'] != null} ? 'true' : null"></textarea>
+                            <p class="field__optional" id="agentRemarks-hint">Visibles par Ndopify seulement, jamais publiées&nbsp;: état du bien, travaux à prévoir,
+                                points à revoir avec le propriétaire.</p>
+                            <p th:replace="~{:: error('agentRemarks')}"></p>
+                        </div>
+                    </th:block>
+
+                    <div class="form__actions">
+                        <a th:href="@{/listings/{id}(id=${s.listingId})}" th:class="${e} ? 'btn btn--outline' : 'btn btn--primary'"
+                           th:text="${e} ? 'Annuler' : 'Retour à l\'annonce'" data-back-link>Annuler</a>
+                        <button type="submit" class="btn btn--primary" th:if="${e}" data-section-submit>Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+<th:block th:remove="all">
+    <!--/* A field's error, shown when "errors" has a message for it: th:replace="~{:: error('field')}". */-->
+    <p class="field__error" th:fragment="error(field)" th:hidden="${errors.get(field) == null}" th:id="|${field}-error|">
+        <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
+            <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
+            <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/>
+        </svg>
+        <span data-error-text th:text="${errors.get(field)}"></span></p>
+
+    <!--/* A count of "Le bien": a whole number, as typed. */-->
+    <input th:fragment="count(field, value)" class="input" th:id="${field}" th:name="${field}" type="text" inputmode="numeric"
+           autocomplete="off" data-kind="int" th:value="${value}" th:disabled="${!section.editable}"
+           th:attr="aria-describedby=|${field}-error|, aria-invalid=${errors[field] != null} ? 'true' : null">
+
+    <!--/* An amenity's checkbox; once sent, only those checked. */-->
+    <label th:fragment="amenity(field, checked)" class="choice" th:if="${section.editable or checked}"><input
+           th:name="${field}" type="checkbox" value="true" th:checked="${checked}" th:disabled="${!section.editable}">
+        <th:block th:text="${amenityLabels[field]}">Compteur d'eau</th:block></label>
+</th:block>
+</body>
+</html>

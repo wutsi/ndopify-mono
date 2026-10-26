@@ -1,10 +1,13 @@
 package com.wutsi.ndopify.npc.ui.listing
 
+import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ImageStatus
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingSection
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
@@ -20,7 +23,13 @@ import java.util.Locale
  * Whether a section is done is ndopify-server's checklist ([ListingRules.done]); the photos only add the counts.
  */
 object ListingViews {
-    private val ROAD_ACCESS = listOf("roadPaved", "trackAccessibleByCar", "trackInaccessibleByCar")
+    private val ROAD_ACCESS = ListingRules.ROAD_ACCESS
+
+    // The prototype's LISTING_FURNITURE_LABELS
+    private val FURNITURE_LABELS = mapOf(
+        FurnitureType.FULLY_FURNISHED to "Meublé",
+        FurnitureType.UNFURNISHED to "Non meublé",
+    )
 
     private val VERIFIED = ListingRules.Tag("Vérifié", "success")
     private val TO_VERIFY = ListingRules.Tag("À vérifier", "warning")
@@ -78,6 +87,129 @@ object ListingViews {
             editable = editable,
             sendable = editable && left.isEmpty(),
         )
+    }
+
+    // The prototype's labels of *Le bien*'s types (listing/bien.html), not the mandates'
+    private val TYPE_LABELS = mapOf(
+        PropertyType.APARTMENT to "Appartement",
+        PropertyType.HOUSE to "Maison",
+        PropertyType.VILLA to "Villa",
+        PropertyType.DUPLEX to "Duplex",
+        PropertyType.STUDIO to "Studio",
+        PropertyType.ROOM to "Chambre",
+        PropertyType.BUILDING to "Immeuble entier",
+        PropertyType.OFFICE to "Bureau",
+        PropertyType.RETAIL to "Boutique, local commercial",
+        PropertyType.INDUSTRIAL to "Entrepôt, local industriel",
+        PropertyType.LAND to "Terrain",
+    )
+
+    /** The checkboxes' labels of *Eau, électricité, accès* (listing/equipements.html, not the mandates' wording). */
+    val AMENITY_LABELS: Map<String, String> = mapOf(
+        "waterMeter" to "Compteur d'eau",
+        "dedicatedWaterMeter" to "Compteur d'eau individuel",
+        "waterWell" to "Forage",
+        "waterTank" to "Château d'eau, citerne",
+        "electricityMeter" to "Compteur électrique",
+        "dedicatedElectricityMeter" to "Compteur électrique individuel",
+        "generatorSet" to "Groupe électrogène",
+        "solarPanel" to "Panneaux solaires",
+        "videoSurveillance" to "Vidéosurveillance",
+        "securityGuard" to "Gardien 24\u00a0h/24",
+        "securedFenced" to "Barrière, clôture sécurisée",
+    )
+
+    /** *Le bien*'s types, residential first, in the prototype's order. */
+    val TYPES: List<TypeChoice> = ListingRules.TYPES.flatMap { (category, types) ->
+        types.map { type -> TypeChoice(type.name, category.name, TYPE_LABELS.getValue(type)) }
+    }
+
+    /** A section's page: its title, the listing it's of, and, once sent, why it's read-only. */
+    fun section(
+        listing: Listing,
+        section: ListingSection,
+        locations: Map<Long, Location>,
+        formatter: TenantFormatter,
+    ): SectionView {
+        val title = title(listing, listing.neighborhoodId?.let { locations[it]?.name } ?: locations[listing.cityId]?.name)
+        val heading = ListingRules.LABELS.getValue(section)
+        val editable = ListingRules.editable(listing)
+        val since = when {
+            editable -> null
+            listing.status == ListingStatus.PUBLISHED ->
+                "Annonce publiée" + (listing.publishedAt?.let { " le ${formatter.date(it)}" } ?: "")
+            ListingRules.sent(listing.status) -> "Annonce en vérification depuis le ${formatter.date(listing.modifiedAt)}"
+            else -> "Annonce fermée"
+        }
+        return SectionView(
+            listingId = listing.id,
+            mandateId = listing.mandateId,
+            slug = ListingRules.slug(section),
+            heading = heading,
+            meta = "$title · mandat n° ${listing.mandateId}",
+            pageTitle = "$heading · $title — Ndopify Partner Central",
+            editable = editable,
+            readonlyText = since?.let { "$it : voici ce que vous avez relevé, il ne peut plus être modifié." },
+        )
+    }
+
+    /**
+     * "Indiqué par le propriétaire : …" under each field whose answer isn't the landlord's (the prototype's
+     * `syncOwnerHints`), by field ("amenities" for the amenities together); none for what the landlord didn't answer,
+     * nor without [mandate].
+     */
+    fun ownerHints(
+        form: ListingSectionForm,
+        mandate: Mandate?,
+        locations: Map<Long, Location>,
+        formatter: TenantFormatter,
+    ): Map<String, String> {
+        mandate ?: return emptyMap()
+        val owner = linkedMapOf<String, String?>()
+
+        mandate.neighborhoodIds.firstOrNull()?.let { id ->
+            if (form.neighborhoodId?.trim()?.toLongOrNull() != id) owner["neighborhoodId"] = locations[id]?.name
+        }
+        mandate.propertyCategory.takeIf { it != PropertyCategory.UNKNOWN }?.let { category ->
+            if (form.propertyCategory != category.name) owner["propertyCategory"] = MandateLabels.category(category)
+        }
+        mandate.propertyType?.let { type ->
+            if (form.propertyType != type.name) owner["propertyType"] = MandateLabels.PROPERTY_TYPE_LABELS[type]
+        }
+        mandate.furnitureType?.takeIf { it != FurnitureType.UNKNOWN }?.let { furniture ->
+            if (form.furnitureType != furniture.name) owner["furnitureType"] = FURNITURE_LABELS[furniture]
+        }
+        // "2", or "3+" for 3 or more: shown as the landlord answered it
+        mapOf("rooms" to (mandate.rooms to form.rooms), "parkings" to (mandate.parkings to form.parkings))
+            .forEach { (field, values) ->
+                val (answer, value) = values
+                val count = answer?.trim()?.removeSuffix("+")?.toIntOrNull() ?: return@forEach
+                if (ListingRules.count(value) != count) owner[field] = answer.trim()
+            }
+        mandate.area?.let { area ->
+            if (ListingRules.count(form.area) != area) owner["area"] = "${formatter.count(area.toLong())} m²"
+        }
+        val amenities = amenities(mandate)
+        if (amenities != form.amenities()) {
+            owner["amenities"] = MandateLabels.AMENITY_LABELS.filterKeys { it in amenities }.values
+                .joinToString(", ")
+                .ifEmpty { "aucun équipement" }
+        }
+        mandate.price.amount.takeIf { it > 0 }?.let { amount ->
+            if (form.price?.let { ListingRules.amount(it) } != amount) owner["price"] = MandateLabels.rent(mandate.price, formatter)
+        }
+        mapOf(
+            "securityDeposit" to (mandate.securityDeposit to form.securityDeposit),
+            "advanceRent" to (mandate.advanceRent to form.advanceRent),
+        ).forEach { (field, values) ->
+            val (months, value) = values
+            if (months != null && ListingRules.count(value) != months) owner[field] = "$months mois"
+        }
+        mandate.availableFrom?.let { date ->
+            if (form.availableFrom?.trim() != date.toString()) owner["availableFrom"] = formatter.date(date)
+        }
+
+        return owner.mapNotNull { (field, text) -> text?.let { field to "Indiqué par le propriétaire : $it" } }.toMap()
     }
 
     /**
@@ -224,6 +356,23 @@ object ListingViews {
         "securityGuard" to listing.securityGuard,
         "videoSurveillance" to listing.videoSurveillance,
     )
+
+    private fun amenities(mandate: Mandate): Set<String> = linkedMapOf(
+        "waterMeter" to mandate.waterMeter,
+        "dedicatedWaterMeter" to mandate.dedicatedWaterMeter,
+        "waterTank" to mandate.waterTank,
+        "waterWell" to mandate.waterWell,
+        "electricityMeter" to mandate.electricityMeter,
+        "dedicatedElectricityMeter" to mandate.dedicatedElectricityMeter,
+        "generatorSet" to mandate.generatorSet,
+        "solarPanel" to mandate.solarPanel,
+        "roadPaved" to mandate.roadPaved,
+        "trackAccessibleByCar" to mandate.trackAccessibleByCar,
+        "trackInaccessibleByCar" to mandate.trackInaccessibleByCar,
+        "securedFenced" to mandate.securedFenced,
+        "securityGuard" to mandate.securityGuard,
+        "videoSurveillance" to mandate.videoSurveillance,
+    ).filterValues { it }.keys
 
     private fun plural(n: Int, one: String, many: String): String = "$n ${if (n > 1) many else one}"
 }

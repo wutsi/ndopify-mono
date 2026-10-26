@@ -101,6 +101,16 @@ object ListingRules {
         ListingSection.REMARKS to "Vos remarques",
     )
 
+    /** The checklist page's message once a section is saved (the prototype's `SECTION_SAVED`). */
+    val SAVED: Map<ListingSection, String> = linkedMapOf(
+        ListingSection.LOCATION to "Emplacement enregistré.",
+        ListingSection.GPS to "Position GPS enregistrée.",
+        ListingSection.PROPERTY to "Caractéristiques du bien enregistrées.",
+        ListingSection.AMENITIES to "Équipements enregistrés.",
+        ListingSection.TERMS to "Loyer et conditions enregistrés.",
+        ListingSection.REMARKS to "Remarques enregistrées.",
+    )
+
     // Sent, and not published yet: the prototype's single "PENDING" step.
     private val SENT = setOf(ListingStatus.UNDER_VERIFICATION, ListingStatus.VERIFIED, ListingStatus.PUBLISHING)
 
@@ -366,14 +376,14 @@ object ListingRules {
 
     private fun text(value: String?): String? = value?.trim()?.ifEmpty { null }
 
-    // "3", never "-1", "1.5" or "1e3"
-    private fun count(value: String?): Int? =
+    /** "3", never "-1", "1.5" or "1e3". */
+    fun count(value: String?): Int? =
         text(value)?.takeIf { it.length <= MAX_COUNT_DIGITS && it.all { c -> c.isDigit() } }?.toInt()
 
     private fun choice(value: String?, choices: List<Int>): Int? = count(value)?.takeIf { it in choices }
 
     /** "150 000" or "150.000" → 150000; anything but digits and separators ("150k") → null, unlike a typo read as another amount. */
-    private fun amount(value: String): Long? =
+    fun amount(value: String): Long? =
         value.filterNot { it.isWhitespace() || it == '.' || it == '\u00a0' || it == '\u202f' }
             .takeIf { it.isNotEmpty() && it.length <= MAX_AMOUNT_DIGITS && it.all { c -> c.isDigit() } }
             ?.toLong()

@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.listing
 
+import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ImageStatus
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
@@ -17,9 +18,11 @@ import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BONAPRISO
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.DOUALA
+import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import org.junit.jupiter.api.Test
 import java.time.Instant
+import java.time.LocalDate
 import java.util.Date
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -67,6 +70,25 @@ class ListingViewsTest {
             latitude = 4.0335,
             longitude = 9.6942,
             sections = LISTING.sections.map { it.copy(status = ListingSectionStatus.VERIFIED) },
+        )
+
+        /** The landlord's answers the listing was created from. */
+        val MANDATE = Mandate(
+            id = 203,
+            agentId = ProfileFixtures.AGENT.id,
+            listingId = 501,
+            status = MandateStatus.APPROVED,
+            mandateType = MandateType.LISTING,
+            propertyCategory = PropertyCategory.RESIDENTIAL,
+            cityId = DOUALA,
+            neighborhoodIds = listOf(BONAPRISO),
+            propertyType = PropertyType.APARTMENT,
+            rooms = "3",
+            area = 85,
+            waterMeter = true,
+            price = Money(150_000, "XAF", PeriodicityType.MONTHLY),
+            securityDeposit = 2,
+            availableFrom = LocalDate.of(2026, 11, 1),
         )
 
         val IMAGES = listOf(
@@ -253,6 +275,110 @@ class ListingViewsTest {
 
         assertEquals("Annonce · Appartement", view.title)
         assertEquals("Derrière l'école publique", row(view, ListingSection.LOCATION).summary)
+    }
+
+    @Test
+    fun section() {
+        val view = ListingViews.section(LISTING, ListingSection.PROPERTY, locations, formatter)
+
+        assertEquals(501L, view.listingId)
+        assertEquals(203L, view.mandateId)
+        assertEquals("property", view.slug)
+        assertEquals("Le bien", view.heading)
+        assertEquals("Annonce · Appartement, Bonapriso · mandat n° 203", view.meta)
+        assertEquals("Le bien · Annonce · Appartement, Bonapriso — Ndopify Partner Central", view.pageTitle)
+        assertTrue(view.editable)
+        assertNull(view.readonlyText)
+    }
+
+    @Test
+    fun `section - sent`() {
+        val listing = LISTING.copy(status = ListingStatus.UNDER_VERIFICATION, modifiedAt = SENT)
+        val view = ListingViews.section(listing, ListingSection.GPS, locations, formatter)
+
+        assertFalse(view.editable)
+        assertEquals(
+            "Annonce en vérification depuis le 22 oct. 2026 : voici ce que vous avez relevé, il ne peut plus être modifié.",
+            view.readonlyText,
+        )
+    }
+
+    @Test
+    fun `section - published`() {
+        val listing = LISTING.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT)
+
+        assertEquals(
+            "Annonce publiée le 22 oct. 2026 : voici ce que vous avez relevé, il ne peut plus être modifié.",
+            ListingViews.section(listing, ListingSection.GPS, locations, formatter).readonlyText,
+        )
+    }
+
+    @Test
+    fun `section - closed`() {
+        val listing = LISTING.copy(status = ListingStatus.RENTED)
+
+        assertEquals(
+            "Annonce fermée : voici ce que vous avez relevé, il ne peut plus être modifié.",
+            ListingViews.section(listing, ListingSection.GPS, locations, formatter).readonlyText,
+        )
+    }
+
+    @Test
+    fun `owner hints - what the agent changed`() {
+        val hints = ListingViews.ownerHints(ListingSectionForm.of(LISTING, formatter), MANDATE, locations, formatter)
+
+        assertEquals(
+            mapOf(
+                "rooms" to "Indiqué par le propriétaire : 3",
+                "amenities" to "Indiqué par le propriétaire : Compteur d'eau",
+                "securityDeposit" to "Indiqué par le propriétaire : 2 mois",
+                "availableFrom" to "Indiqué par le propriétaire : 01 nov. 2026",
+            ),
+            hints,
+        )
+    }
+
+    @Test
+    fun `owner hints - every field`() {
+        val form = ListingSectionForm(
+            neighborhoodId = "3002",
+            propertyCategory = "COMMERCIAL",
+            propertyType = "OFFICE",
+            furnitureType = "UNFURNISHED",
+            rooms = "3",
+            parkings = "1",
+            area = "90",
+            roadAccess = "roadPaved",
+            price = "160 000",
+            securityDeposit = "2",
+            advanceRent = "1",
+            availableFrom = "2026-11-01",
+        )
+        val mandate = MANDATE.copy(furnitureType = FurnitureType.FULLY_FURNISHED, parkings = "2+", advanceRent = 3)
+
+        assertEquals(
+            mapOf(
+                "neighborhoodId" to "Indiqué par le propriétaire : Bonapriso",
+                "propertyCategory" to "Indiqué par le propriétaire : Résidentiel",
+                "propertyType" to "Indiqué par le propriétaire : Appartement",
+                "furnitureType" to "Indiqué par le propriétaire : Meublé",
+                "parkings" to "Indiqué par le propriétaire : 2+",
+                "area" to "Indiqué par le propriétaire : 85 m²",
+                "amenities" to "Indiqué par le propriétaire : Compteur d'eau",
+                "price" to "Indiqué par le propriétaire : 150\u00a0000\u00a0FCFA / mois",
+                "advanceRent" to "Indiqué par le propriétaire : 3 mois",
+            ),
+            ListingViews.ownerHints(form, mandate, locations, formatter),
+        )
+    }
+
+    @Test
+    fun `owner hints - nothing the landlord didn't answer`() {
+        val form = ListingSectionForm(rooms = "2", landmark = "École")
+        val mandate = Mandate(id = 203)
+
+        assertEquals(emptyMap(), ListingViews.ownerHints(form, mandate, locations, formatter))
+        assertEquals(emptyMap(), ListingViews.ownerHints(form, null, locations, formatter))
     }
 
     private val approved = Mandate(id = 203, status = MandateStatus.APPROVED, mandateType = MandateType.LISTING)

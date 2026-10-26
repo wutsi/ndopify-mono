@@ -62,3 +62,25 @@ data class MandateListingView(
     /** The step's main button while there's something for the agent to do. */
     val primary: Boolean,
 )
+
+/** A section's page (`templates/listing/section.html`, `listing/photos.html`): what's around its form. */
+data class SectionView(
+    val listingId: Long,
+    val mandateId: Long,
+    val slug: String,
+    /** "Le bien": the page's h1. */
+    val heading: String,
+    /** "Annonce · Appartement, Bonapriso · mandat n° 203". */
+    val meta: String,
+    val pageTitle: String,
+    /** A DRAFT: the form saves. Otherwise the answers are only shown, with [readonlyText]. */
+    val editable: Boolean,
+    val readonlyText: String?,
+)
+
+/** A property type of *Le bien*'s choices: its category (`data-categories`, for listing.js) and label. */
+data class TypeChoice(
+    val value: String,
+    val category: String,
+    val label: String,
+)

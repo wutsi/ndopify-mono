@@ -4,7 +4,6 @@ import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.Listing
-import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
@@ -68,6 +67,7 @@ class ListingController(
     }
 
     private val sector = SectorValidator(locationClient, tenantContext)
+    private val access = ListingAccess(listingClient)
 
     /** [id] is a String so that a hand-edited value is the locked view instead of failing the page. */
     @GetMapping("/listings/{id}")
@@ -163,22 +163,27 @@ class ListingController(
             mandate.mandateType == MandateType.LISTING
 
     private fun outcome(outcome: String, model: Model) {
-        val text = when (outcome) {
-            SENT -> "Annonce envoyée. Nous vous préviendrons dès sa publication."
-            INCOMPLETE -> "Annonce incomplète : vérifiez chaque section avant de l'envoyer."
-            CHANGED -> "Cette annonce a changé entre-temps : vérifiez son état avant de recommencer."
-            FAILED -> "Action impossible pour le moment. Réessayez dans quelques instants."
-            else -> return
-        }
+        val saved = outcome.removePrefix(ListingSectionController.SAVED_PREFIX)
+            .takeIf { outcome.startsWith(ListingSectionController.SAVED_PREFIX) }
+            ?.let { ListingRules.section(it) }
+        val text = saved?.let { ListingRules.SAVED.getValue(it) } ?: words(outcome) ?: return
         model.addAttribute("outcomeText", text)
         model.addAttribute(
             "outcomeStyle",
             when (outcome) {
-                SENT -> "success"
+                INCOMPLETE, CHANGED -> "warning"
                 FAILED -> "error"
-                else -> "warning"
+                else -> "success"
             },
         )
+    }
+
+    private fun words(outcome: String): String? = when (outcome) {
+        SENT -> "Annonce envoyée. Nous vous préviendrons dès sa publication."
+        INCOMPLETE -> "Annonce incomplète : vérifiez chaque section avant de l'envoyer."
+        CHANGED -> "Cette annonce a changé entre-temps : vérifiez son état avant de recommencer."
+        FAILED -> "Action impossible pour le moment. Réessayez dans quelques instants."
+        else -> null
     }
 
     private fun locked(model: Model): String {
@@ -186,20 +191,15 @@ class ListingController(
         return VIEW
     }
 
-    /**
-     * The agent's listing; null when it can't be had: locked when it's not found or another agent's (or a status the
-     * page doesn't know), [UNAVAILABLE] when ndopify-server can't answer, since retrying may then help.
-     */
+    /** The agent's listing; null when it can't be had, with the view to show instead ([UNAVAILABLE] or locked). */
     private fun load(id: Long, agent: Agent, model: Model): Listing? =
-        try {
-            listingClient.get(id).takeIf { it.agentId == agent.id && it.status != ListingStatus.UNKNOWN }
-        } catch (ex: HttpClientErrorException) {
-            LOGGER.warn("No listing $id: ${ex.statusCode}")
-            null
-        } catch (ex: RestClientException) {
-            LOGGER.error("No listing $id", ex)
-            model.addAttribute(UNAVAILABLE, true)
-            null
+        when (val result = access.load(id, agent)) {
+            is ListingAccess.Found -> result.listing
+            ListingAccess.Locked -> null
+            ListingAccess.Unavailable -> {
+                model.addAttribute(UNAVAILABLE, true)
+                null
+            }
         }
 
     private fun locations(listing: Listing) =

@@ -30,6 +30,12 @@ class ListingRulesTest {
     }
 
     @Test
+    fun saved() {
+        assertEquals(ListingRules.FORM_SECTIONS.toSet(), ListingRules.SAVED.keys)
+        assertEquals("Position GPS enregistrée.", ListingRules.SAVED[ListingSection.GPS])
+    }
+
+    @Test
     fun slug() {
         assertEquals("location", ListingRules.slug(ListingSection.LOCATION))
         assertEquals("photos", ListingRules.slug(ListingSection.PHOTOS))
