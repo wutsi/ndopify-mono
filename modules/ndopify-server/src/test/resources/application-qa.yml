@@ -32,6 +32,8 @@ ndopify:
     listing:
         verify:
             cron: "-" # Never on its own: tests call ListingJobs
+        publish:
+            cron: "-" # Never on its own: tests call ListingJobs
     mandate:
         assignment:
             jitter: 0 # Deterministic scores

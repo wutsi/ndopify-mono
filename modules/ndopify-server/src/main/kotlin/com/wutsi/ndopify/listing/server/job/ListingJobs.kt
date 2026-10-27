@@ -2,7 +2,9 @@ package com.wutsi.ndopify.listing.server.job
 
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.SearchListingRequest
+import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingService
+import com.wutsi.ndopify.listing.server.service.publisher.ListingPublisherService
 import com.wutsi.ndopify.listing.server.service.verifier.ListingVerifierService
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.server.service.TenantService
@@ -10,59 +12,76 @@ import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 
+/**
+ * Listings are tenant-scoped (`@TenantId`), and a scheduler thread has no tenant of its own: each job processes each
+ * active tenant's listings with it set in [TenantContext], removed afterwards since the scheduler threads are reused.
+ */
 @Service
 class ListingJobs(
     private val service: ListingService,
     private val verifierService: ListingVerifierService,
+    private val publisherService: ListingPublisherService,
     private val tenantService: TenantService,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(ListingJobs::class.java)
+        private const val LIMIT = 100 // Process a max of 100 listings at a time to avoid overloading the system
     }
 
     /**
-     * Verifies the PENDING_VERIFICATION listings of each active tenant. Listings are tenant-scoped (`@TenantId`), and a
-     * scheduler thread has no tenant of its own: each tenant's listings are processed with it set in [TenantContext],
-     * removed afterwards since the scheduler threads are reused.
+     * Verifies the PENDING_VERIFICATION listings of each active tenant: sent for verification, or sent back after a
+     * failed verification to be retried.
      */
     @Scheduled(cron = "\${ndopify.listing.verify.cron}")
     fun verify() {
+        run("verify", ListingStatus.PENDING_VERIFICATION) { listing -> verifierService.verify(listing) }
+    }
+
+    /**
+     * Publishes the PUBLISHING listings of each active tenant: sent for publication (`POST /v1/listings/{id}/publish`),
+     * or left PUBLISHING by a failed attempt to be retried.
+     */
+    @Scheduled(cron = "\${ndopify.listing.publish.cron}")
+    fun publish() {
+        run("publish", ListingStatus.PUBLISHING) { listing -> publisherService.publish(listing) }
+    }
+
+    private fun run(job: String, status: ListingStatus, process: (ListingEntity) -> Unit) {
         tenantService.search(true).forEach { tenant ->
             val tenantId = tenant.id!!
             try {
                 TenantContext.set(tenantId)
-                verify(tenantId)
+                run(tenantId, job, status, process)
             } catch (ex: Exception) {
-                // A tenant failing must not prevent the others to be verified
-                LOGGER.warn("Tenant#$tenantId - Unable to verify the listings", ex)
+                // A tenant failing must not prevent the others to be processed
+                LOGGER.warn("Tenant#$tenantId - Unable to $job the listings", ex)
             } finally {
                 TenantContext.remove()
             }
         }
     }
 
-    private fun verify(tenantId: Long) {
-        LOGGER.info("Tenant#$tenantId - Running ListingJobs.verify()")
+    private fun run(tenantId: Long, job: String, status: ListingStatus, process: (ListingEntity) -> Unit) {
+        LOGGER.info("Tenant#$tenantId - Running ListingJobs.$job()")
 
-        // Only PENDING_VERIFICATION listings: sent for verification, or sent back after a failed verification to be retried
         val listings = service.search(
             SearchListingRequest(
-                statuses = listOf(ListingStatus.PENDING_VERIFICATION),
-                limit = 100 // Process a max of 100 listings at a time to avoid overloading the system
+                statuses = listOf(status),
+                limit = LIMIT,
             )
         )
 
-        var verified = 0
+        var processed = 0
         var errors = 0
         listings.forEach { listing ->
             try {
-                verifierService.verify(listing)
-                verified++
+                process(listing)
+                processed++
             } catch (ex: Exception) {
-                LOGGER.warn("Tenant#$tenantId - Unable to verify Listing#${listing.id}", ex)
+                LOGGER.warn("Tenant#$tenantId - Unable to $job Listing#${listing.id}", ex)
                 errors++
             }
         }
-        LOGGER.info("Tenant#$tenantId - ListingJobs.verify() completed: $verified verified, $errors errors")
+        LOGGER.info("Tenant#$tenantId - ListingJobs.$job() completed: $processed processed, $errors errors")
     }
 }

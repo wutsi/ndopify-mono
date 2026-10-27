@@ -14,6 +14,7 @@ import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.SearchListingRequest
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingService
+import com.wutsi.ndopify.listing.server.service.publisher.ListingPublisherService
 import com.wutsi.ndopify.listing.server.service.verifier.ListingVerifierService
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
@@ -27,8 +28,9 @@ import kotlin.test.assertNull
 class ListingJobsTest {
     private val service = mock<ListingService>()
     private val verifierService = mock<ListingVerifierService>()
+    private val publisherService = mock<ListingPublisherService>()
     private val tenantService = mock<TenantService>()
-    private val jobs = ListingJobs(service, verifierService, tenantService)
+    private val jobs = ListingJobs(service, verifierService, publisherService, tenantService)
 
     private val tenant1 = TenantEntity(id = 1L)
     private val tenant2 = TenantEntity(id = 2L)
@@ -138,6 +140,73 @@ class ListingJobsTest {
         jobs.verify()
 
         verify(verifierService).verify(listing2)
+        assertNull(TenantContext.get())
+    }
+
+    @Test
+    fun `publish - searches the publishing listings only, at most 100 per run`() {
+        setUpPendingListings()
+
+        jobs.publish()
+
+        verify(service).search(
+            SearchListingRequest(
+                statuses = listOf(ListingStatus.PUBLISHING),
+                limit = 100,
+            )
+        )
+    }
+
+    @Test
+    fun `publish - publishes every publishing listing, in the order found`() {
+        val publishing = listOf(listing1, listing2, listing3).map { it.copy(status = ListingStatus.PUBLISHING) }
+        setUpPendingListings(*publishing.toTypedArray())
+
+        jobs.publish()
+
+        val order = inOrder(publisherService)
+        publishing.forEach { listing -> order.verify(publisherService).publish(listing) }
+        verify(verifierService, never()).verify(any())
+    }
+
+    @Test
+    fun `publish - a failing listing doesn't stop the others`() {
+        setUpPendingListings(listing1, listing2, listing3)
+        doThrow(IllegalStateException("not publishing")).whenever(publisherService).publish(listing2)
+
+        jobs.publish()
+
+        verify(publisherService, times(3)).publish(any())
+    }
+
+    @Test
+    fun `publish - each tenant processed with its id in the tenant context`() {
+        doReturn(listOf(tenant1, tenant2)).whenever(tenantService).search(true)
+        doAnswer {
+            if (TenantContext.get() == 1L) listOf(listing1) else listOf(listing2)
+        }.whenever(service).search(any())
+        val publishTenants = mutableListOf<Long?>()
+        doAnswer {
+            publishTenants.add(TenantContext.get())
+            it.arguments[0]
+        }.whenever(publisherService).publish(any())
+
+        jobs.publish()
+
+        assertEquals(listOf<Long?>(1L, 2L), publishTenants)
+        assertNull(TenantContext.get())
+    }
+
+    @Test
+    fun `publish - a failing tenant doesn't stop the others`() {
+        doReturn(listOf(tenant1, tenant2)).whenever(tenantService).search(true)
+        doAnswer {
+            if (TenantContext.get() == 1L) throw RuntimeException("DB down") else listOf(listing2)
+        }.whenever(service).search(any())
+
+        jobs.publish()
+
+        verify(publisherService).publish(listing2)
         assertNull(TenantContext.get())
     }
 }

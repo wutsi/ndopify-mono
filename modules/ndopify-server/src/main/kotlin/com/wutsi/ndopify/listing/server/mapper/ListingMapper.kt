@@ -70,6 +70,7 @@ class ListingMapper {
             errorMessage = entity.errorMessage,
             retries = entity.retries,
             verifiedAt = entity.verifiedAt,
+            heroImageId = entity.heroImageId,
         )
     }
 
@@ -97,6 +98,7 @@ class ListingMapper {
             modifiedAt = entity.modifiedAt,
             publishedAt = entity.publishedAt,
             closedAt = entity.closedAt,
+            heroImageId = entity.heroImageId,
         )
     }
 

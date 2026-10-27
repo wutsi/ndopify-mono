@@ -20,7 +20,7 @@ spring:
             base-url: https://api.deepseek.com
             chat:
                 options:
-                    model: deepseek-chat
+                    model: deepseek-flash
 
     datasource:
         driverClassName: com.mysql.cj.jdbc.Driver
@@ -233,9 +233,11 @@ ndopify:
             window-days: 7                 # Given up 7 days after the signature (logged on each run until then)
 
     listing:
-        min-images: 5                     # A listing must have at least 5 images to be published
+        min-images: 5                      # A listing must have at least 5 images to be published
         verify:
-            cron: "0 */15 * * * ?"         # Every 15 minutes: listings that are PENDING_VERIFICATION for too long
+            cron: "0 */15 * * * ?"         # Every 15 minutes: verify listings that are PENDING_VERIFICATION
+        publish:
+            cron: "0 */15 * * * ?"         # Every 15 minutes: publish listings that are PUBLISHING
 
     mandate:
         assignment:

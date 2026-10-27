@@ -64,6 +64,11 @@ class ListingEndpoints(
         service.verify(id)
     }
 
+    @PostMapping("/{id}/publish")
+    fun publish(@PathVariable id: Long) {
+        service.publish(id)
+    }
+
     /** Uploads a photo (multipart, a JPEG, PNG or WEBP image), PENDING_VERIFICATION. */
     @PostMapping("/{id}/images/upload")
     fun upload(

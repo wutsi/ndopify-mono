@@ -57,8 +57,8 @@ and hands it to `platform/mail`'s `MailService`; its MJML template lives under `
 locale and `timeZone` — never a hard-coded pattern. Mailet unit tests mirror the package (`<domain>/server/mail/*MailetTest.kt`).
 
 Scheduled jobs live in `<domain>/server/job/`: `KycJobs` (party), `MandateJobs` (mandate), `ContractJobs`
-(contract) and `ListingJobs` (listing: `verify`, every 15 minutes, the PENDING_VERIFICATION listings through
-`ListingVerifierService`). They loop over the
+(contract) and `ListingJobs` (listing, every 15 minutes: `verify`, the PENDING_VERIFICATION listings through
+`ListingVerifierService`; `publish`, the PUBLISHING ones through `ListingPublisherService`). They loop over the
 active tenants, setting `TenantContext` for each.
 
 Current domains:
@@ -232,7 +232,7 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `ContractExpiredEvent` (no listener yet). Tenant-scoped.
 - **listing** — the property a LISTING mandate offers, as checked on site by its agent (`ListingEntity`, one per
   mandate, `@Version`-ed; its photos `ListingImageEntity`; its checklist `ListingSectionEntity`; `V8_0`, `V8_1`,
-  `V8_3`). `/v1/listings`: search, get, create, update, `POST /{id}/verify`, `POST /{id}/images/upload`, `GET /{id}/images`,
+  `V8_3`). `/v1/listings`: search, get, create, update, `POST /{id}/verify`, `POST /{id}/publish`, `POST /{id}/images/upload`, `GET /{id}/images`,
   `DELETE /images/{id}`. Search, get and the images list are public (`PublicEndpoints.GLOBAL`). There's no access
   check yet: any token may create or update a listing or add a photo. `ListingService.create` copies the mandate's
   property (404 `MANDATE_NOT_FOUND`, 409 `MANDATE_NOT_ASSIGNED` without agent, since the listing's agent is the
@@ -248,8 +248,12 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   can only be deleted from a DRAFT listing; the file stays in the storage (`StorageService` can't delete one).
   **Send**: `POST /{id}/verify` moves a DRAFT to `UNDER_VERIFICATION` (the check itself is to be done asynchronously,
   nothing does it yet): 404 `LISTING_NOT_FOUND`, 409 `LISTING_NOT_DRAFT`, then 409 `LISTING_INCOMPLETE` while a
-  required section of the checklist isn't `VERIFIED`. `ListingStatus` goes further (`VERIFIED`, `PUBLISHING`,
-  `PUBLISHED`, `RENTED`, `SOLD`, `EXPIRED`, `CANCELLED`...), but no code moves it past `UNDER_VERIFICATION` yet.
+  required section of the checklist isn't `VERIFIED`. **Publish**: `POST /{id}/publish` moves a `VERIFIED` listing
+  to `PUBLISHING` (404 `LISTING_NOT_FOUND`, then 409 `LISTING_NOT_VERIFIED`), `retries` reset; `ListingJobs.publish`
+  then has `ListingPublisherService` generate its title, summary and description (`ListingContentGenerator`, text
+  LLM, `ChatClients.TEXT`) and its hero image (the model's, else the verified photo of highest quality, then
+  largest): `PUBLISHED`, or still `PUBLISHING` to be retried after a failure; after `MAX_RETRIES` failed attempts
+  it's `PUBLISHED` without title, summary nor description (the UIs handle it), its last error kept. `RENTED`, `SOLD`, `EXPIRED`, `CANCELLED` aren't set by any code yet.
   Tenant-scoped.
 - **error** — shared exception types (`WutsiException` subclasses: `BadRequestException`, `NotFoundException`,
   `ConflictException`, `ForbiddenException`, `UnauthorizedException`, `InternalErrorException`) and a global

@@ -5,6 +5,7 @@ CREATE TABLE T_LISTING(
 
   mandate_id              BIGINT NOT NULL,
   agent_id                BIGINT NOT NULL,
+  hero_image_id           BIGINT,
 
   property_category       VARCHAR(30) DEFAULT NULL,
   listing_type            VARCHAR(30) DEFAULT NULL,

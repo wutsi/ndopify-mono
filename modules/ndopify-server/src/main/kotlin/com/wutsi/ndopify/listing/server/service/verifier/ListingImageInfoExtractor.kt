@@ -11,7 +11,7 @@ import java.io.File
 
 @Service
 class ListingImageInfoExtractor(
-    @Qualifier(ChatClients.VISION) private val client: ChatClient,
+    @param:Qualifier(ChatClients.VISION) private val client: ChatClient,
 ) {
     companion object {
         val PROMPT = """

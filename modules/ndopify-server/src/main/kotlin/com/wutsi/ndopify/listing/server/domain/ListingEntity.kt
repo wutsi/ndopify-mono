@@ -114,4 +114,5 @@ data class ListingEntity(
     val errorCodes: List<String> = emptyList(),
     val errorMessage: String? = null,
     val retries: Int? = null,
+    val heroImageId: Long? = null,
 )

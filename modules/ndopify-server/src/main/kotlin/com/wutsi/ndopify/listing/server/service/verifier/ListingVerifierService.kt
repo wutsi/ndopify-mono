@@ -55,6 +55,7 @@ class ListingVerifierService(
                         status = if (errorCodes.isEmpty()) ListingStatus.VERIFIED else ListingStatus.REJECTED,
                         errorCodes = errorCodes,
                         errorMessage = null,
+                        retries = 0,
                         verifiedAt = now,
                         modifiedAt = now,
                     )

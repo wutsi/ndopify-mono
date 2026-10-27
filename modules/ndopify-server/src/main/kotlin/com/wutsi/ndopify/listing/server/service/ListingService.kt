@@ -286,6 +286,26 @@ class ListingService(
         )
     }
 
+    /**
+     * Sends a VERIFIED listing for publication: PUBLISHING, its content being generated asynchronously
+     * (`ListingJobs.publish`). 404 LISTING_NOT_FOUND, then 409 LISTING_NOT_VERIFIED.
+     */
+    @Transactional
+    fun publish(id: Long): ListingEntity {
+        val listing = findById(id)
+        if (listing.status != ListingStatus.VERIFIED) {
+            throw ConflictException(Error(ErrorCode.LISTING_NOT_VERIFIED))
+        }
+
+        return dao.save(
+            listing.copy(
+                status = ListingStatus.PUBLISHING,
+                retries = 0, // The publication's own attempts (ListingPublisherService.MAX_RETRIES)
+                modifiedAt = Date(clock.millis()),
+            )
+        )
+    }
+
     // A neighbourhood of the city
     private fun isNeighborhood(id: Long, cityId: Long): Boolean {
         val location = locationService.findByIdOrNull(id)
