@@ -25,17 +25,35 @@ class VerifyListingEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(HttpStatus.OK, response.statusCode)
 
         val listing = dao.findById(100L).get()
-        assertEquals(ListingStatus.PENDING_VERIFICATION, listing.status)
-        assertTrue(listing.modifiedAt.after(SimpleDateFormat("yyyy-MM-dd").parse("2026-10-03")))
+        assertEquals(ListingStatus.UNDER_VERIFICATION, listing.status)
+        assertTrue(listing.modifiedAt.after(SimpleDateFormat("yyyy-MM-dd").parse("2026-01-02")))
+    }
+
+    @Test
+    fun `section left - 409`() {
+        val response = verify(101L)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.LISTING_INCOMPLETE, response.body?.error?.code)
+        assertEquals(ListingStatus.DRAFT, dao.findById(101L).get().status)
+    }
+
+    @Test
+    fun `photo rejected - 409`() {
+        val response = verify(102L)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.LISTING_INCOMPLETE, response.body?.error?.code)
+        assertEquals(ListingStatus.DRAFT, dao.findById(102L).get().status)
     }
 
     @Test
     fun `not draft - 409`() {
-        val response = verify(101L)
+        val response = verify(103L)
 
         assertEquals(HttpStatus.CONFLICT, response.statusCode)
         assertEquals(ErrorCode.LISTING_NOT_DRAFT, response.body?.error?.code)
-        assertEquals(ListingStatus.PENDING_VERIFICATION, dao.findById(101L).get().status)
+        assertEquals(ListingStatus.UNDER_VERIFICATION, dao.findById(103L).get().status)
     }
 
     @Test
@@ -50,7 +68,7 @@ class VerifyListingEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
-    fun `not found`() {
+    fun `not found - 404`() {
         val response = verify(999L)
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
@@ -58,7 +76,7 @@ class VerifyListingEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
-    fun `other tenant`() {
+    fun `other tenant - 404`() {
         val response = verify(900L)
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)

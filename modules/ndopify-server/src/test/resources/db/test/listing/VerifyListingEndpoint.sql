@@ -22,6 +22,8 @@ INSERT INTO T_AGENT(id, tenant_id, party_id, city_id) VALUES
 INSERT INTO T_MANDATE(id, tenant_id, customer_id, agent_id, status, mandate_type, city_id) VALUES
     (1, 1, 10, 20, 'APPROVED', 'LISTING', 2370201),
     (2, 1, 10, 20, 'APPROVED', 'LISTING', 2370201),
+    (3, 1, 10, 20, 'APPROVED', 'LISTING', 2370201),
+    (4, 1, 10, 20, 'APPROVED', 'LISTING', 2370201),
     (9, 2, 90, 90, 'APPROVED', 'LISTING', 2370201);
 
 -- 100: complete   101: GPS left   102: a photo refused   103: already sent   900: other tenant, complete
