@@ -10,6 +10,7 @@ data class Listing(
 
     val mandateId: Long = -1,
     val agentId: Long = -1,
+    val heroImageId: Long? = null,
 
     val propertyCategory: PropertyCategory = PropertyCategory.UNKNOWN,
     val listingType: ListingType = ListingType.UNKNOWN,
