@@ -56,8 +56,9 @@ and hands it to `platform/mail`'s `MailService`; its MJML template lives under `
 (`refdata/server/service/`): the tenant's `dateFormat` / `timeFormat` / `monetaryFormat` / `numberFormat`, first
 locale and `timeZone` — never a hard-coded pattern. Mailet unit tests mirror the package (`<domain>/server/mail/*MailetTest.kt`).
 
-Scheduled jobs live in `<domain>/server/job/`: `KycJobs` (party), `MandateJobs` (mandate) and `ContractJobs`
-(contract). They loop over the
+Scheduled jobs live in `<domain>/server/job/`: `KycJobs` (party), `MandateJobs` (mandate), `ContractJobs`
+(contract) and `ListingJobs` (listing: `verify`, every 15 minutes, the PENDING_VERIFICATION listings through
+`ListingVerifierService`). They loop over the
 active tenants, setting `TenantContext` for each.
 
 Current domains:

@@ -66,6 +66,10 @@ class ListingMapper {
             modifiedAt = entity.modifiedAt,
             publishedAt = entity.publishedAt,
             closedAt = entity.closedAt,
+            errorCodes = entity.errorCodes,
+            errorMessage = entity.errorMessage,
+            retries = entity.retries,
+            verifiedAt = entity.verifiedAt,
         )
     }
 
@@ -104,6 +108,11 @@ class ListingMapper {
             mimeType = entity.mimeType,
             status = entity.status,
             errorMessage = entity.errorMessage,
+            title = entity.title,
+            description = entity.description,
+            width = entity.width,
+            height = entity.height,
+            quality = entity.quality,
         )
     }
 }

@@ -230,6 +230,11 @@ ndopify:
             delay-minutes: 10              # Not before 10 minutes after the signature, the time for the listener to do it
             window-days: 7                 # Given up 7 days after the signature (logged on each run until then)
 
+    listing:
+        min-images: 5                     # A listing must have at least 5 images to be published
+        verify:
+            cron: "0 */15 * * * ?"         # Every 15 minutes: listings that are PENDING_VERIFICATION for too long
+
     mandate:
         assignment:
             jitter: 0.01                   # Random tie-break; 0 in tests, so scores are deterministic
@@ -248,6 +253,15 @@ ndopify:
         contract:
             duration-months: 6             # A mandate's contract is valid for 6 months from its signature
 
+    mobile-money:
+        mtn:
+            environment: sandbox
+            callback-url: http://127.0.0.1/mtn/callback
+            collection:
+                user-id:
+                api-key:
+                subscription-key: ${MTN_COLLECTION_SUBSCRIPTION_KEY}
+
     party:
         kyc:
             image:
@@ -264,15 +278,6 @@ ndopify:
         s3:
             bucket: com-wutsi-ndopify-local
             region: us-east-1
-
-    mobile-money:
-        mtn:
-            environment: sandbox
-            callback-url: http://127.0.0.1/mtn/callback
-            collection:
-                user-id:
-                api-key:
-                subscription-key: ${MTN_COLLECTION_SUBSCRIPTION_KEY}
 
     ref-data:
         geonames:

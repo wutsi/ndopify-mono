@@ -41,6 +41,16 @@ class LocationService(
             HAVING distance <= :radius
             ORDER BY distance, l.id
         """
+
+        private const val SQL_NEAREST_TO_POINT = """
+            SELECT l.id, ST_Distance_Sphere(POINT(l.longitude, l.latitude), POINT(:longitude, :latitude)) AS distance
+            FROM T_LOCATION l
+            WHERE l.type = :type
+              AND l.parent_fk = :parentId
+              AND l.latitude IS NOT NULL AND l.longitude IS NOT NULL
+            ORDER BY distance, l.id
+            LIMIT 1
+        """
     }
 
     fun findById(id: Long): LocationEntity {
@@ -136,6 +146,24 @@ class LocationService(
         return distances.mapNotNull { (locationId, distance) ->
             locations[locationId]?.let { it to distance }
         }
+    }
+
+    /**
+     * Returns the location of [type], child of [parentId], nearest to the point ([latitude], [longitude]), with its
+     * distance in km; null when there is none with coordinates.
+     */
+    fun findNearest(latitude: Double, longitude: Double, type: LocationType, parentId: Long): Pair<LocationEntity, Double>? {
+        val row = em.createNativeQuery(SQL_NEAREST_TO_POINT)
+            .setParameter("latitude", latitude)
+            .setParameter("longitude", longitude)
+            .setParameter("type", type.name)
+            .setParameter("parentId", parentId)
+            .resultList
+            .firstOrNull() as Array<*>?
+            ?: return null
+
+        val location = findByIdOrNull((row[0] as Number).toLong()) ?: return null
+        return location to (row[1] as Number).toDouble() / 1000
     }
 
     fun toAscii(str: String): String {

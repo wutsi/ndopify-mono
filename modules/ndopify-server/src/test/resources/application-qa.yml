@@ -29,6 +29,9 @@ ndopify:
             cron: "-" # Never on its own: tests call ContractJobs
         signed-content:
             cron: "-" # Never on its own: tests call ContractJobs
+    listing:
+        verify:
+            cron: "-" # Never on its own: tests call ListingJobs
     mandate:
         assignment:
             jitter: 0 # Deterministic scores

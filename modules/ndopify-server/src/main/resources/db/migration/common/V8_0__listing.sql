@@ -59,13 +59,17 @@ CREATE TABLE T_LISTING(
 
   agent_remarks           TEXT,
 
-  title                   VARCHAR(255),
-  summary                 TEXT,
+  title                   VARCHAR(100),
+  summary                 VARCHAR(255),
   description             TEXT,
+  error_codes             TEXT,
+  error_message           TEXT,
+  retries                 INT,
 
   created_at              DATETIME DEFAULT NOW(),
   modified_at             DATETIME NOT NULL DEFAULT now() ON UPDATE now(),
   published_at            DATETIME,
+  verified_at             DATETIME,
   closed_at               DATETIME,
 
   UNIQUE(mandate_id), -- One listing per mandate

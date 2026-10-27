@@ -66,6 +66,11 @@ object ErrorCode {
     val LISTING_VERSION_CONFLICT = "$PREFIX:listing:version-conflict"
     val LISTING_NOT_DRAFT = "$PREFIX:listing:not-draft"
     val LISTING_IMAGE_NOT_FOUND = "$PREFIX:listing-image:not-found"
+    val LISTING_NOT_ENOUGH_IMAGES = "$PREFIX:listing:not-enough-images"
+    val LISTING_MISSING_LAT_LONG = "$PREFIX:listing:missing-lat-long"
+    val LISTING_MISSING_NEIGHBORHOOD = "$PREFIX:listing:missing-neighborhood"
+    val LISTING_OUTSIDE_NEIGHBORHOOD = "$PREFIX:listing:outside-neighborhood"
+    val LISTING_INVALID_NEIGHBORHOOD = "$PREFIX:listing:invalid-neighborhood"
 
     val LOCATION_NOT_FOUND = "$PREFIX:location:not-found"
     val LOCATION_FEED_NOT_FOUND = "$PREFIX:location:feed-not-found"
@@ -93,4 +98,6 @@ object ErrorCode {
 
     val USER_NOT_FOUND: String = "$PREFIX:user:not-found"
     val USER_EMAIL_ALREADY_EXISTS: String = "$PREFIX:user:email-already-exists"
+
+    val INTERNAL_ERROR: String = "$PREFIX:internal-error"
 }

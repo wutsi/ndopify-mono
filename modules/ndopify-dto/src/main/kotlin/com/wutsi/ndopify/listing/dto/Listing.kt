@@ -70,9 +70,13 @@ data class Listing(
     val title: String? = null,
     val summary: String? = null,
     val description: String? = null,
+    val errorCodes: List<String> = emptyList(),
+    val errorMessage: String? = null,
+    val retries: Int? = null,
 
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
     val publishedAt: Date? = null,
+    val verifiedAt: Date? = null,
     val closedAt: Date? = null,
 )

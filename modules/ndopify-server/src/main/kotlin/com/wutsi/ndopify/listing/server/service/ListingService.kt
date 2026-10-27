@@ -262,6 +262,23 @@ class ListingService(
         return dao.save(updated.copy(modifiedAt = now))
     }
 
+    /**
+     * Moves a DRAFT listing to PENDING_VERIFICATION, which is then verified asynchronously by the verifiers.
+     */
+    @Transactional
+    fun verify(id: Long) {
+        val listing = findById(id)
+        if (listing.status != ListingStatus.DRAFT) {
+            throw ConflictException(Error(ErrorCode.LISTING_NOT_DRAFT))
+        }
+        dao.save(
+            listing.copy(
+                status = ListingStatus.PENDING_VERIFICATION,
+                modifiedAt = Date(clock.millis())
+            )
+        )
+    }
+
     // A neighbourhood of the city
     private fun isNeighborhood(id: Long, cityId: Long): Boolean {
         val location = locationService.findByIdOrNull(id)
