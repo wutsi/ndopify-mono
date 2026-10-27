@@ -72,6 +72,14 @@ class TenantFormatterTest {
     }
 
     @Test
+    fun count() {
+        assertEquals("1\u00a0200", TenantFormatter(TENANT).count(1200))
+        assertEquals("85", TenantFormatter(TENANT).count(85))
+        assertEquals("1,200", TenantFormatter(TENANT.copy(locales = listOf("en"))).count(1200))
+        assertEquals("1\u00a0200", TenantFormatter(TENANT.copy(numberFormat = "")).count(1200))
+    }
+
+    @Test
     fun currency() {
         assertEquals("FCFA", TenantFormatter(TENANT).currency())
         assertEquals("XAF", TenantFormatter(TENANT.copy(currencySymbol = "")).currency())

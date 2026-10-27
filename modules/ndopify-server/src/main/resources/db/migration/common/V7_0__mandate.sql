@@ -56,6 +56,7 @@ CREATE TABLE T_MANDATE(
   cancellation_code       VARCHAR(30) DEFAULT NULL,
   cancellation_reason     TEXT,
   age                     INT,
+  available_from          DATE,
 
   CONSTRAINT FK_MANDATE_customer FOREIGN KEY(customer_id) REFERENCES T_CUSTOMER(id),
   CONSTRAINT FK_MANDATE_agent FOREIGN KEY(agent_id) REFERENCES T_AGENT(id),

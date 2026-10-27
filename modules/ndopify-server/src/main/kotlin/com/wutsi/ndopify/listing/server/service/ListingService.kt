@@ -10,6 +10,7 @@ import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.listing.dto.CreateListingRequest
 import com.wutsi.ndopify.listing.dto.ListingSection
+import com.wutsi.ndopify.listing.dto.ListingSectionStatus
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.SearchListingRequest
@@ -263,18 +264,24 @@ class ListingService(
     }
 
     /**
-     * Moves a DRAFT listing to PENDING_VERIFICATION, which is then verified asynchronously by the verifiers.
+     * Sends a DRAFT listing for verification, once its checklist is done: UNDER_VERIFICATION, the verification itself
+     * being done asynchronously. 404 LISTING_NOT_FOUND, 409 LISTING_NOT_DRAFT once sent, then 409 LISTING_INCOMPLETE
+     * while a required section isn't VERIFIED (PHOTOS: fewer than MIN_PHOTOS, or one REJECTED).
      */
     @Transactional
-    fun verify(id: Long) {
+    fun verify(id: Long): ListingEntity {
         val listing = findById(id)
         if (listing.status != ListingStatus.DRAFT) {
             throw ConflictException(Error(ErrorCode.LISTING_NOT_DRAFT))
         }
-        dao.save(
+        if (sectionService.summaries(id).any { it.required && it.status != ListingSectionStatus.VERIFIED }) {
+            throw ConflictException(Error(ErrorCode.LISTING_INCOMPLETE))
+        }
+
+        return dao.save(
             listing.copy(
-                status = ListingStatus.PENDING_VERIFICATION,
-                modifiedAt = Date(clock.millis())
+                status = ListingStatus.UNDER_VERIFICATION,
+                modifiedAt = Date(clock.millis()),
             )
         )
     }

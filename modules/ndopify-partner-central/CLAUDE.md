@@ -8,7 +8,7 @@ The agent-facing web app (port 8081, French UI): a Spring Boot + Thymeleaf BFF w
 Package `com.wutsi.ndopify.npc`:
 
 - `ui/<feature>/` — one package per page or wizard (`login`, `join`, `kyc`, `home`, `profile`, `mandate`,
-  `assignment`, `findproperty`, `offerproperty`, `location`, `logout`), shared page infrastructure in `ui/layout/`
+  `assignment`, `listing`, `findproperty`, `offerproperty`, `location`, `logout`), shared page infrastructure in `ui/layout/`
   (`SignedInAdvice`, `HttpClientErrorHandler`). A feature package holds:
   - `<Feature>Controller` — the MVC controller. It renders one template, reads and writes the session, calls the
     clients, and redirects (post-redirect-get, with a flash attribute for the outcome).
@@ -161,6 +161,45 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `HttpClientErrorHandler` (`ui/layout/`), which answers the same status so that Spring Boot renders
   `templates/error/403.html` / `404.html` (also used for unknown URLs). These pages have no account menu: the signed-in
   agent isn't known in Spring Boot's error controller.
+- A landlord's signed mandate (APPROVED, LISTING) has a listing: the mandate page's *Actif* panel shows its line
+  (`ListingViews.forMandate` → `MandateListingView`, the listing loaded by `MandateController`, a failure leaving only
+  the link): "Créer l'annonce" posts `POST /mandates/{id}/listing` (`ListingController.create` → `NdListingClient` →
+  `POST /v1/listings`, a DRAFT pre-filled from the landlord's answers; one that exists, or 409
+  `LISTING_ALREADY_EXISTS`, is opened instead), then where it stands and "Continuer / Voir l'annonce". The listing
+  page, `GET /listings/{id}` (`templates/listing.html`, `ListingViews` → `ListingView`), is the checklist of the visit:
+  one row per `ListingSection` (`ListingRules.SECTIONS`, linking to its page),
+  each section done once ndopify-server's checklist says so (`Listing.sections`, `ListingRules.done`), which also
+  says which sections are required (`ListingSectionSummary.required`, `ListingRules.required`), the photos' counts
+  from `GET /v1/listings/{id}/images`. "Envoyer pour vérification" (`POST /listings/{id}/verify`) is inactive
+  (`aria-disabled`) until every required section is done, and re-checked on POST (`incomplete` outcome, also for
+  ndopify-server's 409 `LISTING_INCOMPLETE`) since the button still posts without JS; sent, the listing is read-only (UNDER_VERIFICATION, VERIFIED, PUBLISHING: "En
+  vérification", "Envoyée le" its `modifiedAt`, the server having no sent date), then PUBLISHED with its title and
+  summary. ndopify-server doesn't check who reads or writes a listing: the page requires `Listing.agentId` to be the
+  signed-in agent's (else the locked view, or `changed` for an action), and create requires the mandate's agent.
+  A listing ndopify-server can't return (5xx, network) is the `unavailable` view, not the locked one. Outcomes (flash
+  `outcome`, shown on the locked and unavailable views too): `sent`, `incomplete`, `changed` (403/404/409 or moved
+  on), `error`, `saved-<section>` ("Emplacement enregistré."…); a hand-edited id on a POST goes back to `/`. The
+  ownership check is `ListingAccess` (found / locked / unavailable), shared by the three listing controllers.
+  Each section is `ListingSectionController` (`GET|POST /listings/{id}/{slug}`, slug = the `ListingSection` in lower
+  case: `location`, `gps`, `property`, `amenities`, `terms`, `remarks`; not `{section}`, which Spring would expose to
+  the view over the `section` model attribute), one template for the six, `templates/listing/section.html`: the form
+  (`ListingSectionForm`, all Strings so a hand-edited value is a field error) is pre-filled from the listing and posts
+  its `version`; `ListingRules.errors` / `request` are the rules (the prototype's `LISTING_RULES`: only the section's
+  fields are sent, a question of *Le bien* that doesn't apply to the type, `ListingRules.applies`, shown anyway
+  without JS, as null), and the neighbourhood is checked against the listing's city (`SectorValidator`). A 409
+  `LISTING_VERSION_CONFLICT` shows the form again with the agent's answers, now on the new version;
+  `LISTING_NOT_DRAFT`, another agent's listing or one sent meanwhile go back to the checklist (`changed`). Under each
+  field the agent changed, the landlord's answer from the mandate (`ListingViews.ownerHints`, server-side only). Once
+  sent, a section is read-only: its answers only, disabled. GPS without JS is typed (latitude / longitude, "4,0335"
+  accepted); `listing.js` takes the phone's position instead. Photos are `ListingPhotoController`
+  (`GET|POST /listings/{id}/photos`, `POST /listings/{id}/photos/{imageId}/delete`, `templates/listing/photos.html`):
+  sent straight to ndopify-server (`POST /v1/listings/{id}/images/upload`), sniffed with Tika, 5 Mo and 20 photos at
+  most, the first problem as the `photoError` flash attribute; only one of the listing's own images is deleted
+  (`DELETE /v1/listings/images/{id}` doesn't check). `KycUploadErrorHandler` sends an upload over the multipart limit
+  back with `?error=too-large`. `public/assets/js/listing.js` only enhances the three pages (`data-page` `listing`,
+  `listing-section`, `listing-photos`): the types and questions of the type, geolocation, photos shrunk and sent as
+  soon as chosen, no double post. Prototype: `src/main/html/listing.html`, `listing/*.html`; its "À corriger" panel
+  and "Simuler" buttons have no server support.
 - `src/main/html/` holds static mockups generated by the `/init-partner-central` command; the served pages are the
   Thymeleaf templates. `application-test.yml` / `application-prod.yml` still contain config copied from another
   project (`koki`) — don't treat it as meaningful.

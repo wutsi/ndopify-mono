@@ -12,12 +12,14 @@ import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
+import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdviceTest
+import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.CONTRACT
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.MANDATE
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.NOW
@@ -60,6 +62,7 @@ class MandateTemplateTest {
     private val contractClient = mock<NdContractClient>()
     private val customerClient = mock<NdCustomerClient>()
     private val assignmentClient = mock<NdAssignmentClient>()
+    private val listingClient = mock<NdListingClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
@@ -97,6 +100,7 @@ class MandateTemplateTest {
                     contractClient,
                     customerClient,
                     assignmentClient,
+                    listingClient,
                     locationClient,
                     tenantContext,
                     clock,
@@ -231,6 +235,39 @@ class MandateTemplateTest {
         assertEquals("Le bailleur", page.selectFirst("#contact-title")?.text())
         assertEquals("Son bien", page.selectFirst("#search-title")?.text())
         assertTrue(page.text().contains("Présentez le bien aux locataires et organisez les visites."))
+    }
+
+    @Test
+    fun `approved - landlord without listing`() {
+        val page = render(APPROVED.copy(mandateType = MandateType.LISTING))
+
+        val box = page.selectFirst("[data-panel=APPROVED] [data-listing-actions]")!!
+        assertTrue(box.selectFirst("[data-listing-text]")!!.text().startsWith("Visitez le bien"))
+        val form = box.selectFirst("form[data-listing-create-form]")!!
+        assertEquals("/mandates/201/listing", form.attr("action"))
+        assertEquals("post", form.attr("method"))
+        assertEquals("Créer l'annonce", form.selectFirst("button[data-listing-create]")?.text())
+        assertNull(box.selectFirst("a[data-listing-link]"))
+    }
+
+    @Test
+    fun `approved - landlord with listing`() {
+        doReturn(ListingViewsTest.LISTING).whenever(listingClient).get(501)
+
+        val page = render(APPROVED.copy(mandateType = MandateType.LISTING, listingId = 501))
+
+        val box = page.selectFirst("[data-listing-actions]")!!
+        val link = box.selectFirst("a[data-listing-link]")!!
+        assertEquals("/listings/501", link.attr("href"))
+        assertEquals("Continuer l'annonce", link.text())
+        assertEquals("btn btn--primary", link.className())
+        assertTrue(box.selectFirst("[data-listing-text]")!!.text().startsWith("Annonce en brouillon : encore à faire"))
+        assertNull(box.selectFirst("form[data-listing-create-form]"))
+    }
+
+    @Test
+    fun `approved - search has no listing`() {
+        assertNull(render(APPROVED).selectFirst("[data-listing-actions]"))
     }
 
     @Test

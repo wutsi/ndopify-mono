@@ -11,9 +11,11 @@ CREATE TABLE T_AGENT(
   city_id                 BIGINT,
   biography               TEXT,
   photo_url               TEXT,
+  rating                  DOUBLE NOT NULL DEFAULT 3.0,  -- 1..5 stars; 3 = unrated (neutral in the dispatch score)
   created_at              DATETIME DEFAULT NOW(),
   modified_at             DATETIME NOT NULL DEFAULT now() ON UPDATE now(),
   joined_at               DATETIME,
+  last_assigned_at        DATETIME,
 
   UNIQUE (party_id),
 

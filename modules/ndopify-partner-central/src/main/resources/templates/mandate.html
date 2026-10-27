@@ -15,6 +15,7 @@
     <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
     <link rel="stylesheet" th:href="@{/assets/css/join.css}">
     <link rel="stylesheet" th:href="@{/assets/css/home.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/listing.css}">
     <script th:src="@{/assets/js/partner-central.js}" defer></script>
     <script th:src="@{/assets/js/mandate.js}" defer></script>
 </head>
@@ -160,6 +161,20 @@
                     <div class="mandate-panel" th:if="${m.status.name() == 'APPROVED'}" data-panel="APPROVED">
                         <p>Signé le <span th:text="${m.approvedAt}">20 octobre 2026</span><th:block th:if="${m.validUntil}"> · valable
                             jusqu'au <strong th:text="${m.validUntil}">28 mars 2027</strong></th:block>.</p>
+                        <!--
+                            A landlord's mandate only (LISTING): its listing. "Créer l'annonce" (POST /mandates/{id}/listing)
+                            opens it; once created, the line says where it stands and the link opens it.
+                        -->
+                        <div class="mandate-listing" th:if="${mandateListing}" th:with="ml=${mandateListing}" data-listing-actions>
+                            <p th:if="${ml.text}" th:text="${ml.text}" data-listing-text></p>
+                            <div class="mandate-panel__actions">
+                                <form th:unless="${ml.url}" method="post" th:action="@{${ml.createUrl}}" data-listing-create-form>
+                                    <button type="submit" class="btn btn--primary" th:text="${ml.action}" data-listing-create>Créer l'annonce</button>
+                                </form>
+                                <a th:if="${ml.url}" th:href="@{${ml.url}}" th:class="${ml.primary} ? 'btn btn--primary' : 'btn btn--outline'"
+                                   th:text="${ml.action}" data-listing-link>Continuer l'annonce</a>
+                            </div>
+                        </div>
                         <details class="assignment__details">
                             <summary>Et ensuite&nbsp;?</summary>
                             <div class="assignment__details-body">

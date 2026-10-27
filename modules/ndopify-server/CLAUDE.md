@@ -231,7 +231,7 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `ContractExpiredEvent` (no listener yet). Tenant-scoped.
 - **listing** — the property a LISTING mandate offers, as checked on site by its agent (`ListingEntity`, one per
   mandate, `@Version`-ed; its photos `ListingImageEntity`; its checklist `ListingSectionEntity`; `V8_0`, `V8_1`,
-  `V8_3`). `/v1/listings`: search, get, create, update, `POST /{id}/images/upload`, `GET /{id}/images`,
+  `V8_3`). `/v1/listings`: search, get, create, update, `POST /{id}/verify`, `POST /{id}/images/upload`, `GET /{id}/images`,
   `DELETE /images/{id}`. Search, get and the images list are public (`PublicEndpoints.GLOBAL`). There's no access
   check yet: any token may create or update a listing or add a photo. `ListingService.create` copies the mandate's
   property (404 `MANDATE_NOT_FOUND`, 409 `MANDATE_NOT_ASSIGNED` without agent, since the listing's agent is the
@@ -245,8 +245,11 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   section or `PHOTOS`, a missing required field, or a neighbourhood outside the listing's city. The city never
   changes: it's the mandate's, the agent's area. Photos (JPEG / PNG / WEBP) are added `PENDING_VERIFICATION`, and
   can only be deleted from a DRAFT listing; the file stays in the storage (`StorageService` can't delete one).
-  `ListingStatus` goes past `DRAFT` (`PUBLISHING`, `PUBLISHED`, `RENTED`, `SOLD`, `EXPIRED`, `CANCELLED`...), but
-  no code moves it yet. Tenant-scoped.
+  **Send**: `POST /{id}/verify` moves a DRAFT to `UNDER_VERIFICATION` (the check itself is to be done asynchronously,
+  nothing does it yet): 404 `LISTING_NOT_FOUND`, 409 `LISTING_NOT_DRAFT`, then 409 `LISTING_INCOMPLETE` while a
+  required section of the checklist isn't `VERIFIED`. `ListingStatus` goes further (`VERIFIED`, `PUBLISHING`,
+  `PUBLISHED`, `RENTED`, `SOLD`, `EXPIRED`, `CANCELLED`...), but no code moves it past `UNDER_VERIFICATION` yet.
+  Tenant-scoped.
 - **error** — shared exception types (`WutsiException` subclasses: `BadRequestException`, `NotFoundException`,
   `ConflictException`, `ForbiddenException`, `UnauthorizedException`, `InternalErrorException`) and a global
   `ControllerErrorHandler`.
