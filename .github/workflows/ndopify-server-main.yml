@@ -39,6 +39,7 @@ jobs:
             -   name: Build
                 env:
                     GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+                    DEEPSEEK_API_KEY: ${{secrets.DEEPSEEK_API_KEY}}
                     KIMI_API_KEY: ${{secrets.KIMI_API_KEY}}
                     MTN_COLLECTION_SUBSCRIPTION_KEY: ${{secrets.MTN_COLLECTION_SUBSCRIPTION_KEY}}
                 run: |
@@ -102,6 +103,7 @@ jobs:
                     DB_URL: ${{secrets.DB_URL}}
                     DB_USER: ${{secrets.DB_USER}}
                     DB_PASSWORD: ${{secrets.DB_PASSWORD}}
+                    DEEPSEEK_API_KEY: ${{secrets.DEEPSEEK_API_KEY}}
                     KIMI_API_KEY: ${{secrets.KIMI_API_KEY}}
                     MTN_COLLECTION_SUBSCRIPTION_KEY: ${{secrets.MTN_COLLECTION_SUBSCRIPTION_KEY}}
                     SMTP_USER: ${{secrets.SMTP_USER}}
@@ -122,6 +124,7 @@ jobs:
                     heroku config:set --app "$HEROKU_APP" DB_PASSWORD="$DB_PASSWORD"
                     heroku config:set --app "$HEROKU_APP" MTN_COLLECTION_SUBSCRIPTION_KEY="$MTN_COLLECTION_SUBSCRIPTION_KEY"
                     heroku config:set --app "$HEROKU_APP" KIMI_API_KEY="$KIMI_API_KEY"
+                    heroku config:set --app "$HEROKU_APP" DEEPSEEK_API_KEY="$DEEPSEEK_API_KEY"
                     heroku config:set --app "$HEROKU_APP" SMTP_USER="$SMTP_USER"
                     heroku config:set --app "$HEROKU_APP" SMTP_PASSWORD="$SMTP_PASSWORD"
                     heroku config:set --app "$HEROKU_APP" SMTP_HOST="$SMTP_HOST"

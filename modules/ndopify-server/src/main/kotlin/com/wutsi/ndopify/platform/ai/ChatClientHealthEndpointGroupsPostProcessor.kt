@@ -5,23 +5,25 @@ import org.springframework.boot.health.actuate.endpoint.HealthEndpointGroups
 import org.springframework.boot.health.actuate.endpoint.HealthEndpointGroupsPostProcessor
 
 /**
- * Keeps the LLM out of the default group (`/actuator/health`): each check is a paid call to the model, and the model
- * being down must not take the server out of service. It's only checked by the `llm` group
+ * Keeps the LLMs out of the default group (`/actuator/health`): each check is a paid call to the model, and a model
+ * being down must not take the server out of service. They're only checked by the `llm` group
  * (`/actuator/health/llm`, see `management.endpoint.health.group.llm` in `application.yml`).
+ *
+ * @param contributors names of the [ChatClientHealthIndicator] contributors (see `AIConfiguration`)
  */
-class ChatClientHealthEndpointGroupsPostProcessor : HealthEndpointGroupsPostProcessor {
-    companion object {
-        // Named after the bean, chatClientHealthIndicator (AIConfiguration)
-        const val CONTRIBUTOR = "chatClient"
-    }
-
+class ChatClientHealthEndpointGroupsPostProcessor(
+    private val contributors: Set<String>,
+) : HealthEndpointGroupsPostProcessor {
     override fun postProcessHealthEndpointGroups(groups: HealthEndpointGroups): HealthEndpointGroups =
         HealthEndpointGroups.of(
-            ExcludingGroup(groups.primary),
+            ExcludingGroup(groups.primary, contributors),
             groups.names.associateWith { name -> groups.get(name)!! },
         )
 
-    private class ExcludingGroup(private val delegate: HealthEndpointGroup) : HealthEndpointGroup by delegate {
-        override fun isMember(name: String): Boolean = name != CONTRIBUTOR && delegate.isMember(name)
+    private class ExcludingGroup(
+        private val delegate: HealthEndpointGroup,
+        private val excluded: Set<String>,
+    ) : HealthEndpointGroup by delegate {
+        override fun isMember(name: String): Boolean = name !in excluded && delegate.isMember(name)
     }
 }

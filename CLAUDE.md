@@ -127,8 +127,9 @@ and the module POMs):
   OTP codes) — see `spring.mail` in `application.yml`.
 - No JWT secret to set: `application.yml` has a dummy `ndopify.security.jwt.secret` (deployed servers use
   `JWT_SECRET`, see *Token signing* in `modules/ndopify-server/CLAUDE.md`).
-- `KIMI_API_KEY` for identity-document extraction: `ndopify-server` uses Spring AI's OpenAI-compatible client
-  (`spring.ai.openai`, pointed at Moonshot/Kimi) in `IdentificationInfoExtractorAi`.
+- `KIMI_API_KEY` and `DEEPSEEK_API_KEY` for the LLMs of `ndopify-server` (Spring AI): the vision model, Kimi
+  (`spring.ai.openai`, OpenAI-compatible), reads the KYC documents and listing pictures; the text model, DeepSeek
+  (`spring.ai.deepseek`), is for text-only prompts. See `AIConfiguration` / `ChatClients`.
 
 No RabbitMQ or messaging broker is wired up in `ndopify-server` today — don't assume one exists. MTN Mobile Money credentials (`ndopify.mobile-money.mtn.*` in `application.yml`) default to
 sandbox values and don't need to be set for local dev unless you're exercising real MTN calls.

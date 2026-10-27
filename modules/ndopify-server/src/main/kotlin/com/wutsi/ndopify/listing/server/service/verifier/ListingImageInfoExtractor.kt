@@ -1,7 +1,9 @@
 package com.wutsi.ndopify.listing.server.service.verifier
 
+import com.wutsi.ndopify.platform.ai.ChatClients
 import com.wutsi.ndopify.platform.util.MimeUtils
 import org.springframework.ai.chat.client.ChatClient
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.core.io.FileSystemResource
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
@@ -9,7 +11,7 @@ import java.io.File
 
 @Service
 class ListingImageInfoExtractor(
-    private val client: ChatClient,
+    @Qualifier(ChatClients.VISION) private val client: ChatClient,
 ) {
     companion object {
         val PROMPT = """

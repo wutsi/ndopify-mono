@@ -71,8 +71,8 @@ Required for local development:
 No RabbitMQ or messaging broker is wired up today. E-mails (agent welcome, OTP codes, KYC status, mandate offers,
 contracts to sign) go to the SMTP server
 configured under `spring.mail` — `localhost:1025` by default, e.g. [Mailpit](https://mailpit.axllent.org/).
-Identity-document extraction calls an OpenAI-compatible LLM (`spring.ai.openai`, Kimi by default) and needs
-`KIMI_API_KEY`. MTN Mobile Money credentials
+The LLM calls need `KIMI_API_KEY` (vision model, `spring.ai.openai`: KYC documents, listing pictures) and
+`DEEPSEEK_API_KEY` (text model, `spring.ai.deepseek`). MTN Mobile Money credentials
 (`ndopify.mobile-money.mtn.*`) default to sandbox values and don't need to be set for local dev unless exercising
 real MTN calls. Local file storage defaults to `~/ndopify` (`ndopify.storage.local.directory`); S3 is only used when
 `ndopify.storage.default-type` is set to `s3`.

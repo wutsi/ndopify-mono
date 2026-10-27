@@ -2,8 +2,10 @@ package com.wutsi.ndopify.party.server.service.kyc
 
 import com.wutsi.ndopify.party.dto.IdentificationType
 import com.wutsi.ndopify.party.server.service.KycInfoExtractor
+import com.wutsi.ndopify.platform.ai.ChatClients
 import com.wutsi.ndopify.platform.util.MimeUtils
 import org.springframework.ai.chat.client.ChatClient
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.core.io.FileSystemResource
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
@@ -13,7 +15,7 @@ import java.time.LocalDate
 
 @Service
 class KycInfoExtractorIdentification(
-    private val client: ChatClient,
+    @Qualifier(ChatClients.VISION) private val client: ChatClient,
     private val clock: Clock,
 ) : KycInfoExtractor {
     companion object {

@@ -11,8 +11,11 @@ import org.springframework.ai.chat.messages.AssistantMessage
 import org.springframework.ai.chat.model.ChatModel
 import org.springframework.ai.chat.model.ChatResponse
 import org.springframework.ai.chat.model.Generation
-import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.chat.prompt.Prompt
+import org.springframework.ai.deepseek.DeepSeekChatModel
+import org.springframework.ai.deepseek.DeepSeekChatOptions
+import org.springframework.ai.openai.OpenAiChatModel
+import org.springframework.ai.openai.OpenAiChatOptions
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import kotlin.test.Test
@@ -22,13 +25,23 @@ import kotlin.test.assertTrue
 
 class LlmHealthEndpointTest : BaseEndpointIntegrationTest() {
     @MockitoBean
-    private lateinit var chatModel: ChatModel
+    private lateinit var visionModel: OpenAiChatModel
+
+    @MockitoBean
+    private lateinit var textModel: DeepSeekChatModel
+
+    private val contributors = setOf(ChatClients.VISION, ChatClients.TEXT)
 
     @BeforeEach
-    fun stubChatModel() {
-        doReturn(ChatOptions.builder().build()).whenever(chatModel).options
+    fun stubChatModels() {
+        doReturn(OpenAiChatOptions.builder().build()).whenever(visionModel).options
+        doReturn(DeepSeekChatOptions.builder().build()).whenever(textModel).options
+        listOf(visionModel, textModel).forEach { model -> stubCall(model) }
+    }
+
+    private fun stubCall(model: ChatModel) {
         doReturn(ChatResponse(listOf(Generation(AssistantMessage("Hello")))))
-            .whenever(chatModel).call(any<Prompt>())
+            .whenever(model).call(any<Prompt>())
     }
 
     @Test
@@ -36,9 +49,10 @@ class LlmHealthEndpointTest : BaseEndpointIntegrationTest() {
         val response = rest.getForEntity("/actuator/health", Map::class.java)
 
         val components = components(response.body!!)
-        assertFalse(components.containsKey(ChatClientHealthEndpointGroupsPostProcessor.CONTRIBUTOR))
+        contributors.forEach { name -> assertFalse(components.containsKey(name)) }
         assertTrue(components.containsKey("db"))
-        verify(chatModel, never()).call(any<Prompt>())
+        verify(visionModel, never()).call(any<Prompt>())
+        verify(textModel, never()).call(any<Prompt>())
     }
 
     @Test
@@ -46,8 +60,9 @@ class LlmHealthEndpointTest : BaseEndpointIntegrationTest() {
         val response = rest.getForEntity("/actuator/health/llm", Map::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
-        assertEquals(setOf(ChatClientHealthEndpointGroupsPostProcessor.CONTRIBUTOR), components(response.body!!).keys)
-        verify(chatModel).call(any<Prompt>())
+        assertEquals(contributors, components(response.body!!).keys)
+        verify(visionModel).call(any<Prompt>())
+        verify(textModel).call(any<Prompt>())
     }
 
     @Suppress("UNCHECKED_CAST")

@@ -2,20 +2,47 @@ package com.wutsi.ndopify.config.platform
 
 import com.wutsi.ndopify.platform.ai.ChatClientHealthEndpointGroupsPostProcessor
 import com.wutsi.ndopify.platform.ai.ChatClientHealthIndicator
+import com.wutsi.ndopify.platform.ai.ChatClients
+import io.micrometer.observation.ObservationRegistry
 import org.springframework.ai.chat.client.ChatClient
-import org.springframework.ai.chat.model.ChatModel
+import org.springframework.ai.deepseek.DeepSeekChatModel
+import org.springframework.ai.openai.OpenAiChatModel
+import org.springframework.beans.factory.ObjectProvider
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
+/**
+ * Two LLMs, each behind its own [ChatClient], injected by name (`@Qualifier`):
+ * - [ChatClients.VISION]: Kimi (`spring.ai.openai`), for the prompts with images (KYC, listing pictures).
+ * - [ChatClients.TEXT]: DeepSeek (`spring.ai.deepseek`), for the text-only prompts.
+ *
+ * Spring AI's `ChatClient.Builder` needs a single `ChatModel`, so it's disabled (`spring.ai.chat.client.enabled`) and
+ * the clients are built here.
+ */
 @Configuration
-class AIConfiguration(private val chatClientBuilder: ChatClient.Builder, val chatModel: ChatModel) {
+class AIConfiguration(
+    private val visionModel: OpenAiChatModel,
+    private val textModel: DeepSeekChatModel,
+    private val observationRegistry: ObjectProvider<ObservationRegistry>,
+) {
+    @Bean(ChatClients.VISION)
+    fun visionChatClient(): ChatClient =
+        ChatClient.create(visionModel, observationRegistry.getIfUnique { ObservationRegistry.NOOP })
+
+    @Bean(ChatClients.TEXT)
+    fun textChatClient(): ChatClient =
+        ChatClient.create(textModel, observationRegistry.getIfUnique { ObservationRegistry.NOOP })
+
+    // Health contributors are named after the bean, minus "HealthIndicator": visionChatClient, textChatClient
     @Bean
-    fun chatClient(): ChatClient = chatClientBuilder.build()
+    fun visionChatClientHealthIndicator(): ChatClientHealthIndicator =
+        ChatClientHealthIndicator(visionChatClient(), visionModel)
 
     @Bean
-    fun chatClientHealthIndicator(): ChatClientHealthIndicator = ChatClientHealthIndicator(chatClient(), chatModel)
+    fun textChatClientHealthIndicator(): ChatClientHealthIndicator =
+        ChatClientHealthIndicator(textChatClient(), textModel)
 
     @Bean
     fun chatClientHealthEndpointGroupsPostProcessor(): ChatClientHealthEndpointGroupsPostProcessor =
-        ChatClientHealthEndpointGroupsPostProcessor()
+        ChatClientHealthEndpointGroupsPostProcessor(setOf(ChatClients.VISION, ChatClients.TEXT))
 }

@@ -25,7 +25,7 @@ import kotlin.test.assertTrue
 
 class KycInfoExtractorSelfieTest {
     private val chatModel = mock<ChatModel>()
-    private val extractor = KycInfoExtractorSelfie(ChatClient.builder(chatModel))
+    private val extractor = KycInfoExtractorSelfie(ChatClient.builder(chatModel).build())
 
     private val images = listOf(
         "/files/identity/cm/cni-front.png",

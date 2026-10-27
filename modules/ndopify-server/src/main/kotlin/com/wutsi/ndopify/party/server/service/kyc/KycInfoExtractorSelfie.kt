@@ -2,15 +2,19 @@ package com.wutsi.ndopify.party.server.service.kyc
 
 import com.wutsi.ndopify.party.dto.IdentificationType
 import com.wutsi.ndopify.party.server.service.KycInfoExtractor
+import com.wutsi.ndopify.platform.ai.ChatClients
 import com.wutsi.ndopify.platform.util.MimeUtils
 import org.springframework.ai.chat.client.ChatClient
+import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.core.io.FileSystemResource
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import java.io.File
 
 @Service
-class KycInfoExtractorSelfie(private val chatClientBuilder: ChatClient.Builder) : KycInfoExtractor {
+class KycInfoExtractorSelfie(
+    @Qualifier(ChatClients.VISION) private val client: ChatClient,
+) : KycInfoExtractor {
     companion object {
         const val PROMPT = """
             You are an expert in selfie verification.
@@ -30,8 +34,6 @@ class KycInfoExtractorSelfie(private val chatClientBuilder: ChatClient.Builder) 
             }
         """
     }
-
-    private val client = chatClientBuilder.build()
 
     override fun extract(images: List<File>): KycInfo {
         val instructions = PROMPT

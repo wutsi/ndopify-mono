@@ -88,7 +88,8 @@ Current domains:
 - **party** — `Party`, `Identification` (+ uploaded `IdentificationImage`s), `KycCase` / `KycVerification`, and
   `PaymentMethod`. KYC cases are verified by pluggable `KycVerifier` strategies (`KycVerifierIdentification`,
   `KycVerifierMoMo`, `KycVerifierManual`) selected via `KycVerifierProvider`. Identity-document data is extracted
-  by `IdentificationInfoExtractorAi` (LLM via Spring AI), behind `IdentificationInfoExtractorProvider`.
+  by `KycInfoExtractorIdentification` / `KycInfoExtractorSelfie` (vision LLM via Spring AI, `ChatClients.VISION`),
+  behind `KycInfoExtractorProvider`.
   KYC case lifecycle: `PENDING_VERIFICATION` (images uploaded via `/v1/kyc/cases/{id}/images/upload`) → `POST
   /v1/kyc/cases/{id}/submit` → `SUBMITTED` (requires FRONT, plus BACK for two-sided documents: `NATIONAL_ID`,
   `DRIVER_LICENSE`, `RESIDENT_CARD`; SELFIE optional server-side, Partner Central requires it; images frozen) →

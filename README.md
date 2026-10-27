@@ -19,7 +19,7 @@ Early-stage. Only five modules exist today — there is no SDK or tracking-serve
 | [ndopify-server](modules/ndopify-server)                   | REST API backend (Spring Boot)                                                           |
 | [ndopify-partner-central](modules/ndopify-partner-central) | Agent-facing web app (Spring Boot + Thymeleaf, French): sign-up, e-mail OTP sign-in, KYC, mandate offers and follow-up, plus the public *Trouver un bien* and *Proposer un bien* wizards |
 | [ndopify-esignature](modules/ndopify-esignature)           | Signer-facing contract sign page (Spring Boot + Thymeleaf, French): e-mail OTP sign-in, read and sign a contract, plus the public verify page of a signature's QR code |
-| [ndopify-website](modules/ndopify-website)                 | Static marketing + lead-capture website (plain HTML/CSS/JS, French) — not a Maven module |
+| [ndopify-web](modules/ndopify-web)                         | Public marketing site (Spring Boot + Thymeleaf, French): reads the tenants from `ndopify-server` and links to Partner Central's public wizards |
 
 ### Module Dependency
 
@@ -27,19 +27,19 @@ Early-stage. Only five modules exist today — there is no SDK or tracking-serve
 ndopify-dto  →  ndopify-server
 ndopify-dto  →  ndopify-partner-central  ──(REST, runtime)──▶  ndopify-server
 ndopify-dto  →  ndopify-esignature       ──(REST, runtime)──▶  ndopify-server
+ndopify-dto  →  ndopify-web              ──(REST, runtime)──▶  ndopify-server
 ```
 
-`ndopify-partner-central` and `ndopify-esignature` depend on `ndopify-dto` at build time and call `ndopify-server`
-over HTTP at runtime (`ndopify.server.api.base-url`); neither has a database of its own, nor depends on the other.
-
-`ndopify-website` is standalone: it is not part of the Maven reactor and has no build-time dependency on the other
-modules.
+`ndopify-partner-central`, `ndopify-esignature` and `ndopify-web` depend on `ndopify-dto` at build time and call
+`ndopify-server` over HTTP at runtime (`ndopify.server.api.base-url`); none has a database of its own, nor depends on
+another web app.
 
 ## Technologies
 
 - **Language**: Kotlin, JDK 17
-- **Framework**: Spring Boot (Web, Data JPA, Security, Cache, Validation, Actuator), Thymeleaf (partner central, e-signature)
-- **AI**: Spring AI (OpenAI-compatible client, Kimi by default) for identity-document data extraction
+- **Framework**: Spring Boot (Web, Data JPA, Security, Cache, Validation, Actuator), Thymeleaf (partner central, e-signature, web)
+- **AI**: Spring AI, with two models: a vision model (Kimi, OpenAI-compatible client) for the KYC documents and
+  listing pictures, and a text model (DeepSeek) for text-only prompts
 - **Database**: MySQL, with Flyway for versioned schema migrations
 - **API docs**: SpringDoc OpenAPI / Swagger UI
 - **Build**: Maven
@@ -56,7 +56,7 @@ layering (`endpoint` → `service` → `dao` → `domain`, plus `mapper` for ent
   for e-mailed one-time codes).
 - **party** — parties, identifications (with uploaded images), KYC cases/verifications, and payment methods. KYC
   cases are verified through pluggable `KycVerifier` strategies (identification, mobile-money, manual); data is
-  extracted from identity-document images by an LLM (`IdentificationInfoExtractorAi`).
+  extracted from identity-document images by a vision LLM (`KycInfoExtractorIdentification`).
 - **agent** — mobile-money agents: create, update, get and search, plus a welcome e-mail on registration.
 - **customer** — the people behind the mandates: tenants looking for a property, owners offering one.
 - **mandate** — a customer's mandate: a `SEARCH` (a tenant's request) or a `LISTING` (an owner's property for rent).
@@ -81,8 +81,8 @@ See [CLAUDE.md](CLAUDE.md) for detailed build/test commands and architecture not
 ## Getting Started
 
 Requirements: JDK 17, Maven 3.9+, MySQL 8+ (local `root` user with no password). For OTP sign-in e-mails, a local
-SMTP catcher such as [Mailpit](https://mailpit.axllent.org/) on `localhost:1025`. For identity-document extraction,
-a `KIMI_API_KEY`.
+SMTP catcher such as [Mailpit](https://mailpit.axllent.org/) on `localhost:1025`. For the LLM calls, a `KIMI_API_KEY`
+(vision model) and a `DEEPSEEK_API_KEY` (text model).
 
 ```bash
 # Build the whole monorepo
@@ -113,15 +113,16 @@ cd modules/ndopify-esignature
 mvn spring-boot:run
 ```
 
-Each web app resolves its tenant from the URL you browse to: the tenant's `partnerCentralUrl` /
-`eSignaturePortalUrl` must match it (e.g. `http://localhost:8081` / `http://localhost:8083`).
-
-To preview the website (no build step):
+Run the public website (starts on port 8082, also expects `ndopify-server` on `http://localhost:8080`):
 
 ```bash
-cd modules/ndopify-website/src/main/html
-python3 -m http.server 8080   # then open http://localhost:8080/index.html
+cd modules/ndopify-web
+mvn spring-boot:run
 ```
+
+Each web app resolves its tenant from the URL you browse to: the tenant's `partnerCentralUrl` /
+`publicPortalUrl` / `eSignaturePortalUrl` must match it (e.g. `http://localhost:8081` / `http://localhost:8082` /
+`http://localhost:8083`), as the local seed data does.
 
 ## AI Commands & Skills
 
@@ -132,8 +133,8 @@ AI tooling for [Claude Code](https://claude.com/claude-code) lives in [`.claude/
 
 | Command                                                            | Purpose                                                                                                   |
 |--------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
-| [`/init-website-design`](.claude/commands/init-website-design.md)   | Generates `modules/ndopify-website/DESIGN.md` (colors, typography, spacing, components) from the canonical design doc. Run it before `/init-website`, which reads that file. |
-| [`/init-website`](.claude/commands/init-website.md)                 | Builds the French website in `modules/ndopify-website/src/main/html/` in three stages: journey planning (`neo-user-journey`), generation (`power-design`), critique and fixes (`impeccable`). |
+| [`/init-website-design`](.claude/commands/init-website-design.md)   | Generates `modules/ndopify-web/DESIGN.md` (colors, typography, spacing, components) from the canonical design doc. Run it before `/init-website`, which reads that file. |
+| [`/init-website`](.claude/commands/init-website.md)                 | Builds the French website prototype in `modules/ndopify-web/src/main/html/` in three stages: journey planning (`neo-user-journey`), generation (`power-design`), critique and fixes (`impeccable`). |
 | [`/init-partner-central`](.claude/commands/init-partner-central.md) | Builds the French partner central pages in `modules/ndopify-partner-central/src/main/html/` using the same three-stage pipeline (`neo-user-journey` → `power-design` → `impeccable`). |
 | [`/init-esignature`](.claude/commands/init-esignature.md)           | Builds the French e-signature prototype in `modules/ndopify-esignature/src/main/html/` with the same pipeline. |
 

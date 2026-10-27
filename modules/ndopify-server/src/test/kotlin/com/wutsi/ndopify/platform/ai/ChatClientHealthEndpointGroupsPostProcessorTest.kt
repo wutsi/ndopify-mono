@@ -15,21 +15,24 @@ class ChatClientHealthEndpointGroupsPostProcessorTest {
     private val primary = mock<HealthEndpointGroup>()
     private val llm = mock<HealthEndpointGroup>()
     private val groups = HealthEndpointGroups.of(primary, mapOf("llm" to llm))
+    private val processor = ChatClientHealthEndpointGroupsPostProcessor(setOf("visionChatClient", "textChatClient"))
 
     @Test
     fun excludedFromPrimary() {
-        doReturn(true).whenever(primary).isMember(ChatClientHealthEndpointGroupsPostProcessor.CONTRIBUTOR)
+        doReturn(true).whenever(primary).isMember("visionChatClient")
+        doReturn(true).whenever(primary).isMember("textChatClient")
 
-        val result = ChatClientHealthEndpointGroupsPostProcessor().postProcessHealthEndpointGroups(groups)
+        val result = processor.postProcessHealthEndpointGroups(groups)
 
-        assertFalse(result.primary.isMember(ChatClientHealthEndpointGroupsPostProcessor.CONTRIBUTOR))
+        assertFalse(result.primary.isMember("visionChatClient"))
+        assertFalse(result.primary.isMember("textChatClient"))
     }
 
     @Test
     fun othersKeptInPrimary() {
         doReturn(true).whenever(primary).isMember("db")
 
-        val result = ChatClientHealthEndpointGroupsPostProcessor().postProcessHealthEndpointGroups(groups)
+        val result = processor.postProcessHealthEndpointGroups(groups)
 
         assertTrue(result.primary.isMember("db"))
         assertFalse(result.primary.isMember("mail"))
@@ -37,7 +40,7 @@ class ChatClientHealthEndpointGroupsPostProcessorTest {
 
     @Test
     fun groupsKept() {
-        val result = ChatClientHealthEndpointGroupsPostProcessor().postProcessHealthEndpointGroups(groups)
+        val result = processor.postProcessHealthEndpointGroups(groups)
 
         assertEquals(setOf("llm"), result.names)
         assertSame(llm, result.get("llm"))

@@ -6,19 +6,21 @@ spring:
             read-timeout: 30s
 
     ai:
-        #        openai:
-        #            api-key: ${KIMI_API_KEY}
-        #            base-url: https://api.moonshot.ai/v1
-        #            chat:
-        #                options:
-        #                    model: kimi-k2.6
-
-        openai:
-            api-key: ${GEMINI_API_KEY}
-            base-url: https://generativelanguage.googleapis.com/v1beta/openai
+        chat:
+            client:
+                enabled: false # Two ChatModels: the ChatClients are built by AIConfiguration
+        openai: # Vision model
+            api-key: ${KIMI_API_KEY}
+            base-url: https://api.moonshot.ai/v1
             chat:
                 options:
-                    model: gemini-2.5-flash
+                    model: kimi-k2.6
+        deepseek: # Text model
+            api-key: ${DEEPSEEK_API_KEY}
+            base-url: https://api.deepseek.com
+            chat:
+                options:
+                    model: deepseek-chat
 
     datasource:
         driverClassName: com.mysql.cj.jdbc.Driver
@@ -186,7 +188,7 @@ management:
             show-details: always
             group:
                 llm: # The LLM is out of the default group, see ChatClientHealthEndpointGroupsPostProcessor
-                    include: "chatClient"
+                    include: "visionChatClient,textChatClient"
         info:
             git:
                 mode: full
