@@ -4,6 +4,7 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.service.security.CurrentParty
+import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.kyc.KycRules.PHOTOS
 import com.wutsi.ndopify.npc.ui.kyc.KycRules.STEPS
 import com.wutsi.ndopify.npc.ui.kyc.KycRules.STEP_CONFIRMATION
@@ -53,9 +54,6 @@ class KycController(
         const val VIEW = "kyc"
         const val RETURN_TO_REVIEW = "review"
         const val ERROR_TOO_LARGE = "too-large"
-
-        // No party for the signed-in user (gone, other tenant, or party-less like an admin): have them sign in again.
-        const val SIGN_OUT = "redirect:/logout"
     }
 
     @GetMapping
@@ -66,7 +64,7 @@ class KycController(
         session: HttpSession,
         model: Model,
     ): String {
-        val party = currentParty.get() ?: return SIGN_OUT
+        val party = currentParty.get() ?: throw SignInRequiredException()
         val case = kycClient.current(party.id)
         val status = KycRules.status(case)
 
@@ -96,7 +94,7 @@ class KycController(
         @RequestParam(required = false) returnTo: String?,
         model: Model,
     ): String {
-        val party = currentParty.get() ?: return SIGN_OUT
+        val party = currentParty.get() ?: throw SignInRequiredException()
         val case = openCase(party.id) ?: return "redirect:/kyc"
         val photos = KycRules.photos(case)
         val firstIncomplete = KycRules.firstIncompleteStep(photos.keys)
@@ -130,7 +128,7 @@ class KycController(
 
     @PostMapping("/$STEP_REVIEW")
     fun submit(session: HttpSession, model: Model): String {
-        val party = currentParty.get() ?: return SIGN_OUT
+        val party = currentParty.get() ?: throw SignInRequiredException()
         val case = kycClient.current(party.id)
         if (case?.status != KycStatus.PENDING_VERIFICATION) return "redirect:/kyc"
 
@@ -153,7 +151,7 @@ class KycController(
     /** "Soumettre de nouveaux documents" on a rejected case: a new case, and the wizard starts over empty. */
     @PostMapping("/restart")
     fun restart(): String {
-        val party = currentParty.get() ?: return SIGN_OUT
+        val party = currentParty.get() ?: throw SignInRequiredException()
         if (kycClient.current(party.id)?.status == KycStatus.REJECTED) {
             kycClient.create(party.id)
         }

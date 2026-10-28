@@ -17,6 +17,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
+import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.IMAGES
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.LISTING
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
@@ -62,6 +63,7 @@ class ListingPhotoControllerTest {
         doReturn(IMAGES).whenever(listingClient).images(501)
 
         mvc = MockMvcBuilders.standaloneSetup(ListingPhotoController(currentAgent, listingClient, locationClient, tenantContext))
+            .setControllerAdvice(HttpClientErrorHandler(mock()))
             .setViewResolvers(InternalResourceViewResolver("/templates/", ".html"))
             .build()
     }

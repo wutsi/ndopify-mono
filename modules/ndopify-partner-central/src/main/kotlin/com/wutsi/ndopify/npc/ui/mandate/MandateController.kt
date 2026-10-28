@@ -20,6 +20,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
+import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.npc.ui.listing.ListingViews
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
@@ -79,7 +80,6 @@ class MandateController(
 
         const val VIEW = "mandate"
         const val VIEW_EDIT = "mandate/edit"
-        const val SIGN_OUT = "redirect:/logout"
 
         // GET /mandates/{id}?end=…: the close / cancel form, open without JS.
         const val END_CLOSE = "close"
@@ -121,7 +121,7 @@ class MandateController(
     /** [end] is a String so that a hand-edited value is ignored instead of failing the page; same for [id]. */
     @GetMapping("/{id}")
     fun show(@PathVariable id: String, @RequestParam(required = false) end: String?, model: Model): String {
-        val agent = currentAgent.get() ?: return SIGN_OUT
+        val agent = currentAgent.get() ?: throw SignInRequiredException()
         ProfileRules.header(agent, model)
 
         val mandate = id.toLongOrNull()?.let { load(it) } ?: return locked(model)
@@ -130,7 +130,7 @@ class MandateController(
 
     @PostMapping("/{id}/request-approval")
     fun requestApproval(@PathVariable id: Long, redirect: RedirectAttributes): String {
-        currentAgent.get() ?: return SIGN_OUT
+        currentAgent.get() ?: throw SignInRequiredException()
 
         // Sending again resets the deadline: worded "renvoyé". Without the mandate, it's still worth sending.
         val again = lookup("mandate $id") { mandateClient.get(id) }?.status == MandateStatus.PENDING_APPROVAL
@@ -145,7 +145,7 @@ class MandateController(
         model: Model,
         redirect: RedirectAttributes,
     ): String {
-        val agent = currentAgent.get() ?: return SIGN_OUT
+        val agent = currentAgent.get() ?: throw SignInRequiredException()
         val mandate = current(id, redirect) { it.status == MandateStatus.APPROVED } ?: return back(id)
 
         val amount = finalPrice(form.finalPrice)
@@ -167,7 +167,7 @@ class MandateController(
         model: Model,
         redirect: RedirectAttributes,
     ): String {
-        val agent = currentAgent.get() ?: return SIGN_OUT
+        val agent = currentAgent.get() ?: throw SignInRequiredException()
         val mandate = current(id, redirect) { it.status in MandateRules.ACTIVE } ?: return back(id)
 
         val code =
@@ -186,7 +186,7 @@ class MandateController(
 
     @GetMapping("/{id}/edit")
     fun edit(@PathVariable id: String, model: Model): String {
-        val agent = currentAgent.get() ?: return SIGN_OUT
+        val agent = currentAgent.get() ?: throw SignInRequiredException()
         ProfileRules.header(agent, model)
 
         val mandate = id.toLongOrNull()?.let { load(it) }
@@ -206,7 +206,7 @@ class MandateController(
         model: Model,
         redirect: RedirectAttributes,
     ): String {
-        val agent = currentAgent.get() ?: return SIGN_OUT
+        val agent = currentAgent.get() ?: throw SignInRequiredException()
         // Signed since the form was shown (ex: in another tab): ndopify-server would update it all the same.
         val mandate = current(id, redirect) { it.status in MandateRules.EDITABLE } ?: return back(id)
 

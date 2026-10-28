@@ -11,6 +11,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
+import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.kyc.KycRules
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardView
@@ -48,7 +49,6 @@ class HomeController(
         private val LOGGER = LoggerFactory.getLogger(HomeController::class.java)
 
         const val VIEW = "index"
-        const val SIGN_OUT = "redirect:/logout"
 
         // The KYC banner: documents to send, case under review, case rejected.
         const val KYC_TODO = "todo"
@@ -60,7 +60,7 @@ class HomeController(
 
     @GetMapping("/")
     fun show(@RequestParam(required = false) decline: String?, model: Model): String {
-        val agent = currentAgent.get() ?: return SIGN_OUT
+        val agent = currentAgent.get() ?: throw SignInRequiredException()
 
         ProfileRules.header(agent, model)
         model.addAttribute("fullName", ProfileRules.fullName(agent))

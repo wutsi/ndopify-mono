@@ -58,6 +58,7 @@ import org.springframework.web.servlet.view.InternalResourceViewResolver
 import java.time.Clock
 import java.time.ZoneOffset
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -218,6 +219,7 @@ class SignControllerTest {
     fun `verify sets cookie and opens sign`() {
         session.setAttribute(PendingSignature.SESSION_ATTRIBUTE, pending)
         doReturn(AuthenticateResponse("token-123")).whenever(authClient).authenticate(any())
+        val sessionId = session.id
 
         val result = mvc.perform(
             post("$path/verify").param("code", "123 456").param("email", "other@gmail.com").session(session),
@@ -232,6 +234,7 @@ class SignControllerTest {
 
         assertEquals("redirect:$path?step=sign", result.modelAndView?.viewName)
         assertNull(session.getAttribute(PendingSignature.SESSION_ATTRIBUTE))
+        assertNotEquals(sessionId, session.id)
         verify(accessTokenService).set("token-123")
     }
 

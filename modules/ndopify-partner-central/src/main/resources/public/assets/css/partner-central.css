@@ -327,7 +327,19 @@ a:hover {
     text-decoration: none;
 }
 
-a.user-menu__item:hover {
+/* "Déconnexion" is a button (POST /logout), drawn like the links. */
+button.user-menu__item {
+    width: 100%;
+    margin: 0;
+    font: inherit;
+    text-align: left;
+    background: none;
+    border: 0;
+    cursor: pointer;
+}
+
+a.user-menu__item:hover,
+button.user-menu__item:hover {
     background: var(--color-surface-alt);
 }
 

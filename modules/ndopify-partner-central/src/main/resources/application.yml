@@ -26,6 +26,13 @@ spring:
 
 server:
     port: 8081
+    servlet:
+        session:
+            cookie:
+                # Not sent on another site's POST (CSRF) into the session's sign-in or wizard. Lax, not Strict, which
+                # would drop it when arriving from a link (ex: in an e-mail).
+                same-site: lax
+                http-only: true
     # Behind a proxy (Heroku's router), Tomcat's RemoteIpValve sets the client's IP, scheme and host from the
     # X-Forwarded-* headers, trusted only from internal proxies (server.tomcat.remoteip.internal-proxies).
     forward-headers-strategy: native

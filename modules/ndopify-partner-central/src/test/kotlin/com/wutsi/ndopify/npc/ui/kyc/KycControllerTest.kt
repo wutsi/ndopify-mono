@@ -13,6 +13,7 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.service.security.CurrentParty
+import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
 import com.wutsi.ndopify.party.dto.KycCase
 import com.wutsi.ndopify.party.dto.KycImage
 import com.wutsi.ndopify.party.dto.KycImageType
@@ -66,6 +67,7 @@ class KycControllerTest {
 
         // The view is named after its URL ("kyc" at /kyc); the default resolver would take that for a loop.
         mvc = MockMvcBuilders.standaloneSetup(KycController(kycClient, currentParty))
+            .setControllerAdvice(HttpClientErrorHandler(mock()))
             .setViewResolvers(InternalResourceViewResolver("/templates/", ".html"))
             .build()
         session = MockHttpSession()
@@ -218,7 +220,7 @@ class KycControllerTest {
 
         val result = mvc.perform(get("/kyc").session(session)).andReturn()
 
-        assertEquals("redirect:/logout", result.modelAndView?.viewName)
+        assertEquals("redirect:/login", result.modelAndView?.viewName)
     }
 
     // Magic numbers are enough for Tika to tell the type from the bytes.
@@ -397,7 +399,7 @@ class KycControllerTest {
 
         val result = mvc.perform(multipart("/kyc/front").file(photo(jpeg)).session(session)).andReturn()
 
-        assertEquals("redirect:/logout", result.modelAndView?.viewName)
+        assertEquals("redirect:/login", result.modelAndView?.viewName)
     }
 
     @Test
@@ -488,8 +490,8 @@ class KycControllerTest {
     fun `submit without party - signed out`() {
         doReturn(null).whenever(currentParty).get()
 
-        assertEquals("redirect:/logout", mvc.perform(post("/kyc/review").session(session)).andReturn().modelAndView?.viewName)
-        assertEquals("redirect:/logout", mvc.perform(post("/kyc/restart").session(session)).andReturn().modelAndView?.viewName)
+        assertEquals("redirect:/login", mvc.perform(post("/kyc/review").session(session)).andReturn().modelAndView?.viewName)
+        assertEquals("redirect:/login", mvc.perform(post("/kyc/restart").session(session)).andReturn().modelAndView?.viewName)
     }
 
     @Test

@@ -19,6 +19,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
+import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.LISTING
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.MANDATE
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
@@ -74,6 +75,7 @@ class ListingSectionControllerTest {
             clock,
         )
         mvc = MockMvcBuilders.standaloneSetup(controller)
+            .setControllerAdvice(HttpClientErrorHandler(mock()))
             .setViewResolvers(InternalResourceViewResolver("/templates/", ".html"))
             .build()
     }
@@ -341,6 +343,6 @@ class ListingSectionControllerTest {
     fun `save - signed out`() {
         doReturn(null).whenever(currentAgent).get()
 
-        assertEquals("redirect:/logout", mvc.perform(location()).andReturn().modelAndView?.viewName)
+        assertEquals("redirect:/login", mvc.perform(location()).andReturn().modelAndView?.viewName)
     }
 }

@@ -9,6 +9,7 @@ import com.wutsi.ndopify.refdata.dto.ApplicationCode
 import com.wutsi.ndopify.refdata.dto.AuthType
 import com.wutsi.ndopify.security.dto.AuthenticateRequest
 import com.wutsi.ndopify.security.dto.CreateOtpRequest
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpSession
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Controller
@@ -105,7 +106,12 @@ class LoginController(
     }
 
     @PostMapping("/verify")
-    fun verify(@ModelAttribute form: VerifyForm, session: HttpSession, model: Model): String {
+    fun verify(
+        @ModelAttribute form: VerifyForm,
+        request: HttpServletRequest,
+        session: HttpSession,
+        model: Model,
+    ): String {
         val pending = pending(session) ?: return "redirect:/login"
 
         val accessToken = try {
@@ -125,6 +131,8 @@ class LoginController(
         }
 
         session.removeAttribute(PendingLogin.SESSION_ATTRIBUTE)
+        // A new session id once signed in, so that an id planted before (session fixation) is worth nothing
+        request.changeSessionId()
         accessTokenService.set(accessToken)
         // The Espace agent, which sends an agent who isn't verified yet to the KYC page.
         return "redirect:/"

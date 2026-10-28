@@ -44,7 +44,11 @@
                 </button>
                 <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
                     <li><a class="user-menu__item" th:href="@{/profile}">Profil</a></li>
-                    <li><a class="user-menu__item" data-logout th:href="@{/logout}">Déconnexion</a></li>
+                    <li>
+                        <form method="post" th:action="@{/logout}" data-logout>
+                            <button class="user-menu__item" type="submit">Déconnexion</button>
+                        </form>
+                    </li>
                 </ul>
             </nav>
         </div>

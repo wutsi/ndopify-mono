@@ -21,6 +21,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdPartyClient
 import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.kyc.KycRules
+import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AKWA
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BASTOS
@@ -65,6 +66,7 @@ class ProfileControllerTest {
 
         val controller = ProfileController(currentAgent, agentClient, partyClient, locationClient, tenantContext)
         mvc = MockMvcBuilders.standaloneSetup(controller)
+            .setControllerAdvice(HttpClientErrorHandler(mock()))
             .setViewResolvers(InternalResourceViewResolver("/templates/", ".html"))
             .build()
     }
@@ -128,7 +130,7 @@ class ProfileControllerTest {
     fun `edit - not an agent`() {
         doReturn(null).whenever(currentAgent).get()
 
-        assertEquals("redirect:/logout", mvc.perform(get("/profile")).andReturn().modelAndView?.viewName)
+        assertEquals("redirect:/login", mvc.perform(get("/profile")).andReturn().modelAndView?.viewName)
     }
 
     // POST /profile
@@ -262,7 +264,7 @@ class ProfileControllerTest {
     fun `save - not an agent`() {
         doReturn(null).whenever(currentAgent).get()
 
-        assertEquals("redirect:/logout", mvc.perform(valid()).andReturn().modelAndView?.viewName)
+        assertEquals("redirect:/login", mvc.perform(valid()).andReturn().modelAndView?.viewName)
         verify(agentClient, never()).update(any(), any())
     }
 
@@ -290,7 +292,7 @@ class ProfileControllerTest {
     fun `photo - not an agent`() {
         doReturn(null).whenever(currentAgent).get()
 
-        assertEquals("redirect:/logout", mvc.perform(get("/profile/photo")).andReturn().modelAndView?.viewName)
+        assertEquals("redirect:/login", mvc.perform(get("/profile/photo")).andReturn().modelAndView?.viewName)
     }
 
     // POST /profile/photo
@@ -369,7 +371,7 @@ class ProfileControllerTest {
     fun `upload - not an agent`() {
         doReturn(null).whenever(currentAgent).get()
 
-        assertEquals("redirect:/logout", mvc.perform(upload(jpeg)).andReturn().modelAndView?.viewName)
+        assertEquals("redirect:/login", mvc.perform(upload(jpeg)).andReturn().modelAndView?.viewName)
         verify(partyClient, never()).uploadPhoto(any(), any(), any())
     }
 }

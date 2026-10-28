@@ -27,6 +27,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
+import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest
 import com.wutsi.ndopify.npc.ui.listing.MandateListingView
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.CONTRACT
@@ -94,6 +95,7 @@ class MandateControllerTest {
             clock,
         )
         mvc = MockMvcBuilders.standaloneSetup(controller)
+            .setControllerAdvice(HttpClientErrorHandler(mock()))
             .setViewResolvers(InternalResourceViewResolver("/templates/", ".html"))
             .build()
     }
@@ -259,7 +261,7 @@ class MandateControllerTest {
     fun `not an agent - sign out`() {
         doReturn(null).whenever(currentAgent).get()
 
-        assertEquals("redirect:/logout", mvc.perform(get("/mandates/201")).andReturn().modelAndView?.viewName)
+        assertEquals("redirect:/login", mvc.perform(get("/mandates/201")).andReturn().modelAndView?.viewName)
     }
 
     // Send for approval, close, cancel
@@ -476,7 +478,7 @@ class MandateControllerTest {
 
         for (action in listOf("request-approval", "close", "cancel")) {
             assertEquals(
-                "redirect:/logout",
+                "redirect:/login",
                 mvc.perform(post("/mandates/201/$action")).andReturn().modelAndView?.viewName,
             )
         }
@@ -777,8 +779,8 @@ class MandateControllerTest {
     fun `edit - not an agent - sign out`() {
         doReturn(null).whenever(currentAgent).get()
 
-        assertEquals("redirect:/logout", mvc.perform(get("/mandates/201/edit")).andReturn().modelAndView?.viewName)
-        assertEquals("redirect:/logout", mvc.perform(edit()).andReturn().modelAndView?.viewName)
+        assertEquals("redirect:/login", mvc.perform(get("/mandates/201/edit")).andReturn().modelAndView?.viewName)
+        assertEquals("redirect:/login", mvc.perform(edit()).andReturn().modelAndView?.viewName)
     }
 
     @Test

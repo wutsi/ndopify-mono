@@ -34,6 +34,7 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -173,6 +174,7 @@ class LoginControllerTest {
     fun verify() {
         session.setAttribute(PendingLogin.SESSION_ATTRIBUTE, pending)
         doReturn(AuthenticateResponse("token-123")).whenever(authClient).authenticate(any())
+        val sessionId = session.id
 
         val result = mvc.perform(post("/login/verify").param("code", "123 456").session(session)).andReturn()
 
@@ -185,6 +187,7 @@ class LoginControllerTest {
 
         assertEquals("redirect:/", result.modelAndView?.viewName)
         assertNull(session.getAttribute(PendingLogin.SESSION_ATTRIBUTE))
+        assertNotEquals(sessionId, session.id)
 
         verify(accessTokenService).set("token-123")
     }

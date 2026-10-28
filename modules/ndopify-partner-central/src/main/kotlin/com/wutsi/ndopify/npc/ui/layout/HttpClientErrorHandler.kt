@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.npc.ui.layout
 
 import com.wutsi.ndopify.npc.service.security.AccessTokenService
+import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.LoggerFactory
@@ -15,8 +16,8 @@ import org.springframework.web.client.HttpClientErrorException
  * catch it before it gets here.
  *
  * A 401 means that ndopify-server rejected the token (bad signature, expired meanwhile): this app doesn't check the
- * signature (see [com.wutsi.ndopify.npc.service.security.JwtDecoder]), so the cookie is cleared and the agent signs in
- * again.
+ * signature (see [com.wutsi.ndopify.npc.service.security.JwtDecoder]), so the agent is signed out (cookie and session)
+ * and signs in again. A [SignInRequiredException] (a token whose user isn't an agent) does the same.
  */
 @ControllerAdvice
 class HttpClientErrorHandler(private val accessTokenService: AccessTokenService) {
@@ -33,6 +34,17 @@ class HttpClientErrorHandler(private val accessTokenService: AccessTokenService)
     @ExceptionHandler(HttpClientErrorException.Unauthorized::class)
     fun unauthorized(request: HttpServletRequest): String {
         LOGGER.warn("${request.method} ${request.requestURI}: 401 from ndopify-server, signing out")
+        return signOut(request)
+    }
+
+    @ExceptionHandler(SignInRequiredException::class)
+    fun signInRequired(request: HttpServletRequest): String {
+        LOGGER.warn("${request.method} ${request.requestURI}: not an agent, signing out")
+        return signOut(request)
+    }
+
+    private fun signOut(request: HttpServletRequest): String {
+        request.getSession(false)?.invalidate()
         accessTokenService.remove()
         return "redirect:/login"
     }

@@ -21,6 +21,7 @@ import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.ASSIGNMENT
 import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.MANDATE
+import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardView
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest
 import com.wutsi.ndopify.npc.ui.mandate.MandateSummariesTest
@@ -71,6 +72,7 @@ class HomeControllerTest {
             clock,
         )
         mvc = MockMvcBuilders.standaloneSetup(controller)
+            .setControllerAdvice(HttpClientErrorHandler(mock()))
             .setViewResolvers(InternalResourceViewResolver("/templates/", ".html"))
             .build()
     }
@@ -173,7 +175,7 @@ class HomeControllerTest {
 
         val result = mvc.perform(get("/")).andReturn()
 
-        assertEquals("redirect:/logout", result.modelAndView?.viewName)
+        assertEquals("redirect:/login", result.modelAndView?.viewName)
     }
 
     // Mandats proposés

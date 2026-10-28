@@ -155,8 +155,8 @@
             }
         });
 
-        $all("[data-logout]").forEach(function (link) {
-            link.addEventListener("click", function () {
+        $all("[data-logout]").forEach(function (form) {
+            form.addEventListener("submit", function () {
                 Object.keys(KEYS).forEach(function (k) {
                     store.remove(KEYS[k]);
                 });

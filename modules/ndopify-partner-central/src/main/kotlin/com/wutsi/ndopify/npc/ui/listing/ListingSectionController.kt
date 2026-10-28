@@ -11,6 +11,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
+import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import com.wutsi.ndopify.refdata.dto.Location
@@ -76,7 +77,7 @@ class ListingSectionController(
     @GetMapping("/{slug}")
     fun show(@PathVariable id: String, @PathVariable slug: String, model: Model): String {
         val section = ListingRules.section(slug) ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
-        val agent = currentAgent.get() ?: return ListingController.SIGN_OUT
+        val agent = currentAgent.get() ?: throw SignInRequiredException()
         ProfileRules.header(agent, model)
 
         val listingId = id.toLongOrNull() ?: return unavailable(ListingAccess.Locked, model)
@@ -104,7 +105,7 @@ class ListingSectionController(
         redirect: RedirectAttributes,
     ): String {
         val section = ListingRules.section(slug) ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
-        val agent = currentAgent.get() ?: return ListingController.SIGN_OUT
+        val agent = currentAgent.get() ?: throw SignInRequiredException()
         val id = value.toLongOrNull() ?: return ListingController.HOME
 
         val listing = when (val result = access.load(id, agent)) {

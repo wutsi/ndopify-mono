@@ -11,3 +11,9 @@ ndopify:
     server:
         api:
             base-url: ${NDOPIFY_SERVER_URL}
+
+server:
+    servlet:
+        session:
+            cookie:
+                secure: true

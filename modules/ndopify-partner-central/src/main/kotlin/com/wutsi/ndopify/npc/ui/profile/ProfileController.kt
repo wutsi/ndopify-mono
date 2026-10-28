@@ -9,6 +9,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdPartyClient
 import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
+import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.join.JoinRules
 import com.wutsi.ndopify.npc.ui.kyc.KycRules
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
@@ -50,7 +51,6 @@ class ProfileController(
         const val VIEW_EDIT = "profile/edit"
         const val VIEW_PHOTO = "profile/photo"
         const val ERROR_TOO_LARGE = "too-large"
-        const val SIGN_OUT = "redirect:/logout"
 
         private const val SAVE_FAILED = "Enregistrement impossible pour le moment. Réessayez dans quelques instants."
         private const val SAVE_CONFLICT =
@@ -61,13 +61,13 @@ class ProfileController(
 
     @GetMapping
     fun edit(model: Model): String {
-        val agent = currentAgent.get() ?: return SIGN_OUT
+        val agent = currentAgent.get() ?: throw SignInRequiredException()
         return edit(agent, ProfileForm.of(agent), emptyMap(), null, model)
     }
 
     @PostMapping
     fun save(@ModelAttribute form: ProfileForm, model: Model, redirect: RedirectAttributes): String {
-        val agent = currentAgent.get() ?: return SIGN_OUT
+        val agent = currentAgent.get() ?: throw SignInRequiredException()
         val answers = form.copy(
             whatsappNumber = JoinRules.normalizePhone(form.whatsappNumber),
             neighborhoodIds = form.neighborhoodIds.distinct(),
@@ -117,7 +117,7 @@ class ProfileController(
 
     @GetMapping("/photo")
     fun photo(@RequestParam(name = "error", required = false) uploadError: String?, model: Model): String {
-        val agent = currentAgent.get() ?: return SIGN_OUT
+        val agent = currentAgent.get() ?: throw SignInRequiredException()
         val error = if (uploadError == ERROR_TOO_LARGE) "Cette photo dépasse la taille maximale de 5 Mo." else null
         return photo(agent, error, model)
     }
@@ -128,7 +128,7 @@ class ProfileController(
         model: Model,
         redirect: RedirectAttributes,
     ): String {
-        val agent = currentAgent.get() ?: return SIGN_OUT
+        val agent = currentAgent.get() ?: throw SignInRequiredException()
         if (photo == null || photo.isEmpty) {
             // "Enregistrer" without a new photo keeps the current one.
             if (agent.party.photoUrl.isNullOrBlank()) return photo(agent, "Ajoutez une photo pour continuer.", model)

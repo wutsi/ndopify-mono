@@ -13,6 +13,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
+import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.npc.ui.mandate.MandateController
 import com.wutsi.ndopify.npc.ui.profile.ProfileRules
@@ -48,7 +49,6 @@ class ListingController(
         private val LOGGER = LoggerFactory.getLogger(ListingController::class.java)
 
         const val VIEW = "listing"
-        const val SIGN_OUT = "redirect:/logout"
         const val HOME = "redirect:/"
 
         const val OUTCOME = "outcome"
@@ -72,7 +72,7 @@ class ListingController(
     /** [id] is a String so that a hand-edited value is the locked view instead of failing the page. */
     @GetMapping("/listings/{id}")
     fun show(@PathVariable id: String, model: Model): String {
-        val agent = currentAgent.get() ?: return SIGN_OUT
+        val agent = currentAgent.get() ?: throw SignInRequiredException()
         ProfileRules.header(agent, model)
 
         (model.getAttribute(OUTCOME) as? String)?.let { outcome(it, model) }
@@ -90,7 +90,7 @@ class ListingController(
      */
     @PostMapping("/listings/{id}/verify")
     fun send(@PathVariable("id") value: String, redirect: RedirectAttributes): String {
-        val agent = currentAgent.get() ?: return SIGN_OUT
+        val agent = currentAgent.get() ?: throw SignInRequiredException()
         val id = value.toLongOrNull() ?: return HOME
 
         val outcome =
@@ -126,7 +126,7 @@ class ListingController(
      */
     @PostMapping("/mandates/{id}/listing")
     fun create(@PathVariable("id") value: String, redirect: RedirectAttributes): String {
-        val agent = currentAgent.get() ?: return SIGN_OUT
+        val agent = currentAgent.get() ?: throw SignInRequiredException()
         val id = value.toLongOrNull() ?: return HOME
 
         val outcome =

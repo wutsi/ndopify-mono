@@ -148,6 +148,7 @@ class SignController(
     fun verify(
         @PathVariable contractPartyId: String,
         @ModelAttribute form: VerifyForm,
+        request: HttpServletRequest,
         session: HttpSession,
         model: Model,
     ): String {
@@ -172,6 +173,8 @@ class SignController(
         }
 
         session.removeAttribute(PendingSignature.SESSION_ATTRIBUTE)
+        // A new session id once signed in, so that an id planted before (session fixation) is worth nothing
+        request.changeSessionId()
         accessTokenService.set(accessToken)
         return "redirect:/sign/$contractPartyId?step=$STEP_SIGN"
     }

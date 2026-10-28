@@ -58,7 +58,9 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   HTTP-only `__npc_access_token` cookie (`AccessTokenService`) and decoded by `JwtAuthenticationFilter`, which clears
   the cookie of a token that doesn't decode (expired) and marks the request `ACCESS_TOKEN_REJECTED`, so that
   `AuthorizationClientHttpRequestInterceptor` doesn't forward it (ndopify-server would answer 401); everything
-  except `/assets/**`, `/login/**`, `/error`, `/locations/**`, `/join/**`, `/find-property/**`, `/offer-property/**` requires authentication. `/logout` clears the cookie and session.
+  except `/assets/**`, `/login/**`, `/error`, `/locations/**`, `/join/**`, `/find-property/**`, `/offer-property/**` requires authentication. `POST /logout` (a form in the account menu, never a link: a GET could be forced by another site) clears the cookie
+  and session, and so does a 401 from ndopify-server or a `SignInRequiredException` (`HttpClientErrorHandler`), which
+  a page throws when `CurrentAgent` / `CurrentParty` finds nobody. Sign-in changes the session id.
   The header's account menu (`<nav class="user-menu">`) is wrapped in `th:if="${signedIn}"`, a model attribute
   that `SignedInAdvice` (`ui/layout/`) sets on every page: give any new page's menu the same guard.
 - Tenant is resolved by `TenantContext` matching the request URL against each active tenant's `partnerCentralUrl`
@@ -108,7 +110,7 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   state and the session holds no photos; `POST /kyc/review` submits it. The party is found by looking up the
   signed-in user (`CurrentParty` → `GET /v1/users/{id}`) and taking its newest case (`GET /v1/kyc/cases`, newest
   first). Once the case is no longer PENDING_VERIFICATION the page is a status view (`?step=confirmation` right after
-  submitting); `POST /kyc/restart` opens a new case after a rejection. A user with no party goes to `/logout`.
+  submitting); `POST /kyc/restart` opens a new case after a rejection. A user with no party is signed out (`SignInRequiredException`).
   Photos are sniffed with Tika (`tika-core`) and capped at 5 Mo (`KycUploadErrorHandler` catches the multipart
   limit). `public/assets/js/kyc.js` only enhances (shrinks photos, in-page selfie camera); every step posts without it.
 - Login redirects to `/`, the *Espace agent* (`HomeController`, `ui/home/`, `templates/index.html`), whatever the

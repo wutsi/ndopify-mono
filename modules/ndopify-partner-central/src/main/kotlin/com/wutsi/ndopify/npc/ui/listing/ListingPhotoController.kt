@@ -9,6 +9,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
+import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import org.apache.tika.Tika
@@ -70,7 +71,7 @@ class ListingPhotoController(
         @RequestParam(name = "error", required = false) uploadError: String?,
         model: Model,
     ): String {
-        val agent = currentAgent.get() ?: return ListingController.SIGN_OUT
+        val agent = currentAgent.get() ?: throw SignInRequiredException()
         ProfileRules.header(agent, model)
 
         val result = id.toLongOrNull()?.let { access.load(it, agent) } ?: ListingAccess.Locked
@@ -97,7 +98,7 @@ class ListingPhotoController(
         @RequestParam(name = "photo", required = false) files: List<MultipartFile>?,
         redirect: RedirectAttributes,
     ): String {
-        val agent = currentAgent.get() ?: return ListingController.SIGN_OUT
+        val agent = currentAgent.get() ?: throw SignInRequiredException()
         val id = value.toLongOrNull() ?: return ListingController.HOME
         val listing = draft(id, agent, redirect) ?: return "redirect:/listings/$id"
 
@@ -142,7 +143,7 @@ class ListingPhotoController(
         @PathVariable("imageId") image: String,
         redirect: RedirectAttributes,
     ): String {
-        val agent = currentAgent.get() ?: return ListingController.SIGN_OUT
+        val agent = currentAgent.get() ?: throw SignInRequiredException()
         val id = value.toLongOrNull() ?: return ListingController.HOME
         draft(id, agent, redirect) ?: return "redirect:/listings/$id"
 

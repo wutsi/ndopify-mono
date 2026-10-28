@@ -37,7 +37,7 @@ Public pages:
   ndopify-server e-mail a 6-digit code (5-minute TTL) and keeps a `PendingLogin` in the session (`resend=true` sends
   a new one); `POST /login/verify` exchanges the code for an access token (`AuthType.OTP`, application
   `partner-central`), reading the e-mail from the session, never from the page, and redirects to `/`.
-- **Sign-out** — `GET /logout` drops the access-token cookie and the HTTP session. ndopify-server has no revocation
+- **Sign-out** — `POST /logout` (the account menu's form) drops the access-token cookie and the HTTP session. ndopify-server has no revocation
   endpoint, so the token stays valid until it expires.
 
 Signed-in pages:

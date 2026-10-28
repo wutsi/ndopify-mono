@@ -4,8 +4,10 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.wutsi.ndopify.npc.service.security.AccessTokenService
+import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
+import org.springframework.mock.web.MockHttpSession
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
@@ -17,6 +19,7 @@ import org.springframework.web.client.RestClientException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class HttpClientErrorHandlerTest {
     /** A page that lets ndopify-server's errors through, as the RestClient throws them. */
@@ -25,6 +28,9 @@ class HttpClientErrorHandlerTest {
         @GetMapping("/failing/{status}")
         fun failing(@PathVariable status: Int): String =
             throw HttpClientErrorException.create(HttpStatus.valueOf(status), "", HttpHeaders.EMPTY, ByteArray(0), null)
+
+        @GetMapping("/not-an-agent")
+        fun notAnAgent(): String = throw SignInRequiredException()
     }
 
     private val accessTokenService = mock<AccessTokenService>()
@@ -44,11 +50,26 @@ class HttpClientErrorHandlerTest {
 
     @Test
     fun `unauthorized - signs out`() {
-        val response = mvc.perform(get("/failing/401")).andReturn().response
+        val session = MockHttpSession()
+
+        val response = mvc.perform(get("/failing/401").session(session)).andReturn().response
 
         assertEquals(302, response.status)
         assertEquals("/login", response.redirectedUrl)
         verify(accessTokenService).remove()
+        assertTrue(session.isInvalid)
+    }
+
+    @Test
+    fun `sign-in required - signs out`() {
+        val session = MockHttpSession()
+
+        val response = mvc.perform(get("/not-an-agent").session(session)).andReturn().response
+
+        assertEquals(302, response.status)
+        assertEquals("/login", response.redirectedUrl)
+        verify(accessTokenService).remove()
+        assertTrue(session.isInvalid)
     }
 
     @Test
