@@ -6,7 +6,12 @@ import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.server.dao.ListingImageRepository
 import com.wutsi.ndopify.listing.server.dao.ListingRepository
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
+import com.wutsi.ndopify.listing.server.event.ListingPublishedEvent
+import com.wutsi.ndopify.platform.util.StringUtils
+import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
+import com.wutsi.ndopify.refdata.server.service.LocationService
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.support.TransactionTemplate
 import java.time.Clock
@@ -17,13 +22,18 @@ import java.util.Date
  * If the content generation fails, the publishing will retry up to MAX_RETRIES times, then the listing is published
  * without content (no title, summary nor description: the UI handles it), keeping the last error.
  * Without a hero image in the generated content, the hero image is the verified image with the highest quality, then the largest.
+ * The listing's public URL is the path `/<city>/<neighborhood>/listing/<id>/<slug>`, its slug from its title: without
+ * neighborhood nor title, those segments are left out. The host isn't part of it: it's the tenant's public portal.
+ * A published listing publishes a [ListingPublishedEvent], in the transaction that saves it.
  */
 @Service
 class ListingPublisherService(
     private val generator: ListingContentGenerator,
     private val dao: ListingRepository,
     private val imageDao: ListingImageRepository,
+    private val locationService: LocationService,
     private val tx: TransactionTemplate,
+    private val eventPublisher: ApplicationEventPublisher,
     private val clock: Clock,
 ) {
     companion object {
@@ -69,31 +79,38 @@ class ListingPublisherService(
     private fun manual(listing: ListingEntity): ListingEntity {
         val now = Date(clock.millis())
         val heroImageId = heroImageId(listing)
+        val url = url(listing, null)
         return tx.execute {
-            dao.save(
+            val published = dao.save(
                 listing.copy(
                     status = ListingStatus.PUBLISHED,
                     title = null,
                     summary = null,
                     description = null,
+                    url = url,
                     heroImageId = heroImageId,
                     publishedAt = now,
                     modifiedAt = now,
                 )
             )
+            eventPublisher.publishEvent(ListingPublishedEvent(listingId = published.id!!, tenantId = published.tenantId!!))
+            published
         }
     }
 
     private fun published(listing: ListingEntity, content: ListingContentInfo): ListingEntity {
         val now = Date(clock.millis())
         val heroImageId = content.heroImageId ?: heroImageId(listing)
+        val title = content.title?.take(100)
+        val url = url(listing, title)
         return tx.execute {
-            dao.save(
+            val published = dao.save(
                 listing.copy(
                     status = ListingStatus.PUBLISHED,
-                    title = content.title?.take(100),
+                    title = title,
                     summary = content.summary?.take(255),
                     description = content.description,
+                    url = url,
                     heroImageId = heroImageId,
                     retries = 0,
                     errorMessage = null,
@@ -102,6 +119,8 @@ class ListingPublisherService(
                     modifiedAt = now,
                 )
             )
+            eventPublisher.publishEvent(ListingPublishedEvent(listingId = published.id!!, tenantId = published.tenantId!!))
+            published
         }
     }
 
@@ -114,4 +133,18 @@ class ListingPublisherService(
                 ),
             )
             ?.id
+
+    private fun url(listing: ListingEntity, title: String?): String {
+        val locations = locationService.search(
+            SearchLocationRequest(
+                ids = listOfNotNull(listing.cityId, listing.neighborhoodId),
+                limit = 2,
+            )
+        )
+        val city = locations.find { location -> location.id == listing.cityId }
+        val neighborhood = locations.find { location -> location.id == listing.neighborhoodId }
+
+        val prefix = StringUtils.toSlug(StringUtils.toSlug("", city?.name), neighborhood?.name) + "/listing/${listing.id}"
+        return StringUtils.toSlug(prefix, title)
+    }
 }

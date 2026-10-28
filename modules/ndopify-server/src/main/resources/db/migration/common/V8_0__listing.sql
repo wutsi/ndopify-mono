@@ -63,6 +63,7 @@ CREATE TABLE T_LISTING(
   title                   VARCHAR(100),
   summary                 VARCHAR(255),
   description             TEXT,
+  url                     TEXT,
   error_codes             TEXT,
   error_message           TEXT,
   retries                 INT,

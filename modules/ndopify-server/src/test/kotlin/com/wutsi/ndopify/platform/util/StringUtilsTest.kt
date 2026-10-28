@@ -12,6 +12,8 @@ class StringUtilsTest {
         assertEquals("/read/123/this-is-a-slug", StringUtils.toSlug("/read/123", "This.is!a,Slug"))
         assertEquals("/read/123/this-is-a-slug", StringUtils.toSlug("/read/123", "This is a Slug?"))
         assertEquals("/read/123/this-is-a-slug", StringUtils.toSlug("/read/123", "This is a\nSlug?"))
+        assertEquals("/read/123/maison-a-louer-douala-bonapriso", StringUtils.toSlug("/read/123", "Maison à louer, Douala (Bonapriso)"))
+        assertEquals("/read/123", StringUtils.toSlug("/read/123", null))
     }
 
     @Test

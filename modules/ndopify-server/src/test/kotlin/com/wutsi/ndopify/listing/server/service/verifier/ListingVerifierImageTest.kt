@@ -139,6 +139,25 @@ class ListingVerifierImageTest {
     }
 
     @Test
+    fun `no image info`() {
+        mockImages(pending = listOf(image(11)), verified = emptyList())
+        doReturn(null).whenever(extractor).extract(any())
+
+        val result = verifier.verify(listing)
+
+        assertEquals(false, result.success)
+        assertEquals(ErrorCode.LISTING_NOT_ENOUGH_IMAGES, result.errorCode)
+
+        val image = argumentCaptor<ListingImageEntity>()
+        verify(dao).save(image.capture())
+        assertEquals(ImageStatus.REJECTED, image.firstValue.status)
+        assertEquals("Unable to extract image info", image.firstValue.errorMessage)
+        assertNull(image.firstValue.title)
+        assertNull(image.firstValue.width)
+        assertEquals(Date(NOW), image.firstValue.modifiedAt)
+    }
+
+    @Test
     fun `image format without dimensions`() {
         mockImages(pending = listOf(image(11, path = "/image.webp")), verified = emptyList())
         doReturn(ListingImageInfo(valid = true, quality = 3)).whenever(extractor).extract(any())

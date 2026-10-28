@@ -17,8 +17,12 @@ import com.wutsi.ndopify.listing.server.dao.ListingImageRepository
 import com.wutsi.ndopify.listing.server.dao.ListingRepository
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
+import com.wutsi.ndopify.listing.server.event.ListingPublishedEvent
+import com.wutsi.ndopify.refdata.server.domain.LocationEntity
+import com.wutsi.ndopify.refdata.server.service.LocationService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.TransactionStatus
@@ -38,15 +42,17 @@ class ListingPublisherServiceTest {
     private val generator = mock<ListingContentGenerator>()
     private val dao = mock<ListingRepository>()
     private val imageDao = mock<ListingImageRepository>()
+    private val locationService = mock<LocationService>()
     private val clock = mock<Clock>()
+    private val eventPublisher = mock<ApplicationEventPublisher>()
     private val tx = TransactionTemplate(
         mock<PlatformTransactionManager> {
             on { getTransaction(any()) } doReturn mock<TransactionStatus>()
         },
     )
-    private val service = ListingPublisherService(generator, dao, imageDao, tx, clock)
+    private val service = ListingPublisherService(generator, dao, imageDao, locationService, tx, eventPublisher, clock)
 
-    private val listing = ListingEntity(id = 1L, status = ListingStatus.PUBLISHING)
+    private val listing = ListingEntity(id = 1L, tenantId = 7L, status = ListingStatus.PUBLISHING, cityId = 100L, neighborhoodId = 200L)
     private val content = ListingContentInfo(
         title = "Appartement à louer, 3 chambres, Douala (Bonapriso)",
         summary = "Bel appartement lumineux au coeur de Bonapriso",
@@ -59,6 +65,12 @@ class ListingPublisherServiceTest {
         doReturn(NOW).whenever(clock).millis()
         doAnswer { invocation -> invocation.arguments[0] }.whenever(dao).save(any<ListingEntity>())
         doReturn(content).whenever(generator).generate(any())
+        doReturn(
+            listOf(
+                LocationEntity(id = 100L, name = "Douala"),
+                LocationEntity(id = 200L, name = "Bonapriso"),
+            ),
+        ).whenever(locationService).search(any())
     }
 
     private fun saved(count: Int = 1): List<ListingEntity> {
@@ -77,12 +89,44 @@ class ListingPublisherServiceTest {
         assertEquals(content.summary, saved.summary)
         assertEquals(content.description, saved.description)
         assertEquals(content.heroImageId, saved.heroImageId)
+        assertEquals("/douala/bonapriso/listing/1/appartement-a-louer-3-chambres-douala-bonapriso", saved.url)
         assertEquals(Date(NOW), saved.publishedAt)
         assertEquals(Date(NOW), saved.modifiedAt)
         assertEquals(saved, result)
 
         verify(generator).generate(listing)
         verify(imageDao, never()).findByListingIdAndStatus(any(), any())
+        verify(eventPublisher).publishEvent(ListingPublishedEvent(listingId = 1L, tenantId = 7L))
+    }
+
+    @Test
+    fun `url without neighborhood`() {
+        doReturn(listOf(LocationEntity(id = 100L, name = "Douala"))).whenever(locationService).search(any())
+
+        service.publish(listing.copy(neighborhoodId = null))
+
+        assertEquals("/douala/listing/1/appartement-a-louer-3-chambres-douala-bonapriso", saved().single().url)
+    }
+
+    @Test
+    fun `url without title`() {
+        doReturn(content.copy(title = null)).whenever(generator).generate(any())
+
+        service.publish(listing)
+
+        assertEquals("/douala/bonapriso/listing/1", saved().single().url)
+    }
+
+    @Test
+    fun `failure to build the url - retry`() {
+        doThrow(RuntimeException("boom")).whenever(locationService).search(any())
+
+        service.publish(listing)
+
+        val saved = saved().single()
+        assertEquals(ListingStatus.PUBLISHING, saved.status)
+        assertNull(saved.url)
+        assertEquals(1, saved.retries)
     }
 
     @Test
@@ -164,6 +208,7 @@ class ListingPublisherServiceTest {
         assertEquals("No content", saved.errorMessage)
         assertNull(saved.publishedAt)
         assertEquals(Date(NOW), saved.modifiedAt)
+        verify(eventPublisher, never()).publishEvent(any<Any>())
     }
 
     @Test
@@ -196,6 +241,7 @@ class ListingPublisherServiceTest {
         assertEquals(1, saved[1].retries)
         assertEquals(listOf(ErrorCode.INTERNAL_ERROR), saved[1].errorCodes)
         assertEquals("too long", saved[1].errorMessage)
+        verify(eventPublisher, never()).publishEvent(any<Any>())
     }
 
     @Test
@@ -224,6 +270,7 @@ class ListingPublisherServiceTest {
         assertNull(saved.summary)
         assertNull(saved.description)
         assertEquals(22L, saved.heroImageId)
+        assertEquals("/douala/bonapriso/listing/1", saved.url)
         assertEquals(Date(NOW), saved.publishedAt)
         assertEquals(Date(NOW), saved.modifiedAt)
 
@@ -232,6 +279,7 @@ class ListingPublisherServiceTest {
         assertEquals("boom", saved.errorMessage)
 
         verify(generator, never()).generate(any())
+        verify(eventPublisher).publishEvent(ListingPublishedEvent(listingId = 1L, tenantId = 7L))
     }
 
     @Test

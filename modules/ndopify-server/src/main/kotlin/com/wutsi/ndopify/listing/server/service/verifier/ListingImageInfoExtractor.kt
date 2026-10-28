@@ -40,7 +40,7 @@ class ListingImageInfoExtractor(
         """.trimIndent()
     }
 
-    fun extract(file: File): ListingImageInfo {
+    fun extract(file: File): ListingImageInfo? {
         val instructions = PROMPT
 
         return client.prompt()
@@ -52,7 +52,6 @@ class ListingImageInfoExtractor(
             }
             .call()
             .entity(ListingImageInfo::class.java)
-            ?: ListingImageInfo()
     }
 }
 

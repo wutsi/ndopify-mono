@@ -103,6 +103,7 @@ data class ListingEntity(
     val title: String? = null,
     val summary: String? = null,
     val description: String? = null,
+    val url: String? = null,
 
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),

@@ -45,7 +45,7 @@ Each domain under `com.wutsi.ndopify.<domain>.server` follows the same layering:
     domain/     - JPA entities (*Entity.kt)
     mapper/     - Entity ↔ DTO mapping (*Mapper.kt)
     io/         - import/export (refdata only, e.g. GeonamesImporter, NeighbourhoodImporter)
-    event/      - application events + their listeners (agent, party, security, mandate so far)
+    event/      - application events + their listeners (agent, party, security, mandate, listing so far)
     mail/       - the domain's e-mails (*Mailet.kt: recipient, subject, template context), e.g. WelcomeMailet
 ```
 
@@ -252,22 +252,26 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   to `PUBLISHING` (404 `LISTING_NOT_FOUND`, then 409 `LISTING_NOT_VERIFIED`), `retries` reset; `ListingJobs.publish`
   then has `ListingPublisherService` generate its title, summary and description (`ListingContentGenerator`, text
   LLM, `ChatClients.TEXT`) and its hero image (the model's, else the verified photo of highest quality, then
-  largest): `PUBLISHED`, or still `PUBLISHING` to be retried after a failure; after `MAX_RETRIES` failed attempts
-  it's `PUBLISHED` without title, summary nor description (the UIs handle it), its last error kept. `RENTED`, `SOLD`, `EXPIRED`, `CANCELLED` aren't set by any code yet.
+  largest), and its public `url`, the path `/<city>/<neighborhood>/listing/<id>/<slug of the title>` (no host: the
+  tenant's `publicPortalUrl`; no neighbourhood nor title segment without them): `PUBLISHED`, or still `PUBLISHING` to be retried after a failure; after `MAX_RETRIES` failed attempts
+  it's `PUBLISHED` without title, summary nor description (the UIs handle it), its last error kept. Either way it
+  publishes `ListingPublishedEvent`: `ListingPublishedMailet` e-mails the customer (the owner) and the agent, with a
+  link to `{publicPortalUrl}{url}` (`mail/listing/published_customer.mjml` / `published_agent.mjml`; no link without
+  either). `RENTED`, `SOLD`, `EXPIRED`, `CANCELLED` aren't set by any code yet.
   Tenant-scoped.
 - **error** — shared exception types (`WutsiException` subclasses: `BadRequestException`, `NotFoundException`,
   `ConflictException`, `ForbiddenException`, `UnauthorizedException`, `InternalErrorException`) and a global
   `ControllerErrorHandler`.
 
-**Asynchronous e-mails** (welcome, OTP, KYC status, mandate offered, mandate assigned, mandate approved, contract to sign): the service publishes an event
+**Asynchronous e-mails** (welcome, OTP, KYC status, mandate offered, mandate assigned, mandate approved, contract to sign, listing published): the service publishes an event
 from its transaction (`AgentCreatedEvent`, `OtpCreatedEvent`, `KycCaseCompletedEvent`, `AssignmentCreatedEvent`,
-`AssignmentAcceptedEvent`, `MandateApprovedEvent`, `ContractSignatureRequestedEvent` in `<domain>/server/event/`), carrying ids plus the `tenantId` — never entities. Its
+`AssignmentAcceptedEvent`, `MandateApprovedEvent`, `ContractSignatureRequestedEvent`, `ListingPublishedEvent` in `<domain>/server/event/`), carrying ids plus the `tenantId` — never entities. Its
 listener is `@Async @TransactionalEventListener(AFTER_COMMIT)`, so nothing is sent for a rolled-back transaction. The
 executor thread has no request, so the listener sets `TenantContext` and a `DefaultKVLogger` in `KVLoggerThreadLocal`
 (which the injected `KVLogger` falls back to), calls `logger.log()` in `finally` to flush it, and removes both
 (threads are reused). The work runs in a `@Transactional` service method (`AgentService.sendWelcomeEmail`,
 `OtpService.sendEmail`, `KycService.sendStatusEmail`, `AssignmentService.sendOfferEmail` / `sendAssignedEmail`, `MandateService.sendApprovedEmail`,
-`ContractService.sendSignatureRequestEmails`); the signed PDF (`ContractSignedEvent` → `SignedContractService.generate`,
+`ContractService.sendSignatureRequestEmails`, `ListingService.sendPublishedEmails`); the signed PDF (`ContractSignedEvent` → `SignedContractService.generate`,
 not an e-mail, not transactional) follows the same listener pattern. The service methods are
 entered *after* `TenantContext` is set since Hibernate resolves the tenant when the session opens. Failures are
 logged, never rethrown. Tests must wait for the mail (`smtp.waitForIncomingEmail`);

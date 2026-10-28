@@ -19,6 +19,7 @@ import org.springframework.ai.chat.prompt.ChatOptions
 import org.springframework.ai.chat.prompt.Prompt
 import java.io.File
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -56,7 +57,7 @@ class ListingImageInfoExtractorTest {
             """.trimIndent(),
         )
 
-        val info = extractor.extract(file)
+        val info = assertNotNull(extractor.extract(file))
 
         assertEquals("Salon lumineux", info.title)
         assertEquals("Grand salon avec baies vitrées", info.description)
@@ -79,11 +80,20 @@ class ListingImageInfoExtractorTest {
             """.trimIndent(),
         )
 
-        val info = extractor.extract(file)
+        val info = assertNotNull(extractor.extract(file))
 
         assertEquals(false, info.valid)
         assertEquals(2, info.quality)
         assertEquals("Generic map", info.reason)
+    }
+
+    @Test
+    fun `no response`() {
+        doReturn(ChatResponse(emptyList())).whenever(chatModel).call(any<Prompt>())
+
+        val info = extractor.extract(file)
+
+        assertNull(info)
     }
 
     @Test

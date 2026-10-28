@@ -1,0 +1,70 @@
+<mjml>
+    <mj-head>
+        <mj-style inline="inline">
+            {{__css__}}
+        </mj-style>
+    </mj-head>
+    <mj-body css-class="body">
+        <mj-section css-class="main-content">
+            <mj-column>
+                <!-- Logo -->
+                <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
+
+                <!-- Divider with class for CSS injection -->
+                <mj-divider css-class="divider"/>
+
+                <!-- Body Text -->
+                <mj-text>
+                    Bonjour <strong>{{recipient_name}}</strong>,
+                </mj-text>
+                <mj-text>
+                    L'annonce du bien de <strong>{{customer_name}}</strong> est désormais
+                    <span class="text-primary"><strong>publiée</strong></span>.
+                </mj-text>
+
+                <!-- In an mj-text: MJML drops raw HTML outside of it -->
+                <mj-text>
+                    <ul>
+                        {{#title}}
+                        <li>
+                            <b>Annonce</b>: {{title}}
+                        </li>
+                        {{/title}}
+                        <li>
+                            <b>Ville</b>: {{city}}
+                        </li>
+                        {{#neighbourhood}}
+                        <li>
+                            <b>Quartier</b>: {{neighbourhood}}
+                        </li>
+                        {{/neighbourhood}}
+                    </ul>
+                </mj-text>
+
+                <mj-text font-weight="bold" font-size="18px">
+                    Prochaine étape :
+                </mj-text>
+                <mj-text>
+                    Partagez le lien de l'annonce et organisez les visites avec les candidats intéressés.
+                </mj-text>
+
+                {{#listing_url}}
+                <!-- Button with class for CSS injection -->
+                <mj-spacer/>
+                <mj-button href="{{listing_url}}" css-class="btn-primary" align="center">
+                    Voir l'annonce
+                </mj-button>
+                <mj-spacer/>
+                {{/listing_url}}
+
+                <!-- Sign-off -->
+                <mj-spacer/>
+                <mj-text>
+                    Cordialement,
+                    <br/>
+                    L'équipe {{tenant_name}}
+                </mj-text>
+            </mj-column>
+        </mj-section>
+    </mj-body>
+</mjml>

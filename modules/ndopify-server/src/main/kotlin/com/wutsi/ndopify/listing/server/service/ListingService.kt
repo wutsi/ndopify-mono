@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.listing.server.service
 
 import com.wutsi.ndopify.agent.server.service.AgentService
+import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
@@ -17,6 +18,7 @@ import com.wutsi.ndopify.listing.dto.SearchListingRequest
 import com.wutsi.ndopify.listing.dto.UpdateListingRequest
 import com.wutsi.ndopify.listing.server.dao.ListingRepository
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
+import com.wutsi.ndopify.listing.server.mail.ListingPublishedMailet
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.mandate.server.service.MandateService
 import com.wutsi.ndopify.refdata.dto.LocationType
@@ -37,6 +39,8 @@ class ListingService(
     private val dao: ListingRepository,
     private val mandateService: MandateService,
     private val agentService: AgentService,
+    private val customerService: CustomerService,
+    private val publishedMailet: ListingPublishedMailet,
     private val sectionService: ListingSectionService,
     private val locationService: LocationService,
     private val clock: Clock,
@@ -304,6 +308,25 @@ class ListingService(
                 modifiedAt = Date(clock.millis()),
             )
         )
+    }
+
+    /**
+     * E-mails the customer and the agent of a PUBLISHED listing that it's published. Nothing is sent once the listing
+     * has moved on (no longer PUBLISHED). Returns whether it was sent.
+     */
+    @Transactional
+    fun sendPublishedEmails(id: Long): Boolean {
+        val listing = findById(id)
+        if (listing.status != ListingStatus.PUBLISHED) {
+            return false
+        }
+
+        publishedMailet.send(
+            listing = listing,
+            customer = customerService.findById(listing.mandate.customerId),
+            agent = listing.agent,
+        )
+        return true
     }
 
     // A neighbourhood of the city

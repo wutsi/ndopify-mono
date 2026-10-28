@@ -54,7 +54,7 @@ class ListingVerifierImage(
         val file = UrlUtils.download(URL(image.url))
         val info = extractor.extract(file)
         val dimension = getDimensions(file)
-        val verified = if (info.valid) {
+        val verified = if (info?.valid == true) {
             image.copy(
                 status = ImageStatus.VERIFIED,
                 title = info.title,
@@ -67,7 +67,7 @@ class ListingVerifierImage(
         } else {
             image.copy(
                 status = ImageStatus.REJECTED,
-                errorMessage = info.reason,
+                errorMessage = info?.reason ?: "Unable to extract image info",
                 modifiedAt = Date(clock.millis()),
             )
         }
