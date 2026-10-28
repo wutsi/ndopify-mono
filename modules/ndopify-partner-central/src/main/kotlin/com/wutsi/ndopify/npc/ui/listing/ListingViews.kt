@@ -36,29 +36,37 @@ object ListingViews {
     private val TO_COMPLETE = ListingRules.Tag("À compléter", "warning")
     private val REMARKS_ADDED = ListingRules.Tag("Ajoutées", "success")
     private val OPTIONAL = ListingRules.Tag("Facultatif", "neutral")
+    private val TO_FIX = ListingRules.Tag("À corriger", "warning")
 
-    /** [images] is null when they couldn't be loaded: the photos' row then has no count. */
+    /**
+     * [images] is null when they couldn't be loaded: the photos' row then has no count. [publicPortalUrl] is the
+     * tenant's, the host of a published listing's `url`.
+     */
     fun of(
         listing: Listing,
         images: List<ListingImage>?,
         locations: Map<Long, Location>,
         formatter: TenantFormatter,
+        publicPortalUrl: String? = null,
     ): ListingView {
         val editable = ListingRules.editable(listing)
         val required = ListingRules.SECTIONS.filter { ListingRules.required(listing, it) }
         val done = required.count { ListingRules.done(listing, it) }
         val left = required.filter { !ListingRules.done(listing, it) }.map { missing(it, images) }
         val published = listing.status == ListingStatus.PUBLISHED
+        val rejections = ListingRules.rejections(listing)
+        val toFix = rejections.mapNotNull { it.section }.toSet()
         val neighborhood = listing.neighborhoodId?.let { locations[it]?.name }
 
         return ListingView(
             id = listing.id,
             mandateId = listing.mandateId,
             title = title(listing, neighborhood ?: locations[listing.cityId]?.name),
-            tag = ListingRules.tag(listing.status),
+            tag = ListingRules.tag(listing),
             status = listing.status,
             createdAt = formatter.date(listing.createdAt),
             panel = when {
+                editable && rejections.isNotEmpty() -> ListingView.PANEL_TO_FIX
                 editable -> ListingView.PANEL_DRAFT
                 ListingRules.sent(listing.status) -> ListingView.PANEL_SENT
                 published -> ListingView.PANEL_PUBLISHED
@@ -66,16 +74,18 @@ object ListingViews {
             },
             // No "sent at" on the server: nothing changes a listing while it's checked, so its last change is it
             sentAt = if (ListingRules.sent(listing.status)) formatter.date(listing.modifiedAt) else null,
+            rejections = rejections.map { it.reason },
             publishedAt = listing.publishedAt?.let { formatter.date(it) },
             generatedTitle = if (published) listing.title else null,
             generatedSummary = if (published) listing.summary else null,
+            publicUrl = if (published) publicUrl(listing, publicPortalUrl) else null,
             rows = ListingRules.SECTIONS.map { section ->
                 ChecklistRow(
                     section = section,
                     label = ListingRules.LABELS.getValue(section),
                     url = "/listings/${listing.id}/${ListingRules.slug(section)}",
                     summary = summary(listing, section, neighborhood, images, formatter),
-                    state = state(listing, section),
+                    state = if (section in toFix) TO_FIX else state(listing, section),
                 )
             },
             progress = "$done sections sur ${required.size} vérifiées",
@@ -264,8 +274,10 @@ object ListingViews {
 
         val url = "/listings/$listingId"
         val draft = listing != null && ListingRules.editable(listing)
+        val toFix = listing != null && ListingRules.rejections(listing).isNotEmpty()
         val text = when {
             listing == null -> null
+            toFix -> "Annonce à corriger : voyez les points signalés."
             draft -> {
                 val left = ListingRules.SECTIONS
                     .filter { ListingRules.required(listing, it) && !ListingRules.done(listing, it) }
@@ -282,9 +294,20 @@ object ListingViews {
             url = url,
             createUrl = createUrl,
             text = text,
-            action = if (draft) "Continuer l'annonce" else "Voir l'annonce",
+            action = when {
+                toFix -> "Corriger l'annonce"
+                draft -> "Continuer l'annonce"
+                else -> "Voir l'annonce"
+            },
             primary = draft,
         )
+    }
+
+    // "https://ndopify.com" + "/douala/bonapriso/listing/123/maison-a-louer"
+    private fun publicUrl(listing: Listing, publicPortalUrl: String?): String? {
+        val path = listing.url?.trim()?.ifEmpty { null } ?: return null
+        val host = publicPortalUrl?.trim()?.trimEnd('/')?.ifEmpty { null } ?: return null
+        return host + (if (path.startsWith("/")) path else "/$path")
     }
 
     private fun title(listing: Listing, place: String?): String {

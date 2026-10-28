@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.listing
 
+import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingSection
@@ -114,14 +115,20 @@ object ListingRules {
         ListingSection.REMARKS to "Remarques enregistrées.",
     )
 
-    // Sent, and not published yet: the prototype's single "PENDING" step.
-    private val SENT = setOf(ListingStatus.UNDER_VERIFICATION, ListingStatus.VERIFIED, ListingStatus.PUBLISHING)
+    // Sent, and not published yet: the prototype's single "PENDING" step. VERIFIED too: ndopify-server publishes it.
+    private val SENT = setOf(
+        ListingStatus.PENDING_VERIFICATION,
+        ListingStatus.UNDER_VERIFICATION,
+        ListingStatus.VERIFIED,
+        ListingStatus.PUBLISHING,
+    )
 
     data class Tag(val label: String, val style: String)
 
     private val DRAFT_TAG = Tag("Brouillon", "info")
     private val SENT_TAG = Tag("En vérification", "warning")
     private val PUBLISHED_TAG = Tag("Publiée", "success")
+    private val TO_FIX_TAG = Tag("À corriger", "warning")
 
     // Rented, sold, expired, cancelled: no wording in the prototype, which stops at the publication.
     private val CLOSED = setOf(ListingStatus.RENTED, ListingStatus.SOLD, ListingStatus.EXPIRED, ListingStatus.CANCELLED)
@@ -144,8 +151,38 @@ object ListingRules {
         else -> PENDING_TAG
     }
 
+    /** A DRAFT sent back by the verification ([rejections]) is "À corriger", else as its status says. */
+    fun tag(listing: Listing): Tag = if (rejections(listing).isNotEmpty()) TO_FIX_TAG else tag(listing.status)
+
     /** Being checked by Ndopify: sent, not published yet. */
     fun sent(status: ListingStatus): Boolean = status in SENT
+
+    /** Why the verification sent a listing back (one of `Listing.errorCodes`), and the section it's about, if any. */
+    data class Rejection(val reason: String, val section: ListingSection?)
+
+    // ndopify-server's verifiers' codes (ListingVerifierImage, ListingVerifierGeoLocalization)
+    private val REJECTIONS = mapOf(
+        ErrorCode.LISTING_NOT_ENOUGH_IMAGES to
+            Rejection("Pas assez de photos acceptées : il en faut $MIN_PHOTOS au moins.", ListingSection.PHOTOS),
+        ErrorCode.LISTING_MISSING_LAT_LONG to Rejection("La position GPS du bien n'a pas été relevée.", ListingSection.GPS),
+        ErrorCode.LISTING_MISSING_NEIGHBORHOOD to Rejection("Le quartier du bien n'est pas indiqué.", ListingSection.LOCATION),
+        ErrorCode.LISTING_INVALID_NEIGHBORHOOD to
+            Rejection("Le quartier indiqué n'est pas un quartier de la ville du bien.", ListingSection.LOCATION),
+        ErrorCode.LISTING_OUTSIDE_NEIGHBORHOOD to
+            Rejection("La position GPS relevée n'est pas dans le quartier indiqué.", ListingSection.GPS),
+    )
+
+    // INTERNAL_ERROR (the verification failed too many times) or a code this page doesn't know yet
+    private val UNKNOWN_REJECTION = Rejection("La vérification de l'annonce n'a pas abouti.", null)
+
+    /**
+     * Why the verification sent a DRAFT back (ndopify-server has no rejected status: a DRAFT with `errorCodes` is one
+     * sent back), in ndopify-server's order, each reason once; none for a DRAFT without code, nor another status.
+     */
+    fun rejections(listing: Listing): List<Rejection> {
+        if (listing.status != ListingStatus.DRAFT) return emptyList()
+        return listing.errorCodes.map { REJECTIONS[it] ?: UNKNOWN_REJECTION }.distinct()
+    }
 
     /** Saved by the agent on site (PHOTOS: enough of them, none refused), as ndopify-server's checklist says. */
     fun done(listing: Listing, section: ListingSection): Boolean =
@@ -162,7 +199,7 @@ object ListingRules {
     fun complete(listing: Listing): Boolean =
         listing.sections.isNotEmpty() && SECTIONS.filter { required(listing, it) }.all { done(listing, it) }
 
-    /** Only a DRAFT changes: nothing does while it's checked, nor once published. */
+    /** Only a DRAFT changes (one sent back by the verification too): nothing does while it's checked, nor once published. */
     fun editable(listing: Listing): Boolean = listing.status == ListingStatus.DRAFT
 
     /**

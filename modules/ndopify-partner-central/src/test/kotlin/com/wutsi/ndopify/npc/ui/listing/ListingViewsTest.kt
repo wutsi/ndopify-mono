@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.listing
 
+import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ImageStatus
 import com.wutsi.ndopify.listing.dto.Listing
@@ -314,6 +315,74 @@ class ListingViewsTest {
     }
 
     @Test
+    fun `sent back - to fix`() {
+        val listing = COMPLETE.copy(
+            status = ListingStatus.DRAFT,
+            errorCodes = listOf(ErrorCode.LISTING_MISSING_NEIGHBORHOOD, ErrorCode.LISTING_NOT_ENOUGH_IMAGES),
+            verifiedAt = SENT,
+        )
+        val view = of(listing)
+
+        assertEquals(ListingView.PANEL_TO_FIX, view.panel)
+        assertEquals(ListingRules.Tag("À corriger", "warning"), view.tag)
+        assertEquals(
+            listOf(
+                "Le quartier du bien n'est pas indiqué.",
+                "Pas assez de photos acceptées : il en faut 5 au moins.",
+            ),
+            view.rejections,
+        )
+        assertEquals(ListingRules.Tag("À corriger", "warning"), row(view, ListingSection.LOCATION).state)
+        assertEquals(ListingRules.Tag("À corriger", "warning"), row(view, ListingSection.PHOTOS).state)
+        assertEquals(ListingRules.Tag("Vérifié", "success"), row(view, ListingSection.GPS).state)
+        assertTrue(view.editable)
+        assertEquals(of(COMPLETE).sendable, view.sendable)
+        assertNull(view.sentAt)
+    }
+
+    @Test
+    fun `draft - no reason`() {
+        val view = of(COMPLETE.copy(status = ListingStatus.DRAFT))
+
+        assertEquals(ListingView.PANEL_DRAFT, view.panel)
+        assertTrue(view.rejections.isEmpty())
+    }
+
+    @Test
+    fun `pending verification - sent`() {
+        val view = of(COMPLETE.copy(status = ListingStatus.PENDING_VERIFICATION, modifiedAt = SENT))
+
+        assertEquals(ListingView.PANEL_SENT, view.panel)
+        assertEquals("22 oct. 2026", view.sentAt)
+        assertFalse(view.editable)
+    }
+
+    @Test
+    fun `published - public url`() {
+        val listing = COMPLETE.copy(status = ListingStatus.PUBLISHED, url = "/douala/bonapriso/listing/501/appartement")
+
+        assertEquals(
+            "https://ndopify.com/douala/bonapriso/listing/501/appartement",
+            ListingViews.of(listing, IMAGES, locations, formatter, "https://ndopify.com/").publicUrl,
+        )
+        assertNull(ListingViews.of(listing, IMAGES, locations, formatter, null).publicUrl)
+        assertNull(ListingViews.of(listing.copy(url = null), IMAGES, locations, formatter, "https://ndopify.com").publicUrl)
+        assertNull(
+            ListingViews.of(listing.copy(status = ListingStatus.PUBLISHING), IMAGES, locations, formatter, "https://ndopify.com")
+                .publicUrl,
+        )
+    }
+
+    @Test
+    fun `section - sent back`() {
+        val listing = LISTING.copy(status = ListingStatus.DRAFT, errorCodes = listOf(ErrorCode.LISTING_MISSING_LAT_LONG))
+        val view = ListingViews.section(listing, ListingSection.GPS, locations, formatter)
+
+        assertTrue(view.editable)
+        assertNull(view.readonlyText)
+    }
+
+    @Test
     fun `section - closed`() {
         val listing = LISTING.copy(status = ListingStatus.RENTED)
 
@@ -463,6 +532,16 @@ class ListingViewsTest {
         assertEquals("Annonce envoyée le 22 oct. 2026, en vérification.", view.text)
         assertEquals("Voir l'annonce", view.action)
         assertFalse(view.primary)
+    }
+
+    @Test
+    fun `mandate - sent back`() {
+        val listing = COMPLETE.copy(status = ListingStatus.DRAFT, errorCodes = listOf(ErrorCode.LISTING_MISSING_LAT_LONG))
+        val view = ListingViews.forMandate(approved.copy(listingId = 501), listing, formatter)!!
+
+        assertEquals("Annonce à corriger : voyez les points signalés.", view.text)
+        assertEquals("Corriger l'annonce", view.action)
+        assertTrue(view.primary)
     }
 
     @Test

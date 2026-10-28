@@ -78,7 +78,7 @@ class ListingController(
         (model.getAttribute(OUTCOME) as? String)?.let { outcome(it, model) }
         val listing = id.toLongOrNull()?.let { load(it, agent, model) } ?: return locked(model)
         val images = lookup("images of listing ${listing.id}") { listingClient.images(listing.id) }
-        val view = ListingViews.of(listing, images, locations(listing), formatter())
+        val view = ListingViews.of(listing, images, locations(listing), formatter(), tenantContext.getTenant().publicPortalUrl)
         model.addAttribute("listing", view)
         return VIEW
     }

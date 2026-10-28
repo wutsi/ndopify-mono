@@ -27,7 +27,9 @@
   several visits, and a section counts once the agent has saved it on site. The photos count once there are 5, none
   refused. "Envoyer pour vérification" (POST /listings/{id}/verify) stays inactive until every section but the
   remarks is done, and says what's left; without JS it still posts, and the controller refuses it. Sent, the listing
-  is read-only while it's checked, then published with its title and summary written by Ndopify.
+  is read-only while it's checked (PENDING_VERIFICATION, UNDER_VERIFICATION, VERIFIED, PUBLISHING), then published
+  with its title and summary written by Ndopify, and a link to its public page. A DRAFT the verification sent back
+  (its errorCodes) is "À corriger": the reasons, and the sections they're about, still editable and sent again.
   "listing" is the ListingView, absent when "locked" (not found, or not the agent's) or "unavailable"
   (ndopify-server couldn't answer). "outcomeText" / "outcomeStyle"
   are the last action's outcome (flash attribute "outcome", worded by ListingController).
@@ -115,11 +117,24 @@
                             puis rédigeons son titre et sa description à partir de votre visite.</p>
                     </div>
                 </div>
+                <div class="alert alert--warning" th:if="${l.panel == 'TO_FIX'}" data-listing-panel="TO_FIX">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                    <div>
+                        <p class="alert__title">Annonce à corriger</p>
+                        <ul data-rejection-reasons>
+                            <li th:each="reason : ${l.rejections}" th:text="${reason}">La position GPS relevée n'est pas dans le quartier indiqué.</li>
+                        </ul>
+                        <p>Corrigez les sections signalées, puis renvoyez-la.</p>
+                    </div>
+                </div>
                 <div class="alert alert--success" th:if="${l.panel == 'PUBLISHED'}" data-listing-panel="PUBLISHED">
                     <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     <div>
                         <p class="alert__title">Publiée<th:block th:if="${l.publishedAt}"> le <span th:text="${l.publishedAt}">22 oct. 2026</span></th:block></p>
-                        <p>Le titre et la description ont été rédigés à partir de votre visite et de vos photos.</p>
+                        <p th:if="${l.generatedTitle}">Le titre et la description ont été rédigés à partir de votre visite et de vos photos.</p>
+                        <p th:unless="${l.generatedTitle}">Elle est en ligne, sans titre ni description pour le moment.</p>
+                        <p th:if="${l.publicUrl}"><a th:href="${l.publicUrl}" target="_blank" rel="noopener"
+                                                     data-listing-public-url>Voir l'annonce en ligne</a></p>
                     </div>
                 </div>
                 <section class="home-section" th:if="${l.panel == 'PUBLISHED' and l.generatedTitle != null}"

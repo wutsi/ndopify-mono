@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.listing
 
+import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingSection
 import com.wutsi.ndopify.listing.dto.ListingSectionStatus
@@ -52,6 +53,7 @@ class ListingRulesTest {
     @Test
     fun tag() {
         assertEquals(ListingRules.Tag("Brouillon", "info"), ListingRules.tag(ListingStatus.DRAFT))
+        assertEquals(ListingRules.Tag("En vérification", "warning"), ListingRules.tag(ListingStatus.PENDING_VERIFICATION))
         assertEquals(ListingRules.Tag("En vérification", "warning"), ListingRules.tag(ListingStatus.UNDER_VERIFICATION))
         assertEquals(ListingRules.Tag("En vérification", "warning"), ListingRules.tag(ListingStatus.VERIFIED))
         assertEquals(ListingRules.Tag("En vérification", "warning"), ListingRules.tag(ListingStatus.PUBLISHING))
@@ -67,6 +69,50 @@ class ListingRulesTest {
     fun editable() {
         assertTrue(ListingRules.editable(Listing(status = ListingStatus.DRAFT)))
         assertFalse(ListingRules.editable(Listing(status = ListingStatus.UNDER_VERIFICATION)))
+        assertTrue(ListingRules.editable(Listing(status = ListingStatus.DRAFT, errorCodes = listOf(ErrorCode.INTERNAL_ERROR))))
+    }
+
+    @Test
+    fun `tag - sent back`() {
+        val listing = Listing(status = ListingStatus.DRAFT, errorCodes = listOf(ErrorCode.LISTING_MISSING_LAT_LONG))
+
+        assertEquals(ListingRules.Tag("À corriger", "warning"), ListingRules.tag(listing))
+        assertEquals(ListingRules.Tag("Brouillon", "info"), ListingRules.tag(Listing(status = ListingStatus.DRAFT)))
+        assertEquals(ListingRules.Tag("Publiée", "success"), ListingRules.tag(Listing(status = ListingStatus.PUBLISHED)))
+    }
+
+    @Test
+    fun rejections() {
+        val listing = Listing(
+            status = ListingStatus.DRAFT,
+            errorCodes = listOf(
+                ErrorCode.LISTING_NOT_ENOUGH_IMAGES,
+                ErrorCode.LISTING_OUTSIDE_NEIGHBORHOOD,
+                ErrorCode.INTERNAL_ERROR,
+                "urn:unknown",
+            ),
+        )
+
+        assertEquals(
+            listOf(
+                ListingRules.Rejection("Pas assez de photos acceptées : il en faut 5 au moins.", ListingSection.PHOTOS),
+                ListingRules.Rejection("La position GPS relevée n'est pas dans le quartier indiqué.", ListingSection.GPS),
+                ListingRules.Rejection("La vérification de l'annonce n'a pas abouti.", null),
+            ),
+            ListingRules.rejections(listing),
+        )
+    }
+
+    @Test
+    fun `rejections - draft without code`() {
+        assertTrue(ListingRules.rejections(Listing(status = ListingStatus.DRAFT)).isEmpty())
+    }
+
+    @Test
+    fun `rejections - not a draft`() {
+        val listing = Listing(status = ListingStatus.PUBLISHING, errorCodes = listOf(ErrorCode.INTERNAL_ERROR))
+
+        assertTrue(ListingRules.rejections(listing).isEmpty())
     }
 
     @Test

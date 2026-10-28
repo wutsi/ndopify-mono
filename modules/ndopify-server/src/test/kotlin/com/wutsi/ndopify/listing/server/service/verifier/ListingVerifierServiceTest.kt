@@ -78,14 +78,14 @@ class ListingVerifierServiceTest {
     }
 
     @Test
-    fun rejected() {
+    fun `errors - back to draft`() {
         doReturn(ListingVerification(errorCode = ErrorCode.LISTING_NOT_ENOUGH_IMAGES)).whenever(image).verify(any())
         doReturn(ListingVerification(errorCode = ErrorCode.LISTING_OUTSIDE_NEIGHBORHOOD)).whenever(geo).verify(any())
 
         service.verify(listing)
 
         val saved = saved()
-        assertEquals(ListingStatus.REJECTED, saved[1].status)
+        assertEquals(ListingStatus.DRAFT, saved[1].status)
         assertEquals(
             listOf(ErrorCode.LISTING_NOT_ENOUGH_IMAGES, ErrorCode.LISTING_OUTSIDE_NEIGHBORHOOD),
             saved[1].errorCodes,
@@ -94,13 +94,13 @@ class ListingVerifierServiceTest {
     }
 
     @Test
-    fun `rejected by one verifier`() {
+    fun `error of one verifier - back to draft`() {
         doReturn(ListingVerification(errorCode = ErrorCode.LISTING_MISSING_LAT_LONG)).whenever(geo).verify(any())
 
         service.verify(listing)
 
         val saved = saved()
-        assertEquals(ListingStatus.REJECTED, saved[1].status)
+        assertEquals(ListingStatus.DRAFT, saved[1].status)
         assertEquals(listOf(ErrorCode.LISTING_MISSING_LAT_LONG), saved[1].errorCodes)
     }
 
@@ -141,13 +141,13 @@ class ListingVerifierServiceTest {
     }
 
     @Test
-    fun `failure - too many retries`() {
+    fun `failure - too many retries - back to draft`() {
         doThrow(RuntimeException("boom")).whenever(geo).verify(any())
 
         service.verify(listing.copy(retries = ListingVerifierService.MAX_RETRIES))
 
         val saved = saved()
-        assertEquals(ListingStatus.REJECTED, saved[1].status)
+        assertEquals(ListingStatus.DRAFT, saved[1].status)
         assertEquals(0, saved[1].retries)
         assertEquals(listOf(ErrorCode.INTERNAL_ERROR), saved[1].errorCodes)
         assertEquals("boom", saved[1].errorMessage)

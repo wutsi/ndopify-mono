@@ -248,7 +248,10 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   can only be deleted from a DRAFT listing; the file stays in the storage (`StorageService` can't delete one).
   **Send**: `POST /{id}/verify` moves a DRAFT to `UNDER_VERIFICATION` (the check itself is to be done asynchronously,
   nothing does it yet): 404 `LISTING_NOT_FOUND`, 409 `LISTING_NOT_DRAFT`, then 409 `LISTING_INCOMPLETE` while a
-  required section of the checklist isn't `VERIFIED`. **Publish**: `POST /{id}/publish` moves a `VERIFIED` listing
+  required section of the checklist isn't `VERIFIED`. `ListingJobs.verify` runs a PENDING_VERIFICATION listing
+  through `ListingVerifierService`: `VERIFIED`, or back to `DRAFT` with the verifiers' `errorCodes` for the agent to
+  fix and send again (also after `MAX_RETRIES` failed attempts, with `INTERNAL_ERROR`). There is no rejected status:
+  a DRAFT with `errorCodes` is one sent back. **Publish**: `POST /{id}/publish` moves a `VERIFIED` listing
   to `PUBLISHING` (404 `LISTING_NOT_FOUND`, then 409 `LISTING_NOT_VERIFIED`), `retries` reset; `ListingJobs.publish`
   then has `ListingPublisherService` generate its title, summary and description (`ListingContentGenerator`, text
   LLM, `ChatClients.TEXT`) and its hero image (the model's, else the verified photo of highest quality, then

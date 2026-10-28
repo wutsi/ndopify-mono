@@ -4,12 +4,14 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantContext
+import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdviceTest
@@ -191,6 +193,51 @@ class ListingTemplateTest {
 
         assertEquals(listOf("PUBLISHED"), page.select("[data-listing-panel]").map { it.attr("data-listing-panel") })
         assertNull(page.selectFirst("[data-generated-title]"))
+        assertTrue(page.selectFirst("[data-listing-panel=PUBLISHED]")!!.text().contains("sans titre ni description"))
+        assertNull(page.selectFirst("[data-listing-public-url]"))
+    }
+
+    @Test
+    fun `published - public url`() {
+        doReturn(TENANT.copy(publicPortalUrl = "https://ndopify.com")).whenever(tenantContext).getTenant()
+
+        val page = render(
+            COMPLETE.copy(
+                status = ListingStatus.PUBLISHED,
+                publishedAt = SENT,
+                url = "/douala/bonapriso/listing/501/appartement",
+            ),
+        )
+
+        assertEquals(
+            "https://ndopify.com/douala/bonapriso/listing/501/appartement",
+            page.selectFirst("[data-listing-public-url]")?.attr("href"),
+        )
+    }
+
+    @Test
+    fun `sent back - to fix`() {
+        val page = render(
+            COMPLETE.copy(
+                status = ListingStatus.DRAFT,
+                errorCodes = listOf(ErrorCode.LISTING_OUTSIDE_NEIGHBORHOOD),
+                verifiedAt = SENT,
+            ),
+        )
+
+        assertEquals("À corriger", page.selectFirst(".mandate-intro .status-tag")?.text())
+        assertEquals(listOf("TO_FIX"), page.select("[data-listing-panel]").map { it.attr("data-listing-panel") })
+        assertEquals("Annonce à corriger", page.selectFirst("[data-listing-panel=TO_FIX] .alert__title")?.text())
+        assertEquals(
+            listOf("La position GPS relevée n'est pas dans le quartier indiqué."),
+            page.select("[data-rejection-reasons] li").map { it.text() },
+        )
+        assertEquals(
+            "À corriger",
+            page.select("a.checklist__row").first { it.attr("href") == "/listings/501/gps" }
+                .selectFirst("[data-section-state]")?.text(),
+        )
+        assertNotNull(page.selectFirst("form[data-listing-send-form]"))
     }
 
     @Test

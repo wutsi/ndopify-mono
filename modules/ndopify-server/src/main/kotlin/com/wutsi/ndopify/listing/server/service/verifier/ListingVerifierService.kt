@@ -10,6 +10,11 @@ import org.springframework.transaction.support.TransactionTemplate
 import java.time.Clock
 import java.util.Date
 
+/**
+ * Verifies a PENDING_VERIFICATION listing with each verifier: VERIFIED when none finds an error, else sent back to
+ * DRAFT with their error codes, for the agent to fix and send again. A verifier failure retries up to MAX_RETRIES
+ * times (back to PENDING_VERIFICATION), then sends the listing back to DRAFT with INTERNAL_ERROR.
+ */
 @Service
 class ListingVerifierService(
     private val dao: ListingRepository,
@@ -52,7 +57,7 @@ class ListingVerifierService(
             tx.execute {
                 dao.save(
                     toVerify.copy(
-                        status = if (errorCodes.isEmpty()) ListingStatus.VERIFIED else ListingStatus.REJECTED,
+                        status = if (errorCodes.isEmpty()) ListingStatus.VERIFIED else ListingStatus.DRAFT,
                         errorCodes = errorCodes,
                         errorMessage = null,
                         retries = 0,
@@ -67,7 +72,7 @@ class ListingVerifierService(
             tx.execute {
                 dao.save(
                     toVerify.copy(
-                        status = if (retries <= MAX_RETRIES) ListingStatus.PENDING_VERIFICATION else ListingStatus.REJECTED,
+                        status = if (retries <= MAX_RETRIES) ListingStatus.PENDING_VERIFICATION else ListingStatus.DRAFT,
                         retries = if (retries <= MAX_RETRIES) retries else 0,
                         errorCodes = listOf(ErrorCode.INTERNAL_ERROR),
                         errorMessage = ex.message,
