@@ -221,6 +221,10 @@ ndopify:
             secret: local-dev-secret-not-for-prod-0123456789 # Dummy: test and prod use the JWT_SECRET env variable
     database:
         pool-size: 8
+    ai:
+        health: # /actuator/health/llm is public and each check is a paid call: the result is cached
+            up-ttl-minutes: 5
+            down-ttl-minutes: 1
 
     contract:
         signature:
@@ -234,10 +238,10 @@ ndopify:
 
     listing:
         min-images: 5                      # A listing must have at least 5 images to be published
-        verify:
-            cron: "0 */15 * * * ?"         # Every 15 minutes: verify listings that are PENDING_VERIFICATION
         publish:
             cron: "0 */15 * * * ?"         # Every 15 minutes: publish listings that are PUBLISHING
+        verify:
+            cron: "0 */15 * * * ?"         # Every 15 minutes: verify listings that are PENDING_VERIFICATION
 
     mandate:
         assignment:
@@ -248,7 +252,7 @@ ndopify:
             nearby-max-neighborhoods: 20   # Only the nearest ones (searchNearest returns them nearest first)
             manual-after-days: 3           # Without an agent after 3 days, the mandate goes to MANUAL_ASSIGNMENT
             night: # No offer, and the TTL is paused, from start to end (tenant's local time)
-                start: "06:59"
+                start: "06:59" # In local environment, start end end almost the same intentionally, to test the night logic
                 end: "07:00"
             expire:
                 cron: "0 */15 * * * ?"     # Every 15 minutes: offers past their TTL go to the next agent

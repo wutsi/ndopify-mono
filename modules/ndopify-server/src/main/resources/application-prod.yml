@@ -51,10 +51,13 @@ ndopify:
 
     listing:
         min-images: 5                      # A listing must have at least 5 images to be published
-        verify:
-            cron: "0 * */1 * * ?"          # Every hour: verify listings that are PENDING
+        night:
+            start: "22:00"
+            end: "07:00"
         publish:
-            cron: "0 * */1 * * ?"          # Every hour: publish listings that are PUBLISHING
+            cron: "0 0 */1 * * ?"          # Every hour: publish listings that are PUBLISHING
+        verify:
+            cron: "0 0 */1 * * ?"          # Every hour: verify listings that are PENDING
 
     mandate:
         assignment:

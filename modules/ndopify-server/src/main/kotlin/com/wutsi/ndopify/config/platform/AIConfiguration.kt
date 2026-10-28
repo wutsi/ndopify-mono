@@ -5,11 +5,15 @@ import com.wutsi.ndopify.platform.ai.ChatClientHealthIndicator
 import com.wutsi.ndopify.platform.ai.ChatClients
 import io.micrometer.observation.ObservationRegistry
 import org.springframework.ai.chat.client.ChatClient
+import org.springframework.ai.chat.model.ChatModel
 import org.springframework.ai.deepseek.DeepSeekChatModel
 import org.springframework.ai.openai.OpenAiChatModel
 import org.springframework.beans.factory.ObjectProvider
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import java.time.Clock
+import java.time.Duration
 
 /**
  * Two LLMs, each behind its own [ChatClient], injected by name (`@Qualifier`):
@@ -24,6 +28,9 @@ class AIConfiguration(
     private val visionModel: OpenAiChatModel,
     private val textModel: DeepSeekChatModel,
     private val observationRegistry: ObjectProvider<ObservationRegistry>,
+    private val clock: Clock,
+    @Value("\${ndopify.ai.health.up-ttl-minutes}") private val healthUpTtlMinutes: Long,
+    @Value("\${ndopify.ai.health.down-ttl-minutes}") private val healthDownTtlMinutes: Long,
 ) {
     @Bean(ChatClients.VISION)
     fun visionChatClient(): ChatClient =
@@ -36,13 +43,22 @@ class AIConfiguration(
     // Health contributors are named after the bean, minus "HealthIndicator": visionChatClient, textChatClient
     @Bean
     fun visionChatClientHealthIndicator(): ChatClientHealthIndicator =
-        ChatClientHealthIndicator(visionChatClient(), visionModel)
+        healthIndicator(visionChatClient(), visionModel)
 
     @Bean
     fun textChatClientHealthIndicator(): ChatClientHealthIndicator =
-        ChatClientHealthIndicator(textChatClient(), textModel)
+        healthIndicator(textChatClient(), textModel)
 
     @Bean
     fun chatClientHealthEndpointGroupsPostProcessor(): ChatClientHealthEndpointGroupsPostProcessor =
         ChatClientHealthEndpointGroupsPostProcessor(setOf(ChatClients.VISION, ChatClients.TEXT))
+
+    private fun healthIndicator(client: ChatClient, model: ChatModel): ChatClientHealthIndicator =
+        ChatClientHealthIndicator(
+            client,
+            model,
+            clock,
+            Duration.ofMinutes(healthUpTtlMinutes),
+            Duration.ofMinutes(healthDownTtlMinutes),
+        )
 }

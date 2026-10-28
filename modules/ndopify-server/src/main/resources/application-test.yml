@@ -34,6 +34,12 @@ ndopify:
         jwt:
             secret: ${JWT_SECRET}          # No default: the server doesn't start without it
 
+    mandate:
+        assignment:
+            night:
+                start: "22:00"
+                end: "07:00"
+
     storage:
         default-type: s3
         s3:
