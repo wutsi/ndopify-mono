@@ -28,6 +28,7 @@ data class ListingSummary(
 
     val title: String? = null,
     val summary: String? = null,
+    val url: String? = null,
 
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),

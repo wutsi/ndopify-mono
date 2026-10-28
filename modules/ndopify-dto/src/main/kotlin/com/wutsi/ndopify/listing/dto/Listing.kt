@@ -71,6 +71,7 @@ data class Listing(
     val title: String? = null,
     val summary: String? = null,
     val description: String? = null,
+    val url: String? = null, // Path of the listing's public page, ex: /douala/bonapriso/listing/123/maison-a-louer - set when published
     val errorCodes: List<String> = emptyList(),
     val errorMessage: String? = null,
     val retries: Int? = null,
