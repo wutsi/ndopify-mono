@@ -93,7 +93,6 @@ class MandateViewsTest {
         assertEquals("22 oct. 2026", view.signatureDeadline)
         assertEquals(7, view.signatureTtlDays) // From the contract's dates
         assertFalse(view.deadlinePassed)
-        assertFalse(view.editedSince)
         assertTrue(view.editable)
         assertFalse(view.closable)
         assertTrue(view.cancellable)
@@ -105,13 +104,6 @@ class MandateViewsTest {
 
         assertTrue(view.deadlinePassed)
         assertEquals("22 oct. 2026", view.signatureDeadline)
-    }
-
-    @Test
-    fun `pending approval - edited since`() {
-        val view = view(PENDING.copy(modifiedAt = date("2026-10-16T10:00:00Z")))
-
-        assertTrue(view.editedSince)
     }
 
     @Test

@@ -77,9 +77,14 @@ class SignController(
         const val CONSENT_REQUIRED = "Cochez la case pour signer le contrat."
         const val SIGN_FAILED = "Votre signature n'a pas pu être enregistrée. Vérifiez votre connexion, puis réessayez."
         const val CONTENT_CHANGED = "Le contrat a été modifié depuis son affichage : relisez-le avant de signer."
+        const val SIGN_BUSY =
+            "Votre signature n'a pas pu être enregistrée : le contrat était en cours de mise à jour. Réessayez dans quelques instants."
 
         // The contract can no longer be signed by this party, or already is: the done step says which
         private val SIGN_SETTLED = setOf(403, 404, 409)
+
+        // A 409 that settles nothing: written meanwhile (ex: the mandate), or a lock not acquired. Nothing was signed
+        private const val VERSION_CONFLICT_SUFFIX = ":version-conflict"
     }
 
     @GetMapping
@@ -211,6 +216,10 @@ class SignController(
             // Not the content ndopify-server has for the contract: the signer must read the new one
             if (errorCode(ex) == ErrorCode.CONTRACT_CONTENT_MISMATCH) {
                 model.addAttribute("error", CONTENT_CHANGED)
+                return render(contractPartyId, view, model)
+            }
+            if (errorCode(ex)?.endsWith(VERSION_CONFLICT_SUFFIX) == true) {
+                model.addAttribute("error", SIGN_BUSY)
                 return render(contractPartyId, view, model)
             }
             if (ex.statusCode.value() !in SIGN_SETTLED) {

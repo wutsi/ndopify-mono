@@ -80,7 +80,6 @@ object MandateViews {
             requestedAt = format(requestedAt),
             signatureDeadline = format(deadline),
             deadlinePassed = deadline != null && deadline.time < now,
-            editedSince = MandateRules.editedSince(mandate, requestedAt),
             approvedAt = format(mandate.approvedAt),
             validUntil = format(contract?.validUntil),
             closedAt = format(mandate.closedAt),

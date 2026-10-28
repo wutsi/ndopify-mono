@@ -200,18 +200,41 @@ class MandateService(
     }
 
     /**
-     * Updates the mandate's search. With a [UpdateMandateRequest.version], it must be the mandate's (409
-     * MANDATE_VERSION_CONFLICT otherwise): the caller's copy is stale, saving it would overwrite the change made since.
+     * Updates the mandate's search, until its customer signs it: 404 MANDATE_NOT_FOUND, 403 MANDATE_ACCESS_DENIED, 409
+     * MANDATE_ALREADY_CLOSED (closed or cancelled), 409 MANDATE_ALREADY_APPROVED, then 409 MANDATE_VERSION_CONFLICT
+     * when [UpdateMandateRequest.version] isn't the mandate's: the caller's copy is stale, saving it would overwrite the
+     * change made since. A PENDING_APPROVAL mandate goes back to ASSIGNED and its contract is cancelled: the customer
+     * mustn't sign the terms of before the change, and request-approval creates a new one. Like a signature, the
+     * contract is locked before the mandate.
      */
     @Transactional
     fun update(id: Long, request: UpdateMandateRequest): MandateEntity {
-        val mandate = findById(id)
+        val contractId = dao.findContractIdById(id)
+        contractId?.let { contractService.findByIdForUpdate(it) }
+
+        val mandate = findByIdForUpdate(id)
         access.ensureCanUpdate(mandate)
+        ensureNotClosed(mandate)
+        if (mandate.status == MandateStatus.APPROVED) {
+            throw ConflictException(Error(ErrorCode.MANDATE_ALREADY_APPROVED))
+        }
+        if (mandate.contractId != contractId) {
+            // Replaced meanwhile by request-approval's step 1: not the contract locked above
+            throw ConflictException(Error(ErrorCode.MANDATE_VERSION_CONFLICT))
+        }
         if (request.version != null && request.version != mandate.version) {
             throw ConflictException(Error(ErrorCode.MANDATE_VERSION_CONFLICT))
         }
+
+        val status = if (mandate.status == MandateStatus.PENDING_APPROVAL) {
+            contractId?.let { contractService.cancel(it) }
+            MandateStatus.ASSIGNED
+        } else {
+            mandate.status
+        }
         return dao.save(
             mandate.copy(
+                status = status,
                 propertyCategory = request.propertyCategory,
                 listingType = request.listingType,
                 cityId = request.cityId,
@@ -282,12 +305,11 @@ class MandateService(
      */
     @Transactional
     fun onContractSigned(contractId: String): MandateEntity? {
-        var mandate = dao.findByContractId(contractId)
+        val mandate = dao.findIdByContractId(contractId)?.let { id -> dao.findByIdForUpdate(id) }
         if (mandate == null || mandate.status != MandateStatus.PENDING_APPROVAL) {
             return null
         }
 
-        mandate = dao.findByIdForUpdate(mandate.id!!)!!
         val now = Date(clock.millis())
         val approved = dao.save(
             mandate.copy(
@@ -357,7 +379,7 @@ class MandateService(
      */
     @Transactional
     fun cancel(id: Long, request: CancelMandateRequest): MandateEntity {
-        val contractId = findById(id).contractId
+        val contractId = dao.findContractIdById(id)
         contractId?.let { contractService.cancel(it) }
 
         val mandate = findByIdForUpdate(id)
@@ -433,14 +455,15 @@ class MandateService(
         )
     }
 
-    /** Returns the id of the mandate's contract to sign, created if it has none or it expired. */
+    /** Returns the id of the mandate's contract to sign, created if it has none, or it expired or was cancelled. */
     private fun prepareApproval(id: Long): String {
         val mandate = findByIdForUpdate(id)
         access.ensureCanUpdate(mandate)
         ensureCanBeApproved(mandate)
 
         val current = mandate.contractId?.let { contractId -> contractService.findById(contractId) }
-        if (current != null && current.status != ContractStatus.EXPIRED) {
+        // A contract cancelled by an update can't be signed any more, like an expired one: a new one replaces it
+        if (current != null && current.status != ContractStatus.EXPIRED && current.status != ContractStatus.CANCELLED) {
             return current.id
         }
         val contract = createContract(mandate)

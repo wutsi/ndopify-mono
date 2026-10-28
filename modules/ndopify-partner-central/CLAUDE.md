@@ -151,7 +151,9 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   days given to sign are its deadline less that date (`MandateRules.signatureTtlDays`): partner-central has no TTL
   setting of its own, so it can't drift from ndopify-server's `ndopify.contract.signature.ttl-days`. The edit page (`GET|POST /mandates/{id}/edit`, `templates/mandate/edit.html`,
   `MandateEditForm` / `MandateEditRules`) is only for `MandateRules.EDITABLE` statuses (ASSIGNED, PENDING_APPROVAL),
-  re-checked on POST since ndopify-server's update doesn't check the status; it posts the mandate's `version` it was
+  re-checked on POST (ndopify-server's update also refuses a signed or closed mandate: 409 `MANDATE_ALREADY_APPROVED` /
+  `MANDATE_ALREADY_CLOSED`, shown as `changed`). Saving a PENDING_APPROVAL mandate cancels its contract and puts it back
+  to ASSIGNED (server side): the outcome is `saved-unsent`, the agent sends it again. It posts the mandate's `version` it was
   loaded with (hidden field), and a 409 `MANDATE_VERSION_CONFLICT` shows the form again with the agent's answers, now
   based on the new version (the profile page does the same with `AGENT_VERSION_CONFLICT`); the city can't change, the
   neighbourhoods are checked by `SectorValidator`, and the rest by `FindPropertyRules` (the only validation a mandate

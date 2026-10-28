@@ -119,10 +119,17 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   A search's `MandateSummary` has what a card shows (criteria, amenities, `movingPeriod`, `availableFrom`) and its
   `contract` (`ContractSummary`, the contracts of the page in one query), not the terms nor the customer's comments. Reads are checked by `MandateEndpoints`, changes by `MandateService` (under the mandate's lock); the server's own
   reads (dispatch, listeners, jobs) aren't. Partner Central has no admin role: admins only exist in the admin console.
+  `POST /v1/mandates/{id}` (update) locks the mandate's contract, then the mandate (see *Lock order*), then 409
+  `MANDATE_ALREADY_CLOSED` (CLOSED / CANCELLED), `MANDATE_ALREADY_APPROVED`, then `MANDATE_VERSION_CONFLICT` (stale
+  `version`, or a contract replaced since it was read). A PENDING_APPROVAL mandate goes back to ASSIGNED and its
+  contract is cancelled, so the customer can't sign the terms of before the change; request-approval then creates a
+  new contract (a CANCELLED one is replaced, like an EXPIRED one). A lock is always taken before the entity is loaded
+  in the transaction (ids / `contractId` read through projections first): Hibernate doesn't refresh an entity it
+  already has when `findByIdForUpdate` locks it, so a check would run on stale values.
   `POST /{id}/request-approval` (ASSIGNED or PENDING_APPROVAL, else 409 `MANDATE_CANNOT_BE_APPROVED`) →
   `PENDING_APPROVAL`, its contract's content generated and stored, and its signature requested, in 3 transactions so that
   no lock (the tenant's contract sequence, the mandate) is held during the upload: (1) under the mandate's lock, reuse
-  its contract or create one (none, or EXPIRED) and link it, so concurrent requests share one contract; (2) generate
+  its contract or create one (none, EXPIRED or CANCELLED) and link it, so concurrent requests share one contract; (2) generate
   (read-only) then upload, outside any transaction; (3) under the lock again, 409 `MANDATE_VERSION_CONFLICT` if the
   mandate changed since (2), else set the content, PENDING_APPROVAL, request the signature. A failure after (1) leaves
   the mandate ASSIGNED with its DRAFT contract, reused next time: an ASSIGNED mandate can have a `contractId`.
@@ -287,7 +294,7 @@ logged, never rethrown. Tests must wait for the mail (`smtp.waitForIncomingEmail
 `BaseEndpointIntegrationTest.tearDown` waits for the running async tasks, so a test's mail can't reach the next one.
 
 **Lock order**: a write that locks both a mandate and its contract locks the **contract first**, the order of a
-signature (`ContractService.sign`, then `MandateService.onContractSigned`): `MandateService.cancel` and
+signature (`ContractService.sign`, then `MandateService.onContractSigned`): `MandateService.cancel`, `update` and
 request-approval's step (3) (`ContractService.findByIdForUpdate`). The reverse order deadlocks with a last signature.
 `ControllerErrorHandler` answers a lock not acquired (`PessimisticLockingFailureException`: deadlock, lock wait timeout)
 with 409 `HTTP_VERSION_CONFLICT` rather than 500.

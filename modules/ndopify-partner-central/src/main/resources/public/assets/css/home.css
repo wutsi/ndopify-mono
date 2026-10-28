@@ -563,12 +563,6 @@ h1.alert__title {
     resize: vertical;
 }
 
-/* Edited while waiting for the client's signature: the client has the old version. */
-.mandate-panel__edited {
-    color: var(--color-warning-fg);
-    font-weight: 600;
-}
-
 /* ---------- Edit a mandate (mandate/edit.html) ---------- */
 
 /* Five folded groups: a quick fix stays short on a phone. Each summary shows the group's current value. */

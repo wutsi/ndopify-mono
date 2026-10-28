@@ -23,8 +23,6 @@ data class MandateView(
     val requestedAt: String?,
     val signatureDeadline: String?,
     val deadlinePassed: Boolean,
-    /** Edited since sent to the customer: sending it again becomes the step's main action. */
-    val editedSince: Boolean,
     val approvedAt: String?,
     val validUntil: String?,
     val closedAt: String?,

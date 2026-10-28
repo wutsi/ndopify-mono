@@ -1,6 +1,8 @@
 package com.wutsi.ndopify.mandate.server.endpoint
 
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
+import com.wutsi.ndopify.contract.dto.ContractStatus
+import com.wutsi.ndopify.contract.server.dao.ContractRepository
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
@@ -32,6 +34,9 @@ class UpdateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
     @Autowired
     private lateinit var dao: MandateRepository
+
+    @Autowired
+    private lateinit var contractDao: ContractRepository
 
     @Autowired
     private lateinit var ds: DataSource
@@ -149,6 +154,46 @@ class UpdateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         val mandate = dao.findById(1L).get()
         assertEquals(0L, mandate.version)
         assertNotEquals(request.comments, mandate.comments)
+    }
+
+    @Test
+    fun `waiting for approval - its contract is cancelled, back to assigned`() {
+        val response = rest.postForEntity("/v1/mandates/3", request, Any::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val mandate = dao.findById(3L).get()
+        assertEquals(MandateStatus.ASSIGNED, mandate.status)
+        assertEquals(request.comments, mandate.comments)
+        assertEquals("c-3", mandate.contractId)
+        assertEquals(ContractStatus.CANCELLED, contractDao.findById("c-3").get().status)
+    }
+
+    @Test
+    fun `assigned - its draft contract is kept`() {
+        val response = rest.postForEntity("/v1/mandates/6", request, Any::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(MandateStatus.ASSIGNED, dao.findById(6L).get().status)
+        assertEquals(ContractStatus.DRAFT, contractDao.findById("c-6").get().status)
+    }
+
+    @Test
+    fun `approved - 409, nothing saved`() {
+        val response = rest.postForEntity("/v1/mandates/4", request, ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_ALREADY_APPROVED, response.body?.error?.code)
+        assertEquals("Before", dao.findById(4L).get().comments)
+        assertEquals(ContractStatus.SIGNED, contractDao.findById("c-4").get().status)
+    }
+
+    @Test
+    fun `cancelled - 409, nothing saved`() {
+        val response = rest.postForEntity("/v1/mandates/5", request, ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_ALREADY_CLOSED, response.body?.error?.code)
+        assertEquals("Before", dao.findById(5L).get().comments)
     }
 
     @Test

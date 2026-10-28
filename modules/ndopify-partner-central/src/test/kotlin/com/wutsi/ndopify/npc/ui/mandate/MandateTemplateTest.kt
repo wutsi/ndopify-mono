@@ -148,7 +148,6 @@ class MandateTemplateTest {
         assertEquals(listOf("PENDING_APPROVAL"), page.select("[data-panel]").map { it.attr("data-panel") })
         val panel = page.selectFirst("[data-panel=PENDING_APPROVAL]")!!
         assertEquals("Envoyé le 15 oct. 2026 · à signer avant le 22 oct. 2026.", panel.selectFirst("p")?.text())
-        assertNull(panel.selectFirst("[data-edited-since]"))
         val resend = panel.selectFirst("form[data-request-approval-form]")!!
         assertEquals("/mandates/201/request-approval", resend.attr("action"))
         assertEquals("post", resend.attr("method"))
@@ -169,15 +168,6 @@ class MandateTemplateTest {
         val panel = page.selectFirst("[data-panel=PENDING_APPROVAL]")!!
         assertTrue(panel.text().contains("renvoyez-le : le client pourra de nouveau le signer."), panel.text())
         assertFalse(panel.text().contains("jours"))
-    }
-
-    @Test
-    fun `pending approval - edited since`() {
-        val page = render(PENDING.copy(modifiedAt = date("2026-10-16T10:00:00Z")))
-
-        val panel = page.selectFirst("[data-panel=PENDING_APPROVAL]")!!
-        assertNotNull(panel.selectFirst("[data-edited-since]"))
-        assertEquals("btn btn--primary", panel.selectFirst("form[data-request-approval-form] button")?.className())
     }
 
     @Test
@@ -369,7 +359,8 @@ class MandateTemplateTest {
             "resent | success | Mandat renvoyé à ray@gmail.com pour signature.",
             "closed | success | Mandat fermé : félicitations pour ce bail !",
             "cancelled | success | Mandat annulé. Il ne figure plus dans vos mandats en cours.",
-            "saved | success | Mandat modifié. Renvoyez-le pour que le client signe la nouvelle version.",
+            "saved | success | Mandat modifié.",
+            "saved-unsent | success | Mandat modifié. L'ancienne version ne peut plus être signée : envoyez-le à nouveau pour que le client signe la nouvelle.",
             "changed | warning | Ce mandat a changé entre-temps : vérifiez son état avant de recommencer.",
             "error | error | Action impossible pour le moment. Réessayez dans quelques instants.",
         ],

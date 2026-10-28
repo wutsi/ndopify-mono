@@ -201,6 +201,18 @@ class RequestMandateApprovalEndpointTest : AuthorizationAwareEndpointIntegration
     }
 
     @Test
+    fun `contract cancelled by an update - replaced by a new one`() {
+        doReturn(contract4.copy(status = ContractStatus.CANCELLED)).whenever(contractService).findById("c-4")
+
+        val response = rest.postForEntity("/v1/mandates/4/request-approval", null, Any::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        verify(contractService).create(any())
+        assertEquals("c-1", dao.findById(4L).get().contractId)
+        verify(contractService).requestSignature("c-1")
+    }
+
+    @Test
     fun `mandate updated while its content was generated - 409, not sent`() {
         doAnswer {
             // Another request's update, committed between the generation and the end of the approval

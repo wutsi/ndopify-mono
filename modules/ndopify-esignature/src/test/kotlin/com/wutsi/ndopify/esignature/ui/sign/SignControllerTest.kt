@@ -489,6 +489,27 @@ class SignControllerTest {
     }
 
     @Test
+    fun `version conflict is shown again, to retry`() {
+        listOf(ErrorCode.MANDATE_VERSION_CONFLICT, ErrorCode.CONTRACT_VERSION_CONFLICT, ErrorCode.HTTP_VERSION_CONFLICT)
+            .forEach { code ->
+                signIn()
+                givenContract(CONTRACT)
+                doThrow(error(HttpStatus.CONFLICT, code)).whenever(contractClient).sign(any(), any())
+
+                val result = mvc.perform(signPost()).andReturn()
+
+                assertEquals("sign", result.modelAndView?.viewName, code)
+                assertEquals(SignView.STEP_SIGN, view(result).step, code)
+                assertEquals(
+                    "Votre signature n'a pas pu être enregistrée : le contrat était en cours de mise à jour. " +
+                        "Réessayez dans quelques instants.",
+                    model(result)["error"],
+                    code,
+                )
+            }
+    }
+
+    @Test
     fun `sign failure`() {
         signIn()
         givenContract(CONTRACT)

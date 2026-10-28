@@ -181,7 +181,8 @@ class MandateEditTemplateTest {
         val page = render(PENDING)
 
         assertEquals(
-            "Ce mandat attend la signature du client : après vos modifications, renvoyez-le-lui pour qu'il signe la nouvelle version.",
+            "Ce mandat attend la signature du client : en l'enregistrant, vous annulez le contrat qui lui a été envoyé. " +
+                "Il ne pourra plus le signer, et vous devrez lui envoyer la nouvelle version.",
             page.selectFirst("[data-edit-resend]")?.text()?.replace('\u00a0', ' '),
         )
     }

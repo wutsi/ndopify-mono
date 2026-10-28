@@ -21,6 +21,13 @@ interface AgentMandateCount {
 interface MandateRepository : CrudRepository<MandateEntity, Long>, JpaSpecificationExecutor<MandateEntity> {
     fun findByContractId(contractId: String): MandateEntity?
 
+    // Ids only, so that no entity is loaded before findByIdForUpdate: Hibernate wouldn't refresh it when locking
+    @Query("SELECT m.id FROM MandateEntity m WHERE m.contractId = :contractId")
+    fun findIdByContractId(contractId: String): Long?
+
+    @Query("SELECT m.contractId FROM MandateEntity m WHERE m.id = :id")
+    fun findContractIdById(id: Long): String?
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT m FROM MandateEntity m WHERE m.id = :id")
     fun findByIdForUpdate(id: Long): MandateEntity?

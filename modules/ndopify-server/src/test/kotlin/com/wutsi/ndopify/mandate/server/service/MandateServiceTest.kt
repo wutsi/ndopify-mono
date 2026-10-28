@@ -16,10 +16,12 @@ import com.wutsi.ndopify.contract.server.domain.ContractEntity
 import com.wutsi.ndopify.contract.server.service.ContractService
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.customer.server.service.CustomerService
+import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
 import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.mandate.server.dao.AssignmentRepository
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
@@ -73,6 +75,7 @@ class MandateServiceTest {
 
     private fun givenMandate(mandate: MandateEntity) {
         doReturn(Optional.of(mandate)).whenever(dao).findById(1L)
+        doReturn(mandate.contractId).whenever(dao).findContractIdById(1L)
         doReturn(mandate).whenever(dao).findByIdForUpdate(1L)
         doReturn(emptyList<Any>()).whenever(assignmentDao).findByMandateAndStatusIn(any(), any())
     }
@@ -162,7 +165,6 @@ class MandateServiceTest {
 
     @Test
     fun `cancel - also cancels the contract linked meanwhile`() {
-        doReturn(Optional.of(mandate(MandateStatus.ASSIGNED))).whenever(dao).findById(1L)
         doReturn(mandate(MandateStatus.ASSIGNED).copy(contractId = "c-2")).whenever(dao).findByIdForUpdate(1L)
         doReturn(emptyList<Any>()).whenever(assignmentDao).findByMandateAndStatusIn(any(), any())
 
@@ -191,7 +193,7 @@ class MandateServiceTest {
 
     @Test
     fun `contract signed - approves the mandate and publishes the event`() {
-        doReturn(mandate(MandateStatus.PENDING_APPROVAL)).whenever(dao).findByContractId("c-1")
+        doReturn(1L).whenever(dao).findIdByContractId("c-1")
         doReturn(mandate(MandateStatus.PENDING_APPROVAL)).whenever(dao).findByIdForUpdate(1L)
 
         val approved = service.onContractSigned("c-1")
@@ -205,7 +207,8 @@ class MandateServiceTest {
 
     @Test
     fun `contract signed - a mandate no longer waiting for approval is left as is`() {
-        doReturn(mandate(MandateStatus.CANCELLED)).whenever(dao).findByContractId("c-1")
+        doReturn(1L).whenever(dao).findIdByContractId("c-1")
+        doReturn(mandate(MandateStatus.CANCELLED)).whenever(dao).findByIdForUpdate(1L)
 
         assertNull(service.onContractSigned("c-1"))
         verify(dao, never()).save(any())
@@ -214,8 +217,94 @@ class MandateServiceTest {
 
     @Test
     fun `contract signed - a contract without mandate`() {
+        doReturn(null).whenever(dao).findIdByContractId("c-1")
+
         assertNull(service.onContractSigned("c-1"))
+        verify(dao, never()).findByIdForUpdate(any())
         verify(eventPublisher, never()).publishEvent(any())
+    }
+
+    @Test
+    fun `contract signed - the mandate is locked before it's loaded`() {
+        doReturn(1L).whenever(dao).findIdByContractId("c-1")
+        doReturn(mandate(MandateStatus.PENDING_APPROVAL)).whenever(dao).findByIdForUpdate(1L)
+
+        service.onContractSigned("c-1")
+
+        verify(dao, never()).findByContractId(any())
+        verify(dao, never()).findById(any())
+    }
+
+    @Test
+    fun `update - locks the contract, then the mandate`() {
+        givenMandate(mandate(MandateStatus.ASSIGNED).copy(contractId = "c-1"))
+
+        val updated = service.update(1L, UpdateMandateRequest(comments = "Vue mer"))
+
+        assertEquals(MandateStatus.ASSIGNED, updated.status)
+        assertEquals("Vue mer", updated.comments)
+        val order = inOrder(contractService, dao)
+        order.verify(contractService).findByIdForUpdate("c-1")
+        order.verify(dao).findByIdForUpdate(1L)
+        verify(dao, never()).findById(any())
+        verify(contractService, never()).cancel(any())
+    }
+
+    @Test
+    fun `update - waiting for approval, its contract is cancelled and it's back to assigned`() {
+        givenMandate(mandate(MandateStatus.PENDING_APPROVAL).copy(contractId = "c-1"))
+
+        val updated = service.update(1L, UpdateMandateRequest(comments = "Vue mer"))
+
+        assertEquals(MandateStatus.ASSIGNED, updated.status)
+        assertEquals("c-1", updated.contractId)
+        verify(contractService).cancel("c-1")
+    }
+
+    @Test
+    fun `update - without contract`() {
+        givenMandate(mandate(MandateStatus.PENDING_ASSIGNMENT))
+
+        val updated = service.update(1L, UpdateMandateRequest(comments = "Vue mer"))
+
+        assertEquals(MandateStatus.PENDING_ASSIGNMENT, updated.status)
+        verify(contractService, never()).findByIdForUpdate(any())
+        verify(contractService, never()).cancel(any())
+    }
+
+    @Test
+    fun `update - approved`() {
+        givenMandate(mandate(MandateStatus.APPROVED).copy(contractId = "c-1"))
+
+        val ex = assertFailsWith<ConflictException> { service.update(1L, UpdateMandateRequest()) }
+
+        assertEquals(ErrorCode.MANDATE_ALREADY_APPROVED, ex.error.code)
+        verify(dao, never()).save(any())
+        verify(contractService, never()).cancel(any())
+    }
+
+    @Test
+    fun `update - closed or cancelled`() {
+        listOf(MandateStatus.CLOSED, MandateStatus.CANCELLED).forEach { status ->
+            givenMandate(mandate(status))
+
+            val ex = assertFailsWith<ConflictException> { service.update(1L, UpdateMandateRequest()) }
+
+            assertEquals(ErrorCode.MANDATE_ALREADY_CLOSED, ex.error.code)
+        }
+        verify(dao, never()).save(any())
+    }
+
+    @Test
+    fun `update - contract replaced since it was locked`() {
+        doReturn("c-1").whenever(dao).findContractIdById(1L)
+        doReturn(mandate(MandateStatus.PENDING_APPROVAL).copy(contractId = "c-2")).whenever(dao).findByIdForUpdate(1L)
+
+        val ex = assertFailsWith<ConflictException> { service.update(1L, UpdateMandateRequest()) }
+
+        assertEquals(ErrorCode.MANDATE_VERSION_CONFLICT, ex.error.code)
+        verify(dao, never()).save(any())
+        verify(contractService, never()).cancel(any())
     }
 
     @Test

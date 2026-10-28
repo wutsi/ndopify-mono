@@ -53,7 +53,8 @@ import java.time.Clock
  * cancel form opens without JS through `GET /mandates/{id}?end=close|cancel`, and comes back with its errors.
  *
  * The edit page (`mandate/edit.html`) is only for a mandate the customer hasn't signed ([MandateRules.EDITABLE]),
- * checked again when it's saved since ndopify-server's update doesn't check the status.
+ * checked again when it's saved. ndopify-server refuses it too once signed or closed (409, shown as [CHANGED]), and
+ * cancels the contract of one out for signature: the customer can't sign the old version, the agent sends it again.
  *
  * A landlord's signed mandate also shows its listing ([ListingViews.forMandate]): "Créer l'annonce", posted to
  * `ListingController`, then where the listing stands.
@@ -90,6 +91,9 @@ class MandateController(
         const val CLOSED = "closed"
         const val CANCELLED = "cancelled"
         const val SAVED = "saved"
+
+        // Saved while out for signature: ndopify-server cancelled its contract, the mandate is ASSIGNED again
+        const val SAVED_UNSENT = "saved-unsent"
         const val CHANGED = "changed"
         const val FAILED = "error"
 
@@ -215,6 +219,11 @@ class MandateController(
 
             mandateClient.update(id, MandateEditRules.request(answers, mandate))
         } catch (ex: HttpClientErrorException) {
+            if (errorCode(ex) in setOf(ErrorCode.MANDATE_ALREADY_APPROVED, ErrorCode.MANDATE_ALREADY_CLOSED)) {
+                LOGGER.warn("Mandate $id not saved: ${ex.statusCode}")
+                redirect.addFlashAttribute(OUTCOME, CHANGED)
+                return back(id)
+            }
             if (errorCode(ex) != ErrorCode.MANDATE_VERSION_CONFLICT) {
                 LOGGER.error("Mandate $id not saved: ${ex.message}", ex)
                 return edit(mandate, answers, emptyMap(), SAVE_FAILED, model)
@@ -226,7 +235,7 @@ class MandateController(
             LOGGER.error("Mandate $id not saved: ${ex.message}", ex)
             return edit(mandate, answers, emptyMap(), SAVE_FAILED, model)
         }
-        redirect.addFlashAttribute(OUTCOME, SAVED)
+        redirect.addFlashAttribute(OUTCOME, if (mandate.status == MandateStatus.PENDING_APPROVAL) SAVED_UNSENT else SAVED)
         return back(id)
     }
 
@@ -314,12 +323,10 @@ class MandateController(
             RESENT -> "Mandat renvoyé $to pour signature."
             CLOSED -> "Mandat fermé : félicitations pour ce bail !"
             CANCELLED -> "Mandat annulé. Il ne figure plus dans vos mandats en cours."
-            SAVED ->
-                if (view.status == MandateStatus.PENDING_APPROVAL) {
-                    "Mandat modifié. Renvoyez-le pour que ${view.words.the} signe la nouvelle version."
-                } else {
-                    "Mandat modifié."
-                }
+            SAVED -> "Mandat modifié."
+            SAVED_UNSENT ->
+                "Mandat modifié. L'ancienne version ne peut plus être signée : envoyez-le à nouveau pour que " +
+                    "${view.words.the} signe la nouvelle."
 
             CHANGED -> "Ce mandat a changé entre-temps : vérifiez son état avant de recommencer."
             EMAIL_CONFLICT ->

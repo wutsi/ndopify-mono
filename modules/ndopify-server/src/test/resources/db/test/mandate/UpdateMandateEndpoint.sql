@@ -50,6 +50,21 @@ INSERT INTO T_MANDATE(
      100000, 'MONTHLY', 'XAF', null, null, null, null, 'UNKNOWN',
      null, null, '2024-06-10 00:00:00', '2024-06-10 00:00:00');
 
+-- 3: waiting for approval, its contract out for signature   4: approved   5: cancelled   6: assigned, with a draft
+INSERT INTO T_CONTRACT(id, tenant_id, number, type, status, content_url, duration_months) VALUES
+    ('c-3', 1, 'MNDT-2026-000003', 'SEARCH', 'PENDING_SIGNATURE', 'https://cdn.ndopify.com/3.html', 6),
+    ('c-4', 1, 'MNDT-2026-000004', 'SEARCH', 'SIGNED', 'https://cdn.ndopify.com/4.html', 6),
+    ('c-6', 1, 'MNDT-2026-000006', 'SEARCH', 'DRAFT', null, 6);
+
+INSERT INTO T_MANDATE(
+    id, tenant_id, customer_id, agent_id, contract_id, status, mandate_type, listing_type, city_id, property_type,
+    rooms, price, price_periodicity_type, currency_code, comments, created_at, modified_at
+) VALUES
+    (3, 1, 10, null, 'c-3', 'PENDING_APPROVAL', 'TENANT', 'SEARCH', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', 'Before', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (4, 1, 10, null, 'c-4', 'APPROVED', 'TENANT', 'SEARCH', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', 'Before', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (5, 1, 10, null, null, 'CANCELLED', 'TENANT', 'SEARCH', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', 'Before', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (6, 1, 10, null, 'c-6', 'ASSIGNED', 'TENANT', 'SEARCH', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', 'Before', '2024-06-10 00:00:00', '2024-06-10 00:00:00');
+
 INSERT INTO T_MANDATE_NEIGHBORHOOD(mandate_id, neighborhood_id) VALUES
     (1, 111),
     (1, 222);

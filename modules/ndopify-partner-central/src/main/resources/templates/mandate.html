@@ -24,8 +24,8 @@
   is a wizard, Assigné > En approbation > Actif > Fermé (or Annulé), with the actions of the current step:
     - Envoyer au client / Renvoyer (Assigné, En approbation): POST /mandates/{id}/request-approval, the contract is
       e-mailed to the customer, who signs it online; sent again, it resets the signature deadline.
-    - Modifier le mandat (Assigné, En approbation): /mandates/{id}/edit. Edited while En approbation, the panel asks
-      to send it again.
+    - Modifier le mandat (Assigné, En approbation): /mandates/{id}/edit. Saved while En approbation, its contract is
+      cancelled and the mandate is Assigné again, to be sent anew.
     - Fermer (Actif: lease signed, with the agreed rent) and Annuler (any active step, with a reason): at the bottom
       of the page, since they're rare and final.
   "mandate" is the MandateView, absent when "locked" (mandate not found, or a status the page doesn't show).
@@ -134,12 +134,10 @@
                     <div class="mandate-panel" th:if="${m.status.name() == 'PENDING_APPROVAL'}" data-panel="PENDING_APPROVAL">
                         <p th:if="${m.signatureDeadline}">Envoyé le <span th:text="${m.requestedAt}">15 octobre 2026</span> · à signer avant le
                             <strong data-signature-deadline th:text="${m.deadlinePassed} ? |${m.signatureDeadline} (dépassé)| : ${m.signatureDeadline}">22 octobre 2026</strong>.</p>
-                        <p class="mandate-panel__edited" th:if="${m.editedSince}" data-edited-since>Modifié depuis l'envoi&nbsp;:
-                            renvoyez-le pour faire signer la nouvelle version.</p>
                         <div class="mandate-panel__actions">
                             <form method="post" th:action="@{/mandates/{id}/request-approval(id=${m.id})}"
                                   data-request-approval-form>
-                                <button type="submit" th:class="${m.editedSince} ? 'btn btn--primary' : 'btn btn--outline'"
+                                <button type="submit" class="btn btn--outline"
                                         data-request-approval>Renvoyer</button>
                             </form>
                             <a class="btn btn--outline" th:href="@{/mandates/{id}/edit(id=${m.id})}" data-edit-link>Modifier le mandat</a>

@@ -77,13 +77,6 @@ object MandateRules {
         return Duration.ofMillis(deadline.time - requestedAt.time).plusHours(12).toDays().toInt() // Rounded
     }
 
-    /**
-     * Edited since it was sent: the customer would sign an outdated version. Sending saves the mandate before
-     * setting the deadline, so a mandate that wasn't edited since is never after [requestedAt].
-     */
-    fun editedSince(mandate: Mandate, requestedAt: Date?): Boolean =
-        requestedAt != null && mandate.modifiedAt.after(requestedAt)
-
     /** The card's one-line next step; null once the mandate is no longer in progress. */
     fun nextStep(mandate: Mandate, contract: ContractSummary?, now: Long, formatter: TenantFormatter): String? {
         val words = words(mandate.mandateType)

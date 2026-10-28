@@ -93,16 +93,6 @@ class MandateRulesTest {
     }
 
     @Test
-    fun editedSince() {
-        val requestedAt = date("2026-10-15T10:00:00Z")
-
-        assertTrue(MandateRules.editedSince(Mandate(modifiedAt = date("2026-10-16T10:00:00Z")), requestedAt))
-        assertFalse(MandateRules.editedSince(Mandate(modifiedAt = requestedAt), requestedAt))
-        assertFalse(MandateRules.editedSince(Mandate(modifiedAt = date("2026-10-14T10:00:00Z")), requestedAt))
-        assertFalse(MandateRules.editedSince(Mandate(), null))
-    }
-
-    @Test
     fun `next step - assigned`() {
         assertEquals(
             "Contactez le client, puis envoyez-lui le mandat à approuver.",

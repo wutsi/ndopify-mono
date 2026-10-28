@@ -502,10 +502,11 @@ class MandateControllerTest {
 
     @Test
     fun `outcome - saved while pending approval`() {
-        val result = mvc.perform(get("/mandates/201").flashAttr("outcome", "saved")).andReturn()
+        val result = mvc.perform(get("/mandates/201").flashAttr("outcome", "saved-unsent")).andReturn()
 
         assertEquals(
-            "Mandat modifié. Renvoyez-le pour que le client signe la nouvelle version.",
+            "Mandat modifié. L'ancienne version ne peut plus être signée : envoyez-le à nouveau pour que le client " +
+                "signe la nouvelle.",
             model(result)["outcomeText"],
         )
     }
@@ -626,7 +627,7 @@ class MandateControllerTest {
         val result = mvc.perform(edit()).andReturn()
 
         assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
-        assertEquals("saved", outcome(result))
+        assertEquals("saved-unsent", outcome(result)) // Its contract cancelled by ndopify-server: to send again
         val request = argumentCaptor<UpdateMandateRequest>()
         verify(mandateClient).update(com.nhaarman.mockitokotlin2.eq(201L), request.capture())
         assertEquals(listOf(BONAPRISO), request.firstValue.neighbourhoodIds)
@@ -676,6 +677,28 @@ class MandateControllerTest {
             "Enregistrement impossible pour le moment. Réessayez dans quelques instants.",
             model(result)["error"],
         )
+    }
+
+    @Test
+    fun `save - assigned`() {
+        doReturn(PENDING.copy(status = MandateStatus.ASSIGNED)).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(edit()).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        assertEquals("saved", outcome(result))
+    }
+
+    @Test
+    fun `save - signed or closed meanwhile - changed`() {
+        listOf(ErrorCode.MANDATE_ALREADY_APPROVED, ErrorCode.MANDATE_ALREADY_CLOSED).forEach { code ->
+            doThrow(conflict(code)).whenever(mandateClient).update(any(), any())
+
+            val result = mvc.perform(edit()).andReturn()
+
+            assertEquals("redirect:/mandates/201", result.modelAndView?.viewName, code)
+            assertEquals("changed", outcome(result), code)
+        }
     }
 
     @Test

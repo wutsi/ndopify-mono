@@ -62,7 +62,8 @@ the sign or verify page may show (see the rules below) needs a template test ass
   `remoteAddr` (the client's behind a proxy: `server.forward-headers-strategy: native`, never the raw `X-Forwarded-For`), the `User-Agent` and the `contentHash` of the content fetched
   (`ContractContentClient.fetch` returns a `ContractContent`: the sanitized HTML plus the SHA-256 of the raw bytes
   downloaded, never of the sanitized HTML), and goes to `?step=done`, also on a 403 / 404 / 409 (but a 409
-  `CONTRACT_CONTENT_MISMATCH`, shown as "Le contrat a été modifié…" on the sign step; a double tap's `CONTRACT_PARTY_ALREADY_SIGNED`: the done or blocked view says which). `POST /logout` ("Utiliser une
+  `CONTRACT_CONTENT_MISMATCH`, shown as "Le contrat a été modifié…" on the sign step; a `*:version-conflict` one, nothing
+  signed (written meanwhile, or a lock not acquired), shown on the sign step to retry; a double tap's `CONTRACT_PARTY_ALREADY_SIGNED`: the done or blocked view says which). `POST /logout` ("Utiliser une
   autre adresse") clears the cookie and the session. Its warn logs carry ndopify-server's status and error code only,
   never the response body (which can name the e-mail).
 - `templates/sign.html` renders only the current step (`th:if` on `view.step`), "Étape N sur 3" included, one

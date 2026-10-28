@@ -24,8 +24,8 @@
   Edit a mandate (MandateController, POST /mandates/{id}/edit), reached from the mandate page's "Modifier le mandat"
   while it's Assigné or En approbation. One form, in five groups folded by default so a quick fix stays short on a
   phone: each group's summary shows its current value ("summaries"), and a group with an error is open
-  ("openGroups"). The city can't change: the mandate would leave the agent's area. Edited while En approbation, the
-  mandate must be sent again. Wording follows "owner": a client's search (Budget, Emménagement, "Indifférent"
+  ("openGroups"). The city can't change: the mandate would leave the agent's area. Saved while En approbation, its
+  contract is cancelled by ndopify-server and the mandate is Assigné again: the notice says so before saving. Wording follows "owner": a client's search (Budget, Emménagement, "Indifférent"
   choices) or a landlord's property (Loyer, Disponibilité, no "Indifférent").
   "answers" (MandateEditForm) pre-fill it, with "errors" per field and "error" when it couldn't be saved; "mandate"
   (MandateView) gives the title, number and wording; "city" and "neighborhoods" the names of the chosen locations,
@@ -80,8 +80,9 @@
 
                 <div class="hint" th:if="${mandate.status.name() == 'PENDING_APPROVAL'}" data-edit-resend>
                     <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
-                    <p>Ce mandat attend la signature <span th:text="${mandate.words.of}">du client</span>&nbsp;: après vos modifications,
-                        renvoyez-le-lui pour qu'il signe la nouvelle version.</p>
+                    <p>Ce mandat attend la signature <span th:text="${mandate.words.of}">du client</span>&nbsp;: en l'enregistrant,
+                        vous annulez le contrat qui lui a été envoyé. Il ne pourra plus le signer, et vous devrez lui
+                        envoyer la nouvelle version.</p>
                 </div>
 
                 <div class="alert alert--error" role="alert" th:if="${error}" data-edit-error>
