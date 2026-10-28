@@ -12,9 +12,7 @@ import java.time.Instant
 import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 class MandateRulesTest {
     private val now = date("2026-10-18T10:00:00Z").time
