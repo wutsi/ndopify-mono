@@ -20,6 +20,11 @@ class CallerService(
         return accessTokenService.getPrincipal()
     }
 
+    /** Null without a token: an anonymous caller of a public endpoint. */
+    fun getPrincipalOrNull(): JwtPrincipal? {
+        return accessTokenService.getPrincipalOrNull()
+    }
+
     /** An admin of the current tenant: signed in to the admin console, with its `admin` role. */
     fun isAdmin(principal: JwtPrincipal): Boolean {
         return principal.getApplication() == ApplicationCode.ADMIN_CONSOLE &&

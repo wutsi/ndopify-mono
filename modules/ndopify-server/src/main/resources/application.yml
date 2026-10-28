@@ -21,6 +21,12 @@ spring:
             chat:
                 options:
                     model: deepseek-flash
+        retry:
+            max-attempts: 3
+            on-http-codes: 429
+            backoff:
+                initial-interval: 1s
+                max-interval: 20s
 
     datasource:
         driverClassName: com.mysql.cj.jdbc.Driver

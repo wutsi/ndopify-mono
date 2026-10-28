@@ -5,6 +5,7 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.ImageStatus
 import com.wutsi.ndopify.listing.dto.SearchListingImageResponse
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
@@ -13,6 +14,8 @@ import kotlin.test.assertNull
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/listing/SearchListingImageEndpoint.sql"])
 class SearchListingImageEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
+    override val roles = arrayOf(RoleCode.ADMIN) // Every status: see ListingAccessEndpointTest for the others
+
     @Test
     fun `search - oldest first`() {
         val response = rest.getForEntity("/v1/listings/100/images", SearchListingImageResponse::class.java)
@@ -43,13 +46,35 @@ class SearchListingImageEndpointTest : AuthorizationAwareEndpointIntegrationTest
     }
 
     @Test
-    fun `public - no token needed`() {
+    fun `public - no token needed, VERIFIED only`() {
         anonymousUser = true
 
         val response = rest.getForEntity("/v1/listings/100/images", SearchListingImageResponse::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
-        assertEquals(3, response.body!!.images.size)
+        assertEquals(listOf(1000L), response.body!!.images.map { image -> image.id })
+    }
+
+    @Test
+    fun `public - the statuses asked for are ignored`() {
+        anonymousUser = true
+
+        val response = rest.getForEntity(
+            "/v1/listings/100/images?status=REJECTED",
+            SearchListingImageResponse::class.java,
+        )
+
+        assertEquals(listOf(1000L), response.body!!.images.map { image -> image.id })
+    }
+
+    @Test
+    fun `public - listing not published, not found without a token`() {
+        anonymousUser = true
+
+        val response = rest.getForEntity("/v1/listings/101/images", ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
+        assertEquals(ErrorCode.LISTING_NOT_FOUND, response.body?.error?.code)
     }
 
     @Test

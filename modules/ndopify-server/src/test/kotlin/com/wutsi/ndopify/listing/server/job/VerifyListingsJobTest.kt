@@ -7,6 +7,7 @@ import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.server.service.verifier.ListingImageInfoExtractor
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.jdbc.core.JdbcTemplate
@@ -28,6 +29,8 @@ import kotlin.test.assertEquals
  */
 @Sql(value = ["/db/test/clean.sql", "/db/test/listing/VerifyListingsJob.sql"])
 class VerifyListingsJobTest : AuthorizationAwareEndpointIntegrationTest() {
+    override val roles = arrayOf(RoleCode.ADMIN) // To send the listing through POST /v1/listings/{id}/verify
+
     @Autowired
     private lateinit var jobs: ListingJobs
 

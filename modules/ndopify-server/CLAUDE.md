@@ -233,8 +233,12 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
 - **listing** — the property a LISTING mandate offers, as checked on site by its agent (`ListingEntity`, one per
   mandate, `@Version`-ed; its photos `ListingImageEntity`; its checklist `ListingSectionEntity`; `V8_0`, `V8_1`,
   `V8_3`). `/v1/listings`: search, get, create, update, `POST /{id}/verify`, `POST /{id}/publish`, `POST /{id}/images/upload`, `GET /{id}/images`,
-  `DELETE /images/{id}`. Search, get and the images list are public (`PublicEndpoints.GLOBAL`). There's no access
-  check yet: any token may create or update a listing or add a photo. `ListingService.create` copies the mandate's
+  `DELETE /images/{id}`. Search, get and the images list are public (`PublicEndpoints.TENANT`), for PUBLISHED
+  listings only (`ListingAccessService`): another status is only for an admin or the listing's agent, a 404
+  `LISTING_NOT_FOUND` for anybody else (get, images), with or without a token; a search is forced to PUBLISHED but an
+  admin's, or an agent's with its own `agent-id`; the images to VERIFIED but for an admin or the listing's agent. The fields aren't trimmed. The changes (create, update, verify, publish, upload or delete a photo) are only
+  for an admin or the listing's agent (the mandate's, for create): 401 without a token, 403 `HTTP_ACCESS_DENIED`
+  otherwise, after the 404 and before any 409, checked by the services. `ListingService.create` copies the mandate's
   property (404 `MANDATE_NOT_FOUND`, 409 `MANDATE_NOT_ASSIGNED` without agent, since the listing's agent is the
   mandate's; 409 `LISTING_ALREADY_EXISTS`) and starts it as `DRAFT`. The mandate's `listingId` (`GET /v1/mandates/{id}`)
   points to it. **Checklist**: an update saves *one* `ListingSection` (`LOCATION`, `GPS`, `PROPERTY`, `AMENITIES`,

@@ -26,7 +26,7 @@ INSERT INTO T_MANDATE(id, tenant_id, customer_id, agent_id, status, mandate_type
 
 -- 100: with images   101: without image   900: other tenant
 INSERT INTO T_LISTING(id, tenant_id, mandate_id, agent_id, status, city_id) VALUES
-    (100, 1, 1, 20, 'DRAFT', 2370201),
+    (100, 1, 1, 20, 'PUBLISHED', 2370201),
     (101, 1, 2, 20, 'DRAFT', 2370201),
     (900, 2, 9, 90, 'DRAFT', 2370201);
 

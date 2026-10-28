@@ -33,7 +33,7 @@ import java.time.Clock
 import java.time.LocalDate
 import java.util.Date
 
-/** No access check: the listings are public, and any caller with a token may create or update one. */
+/** The changes are checked by [ListingAccessService] (the reads by `ListingEndpoints`): an admin, or the agent. */
 @Service
 class ListingService(
     private val dao: ListingRepository,
@@ -43,6 +43,7 @@ class ListingService(
     private val publishedMailet: ListingPublishedMailet,
     private val sectionService: ListingSectionService,
     private val locationService: LocationService,
+    private val accessService: ListingAccessService,
     private val clock: Clock,
 ) {
     /** Newest first. */
@@ -117,12 +118,14 @@ class ListingService(
     fun findIdByMandateId(mandateId: Long): Long? = dao.findIdByMandateId(mandateId)
 
     /**
-     * Creates the DRAFT listing of a mandate, from its property: 404 MANDATE_NOT_FOUND, 409 MANDATE_NOT_ASSIGNED for a
+     * Creates the DRAFT listing of a mandate, from its property: 404 MANDATE_NOT_FOUND, 403 HTTP_ACCESS_DENIED but for
+     * an admin or the mandate's agent, 409 MANDATE_NOT_ASSIGNED for a
      * mandate without agent (the listing's agent is the mandate's), 409 LISTING_ALREADY_EXISTS if it already has one.
      */
     @Transactional
     fun create(request: CreateListingRequest): ListingEntity {
         val mandate = mandateService.findById(request.mandateId)
+        accessService.ensureCanCreate(mandate)
         val agentId = mandate.agentId
             ?: throw ConflictException(Error(ErrorCode.MANDATE_NOT_ASSIGNED))
         if (dao.existsByMandate(mandate)) {
@@ -175,7 +178,8 @@ class ListingService(
 
     /**
      * Saves one section of a DRAFT listing, which is then VERIFIED on its checklist: only the section's fields, as
-     * sent (a null clears an optional field). 409 LISTING_VERSION_CONFLICT if [UpdateListingRequest.version] isn't
+     * sent (a null clears an optional field). 404 LISTING_NOT_FOUND, 403 HTTP_ACCESS_DENIED but for an admin or its
+     * agent, 409 LISTING_VERSION_CONFLICT if [UpdateListingRequest.version] isn't
      * the listing's, 409 LISTING_NOT_DRAFT once sent; then 400 for no section, PHOTOS (uploaded, not saved), a
      * required field missing or a neighbourhood that isn't one of the listing's city. The city never changes: it's
      * the mandate's, the agent's area.
@@ -183,6 +187,7 @@ class ListingService(
     @Transactional
     fun update(id: Long, request: UpdateListingRequest): ListingEntity {
         val listing = findById(id)
+        accessService.ensureCanUpdate(listing)
         if (request.version != listing.version) {
             throw ConflictException(Error(ErrorCode.LISTING_VERSION_CONFLICT))
         }
@@ -269,12 +274,13 @@ class ListingService(
 
     /**
      * Sends a DRAFT listing for verification, once its checklist is done: UNDER_VERIFICATION, the verification itself
-     * being done asynchronously (`ListingJobs.verify`). 404 LISTING_NOT_FOUND, 409 LISTING_NOT_DRAFT once sent, then 409 LISTING_INCOMPLETE
+     * being done asynchronously (`ListingJobs.verify`). 404 LISTING_NOT_FOUND, 403 HTTP_ACCESS_DENIED but for an admin or its agent, 409 LISTING_NOT_DRAFT once sent, then 409 LISTING_INCOMPLETE
      * while a required section isn't VERIFIED (PHOTOS: fewer than MIN_PHOTOS, or one REJECTED).
      */
     @Transactional
     fun verify(id: Long): ListingEntity {
         val listing = findById(id)
+        accessService.ensureCanUpdate(listing)
         if (listing.status != ListingStatus.DRAFT) {
             throw ConflictException(Error(ErrorCode.LISTING_NOT_DRAFT))
         }
@@ -292,11 +298,13 @@ class ListingService(
 
     /**
      * Sends a VERIFIED listing for publication: PUBLISHING, its content being generated asynchronously
-     * (`ListingJobs.publish`). 404 LISTING_NOT_FOUND, then 409 LISTING_NOT_VERIFIED.
+     * (`ListingJobs.publish`). 404 LISTING_NOT_FOUND, 403 HTTP_ACCESS_DENIED but for an admin or its agent, then 409
+     * LISTING_NOT_VERIFIED.
      */
     @Transactional
     fun publish(id: Long): ListingEntity {
         val listing = findById(id)
+        accessService.ensureCanUpdate(listing)
         if (listing.status != ListingStatus.VERIFIED) {
             throw ConflictException(Error(ErrorCode.LISTING_NOT_VERIFIED))
         }

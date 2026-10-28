@@ -122,6 +122,24 @@ class GetListingEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `public - not published, not found without a token`() {
+        anonymousUser = true
+
+        val response = rest.getForEntity("/v1/listings/101", ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
+        assertEquals(ErrorCode.LISTING_NOT_FOUND, response.body?.error?.code)
+    }
+
+    @Test
+    fun `not published - admin`() {
+        val response = rest.getForEntity("/v1/listings/101", GetListingResponse::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(ListingStatus.DRAFT, response.body!!.listing.status)
+    }
+
+    @Test
     fun `mandate - has its listing id`() {
         val response = rest.getForEntity("/v1/mandates/1", GetMandateResponse::class.java)
 

@@ -21,11 +21,12 @@ import java.time.Clock
 import java.util.Date
 import java.util.UUID
 
-/** The photos of a listing. No access check: they're public, and any caller with a token may add one. */
+/** The photos of a listing. Adding or removing one is checked by [ListingAccessService]: an admin, or the agent. */
 @Service
 class ListingImageService(
     private val dao: ListingImageRepository,
     private val listingService: ListingService,
+    private val accessService: ListingAccessService,
     private val storageProvider: StorageServiceProvider,
     private val clock: Clock,
 ) {
@@ -52,10 +53,14 @@ class ListingImageService(
             ?: throw NotFoundException(error = Error(code = ErrorCode.LISTING_IMAGE_NOT_FOUND))
     }
 
-    /** Adds a photo (a JPEG, PNG or WEBP image) to the listing, PENDING_VERIFICATION. */
+    /**
+     * Adds a photo (a JPEG, PNG or WEBP image) to the listing, PENDING_VERIFICATION. 404 LISTING_NOT_FOUND, 403
+     * HTTP_ACCESS_DENIED but for an admin or its agent, then 400 for a file that isn't an image.
+     */
     @Transactional
     fun upload(listingId: Long, file: MultipartFile): ListingImageEntity {
         val listing = listingService.findById(listingId)
+        accessService.ensureCanUpdate(listing)
         val mimeType = ensureImage(file)
 
         // A new path each time: the storage is public, an image is never overwritten
@@ -78,14 +83,16 @@ class ListingImageService(
     }
 
     /**
-     * Removes a photo of a DRAFT listing (409 LISTING_NOT_DRAFT once sent), 404 LISTING_IMAGE_NOT_FOUND for an unknown
-     * image. The file stays in the storage: StorageService can't delete one.
+     * Removes a photo of a DRAFT listing: 404 LISTING_IMAGE_NOT_FOUND for an unknown image, 403 HTTP_ACCESS_DENIED but
+     * for an admin or its listing's agent, 409 LISTING_NOT_DRAFT once sent. The file stays in the storage: StorageService can't delete one.
      */
     @Transactional
     fun delete(id: Long) {
         val image = dao.findById(id).orElse(null)
             ?: throw NotFoundException(error = Error(code = ErrorCode.LISTING_IMAGE_NOT_FOUND))
-        if (listingService.findById(image.listingId).status != ListingStatus.DRAFT) {
+        val listing = listingService.findById(image.listingId)
+        accessService.ensureCanUpdate(listing)
+        if (listing.status != ListingStatus.DRAFT) {
             throw ConflictException(Error(ErrorCode.LISTING_NOT_DRAFT))
         }
         dao.delete(image)

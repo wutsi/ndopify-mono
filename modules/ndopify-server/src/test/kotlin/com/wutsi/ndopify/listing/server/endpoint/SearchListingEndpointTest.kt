@@ -4,6 +4,7 @@ import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.listing.dto.SearchListingResponse
+import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
@@ -11,6 +12,8 @@ import kotlin.test.assertEquals
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/listing/SearchListingEndpoint.sql"])
 class SearchListingEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
+    override val roles = arrayOf(RoleCode.ADMIN) // Every status: see ListingAccessEndpointTest for the others
+
     private fun search(query: String = ""): List<Long> {
         val response = rest.getForEntity("/v1/listings?$query", SearchListingResponse::class.java)
         assertEquals(HttpStatus.OK, response.statusCode)
@@ -23,10 +26,18 @@ class SearchListingEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
-    fun `public - no token needed`() {
+    fun `public - no token needed, PUBLISHED only`() {
         anonymousUser = true
 
-        assertEquals(listOf(102L, 101L, 100L), search())
+        assertEquals(listOf(102L, 100L), search())
+    }
+
+    @Test
+    fun `public - the statuses asked for are ignored`() {
+        anonymousUser = true
+
+        assertEquals(listOf(102L, 100L), search("status=DRAFT"))
+        assertEquals(emptyList(), search("property-type=HOUSE&status=DRAFT"))
     }
 
     @Test

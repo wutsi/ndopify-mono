@@ -9,6 +9,7 @@ import com.wutsi.ndopify.listing.dto.SearchListingRequest
 import com.wutsi.ndopify.listing.dto.SearchListingResponse
 import com.wutsi.ndopify.listing.dto.UpdateListingRequest
 import com.wutsi.ndopify.listing.server.mapper.ListingMapper
+import com.wutsi.ndopify.listing.server.service.ListingAccessService
 import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.listing.server.service.ListingSectionService
 import com.wutsi.ndopify.listing.server.service.ListingService
@@ -26,7 +27,8 @@ import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.multipart.MultipartFile
 
 /**
- * The reads are public (`PublicEndpoints.TENANT`); the writes need a token, any user's: no access check yet.
+ * The reads are public (`PublicEndpoints.TENANT`), of the PUBLISHED listings only without a token
+ * ([ListingAccessService]); the writes need a token, any user's: no access check yet.
  */
 @RestController
 @RequestMapping("/v1/listings")
@@ -35,16 +37,19 @@ class ListingEndpoints(
     private val mapper: ListingMapper,
     private val imageService: ListingImageService,
     private val sectionService: ListingSectionService,
+    private val accessService: ListingAccessService,
 ) {
     @GetMapping
     fun search(@ModelAttribute request: SearchListingRequest): SearchListingResponse {
-        val listings = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
+        val restricted = accessService.restrict(request)
+        val listings = service.search(restricted.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
         return SearchListingResponse(listings = listings.map { listing -> mapper.toListingSummary(listing) })
     }
 
     @GetMapping("/{id}")
     fun get(@PathVariable id: Long): GetListingResponse {
         val listing = service.findById(id)
+        accessService.ensureCanRead(listing)
         return GetListingResponse(listing = mapper.toListing(listing, sectionService.summaries(id)))
     }
 
@@ -90,7 +95,9 @@ class ListingEndpoints(
         @PathVariable id: Long,
         @ModelAttribute request: SearchListingImageRequest,
     ): SearchListingImageResponse {
-        val images = imageService.search(id, request)
+        val listing = service.findById(id)
+        accessService.ensureCanRead(listing)
+        val images = imageService.search(id, accessService.restrict(listing, request))
         return SearchListingImageResponse(images = images.map { image -> mapper.toListingImage(image) })
     }
 }
