@@ -241,7 +241,7 @@ ndopify:
         publish:
             cron: "0 */15 * * * ?"         # Every 15 minutes: publish listings that are PUBLISHING
         verify:
-            cron: "0 */15 * * * ?"         # Every 15 minutes: verify listings that are PENDING_VERIFICATION
+            cron: "0 */15 * * * ?"         # Every 15 minutes: verify listings that are UNDER_VERIFICATION
 
     mandate:
         assignment:

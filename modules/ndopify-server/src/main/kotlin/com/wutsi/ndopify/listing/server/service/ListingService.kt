@@ -269,7 +269,7 @@ class ListingService(
 
     /**
      * Sends a DRAFT listing for verification, once its checklist is done: UNDER_VERIFICATION, the verification itself
-     * being done asynchronously. 404 LISTING_NOT_FOUND, 409 LISTING_NOT_DRAFT once sent, then 409 LISTING_INCOMPLETE
+     * being done asynchronously (`ListingJobs.verify`). 404 LISTING_NOT_FOUND, 409 LISTING_NOT_DRAFT once sent, then 409 LISTING_INCOMPLETE
      * while a required section isn't VERIFIED (PHOTOS: fewer than MIN_PHOTOS, or one REJECTED).
      */
     @Transactional

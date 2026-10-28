@@ -35,9 +35,9 @@ class ListingJobsTest {
     private val tenant1 = TenantEntity(id = 1L)
     private val tenant2 = TenantEntity(id = 2L)
 
-    private val listing1 = ListingEntity(id = 1L, status = ListingStatus.PENDING_VERIFICATION)
-    private val listing2 = ListingEntity(id = 2L, status = ListingStatus.PENDING_VERIFICATION)
-    private val listing3 = ListingEntity(id = 3L, status = ListingStatus.PENDING_VERIFICATION)
+    private val listing1 = ListingEntity(id = 1L, status = ListingStatus.UNDER_VERIFICATION)
+    private val listing2 = ListingEntity(id = 2L, status = ListingStatus.UNDER_VERIFICATION)
+    private val listing3 = ListingEntity(id = 3L, status = ListingStatus.UNDER_VERIFICATION)
 
     @BeforeTest
     fun setUp() {
@@ -61,7 +61,7 @@ class ListingJobsTest {
 
         verify(service).search(
             SearchListingRequest(
-                statuses = listOf(ListingStatus.PENDING_VERIFICATION),
+                statuses = listOf(ListingStatus.UNDER_VERIFICATION),
                 limit = 100,
             )
         )
@@ -90,7 +90,7 @@ class ListingJobsTest {
 
     @Test
     fun `a failing listing doesn't stop the others`() {
-        // e.g. no longer PENDING_VERIFICATION, picked up by a concurrent run
+        // e.g. no longer UNDER_VERIFICATION, picked up by a concurrent run
         setUpPendingListings(listing1, listing2, listing3)
         doThrow(IllegalStateException("not pending")).whenever(verifierService).verify(listing2)
 

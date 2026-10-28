@@ -57,7 +57,7 @@ and hands it to `platform/mail`'s `MailService`; its MJML template lives under `
 locale and `timeZone` — never a hard-coded pattern. Mailet unit tests mirror the package (`<domain>/server/mail/*MailetTest.kt`).
 
 Scheduled jobs live in `<domain>/server/job/`: `KycJobs` (party), `MandateJobs` (mandate), `ContractJobs`
-(contract) and `ListingJobs` (listing, every 15 minutes: `verify`, the PENDING_VERIFICATION listings through
+(contract) and `ListingJobs` (listing, every 15 minutes: `verify`, the UNDER_VERIFICATION listings through
 `ListingVerifierService`; `publish`, the PUBLISHING ones through `ListingPublisherService`). They loop over the
 active tenants, setting `TenantContext` for each.
 
@@ -246,11 +246,13 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   section or `PHOTOS`, a missing required field, or a neighbourhood outside the listing's city. The city never
   changes: it's the mandate's, the agent's area. Photos (JPEG / PNG / WEBP) are added `PENDING_VERIFICATION`, and
   can only be deleted from a DRAFT listing; the file stays in the storage (`StorageService` can't delete one).
-  **Send**: `POST /{id}/verify` moves a DRAFT to `UNDER_VERIFICATION` (the check itself is to be done asynchronously,
-  nothing does it yet): 404 `LISTING_NOT_FOUND`, 409 `LISTING_NOT_DRAFT`, then 409 `LISTING_INCOMPLETE` while a
-  required section of the checklist isn't `VERIFIED`. `ListingJobs.verify` runs a PENDING_VERIFICATION listing
-  through `ListingVerifierService`: `VERIFIED`, or back to `DRAFT` with the verifiers' `errorCodes` for the agent to
-  fix and send again (also after `MAX_RETRIES` failed attempts, with `INTERNAL_ERROR`). There is no rejected status:
+  **Send**: `POST /{id}/verify` moves a DRAFT to `UNDER_VERIFICATION`, checked asynchronously: 404
+  `LISTING_NOT_FOUND`, 409 `LISTING_NOT_DRAFT`, then 409 `LISTING_INCOMPLETE` while a required section of the
+  checklist isn't `VERIFIED`. `ListingJobs.verify` runs an UNDER_VERIFICATION listing through
+  `ListingVerifierService`: `VERIFIED`, or back to `DRAFT` with the verifiers' `errorCodes` for the agent to fix and
+  send again; a failed attempt leaves it UNDER_VERIFICATION for the next run, then after `MAX_RETRIES` back to `DRAFT`
+  with `INTERNAL_ERROR`. `PENDING_VERIFICATION` isn't used for a listing (only for its photos). `VerifyListingsJobTest`
+  covers the send and the job together, end to end: keep it so. There is no rejected status:
   a DRAFT with `errorCodes` is one sent back. **Publish**: `POST /{id}/publish` moves a `VERIFIED` listing
   to `PUBLISHING` (404 `LISTING_NOT_FOUND`, then 409 `LISTING_NOT_VERIFIED`), `retries` reset; `ListingJobs.publish`
   then has `ListingPublisherService` generate its title, summary and description (`ListingContentGenerator`, text

@@ -7,7 +7,6 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
-import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.error.dto.ErrorCode
@@ -42,7 +41,7 @@ class ListingVerifierServiceTest {
     private val geo = mock<ListingVerifierGeoLocalization>()
     private val service = ListingVerifierService(dao, tx, clock, image, geo)
 
-    private val listing = ListingEntity(id = 1L, status = ListingStatus.PENDING_VERIFICATION)
+    private val listing = ListingEntity(id = 1L, status = ListingStatus.UNDER_VERIFICATION)
 
     @BeforeEach
     fun setUp() {
@@ -52,10 +51,10 @@ class ListingVerifierServiceTest {
         doReturn(ListingVerification(success = true)).whenever(geo).verify(any())
     }
 
-    private fun saved(): List<ListingEntity> {
+    private fun saved(): ListingEntity {
         val listing = argumentCaptor<ListingEntity>()
-        verify(dao, times(2)).save(listing.capture())
-        return listing.allValues
+        verify(dao).save(listing.capture())
+        return listing.firstValue
     }
 
     @Test
@@ -63,18 +62,14 @@ class ListingVerifierServiceTest {
         service.verify(listing)
 
         val saved = saved()
-        assertEquals(ListingStatus.UNDER_VERIFICATION, saved[0].status)
-        assertEquals(Date(NOW), saved[0].modifiedAt)
+        assertEquals(ListingStatus.VERIFIED, saved.status)
+        assertTrue(saved.errorCodes.isEmpty())
+        assertNull(saved.errorMessage)
+        assertEquals(Date(NOW), saved.verifiedAt)
+        assertEquals(Date(NOW), saved.modifiedAt)
 
-        assertEquals(ListingStatus.VERIFIED, saved[1].status)
-        assertTrue(saved[1].errorCodes.isEmpty())
-        assertNull(saved[1].errorMessage)
-        assertEquals(Date(NOW), saved[1].verifiedAt)
-        assertEquals(Date(NOW), saved[1].modifiedAt)
-
-        // The verifiers get the listing under verification
-        verify(image).verify(saved[0])
-        verify(geo).verify(saved[0])
+        verify(image).verify(listing)
+        verify(geo).verify(listing)
     }
 
     @Test
@@ -85,12 +80,12 @@ class ListingVerifierServiceTest {
         service.verify(listing)
 
         val saved = saved()
-        assertEquals(ListingStatus.DRAFT, saved[1].status)
+        assertEquals(ListingStatus.DRAFT, saved.status)
         assertEquals(
             listOf(ErrorCode.LISTING_NOT_ENOUGH_IMAGES, ErrorCode.LISTING_OUTSIDE_NEIGHBORHOOD),
-            saved[1].errorCodes,
+            saved.errorCodes,
         )
-        assertEquals(Date(NOW), saved[1].verifiedAt)
+        assertEquals(Date(NOW), saved.verifiedAt)
     }
 
     @Test
@@ -100,8 +95,8 @@ class ListingVerifierServiceTest {
         service.verify(listing)
 
         val saved = saved()
-        assertEquals(ListingStatus.DRAFT, saved[1].status)
-        assertEquals(listOf(ErrorCode.LISTING_MISSING_LAT_LONG), saved[1].errorCodes)
+        assertEquals(ListingStatus.DRAFT, saved.status)
+        assertEquals(listOf(ErrorCode.LISTING_MISSING_LAT_LONG), saved.errorCodes)
     }
 
     @Test
@@ -109,9 +104,9 @@ class ListingVerifierServiceTest {
         service.verify(listing.copy(errorCodes = listOf(ErrorCode.INTERNAL_ERROR), errorMessage = "failed", retries = 1))
 
         val saved = saved()
-        assertEquals(ListingStatus.VERIFIED, saved[1].status)
-        assertTrue(saved[1].errorCodes.isEmpty())
-        assertNull(saved[1].errorMessage)
+        assertEquals(ListingStatus.VERIFIED, saved.status)
+        assertTrue(saved.errorCodes.isEmpty())
+        assertNull(saved.errorMessage)
     }
 
     @Test
@@ -121,12 +116,12 @@ class ListingVerifierServiceTest {
         service.verify(listing)
 
         val saved = saved()
-        assertEquals(ListingStatus.PENDING_VERIFICATION, saved[1].status)
-        assertEquals(1, saved[1].retries)
-        assertEquals(listOf(ErrorCode.INTERNAL_ERROR), saved[1].errorCodes)
-        assertEquals("boom", saved[1].errorMessage)
-        assertNull(saved[1].verifiedAt)
-        assertEquals(Date(NOW), saved[1].modifiedAt)
+        assertEquals(ListingStatus.UNDER_VERIFICATION, saved.status)
+        assertEquals(1, saved.retries)
+        assertEquals(listOf(ErrorCode.INTERNAL_ERROR), saved.errorCodes)
+        assertEquals("boom", saved.errorMessage)
+        assertNull(saved.verifiedAt)
+        assertEquals(Date(NOW), saved.modifiedAt)
     }
 
     @Test
@@ -136,8 +131,8 @@ class ListingVerifierServiceTest {
         service.verify(listing.copy(retries = ListingVerifierService.MAX_RETRIES - 1))
 
         val saved = saved()
-        assertEquals(ListingStatus.PENDING_VERIFICATION, saved[1].status)
-        assertEquals(ListingVerifierService.MAX_RETRIES, saved[1].retries)
+        assertEquals(ListingStatus.UNDER_VERIFICATION, saved.status)
+        assertEquals(ListingVerifierService.MAX_RETRIES, saved.retries)
     }
 
     @Test
@@ -147,14 +142,14 @@ class ListingVerifierServiceTest {
         service.verify(listing.copy(retries = ListingVerifierService.MAX_RETRIES))
 
         val saved = saved()
-        assertEquals(ListingStatus.DRAFT, saved[1].status)
-        assertEquals(0, saved[1].retries)
-        assertEquals(listOf(ErrorCode.INTERNAL_ERROR), saved[1].errorCodes)
-        assertEquals("boom", saved[1].errorMessage)
+        assertEquals(ListingStatus.DRAFT, saved.status)
+        assertEquals(0, saved.retries)
+        assertEquals(listOf(ErrorCode.INTERNAL_ERROR), saved.errorCodes)
+        assertEquals("boom", saved.errorMessage)
     }
 
     @Test
-    fun `not pending verification`() {
+    fun `not under verification`() {
         assertFailsWith<IllegalStateException> {
             service.verify(listing.copy(status = ListingStatus.DRAFT))
         }

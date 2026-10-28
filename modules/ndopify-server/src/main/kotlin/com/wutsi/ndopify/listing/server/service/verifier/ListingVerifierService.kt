@@ -11,9 +11,9 @@ import java.time.Clock
 import java.util.Date
 
 /**
- * Verifies a PENDING_VERIFICATION listing with each verifier: VERIFIED when none finds an error, else sent back to
+ * Verifies an UNDER_VERIFICATION listing with each verifier: VERIFIED when none finds an error, else sent back to
  * DRAFT with their error codes, for the agent to fix and send again. A verifier failure retries up to MAX_RETRIES
- * times (back to PENDING_VERIFICATION), then sends the listing back to DRAFT with INTERNAL_ERROR.
+ * times (left UNDER_VERIFICATION), then sends the listing back to DRAFT with INTERNAL_ERROR.
  */
 @Service
 class ListingVerifierService(
@@ -35,28 +35,17 @@ class ListingVerifierService(
     )
 
     fun verify(listing: ListingEntity) {
-        if (listing.status != ListingStatus.PENDING_VERIFICATION) {
+        if (listing.status != ListingStatus.UNDER_VERIFICATION) {
             throw IllegalStateException("Listing#${listing.id}.status=${listing.status} - Cannot be verified")
         }
 
-        // Start verification
         val now = Date(clock.millis())
-        val toVerify = tx.execute {
-            dao.save(
-                listing.copy(
-                    status = ListingStatus.UNDER_VERIFICATION,
-                    modifiedAt = now,
-                )
-            )
-        }
-
-        // Verify
         try {
-            val verifications = verifiers.map { verifier -> verifier.verify(toVerify) }
+            val verifications = verifiers.map { verifier -> verifier.verify(listing) }
             val errorCodes = verifications.mapNotNull { verification -> verification.errorCode }
             tx.execute {
                 dao.save(
-                    toVerify.copy(
+                    listing.copy(
                         status = if (errorCodes.isEmpty()) ListingStatus.VERIFIED else ListingStatus.DRAFT,
                         errorCodes = errorCodes,
                         errorMessage = null,
@@ -67,12 +56,12 @@ class ListingVerifierService(
                 )
             }
         } catch (ex: Exception) {
-            LOGGER.warn("Listing#${toVerify.id} - Verification failed", ex)
-            val retries = (toVerify.retries ?: 0) + 1
+            LOGGER.warn("Listing#${listing.id} - Verification failed", ex)
+            val retries = (listing.retries ?: 0) + 1
             tx.execute {
                 dao.save(
-                    toVerify.copy(
-                        status = if (retries <= MAX_RETRIES) ListingStatus.PENDING_VERIFICATION else ListingStatus.DRAFT,
+                    listing.copy(
+                        status = if (retries <= MAX_RETRIES) ListingStatus.UNDER_VERIFICATION else ListingStatus.DRAFT,
                         retries = if (retries <= MAX_RETRIES) retries else 0,
                         errorCodes = listOf(ErrorCode.INTERNAL_ERROR),
                         errorMessage = ex.message,

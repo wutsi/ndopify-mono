@@ -40,3 +40,5 @@ chromedriver
 *.bak.html
 
 .impeccable/
+
+docs/reviews/

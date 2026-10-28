@@ -29,12 +29,12 @@ class ListingJobs(
     }
 
     /**
-     * Verifies the PENDING_VERIFICATION listings of each active tenant: sent for verification, or sent back after a
-     * failed verification to be retried.
+     * Verifies the UNDER_VERIFICATION listings of each active tenant: sent for verification, or left
+     * UNDER_VERIFICATION by a failed or interrupted attempt to be retried.
      */
     @Scheduled(cron = "\${ndopify.listing.verify.cron}")
     fun verify() {
-        run("verify", ListingStatus.PENDING_VERIFICATION) { listing -> verifierService.verify(listing) }
+        run("verify", ListingStatus.UNDER_VERIFICATION) { listing -> verifierService.verify(listing) }
     }
 
     /**
