@@ -6,7 +6,6 @@ enum class ListingStatus {
     PENDING_VERIFICATION,
     UNDER_VERIFICATION,
     VERIFIED,
-    REJECTED,
     PUBLISHING,
     PUBLISHED,
     PENDING,
