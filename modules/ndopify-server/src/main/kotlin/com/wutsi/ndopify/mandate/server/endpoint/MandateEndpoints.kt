@@ -4,7 +4,6 @@ import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.contract.dto.SearchContractRequest
 import com.wutsi.ndopify.contract.server.mapper.ContractMapper
 import com.wutsi.ndopify.contract.server.service.ContractService
-import com.wutsi.ndopify.listing.server.service.ListingService
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
 import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
@@ -41,7 +40,6 @@ class MandateEndpoints(
     private val mapper: MandateMapper,
     private val contractService: ContractService,
     private val contractMapper: ContractMapper,
-    private val listingService: ListingService,
 ) {
     @GetMapping
     fun search(@ModelAttribute request: SearchMandateRequest): SearchMandateResponse {
@@ -57,7 +55,7 @@ class MandateEndpoints(
     fun get(@PathVariable id: Long): GetMandateResponse {
         val mandate = service.findById(id)
         access.ensureCanRead(mandate)
-        return GetMandateResponse(mandate = mapper.toMandate(mandate, listingService.findIdByMandateId(id)))
+        return GetMandateResponse(mandate = mapper.toMandate(mandate))
     }
 
     @PostMapping

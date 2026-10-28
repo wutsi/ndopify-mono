@@ -247,8 +247,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   for an admin or the listing's agent (the mandate's, for create): 401 without a token, 403 `HTTP_ACCESS_DENIED`
   otherwise, after the 404 and before any 409, checked by the services. `ListingService.create` copies the mandate's
   property (404 `MANDATE_NOT_FOUND`, 409 `MANDATE_NOT_ASSIGNED` without agent, since the listing's agent is the
-  mandate's; 409 `LISTING_ALREADY_EXISTS`) and starts it as `DRAFT`. The mandate's `listingId` (`GET /v1/mandates/{id}`)
-  points to it. **Checklist**: an update saves *one* `ListingSection` (`LOCATION`, `GPS`, `PROPERTY`, `AMENITIES`,
+  mandate's; 409 `LISTING_ALREADY_EXISTS`) and starts it as `DRAFT`. A mandate's listing is found with
+  `GET /v1/listings?mandate-id=` (with the agent's own `agent-id` for a DRAFT): the `mandate` domain doesn't depend on
+  `listing`, so `Mandate` has no `listingId`. **Checklist**: an update saves *one* `ListingSection` (`LOCATION`, `GPS`, `PROPERTY`, `AMENITIES`,
   `TERMS`, `REMARKS`), only that section's fields, as sent (a null clears an optional field), and marks it
   `VERIFIED` (`ListingSectionService.verify`): a section counts only once the agent saved it, the landlord's answers
   alone don't. `PHOTOS` is never saved: it's `VERIFIED` once there are `MIN_PHOTOS` (5) photos and none `REJECTED`.

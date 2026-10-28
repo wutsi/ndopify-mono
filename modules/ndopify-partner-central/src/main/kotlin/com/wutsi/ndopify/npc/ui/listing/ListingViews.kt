@@ -255,15 +255,16 @@ object ListingViews {
 
     /**
      * The listing's line on the page of [mandate] (the prototype's `renderListing`); null for a mandate that has none
-     * to have: a search, or a landlord's not signed yet. [listing] is null before it's created, or when it can't be
-     * loaded (only the link is then shown). The photos aren't loaded here: what's left names the section only.
+     * to have: a search, or a landlord's not signed yet. [listingId] is null before it's created; [listing] is also
+     * null when it can't be loaded (only the link is then shown). The photos aren't loaded here: what's left names the
+     * section only.
      */
-    fun forMandate(mandate: Mandate, listing: Listing?, formatter: TenantFormatter): MandateListingView? {
+    fun forMandate(mandate: Mandate, listingId: Long?, listing: Listing?, formatter: TenantFormatter): MandateListingView? {
         if (mandate.mandateType != MandateType.LISTING || mandate.status != MandateStatus.APPROVED) return null
 
         val createUrl = "/mandates/${mandate.id}/listing"
-        val listingId = mandate.listingId
-            ?: return MandateListingView(
+        if (listingId == null) {
+            return MandateListingView(
                 url = null,
                 createUrl = createUrl,
                 text = "Visitez le bien pour vérifier ses caractéristiques et prendre les photos : " +
@@ -271,6 +272,7 @@ object ListingViews {
                 action = "Créer l'annonce",
                 primary = true,
             )
+        }
 
         val url = "/listings/$listingId"
         val draft = listing != null && ListingRules.editable(listing)

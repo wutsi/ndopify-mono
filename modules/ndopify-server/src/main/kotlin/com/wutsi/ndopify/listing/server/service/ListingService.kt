@@ -115,8 +115,6 @@ class ListingService(
             ?: throw NotFoundException(error = Error(code = ErrorCode.LISTING_NOT_FOUND))
     }
 
-    fun findIdByMandateId(mandateId: Long): Long? = dao.findIdByMandateId(mandateId)
-
     /**
      * Creates the DRAFT listing of a mandate, from its property: 404 MANDATE_NOT_FOUND, 403 HTTP_ACCESS_DENIED but for
      * an admin or the mandate's agent, 409 MANDATE_NOT_ASSIGNED for a

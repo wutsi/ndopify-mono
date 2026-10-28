@@ -60,6 +60,8 @@ class ListingControllerTest {
     fun setUp() {
         ProfileFixtures.mockLocations(locationClient, tenantContext)
         doReturn(AGENT).whenever(currentAgent).get()
+        // A Long? method of a mock answers 0, not null: no listing unless a test says so
+        doReturn(null).whenever(listingClient).findIdByMandate(any(), any())
         doReturn(LISTING).whenever(listingClient).get(501)
         doReturn(IMAGES).whenever(listingClient).images(501)
         doReturn(mandate).whenever(mandateClient).get(203)
@@ -280,22 +282,22 @@ class ListingControllerTest {
 
     @Test
     fun `create - already created`() {
-        doReturn(mandate.copy(listingId = 501)).whenever(mandateClient).get(203)
+        doThrow(conflict(ErrorCode.LISTING_ALREADY_EXISTS)).whenever(listingClient).create(203)
+        doReturn(501L).whenever(listingClient).findIdByMandate(203, AGENT.id)
 
         val result = mvc.perform(post("/mandates/203/listing")).andReturn()
 
-        verify(listingClient, never()).create(any())
         assertEquals("redirect:/listings/501", result.modelAndView?.viewName)
     }
 
     @Test
-    fun `create - created meanwhile`() {
-        doReturn(mandate).doReturn(mandate.copy(listingId = 501)).whenever(mandateClient).get(203)
+    fun `create - already created, not found`() {
         doThrow(conflict(ErrorCode.LISTING_ALREADY_EXISTS)).whenever(listingClient).create(203)
 
         val result = mvc.perform(post("/mandates/203/listing")).andReturn()
 
-        assertEquals("redirect:/listings/501", result.modelAndView?.viewName)
+        assertEquals("redirect:/mandates/203", result.modelAndView?.viewName)
+        assertEquals(MandateController.CHANGED, result.flashMap[MandateController.OUTCOME])
     }
 
     @Test

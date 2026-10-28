@@ -11,7 +11,6 @@ import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
-import com.wutsi.ndopify.mandate.dto.GetMandateResponse
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.http.HttpStatus
@@ -137,14 +136,6 @@ class GetListingEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(ListingStatus.DRAFT, response.body!!.listing.status)
-    }
-
-    @Test
-    fun `mandate - has its listing id`() {
-        val response = rest.getForEntity("/v1/mandates/1", GetMandateResponse::class.java)
-
-        assertEquals(HttpStatus.OK, response.statusCode)
-        assertEquals(100L, response.body!!.mandate.listingId)
     }
 
     @Test

@@ -6,6 +6,7 @@ import com.wutsi.ndopify.listing.dto.GetListingResponse
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.SearchListingImageResponse
+import com.wutsi.ndopify.listing.dto.SearchListingResponse
 import com.wutsi.ndopify.listing.dto.UpdateListingRequest
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.ByteArrayResource
@@ -48,6 +49,19 @@ class NdListingClient(
             .body<GetListingResponse>()
             ?.listing
             ?: Listing()
+
+    /**
+     * The id of the listing of [mandateId], null before it's created. [agentId] must be the signed-in agent's: without
+     * it, ndopify-server only searches the PUBLISHED listings.
+     */
+    fun findIdByMandate(mandateId: Long, agentId: Long): Long? =
+        rest.get()
+            .uri("/v1/listings?mandate-id={mandateId}&agent-id={agentId}&limit=1", mandateId, agentId)
+            .retrieve()
+            .body<SearchListingResponse>()
+            ?.listings
+            ?.firstOrNull()
+            ?.id
 
     /** Sends a DRAFT listing to be checked (UNDER_VERIFICATION). */
     fun verify(id: Long) {

@@ -120,8 +120,8 @@ class ListingController(
     }
 
     /**
-     * Opens the listing of an approved LISTING mandate of the agent, creating it the first time. One created meanwhile
-     * (ndopify-server's 409 LISTING_ALREADY_EXISTS, ex: from another tab) is opened instead. A hand-edited [id] goes
+     * Creates the listing of an approved LISTING mandate of the agent, and opens it. One that exists already
+     * (ndopify-server's 409 LISTING_ALREADY_EXISTS, ex: created from another tab) is opened instead. A hand-edited [id] goes
      * back to the Espace agent.
      */
     @PostMapping("/mandates/{id}/listing")
@@ -135,7 +135,7 @@ class ListingController(
                 if (!listable(mandate, agent)) {
                     MandateController.CHANGED
                 } else {
-                    val listingId = mandate.listingId ?: listingClient.create(id)
+                    val listingId = listingClient.create(id)
                     // No id in ndopify-server's answer: nothing to open
                     if (listingId > 0) return "redirect:/listings/$listingId"
                     LOGGER.error("No listing id returned for mandate $id")
@@ -144,7 +144,7 @@ class ListingController(
             } catch (ex: HttpClientErrorException) {
                 LOGGER.warn("No listing created for mandate $id: ${ex.statusCode}")
                 if (errorCode(ex) == ErrorCode.LISTING_ALREADY_EXISTS) {
-                    lookup("listing of mandate $id") { mandateClient.get(id).listingId }
+                    lookup("listing of mandate $id") { listingClient.findIdByMandate(id, agent.id) }
                         ?.let { listingId -> return "redirect:/listings/$listingId" }
                 }
                 if (ex.statusCode.value() in CHANGED_STATUSES) MandateController.CHANGED else MandateController.FAILED

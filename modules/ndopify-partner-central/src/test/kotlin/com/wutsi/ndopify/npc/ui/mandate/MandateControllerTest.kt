@@ -77,6 +77,8 @@ class MandateControllerTest {
     fun setUp() {
         ProfileFixtures.mockLocations(locationClient, tenantContext)
         doReturn(AGENT).whenever(currentAgent).get()
+        // A Long? method of a mock answers 0, not null: no listing unless a test says so
+        doReturn(null).whenever(listingClient).findIdByMandate(any(), any())
         doReturn(NOW).whenever(clock).millis()
         doReturn(PENDING).whenever(mandateClient).get(201)
         doReturn(CONTRACT).whenever(contractClient).get("c-201")
@@ -122,7 +124,8 @@ class MandateControllerTest {
 
     @Test
     fun `approved landlord - listing`() {
-        doReturn(APPROVED.copy(mandateType = MandateType.LISTING, listingId = 501)).whenever(mandateClient).get(201)
+        doReturn(APPROVED.copy(mandateType = MandateType.LISTING)).whenever(mandateClient).get(201)
+        doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
         doReturn(ListingViewsTest.LISTING).whenever(listingClient).get(501)
 
         val view = model(mvc.perform(get("/mandates/201")).andReturn())["mandateListing"] as MandateListingView
@@ -133,7 +136,8 @@ class MandateControllerTest {
 
     @Test
     fun `approved landlord - listing unavailable`() {
-        doReturn(APPROVED.copy(mandateType = MandateType.LISTING, listingId = 501)).whenever(mandateClient).get(201)
+        doReturn(APPROVED.copy(mandateType = MandateType.LISTING)).whenever(mandateClient).get(201)
+        doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
         doThrow(ResourceAccessException("down")).whenever(listingClient).get(501)
 
         val view = model(mvc.perform(get("/mandates/201")).andReturn())["mandateListing"] as MandateListingView
@@ -143,10 +147,32 @@ class MandateControllerTest {
     }
 
     @Test
+    fun `approved landlord - no listing yet`() {
+        doReturn(APPROVED.copy(mandateType = MandateType.LISTING)).whenever(mandateClient).get(201)
+
+        val view = model(mvc.perform(get("/mandates/201")).andReturn())["mandateListing"] as MandateListingView
+
+        assertNull(view.url)
+        assertEquals("Créer l'annonce", view.action)
+        verify(listingClient, never()).get(any())
+    }
+
+    @Test
+    fun `approved landlord - listing search unavailable`() {
+        doReturn(APPROVED.copy(mandateType = MandateType.LISTING)).whenever(mandateClient).get(201)
+        doThrow(ResourceAccessException("down")).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
+
+        val view = model(mvc.perform(get("/mandates/201")).andReturn())["mandateListing"] as MandateListingView
+
+        assertEquals("Créer l'annonce", view.action)
+    }
+
+    @Test
     fun `approved search - no listing`() {
         doReturn(APPROVED).whenever(mandateClient).get(201)
 
         assertNull(model(mvc.perform(get("/mandates/201")).andReturn())["mandateListing"])
+        verify(listingClient, never()).findIdByMandate(any(), any())
         verify(listingClient, never()).get(any())
     }
 

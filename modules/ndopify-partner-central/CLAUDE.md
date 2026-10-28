@@ -166,10 +166,11 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `templates/error/403.html` / `404.html` (also used for unknown URLs). These pages have no account menu: the signed-in
   agent isn't known in Spring Boot's error controller.
 - A landlord's signed mandate (APPROVED, LISTING) has a listing: the mandate page's *Actif* panel shows its line
-  (`ListingViews.forMandate` → `MandateListingView`, the listing loaded by `MandateController`, a failure leaving only
-  the link): "Créer l'annonce" posts `POST /mandates/{id}/listing` (`ListingController.create` → `NdListingClient` →
-  `POST /v1/listings`, a DRAFT pre-filled from the landlord's answers; one that exists, or 409
-  `LISTING_ALREADY_EXISTS`, is opened instead), then where it stands and "Continuer / Voir l'annonce". The listing
+  (`ListingViews.forMandate` → `MandateListingView`, the listing found by `MandateController` with
+  `NdListingClient.findIdByMandate`, `GET /v1/listings?mandate-id=&agent-id=`, the agent's own id or its DRAFT isn't
+  returned; a failure to load it leaves only the link): "Créer l'annonce" posts `POST /mandates/{id}/listing`
+  (`ListingController.create` → `NdListingClient` → `POST /v1/listings`, a DRAFT pre-filled from the landlord's
+  answers; on 409 `LISTING_ALREADY_EXISTS`, ex: from another tab, the existing one is opened instead), then where it stands and "Continuer / Voir l'annonce". The listing
   page, `GET /listings/{id}` (`templates/listing.html`, `ListingViews` → `ListingView`), is the checklist of the visit:
   one row per `ListingSection` (`ListingRules.SECTIONS`, linking to its page),
   each section done once ndopify-server's checklist says so (`Listing.sections`, `ListingRules.done`), which also

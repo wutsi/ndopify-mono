@@ -310,7 +310,11 @@ class MandateController(
         model.addAttribute("form", form)
         model.addAttribute("errors", errors)
         model.addAttribute("currency", formatter().currency())
-        model.addAttribute("mandateListing", ListingViews.forMandate(mandate, listing(mandate), formatter()))
+        val listingId = listingId(mandate)
+        model.addAttribute(
+            "mandateListing",
+            ListingViews.forMandate(mandate, listingId, listingId?.let { listing(mandate, it) }, formatter()),
+        )
         (model.getAttribute(OUTCOME) as? String)?.let { outcome -> outcome(outcome, view, model) }
         return VIEW
     }
@@ -439,12 +443,19 @@ class MandateController(
         return lookup("contract $id of mandate ${mandate.id}") { contractClient.get(id) }
     }
 
-    /** A landlord's signed mandate only: its listing, null before it's created or when it can't be loaded. */
-    private fun listing(mandate: Mandate): Listing? {
+    /**
+     * A landlord's signed mandate only: the id of its listing, null before it's created or when it can't be searched.
+     * The mandate's agent is the signed-in one (ndopify-server refuses another's mandate), so its DRAFT is found.
+     */
+    private fun listingId(mandate: Mandate): Long? {
         if (mandate.mandateType != MandateType.LISTING || mandate.status != MandateStatus.APPROVED) return null
-        val id = mandate.listingId ?: return null
-        return lookup("listing $id of mandate ${mandate.id}") { listingClient.get(id) }
+        val agentId = mandate.agentId ?: return null
+        return lookup("listing of mandate ${mandate.id}") { listingClient.findIdByMandate(mandate.id, agentId) }
     }
+
+    /** Null when it can't be loaded. */
+    private fun listing(mandate: Mandate, id: Long): Listing? =
+        lookup("listing $id of mandate ${mandate.id}") { listingClient.get(id) }
 
     private fun customer(mandate: Mandate): Customer? =
         lookup("customer ${mandate.customerId} of mandate ${mandate.id}") { customerClient.get(mandate.customerId) }

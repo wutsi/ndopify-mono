@@ -15,7 +15,6 @@ data class Mandate(
     val customerId: Long = -1,
     val agentId: Long? = null,
     val contractId: String? = null,
-    val listingId: Long? = null,
 
     val propertyCategory: PropertyCategory = PropertyCategory.UNKNOWN,
     val status: MandateStatus = MandateStatus.UNKNOWN,

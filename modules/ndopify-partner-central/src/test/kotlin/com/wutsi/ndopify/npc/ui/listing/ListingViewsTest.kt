@@ -77,7 +77,6 @@ class ListingViewsTest {
         val MANDATE = Mandate(
             id = 203,
             agentId = ProfileFixtures.AGENT.id,
-            listingId = 501,
             status = MandateStatus.APPROVED,
             mandateType = MandateType.LISTING,
             propertyCategory = PropertyCategory.RESIDENTIAL,
@@ -490,7 +489,7 @@ class ListingViewsTest {
 
     @Test
     fun `mandate - no listing yet`() {
-        val view = ListingViews.forMandate(approved, null, formatter)!!
+        val view = ListingViews.forMandate(approved, null, null, formatter)!!
 
         assertNull(view.url)
         assertEquals("/mandates/203/listing", view.createUrl)
@@ -505,7 +504,7 @@ class ListingViewsTest {
 
     @Test
     fun `mandate - draft`() {
-        val view = ListingViews.forMandate(approved.copy(listingId = 501), LISTING, formatter)!!
+        val view = ListingViews.forMandate(approved, 501, LISTING, formatter)!!
 
         assertEquals("/listings/501", view.url)
         assertEquals("Continuer l'annonce", view.action)
@@ -519,7 +518,7 @@ class ListingViewsTest {
 
     @Test
     fun `mandate - draft ready`() {
-        val view = ListingViews.forMandate(approved.copy(listingId = 501), COMPLETE, formatter)!!
+        val view = ListingViews.forMandate(approved, 501, COMPLETE, formatter)!!
 
         assertEquals("Annonce en brouillon : prête à être envoyée.", view.text)
     }
@@ -527,7 +526,7 @@ class ListingViewsTest {
     @Test
     fun `mandate - sent`() {
         val listing = COMPLETE.copy(status = ListingStatus.UNDER_VERIFICATION, modifiedAt = SENT)
-        val view = ListingViews.forMandate(approved.copy(listingId = 501), listing, formatter)!!
+        val view = ListingViews.forMandate(approved, 501, listing, formatter)!!
 
         assertEquals("Annonce envoyée le 22 oct. 2026, en vérification.", view.text)
         assertEquals("Voir l'annonce", view.action)
@@ -537,7 +536,7 @@ class ListingViewsTest {
     @Test
     fun `mandate - sent back`() {
         val listing = COMPLETE.copy(status = ListingStatus.DRAFT, errorCodes = listOf(ErrorCode.LISTING_MISSING_LAT_LONG))
-        val view = ListingViews.forMandate(approved.copy(listingId = 501), listing, formatter)!!
+        val view = ListingViews.forMandate(approved, 501, listing, formatter)!!
 
         assertEquals("Annonce à corriger : voyez les points signalés.", view.text)
         assertEquals("Corriger l'annonce", view.action)
@@ -547,7 +546,7 @@ class ListingViewsTest {
     @Test
     fun `mandate - published`() {
         val listing = COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT)
-        val view = ListingViews.forMandate(approved.copy(listingId = 501), listing, formatter)!!
+        val view = ListingViews.forMandate(approved, 501, listing, formatter)!!
 
         assertEquals("Annonce publiée le 22 oct. 2026.", view.text)
         assertEquals("Voir l'annonce", view.action)
@@ -555,7 +554,7 @@ class ListingViewsTest {
 
     @Test
     fun `mandate - listing unavailable`() {
-        val view = ListingViews.forMandate(approved.copy(listingId = 501), null, formatter)!!
+        val view = ListingViews.forMandate(approved, 501, null, formatter)!!
 
         assertEquals("/listings/501", view.url)
         assertNull(view.text)
@@ -565,7 +564,7 @@ class ListingViewsTest {
 
     @Test
     fun `mandate - none for a search or before approval`() {
-        assertNull(ListingViews.forMandate(approved.copy(mandateType = MandateType.SEARCH), null, formatter))
-        assertNull(ListingViews.forMandate(approved.copy(status = MandateStatus.PENDING_APPROVAL), null, formatter))
+        assertNull(ListingViews.forMandate(approved.copy(mandateType = MandateType.SEARCH), null, null, formatter))
+        assertNull(ListingViews.forMandate(approved.copy(status = MandateStatus.PENDING_APPROVAL), null, null, formatter))
     }
 }

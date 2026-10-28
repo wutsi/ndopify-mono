@@ -73,6 +73,8 @@ class MandateTemplateTest {
         SignedInAdviceTest.signIn()
         ProfileFixtures.mockLocations(locationClient, tenantContext)
         doReturn(AGENT).whenever(currentAgent).get()
+        // A Long? method of a mock answers 0, not null: no listing unless a test says so
+        doReturn(null).whenever(listingClient).findIdByMandate(any(), any())
         doReturn(NOW).whenever(clock).millis()
         doReturn(PENDING).whenever(mandateClient).get(201)
         doReturn(CONTRACT).whenever(contractClient).get("c-201")
@@ -242,9 +244,10 @@ class MandateTemplateTest {
 
     @Test
     fun `approved - landlord with listing`() {
+        doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
         doReturn(ListingViewsTest.LISTING).whenever(listingClient).get(501)
 
-        val page = render(APPROVED.copy(mandateType = MandateType.LISTING, listingId = 501))
+        val page = render(APPROVED.copy(mandateType = MandateType.LISTING))
 
         val box = page.selectFirst("[data-listing-actions]")!!
         val link = box.selectFirst("a[data-listing-link]")!!

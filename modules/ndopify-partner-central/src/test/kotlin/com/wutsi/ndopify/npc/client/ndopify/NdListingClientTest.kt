@@ -6,7 +6,9 @@ import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingSection
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.listing.dto.SearchListingImageResponse
+import com.wutsi.ndopify.listing.dto.SearchListingResponse
 import com.wutsi.ndopify.listing.dto.UpdateListingRequest
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.BeforeEach
@@ -25,6 +27,7 @@ import org.springframework.web.client.RestClient
 import tools.jackson.databind.json.JsonMapper
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 
 class NdListingClientTest {
     private lateinit var server: MockRestServiceServer
@@ -79,6 +82,29 @@ class NdListingClientTest {
         assertEquals(ListingStatus.UNDER_VERIFICATION, listing.status)
         assertEquals(3L, listing.version)
         server.verify()
+    }
+
+    @Test
+    fun findIdByMandate() {
+        server.expect(requestTo("http://localhost:8080/v1/listings?mandate-id=203&agent-id=20&limit=1"))
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(
+                withSuccess(
+                    json(SearchListingResponse(listOf(ListingSummary(id = 501, mandateId = 203)))),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        assertEquals(501L, client.findIdByMandate(203, 20))
+        server.verify()
+    }
+
+    @Test
+    fun `findIdByMandate - none`() {
+        server.expect(requestTo("http://localhost:8080/v1/listings?mandate-id=203&agent-id=20&limit=1"))
+            .andRespond(withSuccess(json(SearchListingResponse()), MediaType.APPLICATION_JSON))
+
+        assertNull(client.findIdByMandate(203, 20))
     }
 
     @Test

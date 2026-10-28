@@ -94,6 +94,12 @@ class ListingAccessEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `agent finds the draft listing of its mandate`() {
+        assertEquals(listOf(101L), search("mandate-id=2&agent-id=20&limit=1"))
+        assertEquals(emptyList(), search("mandate-id=2"))
+    }
+
+    @Test
     fun `agent searches the published listings only, without its own agent-id`() {
         assertEquals(listOf(100L), search())
         assertEquals(listOf(100L), search("status=DRAFT"))
