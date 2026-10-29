@@ -138,7 +138,7 @@ class HomeTemplateTest {
         assertFalse(card.selectFirst("[data-actions]")!!.hasAttr("hidden"))
         assertTrue(card.selectFirst("[data-decline-confirm]")!!.hasAttr("hidden"))
         assertEquals(8, card.select(".review__item").size)
-        assertEquals("Gardien", card.select(".review__item").last()?.selectFirst(".review__value")?.text())
+        assertEquals("Gardien de sécurité", card.select(".review__item").last()?.selectFirst(".review__value")?.text())
         assertFalse(page.text().contains("677")) // the mandate's comments
         assertTrue(page.selectFirst("[data-assignments-empty]")!!.hasAttr("hidden"))
         assertNull(page.selectFirst("[data-assignments-unavailable]"))
@@ -178,7 +178,8 @@ class HomeTemplateTest {
 
     @Test
     fun `not verified - no section`() {
-        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING_VERIFICATION))).whenever(currentAgent).get()
+        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING_VERIFICATION))).whenever(currentAgent)
+            .get()
         doThrow(ResourceAccessException("no case")).whenever(kycClient).current(any())
 
         val page = render(get("/"))
@@ -217,7 +218,9 @@ class HomeTemplateTest {
         assertEquals("mandate-201-title", card.selectFirst("article")?.attr("aria-labelledby"))
         assertEquals("status-tag status-tag--info", card.selectFirst(".status-tag")?.className())
         assertEquals("Assigné", card.selectFirst(".status-tag")?.text())
-        assertEquals(listOf("Secteurs", "Budget", "Emménagement"), card.select(".assignment__facts dt").map { it.text() })
+        assertEquals(
+            listOf("Secteurs", "Budget", "Emménagement"),
+            card.select(".assignment__facts dt").map { it.text() })
         assertEquals("Bonapriso, Akwa", card.selectFirst(".assignment__facts dd")?.text())
         assertEquals("Prochaine étape\u00a0:", card.selectFirst(".mandate-card__next strong")?.wholeText())
         assertEquals(
@@ -260,7 +263,8 @@ class HomeTemplateTest {
 
     @Test
     fun `not verified - no mandates section`() {
-        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING_VERIFICATION))).whenever(currentAgent).get()
+        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING_VERIFICATION))).whenever(currentAgent)
+            .get()
         doThrow(ResourceAccessException("no case")).whenever(kycClient).current(any())
 
         assertNull(render(get("/")).selectFirst("#mandates-title"))

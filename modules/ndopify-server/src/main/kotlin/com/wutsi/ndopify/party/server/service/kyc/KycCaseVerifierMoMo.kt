@@ -13,6 +13,7 @@ import com.wutsi.ndopify.platform.logger.KVLogger
 import com.wutsi.ndopify.platform.momo.MoMoGatewayProvider
 import com.wutsi.ndopify.platform.momo.model.MoMoKycMatchRequest
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.time.Clock
 import java.util.Date
@@ -25,6 +26,10 @@ class KycCaseVerifierMoMo(
     private val gatewayProvider: MoMoGatewayProvider,
     logger: KVLogger,
 ) : AbstractKycCaseVerifier(logger) {
+    companion object {
+        private val LOGGER = LoggerFactory.getLogger(KycCaseVerifierMoMo::class.java)
+    }
+
     override fun getVerificationType(): KycVerificationType = KycVerificationType.PAYMENT_METHOD
 
     override fun verify(case: KycCaseEntity): List<KycVerificationEntity> {
@@ -56,6 +61,7 @@ class KycCaseVerifierMoMo(
     }
 
     private fun verify(paymentMethod: PaymentMethodEntity, case: KycCaseEntity): KycVerificationEntity {
+        LOGGER.info(">>> KycCase#${case.id} - verifying mobile money ${paymentMethod.number}")
         val now = Date(clock.millis())
         val verification = KycVerificationEntity(
             id = UUID.randomUUID().toString(),

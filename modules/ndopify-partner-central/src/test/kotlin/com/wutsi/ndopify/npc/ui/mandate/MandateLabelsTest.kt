@@ -48,7 +48,10 @@ class MandateLabelsTest {
     fun price() {
         assertEquals(
             "150\u00a0000\u00a0FCFA par mois",
-            MandateLabels.price(Money(amount = 150000, currency = "XAF", periodicity = PeriodicityType.MONTHLY), FORMATTER),
+            MandateLabels.price(
+                Money(amount = 150000, currency = "XAF", periodicity = PeriodicityType.MONTHLY),
+                FORMATTER
+            ),
         )
         assertEquals("2\u00a0500,00\u00a0CAD", MandateLabels.price(Money(amount = 2500, currency = "CAD"), FORMATTER))
     }
@@ -58,7 +61,7 @@ class MandateLabelsTest {
         val mandate = Mandate(waterMeter = true, waterWell = true, securityGuard = true)
 
         assertEquals(
-            listOf("Accès à l'eau" to "Compteur d'eau, Forage", "Sécurité" to "Gardien"),
+            listOf("Accès à l'eau" to "Compteur d'eau, Forage", "Sécurité" to "Gardien de sécurité"),
             MandateLabels.amenityGroups(mandate),
         )
         assertEquals(emptyList(), MandateLabels.amenityGroups(Mandate()))
@@ -89,8 +92,14 @@ class MandateLabelsTest {
 
     @Test
     fun rent() {
-        assertEquals("150\u00a0000\u00a0FCFA / mois", MandateLabels.rent(Money(150000, "XAF", PeriodicityType.MONTHLY), FORMATTER))
-        assertEquals("152\u00a0500\u00a0FCFA / mois", MandateLabels.rent(Money(152500, "XAF", PeriodicityType.MONTHLY), FORMATTER))
+        assertEquals(
+            "150\u00a0000\u00a0FCFA / mois",
+            MandateLabels.rent(Money(150000, "XAF", PeriodicityType.MONTHLY), FORMATTER)
+        )
+        assertEquals(
+            "152\u00a0500\u00a0FCFA / mois",
+            MandateLabels.rent(Money(152500, "XAF", PeriodicityType.MONTHLY), FORMATTER)
+        )
     }
 
     @Test
@@ -155,7 +164,12 @@ class MandateLabelsTest {
 
     @Test
     fun `criteria - landlord, availability date`() {
-        val with = Mandate(mandateType = MandateType.LISTING, cityId = 1, availableFrom = LocalDate.of(2026, 11, 3), movingPeriod = MovingPeriod.AFTER_3_MONTHS)
+        val with = Mandate(
+            mandateType = MandateType.LISTING,
+            cityId = 1,
+            availableFrom = LocalDate.of(2026, 11, 3),
+            movingPeriod = MovingPeriod.AFTER_3_MONTHS
+        )
         val without = with.copy(availableFrom = null)
 
         assertEquals("Disponibilité" to "Dès le 03 nov. 2026", MandateLabels.criteria(with, LOCATIONS, FORMATTER)[2])
@@ -164,7 +178,12 @@ class MandateLabelsTest {
 
     @Test
     fun `criteria - client ignores the availability date`() {
-        val mandate = Mandate(mandateType = MandateType.SEARCH, cityId = 1, availableFrom = LocalDate.of(2026, 11, 3), movingPeriod = MovingPeriod.AFTER_3_MONTHS)
+        val mandate = Mandate(
+            mandateType = MandateType.SEARCH,
+            cityId = 1,
+            availableFrom = LocalDate.of(2026, 11, 3),
+            movingPeriod = MovingPeriod.AFTER_3_MONTHS
+        )
 
         assertEquals("Emménagement" to "Dans plus de 3 mois", MandateLabels.criteria(mandate, LOCATIONS, FORMATTER)[2])
     }

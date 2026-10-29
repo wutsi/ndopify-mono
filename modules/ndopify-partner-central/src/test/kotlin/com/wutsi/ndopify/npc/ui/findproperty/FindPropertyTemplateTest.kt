@@ -279,7 +279,7 @@ class FindPropertyTemplateTest {
             "Appartement · 3 chambres · Meublé ou non · 1 place de parking · 80 m² minimum",
             value(page, "property"),
         )
-        assertEquals("Compteur d'eau, Gardien", value(page, "amenities"))
+        assertEquals("Compteur d'eau, Gardien de sécurité", value(page, "amenities"))
         assertEquals("150\u00a0000\u00a0FCFA par mois", value(page, "price"))
         assertEquals("Dans moins d'1 mois", value(page, "movingPeriod"))
         assertTrue(value(page, "contact").contains("Ray Sponsible"))

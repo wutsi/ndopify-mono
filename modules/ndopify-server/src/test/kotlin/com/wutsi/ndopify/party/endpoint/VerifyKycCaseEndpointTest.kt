@@ -323,7 +323,7 @@ class VerifyKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertCase(KycStatus.SUBMITTED, null, errorCode = KycErrorCode.GATEWAY_ERROR)
-        assertRetry(1, "Gateway down")
+        assertRetry(1, "java.lang.RuntimeException: Gateway down")
         assertPartyKycStatus(KycStatus.PENDING_VERIFICATION)
         assertPaymentMethodStatus(PaymentMethodStatus.PENDING_VERIFICATION)
 
@@ -368,7 +368,7 @@ class VerifyKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertCase(KycStatus.SUBMITTED, null, "kyc-case-retried", KycErrorCode.GATEWAY_ERROR)
-        assertRetry(2, "Gateway down", "kyc-case-retried")
+        assertRetry(2, "java.lang.RuntimeException: Gateway down", "kyc-case-retried")
     }
 
     @Test
@@ -379,7 +379,7 @@ class VerifyKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertCase(KycStatus.REQUIRES_MANUAL_VERIFICATION, null, "kyc-case-last-retry", KycErrorCode.GATEWAY_ERROR)
-        assertRetry(3, "Gateway down", "kyc-case-last-retry")
+        assertRetry(3, "Gateway down", "java.lang.RuntimeException: kyc-case-last-retry")
         assertPartyKycStatus(KycStatus.PENDING_VERIFICATION)
     }
 
