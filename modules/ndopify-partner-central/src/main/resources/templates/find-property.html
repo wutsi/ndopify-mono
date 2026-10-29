@@ -92,13 +92,13 @@
                                 <input name="propertyCategory" required
                                        th:checked="${#strings.equals(answers.propertyCategory, 'RESIDENTIAL')}"
                                        type="radio" value="RESIDENTIAL">
-                                <span>Résidentiel <span class="choice__detail">Pour y habiter&nbsp;: chambre,
+                                <span><th:block th:text="${categoryLabels['RESIDENTIAL']}">Résidentiel</th:block> <span class="choice__detail">Pour y habiter&nbsp;: chambre,
                                     studio, appartement, maison…</span></span></label>
                             <label class="choice choice--described">
                                 <input name="propertyCategory" required
                                        th:checked="${#strings.equals(answers.propertyCategory, 'COMMERCIAL')}"
                                        type="radio" value="COMMERCIAL">
-                                <span>Commercial <span class="choice__detail">Pour une activité&nbsp;: boutique,
+                                <span><th:block th:text="${categoryLabels['COMMERCIAL']}">Commercial</th:block> <span class="choice__detail">Pour une activité&nbsp;: boutique,
                                     bureau, entrepôt…</span></span></label>
                         </div>
                         <p th:replace="~{:: error('propertyCategory')}"></p>
@@ -217,10 +217,10 @@
                         <div class="choices__grid">
                             <label class="choice"><input name="furnitureType"
                                                          th:checked="${answers.furnitureType == 'FULLY_FURNISHED'}"
-                                                         type="radio" value="FULLY_FURNISHED"> Meublé</label>
+                                                         type="radio" value="FULLY_FURNISHED"> <th:block th:text="${furnitureLabels['FULLY_FURNISHED']}">Meublé</th:block></label>
                             <label class="choice"><input name="furnitureType"
                                                          th:checked="${answers.furnitureType == 'UNFURNISHED'}"
-                                                         type="radio" value="UNFURNISHED"> Non meublé</label>
+                                                         type="radio" value="UNFURNISHED"> <th:block th:text="${furnitureLabels['UNFURNISHED']}">Non meublé</th:block></label>
                             <label class="choice"><input name="furnitureType"
                                                          th:checked="${answers.furnitureType == 'ANY'}"
                                                          type="radio" value="ANY"> Indifférent</label>
@@ -364,16 +364,13 @@
                         <div class="choices__grid">
                             <label class="choice"><input name="movingPeriod" required
                                                          th:checked="${#strings.equals(answers.movingPeriod, 'WITHIN_1_MONTH')}"
-                                                         type="radio" value="WITHIN_1_MONTH"> Dans moins
-                                d'1&nbsp;mois</label>
+                                                         type="radio" value="WITHIN_1_MONTH"> <th:block th:text="${movingPeriodLabels['WITHIN_1_MONTH']}">Dans moins d'1&nbsp;mois</th:block></label>
                             <label class="choice"><input name="movingPeriod" required
                                                          th:checked="${#strings.equals(answers.movingPeriod, 'WITHIN_3_MONTHS')}"
-                                                         type="radio" value="WITHIN_3_MONTHS"> Dans 1 à
-                                3&nbsp;mois</label>
+                                                         type="radio" value="WITHIN_3_MONTHS"> <th:block th:text="${movingPeriodLabels['WITHIN_3_MONTHS']}">Dans 1 à 3&nbsp;mois</th:block></label>
                             <label class="choice"><input name="movingPeriod" required
                                                          th:checked="${#strings.equals(answers.movingPeriod, 'AFTER_3_MONTHS')}"
-                                                         type="radio" value="AFTER_3_MONTHS"> Dans plus de
-                                3&nbsp;mois</label>
+                                                         type="radio" value="AFTER_3_MONTHS"> <th:block th:text="${movingPeriodLabels['AFTER_3_MONTHS']}">Dans plus de 3&nbsp;mois</th:block></label>
                         </div>
                         <p th:replace="~{:: error('movingPeriod')}"></p>
                     </fieldset>

@@ -303,6 +303,11 @@ class ListingService(
     fun publish(id: Long): ListingEntity {
         val listing = findById(id)
         accessService.ensureCanUpdate(listing)
+        return publish(listing)
+    }
+
+    @Transactional
+    fun publish(listing: ListingEntity): ListingEntity {
         if (listing.status != ListingStatus.VERIFIED) {
             throw ConflictException(Error(ErrorCode.LISTING_NOT_VERIFIED))
         }

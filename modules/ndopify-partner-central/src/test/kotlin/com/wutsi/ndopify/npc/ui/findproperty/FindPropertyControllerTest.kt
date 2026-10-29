@@ -170,7 +170,7 @@ class FindPropertyControllerTest {
             model(result)["propertyLabel"],
         )
         assertEquals("150\u00a0000\u00a0FCFA par mois", model(result)["priceLabel"])
-        assertEquals("Dans moins d'1 mois", model(result)["movingPeriodLabel"])
+        assertEquals("Dans moins d'1\u00a0mois", model(result)["movingPeriodLabel"])
         assertEquals("le soir", model(result)["contactPeriodLabel"])
         assertEquals(listOf("Compteur d'eau", "Gardien de sécurité"), model(result)["amenityLabels"])
         assertEquals(listOf("Bastos", "Essos"), names(model(result)["neighborhoods"]))

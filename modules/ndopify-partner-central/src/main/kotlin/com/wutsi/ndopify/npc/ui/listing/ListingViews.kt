@@ -26,12 +26,6 @@ import java.util.Locale
 object ListingViews {
     private val ROAD_ACCESS = ListingRules.ROAD_ACCESS
 
-    // The prototype's LISTING_FURNITURE_LABELS
-    private val FURNITURE_LABELS = mapOf(
-        FurnitureType.FULLY_FURNISHED to "Meublé",
-        FurnitureType.UNFURNISHED to "Non meublé",
-    )
-
     private val VERIFIED = ListingRules.Tag("Vérifié", "success")
     private val TO_VERIFY = ListingRules.Tag("À vérifier", "warning")
     private val TO_COMPLETE = ListingRules.Tag("À compléter", "warning")
@@ -199,7 +193,7 @@ object ListingViews {
             if (form.propertyType != type.name) owner["propertyType"] = MandateLabels.PROPERTY_TYPE_LABELS[type]
         }
         mandate.furnitureType?.takeIf { it != FurnitureType.UNKNOWN }?.let { furniture ->
-            if (form.furnitureType != furniture.name) owner["furnitureType"] = FURNITURE_LABELS[furniture]
+            if (form.furnitureType != furniture.name) owner["furnitureType"] = MandateLabels.FURNITURE_TYPE_LABELS[furniture]
         }
         // "2", or "3+" for 3 or more: shown as the landlord answered it
         mapOf("rooms" to (mandate.rooms to form.rooms), "parkings" to (mandate.parkings to form.parkings))

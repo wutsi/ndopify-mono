@@ -2,6 +2,8 @@ package com.wutsi.ndopify.npc.ui.join
 
 import com.wutsi.ndopify.agent.dto.AgentType
 import com.wutsi.ndopify.agent.dto.ExperienceLevel
+import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
+import org.springframework.ui.Model
 
 /**
  * Field rules of the "Rejoindre Ndopify" wizard, shared by [JoinController] (to validate what a step posts) and
@@ -9,6 +11,24 @@ import com.wutsi.ndopify.agent.dto.ExperienceLevel
  * Messages are the ones of the `rejoindre.js` prototype.
  */
 object JoinRules {
+    val EXPERIENCE_LABELS: Map<ExperienceLevel, String> = linkedMapOf(
+        ExperienceLevel.NOVICE to "Moins d'un an",
+        ExperienceLevel.JUNIOR to "1 à 3 ans",
+        ExperienceLevel.INTERMEDIATE to "3 à 5 ans",
+        ExperienceLevel.SENIOR to "Plus de 5 ans",
+    )
+
+    val AGENT_TYPE_LABELS: Map<AgentType, String> = linkedMapOf(
+        AgentType.INDEPENDANT to "Indépendant",
+        AgentType.REAL_ESTATE_AGENT to "Rattaché à une agence immobilière",
+    )
+
+    /** The radios' labels of the experience and agent type, shared by the join wizard and the profile page. */
+    fun addLabels(model: Model) {
+        model.addAttribute("experienceLabels", MandateLabels.byName(EXPERIENCE_LABELS))
+        model.addAttribute("agentTypeLabels", MandateLabels.byName(AGENT_TYPE_LABELS))
+    }
+
     const val MAX_NEIGHBORHOODS = 3
 
     private val NAME = Regex("^\\p{L}[\\p{L}' .-]*$")

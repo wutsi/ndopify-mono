@@ -191,16 +191,16 @@
                         <div class="choices__grid choices__grid--2">
                             <label class="choice"><input name="experienceLevel" required
                                                          th:checked="${#strings.equals(answers.experienceLevel, 'NOVICE')}"
-                                                         type="radio" value="NOVICE"> Moins d'un an</label>
+                                                         type="radio" value="NOVICE"> <th:block th:text="${experienceLabels['NOVICE']}">Moins d'un an</th:block></label>
                             <label class="choice"><input name="experienceLevel" required
                                                          th:checked="${#strings.equals(answers.experienceLevel, 'JUNIOR')}"
-                                                         type="radio" value="JUNIOR"> 1 à 3 ans</label>
+                                                         type="radio" value="JUNIOR"> <th:block th:text="${experienceLabels['JUNIOR']}">1 à 3 ans</th:block></label>
                             <label class="choice"><input name="experienceLevel" required
                                                          th:checked="${#strings.equals(answers.experienceLevel, 'INTERMEDIATE')}"
-                                                         type="radio" value="INTERMEDIATE"> 3 à 5 ans</label>
+                                                         type="radio" value="INTERMEDIATE"> <th:block th:text="${experienceLabels['INTERMEDIATE']}">3 à 5 ans</th:block></label>
                             <label class="choice"><input name="experienceLevel" required
                                                          th:checked="${#strings.equals(answers.experienceLevel, 'SENIOR')}"
-                                                         type="radio" value="SENIOR"> Plus de 5 ans</label>
+                                                         type="radio" value="SENIOR"> <th:block th:text="${experienceLabels['SENIOR']}">Plus de 5 ans</th:block></label>
                         </div>
                         <p class="field__error" id="experienceLevel-error"
                            th:hidden="${errors['experienceLevel'] == null}">
@@ -217,11 +217,10 @@
                         <div class="choices__grid">
                             <label class="choice"><input name="agentType" required
                                                          th:checked="${#strings.equals(answers.agentType, 'INDEPENDANT')}"
-                                                         type="radio" value="INDEPENDANT"> Indépendant</label>
+                                                         type="radio" value="INDEPENDANT"> <th:block th:text="${agentTypeLabels['INDEPENDANT']}">Indépendant</th:block></label>
                             <label class="choice"><input name="agentType" required
                                                          th:checked="${#strings.equals(answers.agentType, 'REAL_ESTATE_AGENT')}"
-                                                         type="radio" value="REAL_ESTATE_AGENT"> Rattaché à une agence
-                                immobilière</label>
+                                                         type="radio" value="REAL_ESTATE_AGENT"> <th:block th:text="${agentTypeLabels['REAL_ESTATE_AGENT']}">Rattaché à une agence immobilière</th:block></label>
                         </div>
                         <p class="field__error" id="agentType-error" th:hidden="${errors['agentType'] == null}">
                             <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">

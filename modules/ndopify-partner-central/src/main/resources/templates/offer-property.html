@@ -92,13 +92,13 @@
                                 <input name="propertyCategory" required
                                        th:checked="${answers.propertyCategory != null and answers.propertyCategory.name() == 'RESIDENTIAL'}"
                                        type="radio" value="RESIDENTIAL">
-                                <span>Résidentiel <span class="choice__detail">Pour y habiter&nbsp;: chambre,
+                                <span><th:block th:text="${categoryLabels['RESIDENTIAL']}">Résidentiel</th:block> <span class="choice__detail">Pour y habiter&nbsp;: chambre,
                                     studio, appartement, villa, immeuble…</span></span></label>
                             <label class="choice choice--described">
                                 <input name="propertyCategory" required
                                        th:checked="${answers.propertyCategory != null and answers.propertyCategory.name() == 'COMMERCIAL'}"
                                        type="radio" value="COMMERCIAL">
-                                <span>Commercial <span class="choice__detail">Pour une activité&nbsp;: bureau,
+                                <span><th:block th:text="${categoryLabels['COMMERCIAL']}">Commercial</th:block> <span class="choice__detail">Pour une activité&nbsp;: bureau,
                                     boutique, entrepôt, terrain…</span></span></label>
                         </div>
                         <p th:replace="~{:: error('propertyCategory')}"></p>
@@ -271,10 +271,10 @@
                         <div class="choices__grid choices__grid--2">
                             <label class="choice"><input name="furnitureType" required
                                                          th:checked="${answers.furnitureType == 'UNFURNISHED'}"
-                                                         type="radio" value="UNFURNISHED"> Non meublé</label>
+                                                         type="radio" value="UNFURNISHED"> <th:block th:text="${furnitureLabels['UNFURNISHED']}">Non meublé</th:block></label>
                             <label class="choice"><input name="furnitureType" required
                                                          th:checked="${answers.furnitureType == 'FULLY_FURNISHED'}"
-                                                         type="radio" value="FULLY_FURNISHED"> Meublé</label>
+                                                         type="radio" value="FULLY_FURNISHED"> <th:block th:text="${furnitureLabels['FULLY_FURNISHED']}">Meublé</th:block></label>
                         </div>
                         <p th:replace="~{:: error('furnitureType')}"></p>
                     </fieldset>
@@ -365,16 +365,14 @@
                             possibles)</span></legend>
                         <div class="choices__grid">
                             <label class="choice"><input name="amenities" th:checked="${answers.has('waterMeter')}"
-                                                         type="checkbox" value="waterMeter"> Compteur d'eau</label>
+                                                         type="checkbox" value="waterMeter"> <th:block th:text="${amenityLabels['waterMeter']}">Compteur d'eau</th:block></label>
                             <label class="choice"><input name="amenities"
                                                          th:checked="${answers.has('dedicatedWaterMeter')}"
-                                                         type="checkbox" value="dedicatedWaterMeter"> Compteur d'eau
-                                individuel</label>
+                                                         type="checkbox" value="dedicatedWaterMeter"> <th:block th:text="${amenityLabels['dedicatedWaterMeter']}">Compteur d'eau individuel</th:block></label>
                             <label class="choice"><input name="amenities" th:checked="${answers.has('waterWell')}"
-                                                         type="checkbox" value="waterWell"> Forage</label>
+                                                         type="checkbox" value="waterWell"> <th:block th:text="${amenityLabels['waterWell']}">Forage</th:block></label>
                             <label class="choice"><input name="amenities" th:checked="${answers.has('waterTank')}"
-                                                         type="checkbox" value="waterTank"> Château d'eau,
-                                citerne</label>
+                                                         type="checkbox" value="waterTank"> <th:block th:text="${amenityLabels['waterTank']}">Château d'eau, citerne</th:block></label>
                         </div>
                     </fieldset>
                     <fieldset class="choices">
@@ -383,16 +381,14 @@
                         <div class="choices__grid">
                             <label class="choice"><input name="amenities"
                                                          th:checked="${answers.has('electricityMeter')}"
-                                                         type="checkbox" value="electricityMeter"> Compteur
-                                électrique</label>
+                                                         type="checkbox" value="electricityMeter"> <th:block th:text="${amenityLabels['electricityMeter']}">Compteur électrique</th:block></label>
                             <label class="choice"><input name="amenities"
                                                          th:checked="${answers.has('dedicatedElectricityMeter')}"
-                                                         type="checkbox" value="dedicatedElectricityMeter"> Compteur
-                                électrique individuel</label>
+                                                         type="checkbox" value="dedicatedElectricityMeter"> <th:block th:text="${amenityLabels['dedicatedElectricityMeter']}">Compteur électrique individuel</th:block></label>
                             <label class="choice"><input name="amenities" th:checked="${answers.has('generatorSet')}"
-                                                         type="checkbox" value="generatorSet"> Groupe électrogène</label>
+                                                         type="checkbox" value="generatorSet"> <th:block th:text="${amenityLabels['generatorSet']}">Groupe électrogène</th:block></label>
                             <label class="choice"><input name="amenities" th:checked="${answers.has('solarPanel')}"
-                                                         type="checkbox" value="solarPanel"> Panneaux solaires</label>
+                                                         type="checkbox" value="solarPanel"> <th:block th:text="${amenityLabels['solarPanel']}">Panneaux solaires</th:block></label>
                         </div>
                     </fieldset>
                     <!--/* A property has one road access: a single choice. */-->
@@ -402,15 +398,13 @@
                         <div class="choices__grid">
                             <label class="choice"><input name="roadAccess" required
                                                          th:checked="${answers.roadAccess == 'roadPaved'}"
-                                                         type="radio" value="roadPaved"> Route bitumée</label>
+                                                         type="radio" value="roadPaved"> <th:block th:text="${amenityLabels['roadPaved']}">Route bitumée</th:block></label>
                             <label class="choice"><input name="roadAccess" required
                                                          th:checked="${answers.roadAccess == 'trackAccessibleByCar'}"
-                                                         type="radio" value="trackAccessibleByCar"> Piste accessible
-                                en voiture</label>
+                                                         type="radio" value="trackAccessibleByCar"> <th:block th:text="${amenityLabels['trackAccessibleByCar']}">Piste accessible en voiture</th:block></label>
                             <label class="choice"><input name="roadAccess" required
                                                          th:checked="${answers.roadAccess == 'trackInaccessibleByCar'}"
-                                                         type="radio" value="trackInaccessibleByCar"> Piste accessible
-                                à pied seulement</label>
+                                                         type="radio" value="trackInaccessibleByCar"> <th:block th:text="${amenityLabels['trackInaccessibleByCar']}">Piste accessible à pied seulement</th:block></label>
                         </div>
                         <p th:replace="~{:: error('roadAccess')}"></p>
                     </fieldset>
@@ -420,14 +414,11 @@
                         <div class="choices__grid">
                             <label class="choice"><input name="amenities"
                                                          th:checked="${answers.has('videoSurveillance')}"
-                                                         type="checkbox" value="videoSurveillance">
-                                Vidéosurveillance</label>
+                                                         type="checkbox" value="videoSurveillance"> <th:block th:text="${amenityLabels['videoSurveillance']}">Vidéosurveillance</th:block></label>
                             <label class="choice"><input name="amenities" th:checked="${answers.has('securityGuard')}"
-                                                         type="checkbox" value="securityGuard"> Gardien
-                                24&nbsp;h/24</label>
+                                                         type="checkbox" value="securityGuard"> <th:block th:text="${amenityLabels['securityGuard']}">Gardien 24&nbsp;h/24</th:block></label>
                             <label class="choice"><input name="amenities" th:checked="${answers.has('securedFenced')}"
-                                                         type="checkbox" value="securedFenced"> Barrière, clôture
-                                sécurisée</label>
+                                                         type="checkbox" value="securedFenced"> <th:block th:text="${amenityLabels['securedFenced']}">Barrière, clôture sécurisée</th:block></label>
                         </div>
                     </fieldset>
 

@@ -224,7 +224,7 @@ class MandateViewsTest {
             listOf(
                 "Secteurs" to "Bonapriso, Akwa — Douala",
                 "Budget" to "250\u00a0000\u00a0FCFA / mois",
-                "Emménagement" to "Dans 1 à 3 mois",
+                "Emménagement" to "Dans 1 à 3\u00a0mois",
                 "Type de bien" to "Maison, 3 chambres",
                 "Autres précisions" to "Près d'une école",
             ),

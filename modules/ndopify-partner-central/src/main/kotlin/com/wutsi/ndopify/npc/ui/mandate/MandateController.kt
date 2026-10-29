@@ -286,6 +286,11 @@ class MandateController(
         model.addAttribute("errors", errors)
         model.addAttribute("error", error)
         model.addAttribute("currency", formatter().currency())
+        model.addAttribute("categoryLabels", MandateLabels.byName(MandateLabels.CATEGORY_LABELS))
+        model.addAttribute("propertyTypeLabels", MandateLabels.byName(MandateLabels.PROPERTY_TYPE_LABELS))
+        model.addAttribute("furnitureLabels", MandateLabels.byName(MandateLabels.FURNITURE_TYPE_LABELS))
+        model.addAttribute("amenityLabels", MandateLabels.AMENITY_LABELS)
+        model.addAttribute("movingPeriodLabels", MandateLabels.byName(MandateLabels.MOVE_IN_LABELS))
         model.addAttribute("summaries", MandateEditRules.summaries(answers, neighborhoods.map { it.name }, formatter()))
         model.addAttribute(
             "openGroups",

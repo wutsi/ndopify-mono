@@ -8,6 +8,7 @@ import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.npc.ui.findproperty.SubmittedMandate
 import com.wutsi.ndopify.npc.ui.join.JoinRules
+import com.wutsi.ndopify.npc.ui.listing.ListingViews
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.npc.ui.login.LoginController
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
@@ -327,6 +328,9 @@ class OfferPropertyController(
             returnTo == RETURN_TO_REVIEW && step != STEP_REVIEW && firstIncomplete(answers) == STEP_REVIEW,
         )
 
+        if (step == STEP_PROPERTY) {
+            model.addAttribute("categoryLabels", MandateLabels.byName(MandateLabels.CATEGORY_LABELS))
+        }
         if (step == STEP_ADDRESS || step == STEP_REVIEW) {
             // Names of the chosen city and neighbourhood: the selects' initial options, and the review.
             val locations = namesOrEmpty(listOfNotNull(answers.cityId, answers.neighborhoodId))
@@ -345,9 +349,11 @@ class OfferPropertyController(
                 OfferPropertyRules.CATEGORIES_BY_TYPE.filterValues { it == answers.propertyCategory }.keys.toList(),
             )
             model.addAttribute("propertyTypeLabels", PROPERTY_TYPE_LABELS)
+            model.addAttribute("furnitureLabels", MandateLabels.byName(MandateLabels.FURNITURE_TYPE_LABELS))
         }
         if (step == STEP_AMENITIES) {
-            model.addAttribute("amenityLabels", MandateLabels.AMENITY_LABELS)
+            // The owner's wording, as the listing's (road access: one radio, in the mandates' wording)
+            model.addAttribute("amenityLabels", MandateLabels.AMENITY_LABELS + ListingViews.AMENITY_LABELS)
         }
         if (step == STEP_REVIEW) {
             model.addAttribute("categoryLabel", MandateLabels.project(answers.propertyCategory))

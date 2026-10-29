@@ -72,7 +72,7 @@ class AssignmentViewsTest {
         assertEquals("Budget", view.priceTerm)
         assertEquals("150K\u00a0FCFA / mois", view.price)
         assertEquals("Emménagement", view.movingTerm)
-        assertEquals("Dans moins d'1 mois", view.moving)
+        assertEquals("Dans moins d'1\u00a0mois", view.moving)
         assertEquals(NOW + 52 * MINUTE, view.expiresAt)
         assertEquals("52 min", view.remaining)
     }

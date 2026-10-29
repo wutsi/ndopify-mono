@@ -42,11 +42,14 @@ object MandateLabels {
         "5+" to "5 chambres et +",
     )
 
-    val FURNITURE_LABELS = mapOf(
-        FurnitureType.FULLY_FURNISHED.name to "Meublé",
-        FurnitureType.UNFURNISHED.name to "Non meublé",
-        FindPropertyRules.ANY to "Meublé ou non",
+    val FURNITURE_TYPE_LABELS: Map<FurnitureType, String> = linkedMapOf(
+        FurnitureType.FULLY_FURNISHED to "Meublé",
+        FurnitureType.UNFURNISHED to "Non meublé",
     )
+
+    /** [FURNITURE_TYPE_LABELS] by name, with the wizard's [FindPropertyRules.ANY]. */
+    val FURNITURE_LABELS: Map<String, String> =
+        byName(FURNITURE_TYPE_LABELS) + (FindPropertyRules.ANY to "Meublé ou non")
 
     val PARKING_LABELS = mapOf(
         "0" to "Sans parking",
@@ -57,9 +60,9 @@ object MandateLabels {
     )
 
     val MOVE_IN_LABELS = mapOf(
-        MovingPeriod.WITHIN_1_MONTH to "Dans moins d'1 mois",
-        MovingPeriod.WITHIN_3_MONTHS to "Dans 1 à 3 mois",
-        MovingPeriod.AFTER_3_MONTHS to "Dans plus de 3 mois",
+        MovingPeriod.WITHIN_1_MONTH to "Dans moins d'1\u00a0mois",
+        MovingPeriod.WITHIN_3_MONTHS to "Dans 1 à 3\u00a0mois",
+        MovingPeriod.AFTER_3_MONTHS to "Dans plus de 3\u00a0mois",
     )
 
     /** When the customer wants to be called, as "à appeler …" ends it. */
@@ -92,10 +95,13 @@ object MandateLabels {
         PropertyCategory.COMMERCIAL to "usage commercial",
     )
 
-    private val CATEGORY_NAMES = mapOf(
+    val CATEGORY_LABELS: Map<PropertyCategory, String> = linkedMapOf(
         PropertyCategory.RESIDENTIAL to "Résidentiel",
         PropertyCategory.COMMERCIAL to "Commercial",
     )
+
+    /** [labels] keyed by the enum's name: what a template looks up with a form's value (`labels['ROOM']`). */
+    fun <E : Enum<E>> byName(labels: Map<E, String>): Map<String, String> = labels.mapKeys { it.key.name }
 
     /** "150 000", with a non-breaking space so an amount never wraps. */
     fun formatNumber(value: Number): String =
@@ -103,7 +109,7 @@ object MandateLabels {
 
     fun mandateType(type: MandateType): String = MANDATE_TYPE_LABELS[type] ?: "Mandat"
 
-    fun category(category: PropertyCategory): String? = CATEGORY_NAMES[category]
+    fun category(category: PropertyCategory): String? = CATEGORY_LABELS[category]
 
     /** "Location, usage résidentiel", the wizards' project; null without a category. */
     fun project(category: PropertyCategory?): String? = PROJECT_LABELS[category]?.let { "Location, $it" }

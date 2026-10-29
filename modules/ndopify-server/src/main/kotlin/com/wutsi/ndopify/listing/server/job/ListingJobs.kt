@@ -43,7 +43,8 @@ class ListingJobs(
      */
     @Scheduled(cron = "\${ndopify.listing.publish.cron}")
     fun publish() {
-        run("publish", ListingStatus.PUBLISHING) { listing -> publisherService.publish(listing) }
+        run("publish", ListingStatus.VERIFIED) { listing -> service.publish(listing) }
+        run("publishing", ListingStatus.PUBLISHING) { listing -> publisherService.publish(listing) }
     }
 
     private fun run(job: String, status: ListingStatus, process: (ListingEntity) -> Unit) {

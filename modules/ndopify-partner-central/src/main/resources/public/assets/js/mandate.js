@@ -24,28 +24,6 @@
     var WITHOUT_FURNITURE = ["LAND", "BUILDING", "INDUSTRIAL"];
     var WITHOUT_PARKINGS = ["LAND", "ROOM"];
 
-    // MandateLabels.
-    var CATEGORY_LABELS = { RESIDENTIAL: "Résidentiel", COMMERCIAL: "Commercial" };
-    var PROPERTY_TYPE_LABELS = {
-        ROOM: "Chambre",
-        STUDIO: "Studio",
-        APARTMENT: "Appartement",
-        HOUSE: "Maison",
-        VILLA: "Villa",
-        DUPLEX: "Duplex",
-        RETAIL: "Boutique, local commercial",
-        OFFICE: "Bureau",
-        INDUSTRIAL: "Entrepôt, local industriel",
-        BUILDING: "Immeuble",
-        LAND: "Terrain",
-        ANY: "Indifférent"
-    };
-    var MOVING_LABELS = {
-        WITHIN_1_MONTH: "Dans moins d'1 mois",
-        WITHIN_3_MONTHS: "Dans 1 à 3 mois",
-        AFTER_3_MONTHS: "Dans plus de 3 mois"
-    };
-
     /* ---------- Helpers ---------- */
     function $(selector, root) {
         return (root || document).querySelector(selector);
@@ -241,6 +219,12 @@
             return input ? input.value : null;
         }
 
+        // The checked choice's label, as the server wrote it (MandateLabels): no copy of the labels here.
+        function checkedLabel(name) {
+            var input = $('[name="' + name + '"]:checked', form);
+            return input ? input.closest("label").textContent.trim() : null;
+        }
+
         function group(name) {
             return $('[data-group="' + name + '"]', form);
         }
@@ -270,7 +254,7 @@
                 return names.length ? names.join(", ") : "Toute la ville";
             },
             property: function () {
-                var parts = [PROPERTY_TYPE_LABELS[checked("propertyType")] || CATEGORY_LABELS[checked("propertyCategory")]];
+                var parts = [checkedLabel("propertyType") || checkedLabel("propertyCategory")];
                 var rooms = !group("rooms").hidden && checked("rooms");
                 if (rooms) parts.push(rooms + (rooms === "1" ? " chambre" : " chambres"));
                 var area = parseAmount(form.elements.area.value);
@@ -285,7 +269,7 @@
             budget: function () {
                 var price = parseAmount(form.elements.priceAmount.value);
                 var parts = [price > 0 ? formatRent(price) : "Montant à indiquer"];
-                if (checked("movingPeriod")) parts.push(MOVING_LABELS[checked("movingPeriod")]);
+                if (checked("movingPeriod")) parts.push(checkedLabel("movingPeriod"));
                 return parts.join(" · ");
             },
             comments: function () {

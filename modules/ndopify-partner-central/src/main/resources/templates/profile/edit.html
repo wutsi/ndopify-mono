@@ -107,13 +107,13 @@
                     <legend class="choices__legend">Depuis combien de temps exercez-vous comme agent ou démarcheur&nbsp;?</legend>
                     <div class="choices__grid choices__grid--2">
                         <label class="choice"><input type="radio" name="experienceLevel" value="NOVICE" required
-                                                     th:checked="${#strings.equals(answers.experienceLevel, 'NOVICE')}"> Moins d'un an</label>
+                                                     th:checked="${#strings.equals(answers.experienceLevel, 'NOVICE')}"> <th:block th:text="${experienceLabels['NOVICE']}">Moins d'un an</th:block></label>
                         <label class="choice"><input type="radio" name="experienceLevel" value="JUNIOR" required
-                                                     th:checked="${#strings.equals(answers.experienceLevel, 'JUNIOR')}"> 1 à 3 ans</label>
+                                                     th:checked="${#strings.equals(answers.experienceLevel, 'JUNIOR')}"> <th:block th:text="${experienceLabels['JUNIOR']}">1 à 3 ans</th:block></label>
                         <label class="choice"><input type="radio" name="experienceLevel" value="INTERMEDIATE" required
-                                                     th:checked="${#strings.equals(answers.experienceLevel, 'INTERMEDIATE')}"> 3 à 5 ans</label>
+                                                     th:checked="${#strings.equals(answers.experienceLevel, 'INTERMEDIATE')}"> <th:block th:text="${experienceLabels['INTERMEDIATE']}">3 à 5 ans</th:block></label>
                         <label class="choice"><input type="radio" name="experienceLevel" value="SENIOR" required
-                                                     th:checked="${#strings.equals(answers.experienceLevel, 'SENIOR')}"> Plus de 5 ans</label>
+                                                     th:checked="${#strings.equals(answers.experienceLevel, 'SENIOR')}"> <th:block th:text="${experienceLabels['SENIOR']}">Plus de 5 ans</th:block></label>
                     </div>
                     <p class="field__error" id="experienceLevel-error" th:hidden="${errors['experienceLevel'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['experienceLevel']}"></span></p>
                 </fieldset>
@@ -123,9 +123,9 @@
                     <legend class="choices__legend">Comment exercez-vous&nbsp;?</legend>
                     <div class="choices__grid">
                         <label class="choice"><input type="radio" name="agentType" value="INDEPENDANT" required
-                                                     th:checked="${#strings.equals(answers.agentType, 'INDEPENDANT')}"> Indépendant</label>
+                                                     th:checked="${#strings.equals(answers.agentType, 'INDEPENDANT')}"> <th:block th:text="${agentTypeLabels['INDEPENDANT']}">Indépendant</th:block></label>
                         <label class="choice"><input type="radio" name="agentType" value="REAL_ESTATE_AGENT" required
-                                                     th:checked="${#strings.equals(answers.agentType, 'REAL_ESTATE_AGENT')}"> Rattaché à une agence immobilière</label>
+                                                     th:checked="${#strings.equals(answers.agentType, 'REAL_ESTATE_AGENT')}"> <th:block th:text="${agentTypeLabels['REAL_ESTATE_AGENT']}">Rattaché à une agence immobilière</th:block></label>
                     </div>
                     <p class="field__error" id="agentType-error" th:hidden="${errors['agentType'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['agentType']}"></span></p>
                 </fieldset>

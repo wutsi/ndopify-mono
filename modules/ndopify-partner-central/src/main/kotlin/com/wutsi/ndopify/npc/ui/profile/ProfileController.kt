@@ -165,6 +165,7 @@ class ProfileController(
         model.addAttribute("errors", errors)
         model.addAttribute("error", error)
         model.addAttribute("maxBiography", ProfileRules.MAX_BIOGRAPHY)
+        JoinRules.addLabels(model)
 
         // Names of the chosen city and neighbourhoods: the selects' initial options. Capped: a form shown again with
         // its errors may carry whatever ids were posted.

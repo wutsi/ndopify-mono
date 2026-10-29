@@ -1,7 +1,5 @@
 package com.wutsi.ndopify.npc.ui.join
 
-import com.wutsi.ndopify.agent.dto.AgentType
-import com.wutsi.ndopify.agent.dto.ExperienceLevel
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
@@ -54,18 +52,6 @@ class JoinController(
         const val RETURN_TO_REVIEW = "review"
 
         val STEPS = listOf(STEP_IDENTITY, STEP_EXPERIENCE, STEP_AREA, STEP_PAYMENT, STEP_REVIEW)
-
-        private val EXPERIENCE_LABELS = mapOf(
-            ExperienceLevel.NOVICE to "Moins d'un an",
-            ExperienceLevel.JUNIOR to "1 à 3 ans",
-            ExperienceLevel.INTERMEDIATE to "3 à 5 ans",
-            ExperienceLevel.SENIOR to "Plus de 5 ans",
-        )
-
-        private val AGENT_TYPE_LABELS = mapOf(
-            AgentType.INDEPENDANT to "Indépendant",
-            AgentType.REAL_ESTATE_AGENT to "Rattaché à une agence immobilière",
-        )
     }
 
     /** The current tenant, for the header on every step: its logo, and "Quitter" back to its public portal's agent page. */
@@ -235,13 +221,14 @@ class JoinController(
                 model.addAttribute("neighborhoods", neighborhoodIds.mapNotNull { locations[it] })
             }
         }
+        if (step == STEP_EXPERIENCE) JoinRules.addLabels(model)
         if (step == STEP_PAYMENT) {
             // A foreign WhatsApp number can't be a Cameroonian Mobile Money number: no "same as WhatsApp" shortcut.
             model.addAttribute("canUseWhatsapp", JoinRules.mobileMoneyNumber(answers.whatsappNumber) == null)
         }
         if (step == STEP_REVIEW) {
-            model.addAttribute("experienceLabel", EXPERIENCE_LABELS[answers.experienceLevel])
-            model.addAttribute("agentTypeLabel", AGENT_TYPE_LABELS[answers.agentType])
+            model.addAttribute("experienceLabel", JoinRules.EXPERIENCE_LABELS[answers.experienceLevel])
+            model.addAttribute("agentTypeLabel", JoinRules.AGENT_TYPE_LABELS[answers.agentType])
         }
         return VIEW
     }

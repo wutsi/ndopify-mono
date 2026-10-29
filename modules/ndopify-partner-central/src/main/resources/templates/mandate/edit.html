@@ -139,9 +139,9 @@
                                 <legend class="choices__legend">Usage</legend>
                                 <div class="choices__grid">
                                     <label class="choice"><input name="propertyCategory" type="radio" value="RESIDENTIAL"
-                                                                 th:checked="${answers.propertyCategory?.name() == 'RESIDENTIAL'}"> Résidentiel</label>
+                                                                 th:checked="${answers.propertyCategory?.name() == 'RESIDENTIAL'}"> <th:block th:text="${categoryLabels['RESIDENTIAL']}">Résidentiel</th:block></label>
                                     <label class="choice"><input name="propertyCategory" type="radio" value="COMMERCIAL"
-                                                                 th:checked="${answers.propertyCategory?.name() == 'COMMERCIAL'}"> Commercial</label>
+                                                                 th:checked="${answers.propertyCategory?.name() == 'COMMERCIAL'}"> <th:block th:text="${categoryLabels['COMMERCIAL']}">Commercial</th:block></label>
                                 </div>
                                 <p class="field__error" id="propertyCategory-error" th:hidden="${errors['propertyCategory'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['propertyCategory']}"></span></p>
                             </fieldset>
@@ -149,27 +149,27 @@
                                 <legend class="choices__legend">Type de bien <span class="field__optional" th:unless="${owner}">(facultatif)</span></legend>
                                 <div class="choices__grid choices__grid--2">
                                         <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="ROOM"
-                                                                     th:checked="${#strings.equals(answers.propertyType, 'ROOM')}"> Chambre</label>
+                                                                     th:checked="${#strings.equals(answers.propertyType, 'ROOM')}"> <th:block th:text="${propertyTypeLabels['ROOM']}">Chambre</th:block></label>
                                         <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="STUDIO"
-                                                                     th:checked="${#strings.equals(answers.propertyType, 'STUDIO')}"> Studio</label>
+                                                                     th:checked="${#strings.equals(answers.propertyType, 'STUDIO')}"> <th:block th:text="${propertyTypeLabels['STUDIO']}">Studio</th:block></label>
                                         <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="APARTMENT"
-                                                                     th:checked="${#strings.equals(answers.propertyType, 'APARTMENT')}"> Appartement</label>
+                                                                     th:checked="${#strings.equals(answers.propertyType, 'APARTMENT')}"> <th:block th:text="${propertyTypeLabels['APARTMENT']}">Appartement</th:block></label>
                                         <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="HOUSE"
-                                                                     th:checked="${#strings.equals(answers.propertyType, 'HOUSE')}"> Maison</label>
+                                                                     th:checked="${#strings.equals(answers.propertyType, 'HOUSE')}"> <th:block th:text="${propertyTypeLabels['HOUSE']}">Maison</th:block></label>
                                         <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="VILLA"
-                                                                     th:checked="${#strings.equals(answers.propertyType, 'VILLA')}"> Villa</label>
+                                                                     th:checked="${#strings.equals(answers.propertyType, 'VILLA')}"> <th:block th:text="${propertyTypeLabels['VILLA']}">Villa</th:block></label>
                                         <label class="choice" data-categories="RESIDENTIAL"><input name="propertyType" type="radio" value="DUPLEX"
-                                                                     th:checked="${#strings.equals(answers.propertyType, 'DUPLEX')}"> Duplex</label>
+                                                                     th:checked="${#strings.equals(answers.propertyType, 'DUPLEX')}"> <th:block th:text="${propertyTypeLabels['DUPLEX']}">Duplex</th:block></label>
                                         <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="RETAIL"
-                                                                     th:checked="${#strings.equals(answers.propertyType, 'RETAIL')}"> Boutique, local commercial</label>
+                                                                     th:checked="${#strings.equals(answers.propertyType, 'RETAIL')}"> <th:block th:text="${propertyTypeLabels['RETAIL']}">Boutique, local commercial</th:block></label>
                                         <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="OFFICE"
-                                                                     th:checked="${#strings.equals(answers.propertyType, 'OFFICE')}"> Bureau</label>
+                                                                     th:checked="${#strings.equals(answers.propertyType, 'OFFICE')}"> <th:block th:text="${propertyTypeLabels['OFFICE']}">Bureau</th:block></label>
                                         <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="INDUSTRIAL"
-                                                                     th:checked="${#strings.equals(answers.propertyType, 'INDUSTRIAL')}"> Entrepôt, local industriel</label>
+                                                                     th:checked="${#strings.equals(answers.propertyType, 'INDUSTRIAL')}"> <th:block th:text="${propertyTypeLabels['INDUSTRIAL']}">Entrepôt, local industriel</th:block></label>
                                         <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="BUILDING"
-                                                                     th:checked="${#strings.equals(answers.propertyType, 'BUILDING')}"> Immeuble</label>
+                                                                     th:checked="${#strings.equals(answers.propertyType, 'BUILDING')}"> <th:block th:text="${propertyTypeLabels['BUILDING']}">Immeuble</th:block></label>
                                         <label class="choice" data-categories="COMMERCIAL"><input name="propertyType" type="radio" value="LAND"
-                                                                     th:checked="${#strings.equals(answers.propertyType, 'LAND')}"> Terrain</label>
+                                                                     th:checked="${#strings.equals(answers.propertyType, 'LAND')}"> <th:block th:text="${propertyTypeLabels['LAND']}">Terrain</th:block></label>
                                         <label class="choice" data-categories="RESIDENTIAL COMMERCIAL" th:unless="${owner}"><input name="propertyType" type="radio" value="ANY"
                                                                      th:checked="${#strings.equals(answers.propertyType, 'ANY')}"> Indifférent</label>
                                 </div>
@@ -196,9 +196,9 @@
                                 <legend class="choices__legend">Meublé&nbsp;?</legend>
                                 <div class="choices__grid">
                                         <label class="choice"><input name="furnitureType" type="radio" value="FULLY_FURNISHED"
-                                                                     th:checked="${#strings.equals(answers.furnitureType, 'FULLY_FURNISHED')}"> Meublé</label>
+                                                                     th:checked="${#strings.equals(answers.furnitureType, 'FULLY_FURNISHED')}"> <th:block th:text="${furnitureLabels['FULLY_FURNISHED']}">Meublé</th:block></label>
                                         <label class="choice"><input name="furnitureType" type="radio" value="UNFURNISHED"
-                                                                     th:checked="${#strings.equals(answers.furnitureType, 'UNFURNISHED')}"> Non meublé</label>
+                                                                     th:checked="${#strings.equals(answers.furnitureType, 'UNFURNISHED')}"> <th:block th:text="${furnitureLabels['UNFURNISHED']}">Non meublé</th:block></label>
                                         <label class="choice" th:unless="${owner}"><input name="furnitureType" type="radio" value="ANY"
                                                                      th:checked="${#strings.equals(answers.furnitureType, 'ANY')}"> Indifférent</label>
                                 </div>
@@ -243,35 +243,35 @@
                             <fieldset class="choices">
                                 <legend class="choices__legend">Eau</legend>
                                 <div class="choices__grid">
-                                    <label class="choice"><input name="amenities" type="checkbox" value="waterMeter" th:checked="${answers.has('waterMeter')}"> Compteur d'eau</label>
-                                    <label class="choice"><input name="amenities" type="checkbox" value="dedicatedWaterMeter" th:checked="${answers.has('dedicatedWaterMeter')}"> Compteur d'eau individuel</label>
-                                    <label class="choice"><input name="amenities" type="checkbox" value="waterTank" th:checked="${answers.has('waterTank')}"> Citerne</label>
-                                    <label class="choice"><input name="amenities" type="checkbox" value="waterWell" th:checked="${answers.has('waterWell')}"> Forage</label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="waterMeter" th:checked="${answers.has('waterMeter')}"> <th:block th:text="${amenityLabels['waterMeter']}">Compteur d'eau</th:block></label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="dedicatedWaterMeter" th:checked="${answers.has('dedicatedWaterMeter')}"> <th:block th:text="${amenityLabels['dedicatedWaterMeter']}">Compteur d'eau individuel</th:block></label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="waterTank" th:checked="${answers.has('waterTank')}"> <th:block th:text="${amenityLabels['waterTank']}">Citerne</th:block></label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="waterWell" th:checked="${answers.has('waterWell')}"> <th:block th:text="${amenityLabels['waterWell']}">Forage</th:block></label>
                                 </div>
                             </fieldset>
                             <fieldset class="choices">
                                 <legend class="choices__legend">Électricité</legend>
                                 <div class="choices__grid">
-                                    <label class="choice"><input name="amenities" type="checkbox" value="electricityMeter" th:checked="${answers.has('electricityMeter')}"> Compteur électrique</label>
-                                    <label class="choice"><input name="amenities" type="checkbox" value="dedicatedElectricityMeter" th:checked="${answers.has('dedicatedElectricityMeter')}"> Compteur électrique individuel</label>
-                                    <label class="choice"><input name="amenities" type="checkbox" value="generatorSet" th:checked="${answers.has('generatorSet')}"> Groupe électrogène</label>
-                                    <label class="choice"><input name="amenities" type="checkbox" value="solarPanel" th:checked="${answers.has('solarPanel')}"> Panneaux solaires</label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="electricityMeter" th:checked="${answers.has('electricityMeter')}"> <th:block th:text="${amenityLabels['electricityMeter']}">Compteur électrique</th:block></label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="dedicatedElectricityMeter" th:checked="${answers.has('dedicatedElectricityMeter')}"> <th:block th:text="${amenityLabels['dedicatedElectricityMeter']}">Compteur électrique individuel</th:block></label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="generatorSet" th:checked="${answers.has('generatorSet')}"> <th:block th:text="${amenityLabels['generatorSet']}">Groupe électrogène</th:block></label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="solarPanel" th:checked="${answers.has('solarPanel')}"> <th:block th:text="${amenityLabels['solarPanel']}">Panneaux solaires</th:block></label>
                                 </div>
                             </fieldset>
                             <fieldset class="choices">
                                 <legend class="choices__legend">Accès</legend>
                                 <div class="choices__grid">
-                                    <label class="choice"><input name="amenities" type="checkbox" value="roadPaved" th:checked="${answers.has('roadPaved')}"> Route bitumée</label>
-                                    <label class="choice"><input name="amenities" type="checkbox" value="trackAccessibleByCar" th:checked="${answers.has('trackAccessibleByCar')}"> Piste accessible en voiture</label>
-                                    <label class="choice"><input name="amenities" type="checkbox" value="trackInaccessibleByCar" th:checked="${answers.has('trackInaccessibleByCar')}"> Piste accessible à pied seulement</label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="roadPaved" th:checked="${answers.has('roadPaved')}"> <th:block th:text="${amenityLabels['roadPaved']}">Route bitumée</th:block></label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="trackAccessibleByCar" th:checked="${answers.has('trackAccessibleByCar')}"> <th:block th:text="${amenityLabels['trackAccessibleByCar']}">Piste accessible en voiture</th:block></label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="trackInaccessibleByCar" th:checked="${answers.has('trackInaccessibleByCar')}"> <th:block th:text="${amenityLabels['trackInaccessibleByCar']}">Piste accessible à pied seulement</th:block></label>
                                 </div>
                             </fieldset>
                             <fieldset class="choices">
                                 <legend class="choices__legend">Sécurité</legend>
                                 <div class="choices__grid">
-                                    <label class="choice"><input name="amenities" type="checkbox" value="securedFenced" th:checked="${answers.has('securedFenced')}"> Clôturé et sécurisé</label>
-                                    <label class="choice"><input name="amenities" type="checkbox" value="securityGuard" th:checked="${answers.has('securityGuard')}"> Gardien</label>
-                                    <label class="choice"><input name="amenities" type="checkbox" value="videoSurveillance" th:checked="${answers.has('videoSurveillance')}"> Vidéosurveillance</label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="securedFenced" th:checked="${answers.has('securedFenced')}"> <th:block th:text="${amenityLabels['securedFenced']}">Clôturé et sécurisé</th:block></label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="securityGuard" th:checked="${answers.has('securityGuard')}"> <th:block th:text="${amenityLabels['securityGuard']}">Gardien</th:block></label>
+                                    <label class="choice"><input name="amenities" type="checkbox" value="videoSurveillance" th:checked="${answers.has('videoSurveillance')}"> <th:block th:text="${amenityLabels['videoSurveillance']}">Vidéosurveillance</th:block></label>
                                 </div>
                             </fieldset>
                         </div>
@@ -296,11 +296,11 @@
                                 <legend class="choices__legend" th:text="${owner} ? 'Disponibilité du bien' : 'Date d\'emménagement souhaitée'">Date d'emménagement souhaitée</legend>
                                 <div class="choices__grid">
                                     <label class="choice"><input name="movingPeriod" type="radio" value="WITHIN_1_MONTH" required
-                                                                 th:checked="${answers.movingPeriod?.name() == 'WITHIN_1_MONTH'}"> Dans moins d'1&nbsp;mois</label>
+                                                                 th:checked="${answers.movingPeriod?.name() == 'WITHIN_1_MONTH'}"> <th:block th:text="${movingPeriodLabels['WITHIN_1_MONTH']}">Dans moins d'1&nbsp;mois</th:block></label>
                                     <label class="choice"><input name="movingPeriod" type="radio" value="WITHIN_3_MONTHS" required
-                                                                 th:checked="${answers.movingPeriod?.name() == 'WITHIN_3_MONTHS'}"> Dans 1 à 3&nbsp;mois</label>
+                                                                 th:checked="${answers.movingPeriod?.name() == 'WITHIN_3_MONTHS'}"> <th:block th:text="${movingPeriodLabels['WITHIN_3_MONTHS']}">Dans 1 à 3&nbsp;mois</th:block></label>
                                     <label class="choice"><input name="movingPeriod" type="radio" value="AFTER_3_MONTHS" required
-                                                                 th:checked="${answers.movingPeriod?.name() == 'AFTER_3_MONTHS'}"> Dans plus de 3&nbsp;mois</label>
+                                                                 th:checked="${answers.movingPeriod?.name() == 'AFTER_3_MONTHS'}"> <th:block th:text="${movingPeriodLabels['AFTER_3_MONTHS']}">Dans plus de 3&nbsp;mois</th:block></label>
                                 </div>
                                 <p class="field__error" id="movingPeriod-error" th:hidden="${errors['movingPeriod'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['movingPeriod']}"></span></p>
                             </fieldset>

@@ -281,7 +281,7 @@ class FindPropertyTemplateTest {
         )
         assertEquals("Compteur d'eau, Gardien de sécurité", value(page, "amenities"))
         assertEquals("150\u00a0000\u00a0FCFA par mois", value(page, "price"))
-        assertEquals("Dans moins d'1 mois", value(page, "movingPeriod"))
+        assertEquals("Dans moins d'1\u00a0mois", value(page, "movingPeriod"))
         assertTrue(value(page, "contact").contains("Ray Sponsible"))
         assertTrue(value(page, "contact").contains("ray@gmail.com"))
         assertTrue(value(page, "contact").contains("Contact le soir"))

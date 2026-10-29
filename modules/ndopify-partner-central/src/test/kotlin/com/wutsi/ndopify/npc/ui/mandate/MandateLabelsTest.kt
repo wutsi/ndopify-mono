@@ -116,7 +116,7 @@ class MandateLabelsTest {
             listOf(
                 "Secteurs" to "Kotto, Logpom — Douala",
                 "Budget" to "150\u00a0000\u00a0FCFA / mois",
-                "Emménagement" to "Dans moins d'1 mois",
+                "Emménagement" to "Dans moins d'1\u00a0mois",
                 "Catégorie" to "Résidentiel",
                 "Type de propriété" to "Appartement",
                 "Meublé" to "Indifférent",
@@ -147,7 +147,7 @@ class MandateLabelsTest {
             listOf(
                 "Secteur" to "Toute la ville — Douala",
                 "Loyer" to "50\u00a0000\u00a0FCFA / mois",
-                "Disponibilité" to "Dans plus de 3 mois",
+                "Disponibilité" to "Dans plus de 3\u00a0mois",
                 "Catégorie" to "Commercial",
                 "Type de propriété" to "Terrain",
             ),
@@ -166,7 +166,7 @@ class MandateLabelsTest {
         val without = with.copy(availableFrom = null)
 
         assertEquals("Disponibilité" to "Dès le 03 nov. 2026", MandateLabels.criteria(with, LOCATIONS, FORMATTER)[2])
-        assertEquals("Disponibilité" to "Dans plus de 3 mois", MandateLabels.criteria(without, LOCATIONS, FORMATTER)[2])
+        assertEquals("Disponibilité" to "Dans plus de 3\u00a0mois", MandateLabels.criteria(without, LOCATIONS, FORMATTER)[2])
     }
 
     @Test
@@ -178,7 +178,7 @@ class MandateLabelsTest {
             movingPeriod = MovingPeriod.AFTER_3_MONTHS
         )
 
-        assertEquals("Emménagement" to "Dans plus de 3 mois", MandateLabels.criteria(mandate, LOCATIONS, FORMATTER)[2])
+        assertEquals("Emménagement" to "Dans plus de 3\u00a0mois", MandateLabels.criteria(mandate, LOCATIONS, FORMATTER)[2])
     }
 
     @Test

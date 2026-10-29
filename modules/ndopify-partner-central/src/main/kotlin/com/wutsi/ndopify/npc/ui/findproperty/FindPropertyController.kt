@@ -287,6 +287,7 @@ class FindPropertyController(
         )
 
         when (step) {
+            STEP_NEED -> model.addAttribute("categoryLabels", MandateLabels.byName(MandateLabels.CATEGORY_LABELS))
             STEP_AREA, STEP_REVIEW -> {
                 // Names of the chosen city and neighbourhoods: the selects' initial options, and the review.
                 // Capped: a step shown again with its errors may carry whatever ids were posted.
@@ -302,9 +303,11 @@ class FindPropertyController(
                 FindPropertyRules.CATEGORIES_BY_TYPE.filterValues { it.contains(answers.propertyCategory) }.keys.toList(),
             )
             model.addAttribute("propertyTypeLabels", MandateLabels.PROPERTY_TYPE_LABELS)
+            model.addAttribute("furnitureLabels", MandateLabels.byName(MandateLabels.FURNITURE_TYPE_LABELS))
         }
         if (step == STEP_BUDGET) {
             model.addAttribute("currency", formatter().currency())
+            model.addAttribute("movingPeriodLabels", MandateLabels.byName(MandateLabels.MOVE_IN_LABELS))
         }
         if (step == STEP_AMENITIES) {
             model.addAttribute("amenityLabels", MandateLabels.AMENITY_LABELS)
