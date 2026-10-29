@@ -107,16 +107,17 @@ object MandateLabels {
         else -> "Indifférent"
     }
 
-    /** "150K FCFA par mois", in short for a card. */
-    fun compactPrice(money: Money, formatter: TenantFormatter): String {
-        val period = if (money.periodicity == PeriodicityType.MONTHLY) " par mois" else ""
-        return formatter.compactMoney(money.amount, money.currency) + period
-    }
-
-    /** "150 000 FCFA par mois", in the tenant's format. */
-    fun price(money: Money, formatter: TenantFormatter): String {
-        val period = if (money.periodicity == PeriodicityType.MONTHLY) " par mois" else ""
-        return formatter.money(money.amount, money.currency) + period
+    /**
+     * "150 000 FCFA / mois" in the tenant's format, or "150K FCFA / mois" when [compact] (a card's facts); without
+     * " / mois" unless the price is monthly.
+     */
+    fun price(money: Money, formatter: TenantFormatter, compact: Boolean = false): String {
+        val amount = if (compact) {
+            formatter.compactMoney(money.amount, money.currency)
+        } else {
+            formatter.money(money.amount, money.currency)
+        }
+        return if (money.periodicity == PeriodicityType.MONTHLY) "$amount / mois" else amount
     }
 
     /** The mandate's criteria by group ("Accès à l'eau" → "Compteur d'eau, Forage"), only the groups it has. */
@@ -134,14 +135,6 @@ object MandateLabels {
     /** "Locataire · Maison", or just "Locataire" without a type. */
     fun title(mandate: Mandate): String =
         listOfNotNull(party(mandate.mandateType), shortPropertyType(mandate.propertyType)).joinToString(" · ")
-
-    /** "152,5K FCFA / mois", in short: the rent of a card's facts. */
-    fun compactRent(money: Money, formatter: TenantFormatter): String =
-        formatter.compactMoney(money.amount, money.currency) + " / mois"
-
-    /** "152 500 FCFA / mois", in the tenant's format: the rent of a mandate's criteria. */
-    fun rent(money: Money, formatter: TenantFormatter): String =
-        formatter.money(money.amount, money.currency) + " / mois"
 
     /**
      * The mandate's criteria as term → value rows, in the prototype's order (`criteriaOf`): sector, amount and moving
@@ -167,7 +160,7 @@ object MandateLabels {
         ).joinToString(" — ").ifEmpty { NONE }
         return listOfNotNull(
             (if (mandate.neighborhoodIds.size > 1) "Secteurs" else "Secteur") to sector,
-            (if (owner) "Loyer" else "Budget") to rent(mandate.price, formatter),
+            (if (owner) "Loyer" else "Budget") to price(mandate.price, formatter),
             (if (owner) "Disponibilité" else "Emménagement") to (
                 mandate.availableFrom?.takeIf { owner }?.let { "Dès le " + formatter.date(it) }
                     ?: MOVE_IN_LABELS[mandate.movingPeriod] ?: NONE

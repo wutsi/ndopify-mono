@@ -230,7 +230,7 @@ object ListingViews {
         mandate.price.amount.takeIf { it > 0 }?.let { amount ->
             if (form.price?.let { ListingRules.amount(it) } != amount) {
                 owner["price"] =
-                MandateLabels.rent(mandate.price, formatter)
+                MandateLabels.price(mandate.price, formatter)
             }
         }
         mapOf(
@@ -369,9 +369,10 @@ object ListingViews {
         }
 
         ListingSection.TERMS -> {
-            val rent = MandateLabels.compactRent(
+            val rent = MandateLabels.price(
                 Money(listing.price, listing.currencyCode, PeriodicityType.MONTHLY),
                 formatter,
+                compact = true,
             )
             rent + (listing.securityDeposit?.let { " · caution $it mois" } ?: "")
         }

@@ -91,7 +91,7 @@
         return document.body.getAttribute("data-currency") || "";
     }
 
-    // 150000 → "150 000 FCFA / mois", close to MandateLabels.rent (the tenant's monetaryFormat is server-side only).
+    // 150000 → "150 000 FCFA / mois", close to MandateLabels.price (the tenant's monetaryFormat is server-side only).
     function formatRent(amount) {
         return formatNumber(amount) + "\u00a0" + currency() + " / mois";
     }

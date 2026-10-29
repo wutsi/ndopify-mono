@@ -47,13 +47,18 @@ class MandateLabelsTest {
     @Test
     fun price() {
         assertEquals(
-            "150\u00a0000\u00a0FCFA par mois",
+            "150\u00a0000\u00a0FCFA / mois",
             MandateLabels.price(
                 Money(amount = 150000, currency = "XAF", periodicity = PeriodicityType.MONTHLY),
                 FORMATTER
             ),
         )
         assertEquals("2\u00a0500,00\u00a0CAD", MandateLabels.price(Money(amount = 2500, currency = "CAD"), FORMATTER))
+        assertEquals(
+            "152,5K\u00a0FCFA / mois",
+            MandateLabels.price(Money(152500, "XAF", PeriodicityType.MONTHLY), FORMATTER, compact = true),
+        )
+        assertEquals("2,5K\u00a0CAD", MandateLabels.price(Money(2500, "CAD"), FORMATTER, compact = true))
     }
 
     @Test
@@ -88,18 +93,6 @@ class MandateLabelsTest {
             MandateLabels.title(Mandate(mandateType = MandateType.LISTING, propertyType = PropertyType.APARTMENT)),
         )
         assertEquals("Locataire", MandateLabels.title(Mandate(mandateType = MandateType.SEARCH)))
-    }
-
-    @Test
-    fun rent() {
-        assertEquals(
-            "150\u00a0000\u00a0FCFA / mois",
-            MandateLabels.rent(Money(150000, "XAF", PeriodicityType.MONTHLY), FORMATTER)
-        )
-        assertEquals(
-            "152\u00a0500\u00a0FCFA / mois",
-            MandateLabels.rent(Money(152500, "XAF", PeriodicityType.MONTHLY), FORMATTER)
-        )
     }
 
     @Test
