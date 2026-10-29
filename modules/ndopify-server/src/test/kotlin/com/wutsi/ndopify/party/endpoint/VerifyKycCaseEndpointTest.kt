@@ -379,7 +379,7 @@ class VerifyKycCaseEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertCase(KycStatus.REQUIRES_MANUAL_VERIFICATION, null, "kyc-case-last-retry", KycErrorCode.GATEWAY_ERROR)
-        assertRetry(3, "Gateway down", "java.lang.RuntimeException: kyc-case-last-retry")
+        assertRetry(3, "java.lang.RuntimeException: Gateway down", "kyc-case-last-retry")
         assertPartyKycStatus(KycStatus.PENDING_VERIFICATION)
     }
 
