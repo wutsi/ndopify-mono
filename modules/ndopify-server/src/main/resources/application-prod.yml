@@ -51,9 +51,6 @@ ndopify:
 
     listing:
         min-images: 5                      # A listing must have at least 5 images to be published
-        night:
-            start: "22:00"
-            end: "07:00"
         publish:
             cron: "0 0 */1 * * ?"          # Every hour: publish listings that are PUBLISHING
         verify:
@@ -65,6 +62,9 @@ ndopify:
                 cron: "0 */15 * * * ?"     # Every 15 minutes: offers past their TTL go to the next agent
             dispatch:
                 cron: "0 */30 * * * ?"     # Every 30 minutes: mandates that came at night, or had no candidate
+            night:
+                start: "22:00"
+                end: "07:00"
 
     party:
         kyc:

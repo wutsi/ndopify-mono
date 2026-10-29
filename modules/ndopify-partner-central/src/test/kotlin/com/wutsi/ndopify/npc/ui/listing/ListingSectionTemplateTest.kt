@@ -84,7 +84,14 @@ class ListingSectionTemplateTest {
         }
         mvc = MockMvcBuilders
             .standaloneSetup(
-                ListingSectionController(currentAgent, listingClient, mandateClient, locationClient, tenantContext, clock),
+                ListingSectionController(
+                    currentAgent,
+                    listingClient,
+                    mandateClient,
+                    locationClient,
+                    tenantContext,
+                    clock
+                ),
             )
             .setControllerAdvice(SignedInAdvice())
             .setViewResolvers(viewResolver)
@@ -115,7 +122,10 @@ class ListingSectionTemplateTest {
         assertNotNull(page.selectFirst("script[src=/assets/js/listing.js]"))
         assertEquals("location", page.body().attr("data-section"))
         assertEquals("Emplacement", page.selectFirst("h1")?.text())
-        assertEquals("Annonce · Appartement, Bonapriso · mandat n° 203", page.selectFirst("[data-section-meta]")?.text())
+        assertEquals(
+            "Annonce · Appartement, Bonapriso · mandat n° 203",
+            page.selectFirst("[data-section-meta]")?.text()
+        )
         assertEquals(
             "Vérifiez le quartier, et notez ce qui aidera les locataires à trouver le bien.",
             page.selectFirst("[data-section-instruction]")?.text(),
@@ -141,7 +151,9 @@ class ListingSectionTemplateTest {
         assertEquals("Douala", form.selectFirst("input#city")?.attr("value"))
         assertTrue(form.selectFirst("input#city")!!.hasAttr("readonly"))
         val select = form.selectFirst("select[name=neighborhoodId]")!!
-        assertEquals(listOf("", AKWA.toString(), BONAPRISO.toString()), select.select("option").map { it.attr("value") })
+        assertEquals(
+            listOf("", AKWA.toString(), BONAPRISO.toString()),
+            select.select("option").map { it.attr("value") })
         assertEquals(BONAPRISO.toString(), select.selectFirst("option[selected]")?.attr("value"))
         assertEquals("Derrière l'école publique", form.selectFirst("input[name=landmark]")?.attr("value"))
         assertEquals("100", form.selectFirst("input[name=landmark]")?.attr("maxlength"))
@@ -185,7 +197,10 @@ class ListingSectionTemplateTest {
         assertEquals("RESIDENTIAL", form.selectFirst("input[name=propertyCategory][checked]")?.attr("value"))
         assertEquals("APARTMENT", form.selectFirst("input[name=propertyType][checked]")?.attr("value"))
         assertEquals(11, form.select("input[name=propertyType]").size)
-        assertEquals("COMMERCIAL", form.selectFirst("input[name=propertyType][value=LAND]")?.parent()?.attr("data-categories"))
+        assertEquals(
+            "COMMERCIAL",
+            form.selectFirst("input[name=propertyType][value=LAND]")?.parent()?.attr("data-categories")
+        )
         // Every count question, the script hides those of the type
         listOf("rooms", "livingRooms", "bathrooms", "kitchens", "parkings", "levels", "floorLevel", "area").forEach {
             assertNotNull(form.selectFirst("input[name=$it]"), it)
@@ -209,7 +224,10 @@ class ListingSectionTemplateTest {
         assertNull(form.selectFirst("input[type=checkbox][name=solarPanel][checked]"))
         assertEquals("true", form.selectFirst("input[name=solarPanel]")?.attr("value"))
         assertEquals(11, form.select("input[type=checkbox]").size)
-        assertEquals("Indiqué par le propriétaire : Compteur d'eau", form.selectFirst("[data-owner-for=amenities]")?.text())
+        assertEquals(
+            "Indiqué par le propriétaire : Compteur d'eau",
+            form.selectFirst("[data-owner-for=amenities]")?.text()
+        )
     }
 
     @Test
@@ -227,8 +245,7 @@ class ListingSectionTemplateTest {
             groups[1].select("label.choice").map { it.text() },
         )
         assertEquals(
-            // Jsoup reads the no-break space of "24 h/24" as a space
-            listOf("Vidéosurveillance", "Gardien 24 h/24", "Barrière, clôture sécurisée"),
+            listOf("Vidéosurveillance", "Gardien de sécurité", "Clôture sécurisée"),
             groups[3].select("label.choice").map { it.text().replace('\u00a0', ' ') },
         )
     }
@@ -258,14 +275,29 @@ class ListingSectionTemplateTest {
         assertEquals("150 000", form.selectFirst("input[name=price]")?.attr("value"))
         assertEquals("FCFA / mois", form.selectFirst("input[name=price] + .input-unit__suffix")?.text())
         assertEquals("3", form.selectFirst("select[name=securityDeposit] option[selected]")?.attr("value"))
-        assertEquals((1..6).map { "$it" }, form.select("select[name=securityDeposit] option").map { it.attr("value") }.drop(1))
-        assertEquals((1..12).map { "$it" }, form.select("select[name=advanceRent] option").map { it.attr("value") }.drop(1))
-        assertEquals(listOf("6", "12", "24", "36"), form.select("select[name=leaseTerm] option").map { it.attr("value") }.drop(1))
-        assertEquals(listOf("1", "2", "3"), form.select("select[name=noticePeriod] option").map { it.attr("value") }.drop(1))
+        assertEquals(
+            (1..6).map { "$it" },
+            form.select("select[name=securityDeposit] option").map { it.attr("value") }.drop(1)
+        )
+        assertEquals(
+            (1..12).map { "$it" },
+            form.select("select[name=advanceRent] option").map { it.attr("value") }.drop(1)
+        )
+        assertEquals(
+            listOf("6", "12", "24", "36"),
+            form.select("select[name=leaseTerm] option").map { it.attr("value") }.drop(1)
+        )
+        assertEquals(
+            listOf("1", "2", "3"),
+            form.select("select[name=noticePeriod] option").map { it.attr("value") }.drop(1)
+        )
         val date = form.selectFirst("input[name=availableFrom]")!!
         assertEquals("date", date.attr("type"))
         assertEquals("2027-10-26", date.attr("max"))
-        assertEquals("Indiqué par le propriétaire : 2 mois", form.selectFirst("[data-owner-for=securityDeposit]")?.text())
+        assertEquals(
+            "Indiqué par le propriétaire : 2 mois",
+            form.selectFirst("[data-owner-for=securityDeposit]")?.text()
+        )
     }
 
     @Test
@@ -294,7 +326,10 @@ class ListingSectionTemplateTest {
         assertNull(form.selectFirst("input[name=solarPanel]"))
         assertNotNull(form.selectFirst("input[name=generatorSet]"))
         // As the prototype's showListingReadonly: what the landlord said stays visible
-        assertEquals("Indiqué par le propriétaire : Compteur d'eau", form.selectFirst("[data-owner-for=amenities]")?.text())
+        assertEquals(
+            "Indiqué par le propriétaire : Compteur d'eau",
+            form.selectFirst("[data-owner-for=amenities]")?.text()
+        )
         val back = form.selectFirst(".form__actions a")!!
         assertEquals("Retour à l'annonce", back.text())
         assertEquals("btn btn--primary", back.className())

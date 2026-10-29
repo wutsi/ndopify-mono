@@ -9,6 +9,7 @@ import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.npc.ui.join.JoinRules
+import com.wutsi.ndopify.npc.ui.mandate.Amenity
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import java.io.Serializable
@@ -45,22 +46,7 @@ data class PendingMandate(
         const val SESSION_ATTRIBUTE = "npc.pending-mandate"
 
         /** The boolean criteria of CreateMandateRequest, in form order. */
-        val AMENITIES = listOf(
-            "waterMeter",
-            "dedicatedWaterMeter",
-            "waterTank",
-            "waterWell",
-            "electricityMeter",
-            "dedicatedElectricityMeter",
-            "generatorSet",
-            "solarPanel",
-            "roadPaved",
-            "trackAccessibleByCar",
-            "trackInaccessibleByCar",
-            "securedFenced",
-            "securityGuard",
-            "videoSurveillance",
-        )
+        val AMENITIES = Amenity.KEYS
     }
 
     fun has(amenity: String): Boolean = amenities.contains(amenity)

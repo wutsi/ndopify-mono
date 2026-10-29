@@ -69,23 +69,8 @@ object MandateLabels {
         ContactPeriodType.EVENING to "le soir",
     )
 
-    /** Same order and copy as the prototype's AMENITIES; keys are [PendingMandate.AMENITIES]. */
-    val AMENITY_LABELS: Map<String, String> = linkedMapOf(
-        "waterMeter" to "Compteur d'eau",
-        "dedicatedWaterMeter" to "Compteur d'eau individuel",
-        "waterTank" to "Citerne",
-        "waterWell" to "Forage",
-        "electricityMeter" to "Compteur électrique",
-        "dedicatedElectricityMeter" to "Compteur électrique individuel",
-        "generatorSet" to "Groupe électrogène",
-        "solarPanel" to "Panneaux solaires",
-        "roadPaved" to "Route bitumée",
-        "trackAccessibleByCar" to "Piste accessible en voiture",
-        "trackInaccessibleByCar" to "Piste accessible à pied seulement",
-        "securityGuard" to "Gardien de sécurité",
-        "securedFenced" to "Clôturé et sécurisé",
-        "videoSurveillance" to "Vidéosurveillance",
-    )
+    /** The prototype's AMENITIES, by [Amenity.key]. */
+    val AMENITY_LABELS: Map<String, String> = Amenity.LABELS
 
     // In a title ("Locataire · Boutique"): one word (prototype's PROPERTY_TYPE_SHORT).
     private val PROPERTY_TYPE_SHORT = mapOf(
@@ -104,19 +89,6 @@ object MandateLabels {
     private val CATEGORY_NAMES = mapOf(
         PropertyCategory.RESIDENTIAL to "Résidentiel",
         PropertyCategory.COMMERCIAL to "Commercial",
-    )
-
-    // The prototype's "Voir les détails" rows (index.html); keys are AMENITY_LABELS'.
-    private val AMENITY_GROUPS = linkedMapOf(
-        "Accès à l'eau" to listOf("waterMeter", "dedicatedWaterMeter", "waterTank", "waterWell"),
-        "Accès à l'électricité" to listOf(
-            "electricityMeter",
-            "dedicatedElectricityMeter",
-            "generatorSet",
-            "solarPanel"
-        ),
-        "Accès routier" to listOf("roadPaved", "trackAccessibleByCar", "trackInaccessibleByCar"),
-        "Sécurité" to listOf("securedFenced", "securityGuard", "videoSurveillance"),
     )
 
     /** "150 000", with a non-breaking space so an amount never wraps. */
@@ -148,28 +120,10 @@ object MandateLabels {
     }
 
     /** The mandate's criteria by group ("Accès à l'eau" → "Compteur d'eau, Forage"), only the groups it has. */
-    fun amenityGroups(mandate: Mandate): List<Pair<String, String>> {
-        val checked = mapOf(
-            "waterMeter" to mandate.waterMeter,
-            "dedicatedWaterMeter" to mandate.dedicatedWaterMeter,
-            "waterTank" to mandate.waterTank,
-            "waterWell" to mandate.waterWell,
-            "electricityMeter" to mandate.electricityMeter,
-            "dedicatedElectricityMeter" to mandate.dedicatedElectricityMeter,
-            "generatorSet" to mandate.generatorSet,
-            "solarPanel" to mandate.solarPanel,
-            "roadPaved" to mandate.roadPaved,
-            "trackAccessibleByCar" to mandate.trackAccessibleByCar,
-            "trackInaccessibleByCar" to mandate.trackInaccessibleByCar,
-            "securedFenced" to mandate.securedFenced,
-            "securityGuard" to mandate.securityGuard,
-            "videoSurveillance" to mandate.videoSurveillance,
-        )
-        return AMENITY_GROUPS.mapNotNull { (group, keys) ->
-            val labels = keys.filter { checked[it] == true }.mapNotNull { AMENITY_LABELS[it] }
-            if (labels.isEmpty()) null else group to labels.joinToString(", ")
+    fun amenityGroups(mandate: Mandate): List<Pair<String, String>> =
+        Amenity.of(mandate).groupBy { it.group }.map { (group, amenities) ->
+            group to amenities.joinToString(", ") { it.label }
         }
-    }
 
     /** Who the agent works for: a landlord for a listing, else someone looking for a rental. */
     fun party(type: MandateType): String = if (type == MandateType.LISTING) "Bailleur" else "Locataire"
@@ -207,7 +161,7 @@ object MandateLabels {
                 "Toute la ville"
             } else {
                 neighborhoods.joinToString(", ")
-                .ifEmpty { null }
+                    .ifEmpty { null }
             },
             locations[mandate.cityId]?.name,
         ).joinToString(" — ").ifEmpty { NONE }

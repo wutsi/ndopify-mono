@@ -12,6 +12,7 @@ import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.npc.service.TenantFormatter
+import com.wutsi.ndopify.npc.ui.mandate.Amenity
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
@@ -115,19 +116,8 @@ object ListingViews {
     )
 
     /** The checkboxes' labels of *Eau, électricité, accès* (listing/equipements.html, not the mandates' wording). */
-    val AMENITY_LABELS: Map<String, String> = mapOf(
-        "waterMeter" to "Compteur d'eau",
-        "dedicatedWaterMeter" to "Compteur d'eau individuel",
-        "waterWell" to "Forage",
-        "waterTank" to "Château d'eau, citerne",
-        "electricityMeter" to "Compteur électrique",
-        "dedicatedElectricityMeter" to "Compteur électrique individuel",
-        "generatorSet" to "Groupe électrogène",
-        "solarPanel" to "Panneaux solaires",
-        "videoSurveillance" to "Vidéosurveillance",
-        "securityGuard" to "Gardien 24\u00a0h/24",
-        "securedFenced" to "Barrière, clôture sécurisée",
-    )
+    val AMENITY_LABELS: Map<String, String> =
+        MandateLabels.AMENITY_LABELS - ROAD_ACCESS.toSet() + (Amenity.WATER_TANK.key to "Château d'eau, citerne")
 
     /** *Le bien*'s types, residential first, in the prototype's order. */
     val TYPES: List<TypeChoice> = ListingRules.TYPES.flatMap { (category, types) ->
@@ -172,13 +162,15 @@ object ListingViews {
         locations: Map<Long, Location>,
         formatter: TenantFormatter,
     ): SectionView {
-        val title = title(listing, listing.neighborhoodId?.let { locations[it]?.name } ?: locations[listing.cityId]?.name)
+        val title =
+            title(listing, listing.neighborhoodId?.let { locations[it]?.name } ?: locations[listing.cityId]?.name)
         val heading = ListingRules.LABELS.getValue(section)
         val editable = ListingRules.editable(listing)
         val since = when {
             editable -> null
             listing.status == ListingStatus.PUBLISHED ->
                 "Annonce publiée" + (listing.publishedAt?.let { " le ${formatter.date(it)}" } ?: "")
+
             ListingRules.sent(listing.status) -> "Annonce en vérification depuis le ${formatter.date(listing.modifiedAt)}"
             else -> "Annonce fermée"
         }
@@ -230,14 +222,16 @@ object ListingViews {
         mandate.area?.let { area ->
             if (ListingRules.count(form.area) != area) owner["area"] = "${formatter.count(area.toLong())} m²"
         }
-        val amenities = amenities(mandate)
-        if (amenities != form.amenities()) {
-            owner["amenities"] = MandateLabels.AMENITY_LABELS.filterKeys { it in amenities }.values
-                .joinToString(", ")
+        val amenities = Amenity.of(mandate)
+        if (amenities.map { it.key }.toSet() != form.amenities()) {
+            owner["amenities"] = amenities.joinToString(", ") { it.label }
                 .ifEmpty { "aucun équipement" }
         }
         mandate.price.amount.takeIf { it > 0 }?.let { amount ->
-            if (form.price?.let { ListingRules.amount(it) } != amount) owner["price"] = MandateLabels.rent(mandate.price, formatter)
+            if (form.price?.let { ListingRules.amount(it) } != amount) {
+                owner["price"] =
+                MandateLabels.rent(mandate.price, formatter)
+            }
         }
         mapOf(
             "securityDeposit" to (mandate.securityDeposit to form.securityDeposit),
@@ -259,7 +253,12 @@ object ListingViews {
      * null when it can't be loaded (only the link is then shown). The photos aren't loaded here: what's left names the
      * section only.
      */
-    fun forMandate(mandate: Mandate, listingId: Long?, listing: Listing?, formatter: TenantFormatter): MandateListingView? {
+    fun forMandate(
+        mandate: Mandate,
+        listingId: Long?,
+        listing: Listing?,
+        formatter: TenantFormatter
+    ): MandateListingView? {
         if (mandate.mandateType != MandateType.LISTING || mandate.status != MandateStatus.APPROVED) return null
 
         val createUrl = "/mandates/${mandate.id}/listing"
@@ -287,9 +286,11 @@ object ListingViews {
                 "Annonce en brouillon : " +
                     if (left.isEmpty()) "prête à être envoyée." else "encore à faire, ${left.joinToString(", ")}."
             }
+
             ListingRules.sent(listing.status) -> "Annonce envoyée le ${formatter.date(listing.modifiedAt)}, en vérification."
             listing.status == ListingStatus.PUBLISHED ->
                 listing.publishedAt?.let { "Annonce publiée le ${formatter.date(it)}." } ?: "Annonce publiée."
+
             else -> null
         }
         return MandateListingView(
@@ -358,7 +359,7 @@ object ListingViews {
         ).joinToString(" · ")
 
         ListingSection.AMENITIES -> {
-            val checked = amenities(listing).filterValues { it }.keys
+            val checked = Amenity.of(listing).map { it.key }
             val road = checked.firstOrNull { it in ROAD_ACCESS }
             val others = checked.count { it !in ROAD_ACCESS }
             listOf(
@@ -387,6 +388,7 @@ object ListingViews {
     private fun state(listing: Listing, section: ListingSection): ListingRules.Tag = when {
         section == ListingSection.REMARKS && !ListingRules.required(listing, section) ->
             if (listing.agentRemarks != null) REMARKS_ADDED else OPTIONAL
+
         ListingRules.done(listing, section) -> VERIFIED
         section == ListingSection.PHOTOS -> TO_COMPLETE
         else -> TO_VERIFY
@@ -394,41 +396,6 @@ object ListingViews {
 
     // A photo refused by the check is deleted (or replaced) before sending again
     private fun good(images: List<ListingImage>): Int = images.count { it.status != ImageStatus.REJECTED }
-
-    // Same keys and order as MandateLabels.AMENITY_LABELS
-    private fun amenities(listing: Listing): Map<String, Boolean> = linkedMapOf(
-        "waterMeter" to listing.waterMeter,
-        "dedicatedWaterMeter" to listing.dedicatedWaterMeter,
-        "waterTank" to listing.waterTank,
-        "waterWell" to listing.waterWell,
-        "electricityMeter" to listing.electricityMeter,
-        "dedicatedElectricityMeter" to listing.dedicatedElectricityMeter,
-        "generatorSet" to listing.generatorSet,
-        "solarPanel" to listing.solarPanel,
-        "roadPaved" to listing.roadPaved,
-        "trackAccessibleByCar" to listing.trackAccessibleByCar,
-        "trackInaccessibleByCar" to listing.trackInaccessibleByCar,
-        "securedFenced" to listing.securedFenced,
-        "securityGuard" to listing.securityGuard,
-        "videoSurveillance" to listing.videoSurveillance,
-    )
-
-    private fun amenities(mandate: Mandate): Set<String> = linkedMapOf(
-        "waterMeter" to mandate.waterMeter,
-        "dedicatedWaterMeter" to mandate.dedicatedWaterMeter,
-        "waterTank" to mandate.waterTank,
-        "waterWell" to mandate.waterWell,
-        "electricityMeter" to mandate.electricityMeter,
-        "dedicatedElectricityMeter" to mandate.dedicatedElectricityMeter,
-        "generatorSet" to mandate.generatorSet,
-        "solarPanel" to mandate.solarPanel,
-        "roadPaved" to mandate.roadPaved,
-        "trackAccessibleByCar" to mandate.trackAccessibleByCar,
-        "trackInaccessibleByCar" to mandate.trackInaccessibleByCar,
-        "securedFenced" to mandate.securedFenced,
-        "securityGuard" to mandate.securityGuard,
-        "videoSurveillance" to mandate.videoSurveillance,
-    ).filterValues { it }.keys
 
     private fun plural(n: Int, one: String, many: String): String = "$n ${if (n > 1) many else one}"
 }

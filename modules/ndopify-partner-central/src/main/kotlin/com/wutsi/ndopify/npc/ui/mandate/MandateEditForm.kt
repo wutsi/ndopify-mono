@@ -31,22 +31,6 @@ data class MandateEditForm(
         /** The mandate's answers; for a client, what it left open (null) is "Indifférent". */
         fun of(mandate: Mandate): MandateEditForm {
             val any = if (mandate.mandateType == MandateType.LISTING) null else FindPropertyRules.ANY
-            val checked = mapOf(
-                "waterMeter" to mandate.waterMeter,
-                "dedicatedWaterMeter" to mandate.dedicatedWaterMeter,
-                "waterTank" to mandate.waterTank,
-                "waterWell" to mandate.waterWell,
-                "electricityMeter" to mandate.electricityMeter,
-                "dedicatedElectricityMeter" to mandate.dedicatedElectricityMeter,
-                "generatorSet" to mandate.generatorSet,
-                "solarPanel" to mandate.solarPanel,
-                "roadPaved" to mandate.roadPaved,
-                "trackAccessibleByCar" to mandate.trackAccessibleByCar,
-                "trackInaccessibleByCar" to mandate.trackInaccessibleByCar,
-                "securedFenced" to mandate.securedFenced,
-                "securityGuard" to mandate.securityGuard,
-                "videoSurveillance" to mandate.videoSurveillance,
-            )
             return MandateEditForm(
                 neighborhoodIds = mandate.neighborhoodIds,
                 propertyCategory = mandate.propertyCategory,
@@ -55,7 +39,7 @@ data class MandateEditForm(
                 furnitureType = mandate.furnitureType?.name ?: any,
                 parkings = mandate.parkings ?: any,
                 area = mandate.area?.toString(),
-                amenities = PendingMandate.AMENITIES.filter { checked[it] == true },
+                amenities = Amenity.of(mandate).map { it.key },
                 priceAmount = MandateLabels.formatNumber(mandate.price.amount),
                 movingPeriod = mandate.movingPeriod,
                 comments = mandate.comments,
