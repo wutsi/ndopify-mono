@@ -43,8 +43,8 @@ object MandateLabels {
     )
 
     val FURNITURE_LABELS = mapOf(
-        "FULLY_FURNISHED" to "Meublé",
-        "UNFURNISHED" to "Non meublé",
+        FurnitureType.FULLY_FURNISHED.name to "Meublé",
+        FurnitureType.UNFURNISHED.name to "Non meublé",
         FindPropertyRules.ANY to "Meublé ou non",
     )
 
@@ -147,7 +147,7 @@ object MandateLabels {
         formatter: TenantFormatter
     ): List<Pair<String, String>> {
         val owner = mandate.mandateType == MandateType.LISTING
-        val type = mandate.propertyType?.name
+        val type = mandate.propertyType
         val neighborhoods = mandate.neighborhoodIds.mapNotNull { locations[it]?.name }
         val sector = listOfNotNull(
             if (mandate.neighborhoodIds.isEmpty()) {

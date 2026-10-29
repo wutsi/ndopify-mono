@@ -3,6 +3,7 @@ package com.wutsi.ndopify.npc.ui.findproperty
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
@@ -64,19 +65,27 @@ class FindPropertyRulesTest {
 
     @Test
     fun followUps() {
-        assertTrue(FindPropertyRules.needsRooms(PropertyCategory.RESIDENTIAL, "APARTMENT"))
+        assertTrue(FindPropertyRules.needsRooms(PropertyCategory.RESIDENTIAL, PropertyType.APARTMENT))
         assertTrue(FindPropertyRules.needsRooms(PropertyCategory.RESIDENTIAL, null))
-        assertTrue(FindPropertyRules.needsRooms(PropertyCategory.RESIDENTIAL, "ANY"))
-        assertFalse(FindPropertyRules.needsRooms(PropertyCategory.RESIDENTIAL, "STUDIO"))
-        assertFalse(FindPropertyRules.needsRooms(PropertyCategory.RESIDENTIAL, "ROOM"))
+        assertFalse(FindPropertyRules.needsRooms(PropertyCategory.RESIDENTIAL, PropertyType.STUDIO))
+        assertFalse(FindPropertyRules.needsRooms(PropertyCategory.RESIDENTIAL, PropertyType.ROOM))
         assertFalse(FindPropertyRules.needsRooms(PropertyCategory.COMMERCIAL, null))
-        assertFalse(FindPropertyRules.needsRooms(PropertyCategory.COMMERCIAL, "OFFICE"))
+        assertFalse(FindPropertyRules.needsRooms(PropertyCategory.COMMERCIAL, PropertyType.OFFICE))
         assertFalse(FindPropertyRules.needsRooms(null, null))
-        assertFalse(FindPropertyRules.needsFurniture("LAND"))
+        assertFalse(FindPropertyRules.needsFurniture(PropertyType.LAND))
         assertTrue(FindPropertyRules.needsFurniture(null))
-        assertTrue(FindPropertyRules.needsFurniture("ANY"))
-        assertFalse(FindPropertyRules.asksParkings("ROOM"))
+        assertFalse(FindPropertyRules.asksParkings(PropertyType.ROOM))
         assertTrue(FindPropertyRules.asksParkings(null))
+    }
+
+    @Test
+    fun parsePropertyType() {
+        assertEquals(PropertyType.APARTMENT, FindPropertyRules.parsePropertyType("APARTMENT"))
+        assertNull(FindPropertyRules.parsePropertyType(null))
+        assertNull(FindPropertyRules.parsePropertyType(""))
+        assertNull(FindPropertyRules.parsePropertyType(FindPropertyRules.ANY))
+        assertNull(FindPropertyRules.parsePropertyType("UNKNOWN"))
+        assertNull(FindPropertyRules.parsePropertyType("apartment"))
     }
 
     @Test

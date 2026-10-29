@@ -47,22 +47,29 @@ object FindPropertyRules {
         PropertyType.LAND to setOf(PropertyCategory.COMMERCIAL),
     )
 
-    private val WITHOUT_ROOMS = setOf("STUDIO", "ROOM")
-    private val WITHOUT_FURNITURE = setOf("LAND", "BUILDING", "INDUSTRIAL")
-    private val WITHOUT_PARKINGS = setOf("LAND", "ROOM")
+    private val WITHOUT_ROOMS = setOf(PropertyType.STUDIO, PropertyType.ROOM)
+    private val WITHOUT_FURNITURE = setOf(PropertyType.LAND, PropertyType.BUILDING, PropertyType.INDUSTRIAL)
+    private val WITHOUT_PARKINGS = setOf(PropertyType.LAND, PropertyType.ROOM)
+
+    /**
+     * The type a form posted or the session kept: null for no answer, "Indifférent" or a value that isn't a type
+     * (which [propertyType] rejects). The rules below take the parsed type, never the text.
+     */
+    fun parsePropertyType(value: String?): PropertyType? =
+        PropertyType.entries.firstOrNull { it != PropertyType.UNKNOWN && it.name == value }
 
     /** A home's bedrooms are asked whatever its type (none and "Indifférent" included), except a studio or a room. */
-    fun needsRooms(category: PropertyCategory?, type: String?): Boolean =
+    fun needsRooms(category: PropertyCategory?, type: PropertyType?): Boolean =
         category == PropertyCategory.RESIDENTIAL && type !in WITHOUT_ROOMS
 
-    fun needsFurniture(type: String?): Boolean = type !in WITHOUT_FURNITURE
+    fun needsFurniture(type: PropertyType?): Boolean = type !in WITHOUT_FURNITURE
 
-    fun asksParkings(type: String?): Boolean = type !in WITHOUT_PARKINGS
+    fun asksParkings(type: PropertyType?): Boolean = type !in WITHOUT_PARKINGS
 
     /** No type, or "Indifférent", fits any category; otherwise the type must be offered for the category. */
     fun typeFits(category: PropertyCategory?, type: String?): Boolean {
         if (type.isNullOrEmpty() || type == ANY) return true
-        val known = CATEGORIES_BY_TYPE.keys.firstOrNull { it.name == type } ?: return false
+        val known = parsePropertyType(type) ?: return false
         return CATEGORIES_BY_TYPE[known]?.contains(category) == true
     }
 

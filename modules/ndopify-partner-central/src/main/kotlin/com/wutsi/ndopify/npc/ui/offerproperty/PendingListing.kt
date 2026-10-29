@@ -4,9 +4,9 @@ import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
-import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.npc.ui.join.JoinRules
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
@@ -85,11 +85,13 @@ data class PendingListing(
         OfferPropertyRules.STEPS.dropLast(1).firstOrNull { !isComplete(it, today) }
             ?: OfferPropertyRules.STEP_REVIEW
 
-    private fun needsFurniture() = OfferPropertyRules.needsFurniture(propertyCategory, propertyType)
+    private fun type() = FindPropertyRules.parsePropertyType(propertyType)
 
-    private fun needsRooms() = OfferPropertyRules.needsRooms(propertyCategory, propertyType)
+    private fun needsFurniture() = OfferPropertyRules.needsFurniture(propertyCategory, type())
 
-    private fun needsParking() = OfferPropertyRules.needsParking(propertyCategory, propertyType)
+    private fun needsRooms() = OfferPropertyRules.needsRooms(propertyCategory, type())
+
+    private fun needsParking() = OfferPropertyRules.needsParking(propertyCategory, type())
 
     /** The answers as a LISTING rental mandate. Questions that don't apply to the chosen type are sent as null. */
     fun toCreateMandateRequest(currency: String): CreateMandateRequest =
@@ -100,7 +102,7 @@ data class PendingListing(
             propertyCategory = propertyCategory ?: PropertyCategory.UNKNOWN,
             cityId = cityId ?: -1,
             neighbourhoodIds = listOfNotNull(neighborhoodId),
-            propertyType = PropertyType.entries.firstOrNull { it.name == propertyType },
+            propertyType = type(),
             furnitureType = FurnitureType.entries.firstOrNull { it.name == furnitureType }?.takeIf { needsFurniture() },
             rooms = rooms?.takeIf { needsRooms() },
             parkings = parkings?.takeIf { needsParking() },

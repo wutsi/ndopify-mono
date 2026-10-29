@@ -183,7 +183,8 @@ class OfferPropertyController(
 
         // Questions that don't apply to the posted type are dropped: without JS the page shows them all.
         val category = pending.propertyCategory
-        val type = form.propertyType?.takeIf { it.isNotEmpty() }
+        val typeAnswer = form.propertyType?.takeIf { it.isNotEmpty() }
+        val type = FindPropertyRules.parsePropertyType(typeAnswer)
         val needsParking = OfferPropertyRules.needsParking(category, type)
         val hasParking = form.hasParking
         val places = form.parkings?.takeIf { it.isNotEmpty() }
@@ -191,7 +192,7 @@ class OfferPropertyController(
         val area = FindPropertyRules.parseAmount(areaText)?.takeIf { it <= Int.MAX_VALUE }?.toInt()
         val needsArea = OfferPropertyRules.needsArea(category)
         val answers = pending.copy(
-            propertyType = type,
+            propertyType = typeAnswer,
             furnitureType = form.furnitureType?.takeIf { OfferPropertyRules.needsFurniture(category, type) },
             rooms = form.rooms?.takeIf { OfferPropertyRules.needsRooms(category, type) },
             parkings = when {
@@ -203,7 +204,7 @@ class OfferPropertyController(
             area = area.takeIf { needsArea },
         )
         val errors = errors(
-            "propertyType" to OfferPropertyRules.propertyType(category, type),
+            "propertyType" to OfferPropertyRules.propertyType(category, typeAnswer),
             "furnitureType" to OfferPropertyRules.furnitureType(answers.furnitureType)
                 .takeIf { OfferPropertyRules.needsFurniture(category, type) },
             "rooms" to OfferPropertyRules.rooms(answers.rooms).takeIf { OfferPropertyRules.needsRooms(category, type) },
@@ -389,9 +390,9 @@ class OfferPropertyController(
     /** "Appartement · Non meublé · 3 chambres · Sans parking", as the prototype's describeProperty. */
     private fun propertyLabel(answers: PendingListing): String {
         val category = answers.propertyCategory
-        val type = answers.propertyType
+        val type = FindPropertyRules.parsePropertyType(answers.propertyType)
         val parts = listOfNotNull(
-            PROPERTY_TYPE_LABELS.entries.firstOrNull { it.key.name == type }?.value,
+            PROPERTY_TYPE_LABELS[type],
             MandateLabels.FURNITURE_LABELS[answers.furnitureType]
                 ?.takeIf { OfferPropertyRules.needsFurniture(category, type) },
             MandateLabels.ROOM_LABELS[answers.rooms]?.takeIf { OfferPropertyRules.needsRooms(category, type) },

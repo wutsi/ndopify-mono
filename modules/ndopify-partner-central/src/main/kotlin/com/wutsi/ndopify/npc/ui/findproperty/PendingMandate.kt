@@ -5,7 +5,6 @@ import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
-import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.npc.ui.join.JoinRules
@@ -51,6 +50,8 @@ data class PendingMandate(
 
     fun has(amenity: String): Boolean = amenities.contains(amenity)
 
+    private fun type() = FindPropertyRules.parsePropertyType(propertyType)
+
     fun isComplete(step: String): Boolean = when (step) {
         FindPropertyController.STEP_NEED -> FindPropertyRules.propertyCategory(propertyCategory) == null
 
@@ -59,8 +60,8 @@ data class PendingMandate(
 
         FindPropertyController.STEP_PROPERTY ->
             FindPropertyRules.propertyType(propertyCategory, propertyType) == null &&
-                (!FindPropertyRules.needsRooms(propertyCategory, propertyType) || FindPropertyRules.rooms(rooms) == null) &&
-                (!FindPropertyRules.needsFurniture(propertyType) || FindPropertyRules.furnitureType(furnitureType) == null) &&
+                (!FindPropertyRules.needsRooms(propertyCategory, type()) || FindPropertyRules.rooms(rooms) == null) &&
+                (!FindPropertyRules.needsFurniture(type()) || FindPropertyRules.furnitureType(furnitureType) == null) &&
                 FindPropertyRules.area(area) == null
 
         // Every criterion is optional.
@@ -88,7 +89,7 @@ data class PendingMandate(
 
     /** The answers as a TENANT rental mandate. Questions that don't apply to the chosen type are sent as null. */
     fun toCreateMandateRequest(currency: String): CreateMandateRequest {
-        val type = PropertyType.entries.firstOrNull { it.name == propertyType }
+        val type = type()
         return CreateMandateRequest(
             mandateType = MandateType.SEARCH,
             // Only rentals for now: the visitor isn't asked.
@@ -99,9 +100,9 @@ data class PendingMandate(
             propertyType = type,
             furnitureType = FurnitureType.entries
                 .firstOrNull { it.name == furnitureType }
-                ?.takeIf { FindPropertyRules.needsFurniture(propertyType) },
-            rooms = rooms?.takeIf { FindPropertyRules.needsRooms(propertyCategory, propertyType) },
-            parkings = parkings?.takeIf { FindPropertyRules.asksParkings(propertyType) && it != FindPropertyRules.ANY },
+                ?.takeIf { FindPropertyRules.needsFurniture(type) },
+            rooms = rooms?.takeIf { FindPropertyRules.needsRooms(propertyCategory, type) },
+            parkings = parkings?.takeIf { FindPropertyRules.asksParkings(type) && it != FindPropertyRules.ANY },
             area = area,
             waterMeter = has("waterMeter"),
             dedicatedWaterMeter = has("dedicatedWaterMeter"),

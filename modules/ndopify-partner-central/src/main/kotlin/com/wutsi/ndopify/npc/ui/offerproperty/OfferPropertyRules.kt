@@ -5,6 +5,7 @@ import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.npc.service.TenantFormatter
+import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
 
@@ -78,20 +79,20 @@ object OfferPropertyRules {
         PropertyType.LAND to PropertyCategory.COMMERCIAL,
     )
 
-    private val WITHOUT_ROOMS = setOf("ROOM", "STUDIO", "BUILDING")
+    private val WITHOUT_ROOMS = setOf(PropertyType.ROOM, PropertyType.STUDIO, PropertyType.BUILDING)
 
     private fun residential(category: PropertyCategory?) = category == PropertyCategory.RESIDENTIAL
 
     // A whole building is let as it is, furnished or not flat by flat.
-    fun needsFurniture(category: PropertyCategory?, type: String?): Boolean =
-        residential(category) && type != "BUILDING"
+    fun needsFurniture(category: PropertyCategory?, type: PropertyType?): Boolean =
+        residential(category) && type != PropertyType.BUILDING
 
-    fun needsRooms(category: PropertyCategory?, type: String?): Boolean =
+    fun needsRooms(category: PropertyCategory?, type: PropertyType?): Boolean =
         residential(category) && type !in WITHOUT_ROOMS
 
     // A room is let in a shared home: its parking, if any, isn't its own.
-    fun needsParking(category: PropertyCategory?, type: String?): Boolean =
-        residential(category) && type != "ROOM"
+    fun needsParking(category: PropertyCategory?, type: PropertyType?): Boolean =
+        residential(category) && type != PropertyType.ROOM
 
     fun needsArea(category: PropertyCategory?): Boolean = category == PropertyCategory.COMMERCIAL
 
@@ -132,7 +133,7 @@ object OfferPropertyRules {
     }
 
     fun propertyType(category: PropertyCategory?, type: String?): String? {
-        val known = CATEGORIES_BY_TYPE.keys.firstOrNull { it.name == type }
+        val known = FindPropertyRules.parsePropertyType(type)
         return if (known != null && CATEGORIES_BY_TYPE[known] == category) null else "Choisissez le type de bien."
     }
 

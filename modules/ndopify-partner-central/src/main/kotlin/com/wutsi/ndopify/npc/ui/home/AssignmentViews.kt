@@ -55,7 +55,7 @@ object AssignmentViews {
 
     /** The questions the find-property wizard asked for this type of property, then the criteria by group. */
     private fun details(mandate: Mandate, owner: Boolean): List<Pair<String, String>> {
-        val type = mandate.propertyType?.name
+        val type = mandate.propertyType
         return listOfNotNull(
             MandateLabels.category(mandate.propertyCategory)?.let { "Catégorie" to it },
             "Type de propriété" to MandateLabels.propertyType(mandate.propertyType),

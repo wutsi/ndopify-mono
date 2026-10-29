@@ -134,18 +134,19 @@ class FindPropertyController(
         if (!isAllowed(STEP_PROPERTY, pending)) return redirect(pending.firstIncompleteStep())
 
         // Questions that don't apply to the posted type are dropped: without JS the page shows them all.
-        val type = form.propertyType?.takeIf { it.isNotEmpty() }
+        val typeAnswer = form.propertyType?.takeIf { it.isNotEmpty() }
+        val type = FindPropertyRules.parsePropertyType(typeAnswer)
         val areaText = form.area?.trim().orEmpty()
         val area = FindPropertyRules.parseAmount(areaText)?.takeIf { it <= Int.MAX_VALUE }?.toInt()
         val answers = pending.copy(
-            propertyType = type,
+            propertyType = typeAnswer,
             rooms = form.rooms?.takeIf { FindPropertyRules.needsRooms(pending.propertyCategory, type) },
             furnitureType = form.furnitureType?.takeIf { FindPropertyRules.needsFurniture(type) },
             parkings = form.parkings?.takeIf { it.isNotEmpty() && FindPropertyRules.asksParkings(type) },
             area = area,
         )
         val errors = errors(
-            "propertyType" to FindPropertyRules.propertyType(answers.propertyCategory, type),
+            "propertyType" to FindPropertyRules.propertyType(answers.propertyCategory, typeAnswer),
             "rooms" to
                 if (FindPropertyRules.needsRooms(answers.propertyCategory, type)) FindPropertyRules.rooms(answers.rooms) else null,
             "furnitureType" to
@@ -327,9 +328,9 @@ class FindPropertyController(
 
     /** "Appartement · 3 chambres · Meublé ou non · 80 m² minimum", as the prototype's describeProperty. */
     private fun propertyLabel(answers: PendingMandate): String {
-        val type = answers.propertyType
+        val type = FindPropertyRules.parsePropertyType(answers.propertyType)
         val parts = listOfNotNull(
-            MandateLabels.PROPERTY_TYPE_LABELS.entries.firstOrNull { it.key.name == type }?.value ?: "Tout type de bien",
+            MandateLabels.PROPERTY_TYPE_LABELS[type] ?: "Tout type de bien",
             MandateLabels.ROOM_LABELS[answers.rooms]?.takeIf { FindPropertyRules.needsRooms(answers.propertyCategory, type) },
             MandateLabels.FURNITURE_LABELS[answers.furnitureType]?.takeIf { FindPropertyRules.needsFurniture(type) },
             MandateLabels.PARKING_LABELS[answers.parkings]?.takeIf { FindPropertyRules.asksParkings(type) },

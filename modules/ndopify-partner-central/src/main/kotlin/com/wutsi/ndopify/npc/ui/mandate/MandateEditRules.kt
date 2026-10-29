@@ -70,7 +70,7 @@ object MandateEditRules {
             listingType = mandate.listingType,
             cityId = mandate.cityId,
             neighbourhoodIds = form.neighborhoodIds.distinct(),
-            propertyType = type?.let { PropertyType.valueOf(it) },
+            propertyType = type,
             furnitureType = form.furnitureType
                 ?.takeIf { FindPropertyRules.needsFurniture(type) && it != ANY }
                 ?.let { FurnitureType.valueOf(it) },
@@ -115,7 +115,7 @@ object MandateEditRules {
             "sector" to neighborhoods.joinToString(", ").ifEmpty { "Toute la ville" },
             "property" to listOfNotNull(
                 (
-                    MandateLabels.PROPERTY_TYPE_LABELS.entries.firstOrNull { it.key.name == form.propertyType }?.value
+                    MandateLabels.PROPERTY_TYPE_LABELS[type]
                         ?: "Indifférent".takeIf { form.propertyType == ANY }
                         ?: form.propertyCategory?.let { MandateLabels.category(it) }
                     ),
@@ -139,16 +139,15 @@ object MandateEditRules {
         )
     }
 
-    /** The type's name; null for "Indifférent" or no answer. */
-    private fun type(form: MandateEditForm): String? = form.propertyType?.takeIf { it.isNotEmpty() && it != ANY }
+    /** The type; null for "Indifférent", no answer, or a value that isn't a type ([typeError] rejects it). */
+    private fun type(form: MandateEditForm): PropertyType? = FindPropertyRules.parsePropertyType(form.propertyType)
 
     private fun typeError(form: MandateEditForm, owner: Boolean): String? {
-        val type = type(form)
+        val answer = form.propertyType?.takeIf { it.isNotEmpty() && it != ANY }
         return when {
-            type == null && owner -> "Choisissez un type de bien proposé."
-            type != null && PropertyType.entries.none { it != PropertyType.UNKNOWN && it.name == type } ->
-                "Choisissez un type de bien proposé."
-            else -> FindPropertyRules.propertyType(form.propertyCategory, type)
+            answer == null && owner -> "Choisissez un type de bien proposé."
+            answer != null && type(form) == null -> "Choisissez un type de bien proposé."
+            else -> FindPropertyRules.propertyType(form.propertyCategory, answer)
         }
     }
 
