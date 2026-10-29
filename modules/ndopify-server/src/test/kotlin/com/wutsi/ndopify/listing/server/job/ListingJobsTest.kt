@@ -143,13 +143,29 @@ class ListingJobsTest {
         assertNull(TenantContext.get())
     }
 
+    private fun setUpPublishListings(verified: List<ListingEntity>, publishing: List<ListingEntity>) {
+        doReturn(verified).whenever(service).search(
+            SearchListingRequest(statuses = listOf(ListingStatus.VERIFIED), limit = 100)
+        )
+        doReturn(publishing).whenever(service).search(
+            SearchListingRequest(statuses = listOf(ListingStatus.PUBLISHING), limit = 100)
+        )
+    }
+
     @Test
-    fun `publish - searches the publishing listings only, at most 100 per run`() {
-        setUpPendingListings()
+    fun `publish - searches the verified, then the publishing listings, at most 100 each per run`() {
+        setUpPublishListings(emptyList(), emptyList())
 
         jobs.publish()
 
-        verify(service).search(
+        val order = inOrder(service)
+        order.verify(service).search(
+            SearchListingRequest(
+                statuses = listOf(ListingStatus.VERIFIED),
+                limit = 100,
+            )
+        )
+        order.verify(service).search(
             SearchListingRequest(
                 statuses = listOf(ListingStatus.PUBLISHING),
                 limit = 100,
@@ -158,24 +174,54 @@ class ListingJobsTest {
     }
 
     @Test
+    fun `publish - sends every verified listing for publication, in the order found`() {
+        val verified = listOf(listing1, listing2, listing3).map { it.copy(status = ListingStatus.VERIFIED) }
+        setUpPublishListings(verified, emptyList())
+
+        jobs.publish()
+
+        val order = inOrder(service)
+        verified.forEach { listing -> order.verify(service).publish(listing) }
+        verify(publisherService, never()).publish(any())
+    }
+
+    @Test
     fun `publish - publishes every publishing listing, in the order found`() {
         val publishing = listOf(listing1, listing2, listing3).map { it.copy(status = ListingStatus.PUBLISHING) }
-        setUpPendingListings(*publishing.toTypedArray())
+        setUpPublishListings(emptyList(), publishing)
 
         jobs.publish()
 
         val order = inOrder(publisherService)
         publishing.forEach { listing -> order.verify(publisherService).publish(listing) }
+        verify(service, never()).publish(any<ListingEntity>())
         verify(verifierService, never()).verify(any())
     }
 
     @Test
-    fun `publish - a failing listing doesn't stop the others`() {
-        setUpPendingListings(listing1, listing2, listing3)
-        doThrow(IllegalStateException("not publishing")).whenever(publisherService).publish(listing2)
+    fun `publish - a verified listing is published in the same run`() {
+        val verified = listing1.copy(status = ListingStatus.VERIFIED)
+        val publishing = listing1.copy(status = ListingStatus.PUBLISHING)
+        setUpPublishListings(listOf(verified), listOf(publishing)) // The second search finds it sent by the first pass
 
         jobs.publish()
 
+        val order = inOrder(service, publisherService)
+        order.verify(service).publish(verified)
+        order.verify(publisherService).publish(publishing)
+    }
+
+    @Test
+    fun `publish - a failing listing doesn't stop the others`() {
+        val verified = listOf(listing1, listing2, listing3).map { it.copy(status = ListingStatus.VERIFIED) }
+        val publishing = listOf(listing1, listing2, listing3).map { it.copy(status = ListingStatus.PUBLISHING) }
+        setUpPublishListings(verified, publishing)
+        doThrow(IllegalStateException("not verified")).whenever(service).publish(verified[1])
+        doThrow(IllegalStateException("not publishing")).whenever(publisherService).publish(publishing[1])
+
+        jobs.publish()
+
+        verify(service, times(3)).publish(any<ListingEntity>())
         verify(publisherService, times(3)).publish(any())
     }
 
@@ -183,8 +229,15 @@ class ListingJobsTest {
     fun `publish - each tenant processed with its id in the tenant context`() {
         doReturn(listOf(tenant1, tenant2)).whenever(tenantService).search(true)
         doAnswer {
-            if (TenantContext.get() == 1L) listOf(listing1) else listOf(listing2)
+            val request = it.arguments[0] as SearchListingRequest
+            val listing = if (TenantContext.get() == 1L) listing1 else listing2
+            listOf(listing.copy(status = request.statuses.first()))
         }.whenever(service).search(any())
+        val sendTenants = mutableListOf<Long?>()
+        doAnswer {
+            sendTenants.add(TenantContext.get())
+            it.arguments[0]
+        }.whenever(service).publish(any<ListingEntity>())
         val publishTenants = mutableListOf<Long?>()
         doAnswer {
             publishTenants.add(TenantContext.get())
@@ -193,6 +246,7 @@ class ListingJobsTest {
 
         jobs.publish()
 
+        assertEquals(listOf<Long?>(1L, 2L), sendTenants)
         assertEquals(listOf<Long?>(1L, 2L), publishTenants)
         assertNull(TenantContext.get())
     }
@@ -201,12 +255,15 @@ class ListingJobsTest {
     fun `publish - a failing tenant doesn't stop the others`() {
         doReturn(listOf(tenant1, tenant2)).whenever(tenantService).search(true)
         doAnswer {
-            if (TenantContext.get() == 1L) throw RuntimeException("DB down") else listOf(listing2)
+            val request = it.arguments[0] as SearchListingRequest
+            if (TenantContext.get() == 1L) throw RuntimeException("DB down")
+            listOf(listing2.copy(status = request.statuses.first()))
         }.whenever(service).search(any())
 
         jobs.publish()
 
-        verify(publisherService).publish(listing2)
+        verify(service).publish(listing2.copy(status = ListingStatus.VERIFIED))
+        verify(publisherService).publish(listing2.copy(status = ListingStatus.PUBLISHING))
         assertNull(TenantContext.get())
     }
 }

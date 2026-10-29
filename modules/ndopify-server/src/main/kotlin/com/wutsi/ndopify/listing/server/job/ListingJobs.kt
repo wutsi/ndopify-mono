@@ -38,8 +38,11 @@ class ListingJobs(
     }
 
     /**
-     * Publishes the PUBLISHING listings of each active tenant: sent for publication (`POST /v1/listings/{id}/publish`),
-     * or left PUBLISHING by a failed attempt to be retried.
+     * Publishes the listings of each active tenant, in two passes. First the VERIFIED ones are sent for publication
+     * (PUBLISHING, as `POST /v1/listings/{id}/publish` does): a verified listing is published without anybody having to
+     * ask. Then the PUBLISHING ones are published by [ListingPublisherService]: just sent by the first pass (so a
+     * listing is published in the run that finds it VERIFIED), sent by the endpoint, or left PUBLISHING by a failed
+     * attempt to be retried.
      */
     @Scheduled(cron = "\${ndopify.listing.publish.cron}")
     fun publish() {

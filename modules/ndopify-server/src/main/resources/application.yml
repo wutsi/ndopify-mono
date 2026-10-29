@@ -245,7 +245,7 @@ ndopify:
     listing:
         min-images: 5                      # A listing must have at least 5 images to be published
         publish:
-            cron: "0 */15 * * * ?"         # Every 15 minutes: publish listings that are PUBLISHING
+            cron: "0 */15 * * * ?"         # Every 15 minutes: publish listings that are VERIFIED or PUBLISHING
         verify:
             cron: "0 */15 * * * ?"         # Every 15 minutes: verify listings that are UNDER_VERIFICATION
 

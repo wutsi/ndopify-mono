@@ -58,7 +58,7 @@ locale and `timeZone` — never a hard-coded pattern. Mailet unit tests mirror t
 
 Scheduled jobs live in `<domain>/server/job/`: `KycJobs` (party), `MandateJobs` (mandate), `ContractJobs`
 (contract) and `ListingJobs` (listing, every 15 minutes: `verify`, the UNDER_VERIFICATION listings through
-`ListingVerifierService`; `publish`, the PUBLISHING ones through `ListingPublisherService`). They loop over the
+`ListingVerifierService`; `publish`, the VERIFIED ones sent for publication, then the PUBLISHING ones through `ListingPublisherService`). They loop over the
 active tenants, setting `TenantContext` for each.
 
 Current domains:
