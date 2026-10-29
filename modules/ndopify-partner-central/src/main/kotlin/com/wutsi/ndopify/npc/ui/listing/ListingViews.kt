@@ -101,19 +101,8 @@ object ListingViews {
     }
 
     // The prototype's labels of *Le bien*'s types (listing/bien.html), not the mandates'
-    private val TYPE_LABELS = mapOf(
-        PropertyType.APARTMENT to "Appartement",
-        PropertyType.HOUSE to "Maison",
-        PropertyType.VILLA to "Villa",
-        PropertyType.DUPLEX to "Duplex",
-        PropertyType.STUDIO to "Studio",
-        PropertyType.ROOM to "Chambre",
-        PropertyType.BUILDING to "Immeuble entier",
-        PropertyType.OFFICE to "Bureau",
-        PropertyType.RETAIL to "Boutique, local commercial",
-        PropertyType.INDUSTRIAL to "Entrepôt, local industriel",
-        PropertyType.LAND to "Terrain",
-    )
+    private val TYPE_LABELS: Map<PropertyType, String> =
+        MandateLabels.PROPERTY_TYPE_LABELS + (PropertyType.BUILDING to "Immeuble entier")
 
     /** The checkboxes' labels of *Eau, électricité, accès* (listing/equipements.html, not the mandates' wording). */
     val AMENITY_LABELS: Map<String, String> =

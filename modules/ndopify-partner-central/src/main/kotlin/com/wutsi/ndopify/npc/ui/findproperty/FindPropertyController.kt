@@ -1,17 +1,15 @@
 package com.wutsi.ndopify.npc.ui.findproperty
 
-import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyController.Companion.STEPS
 import com.wutsi.ndopify.npc.ui.join.JoinRules
+import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.npc.ui.login.LoginController
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.refdata.dto.Location
-import com.wutsi.ndopify.refdata.dto.LocationType
-import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
 import com.wutsi.ndopify.refdata.dto.Tenant
 import jakarta.servlet.http.HttpSession
 import org.slf4j.LoggerFactory
@@ -44,6 +42,8 @@ class FindPropertyController(
     private val locationClient: NdLocationClient,
     private val tenantContext: TenantContext,
 ) {
+    private val sector = SectorValidator(locationClient, tenantContext)
+
     companion object {
         private val LOGGER = LoggerFactory.getLogger(FindPropertyController::class.java)
 
@@ -59,12 +59,6 @@ class FindPropertyController(
         const val RETURN_TO_REVIEW = "review"
 
         val STEPS = listOf(STEP_NEED, STEP_AREA, STEP_PROPERTY, STEP_AMENITIES, STEP_BUDGET, STEP_CONTACT, STEP_REVIEW)
-
-        // Labels of the prototype (find-property.js).
-        private val CATEGORY_LABELS = mapOf(
-            PropertyCategory.RESIDENTIAL to "usage résidentiel",
-            PropertyCategory.COMMERCIAL to "usage commercial",
-        )
     }
 
     /** The current tenant, for the header on every step: its logo, and "Quitter" back to its public portal. */
@@ -119,7 +113,7 @@ class FindPropertyController(
         val errors = errors(
             "cityId" to FindPropertyRules.cityId(answers.cityId),
             "neighborhoodIds" to FindPropertyRules.neighborhoodIds(answers.neighborhoodIds),
-        ).ifEmpty { areaErrors(answers.cityId!!, answers.neighborhoodIds) }
+        ).ifEmpty { sector.errors(answers.cityId!!, answers.neighborhoodIds) }
         return save(STEP_AREA, answers, errors, returnTo, session, model)
     }
 
@@ -316,7 +310,7 @@ class FindPropertyController(
             model.addAttribute("amenityLabels", MandateLabels.AMENITY_LABELS)
         }
         if (step == STEP_REVIEW) {
-            model.addAttribute("categoryLabel", CATEGORY_LABELS[answers.propertyCategory]?.let { "Location, $it" })
+            model.addAttribute("categoryLabel", MandateLabels.project(answers.propertyCategory))
             model.addAttribute("propertyLabel", propertyLabel(answers))
             model.addAttribute("priceLabel", answers.priceAmount?.let { formatter().money(it) + " par mois" })
             model.addAttribute("movingPeriodLabel", MandateLabels.MOVE_IN_LABELS[answers.movingPeriod])
@@ -339,43 +333,17 @@ class FindPropertyController(
         return parts.joinToString(" · ")
     }
 
-    /** The city must be one of the tenant's cities, and every neighbourhood one of its neighbourhoods. */
-    private fun areaErrors(cityId: Long, neighborhoodIds: List<Long>): Map<String, String> {
-        val locations = locations(listOf(cityId) + neighborhoodIds)
-        val city = locations[cityId]
-        if (city == null || city.type != LocationType.CITY || city.country != tenantContext.getTenant().countryCode) {
-            return mapOf("cityId" to "Cette ville n'est pas proposée. Choisissez-en une dans la liste.")
-        }
-
-        val valid = neighborhoodIds.all { id ->
-            val neighborhood = locations[id]
-            neighborhood != null && neighborhood.type == LocationType.NEIGHBORHOOD && neighborhood.parentId == cityId
-        }
-        return if (valid) {
-            emptyMap()
-        } else {
-            mapOf("neighborhoodIds" to "Choisissez des quartiers de la ville sélectionnée.")
-        }
-    }
-
     /**
      * The names to show, best effort: when ndopify-server is down, the page (and the review's "Envoi impossible")
-     * still renders, without them. Validation never uses this: it calls [locations] and fails if it fails.
+     * still renders, without them. Validation never uses this: it calls [SectorValidator.locations] and fails if it fails.
      */
     private fun namesOrEmpty(ids: List<Long>): Map<Long, Location> =
         try {
-            locations(ids)
+            sector.locations(ids)
         } catch (ex: RestClientException) {
             LOGGER.warn("Unable to load the locations $ids", ex)
             emptyMap()
         }
-
-    private fun locations(ids: List<Long>): Map<Long, Location> {
-        if (ids.isEmpty()) return emptyMap()
-        return locationClient.search(SearchLocationRequest(ids = ids.distinct(), limit = ids.size))
-            .locations
-            .associateBy { location -> location.id }
-    }
 
     private fun formatter(): TenantFormatter = TenantFormatter(tenantContext.getTenant())
 

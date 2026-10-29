@@ -1,6 +1,5 @@
 package com.wutsi.ndopify.npc.ui.offerproperty
 
-import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
@@ -68,12 +67,6 @@ class OfferPropertyController(
 
         private const val HAS_PARKING = "YES"
         private const val HAS_NO_PARKING = "NO"
-
-        // Labels of the prototype (offer-property.js).
-        private val CATEGORY_LABELS = mapOf(
-            PropertyCategory.RESIDENTIAL to "usage résidentiel",
-            PropertyCategory.COMMERCIAL to "usage commercial",
-        )
     }
 
     /** The current tenant, for the header on every step: its logo. */
@@ -357,7 +350,7 @@ class OfferPropertyController(
             model.addAttribute("amenityLabels", MandateLabels.AMENITY_LABELS)
         }
         if (step == STEP_REVIEW) {
-            model.addAttribute("categoryLabel", CATEGORY_LABELS[answers.propertyCategory]?.let { "Location, $it" })
+            model.addAttribute("categoryLabel", MandateLabels.project(answers.propertyCategory))
             model.addAttribute("locationLabel", locationLabel(model))
             model.addAttribute("termsLines", termsLines(answers))
             model.addAttribute("propertyLabel", propertyLabel(answers))

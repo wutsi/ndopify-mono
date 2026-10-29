@@ -86,6 +86,12 @@ object MandateLabels {
         MandateType.LISTING to "Affichage"
     )
 
+    // The wizards' review, after "Location, " (prototype's find-property.js / offer-property.js).
+    private val PROJECT_LABELS = mapOf(
+        PropertyCategory.RESIDENTIAL to "usage résidentiel",
+        PropertyCategory.COMMERCIAL to "usage commercial",
+    )
+
     private val CATEGORY_NAMES = mapOf(
         PropertyCategory.RESIDENTIAL to "Résidentiel",
         PropertyCategory.COMMERCIAL to "Commercial",
@@ -98,6 +104,9 @@ object MandateLabels {
     fun mandateType(type: MandateType): String = MANDATE_TYPE_LABELS[type] ?: "Mandat"
 
     fun category(category: PropertyCategory): String? = CATEGORY_NAMES[category]
+
+    /** "Location, usage résidentiel", the wizards' project; null without a category. */
+    fun project(category: PropertyCategory?): String? = PROJECT_LABELS[category]?.let { "Location, $it" }
 
     fun propertyType(type: PropertyType?): String = PROPERTY_TYPE_LABELS[type] ?: "Tout type de bien"
 
