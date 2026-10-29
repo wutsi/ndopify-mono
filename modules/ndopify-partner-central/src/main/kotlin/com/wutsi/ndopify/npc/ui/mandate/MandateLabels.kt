@@ -82,8 +82,8 @@ object MandateLabels {
         "roadPaved" to "Route bitumée",
         "trackAccessibleByCar" to "Piste accessible en voiture",
         "trackInaccessibleByCar" to "Piste accessible à pied seulement",
+        "securityGuard" to "Gardien de sécurité",
         "securedFenced" to "Clôturé et sécurisé",
-        "securityGuard" to "Gardien",
         "videoSurveillance" to "Vidéosurveillance",
     )
 
@@ -182,22 +182,33 @@ object MandateLabels {
         listOfNotNull(party(mandate.mandateType), shortPropertyType(mandate.propertyType)).joinToString(" · ")
 
     /** "152,5K FCFA / mois", in short: the rent of a card's facts. */
-    fun compactRent(money: Money, formatter: TenantFormatter): String = formatter.compactMoney(money.amount, money.currency) + " / mois"
+    fun compactRent(money: Money, formatter: TenantFormatter): String =
+        formatter.compactMoney(money.amount, money.currency) + " / mois"
 
     /** "152 500 FCFA / mois", in the tenant's format: the rent of a mandate's criteria. */
-    fun rent(money: Money, formatter: TenantFormatter): String = formatter.money(money.amount, money.currency) + " / mois"
+    fun rent(money: Money, formatter: TenantFormatter): String =
+        formatter.money(money.amount, money.currency) + " / mois"
 
     /**
      * The mandate's criteria as term → value rows, in the prototype's order (`criteriaOf`): sector, amount and moving
      * date first (a card's three facts), the category and the type (with them, the page's key criteria), then the
      * follow-up questions that apply to the type, the amenities by group, and the comments.
      */
-    fun criteria(mandate: Mandate, locations: Map<Long, Location>, formatter: TenantFormatter): List<Pair<String, String>> {
+    fun criteria(
+        mandate: Mandate,
+        locations: Map<Long, Location>,
+        formatter: TenantFormatter
+    ): List<Pair<String, String>> {
         val owner = mandate.mandateType == MandateType.LISTING
         val type = mandate.propertyType?.name
         val neighborhoods = mandate.neighborhoodIds.mapNotNull { locations[it]?.name }
         val sector = listOfNotNull(
-            if (mandate.neighborhoodIds.isEmpty()) "Toute la ville" else neighborhoods.joinToString(", ").ifEmpty { null },
+            if (mandate.neighborhoodIds.isEmpty()) {
+                "Toute la ville"
+            } else {
+                neighborhoods.joinToString(", ")
+                .ifEmpty { null }
+            },
             locations[mandate.cityId]?.name,
         ).joinToString(" — ").ifEmpty { NONE }
         return listOfNotNull(
@@ -210,11 +221,13 @@ object MandateLabels {
             "Catégorie" to (category(mandate.propertyCategory) ?: NONE),
             "Type de propriété" to (PROPERTY_TYPE_LABELS[mandate.propertyType] ?: "Indifférent"),
             ("Meublé" to furniture(mandate.furnitureType)).takeIf { FindPropertyRules.needsFurniture(type) },
-            mandate.rooms?.let { "Chambres" to it }?.takeIf { FindPropertyRules.needsRooms(mandate.propertyCategory, type) },
+            mandate.rooms?.let { "Chambres" to it }
+                ?.takeIf { FindPropertyRules.needsRooms(mandate.propertyCategory, type) },
             ("Parking" to (mandate.parkings?.let { PARKING_VALUES[it] ?: it } ?: "Indifférent"))
                 .takeIf { FindPropertyRules.asksParkings(type) },
             mandate.area?.let { (if (owner) "Surface" else "Surface souhaitée") to formatNumber(it) + " m²" },
-        ) + amenityGroups(mandate) + listOfNotNull(mandate.comments?.trim()?.ifEmpty { null }?.let { "Autres précisions" to it })
+        ) + amenityGroups(mandate) + listOfNotNull(mandate.comments?.trim()?.ifEmpty { null }
+            ?.let { "Autres précisions" to it })
     }
 
     private const val NONE = "—"

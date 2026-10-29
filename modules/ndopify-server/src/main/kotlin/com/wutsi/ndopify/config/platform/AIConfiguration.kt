@@ -29,8 +29,8 @@ class AIConfiguration(
     private val textModel: DeepSeekChatModel,
     private val observationRegistry: ObjectProvider<ObservationRegistry>,
     private val clock: Clock,
-    @Value("\${ndopify.ai.health.up-ttl-minutes}") private val healthUpTtlMinutes: Long,
-    @Value("\${ndopify.ai.health.down-ttl-minutes}") private val healthDownTtlMinutes: Long,
+    @param:Value("\${ndopify.ai.health.up-ttl-minutes}") private val healthUpTtlMinutes: Long,
+    @param:Value("\${ndopify.ai.health.down-ttl-minutes}") private val healthDownTtlMinutes: Long,
 ) {
     @Bean(ChatClients.VISION)
     fun visionChatClient(): ChatClient =

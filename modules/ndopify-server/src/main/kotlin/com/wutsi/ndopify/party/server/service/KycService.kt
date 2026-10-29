@@ -215,7 +215,6 @@ class KycService(
         val case = tx.execute { claim(id) }
 
         val verifications = try {
-            LOGGER.info(">>> KYC#$id - Verifying identification, selfie and payment methods")
             // Checked before the other verifiers (no need to call them), and here rather than in complete(): failing
             // there would leave the case UNDER_VERIFICATION
             val idVerifications = verify(case, KycVerificationType.IDENTIFICATION)
@@ -232,7 +231,13 @@ class KycService(
                 }
         } catch (ex: Exception) {
             LOGGER.error(">>> KYC#$id - Verification failed", ex)
-            return tx.execute { retry(findById(id), KycErrorCode.GATEWAY_ERROR, ex.message) }
+            return tx.execute {
+                retry(
+                    case = findById(id),
+                    errorCode = KycErrorCode.GATEWAY_ERROR,
+                    errorMessage = "${ex::class.java.name}: ${ex.message}"
+                )
+            }
         }
 
         return tx.execute { complete(id, verifications) }
@@ -392,6 +397,8 @@ class KycService(
     }
 
     private fun verify(case: KycCaseEntity, verificationType: KycVerificationType): List<KycVerificationEntity> {
+        LOGGER.info(">>> KYC#${case.id} - Verifcation: $verificationType")
+
         val verifier = verifierProvider.get(verificationType)
         return verifier?.verify(case) ?: emptyList()
     }
