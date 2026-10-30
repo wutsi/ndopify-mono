@@ -382,7 +382,9 @@ Tenancy is enforced via **Hibernate's built-in multi-tenancy mechanism**, not ha
   rely on ndopify-server checking it on each
   of their calls: their `HttpClientErrorHandler` answers a 401 from it by clearing the cookie (back to `/login`, or the
   sign link / verify page). So a web app never acts on a claim alone, only uses it to pick what to ask ndopify-server.
-  Changing `JWT_SECRET` signs everyone out.
+  Changing `JWT_SECRET` signs everyone out. A token lives as long as its application's TTL
+  (`ndopify.security.access-token.ttl.<ApplicationCode>`, `AccessTokenProperties`, else `default-ttl`; an environment
+  overrides one in its `application-<profile>.yml`); the web apps keep their cookie until the token's `exp`.
 
 ## Testing Patterns
 

@@ -15,6 +15,7 @@ import com.wutsi.ndopify.security.dto.JwtPrincipal
 import jakarta.servlet.http.HttpServletRequest
 import org.mockito.Mockito.mock
 import java.time.Clock
+import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -23,10 +24,14 @@ import kotlin.test.assertNull
 class AccessTokenServiceTest {
     private val clock = mock<Clock>()
     private val request = mock<HttpServletRequest>()
-    private val service = AccessTokenService(clock, request, SECRET)
+    private val service = AccessTokenService(clock, request, SECRET, PROPERTIES)
 
     companion object {
         private const val SECRET = "test-secret-not-for-prod-0123456789abcdef"
+        private val PROPERTIES = AccessTokenProperties(
+            ttl = mapOf(ApplicationCode.PARTNER_CENTRAL to Duration.ofDays(1)),
+            defaultTtl = Duration.ofHours(2),
+        )
     }
 
     @Test
@@ -71,6 +76,26 @@ class AccessTokenServiceTest {
     }
 
     @Test
+    fun `ttl of the application`() {
+        val now = System.currentTimeMillis()
+        doReturn(now).whenever(clock).millis()
+
+        val token = service.create(ApplicationCode.PARTNER_CENTRAL, userId = 111L, roles = emptyArray(), tenantId = 1L)
+
+        assertEquals(Duration.ofDays(1), lifetime(token))
+    }
+
+    @Test
+    fun `default ttl for an application not configured`() {
+        val now = System.currentTimeMillis()
+        doReturn(now).whenever(clock).millis()
+
+        val token = service.create(ApplicationCode.E_SIGNATURE, userId = 111L, roles = emptyArray(), tenantId = 1L)
+
+        assertEquals(Duration.ofHours(2), lifetime(token))
+    }
+
+    @Test
     fun `expired token`() {
         val now = 1000L
         doReturn(now).whenever(clock).millis()
@@ -102,7 +127,7 @@ class AccessTokenServiceTest {
 
     @Test
     fun `secret too short`() {
-        assertFailsWith<IllegalArgumentException> { AccessTokenService(clock, request, "short-secret") }
+        assertFailsWith<IllegalArgumentException> { AccessTokenService(clock, request, "short-secret", PROPERTIES) }
     }
 
     @Test
@@ -188,4 +213,9 @@ class AccessTokenServiceTest {
         .withClaim(JwtPrincipal.CLAIM_USER_ID, 111L)
         .withClaim(JwtPrincipal.CLAIM_TENANT_ID, 222L)
         .withArrayClaim(JwtPrincipal.CLAIM_ROLE, arrayOf("admin"))
+
+    private fun lifetime(token: String): Duration {
+        val jwt = JWT.decode(token)
+        return Duration.between(jwt.issuedAtAsInstant, jwt.expiresAtAsInstant)
+    }
 }
