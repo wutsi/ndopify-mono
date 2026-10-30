@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>Page introuvable — Ndopify</title>
+    <meta content="noindex, nofollow" name="robots">
+    <meta content="#1d7edf" name="theme-color">
+    <link rel="icon" th:href="@{/assets/images/icon.png}">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
+    <link rel="stylesheet" th:href="@{/assets/css/styles.css}">
+</head>
+<!--/*
+  The 404 page: an unknown address, or a listing ndopify-server doesn't publish anymore (HttpClientErrorHandler).
+  Rendered by Spring Boot's error controller, outside of the page that failed: Ndopify's own logo, not the tenant's.
+*/-->
+<body data-page="error-404">
+<a class="skip-link" href="#main">Aller au contenu principal</a>
+<header class="site-header">
+    <a aria-label="Ndopify — accueil" class="site-header__logo" th:href="@{/}">
+        <img alt="Ndopify" height="36" th:src="@{/assets/images/logo.png}" width="140">
+    </a>
+</header>
+
+<main id="main">
+    <section class="section section--default">
+        <div class="container hero">
+            <h1>Page introuvable</h1>
+            <p class="hero__sub">Ce logement n'est plus en ligne, ou l'adresse est erronée.</p>
+            <div class="cta-row">
+                <a class="btn btn-primary" th:href="@{/}">Retour à l'accueil</a>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <div class="container site-footer__inner">
+        <img alt="Ndopify" height="32" th:src="@{/assets/images/icon.png}" width="32">
+        <small>© 2026 Ndopify. Logements vérifiés. Locations fiables.</small>
+    </div>
+</footer>
+</body>
+</html>

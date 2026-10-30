@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title th:text="${page.title} + ' | ' + (${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name})">Appartement | Ndopify</title>
+    <meta name="description" th:content="${page.metaDescription}">
+    <!--/* The tenant's logo and icon, falling back to Ndopify's when it has none; the hero photo is the page's image. */-->
+    <th:block th:with="logoUrl=${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl},
+                       iconUrl=${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
+        <link rel="canonical" th:if="${page.canonicalUrl}" th:href="${page.canonicalUrl}">
+        <meta content="website" property="og:type">
+        <meta property="og:title" th:content="${page.title}">
+        <meta property="og:description" th:content="${page.metaDescription}">
+        <meta property="og:image" th:content="${#lists.isEmpty(page.photos)} ? ${logoUrl} : ${page.photos[0].src}">
+        <meta property="og:url" th:if="${page.canonicalUrl}" th:content="${page.canonicalUrl}">
+        <meta content="summary_large_image" name="twitter:card">
+        <meta content="#1d7edf" name="theme-color">
+        <link rel="icon" th:href="${iconUrl}">
+        <link rel="apple-touch-icon" th:href="${iconUrl}">
+    </th:block>
+    <link href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/css/intlTelInput.min.css" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/assets/css/styles.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/listing.css}">
+    <script type="application/ld+json" th:inline="javascript">
+        {
+            "@context": "https://schema.org",
+            "@type": /*[[${page.schemaType}]]*/ "Apartment",
+            "name": /*[[${page.title}]]*/ "Appartement",
+            "url": /*[[${page.canonicalUrl}]]*/ null,
+            "numberOfRooms": /*[[${page.rooms}]]*/ null,
+            "numberOfBathroomsTotal": /*[[${page.bathrooms}]]*/ null,
+            "floorSize": /*[[${page.area} != null ? ${ {'@type': 'QuantitativeValue', 'value': page.area, 'unitCode': 'MTK'} } : null]]*/ null,
+            "address": {"@type": "PostalAddress", "addressLocality": /*[[${page.city}]]*/ null, "addressCountry": /*[[${page.countryCode}]]*/ "CM"},
+            "geo": /*[[${page.latitude} != null and ${page.longitude} != null ? ${ {'@type': 'GeoCoordinates', 'latitude': page.latitude, 'longitude': page.longitude} } : null]]*/ null
+        }
+    </script>
+</head>
+<!--/*
+  A listing's public page (ListingController), from the prototype src/main/html/annonce.html. Every text comes
+  formatted in `page` (ListingPage); a section the listing has nothing for is left out.
+  The "Demander une visite" popup and the "Poser une question" drawer are still the prototype's: listing.js fakes the
+  confirmation and the replies, and nothing on the server handles their forms yet.
+*/-->
+<body class="listing-page">
+<a class="skip-link" href="#main">Aller au contenu principal</a>
+<header class="site-header">
+    <a aria-label="Ndopify — accueil" class="site-header__logo" th:href="@{/}">
+        <img alt="Ndopify" height="36" width="140"
+             th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
+             th:src="${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}">
+    </a>
+    <nav aria-label="Navigation principale" class="site-nav">
+        <button aria-controls="primary-nav-list" aria-expanded="false" class="nav-toggle"><span aria-hidden="true"
+                                                                                                class="nav-toggle__icon">☰</span>
+            Menu
+        </button>
+        <ul class="site-nav__list" id="primary-nav-list">
+            <li><a th:href="@{/}">Locataires</a></li>
+            <li><a th:href="@{/owner}">Propriétaires</a></li>
+            <li><a th:href="@{/agent}">Agents</a></li>
+        </ul>
+    </nav>
+</header>
+
+<!-- Icon sprite (decorative: every icon sits next to its text) -->
+<svg aria-hidden="true" class="visually-hidden" focusable="false" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-bed" viewBox="0 0 24 24"><path d="M3 18V7m0 7h18v4M21 14v-2a3 3 0 0 0-3-3h-7v5M7 11.5a1.5 1.5 0 1 0 0-.01"/></symbol>
+    <symbol id="i-bath" viewBox="0 0 24 24"><path d="M4 12h16v2a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5v-2zM6 12V6a2 2 0 0 1 4 0M7 19l-1 2m11-2 1 2"/></symbol>
+    <symbol id="i-area" viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 9h5V4m11 11h-5v5"/></symbol>
+    <symbol id="i-sofa" viewBox="0 0 24 24"><path d="M5 11V8a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v3M3 13a2 2 0 0 1 4 0v2h10v-2a2 2 0 0 1 4 0v5H3zM5 18v2m14-2v2"/></symbol>
+    <symbol id="i-car" viewBox="0 0 24 24"><path d="M5 16V11l2-5h10l2 5v5M3 16h18v3h-3v-1H6v1H3zM5 11h14M7.5 13.5h.01m9 0h.01"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5m0-8h.01"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5 10 17 19 7"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6zM9 12l2 2 4-4"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V4m0 0L8 8m4-4 4 4M5 13v6h14v-6"/></symbol>
+    <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+    <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 3v4m8-4v4"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4zM8 9.5h8M8 12.5h5"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><path d="M3 7h12v10H3zM15 10.5l6-3.5v10l-6-3.5"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M4 12 20 4l-6 16-3-7zM11 13l9-9"/></symbol>
+    <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM18 16l.8 2.2L21 19l-2.2.8L18 22l-.8-2.2L15 19l2.2-.8z"/></symbol>
+</svg>
+
+<main id="main">
+    <div class="container listing">
+
+        <div class="listing__head">
+            <div class="listing__topline">
+                <p class="listing__badges">
+                    <span class="badge badge--info" th:text="${page.typeBadge}">À louer</span>
+                    <span class="badge badge--success" th:if="${page.verifiedAt}">
+                        <svg aria-hidden="true" class="icon"><use href="#i-shield"/></svg>Logement audité
+                    </span>
+                </p>
+                <button class="btn btn-outline listing__share" data-share hidden type="button">
+                    <svg aria-hidden="true" class="icon"><use href="#i-share"/></svg><span class="listing__share-label">Partager</span>
+                </button>
+            </div>
+            <h1 th:text="${page.title}">Appartement meublé 2 chambres à Bonapriso</h1>
+            <p class="listing__location">
+                <svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>
+                <th:block th:text="${page.place}">Bonapriso, Douala</th:block><th:block th:if="${page.landmark}" th:text="' · ' + ${page.landmark}"> · près de la boulangerie Zepol</th:block>
+            </p>
+        </div>
+
+        <!--/* Gallery: the hero and the 4 next photos; the viewer (#listing-photos) has them all. */-->
+        <section aria-label="Photos du logement" class="gallery" th:unless="${#lists.isEmpty(page.photos)}">
+            <a th:each="photo, it : ${page.photos}" th:if="${it.index < 5}"
+               class="gallery__item" th:classappend="${it.first} ? 'gallery__item--hero'"
+               th:data-photo="${it.index}" th:href="${photo.src}">
+                <img th:alt="${photo.alt}" th:src="${photo.src}" th:attr="loading=${it.first} ? null : 'lazy'">
+            </a>
+            <a class="btn btn-outline gallery__all" data-photo="0" th:if="${#lists.size(page.photos) > 5}"
+               th:href="${page.photos[0].src}" th:text="'Voir les ' + ${#lists.size(page.photos)} + ' photos'">Voir les 8 photos</a>
+        </section>
+
+        <div class="listing__layout">
+            <div class="listing__content">
+
+                <ul aria-label="En bref" class="key-facts" th:unless="${#lists.isEmpty(page.keyFacts)}">
+                    <li th:each="fact : ${page.keyFacts}"><svg aria-hidden="true" class="icon"><use th:href="'#i-' + ${fact.icon}"/></svg><strong th:if="${fact.count}" th:text="${fact.count}">2</strong> [[${fact.label}]]</li>
+                </ul>
+
+                <div class="audit-note" th:if="${page.verifiedAt}">
+                    <svg aria-hidden="true" class="icon icon--lg"><use href="#i-shield"/></svg>
+                    <div>
+                        <p><strong th:text="'Logement audité par Ndopify le ' + ${page.verifiedAt} + '.'">Logement audité par Ndopify le 12 octobre 2026.</strong></p>
+                        <p>Un agent vérifié a visité ce logement : compteurs, photos et position GPS ont été contrôlés
+                            sur place.</p>
+                    </div>
+                </div>
+
+                <section aria-labelledby="description-heading" class="listing__section" th:unless="${#lists.isEmpty(page.description)}">
+                    <h2 id="description-heading">À propos de ce logement</h2>
+                    <p th:each="paragraph : ${page.description}" th:text="${paragraph}">Au 2e étage d'un petit immeuble calme.</p>
+                </section>
+
+                <section aria-labelledby="features-heading" class="listing__section" th:unless="${#lists.isEmpty(page.specs)}">
+                    <h2 id="features-heading">Caractéristiques</h2>
+                    <dl class="spec-list">
+                        <div th:each="spec : ${page.specs}"><dt th:text="${spec.first}">Type de bien</dt><dd th:text="${spec.second}">Appartement</dd></div>
+                    </dl>
+                </section>
+
+                <section aria-labelledby="amenities-heading" class="listing__section" th:unless="${#lists.isEmpty(page.amenities)}">
+                    <h2 id="amenities-heading">Équipements vérifiés</h2>
+                    <div class="amenities">
+                        <div th:each="group : ${page.amenities}">
+                            <h3 th:text="${group.title}">Eau</h3>
+                            <ul class="check-list">
+                                <li th:each="item : ${group.items}"><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>[[${item}]]</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section aria-labelledby="terms-heading" class="listing__section">
+                    <h2 id="terms-heading">Conditions de location</h2>
+                    <table class="terms-table">
+                        <caption class="visually-hidden">Conditions de location du logement</caption>
+                        <tbody>
+                        <tr th:each="term : ${page.terms}"><th scope="row" th:text="${term.first}">Loyer</th><td th:text="${term.second}">175K FCFA / mois</td></tr>
+                        <tr><th scope="row">Commission Ndopify</th><td>1 mois de loyer, payable à la signature du bail</td></tr>
+                        </tbody>
+                    </table>
+                    <p class="terms-note">Aucun paiement en espèces : les visites se règlent avec le Pass Visite par
+                        Mobile Money.</p>
+                </section>
+
+                <section aria-labelledby="location-heading" class="listing__section">
+                    <h2 id="location-heading">Emplacement</h2>
+                    <p><th:block th:text="${page.place}">Bonapriso, Douala</th:block><th:block th:if="${page.landmark}" th:text="' — ' + ${page.landmark}"> — près de la boulangerie Zepol</th:block>.
+                        L'adresse exacte et l'itinéraire vous sont communiqués par l'agent avant la visite.</p>
+                </section>
+            </div>
+
+            <!-- Price card: sticky on desktop; on mobile, the fixed bottom bar carries the same call to action. -->
+            <aside aria-label="Prix et contact" class="listing__aside">
+                <div class="price-card">
+                    <p class="price-card__price"><strong th:text="${page.price}">175K FCFA / mois</strong></p>
+                    <ul class="price-card__terms">
+                        <li th:each="term : ${page.asideTerms}" th:text="${term}">Caution : 2 mois</li>
+                    </ul>
+                    <a class="btn btn-primary price-card__cta" data-modal-open href="#visit">
+                        <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Demander une visite
+                    </a>
+                    <a class="btn btn-outline price-card__cta price-card__ask" data-modal-open href="#ask">
+                        <svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg>Poser une question
+                    </a>
+                    <p class="price-card__hint">Choisissez un créneau : l'agent vous confirme la visite sur
+                        WhatsApp.</p>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- Below 1024px: the question button is an icon only, its label stays for screen readers -->
+    <div class="cta-bar">
+        <p class="cta-bar__price"><strong th:text="${page.price}">175K FCFA / mois</strong></p>
+        <div class="cta-bar__actions">
+            <a class="btn btn-outline cta-bar__ask" data-modal-open href="#ask">
+                <svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg><span class="cta-bar__ask-label">Poser une question</span>
+            </a>
+            <a class="btn btn-primary" data-modal-open href="#visit">Demander une visite</a>
+        </div>
+    </div>
+</main>
+
+<!--/*
+  "Demander une visite" popup, still the prototype's (see annonce.html): listing.js shows the confirmation in place, no
+  server handles the form yet. The days are page.visitDays (tomorrow to tomorrow + 7 days, tenant's time zone), the
+  times page.visitTimes (10:00 to 21:00, every 30 minutes).
+*/-->
+<div aria-labelledby="visit-title" class="modal" id="visit">
+    <a aria-hidden="true" class="modal__backdrop" data-modal-close href="#main" tabindex="-1"></a>
+    <div class="modal__panel">
+        <header class="modal__header">
+            <div>
+                <h2 class="modal__title" id="visit-title">Demander une visite</h2>
+                <p class="modal__subtitle"><th:block th:text="${page.title}">Appartement meublé 2 chambres</th:block><span
+                        class="modal__price">&nbsp;· <strong th:text="${page.price}">175K FCFA / mois</strong></span></p>
+            </div>
+            <a class="modal__close" data-modal-close href="#main">
+                <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>
+                <span class="visually-hidden">Fermer</span>
+            </a>
+        </header>
+
+        <form action="#visit" class="modal__body interest-form" data-interest-form method="post" novalidate>
+            <div class="interest-form__row">
+                <div class="field">
+                    <label for="first-name">Prénom</label>
+                    <input autocomplete="given-name" id="first-name" name="firstName" required type="text">
+                    <span aria-live="polite" class="field-error"></span>
+                </div>
+                <div class="field">
+                    <label for="last-name">Nom</label>
+                    <input autocomplete="family-name" id="last-name" name="lastName" required type="text">
+                    <span aria-live="polite" class="field-error"></span>
+                </div>
+            </div>
+            <div class="field">
+                <label for="email">E-mail</label>
+                <input autocomplete="email" id="email" name="email" required type="email">
+                <span aria-live="polite" class="field-error"></span>
+            </div>
+            <div class="field">
+                <label for="whatsapp">Numéro WhatsApp</label>
+                <input autocomplete="tel" data-phone-name="whatsappNumber" id="whatsapp" name="whatsappNumber"
+                       required type="tel">
+                <span aria-live="polite" class="field-error"></span>
+            </div>
+            <div class="field">
+                <label id="visit-type-label">Type de visite</label>
+                <div aria-labelledby="visit-type-label" class="option-grid option-grid--2" role="radiogroup">
+                    <label><input name="visitType" required type="radio" value="IN_PERSON">
+                        <svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>Sur place</label>
+                    <label><input name="visitType" required type="radio" value="VIDEO">
+                        <svg aria-hidden="true" class="icon"><use href="#i-video"/></svg>En vidéo</label>
+                </div>
+                <span aria-live="polite" class="field-error"></span>
+            </div>
+            <div class="field">
+                <label id="visit-date-label">Jour de la visite</label>
+                <div aria-labelledby="visit-date-label" class="interest-form__days" role="radiogroup">
+                    <label th:each="day : ${page.visitDays}"><input name="visitDate" required type="radio" th:value="${day.value}">
+                        <span class="day__name" th:text="${day.dayName}">sam.</span>
+                        <strong th:text="${day.day}">31</strong>
+                        <span class="day__month" th:text="${day.month}">oct.</span></label>
+                </div>
+                <span aria-live="polite" class="field-error"></span>
+            </div>
+            <div class="field">
+                <label for="visit-time">Heure de la visite</label>
+                <select id="visit-time" name="visitTime" required>
+                    <option value="">Choisissez une heure</option>
+                    <option th:each="time : ${page.visitTimes}" th:value="${time.first}" th:text="${time.second}">10h00</option>
+                </select>
+                <span aria-live="polite" class="field-error"></span>
+            </div>
+            <button class="btn btn-primary interest-form__submit" type="submit">Envoyer la demande</button>
+            <p class="interest-form__privacy">L'agent vous confirme le créneau sur WhatsApp. Seul l'agent voit vos
+                coordonnées.</p>
+        </form>
+
+        <div class="modal__body interest-done" data-interest-done hidden tabindex="-1">
+            <svg aria-hidden="true" class="icon icon--lg"><use href="#i-check"/></svg>
+            <h3>Merci, votre demande est envoyée</h3>
+            <p data-interest-done-text>L'agent vous recontacte très vite sur WhatsApp pour confirmer la visite.</p>
+            <p>Les visites se règlent avec le Pass Visite par Mobile Money : aucun paiement en espèces.</p>
+            <a class="btn btn-secondary" data-modal-close href="#main">Fermer</a>
+        </div>
+    </div>
+</div>
+
+<!--/*
+  "Poser une question" drawer, still the prototype's (see annonce.html): listing.js answers from canned replies, no
+  server handles the form yet. The real assistant will answer from the listing's public information only.
+*/-->
+<div aria-labelledby="ask-title" class="modal modal--drawer" id="ask">
+    <a aria-hidden="true" class="modal__backdrop" data-modal-close href="#main" tabindex="-1"></a>
+    <div class="modal__panel">
+        <header class="modal__header">
+            <span aria-hidden="true" class="chat__avatar"><svg class="icon"><use href="#i-sparkle"/></svg></span>
+            <div>
+                <h2 class="modal__title" id="ask-title">Une question sur ce logement ?</h2>
+                <p class="modal__subtitle">Assistant virtuel · répond tout de suite</p>
+            </div>
+            <a class="modal__close" data-modal-close href="#main">
+                <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>
+                <span class="visually-hidden">Fermer</span>
+            </a>
+        </header>
+
+        <div class="modal__body chat__body" data-chat-body>
+            <ol aria-label="Conversation" aria-live="polite" class="chat__messages" data-chat-messages>
+                <li class="chat__msg chat__msg--bot">
+                    <span class="visually-hidden">Assistant :</span>
+                    Bonjour ! Je connais tous les détails de ce logement : loyer, conditions, équipements, quartier…
+                    Que voulez-vous savoir ?
+                </li>
+            </ol>
+            <ul aria-label="Questions fréquentes" class="chat__suggestions" data-chat-suggestions>
+                <li><button class="chip" data-chat-suggestion form="ask-form" formnovalidate name="suggestion"
+                            type="submit" value="Les charges sont-elles comprises ?">Les charges sont-elles comprises ?</button></li>
+                <li><button class="chip" data-chat-suggestion form="ask-form" formnovalidate name="suggestion"
+                            type="submit" value="Y a-t-il de l&#39;eau en continu ?">Y a-t-il de l'eau en continu ?</button></li>
+                <li><button class="chip" data-chat-suggestion form="ask-form" formnovalidate name="suggestion"
+                            type="submit" value="Combien dois-je payer à l&#39;entrée ?">Combien dois-je payer à l'entrée ?</button></li>
+                <li><button class="chip" data-chat-suggestion form="ask-form" formnovalidate name="suggestion"
+                            type="submit" value="Comment se passe la visite ?">Comment se passe la visite ?</button></li>
+            </ul>
+        </div>
+
+        <form action="#ask" class="chat__composer" data-chat-form id="ask-form" method="post">
+            <input name="conversationId" type="hidden" value="">
+            <label class="visually-hidden" for="chat-question">Votre question</label>
+            <textarea id="chat-question" maxlength="500" name="question" placeholder="Écrivez votre question…"
+                      required rows="1"></textarea>
+            <button class="btn btn-primary chat__send" type="submit">
+                <svg aria-hidden="true" class="icon"><use href="#i-send"/></svg>
+                <span class="visually-hidden">Envoyer</span>
+            </button>
+        </form>
+        <p class="chat__disclaimer">Réponses générées par IA à partir de l'annonce : l'agent confirme tout lors de la
+            visite. <a data-modal-open href="#visit">Demander une visite</a></p>
+    </div>
+</div>
+
+<!--
+  Photo viewer: listing.js fills it from the listing's photos (#listing-photos, all of them, in order) and opens it on
+  a click on a gallery picture. Without JavaScript, the gallery pictures are plain links to the full-size image.
+-->
+<script id="listing-photos" type="application/json" th:inline="javascript">
+    /*[[${page.photos}]]*/ []
+</script>
+<div aria-label="Photos du logement" aria-modal="true" class="lightbox" data-lightbox hidden role="dialog">
+    <div class="lightbox__bar">
+        <p aria-live="polite" class="lightbox__counter" data-lightbox-counter></p>
+        <button class="lightbox__btn" data-lightbox-close type="button">
+            <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>
+            <span class="visually-hidden">Fermer les photos</span>
+        </button>
+    </div>
+    <ul class="lightbox__track" data-lightbox-track></ul>
+    <button class="lightbox__btn lightbox__nav lightbox__nav--prev" data-lightbox-prev type="button">
+        <svg aria-hidden="true" class="icon"><use href="#i-chevron-left"/></svg>
+        <span class="visually-hidden">Photo précédente</span>
+    </button>
+    <button class="lightbox__btn lightbox__nav lightbox__nav--next" data-lightbox-next type="button">
+        <svg aria-hidden="true" class="icon"><use href="#i-chevron-right"/></svg>
+        <span class="visually-hidden">Photo suivante</span>
+    </button>
+</div>
+
+<footer class="site-footer">
+    <div class="container site-footer__inner">
+        <img alt="Ndopify" height="32" width="32"
+             th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
+             th:src="${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
+        <nav aria-label="Navigation du pied de page">
+            <ul>
+                <li><a th:href="@{/}">Locataires</a></li>
+                <li><a th:href="@{/owner}">Propriétaires</a></li>
+                <li><a th:href="@{/agent}">Agents</a></li>
+            </ul>
+        </nav>
+        <small>© 2026 Ndopify. Logements vérifiés. Locations fiables.</small>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/js/intlTelInput.min.js"></script>
+<script th:src="@{/assets/js/main.js}"></script>
+<script th:src="@{/assets/js/listing.js}"></script>
+</body>
+</html>
