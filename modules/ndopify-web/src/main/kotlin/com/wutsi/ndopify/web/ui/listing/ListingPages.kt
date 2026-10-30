@@ -50,11 +50,11 @@ object ListingPages {
         PropertyType.ROOM to "Room",
     )
 
-    private val PERIOD_SUFFIXES = mapOf(
-        PeriodicityType.MONTHLY to " / mois",
-        PeriodicityType.YEARLY to " / an",
-        PeriodicityType.WEEKLY to " / semaine",
-        PeriodicityType.DAILY to " / jour",
+    private val PERIODS = mapOf(
+        PeriodicityType.MONTHLY to "/ mois",
+        PeriodicityType.YEARLY to "/ an",
+        PeriodicityType.WEEKLY to "/ semaine",
+        PeriodicityType.DAILY to "/ jour",
     )
 
     /** The prototype's groups and wording; a dedicated meter replaces the plain one. */
@@ -98,7 +98,9 @@ object ListingPages {
         val city = locations.find { it.id == listing.cityId }?.name
         val neighborhood = listing.neighborhoodId?.let { id -> locations.find { it.id == id }?.name }
         val title = listing.title?.ifBlank { null } ?: fallbackTitle(listing, neighborhood ?: city)
-        val price = price(listing, formatter)
+        val priceAmount = formatter.compactMoney(listing.price, listing.currencyCode)
+        val pricePeriod = PERIODS[listing.pricePeriodicityType]
+        val price = listOfNotNull(priceAmount, pricePeriod).joinToString(" ")
         val available = listing.availableFrom?.takeIf { it.isAfter(today) }?.let { formatter.date(it) }
 
         return ListingPage(
@@ -121,6 +123,8 @@ object ListingPages {
                     ?.let { AmenityGroup(group, it) }
             },
             price = price,
+            priceAmount = priceAmount,
+            pricePeriod = pricePeriod,
             terms = listOfNotNull(
                 "Loyer" to price,
                 listing.securityDeposit?.let { "Caution" to months(it, listing, formatter) },
@@ -204,9 +208,6 @@ object ListingPages {
         val ordinal = if (level == 1) "1er" else "${level}e"
         return levels?.let { "$ordinal sur $it" } ?: ordinal
     }
-
-    private fun price(listing: Listing, formatter: TenantFormatter): String =
-        formatter.compactMoney(listing.price, listing.currencyCode) + (PERIOD_SUFFIXES[listing.pricePeriodicityType] ?: "")
 
     /** "2 mois (350K FCFA)" for a monthly price, "2 mois" otherwise. */
     private fun months(count: Int, listing: Listing, formatter: TenantFormatter): String =

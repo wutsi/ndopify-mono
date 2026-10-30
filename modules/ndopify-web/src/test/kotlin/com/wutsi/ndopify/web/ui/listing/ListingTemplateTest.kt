@@ -115,7 +115,10 @@ class ListingTemplateTest {
         assertEquals("Appartement meublé 2 chambres à Bonapriso | Ndopify Cameroun", doc.title())
         assertEquals("Un bel appartement.", doc.selectFirst("meta[name=description]")?.attr("content"))
         assertEquals("https://www.ndopify.cm/douala/bonapriso/listing/123/appartement", doc.selectFirst("link[rel=canonical]")?.attr("href"))
-        assertTrue(doc.selectFirst(".price-card__price")!!.text().contains("175K"))
+        assertEquals("175K FCFA / mois", doc.selectFirst(".price-card__price")?.text())
+        // The amount alone in bold: below 640px, the bar's period goes under it
+        assertEquals("175K FCFA", doc.selectFirst(".cta-bar__price strong")?.text())
+        assertEquals("175K FCFA / mois", doc.selectFirst(".cta-bar__price")?.text())
         assertEquals("Bonapriso, Douala", doc.selectFirst(".listing__location")?.text())
         assertEquals(5, doc.select(".key-facts li").size)
         assertEquals("2 chambres", doc.select(".key-facts li").first()?.text())

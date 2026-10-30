@@ -88,6 +88,8 @@ class ListingPagesTest {
         assertEquals("près de la boulangerie Zepol", page.landmark)
         assertEquals("12 oct. 2026", page.verifiedAt)
         assertEquals("175K FCFA / mois", page.price)
+        assertEquals("175K FCFA", page.priceAmount)
+        assertEquals("/ mois", page.pricePeriod)
         assertEquals(
             listOf(
                 Fact("bed", "2", "chambres"),
@@ -267,6 +269,7 @@ class ListingPagesTest {
         assertEquals("175K FCFA / jour", page(listing.copy(pricePeriodicityType = PeriodicityType.DAILY)).price)
         val sale = page(listing.copy(price = 25_000_000, pricePeriodicityType = PeriodicityType.NONE))
         assertEquals("25M FCFA", sale.price)
+        assertNull(sale.pricePeriod)
         // No amount next to the months of a price that isn't monthly
         assertEquals("Caution" to "2 mois", sale.terms[1])
     }

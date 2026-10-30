@@ -18,7 +18,11 @@ data class ListingPage(
     val description: List<String>,
     val specs: List<Pair<String, String>>,
     val amenities: List<AmenityGroup>,
+    /** "175K FCFA / mois"; [priceAmount] and [pricePeriod] are its parts, set apart in the price card and bar. */
     val price: String,
+    val priceAmount: String,
+    /** "/ mois"; null for a price without periodicity (a sale). */
+    val pricePeriod: String?,
     val terms: List<Pair<String, String>>,
     val asideTerms: List<String>,
     val schemaType: String,
