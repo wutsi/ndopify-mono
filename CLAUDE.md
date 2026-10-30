@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Status
 
-`ndopify-mono` is an early-stage monorepo. The group/package is `com.wutsi.ndopify`. Five modules currently exist:
+`ndopify-mono` is an early-stage monorepo. The group/package is `com.wutsi.ndopify`. Six modules currently exist:
 
 - `modules/ndopify-dto` — shared DTOs/contracts (no business logic)
 - `modules/ndopify-server` — the REST API backend (Spring Boot)
@@ -15,8 +15,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `modules/ndopify-web` — public marketing site (Spring Boot + Thymeleaf, French UI), package
   `com.wutsi.ndopify.web`. No database; only reads the tenants from `ndopify-server`, and links to Partner Central's
   public wizards.
+- `modules/ndopify-web-core` — library of the infrastructure shared by the web apps (`TenantContext`,
+  `TenantFormatter`, REST interceptors, `NdTenantClient`), package `com.wutsi.ndopify.web.core`. Not used by the web
+  apps yet.
 
-All five are in the root `pom.xml` reactor. The Spring Boot apps are deployed to Heroku by their own GitHub
+All six are in the root `pom.xml` reactor. The Spring Boot apps are deployed to Heroku by their own GitHub
 workflows; `ndopify-dto` is released to GitHub Packages. There is no SDK, admin console or tracking-server module
 yet (the tenant has an `adminConsoleUrl`, and `admin-console` tokens exist, but no code here). Do not assume they
 exist or scaffold code that depends on them.
@@ -29,7 +32,7 @@ module-specific guidance there, and in this file only what applies to several mo
 
 ## Repository Layout
 
-- `modules/<module>/` — the five modules above.
+- `modules/<module>/` — the six modules above.
 - `pom.xml` — parent POM and reactor; `settings.xml` — the Maven settings CI uses (`-s settings.xml`) to reach
   GitHub Packages, where `ndopify-dto` is published.
 - `.github/workflows/` — per module, `<module>-pr.yml` (build + tests on a pull request) and `<module>-main.yml`
