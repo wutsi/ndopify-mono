@@ -20,6 +20,7 @@
         <module>modules/ndopify-server</module>
         <module>modules/ndopify-esignature</module>
         <module>modules/ndopify-partner-central</module>
+        <module>modules/ndopify-web-core</module>
         <module>modules/ndopify-web</module>
     </modules>
 
