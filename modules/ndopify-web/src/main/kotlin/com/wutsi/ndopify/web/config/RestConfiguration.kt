@@ -1,8 +1,8 @@
 package com.wutsi.ndopify.web.config
 
-import com.wutsi.ndopify.web.client.LoggingClientHttpRequestInterceptor
-import com.wutsi.ndopify.web.client.TenantIdClientHttpRequestInterceptor
-import com.wutsi.ndopify.web.service.TenantContext
+import com.wutsi.ndopify.web.core.client.LoggingClientHttpRequestInterceptor
+import com.wutsi.ndopify.web.core.client.TenantIdClientHttpRequestInterceptor
+import com.wutsi.ndopify.web.core.service.TenantContext
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.restclient.RestClientCustomizer
 import org.springframework.context.annotation.Bean

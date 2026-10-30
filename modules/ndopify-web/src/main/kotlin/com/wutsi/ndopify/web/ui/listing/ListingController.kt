@@ -3,7 +3,7 @@ package com.wutsi.ndopify.web.ui.listing
 import com.wutsi.ndopify.refdata.dto.Tenant
 import com.wutsi.ndopify.web.client.ndopify.NdListingClient
 import com.wutsi.ndopify.web.client.ndopify.NdLocationClient
-import com.wutsi.ndopify.web.service.TenantFormatter
+import com.wutsi.ndopify.web.core.service.TenantFormatter
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Controller

@@ -4,7 +4,7 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.wutsi.ndopify.refdata.dto.Tenant
-import com.wutsi.ndopify.web.service.TenantContext
+import com.wutsi.ndopify.web.core.service.TenantContext
 import com.wutsi.ndopify.web.ui.layout.TenantAdvice
 import jakarta.servlet.ServletException
 import org.springframework.test.web.servlet.MvcResult

@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.web.service
 
 import com.wutsi.ndopify.refdata.dto.Tenant
+import com.wutsi.ndopify.web.core.service.TenantFormatter
 
 /** A tenant formatted as ndopify-server's local seed (`V1_2_1__refdata-tenant.sql`). */
 object TenantFixtures {

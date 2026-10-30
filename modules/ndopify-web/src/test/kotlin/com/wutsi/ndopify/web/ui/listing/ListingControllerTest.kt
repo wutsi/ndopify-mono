@@ -12,7 +12,7 @@ import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.web.client.ndopify.NdListingClient
 import com.wutsi.ndopify.web.client.ndopify.NdLocationClient
-import com.wutsi.ndopify.web.service.TenantContext
+import com.wutsi.ndopify.web.core.service.TenantContext
 import com.wutsi.ndopify.web.service.TenantFixtures.TENANT
 import com.wutsi.ndopify.web.ui.layout.HttpClientErrorHandler
 import com.wutsi.ndopify.web.ui.layout.TenantAdvice
