@@ -2,8 +2,7 @@
 
 A library (jar, no `Application`, not deployed) holding the infrastructure the web apps share: `ndopify-partner-central`,
 `ndopify-esignature` and `ndopify-web`. It depends only on `ndopify-dto`, never on `ndopify-server` nor on a web app.
-`ndopify-esignature` and `ndopify-partner-central` use it (their `config/WebCoreConfiguration` declares the beans); the
-website still has its own copies of these classes.
+All three use it: each declares the beans in its `config/WebCoreConfiguration`.
 
 ## Code Organization
 

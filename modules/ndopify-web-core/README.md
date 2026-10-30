@@ -8,7 +8,7 @@ Infrastructure shared by the web apps (`ndopify-partner-central`, `ndopify-esign
 resolution from the request URL, tenant formatting of dates and amounts, and the REST interceptors / tenant client
 used to call `ndopify-server`.
 
-Used by `ndopify-esignature` and `ndopify-partner-central`; `ndopify-web` still has its own copies of these classes.
+Used by all three web apps, each declaring the beans in its `config/WebCoreConfiguration`.
 
 ## Build
 
