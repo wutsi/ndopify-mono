@@ -2,6 +2,7 @@ package com.wutsi.ndopify.web.config
 
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.http.HttpMethod
 import org.springframework.security.config.annotation.web.builders.HttpSecurity
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
 import org.springframework.security.web.SecurityFilterChain
@@ -16,6 +17,10 @@ class SecurityConfiguration {
             .authorizeHttpRequests { customizer ->
                 customizer
                     .requestMatchers("/", "/agent", "/owner").permitAll()
+                    // A listing's page (ListingController); GET only: its visit and question forms are still the
+                    // prototype's
+                    .requestMatchers(HttpMethod.GET, "/*/listing/*", "/*/listing/*/*", "/*/*/listing/*", "/*/*/listing/*/*")
+                    .permitAll()
                     .requestMatchers("/assets/**").permitAll()
                     .requestMatchers("/error").permitAll()
                     .anyRequest().denyAll() // nothing else is served
