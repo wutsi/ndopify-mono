@@ -16,8 +16,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   `com.wutsi.ndopify.web`. No database; only reads the tenants from `ndopify-server`, and links to Partner Central's
   public wizards.
 - `modules/ndopify-web-core` — library of the infrastructure shared by the web apps (`TenantContext`,
-  `TenantFormatter`, REST interceptors, `NdTenantClient`), package `com.wutsi.ndopify.web.core`. Not used by the web
-  apps yet.
+  `TenantFormatter`, REST interceptors, `NdTenantClient`, the access-token and JWT classes), package
+  `com.wutsi.ndopify.web.core`. Not used by the web apps yet.
 
 All six are in the root `pom.xml` reactor. The Spring Boot apps are deployed to Heroku by their own GitHub
 workflows; `ndopify-dto` is released to GitHub Packages. There is no SDK, admin console or tracking-server module

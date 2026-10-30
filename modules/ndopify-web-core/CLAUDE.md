@@ -14,11 +14,20 @@ Package `com.wutsi.ndopify.web.core`:
 - `service/TenantFormatter` — dates, times and amounts in the tenant's formats, locale and time zone: every date or
   amount a web app shows goes through it.
 - `client/ndopify/NdTenantClient` — `GET /v1/tenants`, a `@Service` on the app's plain `RestTemplate` bean.
-- `client/LoggingClientHttpRequestInterceptor`, `client/TenantIdClientHttpRequestInterceptor` — added by each web
-  app's `RestConfiguration` to its `RestClient.Builder`.
+- `client/LoggingClientHttpRequestInterceptor`, `client/TenantIdClientHttpRequestInterceptor`,
+  `client/AuthorizationClientHttpRequestInterceptor` — added by each web app's `RestConfiguration` to its
+  `RestClient.Builder`. The authorization one takes the access-token cookie name, the same as `AccessTokenService`'s.
+- `service/security/AccessTokenService` — the access-token cookie. Not a `@Service`: each web app declares it as a
+  bean with its own cookie name (ex: `__npc_access_token`, `__nes_access_token`) and TTL (the cookie's `Max-Age`,
+  the token's TTL on ndopify-server; `null` for a session cookie).
+- `service/security/JwtDecoder` — reads the token's claims without checking the signature (see *Token trust* in the
+  root `CLAUDE.md`). Not a `@Service`: each web app declares it with the `ApplicationCode` whose tokens it accepts.
+- `service/security/JwtAuthenticationFilter`, `service/security/JwtAuthentication` — added by each web app's
+  `SecurityConfiguration`.
 
 What stays in each web app: `ClockConfiguration` (each app declares its own `Clock`), `RestConfiguration`,
-`SecurityConfiguration`, the domain clients and the UI.
+`SecurityConfiguration`, what needs its domain clients (ex: Partner Central's `CurrentParty`, `CurrentAgent`), the
+domain clients and the UI.
 
 ## Testing Patterns
 
