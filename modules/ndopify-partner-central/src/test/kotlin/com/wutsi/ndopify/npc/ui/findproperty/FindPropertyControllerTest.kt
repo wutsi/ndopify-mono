@@ -18,12 +18,12 @@ import com.wutsi.ndopify.mandate.dto.CreateMandateResponse
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
-import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
 import com.wutsi.ndopify.refdata.dto.SearchLocationResponse
+import com.wutsi.ndopify.web.core.service.TenantContext
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus

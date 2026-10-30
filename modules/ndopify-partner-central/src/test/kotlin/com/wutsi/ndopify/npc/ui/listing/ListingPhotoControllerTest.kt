@@ -15,13 +15,13 @@ import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
-import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.IMAGES
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.LISTING
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
+import com.wutsi.ndopify.web.core.service.TenantContext
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus

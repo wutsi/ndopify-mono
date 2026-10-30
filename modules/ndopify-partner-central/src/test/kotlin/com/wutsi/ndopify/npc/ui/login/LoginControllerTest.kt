@@ -13,11 +13,11 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.npc.client.ndopify.NdAuthClient
 import com.wutsi.ndopify.npc.client.ndopify.NdOtpClient
-import com.wutsi.ndopify.npc.service.security.AccessTokenService
 import com.wutsi.ndopify.refdata.dto.AuthType
 import com.wutsi.ndopify.security.dto.AuthenticateRequest
 import com.wutsi.ndopify.security.dto.AuthenticateResponse
 import com.wutsi.ndopify.security.dto.CreateOtpRequest
+import com.wutsi.ndopify.web.core.service.security.AccessTokenService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpHeaders

@@ -12,7 +12,6 @@ import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
-import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.assignment.AssignmentController
 import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.ASSIGNMENT
@@ -24,6 +23,7 @@ import com.wutsi.ndopify.npc.ui.mandate.MandateSummariesTest
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
 import com.wutsi.ndopify.party.dto.KycStatus
+import com.wutsi.ndopify.web.core.service.TenantContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.junit.jupiter.api.AfterEach

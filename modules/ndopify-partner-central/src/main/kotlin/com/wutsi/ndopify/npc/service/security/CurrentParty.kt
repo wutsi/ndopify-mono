@@ -6,7 +6,7 @@ import com.wutsi.ndopify.security.dto.JwtPrincipal
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.stereotype.Service
 
-/** The signed-in agent's party, looked up from the user in the access-token cookie (see [JwtAuthenticationFilter]). */
+/** The signed-in agent's party, looked up from the user in the access-token cookie (see `JwtAuthenticationFilter`). */
 @Service
 class CurrentParty(private val userClient: NdUserClient) {
     /** Null when nobody is signed in, or the user is gone or has no party: those must sign in again. */

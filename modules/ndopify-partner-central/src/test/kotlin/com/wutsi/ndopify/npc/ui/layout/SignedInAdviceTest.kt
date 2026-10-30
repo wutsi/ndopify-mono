@@ -2,9 +2,9 @@ package com.wutsi.ndopify.npc.ui.layout
 
 import com.auth0.jwt.JWT
 import com.auth0.jwt.algorithms.Algorithm
-import com.wutsi.ndopify.npc.service.security.JwtAuthentication
-import com.wutsi.ndopify.npc.service.security.JwtDecoder
 import com.wutsi.ndopify.security.dto.JwtPrincipal
+import com.wutsi.ndopify.web.core.service.security.JwtAuthentication
+import com.wutsi.ndopify.web.core.service.security.JwtDecoder
 import org.junit.jupiter.api.AfterEach
 import org.springframework.security.authentication.AnonymousAuthenticationToken
 import org.springframework.security.core.authority.AuthorityUtils

@@ -9,7 +9,7 @@ import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.listing.dto.UpdateListingRequest
-import com.wutsi.ndopify.npc.service.TenantFormatter
+import com.wutsi.ndopify.web.core.service.TenantFormatter
 import java.time.LocalDate
 
 /**

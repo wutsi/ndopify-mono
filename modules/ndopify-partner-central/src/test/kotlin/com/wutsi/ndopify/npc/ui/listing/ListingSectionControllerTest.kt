@@ -17,7 +17,6 @@ import com.wutsi.ndopify.listing.dto.UpdateListingRequest
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
-import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.LISTING
@@ -29,6 +28,7 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BASTOS
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
 import com.wutsi.ndopify.refdata.dto.SearchLocationResponse
+import com.wutsi.ndopify.web.core.service.TenantContext
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus

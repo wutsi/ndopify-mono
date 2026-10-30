@@ -7,11 +7,11 @@ import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateType
-import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import com.wutsi.ndopify.web.core.service.TenantFormatter
 import java.util.Locale
 
 /**

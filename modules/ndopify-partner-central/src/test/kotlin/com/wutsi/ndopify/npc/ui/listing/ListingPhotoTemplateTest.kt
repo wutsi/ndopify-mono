@@ -8,7 +8,6 @@ import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
-import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdviceTest
@@ -17,6 +16,7 @@ import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.LISTING
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.SENT
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
+import com.wutsi.ndopify.web.core.service.TenantContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.junit.jupiter.api.AfterEach

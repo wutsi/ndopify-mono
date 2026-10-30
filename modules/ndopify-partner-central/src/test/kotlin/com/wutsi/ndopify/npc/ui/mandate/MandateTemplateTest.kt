@@ -15,7 +15,6 @@ import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
-import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdviceTest
@@ -30,6 +29,7 @@ import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.PENDING
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.date
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
+import com.wutsi.ndopify.web.core.service.TenantContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.junit.jupiter.api.AfterEach

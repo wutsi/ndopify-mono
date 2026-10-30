@@ -6,8 +6,8 @@ import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
-import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.refdata.dto.Location
+import com.wutsi.ndopify.web.core.service.TenantFormatter
 import java.util.Date
 
 /** Builds the mandate page's [MandateView], as the prototype's `initMandate` (partner-central.js) renders it. */

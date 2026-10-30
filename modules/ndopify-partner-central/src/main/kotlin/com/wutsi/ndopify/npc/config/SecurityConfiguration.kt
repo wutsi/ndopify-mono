@@ -1,8 +1,8 @@
 package com.wutsi.ndopify.npc.config
 
-import com.wutsi.ndopify.npc.service.security.AccessTokenService
-import com.wutsi.ndopify.npc.service.security.JwtAuthenticationFilter
-import com.wutsi.ndopify.npc.service.security.JwtDecoder
+import com.wutsi.ndopify.web.core.service.security.AccessTokenService
+import com.wutsi.ndopify.web.core.service.security.JwtAuthenticationFilter
+import com.wutsi.ndopify.web.core.service.security.JwtDecoder
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.security.config.annotation.web.builders.HttpSecurity

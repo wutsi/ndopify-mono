@@ -4,10 +4,10 @@ import com.wutsi.ndopify.mandate.dto.AssignmentStatus
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateType
-import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.refdata.dto.Location
+import com.wutsi.ndopify.web.core.service.TenantFormatter
 
 /** Builds the offers' cards of the Espace agent (see [AssignmentView]), worded as the prototype's index.html. */
 object AssignmentViews {

@@ -1,10 +1,10 @@
 package com.wutsi.ndopify.npc.ui.location
 
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
-import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
 import com.wutsi.ndopify.refdata.dto.SearchLocationResponse
+import com.wutsi.ndopify.web.core.service.TenantContext
 import org.springframework.http.CacheControl
 import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.GetMapping

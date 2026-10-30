@@ -12,12 +12,12 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
-import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
 import com.wutsi.ndopify.refdata.dto.SearchLocationResponse
 import com.wutsi.ndopify.refdata.dto.Tenant
+import com.wutsi.ndopify.web.core.service.TenantContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.junit.jupiter.api.BeforeEach

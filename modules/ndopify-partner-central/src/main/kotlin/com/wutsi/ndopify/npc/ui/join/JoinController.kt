@@ -4,10 +4,10 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
-import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.npc.ui.login.LoginController
 import com.wutsi.ndopify.refdata.dto.Tenant
+import com.wutsi.ndopify.web.core.service.TenantContext
 import jakarta.servlet.http.HttpSession
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Controller

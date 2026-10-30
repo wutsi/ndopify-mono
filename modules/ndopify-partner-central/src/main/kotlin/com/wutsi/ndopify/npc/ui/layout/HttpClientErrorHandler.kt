@@ -1,7 +1,7 @@
 package com.wutsi.ndopify.npc.ui.layout
 
-import com.wutsi.ndopify.npc.service.security.AccessTokenService
 import com.wutsi.ndopify.npc.service.security.SignInRequiredException
+import com.wutsi.ndopify.web.core.service.security.AccessTokenService
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.LoggerFactory
@@ -16,7 +16,7 @@ import org.springframework.web.client.HttpClientErrorException
  * catch it before it gets here.
  *
  * A 401 means that ndopify-server rejected the token (bad signature, expired meanwhile): this app doesn't check the
- * signature (see [com.wutsi.ndopify.npc.service.security.JwtDecoder]), so the agent is signed out (cookie and session)
+ * signature (see [com.wutsi.ndopify.web.core.service.security.JwtDecoder]), so the agent is signed out (cookie and session)
  * and signs in again. A [SignInRequiredException] (a token whose user isn't an agent) does the same.
  */
 @ControllerAdvice

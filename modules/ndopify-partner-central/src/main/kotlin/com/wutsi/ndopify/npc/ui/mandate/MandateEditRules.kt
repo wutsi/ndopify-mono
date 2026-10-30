@@ -5,8 +5,8 @@ import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
-import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
+import com.wutsi.ndopify.web.core.service.TenantFormatter
 
 /**
  * Validation of the edit page ([MandateEditForm]) and the update it sends. ndopify-server doesn't validate a mandate,

@@ -17,8 +17,6 @@ import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
-import com.wutsi.ndopify.npc.service.TenantContext
-import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
@@ -28,6 +26,8 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import com.wutsi.ndopify.web.core.service.TenantContext
+import com.wutsi.ndopify.web.core.service.TenantFormatter
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model

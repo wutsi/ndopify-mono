@@ -18,7 +18,6 @@ import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdPartyClient
-import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.kyc.KycRules
 import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
@@ -30,6 +29,7 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.DOUALA
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.MONTREAL
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.refdata.dto.Location
+import com.wutsi.ndopify.web.core.service.TenantContext
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus

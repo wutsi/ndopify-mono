@@ -12,6 +12,8 @@ import com.wutsi.ndopify.npc.client.ndopify.NdUserClient
 import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.security.dto.JwtPrincipal
 import com.wutsi.ndopify.security.dto.User
+import com.wutsi.ndopify.web.core.service.security.JwtAuthentication
+import com.wutsi.ndopify.web.core.service.security.JwtDecoder
 import org.junit.jupiter.api.AfterEach
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.core.context.SecurityContextImpl

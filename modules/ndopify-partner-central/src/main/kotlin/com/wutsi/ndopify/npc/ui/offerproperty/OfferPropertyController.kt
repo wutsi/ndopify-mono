@@ -3,8 +3,6 @@ package com.wutsi.ndopify.npc.ui.offerproperty
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
-import com.wutsi.ndopify.npc.service.TenantContext
-import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.npc.ui.findproperty.SubmittedMandate
 import com.wutsi.ndopify.npc.ui.join.JoinRules
@@ -14,6 +12,8 @@ import com.wutsi.ndopify.npc.ui.login.LoginController
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Tenant
+import com.wutsi.ndopify.web.core.service.TenantContext
+import com.wutsi.ndopify.web.core.service.TenantFormatter
 import jakarta.servlet.http.HttpSession
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Controller
