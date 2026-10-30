@@ -1,4 +1,5 @@
-/* Ndopify — listing page (annonce.html): the "Je suis intéressé(e)" popup and the photo viewer. Tokens come from styles.css. */
+/* Ndopify — listing page (annonce.html): the "Demander une visite" popup, the "Poser une question" drawer and the photo
+   viewer. Tokens come from styles.css. */
 
 .icon {
   width: 1.25em;
@@ -20,19 +21,6 @@
 }
 
 .listing { padding-block: var(--space-xl) var(--space-section); }
-
-/* Breadcrumb */
-.breadcrumb ol {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-md);
-  list-style: none;
-  margin: 0 0 var(--space-xl);
-  padding: 0;
-  font-size: 0.875rem;
-}
-.breadcrumb li + li::before { content: "›"; margin-right: var(--space-md); }
-.breadcrumb [aria-current="page"] { color: var(--color-text-default); }
 
 /* Title block */
 .listing__head { margin-bottom: var(--space-xl); }
@@ -181,17 +169,6 @@
 .terms-note { margin-top: var(--space-lg); font-size: 0.875rem; }
 
 
-.agent-card {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: var(--space-lg) var(--space-xl);
-  align-items: start;
-}
-.agent-card__photo { border-radius: 50%; }
-.agent-card__name { font-family: var(--font-heading); font-weight: 700; font-size: var(--h4-size); margin-bottom: var(--space-sm); }
-.agent-card__meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-md); font-size: 0.875rem; }
-.agent-card__body p:last-of-type { margin-bottom: var(--space-lg); }
-
 .gallery__item:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--space-md); }
 
 /* Price card */
@@ -204,6 +181,7 @@
 .price-card__price strong { font-family: var(--font-heading); font-size: var(--h3-size); }
 .price-card__terms { list-style: none; margin: 0 0 var(--space-xl); padding: 0; display: grid; gap: var(--space-sm); }
 .price-card__cta { width: 100%; }
+.price-card__ask { margin-top: var(--space-md); }
 .price-card__hint { font-size: 0.875rem; text-align: center; margin: var(--space-lg) auto 0; }
 
 /* Fixed call-to-action bar, below 1024px only */
@@ -221,12 +199,34 @@
 }
 .cta-bar__price { margin: 0; white-space: nowrap; }
 .cta-bar .btn { white-space: nowrap; }
+.cta-bar__actions { display: flex; gap: var(--space-md); }
+/* Below 640px, the price on two lines and the question button an icon only, so the bar fits a 360px screen */
+@media (max-width: 639px) {
+  .cta-bar__price { font-size: 0.8125rem; line-height: 1.2; }
+  .cta-bar__price strong { display: block; }
+  .cta-bar { gap: var(--space-md); padding-inline: 1rem; }
+  .cta-bar .btn-primary { padding-inline: var(--space-lg); font-size: 0.875rem; }
+  .cta-bar__ask { width: 44px; padding: 0; }
+  .cta-bar__ask-label {
+    position: absolute;
+    width: 1px; height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
+/* Below 360px, the buttons take the whole bar: the price is in the page */
+@media (max-width: 359px) {
+  .cta-bar__price { display: none; }
+  .cta-bar__actions { flex: 1; }
+  .cta-bar .btn-primary { flex: 1; }
+}
 .cta-bar__price strong { font-family: var(--font-heading); font-size: 1.125rem; }
 @media (min-width: 1024px) {
   .cta-bar { display: none; }
 }
 
-/* "Je suis intéressé(e)" popup: :target opens it without JavaScript, .is-open with it. A bottom sheet on mobile. */
+/* Popup and drawer: :target opens them without JavaScript, .is-open with it. The popup is a bottom sheet on mobile. */
 .modal { display: none; position: fixed; inset: 0; z-index: 200; }
 .modal:target,
 .modal.is-open { display: flex; align-items: flex-end; justify-content: center; }
@@ -235,8 +235,8 @@
 .modal__panel {
   position: relative;
   width: 100%;
-  max-height: 92vh;
-  max-height: 92dvh;
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
   display: flex;
   flex-direction: column;
   background: var(--color-bg-default);
@@ -256,6 +256,21 @@
   from { opacity: 0; transform: translateY(1rem); }
   to { opacity: 1; transform: translateY(0); }
 }
+/* Drawer: full height on the right, the whole screen on a phone */
+.modal--drawer:target,
+.modal--drawer.is-open { align-items: stretch; justify-content: flex-end; padding: 0; }
+.modal--drawer .modal__panel {
+  width: min(100%, 28rem);
+  height: 100vh;
+  height: 100dvh;
+  max-height: none;
+  border-radius: 0;
+  animation: drawer-in 250ms ease-out;
+}
+@keyframes drawer-in {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
 .modal__header {
   display: flex;
   align-items: flex-start;
@@ -265,8 +280,9 @@
 }
 .modal__title { font-size: var(--h4-size); margin: 0 0 var(--space-sm); }
 .modal__subtitle { font-size: 0.875rem; margin: 0; }
-.modal__price { margin: var(--space-sm) 0 0; }
-.modal__price strong { font-family: var(--font-heading); font-size: 1.125rem; }
+/* The price never splits over two lines: it goes to the next one whole */
+.modal__price { white-space: nowrap; }
+.modal__subtitle strong { font-family: var(--font-heading); }
 .modal__close {
   margin-left: auto;
   display: inline-flex;
@@ -284,36 +300,161 @@
 .modal__body { overflow-y: auto; padding: var(--space-xl); }
 .modal__body[hidden] { display: none; }
 
-.interest-form__intro { font-size: 0.9375rem; }
-.interest-form__row { display: grid; gap: 0 var(--space-lg); }
+/* Compact on a phone: the whole form fits on the screen, without scrolling */
+.modal__body.interest-form { padding-block: var(--space-lg); }
+#visit .modal__header { padding: var(--space-lg) var(--space-xl) var(--space-md); }
+.interest-form__row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--space-lg); }
+.interest-form .field { margin-bottom: var(--space-md); }
+.interest-form .field > label { margin-bottom: var(--space-sm); }
+/* Visit type: side by side even on a phone, the padding tightened and, below 360px, the icons left out */
+.interest-form .option-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.interest-form .option-grid--2 label { gap: var(--space-md); padding-inline: var(--space-lg); white-space: nowrap; }
+@media (max-width: 359px) {
+  .interest-form .option-grid--2 .icon { display: none; }
+}
+/* Visit day: 8 day cards, 2 rows of 4 on a phone, one row from 640px; the radio itself hidden but still focusable */
+.interest-form__days { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-md); }
 @media (min-width: 640px) {
-  .interest-form__row { grid-template-columns: 1fr 1fr; }
+  .interest-form__days { grid-template-columns: repeat(8, 1fr); }
 }
-.interest-form .field { margin-bottom: var(--space-lg); }
-.interest-form .iti { width: 100%; }
-.interest-form textarea {
-  width: 100%;
-  min-height: 6rem;
-  resize: vertical;
-  font-size: 1rem;
-  font-family: var(--font-body);
-  line-height: 1.5;
-  padding: var(--space-lg);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--space-md);
-  color: var(--color-text-default);
+.interest-form .interest-form__days label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin: 0;
+  padding: var(--space-md) var(--space-sm);
+  border: 1px solid var(--color-border-strong);
+  border-radius: calc(var(--radius-control) / 2);
+  background: var(--color-bg-default);
+  font-size: 0.8125rem;
+  font-weight: 400;
+  line-height: 1.25;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 200ms ease-out, background-color 200ms ease-out;
 }
-.interest-form textarea:focus-visible { outline: none; box-shadow: var(--focus-ring); }
-.interest-form textarea[aria-invalid="true"] { border-color: var(--color-text-error); }
-.interest-form__submit { width: 100%; margin-top: var(--space-md); }
+.interest-form__days label:hover { border-color: var(--color-text-default); }
+.interest-form__days strong { font-family: var(--font-heading); font-size: 1.125rem; }
+.interest-form__days input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.interest-form__days label:has(input:checked) {
+  border-color: var(--color-primary);
+  background: var(--color-bg-secondary);
+  font-weight: 600;
+}
+.interest-form__days label:has(input:focus-visible) { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.interest-form__days:has([aria-invalid="true"]) label { border-color: var(--color-text-error); }
+.interest-form__submit { width: 100%; margin-top: var(--space-sm); }
 .interest-form__submit[aria-disabled="true"] { background: var(--color-text-disabled); box-shadow: none; cursor: not-allowed; }
-.interest-form__privacy { font-size: 0.8125rem; text-align: center; margin: var(--space-lg) auto 0; }
+.interest-form__privacy { font-size: 0.8125rem; text-align: center; margin: var(--space-md) auto 0; }
 
 .interest-done { text-align: center; }
 .interest-done:focus { outline: none; }
 .interest-done .icon--lg { color: var(--color-text-success); margin-bottom: var(--space-lg); }
 .interest-done h3 { font-size: var(--h4-size); }
 .interest-done p { margin-inline: auto; }
+
+/* "Poser une question" drawer: the conversation scrolls, the composer stays at the bottom */
+.chat__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-bg-secondary);
+  color: var(--color-primary);
+}
+.chat__body { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: var(--space-xl); background: var(--surface-low); }
+.chat__messages { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-lg); }
+.chat__msg {
+  max-width: 85%;
+  padding: var(--space-lg) var(--space-xl);
+  border-radius: var(--space-lg);
+  line-height: 1.5;
+}
+.chat__text { white-space: pre-line; }
+.chat__visit { display: flex; width: fit-content; margin-top: var(--space-lg); }
+.chat__msg--bot {
+  align-self: flex-start;
+  background: var(--color-bg-default);
+  border: 1px solid var(--color-border-default);
+  border-bottom-left-radius: var(--space-sm);
+}
+.chat__msg--user {
+  align-self: flex-end;
+  background: var(--color-primary);
+  color: #ffffff;
+  border-bottom-right-radius: var(--space-sm);
+}
+/* "…" while the assistant writes */
+.chat__typing { display: inline-flex; gap: var(--space-sm); padding-block: var(--space-sm); }
+.chat__typing span {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--color-text-disabled);
+  animation: chat-typing 1s infinite ease-in-out;
+}
+.chat__typing span:nth-child(2) { animation-delay: 150ms; }
+.chat__typing span:nth-child(3) { animation-delay: 300ms; }
+@keyframes chat-typing {
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat__typing span { animation: none; }
+}
+.chat__suggestions { list-style: none; margin: auto 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-md); }
+.chat__suggestions[hidden] { display: none; }
+.chip {
+  min-height: 44px;
+  padding: var(--space-md) var(--space-lg);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-full);
+  background: var(--color-bg-default);
+  color: var(--color-primary);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.chip:hover { background: var(--color-bg-secondary); }
+.chip:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.chat__composer {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-md);
+  padding: var(--space-lg) var(--space-xl);
+  border-top: 1px solid var(--color-border-default);
+}
+.chat__composer textarea {
+  flex: 1;
+  min-height: 44px;
+  max-height: 8rem;
+  resize: none;
+  font-size: 1rem;
+  font-family: var(--font-body);
+  line-height: 1.5;
+  padding: var(--space-md) var(--space-lg);
+  border: 1px solid var(--color-border-strong);
+  border-radius: 22px;
+  color: var(--color-text-default);
+  transition: border-color 200ms ease-out;
+}
+.chat__composer textarea:hover { border-color: var(--color-text-default); }
+.chat__composer textarea:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; border-color: var(--color-primary); }
+.chat__send { width: 44px; padding: 0; flex: none; }
+.chat__send[aria-disabled="true"] { background: var(--color-text-disabled); box-shadow: none; cursor: not-allowed; }
+.chat__disclaimer {
+  font-size: 0.8125rem;
+  text-align: center;
+  margin: 0;
+  padding: 0 var(--space-xl) var(--space-lg);
+}
 
 /* Photo viewer: full-screen, one photo per slide */
 .lightbox {

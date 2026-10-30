@@ -58,6 +58,7 @@
     <symbol id="i-area" viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 9h5V4m11 11h-5v5"/></symbol>
     <symbol id="i-sofa" viewBox="0 0 24 24"><path d="M5 11V8a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v3M3 13a2 2 0 0 1 4 0v2h10v-2a2 2 0 0 1 4 0v5H3zM5 18v2m14-2v2"/></symbol>
     <symbol id="i-car" viewBox="0 0 24 24"><path d="M5 16V11l2-5h10l2 5v5M3 16h18v3h-3v-1H6v1H3zM5 11h14M7.5 13.5h.01m9 0h.01"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5m0-8h.01"/></symbol>
     <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5 10 17 19 7"/></symbol>
     <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6zM9 12l2 2 4-4"/></symbol>
     <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/></symbol>
@@ -65,19 +66,15 @@
     <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V4m0 0L8 8m4-4 4 4M5 13v6h14v-6"/></symbol>
     <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
     <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 3v4m8-4v4"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4zM8 9.5h8M8 12.5h5"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><path d="M3 7h12v10H3zM15 10.5l6-3.5v10l-6-3.5"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M4 12 20 4l-6 16-3-7zM11 13l9-9"/></symbol>
+    <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM18 16l.8 2.2L21 19l-2.2.8L18 22l-.8-2.2L15 19l2.2-.8z"/></symbol>
 </svg>
 
 <main id="main">
     <div class="container listing">
-
-        <nav aria-label="Fil d'Ariane" class="breadcrumb">
-            <ol>
-                <li><a href="index.html">Accueil</a></li>
-                <li><a href="#">Douala</a></li>
-                <li><a href="#">Bonapriso</a></li>
-                <li aria-current="page">Appartement meublé 2 chambres</li>
-            </ol>
-        </nav>
 
         <div class="listing__head">
             <div class="listing__topline">
@@ -226,26 +223,6 @@
                     <p>Bonapriso, Douala — près de la boulangerie Zepol. L'adresse exacte et l'itinéraire vous sont
                         communiqués par l'agent avant la visite.</p>
                 </section>
-
-                <section aria-labelledby="agent-heading" class="listing__section">
-                    <h2 id="agent-heading">Votre agent</h2>
-                    <div class="agent-card">
-                        <img alt="" class="agent-card__photo" height="72" loading="lazy"
-                             src="https://picsum.photos/seed/ndopify-agent/144/144" width="72">
-                        <div class="agent-card__body">
-                            <p class="agent-card__name">Armelle Ngo Bassa</p>
-                            <p class="agent-card__meta">
-                                <span class="badge badge--success">
-                                    <svg aria-hidden="true" class="icon"><use href="#i-shield"/></svg>Agent vérifié
-                                </span>
-                                Secteurs : Bonapriso, Akwa, Bonanjo
-                            </p>
-                            <p>Identité et dossier vérifiés par Ndopify. Elle vous accompagne de la visite jusqu'à la
-                                signature du bail.</p>
-                            <a class="btn btn-secondary" data-modal-open href="#interest">Poser une question</a>
-                        </div>
-                    </div>
-                </section>
             </div>
 
             <!-- Price card: sticky on desktop; on mobile, the fixed bottom bar carries the same call to action. -->
@@ -257,33 +234,47 @@
                         <li>Avance : 3 mois</li>
                         <li>Disponible le 1<sup>er</sup> décembre 2026</li>
                     </ul>
-                    <a class="btn btn-primary price-card__cta" data-modal-open href="#interest">Je suis intéressé(e)</a>
-                    <p class="price-card__hint">Laissez vos coordonnées : l'agent vous recontacte sur WhatsApp pour
-                        organiser la visite.</p>
+                    <a class="btn btn-primary price-card__cta" data-modal-open href="#visit">
+                        <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Demander une visite
+                    </a>
+                    <a class="btn btn-outline price-card__cta price-card__ask" data-modal-open href="#ask">
+                        <svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg>Poser une question
+                    </a>
+                    <p class="price-card__hint">Choisissez un créneau : l'agent vous confirme la visite sur
+                        WhatsApp.</p>
                 </div>
             </aside>
         </div>
     </div>
 
+    <!-- Below 1024px: the question button is an icon only, its label stays for screen readers -->
     <div class="cta-bar">
         <p class="cta-bar__price"><strong>175K FCFA</strong> / mois</p>
-        <a class="btn btn-primary" data-modal-open href="#interest">Je suis intéressé(e)</a>
+        <div class="cta-bar__actions">
+            <a class="btn btn-outline cta-bar__ask" data-modal-open href="#ask">
+                <svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg><span class="cta-bar__ask-label">Poser une question</span>
+            </a>
+            <a class="btn btn-primary" data-modal-open href="#visit">Demander une visite</a>
+        </div>
     </div>
 </main>
 
 <!--
-  "Je suis intéressé(e)" popup. Without JavaScript it opens with :target (#interest) and the form posts; the server
+  "Demander une visite" popup. Without JavaScript it opens with :target (#visit) and the form posts; the server
   answers with the confirmation, or the form again with the fields' errors. annonce.js makes it a modal dialog, binds
-  the WhatsApp number (E.164 in a hidden whatsappNumber) and shows the confirmation in place.
+  the WhatsApp number (E.164 in a hidden whatsappNumber) and shows the confirmation in place. The days (visitDate,
+  ISO date) go from tomorrow to tomorrow + 7 days, in the tenant's time zone; the times (visitTime) from 10:00 to
+  21:00, every 30 minutes. The visit is on site (visitType IN_PERSON) or a video tour the agent gives on a WhatsApp
+  video call (VIDEO). The agent confirms the slot on WhatsApp: the request doesn't book it.
 -->
-<div aria-labelledby="interest-title" class="modal" id="interest">
+<div aria-labelledby="visit-title" class="modal" id="visit">
     <a aria-hidden="true" class="modal__backdrop" data-modal-close href="#main" tabindex="-1"></a>
     <div class="modal__panel">
         <header class="modal__header">
             <div>
-                <h2 class="modal__title" id="interest-title">Ce logement vous intéresse ?</h2>
-                <p class="modal__subtitle">Appartement meublé 2 chambres · Bonapriso</p>
-                <p class="modal__price"><strong>175K FCFA</strong> / mois</p>
+                <h2 class="modal__title" id="visit-title">Demander une visite</h2>
+                <p class="modal__subtitle">Appartement meublé 2 chambres · Bonapriso<span
+                        class="modal__price">&nbsp;· <strong>175K FCFA</strong> / mois</span></p>
             </div>
             <a class="modal__close" data-modal-close href="#main">
                 <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>
@@ -291,9 +282,7 @@
             </a>
         </header>
 
-        <form action="#interest" class="modal__body interest-form" data-interest-form method="post" novalidate>
-            <p class="interest-form__intro">Laissez vos coordonnées : Armelle, l'agent de cette annonce, vous
-                recontacte sur WhatsApp pour répondre à vos questions et organiser la visite.</p>
+        <form action="#visit" class="modal__body interest-form" data-interest-form method="post" novalidate>
             <div class="interest-form__row">
                 <div class="field">
                     <label for="first-name">Prénom</label>
@@ -318,21 +307,136 @@
                 <span aria-live="polite" class="field-error"></span>
             </div>
             <div class="field">
-                <label for="interest-message">Message</label>
-                <textarea id="interest-message" maxlength="1000" name="message" required rows="4">Bonjour, ce logement m'intéresse. Est-il possible de le visiter ?</textarea>
+                <label id="visit-type-label">Type de visite</label>
+                <div aria-labelledby="visit-type-label" class="option-grid option-grid--2" role="radiogroup">
+                    <label><input name="visitType" required type="radio" value="IN_PERSON">
+                        <svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>Sur place</label>
+                    <label><input name="visitType" required type="radio" value="VIDEO">
+                        <svg aria-hidden="true" class="icon"><use href="#i-video"/></svg>En vidéo</label>
+                </div>
                 <span aria-live="polite" class="field-error"></span>
             </div>
-            <button class="btn btn-primary interest-form__submit" type="submit">Envoyer</button>
-            <p class="interest-form__privacy">Vos coordonnées ne sont partagées qu'avec l'agent de cette annonce.</p>
+            <div class="field">
+                <label id="visit-date-label">Jour de la visite</label>
+                <div aria-labelledby="visit-date-label" class="interest-form__days" role="radiogroup">
+                    <label><input name="visitDate" required type="radio" value="2026-10-31">
+                        <span class="day__name">sam.</span><strong>31</strong><span class="day__month">oct.</span></label>
+                    <label><input name="visitDate" required type="radio" value="2026-11-01">
+                        <span class="day__name">dim.</span><strong>1</strong><span class="day__month">nov.</span></label>
+                    <label><input name="visitDate" required type="radio" value="2026-11-02">
+                        <span class="day__name">lun.</span><strong>2</strong><span class="day__month">nov.</span></label>
+                    <label><input name="visitDate" required type="radio" value="2026-11-03">
+                        <span class="day__name">mar.</span><strong>3</strong><span class="day__month">nov.</span></label>
+                    <label><input name="visitDate" required type="radio" value="2026-11-04">
+                        <span class="day__name">mer.</span><strong>4</strong><span class="day__month">nov.</span></label>
+                    <label><input name="visitDate" required type="radio" value="2026-11-05">
+                        <span class="day__name">jeu.</span><strong>5</strong><span class="day__month">nov.</span></label>
+                    <label><input name="visitDate" required type="radio" value="2026-11-06">
+                        <span class="day__name">ven.</span><strong>6</strong><span class="day__month">nov.</span></label>
+                    <label><input name="visitDate" required type="radio" value="2026-11-07">
+                        <span class="day__name">sam.</span><strong>7</strong><span class="day__month">nov.</span></label>
+                </div>
+                <span aria-live="polite" class="field-error"></span>
+            </div>
+            <div class="field">
+                <label for="visit-time">Heure de la visite</label>
+                <select id="visit-time" name="visitTime" required>
+                    <option value="">Choisissez une heure</option>
+                    <option value="10:00">10h00</option>
+                    <option value="10:30">10h30</option>
+                    <option value="11:00">11h00</option>
+                    <option value="11:30">11h30</option>
+                    <option value="12:00">12h00</option>
+                    <option value="12:30">12h30</option>
+                    <option value="13:00">13h00</option>
+                    <option value="13:30">13h30</option>
+                    <option value="14:00">14h00</option>
+                    <option value="14:30">14h30</option>
+                    <option value="15:00">15h00</option>
+                    <option value="15:30">15h30</option>
+                    <option value="16:00">16h00</option>
+                    <option value="16:30">16h30</option>
+                    <option value="17:00">17h00</option>
+                    <option value="17:30">17h30</option>
+                    <option value="18:00">18h00</option>
+                    <option value="18:30">18h30</option>
+                    <option value="19:00">19h00</option>
+                    <option value="19:30">19h30</option>
+                    <option value="20:00">20h00</option>
+                    <option value="20:30">20h30</option>
+                    <option value="21:00">21h00</option>
+                </select>
+                <span aria-live="polite" class="field-error"></span>
+            </div>
+            <button class="btn btn-primary interest-form__submit" type="submit">Envoyer la demande</button>
+            <p class="interest-form__privacy">L'agent vous confirme le créneau sur WhatsApp. Seul l'agent voit vos
+                coordonnées.</p>
         </form>
 
         <div class="modal__body interest-done" data-interest-done hidden tabindex="-1">
             <svg aria-hidden="true" class="icon icon--lg"><use href="#i-check"/></svg>
             <h3>Merci, votre demande est envoyée</h3>
-            <p data-interest-done-text>Armelle vous recontacte très vite sur WhatsApp pour organiser la visite.</p>
+            <p data-interest-done-text>L'agent vous recontacte très vite sur WhatsApp pour confirmer la visite.</p>
             <p>Les visites se règlent avec le Pass Visite par Mobile Money : aucun paiement en espèces.</p>
             <a class="btn btn-secondary" data-modal-close href="#main">Fermer</a>
         </div>
+    </div>
+</div>
+
+<!--
+  "Poser une question" drawer: the visitor chats with the virtual assistant, which answers from the listing's public
+  information only (never the agent's remarks). Without JavaScript it opens with :target (#ask) and the form posts
+  the question; the server answers with the conversation (conversationId) and the assistant's reply. annonce.js
+  makes it a modal dialog and adds the replies in place. A suggestion posts as the question (suggestion); the
+  suggestions are only shown before the first question.
+-->
+<div aria-labelledby="ask-title" class="modal modal--drawer" id="ask">
+    <a aria-hidden="true" class="modal__backdrop" data-modal-close href="#main" tabindex="-1"></a>
+    <div class="modal__panel">
+        <header class="modal__header">
+            <span aria-hidden="true" class="chat__avatar"><svg class="icon"><use href="#i-sparkle"/></svg></span>
+            <div>
+                <h2 class="modal__title" id="ask-title">Une question sur ce logement ?</h2>
+                <p class="modal__subtitle">Assistant virtuel · répond tout de suite</p>
+            </div>
+            <a class="modal__close" data-modal-close href="#main">
+                <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>
+                <span class="visually-hidden">Fermer</span>
+            </a>
+        </header>
+
+        <div class="modal__body chat__body" data-chat-body>
+            <ol aria-label="Conversation" aria-live="polite" class="chat__messages" data-chat-messages>
+                <li class="chat__msg chat__msg--bot">
+                    <span class="visually-hidden">Assistant :</span>
+                    Bonjour ! Je connais tous les détails de cet appartement à Bonapriso : loyer, conditions,
+                    équipements, quartier… Que voulez-vous savoir ?
+                </li>
+            </ol>
+            <ul aria-label="Questions fréquentes" class="chat__suggestions" data-chat-suggestions>
+                <li><button class="chip" data-chat-suggestion form="ask-form" formnovalidate name="suggestion"
+                            type="submit" value="Les charges sont-elles comprises ?">Les charges sont-elles comprises ?</button></li>
+                <li><button class="chip" data-chat-suggestion form="ask-form" formnovalidate name="suggestion"
+                            type="submit" value="Y a-t-il de l&#39;eau en continu ?">Y a-t-il de l'eau en continu ?</button></li>
+                <li><button class="chip" data-chat-suggestion form="ask-form" formnovalidate name="suggestion"
+                            type="submit" value="Combien dois-je payer à l&#39;entrée ?">Combien dois-je payer à l'entrée ?</button></li>
+                <li><button class="chip" data-chat-suggestion form="ask-form" formnovalidate name="suggestion"
+                            type="submit" value="Comment se passe la visite ?">Comment se passe la visite ?</button></li>
+            </ul>
+        </div>
+
+        <form action="#ask" class="chat__composer" data-chat-form id="ask-form" method="post">
+            <input name="conversationId" type="hidden" value="">
+            <label class="visually-hidden" for="chat-question">Votre question</label>
+            <textarea id="chat-question" maxlength="500" name="question" placeholder="Écrivez votre question…"
+                      required rows="1"></textarea>
+            <button class="btn btn-primary chat__send" type="submit">
+                <svg aria-hidden="true" class="icon"><use href="#i-send"/></svg>
+                <span class="visually-hidden">Envoyer</span>
+            </button>
+        </form>
+        <p class="chat__disclaimer">Réponses générées par IA à partir de l'annonce : l'agent confirme tout lors de la
+            visite. <a data-modal-open href="#visit">Demander une visite</a></p>
     </div>
 </div>
 

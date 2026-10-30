@@ -1,12 +1,12 @@
-// Ndopify — listing page: the "Je suis intéressé(e)" popup, the photo viewer and the share button. Everything only
-// enhances: without JavaScript the popup opens with :target and its form posts, the photos are links.
+// Ndopify — listing page: the "Demander une visite" popup, the "Poser une question" drawer, the photo viewer and the
+// share button. Everything only enhances: without JavaScript the popup and the drawer open with :target and their
+// forms post, the photos are links.
 (function () {
   'use strict';
 
   document.documentElement.classList.add('js');
 
   var ITI_BASE = 'https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/js/';
-  var AGENT = 'Armelle';
 
   function el(tag, className, html) {
     var node = document.createElement(tag);
@@ -15,43 +15,57 @@
     return node;
   }
 
-  // ---------------------------------------------------------------- Popup
+  // ---------------------------------------------------------------- Popup and drawer
 
-  function initModal() {
-    var modal = document.getElementById('interest');
-    if (!modal) return null;
-    var panel = modal.querySelector('.modal__panel');
-    var opener = null;
+  // Any [data-modal-open] link opens the dialog its href names (#visit, #ask), [data-modal-close] closes it. One
+  // dialog at a time: opening one from the other ("Demander une visite" in the drawer) replaces it, and focus goes
+  // back to what opened the first one.
+  function initDialogs() {
+    var current = null;
 
-    function focusables() {
+    function focusables(dialog) {
       return Array.prototype.filter.call(
-        panel.querySelectorAll('a[href], button, textarea, input, select, [tabindex]:not([tabindex="-1"])'),
+        dialog.querySelector('.modal__panel')
+          .querySelectorAll('a[href], button, textarea, input, select, [tabindex]:not([tabindex="-1"])'),
         function (n) { return !n.disabled && n.offsetParent !== null; }
       );
     }
 
-    function open(trigger) {
-      opener = trigger || document.activeElement;
-      modal.classList.add('is-open');
-      modal.setAttribute('role', 'dialog');
-      modal.setAttribute('aria-modal', 'true');
+    function hide(dialog) {
+      dialog.classList.remove('is-open');
+      if (location.hash === '#' + dialog.id) history.replaceState(null, '', location.pathname + location.search);
+    }
+
+    function open(dialog, trigger) {
+      var opener = trigger || document.activeElement;
+      if (current) {
+        opener = current.opener;
+        hide(current.dialog);
+      }
+      current = { dialog: dialog, opener: opener };
+      dialog.classList.add('is-open');
+      dialog.setAttribute('role', 'dialog');
+      dialog.setAttribute('aria-modal', 'true');
       document.body.classList.add('modal-open');
-      var first = modal.querySelector('[data-interest-form]:not([hidden]) input, [data-interest-done]:not([hidden])');
+      var first = dialog.querySelector(
+        '[data-interest-form]:not([hidden]) input, [data-interest-done]:not([hidden]), [data-chat-form] textarea');
       if (first) first.focus();
     }
 
     function close() {
-      modal.classList.remove('is-open');
+      if (!current) return;
+      hide(current.dialog);
       document.body.classList.remove('modal-open');
-      if (location.hash === '#interest') history.replaceState(null, '', location.pathname + location.search);
-      if (opener && typeof opener.focus === 'function') opener.focus();
+      if (current.opener && typeof current.opener.focus === 'function') current.opener.focus();
+      current = null;
     }
 
     document.addEventListener('click', function (e) {
       var trigger = e.target.closest('[data-modal-open]');
-      if (trigger) {
+      var dialog = trigger && document.getElementById(trigger.getAttribute('href').slice(1));
+      if (dialog) {
         e.preventDefault();
-        open(trigger);
+        open(dialog, trigger);
         return;
       }
       if (e.target.closest('[data-modal-close]')) {
@@ -60,11 +74,12 @@
       }
     });
 
-    modal.addEventListener('keydown', function (e) {
+    document.addEventListener('keydown', function (e) {
+      if (!current) return;
       if (e.key === 'Escape') {
         close();
       } else if (e.key === 'Tab') {
-        var items = focusables();
+        var items = focusables(current.dialog);
         if (!items.length) return;
         var first = items[0];
         var last = items[items.length - 1];
@@ -78,16 +93,16 @@
       }
     });
 
-    // Opened on load when the page comes back from the server with #interest (errors), or from a shared link
-    if (location.hash === '#interest') open(null);
-    return modal;
+    // Opened on load when the page comes back from the server with #visit or #ask, or from a shared link
+    var target = location.hash && document.getElementById(location.hash.slice(1));
+    if (target && target.classList.contains('modal')) open(target, null);
   }
 
-  // ---------------------------------------------------------------- Interest form
+  // ---------------------------------------------------------------- Visit form
 
-  // "Envoyer" stays inactive until every [required] field is filled (presence, not format); the format is checked on
-  // submit, in the fields' order. The prototype then shows the confirmation instead of posting.
-  function initInterestForm(modal) {
+  // "Envoyer la demande" stays inactive until every [required] field is filled (presence, not format); the format is
+  // checked on submit, in the fields' order. The prototype then shows the confirmation instead of posting.
+  function initVisitForm(modal) {
     var form = modal.querySelector('[data-interest-form]');
     var done = modal.querySelector('[data-interest-done]');
     var phoneInput = form.querySelector('[data-phone-name]');
@@ -129,6 +144,8 @@
     function refresh() {
       syncPhone();
       var filled = Array.prototype.every.call(form.querySelectorAll('[required]'), function (c) {
+        // A radio's value is always there: its group is filled once one of them is checked
+        if (c.type === 'radio') return !!form.querySelector('[name="' + c.name + '"]:checked');
         return c.value.trim() !== '';
       });
       submit.setAttribute('aria-disabled', String(!filled || phoneBroken));
@@ -145,23 +162,36 @@
       var firstName = form.querySelector('#first-name');
       var lastName = form.querySelector('#last-name');
       var email = form.querySelector('#email');
-      var message = form.querySelector('#interest-message');
+      var visitType = form.querySelector('[name="visitType"]');
+      var checkedType = form.querySelector('[name="visitType"]:checked');
+      var visitDate = form.querySelector('[name="visitDate"]');
+      var checkedDate = form.querySelector('[name="visitDate"]:checked');
+      var visitTime = form.querySelector('#visit-time');
       var ok = [
         showError(firstName, firstName.value.trim() ? '' : 'Indiquez votre prénom.'),
         showError(lastName, lastName.value.trim() ? '' : 'Indiquez votre nom.'),
         showError(email, /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())
           ? '' : 'Cette adresse e-mail n\'est pas valide, vérifiez-la.'),
         showError(phoneInput, phoneError()),
-        showError(message, message.value.trim() ? '' : 'Écrivez un message pour l\'agent.')
+        showError(visitType, checkedType ? '' : 'Choisissez une visite sur place ou en vidéo.'),
+        showError(visitDate, checkedDate ? '' : 'Choisissez le jour de la visite.'),
+        showError(visitTime, visitTime.value ? '' : 'Choisissez l\'heure de la visite.')
       ].every(Boolean);
       if (!ok) {
         form.querySelector('[aria-invalid="true"]').focus();
         return;
       }
       var phone = iti.getNumber(window.intlTelInput.utils.numberFormat.E164);
+      // The day card's parts (lun. / 2 / nov.) have no space between them
+      var day = Array.prototype.map.call(checkedDate.closest('label').children, function (n) {
+        return n.textContent.trim();
+      }).filter(Boolean).join(' ');
+      var time = visitTime.options[visitTime.selectedIndex].text;
       form.hidden = true;
       done.querySelector('[data-interest-done-text]').textContent = 'Merci ' + firstName.value.trim() + ' ! ' +
-        AGENT + ' vous recontacte très vite sur WhatsApp au ' + formatPhone(phone) + ' pour organiser la visite.';
+        'Vous avez demandé une visite ' + (checkedType.value === 'VIDEO' ? 'en vidéo' : 'sur place') + ' le ' + day +
+        ' à ' + time + '. L\'agent vous confirme le créneau sur WhatsApp au ' + formatPhone(phone) +
+        (checkedType.value === 'VIDEO' ? ', et vous appelle en vidéo sur WhatsApp à l\'heure prévue.' : '.');
       done.hidden = false;
       done.focus();
     });
@@ -189,6 +219,134 @@
     control.setAttribute('aria-invalid', String(!!message));
     if (error) error.textContent = message;
     return !message;
+  }
+
+  // ---------------------------------------------------------------- Question drawer
+
+  // The prototype answers from canned replies, picked by keyword; the real assistant is the server's (POST of the
+  // question, answer from the listing's public information). Enter sends, Shift+Enter starts a new line.
+  var ANSWERS = [
+    {
+      keys: ['charge', 'compteur', 'facture', 'électricité', 'electricite', 'courant'],
+      text: 'Le logement a ses propres compteurs d\'eau et d\'électricité : vous ne payez que votre consommation, ' +
+        'en plus du loyer de 175K FCFA par mois. Il y a aussi un groupe électrogène en cas de coupure.'
+    },
+    {
+      keys: ['eau', 'forage', 'réservoir'],
+      text: 'Oui : en plus du compteur d\'eau dédié, l\'immeuble a un forage et un réservoir d\'eau, ce qui assure ' +
+        'l\'eau même pendant les coupures du réseau.'
+    },
+    {
+      keys: ['payer', 'entrée', 'caution', 'avance', 'combien', 'prix', 'loyer'],
+      text: 'À l\'entrée, il faut prévoir :\n• Caution : 2 mois, soit 350K FCFA\n• Avance : 3 mois, soit 525K FCFA\n' +
+        'Soit 875K FCFA au total, pour un bail de 12 mois.'
+    },
+    {
+      keys: ['visite', 'visiter', 'voir', 'rendez'],
+      text: 'Dans « Demander une visite », choisissez une visite sur place ou en vidéo (un appel vidéo WhatsApp avec ' +
+        'l\'agent), puis un jour et une heure : l\'agent vous confirme le créneau sur WhatsApp. La visite se règle avec le Pass Visite par Mobile Money, jamais en espèces.',
+      visit: true
+    },
+    {
+      keys: ['quartier', 'sécurité', 'securite', 'sûr', 'gardien', 'calme'],
+      text: 'Bonapriso est un quartier résidentiel. L\'immeuble est clôturé, avec un gardien jour et nuit et de la ' +
+        'vidéosurveillance. Les commerces de la rue Njo-Njo sont à cinq minutes à pied.'
+    },
+    {
+      keys: ['disponible', 'quand', 'emménager', 'date'],
+      text: 'Le logement est disponible à partir du 1er décembre 2026, pour un bail de 12 mois (préavis d\'un mois).'
+    }
+  ];
+  var FALLBACK = {
+    text: 'Je n\'ai pas cette information dans l\'annonce. L\'agent pourra vous répondre lors de la visite.',
+    visit: true
+  };
+
+  function answer(question) {
+    var q = question.toLowerCase();
+    for (var i = 0; i < ANSWERS.length; i++) {
+      if (ANSWERS[i].keys.some(function (k) { return q.indexOf(k) !== -1; })) return ANSWERS[i];
+    }
+    return FALLBACK;
+  }
+
+  function initChat(drawer) {
+    var form = drawer.querySelector('[data-chat-form]');
+    var input = form.querySelector('textarea');
+    var send = form.querySelector('[type="submit"]');
+    var body = drawer.querySelector('[data-chat-body]');
+    var messages = drawer.querySelector('[data-chat-messages]');
+    var suggestions = drawer.querySelector('[data-chat-suggestions]');
+    var waiting = false;
+    // The required question only stops an empty post without JavaScript; here aria-disabled does
+    form.noValidate = true;
+
+    function add(kind, text) {
+      var msg = el('li', 'chat__msg chat__msg--' + kind);
+      var who = el('span', 'visually-hidden');
+      who.textContent = kind === 'bot' ? 'Assistant : ' : 'Vous : ';
+      var content = el('span', 'chat__text');
+      content.textContent = text;
+      msg.appendChild(who);
+      msg.appendChild(content);
+      messages.appendChild(msg);
+      body.scrollTop = body.scrollHeight;
+      return msg;
+    }
+
+    function refresh() {
+      send.setAttribute('aria-disabled', String(waiting || input.value.trim() === ''));
+      // Grows with the question, up to the CSS max-height
+      input.style.height = 'auto';
+      input.style.height = input.scrollHeight + 'px';
+    }
+
+    function ask(question) {
+      if (waiting || !question) return;
+      waiting = true;
+      suggestions.hidden = true;
+      add('user', question);
+      input.value = '';
+      refresh();
+      var typing = el('li', 'chat__msg chat__msg--bot',
+        '<span class="visually-hidden">L\'assistant écrit…</span>' +
+        '<span aria-hidden="true" class="chat__typing"><span></span><span></span><span></span></span>');
+      messages.appendChild(typing);
+      body.scrollTop = body.scrollHeight;
+      setTimeout(function () {
+        typing.remove();
+        var reply = answer(question);
+        var msg = add('bot', reply.text);
+        if (reply.visit) {
+          var link = el('a', 'btn btn-secondary chat__visit',
+            '<svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Demander une visite');
+          link.href = '#visit';
+          link.setAttribute('data-modal-open', '');
+          msg.appendChild(link);
+        }
+        body.scrollTop = body.scrollHeight;
+        waiting = false;
+        refresh();
+      }, 900);
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      // A suggestion is a submit button of the form (it posts without JavaScript)
+      var suggestion = e.submitter && e.submitter.name === 'suggestion' ? e.submitter.value : '';
+      if (!suggestion && send.getAttribute('aria-disabled') === 'true') return;
+      ask(suggestion || input.value.trim());
+      if (!suggestion) input.focus();
+    });
+
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+        e.preventDefault();
+        form.requestSubmit(send);
+      }
+    });
+    input.addEventListener('input', refresh);
+    refresh();
   }
 
   // ---------------------------------------------------------------- Photo viewer
@@ -327,8 +485,11 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
-    var modal = initModal();
-    if (modal) initInterestForm(modal);
+    initDialogs();
+    var visit = document.getElementById('visit');
+    if (visit) initVisitForm(visit);
+    var ask = document.getElementById('ask');
+    if (ask) initChat(ask);
     initLightbox();
     initShare();
   });
