@@ -9,8 +9,6 @@ import com.wutsi.ndopify.esignature.client.ContractContentClient
 import com.wutsi.ndopify.esignature.client.ndopify.NdAuthClient
 import com.wutsi.ndopify.esignature.client.ndopify.NdContractClient
 import com.wutsi.ndopify.esignature.client.ndopify.NdOtpClient
-import com.wutsi.ndopify.esignature.service.security.AccessTokenService
-import com.wutsi.ndopify.esignature.service.security.JwtAuthentication
 import com.wutsi.ndopify.esignature.ui.sign.SignView.Companion.STEP_CODE
 import com.wutsi.ndopify.esignature.ui.sign.SignView.Companion.STEP_DONE
 import com.wutsi.ndopify.esignature.ui.sign.SignView.Companion.STEP_SIGN
@@ -18,6 +16,8 @@ import com.wutsi.ndopify.refdata.dto.ApplicationCode
 import com.wutsi.ndopify.refdata.dto.AuthType
 import com.wutsi.ndopify.security.dto.AuthenticateRequest
 import com.wutsi.ndopify.security.dto.CreateOtpRequest
+import com.wutsi.ndopify.web.core.service.security.AccessTokenService
+import com.wutsi.ndopify.web.core.service.security.JwtAuthentication
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpSession
 import org.slf4j.LoggerFactory

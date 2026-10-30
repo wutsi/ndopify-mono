@@ -4,7 +4,6 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.wutsi.ndopify.contract.dto.ContractStatus
 import com.wutsi.ndopify.esignature.client.ContractContent
-import com.wutsi.ndopify.esignature.service.TenantContext
 import com.wutsi.ndopify.esignature.service.TenantFixtures.TENANT
 import com.wutsi.ndopify.esignature.ui.sign.SignFixtures.AGENT
 import com.wutsi.ndopify.esignature.ui.sign.SignFixtures.CONTENT
@@ -16,6 +15,7 @@ import com.wutsi.ndopify.esignature.ui.sign.SignFixtures.CONTRACT_PARTY_ID
 import com.wutsi.ndopify.esignature.ui.sign.SignFixtures.CUSTOMER
 import com.wutsi.ndopify.esignature.ui.sign.SignFixtures.NOW
 import com.wutsi.ndopify.esignature.ui.sign.SignFixtures.signed
+import com.wutsi.ndopify.web.core.service.TenantContext
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset

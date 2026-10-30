@@ -6,8 +6,6 @@ import com.wutsi.ndopify.contract.dto.ContractPartyRole
 import com.wutsi.ndopify.contract.dto.ContractStatus
 import com.wutsi.ndopify.contract.dto.ContractType
 import com.wutsi.ndopify.esignature.client.ContractContent
-import com.wutsi.ndopify.esignature.service.TenantContext
-import com.wutsi.ndopify.esignature.service.TenantFormatter
 import com.wutsi.ndopify.esignature.ui.sign.SignView.Companion.BLOCKED_CANCELLED
 import com.wutsi.ndopify.esignature.ui.sign.SignView.Companion.BLOCKED_EXPIRED
 import com.wutsi.ndopify.esignature.ui.sign.SignView.Companion.BLOCKED_NOT_REQUIRED
@@ -19,6 +17,8 @@ import com.wutsi.ndopify.esignature.ui.sign.SignView.Companion.STEP_CODE
 import com.wutsi.ndopify.esignature.ui.sign.SignView.Companion.STEP_DONE
 import com.wutsi.ndopify.esignature.ui.sign.SignView.Companion.STEP_INTRO
 import com.wutsi.ndopify.esignature.ui.sign.SignView.Companion.STEP_SIGN
+import com.wutsi.ndopify.web.core.service.TenantContext
+import com.wutsi.ndopify.web.core.service.TenantFormatter
 import org.springframework.stereotype.Service
 import java.time.Clock
 import java.util.Date

@@ -7,9 +7,9 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.contract.dto.ContractSignature
 import com.wutsi.ndopify.esignature.client.ndopify.NdContractClient
-import com.wutsi.ndopify.esignature.service.TenantContext
 import com.wutsi.ndopify.esignature.service.TenantFixtures.FORMATTER
 import com.wutsi.ndopify.esignature.service.TenantFixtures.TENANT
+import com.wutsi.ndopify.web.core.service.TenantContext
 import jakarta.servlet.ServletException
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test

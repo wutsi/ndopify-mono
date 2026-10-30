@@ -1,9 +1,10 @@
 package com.wutsi.ndopify.esignature.config
 
-import com.wutsi.ndopify.esignature.client.AuthorizationClientHttpRequestInterceptor
-import com.wutsi.ndopify.esignature.client.LoggingClientHttpRequestInterceptor
-import com.wutsi.ndopify.esignature.client.TenantIdClientHttpRequestInterceptor
-import com.wutsi.ndopify.esignature.service.TenantContext
+import com.wutsi.ndopify.web.core.client.AuthorizationClientHttpRequestInterceptor
+import com.wutsi.ndopify.web.core.client.LoggingClientHttpRequestInterceptor
+import com.wutsi.ndopify.web.core.client.TenantIdClientHttpRequestInterceptor
+import com.wutsi.ndopify.web.core.service.TenantContext
+import com.wutsi.ndopify.web.core.service.security.AccessTokenService
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.restclient.RestClientCustomizer
 import org.springframework.context.annotation.Bean
@@ -29,8 +30,10 @@ class RestConfiguration(
         RestClientCustomizer { builder -> builder.requestInterceptor(LoggingClientHttpRequestInterceptor()) }
 
     @Bean
-    fun authorizationRestClientCustomizer(): RestClientCustomizer =
-        RestClientCustomizer { builder -> builder.requestInterceptor(AuthorizationClientHttpRequestInterceptor()) }
+    fun authorizationRestClientCustomizer(accessTokenService: AccessTokenService): RestClientCustomizer =
+        RestClientCustomizer { builder ->
+            builder.requestInterceptor(AuthorizationClientHttpRequestInterceptor(accessTokenService.cookieName))
+        }
 
     @Bean
     fun tenantIdRestClientCustomizer(tenantContext: TenantContext): RestClientCustomizer =

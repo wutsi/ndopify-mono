@@ -17,7 +17,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   public wizards.
 - `modules/ndopify-web-core` — library of the infrastructure shared by the web apps (`TenantContext`,
   `TenantFormatter`, REST interceptors, `NdTenantClient`, the access-token and JWT classes), package
-  `com.wutsi.ndopify.web.core`. Not used by the web apps yet.
+  `com.wutsi.ndopify.web.core`. Used by `ndopify-esignature`; Partner Central and the website still have their own
+  copies.
 
 All six are in the root `pom.xml` reactor. The Spring Boot apps are deployed to Heroku by their own GitHub
 workflows; `ndopify-dto` is released to GitHub Packages. There is no SDK, admin console or tracking-server module
@@ -144,13 +145,16 @@ sandbox values and don't need to be set for local dev unless you're exercising r
 ```
 ndopify-dto  →  ndopify-server
 ndopify-dto  →  ndopify-partner-central  ──(REST, runtime)──▶  ndopify-server
-ndopify-dto  →  ndopify-esignature       ──(REST, runtime)──▶  ndopify-server
+ndopify-dto  →  ndopify-web-core
+ndopify-dto, ndopify-web-core  →  ndopify-esignature  ──(REST, runtime)──▶  ndopify-server
 ndopify-dto  →  ndopify-web              ──(REST, runtime)──▶  ndopify-server
 ```
 
 DTOs live in `ndopify-dto` and are the request/response contracts shared by the server and its clients. `ndopify-dto`
 must never depend on another module of the repo, and the web apps (`ndopify-partner-central`, `ndopify-esignature`,
 `ndopify-web`) must not depend on `ndopify-server` nor on each other at build time — only call the server over HTTP.
+They may depend on `ndopify-web-core` (a released version, like `ndopify-dto`: `ndopify-web-core.version` in the root
+`pom.xml`).
 A web app's infrastructure copied from another (`TenantContext`, `TenantFormatter`, the REST interceptors, the JWT
 classes) keeps the same class names and signatures, so that a fix in one can be carried to the others.
 

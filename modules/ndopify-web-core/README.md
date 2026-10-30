@@ -8,7 +8,7 @@ Infrastructure shared by the web apps (`ndopify-partner-central`, `ndopify-esign
 resolution from the request URL, tenant formatting of dates and amounts, and the REST interceptors / tenant client
 used to call `ndopify-server`.
 
-Not used by the web apps yet: they still have their own copies of these classes.
+Used by `ndopify-esignature`; `ndopify-partner-central` and `ndopify-web` still have their own copies of these classes.
 
 ## Build
 

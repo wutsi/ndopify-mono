@@ -1,8 +1,9 @@
 # ndopify-esignature
 
 Package `com.wutsi.ndopify.esignature` (port 8083, French UI): the contract sign page, a Spring Boot + Thymeleaf BFF with
-no database that talks to `ndopify-server` over REST. Its infrastructure is copied from Partner Central (same class
-names and signatures; depends on `ndopify-dto` only, never on partner-central), minus the agent / login parts.
+no database that talks to `ndopify-server` over REST. Its infrastructure (`TenantContext`, `TenantFormatter`, the REST
+interceptors, `NdTenantClient`, the access-token and JWT classes) comes from `ndopify-web-core` (package
+`com.wutsi.ndopify.web.core`); it depends on `ndopify-dto` and `ndopify-web-core` only, never on partner-central.
 
 ## Code Organization
 
@@ -11,10 +12,11 @@ Same layout as Partner Central (see `modules/ndopify-partner-central/CLAUDE.md`)
 - `ui/sign/` — `SignController`, its forms (`OtpForm`, `VerifyForm`, `SignForm`), the session's `PendingSignature` (`nes.pending-signature`),
   and `SignViews` → `SignView` (picks the step and formats the dates). `ui/verify/` — `VerifyController`,
   `VerifyView`. `ui/layout/` — `TenantAdvice`, `HttpClientErrorHandler`.
-- `client/ndopify/` — `NdOtpClient`, `NdAuthClient`, `NdContractClient`, `NdTenantClient`; `client/` — the
-  interceptors and `ContractContentClient` (+ `ContractContent`), which downloads a contract's content.
-- `service/` — `TenantContext`, `TenantFormatter`; `service/security/` — the JWT cookie, decoder and filter.
-- `config/` — security (the only public paths), REST clients, `Clock`.
+- `client/ndopify/` — `NdOtpClient`, `NdAuthClient`, `NdContractClient`; `client/` — `ContractContentClient`
+  (+ `ContractContent`), which downloads a contract's content.
+- `config/` — security (the only public paths), REST clients, `Clock`, and `WebCoreConfiguration`: the web-core beans
+  (`TenantContext` on `TenantPortal.E_SIGNATURE`, `AccessTokenService` on `__nes_access_token` for 1 hour, `JwtDecoder`
+  accepting only `ApplicationCode.E_SIGNATURE`) and `@Import(NdTenantClient)`.
 
 Templates: `templates/sign.html`, `templates/verify.html`, `templates/error/`; one script,
 `public/assets/js/esignature.js`, which only enhances.
@@ -29,7 +31,7 @@ the sign or verify page may show (see the rules below) needs a template test ass
 
 ## Pages
 
-- Tenant is resolved by `service/TenantContext` matching the request URL against each active tenant's
+- Tenant is resolved by `TenantContext` (web-core) matching the request URL against each active tenant's
   `eSignaturePortalUrl` (not `partnerCentralUrl`). `ui/layout/TenantAdvice` puts it in every page's model as `tenant`
   (error pages included), for the header's logo (`logoUrl`, falling back to Ndopify's `logo.png`); null when it can't
   be resolved, so that an error page still renders.
@@ -38,7 +40,8 @@ the sign or verify page may show (see the rules below) needs a template test ass
 - `SecurityConfiguration` permits only `/assets/**`, `/sign/**`, `/verify/**` and `/error`; every other path is denied (nothing else
   is served). The 403 / 404 pages (`templates/error/`) show the logo only, no account menu.
 - `client/ndopify/` holds the ndopify-server clients: `NdOtpClient` / `NdAuthClient` (as Partner Central's),
-  `NdContractClient` (get, search incl. `contract-party-id`, `sign`, `getSignature`) and the global `NdTenantClient`.
+  `NdContractClient` (get, search incl. `contract-party-id`, `sign`, `getSignature`); the global `NdTenantClient` is
+  web-core's.
   `client/ContractContentClient` downloads the contract's `contentUrl`: HTML only, sanitized with Jsoup
   `Safelist.relaxed()` (the page renders it with `th:utext`), null on any failure (the page then can't sign), through
   the plain `contentRestClient` bean (`RestClient.create()`, not the Spring builder) so that the `Authorization` /

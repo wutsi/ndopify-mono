@@ -23,10 +23,7 @@ import com.wutsi.ndopify.esignature.client.ContractContentClient
 import com.wutsi.ndopify.esignature.client.ndopify.NdAuthClient
 import com.wutsi.ndopify.esignature.client.ndopify.NdContractClient
 import com.wutsi.ndopify.esignature.client.ndopify.NdOtpClient
-import com.wutsi.ndopify.esignature.service.TenantContext
 import com.wutsi.ndopify.esignature.service.TenantFixtures.TENANT
-import com.wutsi.ndopify.esignature.service.security.AccessTokenService
-import com.wutsi.ndopify.esignature.service.security.JwtAuthentication
 import com.wutsi.ndopify.esignature.ui.sign.SignFixtures.CONTENT
 import com.wutsi.ndopify.esignature.ui.sign.SignFixtures.CONTENT_HASH
 import com.wutsi.ndopify.esignature.ui.sign.SignFixtures.CONTENT_HTML
@@ -40,6 +37,9 @@ import com.wutsi.ndopify.security.dto.AuthenticateRequest
 import com.wutsi.ndopify.security.dto.AuthenticateResponse
 import com.wutsi.ndopify.security.dto.CreateOtpRequest
 import com.wutsi.ndopify.security.dto.JwtPrincipal
+import com.wutsi.ndopify.web.core.service.TenantContext
+import com.wutsi.ndopify.web.core.service.security.AccessTokenService
+import com.wutsi.ndopify.web.core.service.security.JwtAuthentication
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test

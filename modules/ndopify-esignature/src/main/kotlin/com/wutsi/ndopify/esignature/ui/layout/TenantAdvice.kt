@@ -1,7 +1,7 @@
 package com.wutsi.ndopify.esignature.ui.layout
 
-import com.wutsi.ndopify.esignature.service.TenantContext
 import com.wutsi.ndopify.refdata.dto.Tenant
+import com.wutsi.ndopify.web.core.service.TenantContext
 import org.springframework.web.bind.annotation.ControllerAdvice
 import org.springframework.web.bind.annotation.ModelAttribute
 

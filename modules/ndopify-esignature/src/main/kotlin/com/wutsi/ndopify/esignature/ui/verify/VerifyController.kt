@@ -1,8 +1,8 @@
 package com.wutsi.ndopify.esignature.ui.verify
 
 import com.wutsi.ndopify.esignature.client.ndopify.NdContractClient
-import com.wutsi.ndopify.esignature.service.TenantContext
-import com.wutsi.ndopify.esignature.service.TenantFormatter
+import com.wutsi.ndopify.web.core.service.TenantContext
+import com.wutsi.ndopify.web.core.service.TenantFormatter
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.GetMapping

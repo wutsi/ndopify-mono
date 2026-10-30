@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.esignature.ui.layout
 
-import com.wutsi.ndopify.esignature.service.security.AccessTokenService
+import com.wutsi.ndopify.web.core.service.security.AccessTokenService
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import org.slf4j.LoggerFactory
@@ -14,7 +14,7 @@ import org.springframework.web.client.HttpClientErrorException
  * would be a 500. Pages that know better catch it before it gets here.
  *
  * A 401 means that ndopify-server rejected the token (bad signature, expired meanwhile): this app doesn't check the
- * signature (see [com.wutsi.ndopify.esignature.service.security.JwtDecoder]), so the cookie is cleared and the signer
+ * signature (see [com.wutsi.ndopify.web.core.service.security.JwtDecoder]), so the cookie is cleared and the signer
  * goes back to the page, signed out: the sign link's intro (its e-mail step), or the verify page, which needs no token.
  */
 @ControllerAdvice
