@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.security.server.endpoints
 
+import com.auth0.jwt.JWT
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.anyOrNull
 import com.nhaarman.mockitokotlin2.doReturn
@@ -22,6 +23,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.jdbc.Sql
+import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -70,6 +72,7 @@ class AuthenticateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(TENANT_ID, principal.getTenantId())
         assertEquals(listOf("AGENT"), principal.getRoles().toList())
         assertEquals(100L, principal.getPartyId())
+        assertEquals(Duration.ofDays(1), lifetime(response.body!!.accessToken)) // partner-central's ttl
 
         val authFactor = authFactorRepository.findById(1L).get()
         assertNotNull(authFactor.lastLoggedInAt)
@@ -195,6 +198,7 @@ class AuthenticateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(ApplicationCode.E_SIGNATURE, principal.getApplication())
         assertEquals(TENANT_ID, principal.getTenantId())
         assertNull(principal.getPartyId()) // Its membership has no party
+        assertEquals(Duration.ofHours(1), lifetime(response.body!!.accessToken)) // e-signature's ttl
     }
 
     @Test
@@ -279,6 +283,11 @@ class AuthenticateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
         secret: String?,
         applicationCode: String = ApplicationCode.PARTNER_CENTRAL,
     ) = rest.postForEntity("/v1/auth", request(email, secret, applicationCode), ErrorResponse::class.java)
+
+    private fun lifetime(accessToken: String): Duration {
+        val jwt = JWT.decode(accessToken)
+        return Duration.between(jwt.issuedAtAsInstant, jwt.expiresAtAsInstant)
+    }
 
     private fun request(email: String, secret: String?, applicationCode: String) = AuthenticateRequest(
         email = email,

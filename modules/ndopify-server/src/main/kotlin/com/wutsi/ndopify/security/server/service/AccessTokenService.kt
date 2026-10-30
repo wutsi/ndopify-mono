@@ -10,6 +10,7 @@ import com.wutsi.ndopify.error.server.exception.UnauthorizedException
 import com.wutsi.ndopify.security.dto.JwtPrincipal
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.stereotype.Service
 import java.time.Clock
 import java.time.Instant
@@ -18,13 +19,15 @@ import java.time.Instant
  * Issues and verifies the access tokens, signed with HS256. The secret (`ndopify.security.jwt.secret`) is a dummy one
  * in local dev and tests, and the `JWT_SECRET` environment variable on deployed servers. Only ndopify-server has it:
  * Partner Central and the e-signature portal read the claims without checking the signature, ndopify-server checks it
- * on each of their calls.
+ * on each of their calls. A token lives as long as its application's TTL ([AccessTokenProperties]).
  */
 @Service
+@EnableConfigurationProperties(AccessTokenProperties::class)
 open class AccessTokenService(
     private val clock: Clock,
     private val request: HttpServletRequest,
     @Value("\${ndopify.security.jwt.secret}") secret: String,
+    private val properties: AccessTokenProperties,
 ) {
     companion object {
         const val ISSUER = "Ndopify"
@@ -45,7 +48,7 @@ open class AccessTokenService(
         userId: Long,
         roles: Array<String>,
         tenantId: Long?,
-        ttlSeconds: Int,
+        ttlSeconds: Int = properties.ttl(application).seconds.toInt(),
         partyId: Long? = null,
     ): String {
         val algo = getAlgorithm()
