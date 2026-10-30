@@ -1,6 +1,6 @@
 package com.wutsi.ndopify.npc.ui.layout
 
-import com.wutsi.ndopify.npc.service.security.JwtAuthentication
+import com.wutsi.ndopify.web.core.service.security.JwtAuthentication
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.bind.annotation.ControllerAdvice
 import org.springframework.web.bind.annotation.ModelAttribute

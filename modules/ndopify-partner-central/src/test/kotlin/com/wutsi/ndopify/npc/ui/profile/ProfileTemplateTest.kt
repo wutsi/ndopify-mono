@@ -11,7 +11,6 @@ import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.client.ndopify.NdPartyClient
-import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.home.HomeController
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
@@ -21,6 +20,7 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BASTOS
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.DOUALA
 import com.wutsi.ndopify.party.dto.KycCase
 import com.wutsi.ndopify.party.dto.KycStatus
+import com.wutsi.ndopify.web.core.service.TenantContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.junit.jupiter.api.AfterEach

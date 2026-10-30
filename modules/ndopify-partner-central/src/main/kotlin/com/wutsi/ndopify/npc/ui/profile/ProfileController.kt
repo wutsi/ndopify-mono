@@ -7,12 +7,12 @@ import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdPartyClient
-import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.join.JoinRules
 import com.wutsi.ndopify.npc.ui.kyc.KycRules
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
+import com.wutsi.ndopify.web.core.service.TenantContext
 import org.apache.tika.Tika
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Controller

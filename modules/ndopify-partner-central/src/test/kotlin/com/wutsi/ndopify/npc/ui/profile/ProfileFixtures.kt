@@ -7,7 +7,6 @@ import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.agent.dto.AgentType
 import com.wutsi.ndopify.agent.dto.ExperienceLevel
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
-import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.npc.service.TenantFixtures
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.Party
@@ -15,6 +14,7 @@ import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
 import com.wutsi.ndopify.refdata.dto.SearchLocationResponse
+import com.wutsi.ndopify.web.core.service.TenantContext
 
 /** The signed-in agent and the locations of the profile tests. */
 object ProfileFixtures {

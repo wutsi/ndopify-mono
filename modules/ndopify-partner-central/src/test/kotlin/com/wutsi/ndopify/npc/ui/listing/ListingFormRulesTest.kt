@@ -5,8 +5,8 @@ import com.wutsi.ndopify.listing.dto.ListingSection
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
-import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.LISTING
+import com.wutsi.ndopify.web.core.service.TenantFormatter
 import org.junit.jupiter.api.Test
 import java.time.LocalDate
 import kotlin.test.assertEquals

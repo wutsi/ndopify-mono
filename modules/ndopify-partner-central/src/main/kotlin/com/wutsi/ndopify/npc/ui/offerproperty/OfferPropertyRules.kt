@@ -4,8 +4,8 @@ import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
-import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
+import com.wutsi.ndopify.web.core.service.TenantFormatter
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
 

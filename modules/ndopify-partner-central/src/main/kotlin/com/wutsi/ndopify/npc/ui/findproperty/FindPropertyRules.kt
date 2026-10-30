@@ -5,7 +5,7 @@ import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
-import com.wutsi.ndopify.npc.service.TenantFormatter
+import com.wutsi.ndopify.web.core.service.TenantFormatter
 
 /**
  * Field rules of the "Trouver un bien" wizard, shared by [FindPropertyController] (to validate what a step posts)

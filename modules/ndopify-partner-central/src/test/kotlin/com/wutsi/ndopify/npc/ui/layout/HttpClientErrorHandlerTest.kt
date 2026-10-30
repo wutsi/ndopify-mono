@@ -3,8 +3,8 @@ package com.wutsi.ndopify.npc.ui.layout
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
-import com.wutsi.ndopify.npc.service.security.AccessTokenService
 import com.wutsi.ndopify.npc.service.security.SignInRequiredException
+import com.wutsi.ndopify.web.core.service.security.AccessTokenService
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.mock.web.MockHttpSession

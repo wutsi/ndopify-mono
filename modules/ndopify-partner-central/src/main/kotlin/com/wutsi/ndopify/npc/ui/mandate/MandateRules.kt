@@ -7,7 +7,7 @@ import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
-import com.wutsi.ndopify.npc.service.TenantFormatter
+import com.wutsi.ndopify.web.core.service.TenantFormatter
 import java.time.Duration
 import java.util.Date
 

@@ -66,6 +66,9 @@ confirmations).
 
 ## How it works
 
+- **Shared infrastructure** — `TenantContext`, `TenantFormatter`, the REST interceptors, `NdTenantClient`,
+  `AccessTokenService`, `JwtDecoder` and `JwtAuthenticationFilter` come from
+  [`ndopify-web-core`](../ndopify-web-core/README.md), declared by `config/WebCoreConfiguration`.
 - **Authentication** — the access token is stored in the `__npc_access_token` HTTP-only cookie
   (`AccessTokenService`). `JwtAuthenticationFilter` decodes it on each request and clears it once it no longer
   decodes (expired); everything except `/assets/**`, `/login/**`, `/error`, `/join/**`, `/find-property/**` and
@@ -89,9 +92,9 @@ confirmations).
 
 ```
 src/main/kotlin/com/wutsi/ndopify/npc/
-    client/      REST clients for ndopify-server + request interceptors
-    config/      Spring configuration (security, REST, clock)
-    service/     TenantContext, TenantFormatter, security/ (access-token cookie, JWT decoding, auth filter)
+    client/      REST clients for ndopify-server
+    config/      Spring configuration (security, REST, clock, ndopify-web-core beans)
+    service/     security/ (the signed-in agent: CurrentParty, CurrentAgent)
     ui/          MVC controllers: home, assignment, mandate, kyc, profile, join, findproperty, location, login,
                  logout, layout (advices, error handler)
 src/main/resources/

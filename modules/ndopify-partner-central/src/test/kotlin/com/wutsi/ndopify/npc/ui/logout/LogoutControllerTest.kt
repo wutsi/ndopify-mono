@@ -2,7 +2,7 @@ package com.wutsi.ndopify.npc.ui.logout
 
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
-import com.wutsi.ndopify.npc.service.security.AccessTokenService
+import com.wutsi.ndopify.web.core.service.security.AccessTokenService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.mock

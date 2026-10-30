@@ -1,10 +1,10 @@
 package com.wutsi.ndopify.npc.ui.location
 
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
-import com.wutsi.ndopify.npc.service.TenantContext
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchLocationRequest
+import com.wutsi.ndopify.web.core.service.TenantContext
 
 /**
  * An agent's area: a city of the tenant's country and some of its neighbourhoods. Checked by the join wizard's area

@@ -1,7 +1,7 @@
 package com.wutsi.ndopify.npc.ui.logout
 
-import com.wutsi.ndopify.npc.service.security.AccessTokenService
 import com.wutsi.ndopify.npc.ui.login.LoginController
+import com.wutsi.ndopify.web.core.service.security.AccessTokenService
 import jakarta.servlet.http.HttpServletRequest
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.PostMapping

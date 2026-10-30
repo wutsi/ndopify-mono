@@ -1,7 +1,9 @@
 # ndopify-partner-central
 
 The agent-facing web app (port 8081, French UI): a Spring Boot + Thymeleaf BFF with no database, which talks to
-`ndopify-server` over REST (`ndopify.server.api.base-url`). It depends on `ndopify-dto` only.
+`ndopify-server` over REST (`ndopify.server.api.base-url`). It depends on `ndopify-dto` and `ndopify-web-core` only.
+Its infrastructure (`TenantContext`, `TenantFormatter`, the REST interceptors, `NdTenantClient`, the access-token and
+JWT classes) comes from `ndopify-web-core` (package `com.wutsi.ndopify.web.core`).
 
 ## Code Organization
 
@@ -18,12 +20,13 @@ Package `com.wutsi.ndopify.npc`:
     (`npc.<thing>`), with `isComplete(step)` / `firstIncompleteStep()`; `Submitted<Thing>` for its confirmation.
   - `<Feature>Views` → `<Feature>View` — build the template's view model from the DTOs (labels, formatted dates).
 - `client/ndopify/Nd<Entity>Client` — one `@Service` per ndopify-server resource, built on the Spring
-  `RestClient.Builder` (so the interceptors apply); `NdTenantClient` is the exception (plain `RestTemplate`,
-  tenants are global). `client/` also holds the logging, `Authorization` and `X-Tenant-ID` interceptors, added by
-  `config/RestConfiguration`.
-- `service/` — `TenantContext`, `TenantFormatter`; `service/security/` — the JWT cookie (`AccessTokenService`),
-  `JwtDecoder`, `JwtAuthenticationFilter`, and the signed-in user (`CurrentParty`, `CurrentAgent`).
-- `config/` — security (which paths are public), REST clients, `Clock`.
+  `RestClient.Builder` (so web-core's logging, `Authorization` and `X-Tenant-ID` interceptors, added by
+  `config/RestConfiguration`, apply); web-core's `NdTenantClient` is the exception (plain `RestTemplate`, tenants
+  are global).
+- `service/security/` — the signed-in user (`CurrentParty`, `CurrentAgent`) and `SignInRequiredException`.
+- `config/` — security (which paths are public), REST clients, `Clock`, and `WebCoreConfiguration`: the web-core
+  beans (`TenantContext` on `TenantPortal.PARTNER_CENTRAL`, `AccessTokenService` on `__npc_access_token` as a session
+  cookie, `JwtDecoder` accepting only `ApplicationCode.PARTNER_CENTRAL`) and `@Import(NdTenantClient)`.
 
 Resources: one Thymeleaf template per page in `src/main/resources/templates/` (sub-pages in a folder named after
 the feature, ex: `profile/edit.html`; `error/403.html` / `404.html`), and page scripts in `public/assets/js/`, one per
@@ -63,8 +66,8 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   a page throws when `CurrentAgent` / `CurrentParty` finds nobody. Sign-in changes the session id.
   The header's account menu (`<nav class="user-menu">`) is wrapped in `th:if="${signedIn}"`, a model attribute
   that `SignedInAdvice` (`ui/layout/`) sets on every page: give any new page's menu the same guard.
-- Tenant is resolved by `TenantContext` matching the request URL against each active tenant's `partnerCentralUrl`
-  (from `GET /v1/tenants`). Dates and amounts shown to users go through `service/TenantFormatter` (built from the
+- Tenant is resolved by `TenantContext` (web-core) matching the request URL against each active tenant's
+  `partnerCentralUrl` (from `GET /v1/tenants`). Dates and amounts shown to users go through `TenantFormatter` (web-core, built from the
   `Tenant`, like ndopify-server's): the tenant's `dateFormat` / `monetaryFormat` / `numberFormat`, first locale and
   `timeZone`, with no-break spaces; a field's unit or a message names the currency with `currency()` (the
   `currencySymbol`), never a hard-coded "FCFA". `mandate.js` reads it from the body's `data-currency`.

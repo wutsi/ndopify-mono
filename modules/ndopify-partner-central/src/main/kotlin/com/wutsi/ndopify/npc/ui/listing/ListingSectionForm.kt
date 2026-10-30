@@ -2,7 +2,7 @@ package com.wutsi.ndopify.npc.ui.listing
 
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.PropertyCategory
-import com.wutsi.ndopify.npc.service.TenantFormatter
+import com.wutsi.ndopify.web.core.service.TenantFormatter
 
 /**
  * What a section's form posts (`POST /listings/{id}/{section}`): every section's fields, only those of the posted

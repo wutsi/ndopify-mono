@@ -2,8 +2,8 @@ package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
-import com.wutsi.ndopify.npc.service.TenantFormatter
 import com.wutsi.ndopify.refdata.dto.Location
+import com.wutsi.ndopify.web.core.service.TenantFormatter
 
 /** Builds the cards of the Espace agent's *Mes mandats* (see [MandateCardView]), worded as the prototype's index.html. */
 object MandateCards {
