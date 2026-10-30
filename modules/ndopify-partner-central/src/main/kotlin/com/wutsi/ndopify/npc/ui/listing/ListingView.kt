@@ -15,15 +15,12 @@ data class ListingView(
     val tag: ListingRules.Tag,
     val status: ListingStatus,
     val createdAt: String,
-    /** The panel above the checklist: [PANEL_DRAFT], [PANEL_TO_FIX], [PANEL_SENT], [PANEL_PUBLISHED], or none. */
+    /** The panel above the checklist: [PANEL_DRAFT], [PANEL_TO_FIX], [PANEL_SENT], or none (PUBLISHED: its date is in the tag). */
     val panel: String?,
     val sentAt: String?,
     /** Why the verification sent the DRAFT back (ListingRules.rejections), empty otherwise. */
     val rejections: List<String>,
     val publishedAt: String?,
-    /** Written by Ndopify on publication, from the visit and the photos: the agent never writes them. */
-    val generatedTitle: String?,
-    val generatedSummary: String?,
     /** The published listing's page on the public portal; null without its `url` or the tenant's portal. */
     val publicUrl: String?,
     val rows: List<ChecklistRow>,
@@ -39,7 +36,6 @@ data class ListingView(
         const val PANEL_DRAFT = "DRAFT"
         const val PANEL_SENT = "SENT"
         const val PANEL_TO_FIX = "TO_FIX"
-        const val PANEL_PUBLISHED = "PUBLISHED"
     }
 }
 

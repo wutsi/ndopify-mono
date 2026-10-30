@@ -98,7 +98,7 @@ class ListingTemplateTest {
         assertEquals("Annonce · Appartement, Bonapriso", page.selectFirst("h1")?.text())
         assertEquals("status-tag status-tag--info", page.selectFirst(".mandate-intro .status-tag")?.className())
         assertEquals("Brouillon", page.selectFirst(".mandate-intro .status-tag")?.text())
-        assertEquals("Mandat n° 203 · annonce créée le 20 oct. 2026", page.selectFirst(".mandate__meta")?.text())
+        assertEquals("Mandat n° 203 · créée le 20 oct. 2026", page.selectFirst(".mandate__meta")?.text())
         assertEquals("/mandates/203", page.selectFirst(".back-link a")?.attr("href"))
         assertEquals("← Retour au mandat", page.selectFirst(".back-link a")?.text())
         assertNotNull(page.selectFirst("nav.user-menu"))
@@ -177,24 +177,11 @@ class ListingTemplateTest {
             ),
         )
 
-        assertEquals(
-            listOf("PUBLISHED", "PUBLISHED"),
-            page.select("[data-listing-panel]").map { it.attr("data-listing-panel") },
-        )
-        assertEquals("Publiée le 22 oct. 2026", page.selectFirst("[data-listing-panel=PUBLISHED] .alert__title")?.text())
-        assertEquals("Appartement 2 chambres à louer à Bonapriso", page.selectFirst("[data-generated-title]")?.text())
-        assertEquals("Appartement de 85 m² à Bonapriso.", page.selectFirst("[data-generated-summary]")?.text())
-        assertNull(page.selectFirst("[data-listing-send]"))
-    }
-
-    @Test
-    fun `published - no texts yet`() {
-        val page = render(COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT))
-
-        assertEquals(listOf("PUBLISHED"), page.select("[data-listing-panel]").map { it.attr("data-listing-panel") })
+        assertTrue(page.select("[data-listing-panel]").isEmpty())
+        assertEquals("Publiée le 22 oct. 2026", page.selectFirst("[data-listing-tag]")?.text())
         assertNull(page.selectFirst("[data-generated-title]"))
-        assertTrue(page.selectFirst("[data-listing-panel=PUBLISHED]")!!.text().contains("sans titre ni description"))
         assertNull(page.selectFirst("[data-listing-public-url]"))
+        assertNull(page.selectFirst("[data-listing-send]"))
     }
 
     @Test

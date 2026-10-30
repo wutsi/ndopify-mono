@@ -223,7 +223,6 @@ class ListingViewsTest {
         assertEquals("22 oct. 2026", view.sentAt)
         assertFalse(view.editable)
         assertFalse(view.sendable)
-        assertNull(view.generatedTitle)
     }
 
     @Test
@@ -236,10 +235,9 @@ class ListingViewsTest {
         )
         val view = of(listing)
 
-        assertEquals(ListingView.PANEL_PUBLISHED, view.panel)
+        assertEquals(ListingRules.Tag("Publiée", "success"), view.tag)
+        assertNull(view.panel)
         assertEquals("22 oct. 2026", view.publishedAt)
-        assertEquals("Appartement 2 chambres à louer à Bonapriso", view.generatedTitle)
-        assertEquals("Appartement de 85 m² à Bonapriso, Douala.", view.generatedSummary)
     }
 
     @Test

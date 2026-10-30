@@ -25,8 +25,8 @@
     property, as a checklist: each row opens its section (listing/*.html), in any order and over several visits, and
     a section counts once the agent has saved it on site (the landlord's answers alone don't make it "Vérifié").
     The photos count once there are 5. "Envoyer pour vérification" stays inactive until every section but the
-    remarks is done, and says what's left. Sent, the listing is read-only while it's checked; then it's published,
-    its title, summary and description written by AI from the audit and the photos, or sent back "À corriger" with
+    remarks is done, and says what's left. Sent, the listing is read-only while it's checked; then it's published
+    (its date in the tag, a link to its public page under the title), or sent back "À corriger" with
     the reason and the sections to fix.
     PROTOTYPE: ?id= of a listing created from mandate.html?id=203 (or 102 once accepted and signed); any other shows
     the locked view. The listing is kept in the session (KEYS.listings). "Simuler la publication" / "Simuler un refus"
@@ -72,8 +72,10 @@
                         <h1 data-listing-title>Annonce</h1>
                         <p class="status-tag" data-listing-tag></p>
                     </div>
-                    <p class="mandate__meta">Mandat n° <span data-listing-mandate></span> · annonce créée le
+                    <p class="mandate__meta">Mandat n° <span data-listing-mandate></span> · créée le
                         <span data-listing-created></span></p>
+                    <p hidden data-listing-public><a href="#" target="_blank" rel="noopener"
+                                                     data-listing-public-url>Voir l'annonce en ligne</a></p>
                 </div>
 
                 <!-- Outcome of the last action (section saved, sent, published, sent back). -->
@@ -82,7 +84,7 @@
                     <p data-listing-flash-text></p>
                 </div>
 
-                <!-- One panel per status, above the checklist. -->
+                <!-- One panel per status but PUBLISHED (its date is in the tag), above the checklist. -->
                 <div class="hint" hidden data-listing-panel="DRAFT">
                     <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
                     <p>Sur place, vérifiez chaque section et prenez les photos. Les réponses du propriétaire sont
@@ -112,24 +114,8 @@
                     </div>
                 </div>
 
-                <div class="alert alert--success" hidden data-listing-panel="PUBLISHED">
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    <div>
-                        <p class="alert__title">Publiée le <span data-published-at></span></p>
-                        <p>Le titre et la description ont été rédigés à partir de votre visite et de vos photos.</p>
-                    </div>
-                </div>
-
-                <section class="home-section" hidden data-listing-panel="PUBLISHED" aria-labelledby="generated-title">
-                    <h2 id="generated-title">Ce que voient les locataires</h2>
-                    <div class="listing-generated">
-                        <p><strong data-generated-title></strong></p>
-                        <p data-generated-summary></p>
-                    </div>
-                </section>
-
                 <section class="home-section" aria-labelledby="checklist-title">
-                    <h2 id="checklist-title">La visite du bien</h2>
+                    <h2 id="checklist-title">Détails de la propriété</h2>
                     <p class="checklist__progress" data-checklist-progress></p>
                     <ol class="checklist" data-checklist></ol>
                     <!-- One row per section: a link while it's a draft, the values only once sent. -->

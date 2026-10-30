@@ -64,15 +64,12 @@ object ListingViews {
                 editable && rejections.isNotEmpty() -> ListingView.PANEL_TO_FIX
                 editable -> ListingView.PANEL_DRAFT
                 ListingRules.sent(listing.status) -> ListingView.PANEL_SENT
-                published -> ListingView.PANEL_PUBLISHED
                 else -> null
             },
             // No "sent at" on the server: nothing changes a listing while it's checked, so its last change is it
             sentAt = if (ListingRules.sent(listing.status)) formatter.date(listing.modifiedAt) else null,
             rejections = rejections.map { it.reason },
             publishedAt = listing.publishedAt?.let { formatter.date(it) },
-            generatedTitle = if (published) listing.title else null,
-            generatedSummary = if (published) listing.summary else null,
             publicUrl = if (published) publicUrl(listing, publicPortalUrl) else null,
             rows = ListingRules.SECTIONS.map { section ->
                 ChecklistRow(

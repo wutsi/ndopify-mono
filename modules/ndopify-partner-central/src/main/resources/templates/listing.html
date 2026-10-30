@@ -27,8 +27,8 @@
   several visits, and a section counts once the agent has saved it on site. The photos count once there are 5, none
   refused. "Envoyer pour vérification" (POST /listings/{id}/verify) stays inactive until every section but the
   remarks is done, and says what's left; without JS it still posts, and the controller refuses it. Sent, the listing
-  is read-only while it's checked (PENDING_VERIFICATION, UNDER_VERIFICATION, VERIFIED, PUBLISHING), then published
-  with its title and summary written by Ndopify, and a link to its public page. A DRAFT the verification sent back
+  is read-only while it's checked (PENDING_VERIFICATION, UNDER_VERIFICATION, VERIFIED, PUBLISHING), then published:
+  its date in the tag, and a link to its public page under the title. A DRAFT the verification sent back
   (its errorCodes) is "À corriger": the reasons, and the sections they're about, still editable and sent again.
   "listing" is the ListingView, absent when "locked" (not found, or not the agent's) or "unavailable"
   (ndopify-server couldn't answer). "outcomeText" / "outcomeStyle"
@@ -99,15 +99,19 @@
                 <div class="page-intro mandate-intro">
                     <div class="mandate-intro__head">
                         <h1 th:text="${l.title}">Annonce</h1>
-                        <p th:class="|status-tag status-tag--${l.tag.style}|" th:text="${l.tag.label}">Brouillon</p>
+                        <p th:class="|status-tag status-tag--${l.tag.style}|"
+                           th:text="${l.status.name() == 'PUBLISHED' and l.publishedAt != null} ? |${l.tag.label} le ${l.publishedAt}| : ${l.tag.label}"
+                           data-listing-tag>Brouillon</p>
                     </div>
-                    <p class="mandate__meta">Mandat n° <span th:text="${l.mandateId}">203</span> · annonce créée le
+                    <p class="mandate__meta">Mandat n° <span th:text="${l.mandateId}">203</span> · créée le
                         <span th:text="${l.createdAt}">20 oct. 2026</span></p>
+                    <p th:if="${l.publicUrl}"><a th:href="${l.publicUrl}" target="_blank" rel="noopener"
+                                                 data-listing-public-url>Voir l'annonce en ligne</a></p>
                 </div>
 
                 <div th:replace="~{:: flash}"></div>
 
-                <!-- One panel per status, above the checklist. -->
+                <!-- One panel per status but PUBLISHED, above the checklist. -->
                 <div class="hint" th:if="${l.panel == 'DRAFT'}" data-listing-panel="DRAFT">
                     <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
                     <p>Sur place, vérifiez chaque section et prenez les photos. Les réponses du propriétaire sont
@@ -131,27 +135,8 @@
                         <p>Corrigez les sections signalées, puis renvoyez-la.</p>
                     </div>
                 </div>
-                <div class="alert alert--success" th:if="${l.panel == 'PUBLISHED'}" data-listing-panel="PUBLISHED">
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    <div>
-                        <p class="alert__title">Publiée<th:block th:if="${l.publishedAt}"> le <span th:text="${l.publishedAt}">22 oct. 2026</span></th:block></p>
-                        <p th:if="${l.generatedTitle}">Le titre et la description ont été rédigés à partir de votre visite et de vos photos.</p>
-                        <p th:unless="${l.generatedTitle}">Elle est en ligne, sans titre ni description pour le moment.</p>
-                        <p th:if="${l.publicUrl}"><a th:href="${l.publicUrl}" target="_blank" rel="noopener"
-                                                     data-listing-public-url>Voir l'annonce en ligne</a></p>
-                    </div>
-                </div>
-                <section class="home-section" th:if="${l.panel == 'PUBLISHED' and l.generatedTitle != null}"
-                         data-listing-panel="PUBLISHED" aria-labelledby="generated-title">
-                    <h2 id="generated-title">Ce que voient les locataires</h2>
-                    <div class="listing-generated">
-                        <p><strong th:text="${l.generatedTitle}" data-generated-title></strong></p>
-                        <p th:if="${l.generatedSummary}" th:text="${l.generatedSummary}" data-generated-summary></p>
-                    </div>
-                </section>
-
                 <section class="home-section" aria-labelledby="checklist-title">
-                    <h2 id="checklist-title">La visite du bien</h2>
+                    <h2 id="checklist-title">Détails de la propriété</h2>
                     <p class="checklist__progress" th:text="${l.progress}" data-checklist-progress>1 sections sur 6 vérifiées</p>
                     <!-- One row per section: to edit it while a draft, to view it (read-only) once sent. -->
                     <ol class="checklist" data-checklist>

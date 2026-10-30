@@ -179,9 +179,8 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   (`aria-disabled`) until every required section is done, and re-checked on POST (`incomplete` outcome, also for
   ndopify-server's 409 `LISTING_INCOMPLETE`) since the button still posts without JS; sent, the listing is read-only (PENDING_VERIFICATION, UNDER_VERIFICATION,
   VERIFIED, PUBLISHING: "En vérification", "Envoyée le" its `modifiedAt`, the server having no sent date; VERIFIED
-  included since ndopify-server publishes it, the agent doesn't), then PUBLISHED with its title and summary (or a
-  line saying it has none, when the server published it without generated content) and "Voir l'annonce en ligne",
-  `{publicPortalUrl}{Listing.url}` (none without either). ndopify-server has no rejected status: a failed
+  included since ndopify-server publishes it, the agent doesn't), then PUBLISHED, with no panel: its date in the
+  tag ("Publiée le …") and "Voir l'annonce en ligne" under the title, `{publicPortalUrl}{Listing.url}` (none without either). ndopify-server has no rejected status: a failed
   verification sends the listing back to DRAFT with its `errorCodes`, which this page shows "À corriger" (tag, panel
   `TO_FIX` listing the reasons, `ListingRules.rejections`, an unknown code or `INTERNAL_ERROR` as a generic one, and
   their sections marked "À corriger"), editable and sent again like any DRAFT; the mandate's line says "Corriger

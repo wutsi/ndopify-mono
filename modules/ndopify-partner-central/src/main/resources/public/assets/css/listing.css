@@ -76,17 +76,6 @@ a.checklist__row:focus-visible {
     margin-top: var(--space-3);
 }
 
-/* What the publishing wrote, quoted as it will appear. */
-.listing-generated {
-    padding: var(--space-3) var(--space-4);
-    border-left: 3px solid var(--color-success-fg);
-    background: var(--color-surface-alt);
-}
-
-.listing-generated > * + * {
-    margin-top: var(--space-2);
-}
-
 /* ---------- A section (listing/*.html) ---------- */
 
 /* Under a field the agent changed: the landlord's answer, for the check. */

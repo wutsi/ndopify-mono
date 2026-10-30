@@ -1420,10 +1420,16 @@
     };
 
     var DATE_FORMAT = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+    // Where room is short (a status tag): "26 oct. 2026", as the tenant's dateFormat in the served pages.
+    var SHORT_DATE_FORMAT = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric" });
     var CHECK_MARK = '<svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
     function formatDate(ms) {
         return DATE_FORMAT.format(new Date(ms));
+    }
+
+    function formatShortDate(ms) {
+        return SHORT_DATE_FORMAT.format(new Date(ms));
     }
 
     function addMonths(ms, months) {
@@ -2440,21 +2446,6 @@
         return [key === "photos" ? "À compléter" : "À vérifier", "warning"];
     }
 
-    // PROTOTYPE: what the publishing's AI could write from the audit and the photos.
-    function generatedText(listing) {
-        var f = listing.fields;
-        var type = PROPERTY_TYPE_LABELS[f.propertyType] || "Bien";
-        var rooms = f.rooms ? " " + plural(f.rooms, "chambre", "chambres") : "";
-        var features = amenityLabels(f.amenities).slice(0, 3).join(", ").toLowerCase();
-        return {
-            title: type + rooms + " à louer à " + f.neighbourhood,
-            summary: type + (f.area ? " de " + f.area + " m²" : "") + " à " + f.neighbourhood + ", " + f.city +
-                (f.landmark ? ", " + f.landmark.charAt(0).toLowerCase() + f.landmark.slice(1) : "") + ". " +
-                (features ? features.charAt(0).toUpperCase() + features.slice(1) + ". " : "") +
-                "Disponible à partir du " + formatDate(new Date(f.availableFrom + "T00:00").getTime()) + "."
-        };
-    }
-
     function initListing() {
         var params = new URLSearchParams(window.location.search);
         var id = params.get("id");
@@ -2468,7 +2459,7 @@
             a.href = mandateLink;
         });
         $("[data-listing-mandate]").textContent = listing.mandateId;
-        $("[data-listing-created]").textContent = formatDate(listing.createdAt);
+        $("[data-listing-created]").textContent = formatShortDate(listing.createdAt);
 
         var flash = $("[data-listing-flash]");
         var list = $("[data-checklist]");
@@ -2489,7 +2480,8 @@
             document.title = "Annonce · " + listingTitle(listing) + " — Ndopify Partner Central";
             $("[data-listing-title]").textContent = "Annonce · " + listingTitle(listing);
             var tagEl = $("[data-listing-tag]");
-            tagEl.textContent = LISTING_TAGS[tag][0];
+            tagEl.textContent = LISTING_TAGS[tag][0] +
+                (listing.status === "PUBLISHED" ? " le " + formatShortDate(listing.publishedAt) : "");
             tagEl.className = "status-tag status-tag--" + LISTING_TAGS[tag][1];
 
             $all("[data-listing-panel]").forEach(function (panel) {
@@ -2497,12 +2489,8 @@
             });
             if (listing.rejection) $("[data-rejection-reason]").textContent = listing.rejection.reason;
             if (listing.submittedAt) $("[data-submitted-at]").textContent = formatDate(listing.submittedAt);
-            if (listing.status === "PUBLISHED") {
-                var text = generatedText(listing);
-                $("[data-published-at]").textContent = formatDate(listing.publishedAt);
-                $("[data-generated-title]").textContent = text.title;
-                $("[data-generated-summary]").textContent = text.summary;
-            }
+            // PROTOTYPE: no public portal here, the link goes nowhere
+            $("[data-listing-public]").hidden = listing.status !== "PUBLISHED";
 
             var done = LISTING_SECTIONS.filter(function (s) {
                 return !s.optional && sectionDone(listing, s.key);
