@@ -19,6 +19,8 @@
   --color-text-warning: #78350f;
   --color-text-error: #8b0000;
   --color-border-default: #dfdfdf;
+  /* Edge of a form control: gray, 3.95:1 on white (WCAG 1.4.11 needs ≥ 3:1). As Partner Central's */
+  --color-border-strong: #808080;
   --color-border-success: #dcfce7;
   --color-border-info: #bfdbfe;
   --color-border-warning: #fef08a;
@@ -46,6 +48,8 @@
   --space-section: clamp(3rem, 2rem + 6vw, 6rem);
 
   --radius-full: 30px;
+  /* Form controls are pills, as in Partner Central; a multi-line one (textarea, card) takes half */
+  --radius-control: var(--radius-full);
   --focus-ring: 0 0 0 3px #ffffff, 0 0 0 5px var(--color-primary);
 }
 
@@ -401,56 +405,119 @@ fieldset.step h3 { margin-bottom: var(--space-xl); }
   margin-bottom: var(--space-md);
 }
 .field .hint { display: block; font-size: 0.875rem; color: var(--color-text-default); margin-top: var(--space-sm); }
+/* Form controls: the look of Partner Central's .input / .select / .choice (pill, gray edge, black on hover, blue
+   outline on focus), on this site's markup */
 .field input[type="text"],
 .field input[type="email"],
 .field input[type="tel"],
 .field input[type="number"],
 .field input[type="date"],
-.field select {
+.field select,
+.field textarea {
+  display: block;
   width: 100%;
   min-height: 44px;
-  font-size: 1rem;
-  font-family: var(--font-body);
-  padding: var(--space-lg);
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--space-md);
+  font: 400 1rem / 1.25 var(--font-body);
+  padding: var(--space-lg) var(--space-xl);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
   background: var(--color-bg-default);
   color: var(--color-text-default);
+  transition: border-color 200ms ease-out;
 }
+.field textarea { border-radius: calc(var(--radius-control) / 2); line-height: 1.5; resize: vertical; }
+.field input:hover,
+.field select:hover,
+.field textarea:hover { border-color: var(--color-text-default); }
 .field input:focus-visible,
-.field select:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
+.field select:focus-visible,
+.field textarea:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+  border-color: var(--color-primary);
 }
 .field input[aria-invalid="true"],
-.field select[aria-invalid="true"] {
+.field select[aria-invalid="true"],
+.field textarea[aria-invalid="true"] {
   border-color: var(--color-text-error);
+}
+.field select {
+  appearance: none;
+  padding-right: calc(var(--space-xl) * 2);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='m5 7.5 5 5 5-5' fill='none' stroke='%23040404' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-xl) center;
+  background-size: 1.25rem;
+  cursor: pointer;
 }
 .field-error {
   color: var(--color-text-error);
   font-size: 0.875rem;
+  font-weight: 600;
   margin-top: var(--space-sm);
   display: block;
 }
 .field-error:empty { display: none; }
 
+/* Phone number: intl-tel-input wraps the input in .iti and puts the country button inside its left edge; these
+   rules only make it full width and pill-shaped like the other fields. */
+.iti {
+  --iti-border-color: var(--color-border-default);
+  --iti-dialcode-color: var(--color-text-default);
+  --iti-arrow-color: var(--color-text-default);
+  --iti-hover-color: var(--color-bg-secondary);
+  --iti-dropdown-bg: var(--surface-lowest);
+}
+/* The field wrapper only: the fullscreen country popup reuses the .iti class */
+.iti:not(.iti--container) { display: block; width: 100%; }
+.iti input { font-variant-numeric: tabular-nums; }
+/* The country button sits inside the pill: its hover background is rounded so it doesn't poke out */
+.iti__selected-country,
+.iti__selected-country-primary { border-radius: var(--radius-control) 0 0 var(--radius-control); }
+.iti__selected-country-primary { padding-left: var(--space-xl); }
+.iti__selected-dial-code { font-weight: 600; }
+.iti__search-input { min-height: 44px; font: inherit; }
+.iti__country { min-height: 44px; }
+
+/* Radio / checkbox choices: full-width, thumb-sized pills (Partner Central's .choice) */
 .option-grid {
   display: grid;
   grid-template-columns: 1fr;
   gap: var(--space-md);
 }
-.option-grid label {
+.field .option-grid label {
   display: flex;
   align-items: center;
-  gap: var(--space-md);
+  gap: var(--space-lg);
+  margin: 0;
   font-weight: 400;
-  border: 1px solid var(--color-border-default);
-  border-radius: var(--space-md);
-  padding: var(--space-lg);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+  background: var(--color-bg-default);
+  padding: var(--space-lg) var(--space-xl);
   min-height: 44px;
   cursor: pointer;
+  transition: border-color 200ms ease-out, background-color 200ms ease-out;
 }
-.option-grid input { width: 20px; height: 20px; flex-shrink: 0; }
+.option-grid label:hover { border-color: var(--color-text-default); }
+.option-grid label:has(input:checked) {
+  border-color: var(--color-primary);
+  background: var(--color-bg-secondary);
+  font-weight: 600;
+}
+.option-grid label:has(input:focus-visible) { outline: 2px solid var(--color-primary); outline-offset: 2px; }
+.option-grid:has([aria-invalid="true"]) label { border-color: var(--color-text-error); }
+@media (min-width: 480px) {
+  .option-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+.option-grid input {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0;
+  accent-color: var(--color-primary);
+}
+.option-grid input:focus-visible { outline: none; }
 
 .wizard-actions {
   display: flex;
