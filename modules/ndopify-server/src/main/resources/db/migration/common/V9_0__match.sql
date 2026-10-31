@@ -15,14 +15,19 @@ CREATE TABLE T_MATCH(
     availability_score      DOUBLE NOT NULL DEFAULT 0.0,
     furniture_score         DOUBLE NOT NULL DEFAULT 0.0,
     listing_price           BIGINT NOT NULL DEFAULT -1,
+    rejection_reason        TEXT DEFAULT NULL,
 
     created_at              DATETIME DEFAULT NOW(),
     modified_at             DATETIME NOT NULL DEFAULT now() ON UPDATE now(),
+    notified_at             DATETIME DEFAULT NULL,
+    proposed_at             DATETIME DEFAULT NULL,
+    answered_at             DATETIME DEFAULT NULL,
     version                 BIGINT NOT NULL DEFAULT 0,
 
     UNIQUE(mandate_id, listing_id),
     INDEX IDX_MATCH_mandate_status (mandate_id, status),
     INDEX IDX_MATCH_listing (listing_id),
+    INDEX IDX_MATCH_notify (status, notified_at),
 
     CONSTRAINT FK_MATCH_mandate FOREIGN KEY(mandate_id) REFERENCES T_MANDATE(id),
     CONSTRAINT FK_MATCH_listing FOREIGN KEY(listing_id) REFERENCES T_LISTING(id),

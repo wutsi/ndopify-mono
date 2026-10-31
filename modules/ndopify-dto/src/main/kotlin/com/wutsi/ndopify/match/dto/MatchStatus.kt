@@ -4,4 +4,7 @@ enum class MatchStatus {
     UNKNOWN,
     ACTIVE,
     DISMISSED,
+    PROPOSED,
+    ACCEPTED,
+    REJECTED,
 }

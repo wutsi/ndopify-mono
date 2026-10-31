@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.mandate.server.service
 
 import com.wutsi.ndopify.agent.server.service.AgentService
+import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.ForbiddenException
@@ -23,6 +24,7 @@ class MandateAccessService(
     private val callerService: CallerService,
     private val agentService: AgentService,
     private val assignmentDao: AssignmentRepository,
+    private val customerService: CustomerService,
 ) {
     fun ensureCanRead(mandate: MandateEntity) {
         val principal = callerService.getPrincipal()
@@ -46,6 +48,19 @@ class MandateAccessService(
 
         val agentId = findAgentId(principal)
         if (agentId == null || mandate.agentId != agentId) {
+            throw accessDenied()
+        }
+    }
+
+    /**
+     * For what only the mandate's customer itself may do (ex: answer a match its agent proposed): the caller's party
+     * must be the customer's, whatever its application. No admin bypass, and the agent can't act for its customer.
+     */
+    fun ensureIsCustomer(mandate: MandateEntity) {
+        val principal = callerService.getPrincipal()
+        val partyId = callerService.findPartyIdOrNull(principal)
+        val customer = customerService.findByIdOrNull(mandate.customerId)
+        if (partyId == null || customer?.party?.id != partyId) {
             throw accessDenied()
         }
     }

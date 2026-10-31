@@ -1,0 +1,60 @@
+<mjml>
+    <mj-head>
+        <mj-style inline="inline">
+            {{__css__}}
+        </mj-style>
+    </mj-head>
+    <mj-body css-class="body">
+        <mj-section css-class="main-content">
+            <mj-column>
+                <!-- Logo -->
+                <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
+
+                <!-- Divider with class for CSS injection -->
+                <mj-divider css-class="divider"/>
+
+                <!-- Body Text -->
+                <mj-text>
+                    Bonjour <strong>{{recipient_name}}</strong>,
+                </mj-text>
+                <mj-text>
+                    Votre agent, <strong>{{agent_full_name}}</strong>, a trouvé un bien qui correspond à votre
+                    recherche :
+                </mj-text>
+
+                <!-- In an mj-text: MJML drops raw HTML outside of it -->
+                <mj-text>
+                    <ul>
+                        <li>
+                            <b>{{listing_title}}</b>
+                        </li>
+                        <li>
+                            <b>{{price_label}}</b>: {{price}}
+                        </li>
+                    </ul>
+                </mj-text>
+
+                {{#listing_url}}
+                <!-- Button with class for CSS injection -->
+                <mj-spacer/>
+                <mj-button href="{{listing_url}}" css-class="btn-primary" align="center">
+                    Voir le bien
+                </mj-button>
+                <mj-spacer/>
+                {{/listing_url}}
+
+                <mj-text>
+                    Dites à votre agent si ce bien vous intéresse : il organisera la visite avec vous.
+                </mj-text>
+
+                <!-- Sign-off -->
+                <mj-spacer/>
+                <mj-text>
+                    Cordialement,
+                    <br/>
+                    L'équipe {{tenant_name}}
+                </mj-text>
+            </mj-column>
+        </mj-section>
+    </mj-body>
+</mjml>
