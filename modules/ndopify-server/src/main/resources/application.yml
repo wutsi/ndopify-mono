@@ -267,6 +267,12 @@ ndopify:
         contract:
             duration-months: 6             # A mandate's contract is valid for 6 months from its signature
 
+    match:
+        price-tolerance: 0.10           # A listing up to 10% over the budget is still a match, scored down
+        min-score: 0.5                  # Below, the pair isn't stored
+        nearby-radius-km: 3             # Neighbourhoods this close to the searched ones are "nearby"
+        nearby-max-neighborhoods: 20
+
     mobile-money:
         mtn:
             environment: sandbox
