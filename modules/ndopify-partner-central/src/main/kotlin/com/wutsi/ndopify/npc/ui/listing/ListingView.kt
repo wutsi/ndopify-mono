@@ -54,14 +54,29 @@ data class ChecklistRow(
  * [createUrl]) until it exists, then where it stands and a link to it ([url]).
  */
 data class MandateListingView(
+    /** Its number and status, above the text. */
+    val line: ListingLineView,
     /** Null until the listing exists. */
     val url: String?,
     val createUrl: String,
-    /** Null when the listing couldn't be loaded: only the link is shown. */
+    /** Null when the listing couldn't be loaded (only the link is shown), or published: the line says it all. */
     val text: String?,
-    val action: String,
+    /** The button's label; null once published: the line's number is the link. */
+    val action: String?,
     /** The step's main button while there's something for the agent to do. */
     val primary: Boolean,
+)
+
+/**
+ * The listing of a landlord's signed mandate, as one line (the Espace agent's card, the mandate page): "Annonce n° 501"
+ * and its status, "Annonce" "À créer" before it's created.
+ */
+data class ListingLineView(
+    val label: String,
+    /** The listing, or the mandate (where it's created) before it exists: the card's link. */
+    val url: String,
+    /** Null when the listing couldn't be loaded: only its number is shown. */
+    val tag: ListingRules.Tag?,
 )
 
 /** A section's page (`templates/listing/section.html`, `listing/photos.html`): what's around its form. */

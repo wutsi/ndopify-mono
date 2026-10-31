@@ -1,7 +1,9 @@
 package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.contract.dto.ContractSummary
+import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
+import com.wutsi.ndopify.npc.ui.listing.ListingViews
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 
@@ -9,10 +11,22 @@ import com.wutsi.ndopify.web.core.service.TenantFormatter
 object MandateCards {
     private const val FACTS = 3
 
-    /** [contract] is the mandate's, null when it has none yet or it can't be loaded (no date in the next step). */
-    fun of(mandate: Mandate, contract: ContractSummary?, locations: Map<Long, Location>, now: Long, formatter: TenantFormatter): MandateCardView {
+    /**
+     * [contract] is the mandate's, null when it has none yet or it can't be loaded (no date in the next step).
+     * [listings] are the agent's by mandate id, null when they can't be loaded: a landlord's signed mandate then has
+     * no listing line, and the next step is the mandate's.
+     */
+    fun of(
+        mandate: Mandate,
+        contract: ContractSummary?,
+        listings: Map<Long, ListingSummary>?,
+        locations: Map<Long, Location>,
+        now: Long,
+        formatter: TenantFormatter,
+    ): MandateCardView {
         val facts = MandateLabels.criteria(mandate, locations, formatter).take(FACTS)
         val city = locations[mandate.cityId]?.name
+        val listing = listings?.get(mandate.id)
         return MandateCardView(
             id = mandate.id,
             title = MandateLabels.title(mandate),
@@ -24,7 +38,9 @@ object MandateCards {
                     else -> term to value
                 }
             },
-            nextStep = MandateRules.nextStep(mandate, contract, now, formatter),
+            listing = listings?.let { ListingViews.line(mandate, listing, formatter) },
+            nextStep = listings?.takeIf { MandateRules.listed(mandate) }?.let { MandateRules.listingStep(listing) }
+                ?: MandateRules.nextStep(mandate, contract, now, formatter),
         )
     }
 

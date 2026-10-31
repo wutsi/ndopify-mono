@@ -5,12 +5,16 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateSummary
+import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
+import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
@@ -58,6 +62,7 @@ class HomeTemplateTest {
     private val assignmentClient = mock<NdAssignmentClient>()
     private val mandateClient = mock<NdMandateClient>()
     private val contractClient = mock<NdContractClient>()
+    private val listingClient = mock<NdListingClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
@@ -102,6 +107,7 @@ class HomeTemplateTest {
                     assignmentClient,
                     mandateClient,
                     contractClient,
+                    listingClient,
                     locationClient,
                     tenantContext,
                     clock
@@ -237,6 +243,31 @@ class HomeTemplateTest {
         )
         assertTrue(page.selectFirst("[data-mandates-empty]")!!.hasAttr("hidden"))
         assertNull(page.selectFirst("[data-mandates-unavailable]"))
+    }
+
+    @Test
+    fun `landlord's signed mandate - listing line`() {
+        val landlord = MandateCardsTest.MANDATE.copy(id = 203, status = MandateStatus.APPROVED, mandateType = MandateType.LISTING)
+        doReturn(listOf(MandateSummariesTest.summary(landlord), MandateSummariesTest.summary(landlord.copy(id = 205))))
+            .whenever(mandateClient).active(AGENT.id)
+        doReturn(listOf(ListingSummary(id = 501, mandateId = 203, status = ListingStatus.DRAFT)))
+            .whenever(listingClient).searchByMandates(any(), any())
+
+        val cards = render(get("/")).select("[data-mandate-card]")
+
+        val line = cards[0].selectFirst("[data-listing-line]")!!
+        assertEquals("/listings/501", line.selectFirst("a[data-listing-number]")?.attr("href"))
+        assertEquals("Annonce n° 501", line.selectFirst("a[data-listing-number]")?.text())
+        assertEquals("status-tag status-tag--info", line.selectFirst("[data-listing-status-tag]")?.className())
+        assertEquals("Brouillon", line.selectFirst("[data-listing-status-tag]")?.text())
+        assertEquals("/mandates/205", cards[1].selectFirst("a[data-listing-number]")?.attr("href"))
+        assertEquals("À créer", cards[1].selectFirst("[data-listing-status-tag]")?.text())
+        assertEquals("Créez l'annonce du bien, puis visitez-le pour la compléter.", cards[1].selectFirst(".mandate-card__next span")?.text())
+    }
+
+    @Test
+    fun `search - no listing line`() {
+        assertNull(render(get("/")).selectFirst("[data-listing-line]"))
     }
 
     @Test

@@ -1802,6 +1802,12 @@
                 facts.appendChild(div);
             });
             setStatusTag($("[data-status-tag]", item), state.status);
+            // A client's static card has no listing line: only 203 (here) and 102 (the template) are landlords'
+            var listingLine = $("[data-listing-line]", item);
+            if (listingLine) {
+                listingLine.hidden = !canList(id);
+                if (canList(id)) fillListingLine(listingLine, id);
+            }
             $("[data-next-step]", item).textContent = nextStep(MANDATES[id], state, id);
             // The matches still to handle, linking straight to the mandate's list.
             var matches = $("[data-matches]", item);
@@ -2047,15 +2053,26 @@
             listingBox.hidden = !show;
             if (!show) return;
             var listing = listingOf(id);
+            var line = $("[data-listing-line]", listingBox);
+            fillListingLine(line, id);
             listingCreate.hidden = !!listing;
             listingLink.hidden = !listing;
             var text = $("[data-listing-text]", listingBox);
+            text.hidden = false;
             if (!listing) {
+                // On its own mandate's page, not a link
+                $("[data-listing-number]", line).removeAttribute("href");
                 text.textContent = "Visitez le bien pour vérifier ses caractéristiques et prendre les photos : " +
                     "l'annonce est publiée une fois vérifiée.";
                 return;
             }
             var tag = listingTag(listing);
+            // Published: the line says it all, its number is the link
+            if (tag === "PUBLISHED") {
+                text.hidden = true;
+                listingLink.hidden = true;
+                return;
+            }
             listingLink.href = "listing.html?id=" + encodeURIComponent(listing.id);
             listingLink.textContent = listing.status === "DRAFT"
                 ? (listing.rejection ? "Corriger l'annonce" : "Continuer l'annonce") : "Voir l'annonce";
@@ -2683,6 +2700,8 @@
     var MAX_LISTING_PHOTOS = 20;
     // A DRAFT sent back by the check is "À corriger" (see listingTag).
     var LISTING_TAGS = {
+        // No listing yet: the mandate's line only (index.html's card, mandate.html's panel)
+        NONE: ["À créer", "neutral"],
         DRAFT: ["Brouillon", "info"],
         REJECTED: ["À corriger", "warning"],
         PENDING: ["En vérification", "warning"],
@@ -2731,6 +2750,24 @@
 
     function listingTag(listing) {
         return listing.status === "DRAFT" && listing.rejection ? "REJECTED" : listing.status;
+    }
+
+    // The listing's line of a landlord's approved mandate ([data-listing-line]): "Annonce n° 501" and its status tag,
+    // "Annonce" "À créer" before it's created. [data-listing-number] is a link: the listing, or the mandate (where
+    // it's created) on index.html's card.
+    function fillListingLine(line, mandateId) {
+        var listing = listingOf(mandateId);
+        var tag = listing ? listingTag(listing) : "NONE";
+        var number = $("[data-listing-number]", line);
+        number.textContent = listing ? "Annonce n° " + listing.id : "Annonce";
+        if (number.tagName === "A") {
+            number.href = listing ? "listing.html?id=" + encodeURIComponent(listing.id)
+                : "mandate.html?id=" + encodeURIComponent(mandateId);
+        }
+        var tagEl = $("[data-listing-status-tag]", line);
+        tagEl.textContent = LISTING_TAGS[tag][0] +
+            (tag === "PUBLISHED" ? " le " + formatShortDate(listing.publishedAt) : "");
+        tagEl.className = "status-tag status-tag--" + LISTING_TAGS[tag][1];
     }
 
     // A mandate's count ("2", or "3+" for 3 or more) as a number, as ListingService.create does: 3

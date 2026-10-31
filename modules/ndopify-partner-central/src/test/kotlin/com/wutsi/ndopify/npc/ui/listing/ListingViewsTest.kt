@@ -9,6 +9,7 @@ import com.wutsi.ndopify.listing.dto.ListingSection
 import com.wutsi.ndopify.listing.dto.ListingSectionStatus
 import com.wutsi.ndopify.listing.dto.ListingSectionSummary
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
@@ -490,6 +491,7 @@ class ListingViewsTest {
         val view = ListingViews.forMandate(approved, null, null, formatter)!!
 
         assertNull(view.url)
+        assertEquals(ListingLineView("Annonce", "/mandates/203", ListingRules.Tag("À créer", "neutral")), view.line)
         assertEquals("/mandates/203/listing", view.createUrl)
         assertEquals("Créer l'annonce", view.action)
         assertEquals(
@@ -504,6 +506,7 @@ class ListingViewsTest {
     fun `mandate - draft`() {
         val view = ListingViews.forMandate(approved, 501, LISTING, formatter)!!
 
+        assertEquals(ListingLineView("Annonce n° 501", "/listings/501", ListingRules.Tag("Brouillon", "info")), view.line)
         assertEquals("/listings/501", view.url)
         assertEquals("Continuer l'annonce", view.action)
         assertEquals(
@@ -526,6 +529,7 @@ class ListingViewsTest {
         val listing = COMPLETE.copy(status = ListingStatus.UNDER_VERIFICATION, modifiedAt = SENT)
         val view = ListingViews.forMandate(approved, 501, listing, formatter)!!
 
+        assertEquals(ListingRules.Tag("En vérification", "warning"), view.line.tag)
         assertEquals("Annonce envoyée le 22 oct. 2026, en vérification.", view.text)
         assertEquals("Voir l'annonce", view.action)
         assertFalse(view.primary)
@@ -536,28 +540,47 @@ class ListingViewsTest {
         val listing = COMPLETE.copy(status = ListingStatus.DRAFT, errorCodes = listOf(ErrorCode.LISTING_MISSING_LAT_LONG))
         val view = ListingViews.forMandate(approved, 501, listing, formatter)!!
 
+        assertEquals(ListingRules.Tag("À corriger", "warning"), view.line.tag)
         assertEquals("Annonce à corriger : voyez les points signalés.", view.text)
         assertEquals("Corriger l'annonce", view.action)
         assertTrue(view.primary)
     }
 
     @Test
-    fun `mandate - published`() {
+    fun `mandate - published - the line only`() {
         val listing = COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT)
         val view = ListingViews.forMandate(approved, 501, listing, formatter)!!
 
-        assertEquals("Annonce publiée le 22 oct. 2026.", view.text)
-        assertEquals("Voir l'annonce", view.action)
+        assertEquals(
+            ListingLineView("Annonce n° 501", "/listings/501", ListingRules.Tag("Publiée le 22 oct. 2026", "success")),
+            view.line,
+        )
+        assertNull(view.text)
+        assertNull(view.action)
     }
 
     @Test
     fun `mandate - listing unavailable`() {
         val view = ListingViews.forMandate(approved, 501, null, formatter)!!
 
+        assertEquals(ListingLineView("Annonce n° 501", "/listings/501", null), view.line)
         assertEquals("/listings/501", view.url)
         assertNull(view.text)
         assertEquals("Voir l'annonce", view.action)
         assertFalse(view.primary)
+    }
+
+    @Test
+    fun `line - card of a landlord's signed mandate`() {
+        val summary = ListingSummary(id = 501, mandateId = 203, status = ListingStatus.PUBLISHED, publishedAt = SENT)
+
+        assertEquals(
+            ListingLineView("Annonce n° 501", "/listings/501", ListingRules.Tag("Publiée le 22 oct. 2026", "success")),
+            ListingViews.line(approved, summary, formatter),
+        )
+        assertEquals(ListingRules.Tag("Brouillon", "info"), ListingViews.line(approved, summary.copy(status = ListingStatus.DRAFT), formatter)?.tag)
+        assertEquals("/mandates/203", ListingViews.line(approved, null, formatter)?.url)
+        assertNull(ListingViews.line(approved.copy(mandateType = MandateType.SEARCH), null, formatter))
     }
 
     @Test

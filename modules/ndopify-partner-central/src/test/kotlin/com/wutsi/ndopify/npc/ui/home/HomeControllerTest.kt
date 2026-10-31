@@ -11,13 +11,17 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.contract.dto.SearchContractRequest
+import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateSummary
+import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
+import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
@@ -55,6 +59,7 @@ class HomeControllerTest {
     private val assignmentClient = mock<NdAssignmentClient>()
     private val mandateClient = mock<NdMandateClient>()
     private val contractClient = mock<NdContractClient>()
+    private val listingClient = mock<NdListingClient>()
     private val clock = mock<Clock>()
     private lateinit var mvc: MockMvc
 
@@ -72,6 +77,7 @@ class HomeControllerTest {
             assignmentClient,
             mandateClient,
             contractClient,
+            listingClient,
             locationClient,
             tenantContext,
             clock,
@@ -406,6 +412,46 @@ class HomeControllerTest {
         verify(locationClient, times(2)).search(any())
         assertEquals("Bonapriso, Akwa", assignments(result).single().sector)
         assertEquals("Bonapriso, Akwa", mandates(result).single().facts[0].second)
+    }
+
+    private val landlord = approved.copy(id = 205, mandateType = MandateType.LISTING, contractId = null)
+
+    @Test
+    fun `listings of the landlords' signed mandates - one search`() {
+        active(approved to null, landlord to null, landlord.copy(id = 206) to null)
+        doReturn(listOf(ListingSummary(id = 501, mandateId = 205, status = ListingStatus.DRAFT)))
+            .whenever(listingClient).searchByMandates(any(), any())
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        verify(listingClient).searchByMandates(listOf(205L, 206L), AGENT.id)
+        val mandates = mandates(result)
+        assertNull(mandates[0].listing)
+        assertEquals("Annonce n° 501", mandates[1].listing?.label)
+        assertEquals("Annonce", mandates[2].listing?.label)
+        assertEquals("Créez l'annonce du bien, puis visitez-le pour la compléter.", mandates[2].nextStep)
+    }
+
+    @Test
+    fun `no landlord's signed mandate - no listing search`() {
+        active(approved to null, landlord.copy(status = MandateStatus.ASSIGNED) to null)
+
+        mvc.perform(get("/")).andReturn()
+
+        verify(listingClient, never()).searchByMandates(any(), any())
+    }
+
+    @Test
+    fun `listings unavailable - cards kept without the listing line`() {
+        active(landlord to null)
+        doThrow(ResourceAccessException("timeout")).whenever(listingClient).searchByMandates(any(), any())
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        val card = mandates(result).single()
+        assertNull(card.listing)
+        assertEquals("Trouvez un locataire.", card.nextStep)
+        assertEquals(false, model(result)["mandatesUnavailable"])
     }
 
     @Test

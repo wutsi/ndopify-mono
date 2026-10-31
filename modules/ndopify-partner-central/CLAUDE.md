@@ -141,7 +141,13 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `GET /v1/mandates?agent-id=&status=ASSIGNED&status=PENDING_APPROVAL&status=APPROVED` (search order, capped at 20),
   one call for every card, then their contracts in one `GET /v1/contracts?id=&id=` (`NdContractClient.search`), for
   the next step's date (a card shows none without it, ex: the contract search failed); the location names
-  of offers and mandates come in one lookup. Cards are `MandateCards` → `MandateCardView`; statuses, tags, party
+  of offers and mandates come in one lookup. A landlord's signed mandate (`MandateRules.listed`) also gets its
+  listing's line (`ListingViews.line` → `ListingLineView`: "Annonce n° 501" linking to the listing and its tag, or
+  "Annonce" "À créer" linking to the mandate) and, until it's published, a next step about the listing
+  (`MandateRules.listingStep`): their listings come in one `GET /v1/listings?mandate-id=&mandate-id=&agent-id=`
+  (`NdListingClient.searchByMandates`, skipped without such a mandate; a failure leaves the line out and the
+  mandate's next step). The summaries have no `errorCodes`, so a listing sent back to fix is "Brouillon" on the
+  card, "À corriger" on the mandate page. Cards are `MandateCards` → `MandateCardView`; statuses, tags, party
   wording ("le client" / "le bailleur", after `mandateType`), dates and next
   steps are `ui/mandate/MandateRules`. Each card opens the mandate page, `MandateController` (`ui/mandate/`,
   `templates/mandate.html`): `GET /mandates/{id}` (`MandateViews` → `MandateView`: steps, panel of the status,
@@ -171,7 +177,8 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
 - A landlord's signed mandate (APPROVED, LISTING) has a listing: the mandate page's *Actif* panel shows its line
   (`ListingViews.forMandate` → `MandateListingView`, the listing found by `MandateController` with
   `NdListingClient.findIdByMandate`, `GET /v1/listings?mandate-id=&agent-id=`, the agent's own id or its DRAFT isn't
-  returned; a failure to load it leaves only the link): "Créer l'annonce" posts `POST /mandates/{id}/listing`
+  returned; a failure to load it leaves only the link), starting with the same `ListingLineView` as the card (its
+  number a link to the listing; once PUBLISHED, that line only: no text, no button): "Créer l'annonce" posts `POST /mandates/{id}/listing`
   (`ListingController.create` → `NdListingClient` → `POST /v1/listings`, a DRAFT pre-filled from the landlord's
   answers; on 409 `LISTING_ALREADY_EXISTS`, ex: from another tab, the existing one is opened instead), then where it stands and "Continuer / Voir l'annonce". The listing
   page, `GET /listings/{id}` (`templates/listing.html`, `ListingViews` → `ListingView`), is the checklist of the visit:

@@ -165,11 +165,18 @@
                             jusqu'au <strong th:text="${m.validUntil}">28 mars 2027</strong></th:block>.</p>
                         <!--
                             A landlord's mandate only (LISTING): its listing. "Créer l'annonce" (POST /mandates/{id}/listing)
-                            opens it; once created, the line says where it stands and the link opens it.
+                            opens it; once created, its number (a link to it) and status, then where it stands and a button to it,
+                            none once published: the line says it all.
                         -->
                         <div class="mandate-listing" th:if="${mandateListing}" th:with="ml=${mandateListing}" data-listing-actions>
+                            <p class="mandate-listing__status" data-listing-line>
+                                <a th:if="${ml.url}" th:href="@{${ml.url}}" th:text="${ml.line.label}" data-listing-number>Annonce n° 501</a>
+                                <strong th:unless="${ml.url}" th:text="${ml.line.label}" data-listing-number>Annonce</strong>
+                                <span th:if="${ml.line.tag}" th:class="|status-tag status-tag--${ml.line.tag.style}|"
+                                      th:text="${ml.line.tag.label}" data-listing-status-tag>Brouillon</span>
+                            </p>
                             <p th:if="${ml.text}" th:text="${ml.text}" data-listing-text></p>
-                            <div class="mandate-panel__actions">
+                            <div class="mandate-panel__actions" th:if="${ml.action}">
                                 <form th:unless="${ml.url}" method="post" th:action="@{${ml.createUrl}}" data-listing-create-form>
                                     <button type="submit" class="btn btn--primary" th:text="${ml.action}" data-listing-create>Créer l'annonce</button>
                                 </form>

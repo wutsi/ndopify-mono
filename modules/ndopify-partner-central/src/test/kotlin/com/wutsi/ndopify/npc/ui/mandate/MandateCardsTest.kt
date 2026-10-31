@@ -2,6 +2,8 @@ package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.contract.dto.Contract
 import com.wutsi.ndopify.contract.dto.ContractSummary
+import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
@@ -9,6 +11,8 @@ import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
+import com.wutsi.ndopify.npc.ui.listing.ListingLineView
+import com.wutsi.ndopify.npc.ui.listing.ListingRules
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AKWA
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BONAPRISO
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.DOUALA
@@ -19,6 +23,7 @@ import java.time.Instant
 import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class MandateCardsTest {
     companion object {
@@ -62,7 +67,7 @@ class MandateCardsTest {
 
     @Test
     fun assigned() {
-        val card = MandateCards.of(MANDATE, null, NAMES, NOW, FORMATTER)
+        val card = MandateCards.of(MANDATE, null, emptyMap(), NAMES, NOW, FORMATTER)
 
         assertEquals(201L, card.id)
         assertEquals("Locataire · Maison", card.title)
@@ -80,7 +85,7 @@ class MandateCardsTest {
 
     @Test
     fun `pending approval`() {
-        val card = MandateCards.of(MANDATE.copy(status = MandateStatus.PENDING_APPROVAL), CONTRACT_SUMMARY, NAMES, NOW, FORMATTER)
+        val card = MandateCards.of(MANDATE.copy(status = MandateStatus.PENDING_APPROVAL), CONTRACT_SUMMARY, emptyMap(), NAMES, NOW, FORMATTER)
 
         assertEquals(MandateRules.Tag("En approbation", "warning"), card.tag)
         assertEquals("Le client a jusqu'au 22 oct. 2026 pour signer le mandat.", card.nextStep)
@@ -94,7 +99,7 @@ class MandateCardsTest {
             neighborhoodIds = listOf(BONAPRISO),
         )
 
-        val card = MandateCards.of(mandate, CONTRACT_SUMMARY, NAMES, NOW, FORMATTER)
+        val card = MandateCards.of(mandate, CONTRACT_SUMMARY, mapOf(201L to ListingSummary(id = 501, mandateId = 201, status = ListingStatus.PUBLISHED)), NAMES, NOW, FORMATTER)
 
         assertEquals("Bailleur · Maison", card.title)
         assertEquals(MandateRules.Tag("Actif", "success"), card.tag)
@@ -105,16 +110,83 @@ class MandateCardsTest {
         assertEquals("Trouvez un locataire avant le 28 mars 2027.", card.nextStep)
     }
 
+    /** A landlord's signed mandate (203), with [listing] as the listings' search returns it. */
+    private fun listed(listing: ListingSummary?): MandateCardView =
+        MandateCards.of(
+            MANDATE.copy(id = 203, status = MandateStatus.APPROVED, mandateType = MandateType.LISTING),
+            CONTRACT_SUMMARY,
+            listOfNotNull(listing).associateBy { it.mandateId },
+            NAMES,
+            NOW,
+            FORMATTER,
+        )
+
+    @Test
+    fun `listing to create`() {
+        val card = listed(null)
+
+        assertEquals(ListingLineView("Annonce", "/mandates/203", ListingRules.Tag("À créer", "neutral")), card.listing)
+        assertEquals("Créez l'annonce du bien, puis visitez-le pour la compléter.", card.nextStep)
+    }
+
+    @Test
+    fun `listing in draft`() {
+        val card = listed(ListingSummary(id = 501, mandateId = 203, status = ListingStatus.DRAFT))
+
+        assertEquals(ListingLineView("Annonce n° 501", "/listings/501", ListingRules.Tag("Brouillon", "info")), card.listing)
+        assertEquals("Complétez l'annonce, puis envoyez-la pour vérification.", card.nextStep)
+    }
+
+    @Test
+    fun `listing sent`() {
+        val card = listed(ListingSummary(id = 501, mandateId = 203, status = ListingStatus.UNDER_VERIFICATION))
+
+        assertEquals(ListingRules.Tag("En vérification", "warning"), card.listing?.tag)
+        assertEquals("Annonce en vérification : elle sera publiée sous peu.", card.nextStep)
+    }
+
+    @Test
+    fun `listing published`() {
+        val publishedAt = Date.from(Instant.parse("2026-10-16T10:00:00Z"))
+        val card = listed(ListingSummary(id = 501, mandateId = 203, status = ListingStatus.PUBLISHED, publishedAt = publishedAt))
+
+        assertEquals(ListingRules.Tag("Publiée le ${FORMATTER.date(publishedAt)}", "success"), card.listing?.tag)
+        assertEquals("Trouvez un locataire avant le 28 mars 2027.", card.nextStep)
+    }
+
+    @Test
+    fun `listings unavailable - no line, the mandate's next step`() {
+        val card = MandateCards.of(
+            MANDATE.copy(id = 203, status = MandateStatus.APPROVED, mandateType = MandateType.LISTING),
+            CONTRACT_SUMMARY,
+            null,
+            NAMES,
+            NOW,
+            FORMATTER,
+        )
+
+        assertNull(card.listing)
+        assertEquals("Trouvez un locataire avant le 28 mars 2027.", card.nextStep)
+    }
+
+    @Test
+    fun `search - no listing line`() {
+        val card = MandateCards.of(MANDATE.copy(status = MandateStatus.APPROVED), CONTRACT_SUMMARY, emptyMap(), NAMES, NOW, FORMATTER)
+
+        assertNull(card.listing)
+        assertEquals("Trouvez un bien pour le client avant le 28 mars 2027.", card.nextStep)
+    }
+
     @Test
     fun `whole city`() {
-        val card = MandateCards.of(MANDATE.copy(neighborhoodIds = emptyList()), null, NAMES, NOW, FORMATTER)
+        val card = MandateCards.of(MANDATE.copy(neighborhoodIds = emptyList()), null, emptyMap(), NAMES, NOW, FORMATTER)
 
         assertEquals("Secteur" to "Douala", card.facts[0])
     }
 
     @Test
     fun `whole city without its name`() {
-        val card = MandateCards.of(MANDATE.copy(neighborhoodIds = emptyList()), null, emptyMap(), NOW, FORMATTER)
+        val card = MandateCards.of(MANDATE.copy(neighborhoodIds = emptyList()), null, emptyMap(), emptyMap(), NOW, FORMATTER)
 
         assertEquals("Secteur" to "Toute la ville", card.facts[0])
     }

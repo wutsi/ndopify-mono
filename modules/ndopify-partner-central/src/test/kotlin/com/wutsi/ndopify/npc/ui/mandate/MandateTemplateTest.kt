@@ -5,6 +5,7 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
@@ -234,6 +235,8 @@ class MandateTemplateTest {
         val page = render(APPROVED.copy(mandateType = MandateType.LISTING))
 
         val box = page.selectFirst("[data-panel=APPROVED] [data-listing-actions]")!!
+        assertEquals("Annonce", box.selectFirst("strong[data-listing-number]")?.text())
+        assertEquals("À créer", box.selectFirst("[data-listing-status-tag]")?.text())
         assertTrue(box.selectFirst("[data-listing-text]")!!.text().startsWith("Visitez le bien"))
         val form = box.selectFirst("form[data-listing-create-form]")!!
         assertEquals("/mandates/201/listing", form.attr("action"))
@@ -256,6 +259,25 @@ class MandateTemplateTest {
         assertEquals("btn btn--primary", link.className())
         assertTrue(box.selectFirst("[data-listing-text]")!!.text().startsWith("Annonce en brouillon : encore à faire"))
         assertNull(box.selectFirst("form[data-listing-create-form]"))
+        val number = box.selectFirst("a[data-listing-number]")!!
+        assertEquals("Annonce n° 501", number.text())
+        assertEquals("/listings/501", number.attr("href"))
+        assertEquals("status-tag status-tag--info", box.selectFirst("[data-listing-status-tag]")?.className())
+    }
+
+    @Test
+    fun `approved - landlord with listing published - the line only`() {
+        doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
+        doReturn(ListingViewsTest.COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = ListingViewsTest.SENT))
+            .whenever(listingClient).get(501)
+
+        val page = render(APPROVED.copy(mandateType = MandateType.LISTING))
+
+        val box = page.selectFirst("[data-listing-actions]")!!
+        assertEquals("/listings/501", box.selectFirst("a[data-listing-number]")?.attr("href"))
+        assertEquals("Publiée le 22 oct. 2026", box.selectFirst("[data-listing-status-tag]")?.text())
+        assertNull(box.selectFirst("[data-listing-text]"))
+        assertNull(box.selectFirst(".mandate-panel__actions"))
     }
 
     @Test

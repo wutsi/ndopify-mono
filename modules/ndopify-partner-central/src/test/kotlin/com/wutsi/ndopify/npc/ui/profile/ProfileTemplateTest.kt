@@ -84,6 +84,7 @@ class ProfileTemplateTest {
                     assignmentClient,
                     mandateClient,
                     mock(),
+                    mock(),
                     locationClient,
                     tenantContext,
                     clock,

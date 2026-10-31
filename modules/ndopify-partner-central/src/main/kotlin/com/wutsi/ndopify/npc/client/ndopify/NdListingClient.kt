@@ -5,6 +5,7 @@ import com.wutsi.ndopify.listing.dto.CreateListingResponse
 import com.wutsi.ndopify.listing.dto.GetListingResponse
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
+import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.listing.dto.SearchListingImageResponse
 import com.wutsi.ndopify.listing.dto.SearchListingResponse
 import com.wutsi.ndopify.listing.dto.UpdateListingRequest
@@ -62,6 +63,24 @@ class NdListingClient(
             ?.listings
             ?.firstOrNull()
             ?.id
+
+    /**
+     * The listings of [mandateIds] (one at most each), in one search. [agentId] must be the signed-in agent's, as for
+     * [findIdByMandate]. The summaries have no `errorCodes`: a DRAFT sent back to fix can't be told from another.
+     */
+    fun searchByMandates(mandateIds: List<Long>, agentId: Long): List<ListingSummary> =
+        rest.get()
+            .uri { uri ->
+                mandateIds.forEach { uri.queryParam("mandate-id", it) }
+                uri.path("/v1/listings")
+                    .queryParam("agent-id", agentId)
+                    .queryParam("limit", mandateIds.size)
+                    .build()
+            }
+            .retrieve()
+            .body<SearchListingResponse>()
+            ?.listings
+            ?: emptyList()
 
     /** Sends a DRAFT listing to be checked (UNDER_VERIFICATION). */
     fun verify(id: Long) {

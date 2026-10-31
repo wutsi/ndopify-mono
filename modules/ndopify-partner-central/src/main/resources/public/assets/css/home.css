@@ -335,6 +335,39 @@
     font-weight: 600;
 }
 
+/* A landlord's signed mandate: its listing's number and status (the card, and mandate.html's Actif panel). */
+.mandate-card__listing,
+.mandate-listing__status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+/* Above the title's link, which covers the card: the number opens the listing itself. */
+.mandate-card__listing {
+    position: relative;
+    z-index: 1;
+}
+
+.mandate-card__listing a,
+.mandate-listing__status a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    font-weight: 600;
+}
+
+.mandate-card__listing .icon {
+    flex: none;
+}
+
+/* Not created yet: no colour, nothing is under way. */
+.mandate-card__listing .status-tag--neutral,
+.mandate-listing__status .status-tag--neutral {
+    color: var(--color-fg);
+}
+
 /* ---------- Mandate (mandate.html) ---------- */
 .back-link {
     margin-bottom: var(--space-3);

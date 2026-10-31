@@ -2,11 +2,14 @@ package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.contract.dto.Contract
 import com.wutsi.ndopify.contract.dto.ContractSummary
+import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.npc.ui.listing.ListingRules
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import java.time.Duration
 import java.util.Date
@@ -21,6 +24,22 @@ object MandateRules {
 
     /** The criteria can still change: the customer hasn't signed. */
     val EDITABLE: Set<MandateStatus> = setOf(MandateStatus.ASSIGNED, MandateStatus.PENDING_APPROVAL)
+
+    /** A landlord's signed mandate: the only one with a listing. */
+    fun listed(mandate: Mandate): Boolean =
+        mandate.mandateType == MandateType.LISTING && mandate.status == MandateStatus.APPROVED
+
+    /**
+     * The card's next step of a [listed] mandate while its listing isn't published (the prototype's `nextStep`);
+     * null once it is, or closed: then it's [nextStep]'s. [listing] is null before it's created. A summary has no
+     * `errorCodes`: a listing sent back to fix gets a DRAFT's step.
+     */
+    fun listingStep(listing: ListingSummary?): String? = when {
+        listing == null -> "Créez l'annonce du bien, puis visitez-le pour la compléter."
+        listing.status == ListingStatus.DRAFT -> "Complétez l'annonce, puis envoyez-la pour vérification."
+        ListingRules.sent(listing.status) -> "Annonce en vérification : elle sera publiée sous peu."
+        else -> null
+    }
 
     /** The mandate page shows these; any other status is the locked view. */
     val SHOWN: Set<MandateStatus> = ACTIVE + MandateStatus.CLOSED + MandateStatus.CANCELLED

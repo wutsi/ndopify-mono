@@ -435,7 +435,12 @@
                                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M4 12 20 4l-6 16-3-7zM11 13l9-9"/></svg>
                                 <span><span class="visually-hidden">Biens proposés au client : </span><span data-proposals-text></span></span>
                             </p>
-                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-next-step>Trouvez un locataire avant le 28 mars 2027.</span></p>
+                            <p class="mandate-card__listing" data-listing-line>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M6 3h9l3 3v15H6z"/><path d="M9 12h6M9 16h6"/></svg>
+                                <a href="mandate.html?id=203" data-listing-number>Annonce</a>
+                                <span class="status-tag status-tag--neutral" data-listing-status-tag>À créer</span>
+                            </p>
+                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-next-step>Créez l'annonce du bien, puis visitez-le pour la compléter.</span></p>
                         </article>
                     </li>
 
@@ -494,6 +499,12 @@
                             <p class="mandate-card__proposals" hidden data-proposals>
                                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M4 12 20 4l-6 16-3-7zM11 13l9-9"/></svg>
                                 <span><span class="visually-hidden">Biens proposés au client : </span><span data-proposals-text></span></span>
+                            </p>
+                            <!-- A landlord's signed mandate only: its listing's number and status. -->
+                            <p class="mandate-card__listing" hidden data-listing-line>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M6 3h9l3 3v15H6z"/><path d="M9 12h6M9 16h6"/></svg>
+                                <a data-listing-number></a>
+                                <span class="status-tag" data-listing-status-tag></span>
                             </p>
                             <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-next-step></span></p>
                         </article>

@@ -29,7 +29,8 @@
   "declined", "closed" or "error").
   "mandates" are the agent's mandates in progress (MandateCardView: Assigné, En approbation, Actif), each opening its
   page (MandateController), null for an agent who isn't verified (no section); "mandatesUnavailable" when they
-  couldn't be loaded.
+  couldn't be loaded. A landlord's signed mandate has its listing's line (m.listing: "Annonce n° 501" and its status,
+  "À créer" before it exists), none when the listings couldn't be loaded.
 */-->
 <body data-page="agent-home">
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -279,6 +280,13 @@
                                     <dd th:text="${fact.second}">Kotto, Logpom</dd>
                                 </div>
                             </dl>
+                            <!-- A landlord's signed mandate only: its listing's number (the listing, or the mandate to create it) and status. -->
+                            <p class="mandate-card__listing" th:if="${m.listing}" th:with="l=${m.listing}" data-listing-line>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M6 3h9l3 3v15H6z"/><path d="M9 12h6M9 16h6"/></svg>
+                                <a th:href="@{${l.url}}" th:text="${l.label}" data-listing-number>Annonce n° 501</a>
+                                <span th:if="${l.tag}" th:class="|status-tag status-tag--${l.tag.style}|" th:text="${l.tag.label}"
+                                      data-listing-status-tag>Brouillon</span>
+                            </p>
                             <p class="mandate-card__next" th:if="${m.nextStep}"><strong>Prochaine étape&nbsp;:</strong>
                                 <span th:text="${m.nextStep}">Contactez le client, puis envoyez-lui le mandat à approuver.</span></p>
                         </article>

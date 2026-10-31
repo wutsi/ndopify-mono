@@ -6,17 +6,18 @@ import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingSection
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
-import com.wutsi.ndopify.mandate.dto.MandateStatus
-import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.npc.ui.mandate.Amenity
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
+import com.wutsi.ndopify.npc.ui.mandate.MandateRules
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.web.core.service.TenantFormatter
+import java.util.Date
 import java.util.Locale
 
 /**
@@ -32,6 +33,7 @@ object ListingViews {
     private val REMARKS_ADDED = ListingRules.Tag("Ajoutées", "success")
     private val OPTIONAL = ListingRules.Tag("Facultatif", "neutral")
     private val TO_FIX = ListingRules.Tag("À corriger", "warning")
+    private val TO_CREATE = ListingRules.Tag("À créer", "neutral")
 
     /**
      * [images] is null when they couldn't be loaded: the photos' row then has no count. [publicPortalUrl] is the
@@ -239,11 +241,12 @@ object ListingViews {
         listing: Listing?,
         formatter: TenantFormatter
     ): MandateListingView? {
-        if (mandate.mandateType != MandateType.LISTING || mandate.status != MandateStatus.APPROVED) return null
+        if (!MandateRules.listed(mandate)) return null
 
         val createUrl = "/mandates/${mandate.id}/listing"
         if (listingId == null) {
             return MandateListingView(
+                line = line(mandate.id, null, null, null, formatter),
                 url = null,
                 createUrl = createUrl,
                 text = "Visitez le bien pour vérifier ses caractéristiques et prendre les photos : " +
@@ -268,22 +271,46 @@ object ListingViews {
             }
 
             ListingRules.sent(listing.status) -> "Annonce envoyée le ${formatter.date(listing.modifiedAt)}, en vérification."
-            listing.status == ListingStatus.PUBLISHED ->
-                listing.publishedAt?.let { "Annonce publiée le ${formatter.date(it)}." } ?: "Annonce publiée."
-
             else -> null
         }
+        val published = listing?.status == ListingStatus.PUBLISHED
         return MandateListingView(
+            line = line(mandate.id, listingId, listing?.let { ListingRules.tag(it) }, listing?.publishedAt, formatter),
             url = url,
             createUrl = createUrl,
             text = text,
             action = when {
+                published -> null
                 toFix -> "Corriger l'annonce"
                 draft -> "Continuer l'annonce"
                 else -> "Voir l'annonce"
             },
             primary = draft,
         )
+    }
+
+    /**
+     * The card's line of [mandate] in the Espace agent (the prototype's `fillListingLine`); null for a mandate that
+     * has no listing to have. [listing] is null before it's created. A summary has no `errorCodes`: a listing sent
+     * back to fix is "Brouillon" here, "À corriger" once opened.
+     */
+    fun line(mandate: Mandate, listing: ListingSummary?, formatter: TenantFormatter): ListingLineView? =
+        if (MandateRules.listed(mandate)) {
+            line(mandate.id, listing?.id, listing?.let { ListingRules.tag(it.status) }, listing?.publishedAt, formatter)
+        } else {
+            null
+        }
+
+    // A published listing's tag has its date, as on the listing page: "Publiée le …"
+    private fun line(mandateId: Long, listingId: Long?, tag: ListingRules.Tag?, publishedAt: Date?, formatter: TenantFormatter): ListingLineView {
+        if (listingId == null) return ListingLineView("Annonce", "/mandates/$mandateId", TO_CREATE)
+
+        val dated = if (tag != null && tag == ListingRules.tag(ListingStatus.PUBLISHED) && publishedAt != null) {
+            tag.copy(label = "${tag.label} le ${formatter.date(publishedAt)}")
+        } else {
+            tag
+        }
+        return ListingLineView("Annonce n° $listingId", "/listings/$listingId", dated)
     }
 
     // "https://ndopify.com" + "/douala/bonapriso/listing/123/maison-a-louer"

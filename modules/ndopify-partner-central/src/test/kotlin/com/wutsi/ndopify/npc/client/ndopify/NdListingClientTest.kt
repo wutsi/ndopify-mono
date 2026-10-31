@@ -108,6 +108,24 @@ class NdListingClientTest {
     }
 
     @Test
+    fun searchByMandates() {
+        server.expect(requestTo("http://localhost:8080/v1/listings?mandate-id=203&mandate-id=205&agent-id=20&limit=2"))
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(
+                withSuccess(
+                    json(SearchListingResponse(listOf(ListingSummary(id = 501, mandateId = 203, status = ListingStatus.DRAFT)))),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val listings = client.searchByMandates(listOf(203, 205), 20)
+
+        assertEquals(listOf(501L), listings.map { it.id })
+        assertEquals(ListingStatus.DRAFT, listings[0].status)
+        server.verify()
+    }
+
+    @Test
     fun verify() {
         server.expect(requestTo("http://localhost:8080/v1/listings/501/verify"))
             .andExpect(method(HttpMethod.POST))

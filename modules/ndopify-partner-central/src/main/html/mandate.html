@@ -164,9 +164,14 @@
                         <p>Signé le <span data-approved-at></span> · valable jusqu'au <strong data-valid-until></strong>.</p>
                         <!--
                             A landlord's mandate only (LISTING): its listing. "Créer l'annonce" (POST /v1/listings) opens
-                            listing.html; once created, the line says where it stands and the link opens it.
+                            listing.html; once created, its number (a link to it) and status, the line says where it stands and the button
+                            opens it; once published, the number and status only.
                         -->
                         <div class="mandate-listing" hidden data-listing-actions>
+                            <p class="mandate-listing__status" data-listing-line>
+                                <a data-listing-number>Annonce</a>
+                                <span class="status-tag status-tag--neutral" data-listing-status-tag>À créer</span>
+                            </p>
                             <p data-listing-text></p>
                             <div class="mandate-panel__actions">
                                 <button type="button" class="btn btn--primary" data-listing-create>Créer l'annonce</button>
