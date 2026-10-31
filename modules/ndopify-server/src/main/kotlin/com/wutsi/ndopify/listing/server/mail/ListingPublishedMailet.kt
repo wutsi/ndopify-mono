@@ -42,7 +42,7 @@ class ListingPublishedMailet(
             "title" to listing.title,
             "city" to city,
             "neighbourhood" to listing.neighborhoodId?.let { id -> locationService.findByIdOrNull(id)?.name },
-            "listing_url" to listingUrl(tenant, listing),
+            "listing_url" to ListingUrls.publicUrl(tenant, listing),
         )
 
         send(tenant, customer.party, SUBJECT_CUSTOMER, TEMPLATE_CUSTOMER, city, context)
@@ -68,11 +68,5 @@ class ListingPublishedMailet(
                 ),
             )
         )
-    }
-
-    private fun listingUrl(tenant: TenantEntity, listing: ListingEntity): String? {
-        val baseUrl = tenant.publicPortalUrl ?: return null
-        val url = listing.url ?: return null
-        return baseUrl.removeSuffix("/") + url
     }
 }

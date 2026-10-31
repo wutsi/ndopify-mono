@@ -2,6 +2,7 @@ package com.wutsi.ndopify.match.server.event
 
 import com.wutsi.ndopify.listing.server.event.ListingPublishedEvent
 import com.wutsi.ndopify.mandate.server.event.MandateApprovedEvent
+import com.wutsi.ndopify.match.server.service.MatchProposalService
 import com.wutsi.ndopify.match.server.service.MatchService
 import com.wutsi.ndopify.platform.logger.DefaultKVLogger
 import com.wutsi.ndopify.platform.logger.KVLoggerThreadLocal
@@ -13,7 +14,7 @@ import org.springframework.transaction.event.TransactionalEventListener
 
 /**
  * Matches a search mandate once it's APPROVED, and a listing once it's PUBLISHED, against the agent's inventory / open
- * searches. Lets the mandate and listing domains stay unaware of matches.
+ * searches. Lets the mandate and listing domains stay unaware of matches. E-mails the customer a match once proposed.
  *
  * Runs on an executor thread once the approval / publication is committed, so a matching failure never fails, nor
  * rolls back, it: it's only logged (`POST /v1/matches/run` re-runs a mandate). That thread has no request: the tenant
@@ -23,6 +24,7 @@ import org.springframework.transaction.event.TransactionalEventListener
 @Component
 class MatchEventListener(
     private val service: MatchService,
+    private val proposalService: MatchProposalService,
 ) {
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -61,6 +63,29 @@ class MatchEventListener(
 
             val count = service.matchListing(event.listingId)
             logger.add("match_count", count)
+            logger.add("success", true)
+        } catch (ex: Exception) {
+            logger.add("success", false)
+            logger.setException(ex)
+        } finally {
+            logger.log()
+            TenantContext.remove()
+            KVLoggerThreadLocal.remove()
+        }
+    }
+
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    fun onMatchProposed(event: MatchProposedEvent) {
+        val logger = DefaultKVLogger()
+        KVLoggerThreadLocal.set(logger)
+        TenantContext.set(event.tenantId)
+        try {
+            logger.add("event", MatchProposedEvent::class.java.simpleName)
+            logger.add("tenant_id", event.tenantId)
+            logger.add("match_id", event.matchId)
+
+            proposalService.sendProposedEmail(event.matchId)
             logger.add("success", true)
         } catch (ex: Exception) {
             logger.add("success", false)

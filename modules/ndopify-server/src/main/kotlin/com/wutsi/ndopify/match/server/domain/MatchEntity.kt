@@ -46,12 +46,18 @@ data class MatchEntity(
     val availabilityScore: Double = 0.0,
     val furnitureScore: Double = 0.0,
 
-    // The listing's price when last scored, or when dismissed: a later price below it is a price drop, the reason to
-    // propose again a match turned down
+    // The listing's price when last scored, or when dismissed, proposed or rejected: a later price below it is a price
+    // drop, the reason to propose again a match turned down
     val listingPrice: Long = -1,
+
+    // Why the customer rejected it, in its own words
+    val rejectionReason: String? = null,
 
     // When the agent was e-mailed about it (MatchJobs.notifyAgents): null until then, kept by a re-score
     val notifiedAt: Date? = null,
+
+    val proposedAt: Date? = null,
+    val answeredAt: Date? = null, // When the customer accepted or rejected it
 
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),

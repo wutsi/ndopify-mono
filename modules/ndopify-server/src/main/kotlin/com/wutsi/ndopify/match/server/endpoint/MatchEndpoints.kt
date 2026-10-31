@@ -12,6 +12,7 @@ import com.wutsi.ndopify.match.dto.RunMatchResponse
 import com.wutsi.ndopify.match.dto.SearchMatchRequest
 import com.wutsi.ndopify.match.dto.SearchMatchResponse
 import com.wutsi.ndopify.match.server.mapper.MatchMapper
+import com.wutsi.ndopify.match.server.service.MatchProposalService
 import com.wutsi.ndopify.match.server.service.MatchService
 import com.wutsi.ndopify.platform.endpoint.OpsEndpoint
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
@@ -32,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController
 @RequestMapping("/v1/matches")
 class MatchEndpoints(
     private val service: MatchService,
+    private val proposalService: MatchProposalService,
     private val mapper: MatchMapper,
     private val mandateService: MandateService,
     private val access: MandateAccessService,
@@ -64,6 +66,12 @@ class MatchEndpoints(
     fun dismiss(@PathVariable id: Long) {
         access.ensureCanUpdate(service.findById(id).mandate)
         service.dismiss(id)
+    }
+
+    @PostMapping("/{id}/propose")
+    fun propose(@PathVariable id: Long) {
+        access.ensureCanUpdate(service.findById(id).mandate)
+        proposalService.propose(id)
     }
 
     // Re-matches a search mandate against its agent's inventory now, as on its approval
