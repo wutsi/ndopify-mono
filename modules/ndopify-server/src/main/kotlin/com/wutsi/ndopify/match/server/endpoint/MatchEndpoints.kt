@@ -8,6 +8,7 @@ import com.wutsi.ndopify.error.server.exception.BadRequestException
 import com.wutsi.ndopify.mandate.server.service.MandateAccessService
 import com.wutsi.ndopify.mandate.server.service.MandateService
 import com.wutsi.ndopify.match.dto.GetMatchResponse
+import com.wutsi.ndopify.match.dto.ProposeMatchRequest
 import com.wutsi.ndopify.match.dto.RejectMatchRequest
 import com.wutsi.ndopify.match.dto.RunMatchResponse
 import com.wutsi.ndopify.match.dto.SearchMatchRequest
@@ -29,7 +30,8 @@ import org.springframework.web.bind.annotation.RestController
 
 /**
  * A match is seen and dismissed by whoever may see / change its search mandate ([MandateAccessService]): its agent, or
- * an admin, who also proposes it to the customer; only the customer accepts or rejects it. The mandate (or match) is
+ * an admin, who also keeps it for later (shortlist) and proposes it to the customer, alone or with others of the same
+ * mandate in one e-mail; only the customer accepts or rejects it. The mandate (or match) is
  * looked up first: 404, then 403. A search needs at least one `mandate-id` (400
  * `HTTP_MISSING_PARAMETER`), and each of them must be found and readable.
  */
@@ -72,10 +74,24 @@ class MatchEndpoints(
         service.dismiss(id)
     }
 
+    // The agent keeps it to propose later
+    @PostMapping("/{id}/shortlist")
+    fun shortlist(@PathVariable id: Long) {
+        access.ensureCanUpdate(service.findById(id).mandate)
+        service.shortlist(id)
+    }
+
     @PostMapping("/{id}/propose")
     fun propose(@PathVariable id: Long) {
         access.ensureCanUpdate(service.findById(id).mandate)
-        proposalService.propose(id)
+        proposalService.propose(listOf(id))
+    }
+
+    // Several matches of one mandate, in one e-mail to its customer: 404, 400 (other mandates), then 401 / 403, then 409
+    @PostMapping("/propose")
+    fun propose(@RequestBody @Valid request: ProposeMatchRequest) {
+        access.ensureCanUpdate(proposalService.findOfOneMandate(request.matchIds).first().mandate)
+        proposalService.propose(request.matchIds)
     }
 
     // Only the mandate's customer answers a proposal (MandateAccessService.ensureIsCustomer)

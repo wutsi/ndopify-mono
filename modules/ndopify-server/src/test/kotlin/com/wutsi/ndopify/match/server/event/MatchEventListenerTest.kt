@@ -75,11 +75,11 @@ class MatchEventListenerTest {
     @Test
     fun `proposed - the customer is e-mailed, in its tenant`() {
         var tenantId: Long? = null
-        doAnswer { tenantId = TenantContext.get() }.whenever(proposalService).sendProposedEmail(30L)
+        doAnswer { tenantId = TenantContext.get() }.whenever(proposalService).sendProposedEmail(listOf(30L, 31L))
 
-        listener.onMatchProposed(MatchProposedEvent(matchId = 30L, tenantId = 7L))
+        listener.onMatchProposed(MatchProposedEvent(matchIds = listOf(30L, 31L), tenantId = 7L))
 
-        verify(proposalService).sendProposedEmail(30L)
+        verify(proposalService).sendProposedEmail(listOf(30L, 31L))
         assertEquals(7L, tenantId)
         assertNull(TenantContext.get())
         assertNull(KVLoggerThreadLocal.get())
@@ -87,9 +87,9 @@ class MatchEventListenerTest {
 
     @Test
     fun `proposed - a failure is only logged`() {
-        doThrow(IllegalStateException("boom")).whenever(proposalService).sendProposedEmail(30L)
+        doThrow(IllegalStateException("boom")).whenever(proposalService).sendProposedEmail(listOf(30L, 31L))
 
-        listener.onMatchProposed(MatchProposedEvent(matchId = 30L, tenantId = 7L))
+        listener.onMatchProposed(MatchProposedEvent(matchIds = listOf(30L, 31L), tenantId = 7L))
 
         assertNull(TenantContext.get())
         assertNull(KVLoggerThreadLocal.get())

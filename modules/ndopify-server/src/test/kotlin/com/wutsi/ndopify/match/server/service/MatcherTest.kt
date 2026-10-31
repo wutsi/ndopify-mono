@@ -273,4 +273,43 @@ class MatcherTest {
         )
         assertEquals(1.0, result?.furniture)
     }
+
+    @Test
+    fun `distance - in a searched neighborhood`() {
+        assertEquals(0.0, score(search, listingA)?.distanceKm)
+    }
+
+    @Test
+    fun `distance - nearby`() {
+        assertEquals(1.5, score(search, listingB)?.distanceKm)
+    }
+
+    @Test
+    fun `distance - not nearby`() {
+        assertNull(score(search, listingA.copy(neighborhoodId = N9))!!.distanceKm)
+    }
+
+    @Test
+    fun `distance - no neighborhood searched`() {
+        assertNull(score(search.copy(neighborhoodIds = emptyList()), listingA)!!.distanceKm)
+    }
+
+    @Test
+    fun `distance - listing without neighborhood`() {
+        assertNull(score(search, listingA.copy(neighborhoodId = null))!!.distanceKm)
+    }
+
+    @Test
+    fun `missing amenities`() {
+        assertEquals(listOf("generatorSet"), score(search, listingA)?.missingAmenities)
+        assertEquals(listOf("waterTank", "generatorSet"), score(search, listingC)?.missingAmenities)
+        assertEquals(emptyList(), score(search, listingB)?.missingAmenities)
+    }
+
+    @Test
+    fun `missing amenities - none requested`() {
+        val none = search.copy(generatorSet = false, securedFenced = false, waterTank = false)
+
+        assertEquals(emptyList(), score(none, listingC)?.missingAmenities)
+    }
 }

@@ -2,7 +2,10 @@ package com.wutsi.ndopify.match.server.domain
 
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.match.dto.MatchRejectionReason
 import com.wutsi.ndopify.match.dto.MatchStatus
+import com.wutsi.ndopify.util.jpa.StringListConverter
+import jakarta.persistence.Convert
 import jakarta.persistence.Entity
 import jakarta.persistence.GeneratedValue
 import jakarta.persistence.GenerationType
@@ -46,11 +49,19 @@ data class MatchEntity(
     val availabilityScore: Double = 0.0,
     val furnitureScore: Double = 0.0,
 
+    // From the listing's neighbourhood to the nearest searched one: 0 inside, null when not nearby or none searched
+    val distanceKm: Double? = null,
+
+    // The amenities searched that the listing lacks, by field name of the DTOs (ex: waterTank)
+    @Convert(converter = StringListConverter::class)
+    val missingAmenities: List<String> = emptyList(),
+
     // The listing's price when last scored, or when dismissed, proposed or rejected: a later price below it is a price
     // drop, the reason to propose again a match turned down
     val listingPrice: Long = -1,
 
-    // Why the customer rejected it, in its own words
+    // Why the customer rejected it: its reason, then in its own words
+    val rejectionReasonCode: MatchRejectionReason? = null,
     val rejectionReason: String? = null,
 
     // When the agent was e-mailed about it (MatchJobs.notifyAgents): null until then, kept by a re-score

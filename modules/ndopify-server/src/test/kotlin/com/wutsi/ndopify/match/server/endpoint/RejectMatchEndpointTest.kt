@@ -3,6 +3,7 @@ package com.wutsi.ndopify.match.server.endpoint
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.match.dto.MatchRejectionReason
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.dto.RejectMatchRequest
 import com.wutsi.ndopify.match.server.dao.MatchRepository
@@ -31,12 +32,13 @@ class RejectMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
     @Test
     fun reject() {
-        val response = rest.postForEntity("/v1/matches/2/reject", RejectMatchRequest(reason = " Trop loin "), Any::class.java)
+        val response = rest.postForEntity("/v1/matches/2/reject", RejectMatchRequest(reasonCode = MatchRejectionReason.LOCATION, reason = " Trop loin "), Any::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
         val match = dao.findById(2L).get()
         assertEquals(MatchStatus.REJECTED, match.status)
         assertNotNull(match.answeredAt)
+        assertEquals(MatchRejectionReason.LOCATION, match.rejectionReasonCode)
         assertEquals("Trop loin", match.rejectionReason)
         assertEquals(140000L, match.listingPrice) // The price the customer said no to
     }
@@ -46,7 +48,16 @@ class RejectMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         val response = rest.postForEntity("/v1/matches/2/reject", RejectMatchRequest(), Any::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
-        assertNull(dao.findById(2L).get().rejectionReason)
+        val match = dao.findById(2L).get()
+        assertNull(match.rejectionReason)
+        assertEquals(MatchRejectionReason.OTHER, match.rejectionReasonCode)
+    }
+
+    @Test
+    fun `unknown reason code is other`() {
+        rest.postForEntity("/v1/matches/2/reject", RejectMatchRequest(reasonCode = MatchRejectionReason.UNKNOWN), Any::class.java)
+
+        assertEquals(MatchRejectionReason.OTHER, dao.findById(2L).get().rejectionReasonCode)
     }
 
     @Test

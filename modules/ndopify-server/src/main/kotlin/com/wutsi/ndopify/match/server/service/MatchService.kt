@@ -38,8 +38,8 @@ import java.util.Date
  * `docs/superpowers/plans/2026-10-31-search-listing-matching.md`.
  *
  * Only an APPROVED SEARCH mandate with an agent is matched, against the PUBLISHED listings of that agent. One row per
- * (mandate, listing): a DISMISSED row is never touched; an ACTIVE one is re-scored, or deleted when no longer
- * matching. A run isn't one transaction: each save is its own, so a conflict (the agent dismissed the match meanwhile)
+ * (mandate, listing): a row that isn't ACTIVE (dismissed, kept, proposed...) is never touched; an ACTIVE one is
+ * re-scored, or deleted when no longer matching. A run isn't one transaction: each save is its own, so a conflict (the agent dismissed the match meanwhile)
  * only skips that pair, and so does a duplicate insert by a concurrent run (ex: a listing published while
  * its agent's search is approved).
  */
@@ -58,6 +58,11 @@ class MatchService(
     @param:Value("\${ndopify.match.nearby-radius-km}") private val nearbyRadiusKm: Double,
     @param:Value("\${ndopify.match.nearby-max-neighborhoods}") private val nearbyMaxNeighborhoods: Int,
 ) {
+    companion object {
+        // Not yet proposed nor dismissed: the agent may still propose or dismiss it
+        val OPEN_STATUSES = setOf(MatchStatus.ACTIVE, MatchStatus.SHORTLISTED)
+    }
+
     fun findById(id: Long): MatchEntity {
         return dao.findById(id).orElse(null)
             ?: throw NotFoundException(error = Error(code = ErrorCode.MATCH_NOT_FOUND))
@@ -86,12 +91,24 @@ class MatchService(
     }
 
     /**
-     * Hides an ACTIVE match from the agent: it's never re-scored nor re-created. 409 MATCH_NOT_ACTIVE otherwise. Keeps
-     * the listing's price the agent said no to (`listingPrice`), to tell a price drop later.
+     * The agent keeps an ACTIVE match, to propose it later (SHORTLISTED): no longer re-scored, like any match that
+     * isn't ACTIVE. 409 MATCH_NOT_ACTIVE otherwise.
+     */
+    fun shortlist(id: Long): MatchEntity {
+        val match = findById(id)
+        if (match.status != MatchStatus.ACTIVE) {
+            throw ConflictException(error = Error(code = ErrorCode.MATCH_NOT_ACTIVE))
+        }
+        return dao.save(match.copy(status = MatchStatus.SHORTLISTED, modifiedAt = Date(clock.millis())))
+    }
+
+    /**
+     * Hides an ACTIVE or SHORTLISTED match from the agent: it's never re-scored nor re-created. 409 MATCH_NOT_ACTIVE
+     * otherwise. Keeps the listing's price the agent said no to (`listingPrice`), to tell a price drop later.
      */
     fun dismiss(id: Long): MatchEntity {
         val match = findById(id)
-        if (match.status != MatchStatus.ACTIVE) {
+        if (match.status !in OPEN_STATUSES) {
             throw ConflictException(error = Error(code = ErrorCode.MATCH_NOT_ACTIVE))
         }
         return dao.save(
@@ -195,6 +212,8 @@ class MatchService(
                 amenitiesScore = score.amenities,
                 availabilityScore = score.availability,
                 furnitureScore = score.furniture,
+                distanceKm = score.distanceKm,
+                missingAmenities = score.missingAmenities,
                 listingPrice = listing.price,
                 modifiedAt = now,
             )

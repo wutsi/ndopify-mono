@@ -93,6 +93,7 @@ class ListingMapper {
             price = entity.price,
             currencyCode = entity.currencyCode,
             pricePeriodicityType = entity.pricePeriodicityType,
+            availableFrom = entity.availableFrom,
             title = entity.title,
             summary = entity.summary,
             url = entity.url,
