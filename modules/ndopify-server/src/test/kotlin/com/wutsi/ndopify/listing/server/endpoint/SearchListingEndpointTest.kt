@@ -7,6 +7,7 @@ import com.wutsi.ndopify.listing.dto.SearchListingResponse
 import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
+import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -55,6 +56,21 @@ class SearchListingEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(2, listings[0].rooms)
         assertEquals(150000L, listings[0].price)
         assertEquals("Nice apartment", listings[0].title)
+        assertEquals(LocalDate.of(2026, 11, 1), listings[0].availableFrom)
+    }
+
+    @Test
+    fun `by id`() {
+        assertEquals(listOf(102L, 100L), search("id=100&id=102"))
+        assertEquals(listOf(101L), search("id=101"))
+        assertEquals(emptyList(), search("id=900")) // Another tenant's
+    }
+
+    @Test
+    fun `by id - public, PUBLISHED only`() {
+        anonymousUser = true
+
+        assertEquals(listOf(100L), search("id=100&id=101"))
     }
 
     @Test

@@ -79,7 +79,7 @@ class MatchProposedMailetTest {
 
     @Test
     fun send() {
-        mailet.send(match, customer, agent)
+        mailet.send(listOf(match), customer, agent)
 
         assertEquals(
             mapOf(
@@ -87,10 +87,16 @@ class MatchProposedMailetTest {
                 "tenant_name" to "Ndopify",
                 "recipient_name" to "Ray Sponsible",
                 "agent_full_name" to "Kim Possible",
-                "listing_title" to "Nice apartment",
-                "price_label" to "Loyer",
-                "price" to "150 000 FCFA / mois",
-                "listing_url" to "https://www.ndopify.com/match/1",
+                "count" to null,
+                "online" to true,
+                "listings" to listOf(
+                    mapOf(
+                        "listing_title" to "Nice apartment",
+                        "price_label" to "Loyer",
+                        "price" to "150 000 FCFA / mois",
+                        "listing_url" to "https://www.ndopify.com/match/1",
+                    ),
+                ),
             ),
             context(),
         )
@@ -104,27 +110,50 @@ class MatchProposedMailetTest {
     }
 
     @Test
+    fun `several listings - one e-mail`() {
+        val other = match.copy(id = 2L, listing = listing.copy(id = 102L, title = "Big house", price = 200000))
+
+        mailet.send(listOf(match, other), customer, agent)
+
+        val context = context()
+        assertEquals(2, context["count"])
+        val listings = context["listings"] as List<*>
+        assertEquals(
+            listOf("https://www.ndopify.com/match/1", "https://www.ndopify.com/match/2"),
+            listings.map { (it as Map<*, *>)["listing_url"] },
+        )
+        assertEquals("200 000 FCFA / mois", (listings[1] as Map<*, *>)["price"])
+
+        val email = argumentCaptor<Email>()
+        verify(mailService).send(email.capture())
+        assertEquals("Ndopify: Kim Possible vous propose 2 biens à Bastos (Yaounde)", email.firstValue.subject)
+    }
+
+    @Test
     fun `no public portal - no link`() {
         doReturn(tenant.copy(publicPortalUrl = null)).whenever(tenantService).findById(1L)
 
-        mailet.send(match, customer, agent)
+        mailet.send(listOf(match), customer, agent)
 
-        assertNull(context()["listing_url"])
+        assertNull(context()["online"])
+        assertNull(listing()["listing_url"])
     }
 
     @Test
     fun `listing without url - the proposal's link`() {
-        mailet.send(match.copy(listing = listing.copy(url = null)), customer, agent)
+        mailet.send(listOf(match.copy(listing = listing.copy(url = null))), customer, agent)
 
-        assertEquals("https://www.ndopify.com/match/1", context()["listing_url"])
+        assertEquals("https://www.ndopify.com/match/1", listing()["listing_url"])
     }
 
     @Test
     fun `blank title`() {
-        mailet.send(match.copy(listing = listing.copy(title = "")), customer, agent)
+        mailet.send(listOf(match.copy(listing = listing.copy(title = ""))), customer, agent)
 
-        assertEquals("Bien n° 101", context()["listing_title"])
+        assertEquals("Bien n° 101", listing()["listing_title"])
     }
+
+    private fun listing(): Map<*, *> = (context()["listings"] as List<*>).first() as Map<*, *>
 
     private fun context(): Map<String, Any?> {
         val context = argumentCaptor<Map<String, Any?>>()

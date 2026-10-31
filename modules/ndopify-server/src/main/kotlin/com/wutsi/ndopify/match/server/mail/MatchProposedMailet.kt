@@ -15,9 +15,9 @@ import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.springframework.stereotype.Service
 
 /**
- * Sends the customer of a search the listing its agent proposes: title, price and a link to the proposal's page on
- * the public portal, `{publicPortalUrl}/match/{matchId}`, where the customer accepts or rejects it (none without
- * the tenant's `publicPortalUrl`).
+ * Sends the customer of a search the listings its agent proposes, in one e-mail: for each, its title, price and a link
+ * to its proposal's page on the public portal, `{publicPortalUrl}/match/{matchId}`, where the customer accepts or
+ * rejects it (none without the tenant's `publicPortalUrl`: the customer then answers its agent).
  */
 @Service
 class MatchProposedMailet(
@@ -27,23 +27,27 @@ class MatchProposedMailet(
     private val mailBodyResolver: MailBodyResolver,
 ) {
     companion object {
-        const val SUBJECT = "{{tenant_name}}: {{agent_name}} vous propose un bien à {{place}}"
+        const val SUBJECT_ONE = "{{tenant_name}}: {{agent_name}} vous propose un bien à {{place}}"
+        const val SUBJECT_MANY = "{{tenant_name}}: {{agent_name}} vous propose {{count}} biens à {{place}}"
         const val TEMPLATE = "/mail/match/proposed.mjml"
     }
 
-    fun send(match: MatchEntity, customer: CustomerEntity, agent: AgentEntity) {
-        val mandate = match.mandate
-        val listing = match.listing
+    /** [matches]: of one mandate, in the order shown. */
+    fun send(matches: List<MatchEntity>, customer: CustomerEntity, agent: AgentEntity) {
+        val mandate = matches.first().mandate
         val tenant = tenantService.findById(mandate.tenantId!!)
+        val formatter = TenantFormatter(tenant)
         val city = locationService.findByIdOrNull(mandate.cityId)?.name ?: ""
         val party = customer.party
         val fullName = party.fullName()
         val agentName = agent.party.fullName()
+        val subject = if (matches.size == 1) SUBJECT_ONE else SUBJECT_MANY
         mailService.send(
             Email(
                 recipient = Receipient(email = party.email, displayName = fullName),
-                subject = SUBJECT.replace("{{tenant_name}}", tenant.name)
+                subject = subject.replace("{{tenant_name}}", tenant.name)
                     .replace("{{agent_name}}", agentName)
+                    .replace("{{count}}", matches.size.toString())
                     .replace("{{place}}", MandateMailLabels.place(mandate, city, locationService)),
                 body = mailBodyResolver.resolve(
                     path = TEMPLATE,
@@ -52,18 +56,27 @@ class MatchProposedMailet(
                         "tenant_name" to tenant.name,
                         "recipient_name" to fullName,
                         "agent_full_name" to agentName,
-                        "listing_title" to (listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"),
-                        "price_label" to MandateMailLabels.priceLabel(mandate),
-                        "price" to MandateMailLabels.price(
-                            listing.price,
-                            listing.currencyCode,
-                            listing.pricePeriodicityType,
-                            TenantFormatter(tenant),
-                        ),
-                        "listing_url" to proposalUrl(tenant, match),
+                        "count" to matches.size.takeIf { it > 1 },
+                        "online" to tenant.publicPortalUrl?.let { true },
+                        "listings" to matches.map { match -> listing(match, tenant, formatter) },
                     ),
                 ),
             ),
+        )
+    }
+
+    private fun listing(match: MatchEntity, tenant: TenantEntity, formatter: TenantFormatter): Map<String, Any?> {
+        val listing = match.listing
+        return mapOf(
+            "listing_title" to (listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"),
+            "price_label" to MandateMailLabels.priceLabel(match.mandate),
+            "price" to MandateMailLabels.price(
+                listing.price,
+                listing.currencyCode,
+                listing.pricePeriodicityType,
+                formatter,
+            ),
+            "listing_url" to proposalUrl(tenant, match),
         )
     }
 

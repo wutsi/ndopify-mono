@@ -83,9 +83,9 @@ class MatchEventListener(
         try {
             logger.add("event", MatchProposedEvent::class.java.simpleName)
             logger.add("tenant_id", event.tenantId)
-            logger.add("match_id", event.matchId)
+            logger.add("match_ids", event.matchIds)
 
-            proposalService.sendProposedEmail(event.matchId)
+            proposalService.sendProposedEmail(event.matchIds)
             logger.add("success", true)
         } catch (ex: Exception) {
             logger.add("success", false)

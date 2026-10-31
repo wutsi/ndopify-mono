@@ -51,6 +51,9 @@ class ListingService(
         val spec = Specification<ListingEntity> { root, _, cb ->
             val predicates = mutableListOf<Predicate>()
 
+            if (request.ids.isNotEmpty()) {
+                predicates.add(root.get<Long>("id").`in`(request.ids))
+            }
             if (request.mandateIds.isNotEmpty()) {
                 predicates.add(root.get<MandateEntity>("mandate").get<Long>("id").`in`(request.mandateIds))
             }

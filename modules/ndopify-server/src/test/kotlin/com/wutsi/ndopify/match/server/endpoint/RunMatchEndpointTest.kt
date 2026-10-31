@@ -39,6 +39,13 @@ class RunMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(0.95, matches[0].score, 0.005)
         assertEquals(0.745, matches[1].score, 0.005)
         assertEquals(0.58, matches[2].score, 0.01)
+
+        // What explains them: B is in a nearby neighbourhood, A and C lack amenities searched
+        assertEquals(0.0, matches[0].distanceKm)
+        assertEquals(listOf("generatorSet"), matches[0].missingAmenities)
+        assertEquals(listOf("waterTank", "generatorSet"), matches[1].missingAmenities)
+        assertEquals(emptyList(), matches[2].missingAmenities)
+        assertEquals(1.5, matches[2].distanceKm!!, 0.3)
     }
 
     @Test

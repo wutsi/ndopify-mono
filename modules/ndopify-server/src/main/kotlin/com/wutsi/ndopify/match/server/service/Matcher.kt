@@ -53,6 +53,8 @@ class Matcher(
             amenities = amenities(search, listing),
             availability = availability(search, listing, today),
             furniture = furniture(search, listing),
+            distanceKm = distanceKm(search, listing, distances),
+            missingAmenities = requested(search, listing).filterNot { (_, has) -> has }.map { (key, _) -> key },
         )
     }
 
@@ -103,46 +105,40 @@ class Matcher(
         }
     }
 
-    // Share of the amenities requested that the listing has. trackInaccessibleByCar isn't an amenity
+    // Null when it isn't in a searched or nearby neighbourhood, or none is searched
+    private fun distanceKm(search: MandateEntity, listing: ListingEntity, distances: Map<Long, Double>): Double? {
+        if (search.neighborhoodIds.isEmpty()) {
+            return null
+        }
+        return listing.neighborhoodId?.let { distances[it] }
+    }
+
+    // Share of the amenities requested that the listing has
     private fun amenities(search: MandateEntity, listing: ListingEntity): Double {
-        val requested = amenities(search).zip(amenities(listing)).filter { (wanted, _) -> wanted }
+        val requested = requested(search, listing)
         if (requested.isEmpty()) {
             return 1.0
         }
         return requested.count { (_, has) -> has }.toDouble() / requested.size
     }
 
-    private fun amenities(search: MandateEntity): List<Boolean> = listOf(
-        search.waterMeter,
-        search.dedicatedWaterMeter,
-        search.waterTank,
-        search.waterWell,
-        search.electricityMeter,
-        search.dedicatedElectricityMeter,
-        search.generatorSet,
-        search.solarPanel,
-        search.roadPaved,
-        search.trackAccessibleByCar,
-        search.securedFenced,
-        search.securityGuard,
-        search.videoSurveillance,
-    )
-
-    private fun amenities(listing: ListingEntity): List<Boolean> = listOf(
-        listing.waterMeter,
-        listing.dedicatedWaterMeter,
-        listing.waterTank,
-        listing.waterWell,
-        listing.electricityMeter,
-        listing.dedicatedElectricityMeter,
-        listing.generatorSet,
-        listing.solarPanel,
-        listing.roadPaved,
-        listing.trackAccessibleByCar,
-        listing.securedFenced,
-        listing.securityGuard,
-        listing.videoSurveillance,
-    )
+    // The amenities requested (by DTO field name), each with whether the listing has it. trackInaccessibleByCar isn't
+    // an amenity
+    private fun requested(search: MandateEntity, listing: ListingEntity): List<Pair<String, Boolean>> = listOf(
+        Triple("waterMeter", search.waterMeter, listing.waterMeter),
+        Triple("dedicatedWaterMeter", search.dedicatedWaterMeter, listing.dedicatedWaterMeter),
+        Triple("waterTank", search.waterTank, listing.waterTank),
+        Triple("waterWell", search.waterWell, listing.waterWell),
+        Triple("electricityMeter", search.electricityMeter, listing.electricityMeter),
+        Triple("dedicatedElectricityMeter", search.dedicatedElectricityMeter, listing.dedicatedElectricityMeter),
+        Triple("generatorSet", search.generatorSet, listing.generatorSet),
+        Triple("solarPanel", search.solarPanel, listing.solarPanel),
+        Triple("roadPaved", search.roadPaved, listing.roadPaved),
+        Triple("trackAccessibleByCar", search.trackAccessibleByCar, listing.trackAccessibleByCar),
+        Triple("securedFenced", search.securedFenced, listing.securedFenced),
+        Triple("securityGuard", search.securityGuard, listing.securityGuard),
+        Triple("videoSurveillance", search.videoSurveillance, listing.videoSurveillance),
+    ).filter { (_, wanted, _) -> wanted }.map { (key, _, has) -> key to has }
 
     // Available by the moving deadline (or none): 1. Up to a month after it: 0.5
     private fun availability(search: MandateEntity, listing: ListingEntity, today: LocalDate): Double {

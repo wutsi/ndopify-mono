@@ -39,6 +39,15 @@ class ProposeMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `propose a shortlisted one`() {
+        val response = rest.postForEntity("/v1/matches/10/propose", null, Any::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(MatchStatus.PROPOSED, dao.findById(10L).get().status)
+        assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received")
+    }
+
+    @Test
     fun `a run leaves it proposed`() {
         rest.postForEntity("/v1/matches/1/propose", null, Any::class.java)
 

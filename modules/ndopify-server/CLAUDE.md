@@ -285,14 +285,18 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   APPROVED SEARCH mandate with an agent is matched, against that agent's PUBLISHED listings; `Matcher` (pure, unit
   tested case by case in `MatcherTest`) rules a pair out (the customer's own property, another type / category / city
   / property type, currency or periodicity, over budget + `price-tolerance`) or scores it (neighbourhood, price, rooms,
-  amenities, availability, furniture); under `min-score` it isn't stored. `ACTIVE` rows are created, re-scored or
-  deleted; any other status (`DISMISSED`, `PROPOSED`, `ACCEPTED`, `REJECTED`) is never touched. Each row keeps
+  amenities, availability, furniture); under `min-score` it isn't stored. Each score also keeps what explains it to
+  the agent (`V9_1`): `distanceKm` (to the nearest searched neighbourhood: 0 inside one, null when not nearby or none
+  searched) and `missingAmenities` (the amenities searched that the listing lacks, by DTO field name, ex:
+  `waterTank`). `ACTIVE` rows are created, re-scored or deleted; any other status (`SHORTLISTED`, `DISMISSED`,
+  `PROPOSED`, `ACCEPTED`, `REJECTED`) is never touched. Each row keeps
   `listingPrice` (when last scored, or dismissed, proposed or rejected): the
   price a match was turned down at, to tell a price drop later (re-proposing after one isn't built yet). The run isn't one transaction (each save is its own, a conflict skips
   the pair), so it reads the mandates with their neighbourhoods (`@EntityGraph`). `/v1/matches`: search
   (`mandate-id`, repeatable, at least one, else 400 `HTTP_MISSING_PARAMETER`, each one checked; `status` default
   ACTIVE; best score first across them, only while the mandate is APPROVED and the listing
-  PUBLISHED), get, `POST /{id}/dismiss` (409 `MATCH_NOT_ACTIVE`), access as the mandate's (`MandateAccessService`:
+  PUBLISHED), get, `POST /{id}/shortlist` (the agent keeps it to propose later: ACTIVE → SHORTLISTED, else 409
+  `MATCH_NOT_ACTIVE`), `POST /{id}/dismiss` (ACTIVE or SHORTLISTED, else 409 `MATCH_NOT_ACTIVE`), access as the mandate's (`MandateAccessService`:
   404, then 403 `MANDATE_ACCESS_DENIED`); `POST /run?mandate-id=` (`@OpsEndpoint`) re-runs a mandate.
   **Agent alert** (`docs/superpowers/plans/2026-10-31-match-agent-alert.md`): `notifiedAt` (`V9_0`) is null until the
   agent is told, and never touched by the matcher (a re-score or re-run doesn't alert again). `MatchJobs.notifyAgents`
@@ -301,12 +305,15 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `mail/match/new_matches.mjml`, at most 5 listings per mandate), then mark them (`MatchRepository.markNotified`, a bulk
   update that skips `@Version`, so a dismiss meanwhile stays). A failed e-mail leaves the agent's matches to the next
   run. A match re-proposed after a price drop must get `notifiedAt = null` again.
-  **Proposal** (`docs/superpowers/plans/2026-10-31-match-proposal.md`, `MatchProposalService`): `POST /{id}/propose`
-  (the mandate's agent or an admin, as dismiss: ACTIVE → PROPOSED, `proposedAt`; 409 `MATCH_NOT_ACTIVE`,
-  `MANDATE_NOT_APPROVED`, `LISTING_NOT_PUBLISHED`) publishes `MatchProposedEvent`: `MatchProposedMailet` e-mails the
-  customer the listing, with a link to its proposal page, `{publicPortalUrl}/match/{matchId}`
-  (`mail/match/proposed.mjml`), where the customer answers it. `POST /{id}/accept` and
-  `POST /{id}/reject` (`RejectMatchRequest.reason`, optional, at most 1000) are for the mandate's customer only
+  **Proposal** (`docs/superpowers/plans/2026-10-31-match-proposal.md`, `MatchProposalService`): `POST /{id}/propose`,
+  or several matches of one mandate with `POST /propose` (`ProposeMatchRequest.matchIds`, 1 to 20; 400
+  `HTTP_INVALID_PARAMETER` when of several mandates), by the mandate's agent or an admin, as dismiss: ACTIVE or
+  SHORTLISTED → PROPOSED, `proposedAt`, all or none; 409 `MATCH_NOT_ACTIVE`, `MANDATE_NOT_APPROVED`,
+  `LISTING_NOT_PUBLISHED`. It publishes one `MatchProposedEvent` (`matchIds`): `MatchProposedMailet` sends the
+  customer one e-mail with the listings, best score first, each with a link to its proposal page,
+  `{publicPortalUrl}/match/{matchId}` (`mail/match/proposed.mjml`), where the customer answers it. `POST /{id}/accept` and
+  `POST /{id}/reject` (`RejectMatchRequest.reasonCode`, a `MatchRejectionReason`, `OTHER` when missing or `UNKNOWN`,
+  and `reason`, a comment, optional, at most 1000) are for the mandate's customer only
   (`MandateAccessService.ensureIsCustomer`: the JWT's party is the customer's, any application; **no admin bypass,
   the agent can't answer for its customer**): PROPOSED → ACCEPTED / REJECTED, final, `answeredAt`, else 409
   `MATCH_NOT_PROPOSED`. The agent isn't told of the answer yet. Config: `ndopify.match.*`. Tenant-scoped.
@@ -480,8 +487,8 @@ Flyway, split across two classpath locations composed in `application.yml`
   `V{version}__{description}.sql`
 - `db/migration/local/` (default profile) and `db/migration/test/` (`application-test.yml`) — environment-specific
   seed data layered on top of `common`
-- No database is deployed yet (pre-launch, dev only), so an existing migration may still be edited (ex: the
-  `V8_*` listing ones). Once a database is deployed: never modify an existing migration, always add a new one.
+- The test environment's database is deployed (since 2026-10-31): never modify an existing migration (Flyway's
+  checksum would fail), always add a new one after the highest (ex: `V9_1__match-details.sql`).
 
 ## Custom JPA Utilities (`util/jpa`)
 
