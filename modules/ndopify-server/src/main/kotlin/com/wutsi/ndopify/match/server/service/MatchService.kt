@@ -23,6 +23,7 @@ import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.orm.ObjectOptimisticLockingFailureException
@@ -39,7 +40,8 @@ import java.util.Date
  * Only an APPROVED SEARCH mandate with an agent is matched, against the PUBLISHED listings of that agent. One row per
  * (mandate, listing): a DISMISSED row is never touched; an ACTIVE one is re-scored, or deleted when no longer
  * matching. A run isn't one transaction: each save is its own, so a conflict (the agent dismissed the match meanwhile)
- * only skips that pair.
+ * only skips that pair, and so does a duplicate insert by a concurrent run (ex: a listing published while
+ * its agent's search is approved).
  */
 @Service
 class MatchService(
@@ -146,7 +148,9 @@ class MatchService(
                     count++
                 }
             } catch (ex: ObjectOptimisticLockingFailureException) {
-                conflicts++
+                conflicts++ // The agent dismissed it meanwhile
+            } catch (ex: DataIntegrityViolationException) {
+                conflicts++ // Another run inserted the same pair meanwhile
             }
         }
         logger.add("match_count", count)

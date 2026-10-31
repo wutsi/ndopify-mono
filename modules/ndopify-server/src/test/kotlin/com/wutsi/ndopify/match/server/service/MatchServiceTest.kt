@@ -31,6 +31,7 @@ import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
+import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.orm.ObjectOptimisticLockingFailureException
 import java.time.Clock
 import java.time.Instant
@@ -227,6 +228,22 @@ class MatchServiceTest {
         doReturn(listOf(listing1, listing2)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
         doReturn(score(0.9)).whenever(matcher).score(any(), any(), any(), any())
         doThrow(ObjectOptimisticLockingFailureException(MatchEntity::class.java, 7L))
+            .doAnswer { it.arguments[0] }
+            .whenever(matchDao).save(any<MatchEntity>())
+
+        assertEquals(1, service.matchMandate(MANDATE_ID))
+
+        val captor = argumentCaptor<MatchEntity>()
+        verify(matchDao, times(2)).save(captor.capture())
+        assertEquals(listing2, captor.secondValue.listing)
+    }
+
+    @Test
+    fun `a duplicate insert skips the pair`() {
+        // Another run (ex: matchListing while matchMandate runs) inserted the same pair meanwhile
+        doReturn(listOf(listing1, listing2)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
+        doReturn(score(0.9)).whenever(matcher).score(any(), any(), any(), any())
+        doThrow(DataIntegrityViolationException("Duplicate entry"))
             .doAnswer { it.arguments[0] }
             .whenever(matchDao).save(any<MatchEntity>())
 
