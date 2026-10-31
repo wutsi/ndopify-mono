@@ -15,6 +15,7 @@ data class Match(
     val amenitiesScore: Double = 0.0,
     val availabilityScore: Double = 0.0,
     val furnitureScore: Double = 0.0,
+    val listingPrice: Long = -1, // When last scored, or when dismissed
 
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),

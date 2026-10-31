@@ -85,13 +85,22 @@ class MatchService(
         return dao.findAll(spec, OffsetLimitPageRequest(request.offset, request.limit, sort)).content
     }
 
-    /** Hides an ACTIVE match from the agent: it's never re-scored nor re-created. 409 MATCH_NOT_ACTIVE otherwise. */
+    /**
+     * Hides an ACTIVE match from the agent: it's never re-scored nor re-created. 409 MATCH_NOT_ACTIVE otherwise. Keeps
+     * the listing's price the agent said no to (`listingPrice`), to tell a price drop later.
+     */
     fun dismiss(id: Long): MatchEntity {
         val match = findById(id)
         if (match.status != MatchStatus.ACTIVE) {
             throw ConflictException(error = Error(code = ErrorCode.MATCH_NOT_ACTIVE))
         }
-        return dao.save(match.copy(status = MatchStatus.DISMISSED, modifiedAt = Date(clock.millis())))
+        return dao.save(
+            match.copy(
+                status = MatchStatus.DISMISSED,
+                listingPrice = match.listing.price,
+                modifiedAt = Date(clock.millis()),
+            )
+        )
     }
 
     /** Matches a search mandate against its agent's inventory. Returns the number of ACTIVE matches stored. */
@@ -186,6 +195,7 @@ class MatchService(
                 amenitiesScore = score.amenities,
                 availabilityScore = score.availability,
                 furnitureScore = score.furniture,
+                listingPrice = listing.price,
                 modifiedAt = now,
             )
         )

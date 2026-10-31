@@ -94,8 +94,9 @@ class MatchServiceTest {
         tenantId = TENANT_ID,
         agent = AgentEntity(id = AGENT_ID),
         status = ListingStatus.PUBLISHED,
+        price = 240_000,
     )
-    private val listing2 = listing1.copy(id = 12L)
+    private val listing2 = listing1.copy(id = 12L, price = 200_000)
 
     private fun score(total: Double): MatchScore =
         // furniture carries the whole total, so that MatchScore.total == [total] for the test
@@ -129,7 +130,9 @@ class MatchServiceTest {
         assertEquals(0.9, first.score, 0.000001)
         assertEquals(18.0, first.furnitureScore, 0.000001)
         assertEquals(0.0, first.neighborhoodScore)
+        assertEquals(240_000L, first.listingPrice)
         assertEquals(listing2, captor.secondValue.listing)
+        assertEquals(200_000L, captor.secondValue.listingPrice)
         assertEquals(0.6, captor.secondValue.score, 0.000001)
     }
 
@@ -145,7 +148,15 @@ class MatchServiceTest {
 
     @Test
     fun `matchMandate updates an ACTIVE match`() {
-        val existing = MatchEntity(id = 7L, mandate = search, listing = listing1, status = MatchStatus.ACTIVE, score = 0.7, version = 3L)
+        val existing = MatchEntity(
+            id = 7L,
+            mandate = search,
+            listing = listing1,
+            status = MatchStatus.ACTIVE,
+            score = 0.7,
+            listingPrice = 260_000,
+            version = 3L,
+        )
         doReturn(listOf(listing1)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
         doReturn(existing).whenever(matchDao).findByMandateAndListing(search, listing1)
         doReturn(score(0.8)).whenever(matcher).score(any(), any(), any(), any())
@@ -158,6 +169,7 @@ class MatchServiceTest {
         assertEquals(3L, captor.firstValue.version)
         assertEquals(MatchStatus.ACTIVE, captor.firstValue.status)
         assertEquals(0.8, captor.firstValue.score, 0.000001)
+        assertEquals(240_000L, captor.firstValue.listingPrice) // The price it's scored at now
         assertEquals(existing.createdAt, captor.firstValue.createdAt)
     }
 

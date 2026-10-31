@@ -21,7 +21,9 @@ class DismissMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         val response = rest.postForEntity("/v1/matches/1/dismiss", null, Any::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
-        assertEquals(MatchStatus.DISMISSED, dao.findById(1L).get().status)
+        val match = dao.findById(1L).get()
+        assertEquals(MatchStatus.DISMISSED, match.status)
+        assertEquals(150000L, match.listingPrice) // The price the agent said no to, scored at 160 000
     }
 
     @Test

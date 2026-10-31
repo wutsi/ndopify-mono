@@ -94,6 +94,11 @@ One row per (S, L), unique. For each candidate pair:
 - score `null` or `< minScore` → the `ACTIVE` row, if any, is deleted;
 - else the row is created `ACTIVE`, or its scores updated.
 
+Each row keeps `listingPrice`: L's price when last scored, or when dismissed (decision of 2026-10-31). A `DISMISSED`
+row isn't re-scored, so it keeps the price the agent said no to: a later price below it is a price drop, the reason a
+future plan re-proposes it (with `ListingPriceChangedEvent` → `matchListing`, once a PUBLISHED listing's price can
+change). Exposed as `Match.listingPrice`.
+
 Not deleted when L stops being PUBLISHED or S is closed: reads filter them out. The run isn't one transaction: each
 save is its own, so an optimistic-lock conflict (the agent dismissed the match meanwhile) only skips that pair,
 logged.

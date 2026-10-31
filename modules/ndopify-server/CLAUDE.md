@@ -284,7 +284,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   tested case by case in `MatcherTest`) rules a pair out (the customer's own property, another type / category / city
   / property type, currency or periodicity, over budget + `price-tolerance`) or scores it (neighbourhood, price, rooms,
   amenities, availability, furniture); under `min-score` it isn't stored. `ACTIVE` rows are created, re-scored or
-  deleted; a `DISMISSED` one is never touched. The run isn't one transaction (each save is its own, a conflict skips
+  deleted; a `DISMISSED` one is never touched. Each row keeps `listingPrice` (when last scored, or dismissed): the
+  price a match was turned down at, to tell a price drop later (re-proposing after one isn't built yet). The run isn't one transaction (each save is its own, a conflict skips
   the pair), so it reads the mandates with their neighbourhoods (`@EntityGraph`). `/v1/matches`: search
   (`mandate-id`, `status` default ACTIVE, best score first, only while the mandate is APPROVED and the listing
   PUBLISHED), get, `POST /{id}/dismiss` (409 `MATCH_NOT_ACTIVE`), access as the mandate's (`MandateAccessService`:

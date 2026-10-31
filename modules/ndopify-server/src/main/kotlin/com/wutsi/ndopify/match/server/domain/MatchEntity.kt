@@ -46,6 +46,10 @@ data class MatchEntity(
     val availabilityScore: Double = 0.0,
     val furnitureScore: Double = 0.0,
 
+    // The listing's price when last scored, or when dismissed: a later price below it is a price drop, the reason to
+    // propose again a match turned down
+    val listingPrice: Long = -1,
+
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
 

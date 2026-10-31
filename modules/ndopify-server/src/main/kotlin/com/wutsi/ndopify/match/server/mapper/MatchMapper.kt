@@ -19,6 +19,7 @@ class MatchMapper {
             amenitiesScore = entity.amenitiesScore,
             availabilityScore = entity.availabilityScore,
             furnitureScore = entity.furnitureScore,
+            listingPrice = entity.listingPrice,
             createdAt = entity.createdAt,
             modifiedAt = entity.modifiedAt,
         )
