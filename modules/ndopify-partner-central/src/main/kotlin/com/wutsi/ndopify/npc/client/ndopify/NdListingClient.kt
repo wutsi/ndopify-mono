@@ -82,6 +82,27 @@ class NdListingClient(
             ?.listings
             ?: emptyList()
 
+    /**
+     * The PUBLISHED listings among [ids], in one search: without `agent-id`, ndopify-server returns no other. No call
+     * without an id.
+     */
+    fun searchByIds(ids: List<Long>): List<ListingSummary> {
+        if (ids.isEmpty()) {
+            return emptyList()
+        }
+        return rest.get()
+            .uri { uri ->
+                ids.forEach { uri.queryParam("id", it) }
+                uri.path("/v1/listings")
+                    .queryParam("limit", ids.size)
+                    .build()
+            }
+            .retrieve()
+            .body<SearchListingResponse>()
+            ?.listings
+            ?: emptyList()
+    }
+
     /** Sends a DRAFT listing to be checked (UNDER_VERIFICATION). */
     fun verify(id: Long) {
         rest.post().uri("/v1/listings/{id}/verify", id).retrieve().toBodilessEntity()
