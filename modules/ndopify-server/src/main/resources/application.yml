@@ -278,6 +278,8 @@ ndopify:
         min-score: 0.5                  # Below, the pair isn't stored
         nearby-radius-km: 3             # Neighbourhoods this close to the searched ones are "nearby"
         nearby-max-neighborhoods: 20
+        notify:
+            cron: "0 0 * * * ?"         # Every hour: e-mails the agents about their new matches
 
     mobile-money:
         mtn:
