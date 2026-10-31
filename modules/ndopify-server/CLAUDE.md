@@ -285,34 +285,43 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   tested case by case in `MatcherTest`) rules a pair out (the customer's own property, another type / category / city
   / property type, currency or periodicity, over budget + `price-tolerance`) or scores it (neighbourhood, price, rooms,
   amenities, availability, furniture); under `min-score` it isn't stored. `ACTIVE` rows are created, re-scored or
-  deleted; a `DISMISSED` one is never touched. Each row keeps `listingPrice` (when last scored, or dismissed): the
+  deleted; any other status (`DISMISSED`, `PROPOSED`, `ACCEPTED`, `REJECTED`) is never touched. Each row keeps
+  `listingPrice` (when last scored, or dismissed, proposed or rejected): the
   price a match was turned down at, to tell a price drop later (re-proposing after one isn't built yet). The run isn't one transaction (each save is its own, a conflict skips
   the pair), so it reads the mandates with their neighbourhoods (`@EntityGraph`). `/v1/matches`: search
   (`mandate-id`, repeatable, at least one, else 400 `HTTP_MISSING_PARAMETER`, each one checked; `status` default
   ACTIVE; best score first across them, only while the mandate is APPROVED and the listing
   PUBLISHED), get, `POST /{id}/dismiss` (409 `MATCH_NOT_ACTIVE`), access as the mandate's (`MandateAccessService`:
   404, then 403 `MANDATE_ACCESS_DENIED`); `POST /run?mandate-id=` (`@OpsEndpoint`) re-runs a mandate.
-  **Agent alert** (`docs/superpowers/plans/2026-10-31-match-agent-alert.md`): `notifiedAt` (`V9_1`) is null until the
+  **Agent alert** (`docs/superpowers/plans/2026-10-31-match-agent-alert.md`): `notifiedAt` (`V9_0`) is null until the
   agent is told, and never touched by the matcher (a re-score or re-run doesn't alert again). `MatchJobs.notifyAgents`
   (hourly, `ndopify.match.notify.cron`) has `MatchNotificationService` e-mail each agent, once for all its ACTIVE
   matches not notified yet (mandate APPROVED, listing PUBLISHED), grouped by mandate (`MatchNotificationMailet`,
   `mail/match/new_matches.mjml`, at most 5 listings per mandate), then mark them (`MatchRepository.markNotified`, a bulk
   update that skips `@Version`, so a dismiss meanwhile stays). A failed e-mail leaves the agent's matches to the next
-  run. A match re-proposed after a price drop must get `notifiedAt = null` again. Config: `ndopify.match.*`.
-  Tenant-scoped.
+  run. A match re-proposed after a price drop must get `notifiedAt = null` again.
+  **Proposal** (`docs/superpowers/plans/2026-10-31-match-proposal.md`, `MatchProposalService`): `POST /{id}/propose`
+  (the mandate's agent or an admin, as dismiss: ACTIVE → PROPOSED, `proposedAt`; 409 `MATCH_NOT_ACTIVE`,
+  `MANDATE_NOT_APPROVED`, `LISTING_NOT_PUBLISHED`) publishes `MatchProposedEvent`: `MatchProposedMailet` e-mails the
+  customer the listing, with a link to its proposal page, `{publicPortalUrl}/match/{matchId}`
+  (`mail/match/proposed.mjml`), where the customer answers it. `POST /{id}/accept` and
+  `POST /{id}/reject` (`RejectMatchRequest.reason`, optional, at most 1000) are for the mandate's customer only
+  (`MandateAccessService.ensureIsCustomer`: the JWT's party is the customer's, any application; **no admin bypass,
+  the agent can't answer for its customer**): PROPOSED → ACCEPTED / REJECTED, final, `answeredAt`, else 409
+  `MATCH_NOT_PROPOSED`. The agent isn't told of the answer yet. Config: `ndopify.match.*`. Tenant-scoped.
 - **error** — shared exception types (`WutsiException` subclasses: `BadRequestException`, `NotFoundException`,
   `ConflictException`, `ForbiddenException`, `UnauthorizedException`, `InternalErrorException`) and a global
   `ControllerErrorHandler`.
 
-**Asynchronous e-mails** (welcome, OTP, KYC status, mandate offered, mandate assigned, mandate approved, contract to sign, listing published): the service publishes an event
+**Asynchronous e-mails** (welcome, OTP, KYC status, mandate offered, mandate assigned, mandate approved, contract to sign, listing published, match proposed): the service publishes an event
 from its transaction (`AgentCreatedEvent`, `OtpCreatedEvent`, `KycCaseCompletedEvent`, `AssignmentCreatedEvent`,
-`AssignmentAcceptedEvent`, `MandateApprovedEvent`, `ContractSignatureRequestedEvent`, `ListingPublishedEvent` in `<domain>/server/event/`), carrying ids plus the `tenantId` — never entities. Its
+`AssignmentAcceptedEvent`, `MandateApprovedEvent`, `ContractSignatureRequestedEvent`, `ListingPublishedEvent`, `MatchProposedEvent` in `<domain>/server/event/`), carrying ids plus the `tenantId` — never entities. Its
 listener is `@Async @TransactionalEventListener(AFTER_COMMIT)`, so nothing is sent for a rolled-back transaction. The
 executor thread has no request, so the listener sets `TenantContext` and a `DefaultKVLogger` in `KVLoggerThreadLocal`
 (which the injected `KVLogger` falls back to), calls `logger.log()` in `finally` to flush it, and removes both
 (threads are reused). The work runs in a `@Transactional` service method (`AgentService.sendWelcomeEmail`,
 `OtpService.sendEmail`, `KycService.sendStatusEmail`, `AssignmentService.sendOfferEmail` / `sendAssignedEmail`, `MandateService.sendApprovedEmail`,
-`ContractService.sendSignatureRequestEmails`, `ListingService.sendPublishedEmails`); the signed PDF (`ContractSignedEvent` → `SignedContractService.generate`,
+`ContractService.sendSignatureRequestEmails`, `ListingService.sendPublishedEmails`, `MatchProposalService.sendProposedEmail`); the signed PDF (`ContractSignedEvent` → `SignedContractService.generate`,
 not an e-mail, not transactional) follows the same listener pattern. The service methods are
 entered *after* `TenantContext` is set since Hibernate resolves the tenant when the session opens. Failures are
 logged, never rethrown. Tests must wait for the mail (`smtp.waitForIncomingEmail`);

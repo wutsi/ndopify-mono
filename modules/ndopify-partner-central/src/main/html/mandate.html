@@ -34,9 +34,12 @@
       - Fermer (Actif: lease signed, with the agreed rent) and Annuler (any step: no lease, with a reason, danger
         style): two buttons at the bottom of the page, since they're rare and final.
       - Biens correspondants (Actif, a client's SEARCH mandate only): the listings of the agent's inventory that the
-        matcher found for the search (GET /v1/matches?mandate-id=), best score first. Each one is sent to the client
+        matcher found for the search (GET /v1/matches?mandate-id=), best score first. Its "annonce n°" opens the
+        listing's page (listing.html?id=) in a new tab. Each one is sent to the client
         (Envoyer au client: the listing's link by e-mail), kept to send later (Retenir), or set aside (Écarter, after
         a confirmation: never proposed again for this mandate). Two kept or more: "Envoyer les N biens retenus".
+        A sent one shows the client's answer on the public portal (ndopify-web's proposition.html): interested,
+        a visit asked (day, time, on site or by video), or refused with its reason; first those the agent must act on.
     PROTOTYPE: ?id=201, 202, 203 or 204 (an active search with matches; 201 gets its own once signed), or 101, 102 and 103 once accepted on index.html; any other mandate shows the
     locked view. The statuses are kept in the session (KEYS.mandates), and "Simuler la signature" stands for the
     client signing the contract.
@@ -229,8 +232,11 @@
                                     <p class="status-tag" data-match-tag></p>
                                 </div>
                                 <p class="match__score"><strong data-match-score></strong> de correspondance ·
-                                    annonce n°&nbsp;<span data-match-ref></span></p>
+                                    <a target="_blank" rel="noopener" data-match-link>annonce
+                                        n°&nbsp;<span data-match-ref></span><span class="visually-hidden"> (s'ouvre
+                                        dans un nouvel onglet)</span></a></p>
                                 <dl class="assignment__facts" data-match-facts></dl>
+                                <p class="match__answer" hidden data-match-answer></p>
                                 <details class="assignment__details">
                                     <summary>Pourquoi ce bien&nbsp;?</summary>
                                     <div class="assignment__details-body">

@@ -1,0 +1,133 @@
+/* Ndopify — proposition page: a listing the agent proposed to its client (annonce.css + the proposal and the answer) */
+
+/* The proposal: who proposes it and why, a compact strip above the listing */
+.proposal {
+  margin-bottom: var(--space-xl);
+  padding: var(--space-lg) var(--space-xl);
+  border: 1px solid var(--color-border-info);
+  border-radius: var(--space-lg);
+  background: var(--color-bg-info);
+}
+.proposal__agent { display: flex; align-items: center; gap: var(--space-lg); }
+.proposal__avatar {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--color-primary-hover);
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+.proposal__title { font-family: var(--font-body); font-size: 1rem; font-weight: 600; margin: 0; }
+.proposal__subtitle { margin: 0; font-size: 0.875rem; }
+/* The summary lines up with the text, past the avatar */
+.proposal__why { margin-left: calc(2.5rem + var(--space-lg)); }
+.proposal__why summary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  min-height: 44px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-info);
+}
+.proposal__why summary::-webkit-details-marker { display: none; }
+.proposal__chevron { transition: transform 0.15s ease-out; }
+.proposal__why[open] .proposal__chevron { transform: rotate(90deg); }
+@media (prefers-reduced-motion: reduce) {
+  .proposal__chevron { transition: none; }
+}
+.proposal__fit { margin: 0 0 var(--space-md); font-size: 0.9375rem; }
+@media (min-width: 768px) {
+  .proposal__fit { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-xl); }
+}
+/* Phones: the reasons use the whole strip */
+@media (max-width: 479px) {
+  .proposal__why { margin-left: 0; }
+}
+.proposal__fit .proposal__fit--partial .icon { color: var(--color-text-warning); }
+
+/* The outcome of the last answer */
+.proposal-flash {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+  padding: var(--space-lg) var(--space-xl);
+  border: 1px solid var(--color-border-success);
+  border-radius: var(--space-lg);
+  background: var(--color-bg-success);
+  color: var(--color-text-success);
+}
+.proposal-flash[hidden] { display: none; }
+.proposal-flash p { margin: 0; }
+.proposal-flash .icon { margin-top: 0.2em; flex: none; }
+
+.badge--state { background: var(--color-bg-secondary); color: var(--color-text-default); border-color: var(--color-border-default); }
+.badge--state[hidden] { display: none; }
+
+/* The answer, in the price card */
+.answer { border-top: 1px solid var(--color-border-default); padding-top: var(--space-xl); }
+.answer[hidden] { display: none; }
+.answer > p { margin: 0 0 var(--space-lg); }
+.answer__question { font-weight: 600; }
+.answer__secondary { margin-top: var(--space-md); }
+.answer__status { display: flex; align-items: center; gap: var(--space-md); font-weight: 600; }
+.answer__status--success { color: var(--color-text-success); }
+.answer .answer__change { margin: var(--space-lg) 0 0; text-align: center; font-size: 0.875rem; }
+
+.link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-info);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.link-button:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.answer .link-button { display: block; width: 100%; min-height: 44px; }
+
+/* Bottom bar: one answer at a time */
+.cta-bar__actions[hidden], .cta-bar__note[hidden] { display: none; }
+.cta-bar__actions form { display: flex; }
+.cta-bar__note { margin: 0; font-size: 0.875rem; text-align: right; }
+
+/* Agent */
+.agent-card { display: flex; align-items: flex-start; gap: var(--space-lg); }
+.agent-card p { margin: 0 0 var(--space-md); }
+.agent-card__name { font-weight: 600; }
+
+/* "Pas pour moi": the reasons, one per line */
+.reject-reasons { border: 0; margin: 0; padding: 0; display: grid; gap: var(--space-md); }
+.reject-reasons legend { font-weight: 600; margin-bottom: var(--space-md); padding: 0; }
+.reject-reasons label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  min-height: 44px;
+  padding-inline: var(--space-lg);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--space-md);
+  cursor: pointer;
+}
+.reject-reasons label:has(input:checked) { border-color: var(--color-primary); background: var(--color-bg-info); }
+.reject-reasons input { accent-color: var(--color-primary); }
+.field__optional { font-weight: 400; color: var(--color-text-disabled); }
+#reject-comment { width: 100%; }
+
+/* The answer popup (below 1024px): the two answers, full width, one under the other */
+.answer-sheet { display: grid; gap: var(--space-md); }
+.answer-sheet form { display: flex; }
+.answer-sheet__btn { width: 100%; }
+.answer-sheet__hint { margin: var(--space-md) 0 0; font-size: 0.875rem; text-align: center; }
+
+/* Secondary answers ("Pas pour moi", "Écrire à Serge"): light blue, which a white page sets apart better than an
+   outline. styles.css's .btn-secondary has no hover of its own. */
+.btn-secondary:hover { background: var(--color-border-info); color: var(--color-text-default); }

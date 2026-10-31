@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletResponse
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
+import java.time.Clock
 
 /**
  * The `ndopify-web-core` beans, for Partner Central: the tenant found by its `partnerCentralUrl`, the
@@ -18,7 +19,7 @@ import org.springframework.context.annotation.Import
  */
 @Configuration
 @Import(NdTenantClient::class)
-class WebCoreConfiguration {
+class WebCoreConfiguration(private val clock: Clock) {
     companion object {
         const val ACCESS_TOKEN_COOKIE = "__npc_access_token"
     }
@@ -29,7 +30,7 @@ class WebCoreConfiguration {
 
     @Bean
     fun accessTokenService(request: HttpServletRequest, response: HttpServletResponse): AccessTokenService =
-        AccessTokenService(request, response, ACCESS_TOKEN_COOKIE, null)
+        AccessTokenService(request, response, ACCESS_TOKEN_COOKIE, true, clock)
 
     @Bean
     fun jwtDecoder(): JwtDecoder = JwtDecoder(ApplicationCode.PARTNER_CENTRAL)

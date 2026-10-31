@@ -11,6 +11,7 @@ import jakarta.servlet.http.HttpServletResponse
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.context.annotation.Import
+import java.time.Clock
 import java.time.Duration
 
 /**
@@ -19,7 +20,7 @@ import java.time.Duration
  */
 @Configuration
 @Import(NdTenantClient::class)
-class WebCoreConfiguration {
+class WebCoreConfiguration(private val clock: Clock) {
     companion object {
         const val ACCESS_TOKEN_COOKIE = "__nes_access_token"
         private val ACCESS_TOKEN_TTL = Duration.ofHours(1)
@@ -31,7 +32,7 @@ class WebCoreConfiguration {
 
     @Bean
     fun accessTokenService(request: HttpServletRequest, response: HttpServletResponse): AccessTokenService =
-        AccessTokenService(request, response, ACCESS_TOKEN_COOKIE, ACCESS_TOKEN_TTL)
+        AccessTokenService(request, response, ACCESS_TOKEN_COOKIE, true, clock)
 
     @Bean
     fun jwtDecoder(): JwtDecoder = JwtDecoder(ApplicationCode.E_SIGNATURE)

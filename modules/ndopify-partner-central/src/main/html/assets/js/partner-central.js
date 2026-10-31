@@ -1530,6 +1530,21 @@
                 return listing.rejection ? "Annonce à corriger : voyez les points signalés." : "Complétez l'annonce, puis envoyez-la pour vérification.";
             }
             if (listing && listing.status === "PENDING") return "Annonce en vérification : elle sera publiée sous peu.";
+            // A client's search: a visit to confirm, a listing the client likes, then new matches to send
+            if (mandate.party !== "bailleur") {
+                var matches = matchesOf(id);
+                var visit = matches.filter(function (m) {
+                    return answerOf(m) === "VISIT";
+                })[0];
+                if (visit) return "Confirmez au client la visite du " + visitLabel(visit.visit) + " (annonce n° " + visit.listingId + ").";
+                var liked = matches.filter(function (m) {
+                    return answerOf(m) === "ACCEPTED";
+                })[0];
+                if (liked) return "L'annonce n° " + liked.listingId + " intéresse le client : proposez-lui une visite.";
+                if (countMatches(matches, "ACTIVE") || countMatches(matches, "SHORTLISTED")) {
+                    return "Envoyez au client les biens qui lui correspondent.";
+                }
+            }
             // Signed: what's left is the property (a client) or the tenant (a landlord), within the mandate's validity
             var find = mandate.party === "bailleur" ? "Trouvez un locataire" : "Trouvez un bien pour " + p.the;
             return find + " avant le " + formatDate(addMonths(state.approvedAt, CONTRACT_MONTHS)) + ".";
@@ -1572,6 +1587,32 @@
                 fit: [[false, "À 1,5 km du secteur recherché"], [false, "6 % au-dessus du budget"],
                     [false, "4 chambres, une de plus que demandé"], [true, "Les 3 équipements demandés"],
                     [true, "Disponible dès maintenant"], [true, "Non meublé, comme demandé"]]
+            },
+            // Sent to the client 3 days ago, answered on the public portal (ndopify-web's proposition.html).
+            {
+                id: "9004", listingId: "2987", propertyType: "APARTMENT", rooms: 3, neighbourhood: "Bonapriso",
+                price: 245000, availableIn: 15, score: 0.9,
+                initial: { status: "PROPOSED", sentAt: -3, answer: "ACCEPTED", answeredAt: -2,
+                    visit: { in: 2, time: "10h00", type: "IN_PERSON" } },
+                fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"], [true, "3 chambres, comme demandé"],
+                    [false, "2 équipements sur 3. Manque : Groupe électrogène"],
+                    [true, "Disponible avant la date d'emménagement"], [true, "Non meublé, comme demandé"]]
+            },
+            {
+                id: "9005", listingId: "2990", propertyType: "APARTMENT", rooms: 3, neighbourhood: "Bonapriso",
+                price: 270000, availableIn: 40, score: 0.62,
+                initial: { status: "PROPOSED", sentAt: -3, answer: "REJECTED", answeredAt: -3, reason: "PRICE" },
+                fit: [[true, "Dans le secteur recherché"], [false, "8 % au-dessus du budget"],
+                    [true, "3 chambres, comme demandé"], [true, "Les 3 équipements demandés"],
+                    [true, "Disponible avant la date d'emménagement"], [true, "Non meublé, comme demandé"]]
+            },
+            {
+                id: "9006", listingId: "3002", propertyType: "APARTMENT", rooms: 3, neighbourhood: "Bonanjo",
+                distanceKm: 0.8, price: 235000, availableIn: 25, score: 0.79,
+                initial: { status: "PROPOSED", sentAt: -1 },
+                fit: [[false, "À 0,8 km du secteur recherché"], [true, "Dans le budget"],
+                    [true, "3 chambres, comme demandé"], [false, "1 équipement sur 3 : Citerne"],
+                    [true, "Disponible avant la date d'emménagement"], [true, "Non meublé, comme demandé"]]
             }
         ],
         201: [
@@ -1599,6 +1640,22 @@
         ACTIVE: ["Nouveau", "info"],
         SHORTLISTED: ["Retenu", "success"],
         PROPOSED: ["Envoyé", "neutral"]
+    };
+    // The client's answer to a PROPOSED match, on the public portal: interested (then maybe a visit) or not.
+    // NOTE: not on the server yet either (the plan's ACCEPTED / REJECTED, and the visit request).
+    var ANSWER_TAGS = {
+        ACCEPTED: ["Intéressé", "success"],
+        VISIT: ["Visite demandée", "warning"],
+        REJECTED: ["Refusé", "neutral"]
+    };
+    // proposition.html's "Pas pour moi" reasons.
+    var REJECTION_LABELS = {
+        PRICE: "trop cher",
+        LOCATION: "le quartier ne convient pas",
+        SIZE: "trop petit ou trop grand",
+        AMENITIES: "il manque des équipements",
+        AVAILABILITY: "disponible trop tard",
+        OTHER: "autre raison"
     };
 
     function allMatchStates() {
@@ -1630,15 +1687,63 @@
         if (!hasMatches(mandateId)) return [];
         var states = matchStatesOf(mandateId);
         return (MATCHES[mandateId] || []).map(function (match) {
-            var state = states[match.id] || { status: "ACTIVE" };
+            var state = states[match.id] || initialMatchState(match);
             var copy = {};
             Object.keys(match).forEach(function (key) {
                 copy[key] = match[key];
             });
-            copy.status = state.status;
-            copy.sentAt = state.sentAt;
+            ["status", "sentAt", "answer", "answeredAt", "reason", "visit"].forEach(function (key) {
+                copy[key] = state[key];
+            });
             return copy;
         });
+    }
+
+    // PROTOTYPE: a match's initial state, its dates in days from now (the visit's day too).
+    function initialMatchState(match) {
+        var initial = match.initial;
+        if (!initial) return { status: "ACTIVE" };
+        var state = {};
+        Object.keys(initial).forEach(function (key) {
+            var value = initial[key];
+            state[key] = typeof value === "number" ? Date.now() + value * DAY_MS : value;
+        });
+        if (initial.visit) {
+            state.visit = { at: Date.now() + initial.visit.in * DAY_MS, time: initial.visit.time,
+                type: initial.visit.type };
+        }
+        return state;
+    }
+
+    // ACCEPTED, VISIT (accepted, with a visit asked) or REJECTED; null while the client hasn't answered.
+    function answerOf(match) {
+        if (match.status !== "PROPOSED" || !match.answer) return null;
+        return match.answer === "ACCEPTED" && match.visit ? "VISIT" : match.answer;
+    }
+
+    // The visit the client asked for: "mardi 3 novembre à 10h00, sur place".
+    function visitLabel(visit) {
+        var day = new Intl.DateTimeFormat("fr-FR", { weekday: "long", day: "numeric", month: "long" })
+            .format(new Date(visit.at));
+        return day + " à " + visit.time + (visit.type === "VIDEO" ? ", en vidéo" : ", sur place");
+    }
+
+    // The home card's proposals line: "3 envoyés · 1 visite demandée · 1 refusé · 1 sans réponse", or "".
+    function proposalsSummary(matches) {
+        var sent = matches.filter(function (m) {
+            return m.status === "PROPOSED";
+        });
+        if (!sent.length) return "";
+        var counts = { VISIT: 0, ACCEPTED: 0, REJECTED: 0, NONE: 0 };
+        sent.forEach(function (m) {
+            counts[answerOf(m) || "NONE"]++;
+        });
+        var parts = [sent.length + (sent.length > 1 ? " envoyés" : " envoyé")];
+        if (counts.VISIT) parts.push(counts.VISIT + (counts.VISIT > 1 ? " visites demandées" : " visite demandée"));
+        if (counts.ACCEPTED) parts.push(counts.ACCEPTED + (counts.ACCEPTED > 1 ? " intéressent le client" : " intéresse le client"));
+        if (counts.REJECTED) parts.push(counts.REJECTED + (counts.REJECTED > 1 ? " refusés" : " refusé"));
+        if (counts.NONE) parts.push(counts.NONE + " sans réponse");
+        return parts.join(" · ");
     }
 
     function countMatches(matches, status) {
@@ -1704,6 +1809,11 @@
             matches.hidden = !summary;
             $("[data-matches-link]", matches).textContent = summary;
             $("[data-matches-link]", matches).href = "mandate.html?id=" + encodeURIComponent(id) + "#matches-title";
+            // What became of the listings sent to the client
+            var proposals = $("[data-proposals]", item);
+            var sent = proposalsSummary(matchesOf(id));
+            proposals.hidden = !sent;
+            $("[data-proposals-text]", proposals).textContent = sent;
         }
 
         function card(id) {
@@ -2007,10 +2117,25 @@
             title.textContent = matchTitle(match);
             var tag = $("[data-match-tag]", item);
             var t = MATCH_TAGS[match.status];
-            tag.textContent = match.status === "PROPOSED" ? "Envoyé le " + formatShortDate(match.sentAt) : t[0];
+            var answer = answerOf(match);
+            if (answer) t = ANSWER_TAGS[answer];
+            tag.textContent = match.status === "PROPOSED" && !answer ? "Envoyé le " + formatShortDate(match.sentAt) : t[0];
             tag.className = "status-tag status-tag--" + t[1];
+            // Sent: when, and the client's answer
+            var answerLine = $("[data-match-answer]", item);
+            answerLine.hidden = match.status !== "PROPOSED";
+            if (match.status === "PROPOSED") {
+                var sentText = "Envoyé le " + formatDate(match.sentAt);
+                answerLine.textContent = answer === "VISIT"
+                    ? sentText + " · le client demande une visite le " + visitLabel(match.visit) + "."
+                    : answer === "ACCEPTED" ? sentText + " · le client est intéressé, sans visite demandée pour l'instant."
+                        : answer === "REJECTED" ? sentText + " · refusé le " + formatDate(match.answeredAt) + " : " +
+                            REJECTION_LABELS[match.reason] + "."
+                            : sentText + " · le client n'a pas encore répondu.";
+            }
             $("[data-match-score]", item).textContent = Math.round(match.score * 100) + " %";
             $("[data-match-ref]", item).textContent = match.listingId;
+            $("[data-match-link]", item).href = "listing.html?id=" + encodeURIComponent(match.listingId);
             var facts = $("[data-match-facts]", item);
             fact(facts, "Quartier", match.neighbourhood + (match.distanceKm
                 ? " (à " + String(match.distanceKm).replace(".", ",") + " km)" : ""));
@@ -2078,9 +2203,16 @@
                 return m.status !== "DISMISSED";
             });
             // To handle first (new, then kept), then those already sent; best score first within each.
-            var order = { ACTIVE: 0, SHORTLISTED: 1, PROPOSED: 2 };
+            // A visit to confirm and a listing the client likes come first, then new, kept, sent, and refused last.
+            function rank(m) {
+                var answer = answerOf(m);
+                if (answer === "VISIT") return 0;
+                if (answer === "ACCEPTED") return 1;
+                if (answer === "REJECTED") return 6;
+                return { ACTIVE: 2, SHORTLISTED: 3, PROPOSED: 4 }[m.status];
+            }
             shown.sort(function (a, b) {
-                return order[a.status] - order[b.status] || b.score - a.score;
+                return rank(a) - rank(b) || b.score - a.score;
             });
             matchList.textContent = "";
             shown.forEach(function (match) {

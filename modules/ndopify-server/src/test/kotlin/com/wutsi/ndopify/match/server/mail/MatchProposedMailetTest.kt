@@ -90,7 +90,7 @@ class MatchProposedMailetTest {
                 "listing_title" to "Nice apartment",
                 "price_label" to "Loyer",
                 "price" to "150 000 FCFA / mois",
-                "listing_url" to "https://www.ndopify.com/yaounde/bastos/listing/101/nice-apartment",
+                "listing_url" to "https://www.ndopify.com/match/1",
             ),
             context(),
         )
@@ -113,10 +113,10 @@ class MatchProposedMailetTest {
     }
 
     @Test
-    fun `listing without url - no link`() {
+    fun `listing without url - the proposal's link`() {
         mailet.send(match.copy(listing = listing.copy(url = null)), customer, agent)
 
-        assertNull(context()["listing_url"])
+        assertEquals("https://www.ndopify.com/match/1", context()["listing_url"])
     }
 
     @Test

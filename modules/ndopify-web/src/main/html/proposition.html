@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>Un logement pour vous : appartement 3 chambres, Bonapriso — Douala | Ndopify</title>
+    <meta content="Serge Ngono, votre agent Ndopify, vous propose un appartement de 3 chambres à Bonapriso, Douala."
+          name="description">
+    <!-- A personal page (the link the agent sends): never indexed nor shared. -->
+    <meta content="noindex, nofollow" name="robots">
+    <meta content="no-referrer" name="referrer">
+    <meta content="#1d7edf" name="theme-color">
+    <link href="assets/images/icon.png" rel="icon">
+    <link href="assets/images/icon.png" rel="apple-touch-icon">
+    <link href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/css/intlTelInput.min.css" rel="stylesheet">
+    <link href="assets/css/styles.css" rel="stylesheet">
+    <link href="assets/css/annonce.css" rel="stylesheet">
+    <link href="assets/css/proposition.css" rel="stylesheet">
+</head>
+<!--
+  Proposition page (source doc): a match the agent sent to the client of a search mandate (Partner Central's
+  "Envoyer au client", the link e-mailed to the client). It is the listing's page (annonce.html), without the AI
+  assistant (the client has an agent to ask) nor the share button (the link is personal), plus:
+    - the proposal: who proposes it, for which search, and why it fits (the matcher's criteria, in the client's words);
+    - the client's answer, in the price card (and the bottom bar below 1024px):
+        - Pending: "Ça m'intéresse" (POST, accept) or "Pas pour moi" (the #reject popup: a reason, an optional
+          comment; POST, reject). The agent is told either way.
+        - Accepted: "Demander une visite" (the #visit popup of annonce.html, the contact pre-filled from the mandate),
+          and "Finalement, pas pour moi" to change one's mind.
+        - Rejected: the agent goes on searching; "Ce logement m'intéresse finalement" accepts it.
+        - Unavailable (the listing is no longer published, or the mandate is closed): no answer, a link to the agent.
+  Without JavaScript the answers are forms that post and the popups open with :target.
+  PROTOTYPE: ?state=accepted|rejected|unavailable shows a state; otherwise the answer is kept in the session
+  (proposition.js). Match 9001 of mandate 204 in Partner Central's prototype.
+-->
+<body class="listing-page">
+<a class="skip-link" href="#main">Aller au contenu principal</a>
+<header class="site-header">
+    <a aria-label="Ndopify — accueil" class="site-header__logo" href="index.html">
+        <img alt="Ndopify" height="36" src="assets/images/logo.png" width="140">
+    </a>
+    <nav aria-label="Navigation principale" class="site-nav">
+        <button aria-controls="primary-nav-list" aria-expanded="false" class="nav-toggle"><span aria-hidden="true"
+                                                                                                class="nav-toggle__icon">☰</span>
+            Menu
+        </button>
+        <ul class="site-nav__list" id="primary-nav-list">
+            <li><a href="index.html">Locataires</a></li>
+            <li><a href="bailleur.html">Propriétaires</a></li>
+            <li><a href="agent.html">Agents</a></li>
+        </ul>
+    </nav>
+</header>
+
+<!-- Icon sprite (decorative: every icon sits next to its text) -->
+<svg aria-hidden="true" class="visually-hidden" focusable="false" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-bed" viewBox="0 0 24 24"><path d="M3 18V7m0 7h18v4M21 14v-2a3 3 0 0 0-3-3h-7v5M7 11.5a1.5 1.5 0 1 0 0-.01"/></symbol>
+    <symbol id="i-bath" viewBox="0 0 24 24"><path d="M4 12h16v2a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5v-2zM6 12V6a2 2 0 0 1 4 0M7 19l-1 2m11-2 1 2"/></symbol>
+    <symbol id="i-area" viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 9h5V4m11 11h-5v5"/></symbol>
+    <symbol id="i-sofa" viewBox="0 0 24 24"><path d="M5 11V8a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v3M3 13a2 2 0 0 1 4 0v2h10v-2a2 2 0 0 1 4 0v5H3zM5 18v2m14-2v2"/></symbol>
+    <symbol id="i-car" viewBox="0 0 24 24"><path d="M5 16V11l2-5h10l2 5v5M3 16h18v3h-3v-1H6v1H3zM5 11h14M7.5 13.5h.01m9 0h.01"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5m0-8h.01"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5 10 17 19 7"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6zM9 12l2 2 4-4"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V4m0 0L8 8m4-4 4 4M5 13v6h14v-6"/></symbol>
+    <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+    <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 3v4m8-4v4"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4zM8 9.5h8M8 12.5h5"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><path d="M3 7h12v10H3zM15 10.5l6-3.5v10l-6-3.5"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M4 12 20 4l-6 16-3-7zM11 13l9-9"/></symbol>
+    <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM18 16l.8 2.2L21 19l-2.2.8L18 22l-.8-2.2L15 19l2.2-.8z"/></symbol>
+</svg>
+
+<main id="main">
+    <div class="container listing">
+
+        <!-- Who proposes it and why: the client opened a personal link, this comes first. -->
+        <section aria-labelledby="proposal-title" class="proposal">
+            <div class="proposal__agent">
+                <span aria-hidden="true" class="proposal__avatar">SN</span>
+                <div>
+                    <h2 class="proposal__title" id="proposal-title">Sandrine, Serge vous propose ce logement</h2>
+                    <p class="proposal__subtitle">Pour votre recherche : appartement 3 chambres à Bonapriso,
+                        jusqu'à 250K FCFA / mois.</p>
+                </div>
+            </div>
+            <!-- Folded by default: the listing comes first, the reasons are a tap away. -->
+            <details class="proposal__why">
+                <summary>Pourquoi ce logement&nbsp;?<svg aria-hidden="true" class="icon proposal__chevron"><use href="#i-chevron-right"/></svg></summary>
+                <ul class="check-list proposal__fit">
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>À Bonapriso, le quartier que vous cherchez</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>240K FCFA / mois, dans votre budget</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>3 chambres, comme demandé</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>Non meublé, comme demandé</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg><span>Disponible le 1<sup>er</sup> décembre 2026, avant votre emménagement</span></li>
+                    <li class="proposal__fit--partial"><svg aria-hidden="true" class="icon"><use href="#i-info"/></svg>Clôturé et avec citerne, mais sans groupe électrogène</li>
+                </ul>
+            </details>
+        </section>
+
+        <!-- The outcome of the client's last answer, in place (proposition.js). -->
+        <div class="proposal-flash" data-proposal-flash hidden role="status" tabindex="-1">
+            <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
+            <p data-proposal-flash-text></p>
+        </div>
+
+        <div class="listing__head">
+            <div class="listing__topline">
+                <p class="listing__badges">
+                    <span class="badge badge--info">À louer</span>
+                    <span class="badge badge--success">
+                        <svg aria-hidden="true" class="icon"><use href="#i-shield"/></svg>Logement audité
+                    </span>
+                    <span class="badge badge--state" data-state-badge hidden></span>
+                </p>
+            </div>
+            <h1>Appartement 3 chambres à Bonapriso</h1>
+            <p class="listing__location">
+                <svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>
+                Bonapriso, Douala · près du rond-point Total Joss
+            </p>
+        </div>
+
+        <section aria-label="Photos du logement" class="gallery">
+            <a class="gallery__item gallery__item--hero" data-photo="0" href="https://picsum.photos/seed/ndopify-m9001-living/1600/1067">
+                <img alt="Grand salon carrelé avec fenêtres sur la cour" height="800"
+                     src="https://picsum.photos/seed/ndopify-m9001-living/1200/800" width="1200">
+            </a>
+            <a class="gallery__item" data-photo="1" href="https://picsum.photos/seed/ndopify-m9001-bedroom/1600/1067">
+                <img alt="Chambre principale avec placard" height="400" loading="lazy"
+                     src="https://picsum.photos/seed/ndopify-m9001-bedroom/600/400" width="600">
+            </a>
+            <a class="gallery__item" data-photo="3" href="https://picsum.photos/seed/ndopify-m9001-kitchen/1600/1067">
+                <img alt="Cuisine avec plan de travail" height="400" loading="lazy"
+                     src="https://picsum.photos/seed/ndopify-m9001-kitchen/600/400" width="600">
+            </a>
+            <a class="gallery__item" data-photo="4" href="https://picsum.photos/seed/ndopify-m9001-bathroom/1600/1067">
+                <img alt="Salle de bains avec douche" height="400" loading="lazy"
+                     src="https://picsum.photos/seed/ndopify-m9001-bathroom/600/400" width="600">
+            </a>
+            <a class="gallery__item" data-photo="5" href="https://picsum.photos/seed/ndopify-m9001-facade/1600/1067">
+                <img alt="Façade de l'immeuble et portail" height="400" loading="lazy"
+                     src="https://picsum.photos/seed/ndopify-m9001-facade/600/400" width="600">
+            </a>
+            <a class="btn btn-outline gallery__all" data-photo="0" href="https://picsum.photos/seed/ndopify-m9001-living/1600/1067">Voir les 6 photos</a>
+        </section>
+
+        <div class="listing__layout">
+            <div class="listing__content">
+
+                <ul aria-label="En bref" class="key-facts">
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-bed"/></svg><strong>3</strong> chambres</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-bath"/></svg><strong>2</strong> salles de bains</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-area"/></svg><strong>110</strong> m²</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-sofa"/></svg>Non meublé</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-car"/></svg><strong>1</strong> parking</li>
+                </ul>
+
+                <div class="audit-note">
+                    <svg aria-hidden="true" class="icon icon--lg"><use href="#i-shield"/></svg>
+                    <div>
+                        <p><strong>Logement audité par Ndopify le 18 octobre 2026.</strong></p>
+                        <p>Serge a visité ce logement : compteurs, photos et position GPS ont été contrôlés sur
+                            place.</p>
+                    </div>
+                </div>
+
+                <section aria-labelledby="description-heading" class="listing__section">
+                    <h2 id="description-heading">À propos de ce logement</h2>
+                    <p>Au 1<sup>er</sup> étage d'une résidence clôturée, cet appartement non meublé offre un grand
+                        salon, trois chambres avec placards, une cuisine et deux salles de bains. Une citerne assure
+                        l'eau pendant les coupures.</p>
+                    <p>La rue est bitumée jusqu'au portail et un gardien surveille la résidence jour et nuit. Les
+                        écoles et commerces de Bonapriso sont à quelques minutes à pied.</p>
+                </section>
+
+                <section aria-labelledby="features-heading" class="listing__section">
+                    <h2 id="features-heading">Caractéristiques</h2>
+                    <dl class="spec-list">
+                        <div><dt>Type de bien</dt><dd>Appartement</dd></div>
+                        <div><dt>Ameublement</dt><dd>Non meublé</dd></div>
+                        <div><dt>Chambres</dt><dd>3</dd></div>
+                        <div><dt>Salles de bains</dt><dd>2</dd></div>
+                        <div><dt>Salons</dt><dd>1</dd></div>
+                        <div><dt>Cuisines</dt><dd>1</dd></div>
+                        <div><dt>Surface</dt><dd>110 m²</dd></div>
+                        <div><dt>Étage</dt><dd>1<sup>er</sup> sur 2</dd></div>
+                        <div><dt>Parkings</dt><dd>1</dd></div>
+                    </dl>
+                </section>
+
+                <section aria-labelledby="amenities-heading" class="listing__section">
+                    <h2 id="amenities-heading">Équipements vérifiés</h2>
+                    <div class="amenities">
+                        <div>
+                            <h3>Eau</h3>
+                            <ul class="check-list">
+                                <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>Compteur d'eau dédié</li>
+                                <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>Citerne</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3>Électricité</h3>
+                            <ul class="check-list">
+                                <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>Compteur électrique dédié</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3>Accès</h3>
+                            <ul class="check-list">
+                                <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>Route bitumée</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3>Sécurité</h3>
+                            <ul class="check-list">
+                                <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>Clôturé et sécurisé</li>
+                                <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>Gardien</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <section aria-labelledby="terms-heading" class="listing__section">
+                    <h2 id="terms-heading">Conditions de location</h2>
+                    <table class="terms-table">
+                        <caption class="visually-hidden">Conditions de location du logement</caption>
+                        <tbody>
+                        <tr><th scope="row">Loyer</th><td>240K FCFA / mois</td></tr>
+                        <tr><th scope="row">Caution</th><td>2 mois (480K FCFA)</td></tr>
+                        <tr><th scope="row">Avance sur loyer</th><td>3 mois (720K FCFA)</td></tr>
+                        <tr><th scope="row">Durée du bail</th><td>12 mois</td></tr>
+                        <tr><th scope="row">Préavis</th><td>1 mois</td></tr>
+                        <tr><th scope="row">Disponible</th><td>À partir du 1<sup>er</sup> décembre 2026</td></tr>
+                        </tbody>
+                    </table>
+                    <p class="terms-note">Aucun paiement en espèces : les visites se règlent avec le Pass Visite par
+                        Mobile Money.</p>
+                </section>
+
+                <section aria-labelledby="location-heading" class="listing__section">
+                    <h2 id="location-heading">Emplacement</h2>
+                    <p>Bonapriso, Douala — près du rond-point Total Joss. L'adresse exacte et l'itinéraire vous sont
+                        communiqués par Serge avant la visite.</p>
+                </section>
+
+                <section aria-labelledby="agent-heading" class="listing__section">
+                    <h2 id="agent-heading">Votre agent</h2>
+                    <div class="agent-card">
+                        <span aria-hidden="true" class="proposal__avatar">SN</span>
+                        <div>
+                            <p class="agent-card__name">Serge Ngono</p>
+                            <p>Démarcheur à Douala depuis 6 ans, il connaît Bonapriso, Akwa et Bonanjo rue par rue.</p>
+                            <a class="btn btn-secondary" href="https://wa.me/237677000111" rel="noopener" target="_blank">
+                                <svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg>Contacter<span class="visually-hidden"> Serge sur WhatsApp</span>
+                            </a>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <!--
+              The client's answer: one block per state (data-answer), the server renders only the current one. The
+              same blocks, short, in the bottom bar below 1024px (data-bar-answer).
+            -->
+            <aside aria-label="Prix et réponse" class="listing__aside">
+                <div class="price-card">
+                    <p class="price-card__price"><strong>240K FCFA</strong> / mois</p>
+                    <ul class="price-card__terms">
+                        <li>Caution : 2 mois</li>
+                        <li>Avance : 3 mois</li>
+                        <li>Disponible le 1<sup>er</sup> décembre 2026</li>
+                    </ul>
+
+                    <div class="answer" data-answer="PENDING">
+                        <p class="answer__question">Ce logement vous intéresse&nbsp;?</p>
+                        <form action="#main" data-accept-form method="post">
+                            <button class="btn btn-primary price-card__cta" type="submit">Ça m'intéresse</button>
+                        </form>
+                        <a class="btn btn-secondary price-card__cta answer__secondary" data-modal-open href="#reject">Pas pour moi</a>
+                        <p class="price-card__hint">Votre réponse est transmise à Serge, votre agent.</p>
+                    </div>
+
+                    <div class="answer" data-answer="ACCEPTED" hidden>
+                        <p class="answer__status answer__status--success">
+                            <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>Ce logement vous intéresse
+                        </p>
+                        <a class="btn btn-primary price-card__cta" data-modal-open href="#visit">
+                            <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Demander une visite
+                        </a>
+                        <p class="price-card__hint">Choisissez un créneau : Serge vous confirme la visite sur
+                            WhatsApp.</p>
+                        <p class="answer__change"><a data-modal-open href="#reject">Finalement, pas pour moi</a></p>
+                    </div>
+
+                    <div class="answer" data-answer="REJECTED" hidden>
+                        <p class="answer__status">Vous avez écarté ce logement.</p>
+                        <p>Serge est prévenu et continue de chercher pour vous : il vous enverra d'autres logements.</p>
+                        <form action="#main" data-accept-form method="post">
+                            <button class="link-button answer__change" type="submit">Ce logement m'intéresse finalement</button>
+                        </form>
+                    </div>
+
+                    <div class="answer" data-answer="UNAVAILABLE" hidden>
+                        <p class="answer__status">Ce logement n'est plus disponible.</p>
+                        <p>Il a été loué ou retiré. Serge continue de chercher pour vous.</p>
+                        <a class="btn btn-secondary price-card__cta" href="https://wa.me/237677000111" rel="noopener" target="_blank">Contacter<span class="visually-hidden"> Serge sur WhatsApp</span></a>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <div class="cta-bar">
+        <p class="cta-bar__price"><strong>240K FCFA</strong> / mois</p>
+        <!--
+          Below 1024px, one button: the two answers are in the #answer popup. Buttons never carry the agent's name
+          (a first name can be long, and a button doesn't wrap): only sentences do, and visually-hidden labels.
+        -->
+        <div class="cta-bar__actions" data-bar-answer="PENDING">
+            <a class="btn btn-primary" data-modal-open href="#answer">Répondre</a>
+        </div>
+        <div class="cta-bar__actions" data-bar-answer="ACCEPTED" hidden>
+            <a class="btn btn-primary" data-modal-open href="#visit">Demander une visite</a>
+        </div>
+        <p class="cta-bar__note" data-bar-answer="REJECTED" hidden>Logement écarté ·
+            <button class="link-button" form="accept-again" type="submit">changer d'avis</button></p>
+        <p class="cta-bar__note" data-bar-answer="UNAVAILABLE" hidden>Plus disponible</p>
+        <form action="#main" data-accept-form hidden id="accept-again" method="post"></form>
+    </div>
+</main>
+
+<!--
+  The answer popup, below 1024px (the bottom bar's "Répondre"): the price card's two answers. "Pas pour moi"
+  opens the #reject popup in its place. Without JavaScript it opens with :target (#answer).
+-->
+<div aria-labelledby="answer-title" class="modal" id="answer">
+    <a aria-hidden="true" class="modal__backdrop" data-modal-close href="#main" tabindex="-1"></a>
+    <div class="modal__panel">
+        <header class="modal__header">
+            <div>
+                <h2 class="modal__title" id="answer-title">Ce logement vous intéresse&nbsp;?</h2>
+                <p class="modal__subtitle">Appartement 3 chambres · Bonapriso<span
+                        class="modal__price">&nbsp;· <strong>240K FCFA</strong> / mois</span></p>
+            </div>
+            <a class="modal__close" data-modal-close href="#main">
+                <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>
+                <span class="visually-hidden">Fermer</span>
+            </a>
+        </header>
+        <div class="modal__body answer-sheet">
+            <form action="#main" data-accept-form method="post">
+                <button class="btn btn-primary answer-sheet__btn" type="submit">Ça m'intéresse</button>
+            </form>
+            <a class="btn btn-secondary answer-sheet__btn" data-modal-open href="#reject">Pas pour moi</a>
+            <p class="answer-sheet__hint">Votre réponse est transmise à Serge, votre agent. Intéressé, vous pourrez
+                ensuite demander une visite.</p>
+        </div>
+    </div>
+</div>
+
+<!--
+  "Pas pour moi" popup: why (the agent learns from it for the next proposals), and an optional comment. Without
+  JavaScript it opens with :target (#reject) and the form posts; the reason is required.
+-->
+<div aria-labelledby="reject-title" class="modal" id="reject">
+    <a aria-hidden="true" class="modal__backdrop" data-modal-close href="#main" tabindex="-1"></a>
+    <div class="modal__panel">
+        <header class="modal__header">
+            <div>
+                <h2 class="modal__title" id="reject-title">Pourquoi pas ce logement&nbsp;?</h2>
+                <p class="modal__subtitle">Votre réponse aide Serge à mieux choisir les prochains.</p>
+            </div>
+            <a class="modal__close" data-modal-close href="#main">
+                <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>
+                <span class="visually-hidden">Fermer</span>
+            </a>
+        </header>
+
+        <form action="#main" class="modal__body interest-form" data-reject-form method="post" novalidate>
+            <fieldset class="field reject-reasons">
+                <legend id="reason-label">La raison principale</legend>
+                <label><input name="reason" required type="radio" value="PRICE">Trop cher</label>
+                <label><input name="reason" required type="radio" value="LOCATION">Le quartier ne me convient pas</label>
+                <label><input name="reason" required type="radio" value="SIZE">Trop petit ou trop grand</label>
+                <label><input name="reason" required type="radio" value="AMENITIES">Il manque des équipements</label>
+                <label><input name="reason" required type="radio" value="AVAILABILITY">Disponible trop tard</label>
+                <label><input name="reason" required type="radio" value="OTHER">Autre raison</label>
+                <span aria-live="polite" class="field-error"></span>
+            </fieldset>
+            <div class="field">
+                <label for="reject-comment">Précisions <span class="field__optional">(facultatif)</span></label>
+                <textarea id="reject-comment" maxlength="500" name="comment" rows="3"></textarea>
+            </div>
+            <button class="btn btn-primary interest-form__submit" type="submit">Envoyer ma réponse</button>
+        </form>
+    </div>
+</div>
+
+<div aria-labelledby="visit-title" class="modal" id="visit">
+    <a aria-hidden="true" class="modal__backdrop" data-modal-close href="#main" tabindex="-1"></a>
+    <div class="modal__panel">
+        <header class="modal__header">
+            <div>
+                <h2 class="modal__title" id="visit-title">Demander une visite</h2>
+                <p class="modal__subtitle">Appartement 3 chambres · Bonapriso<span
+                        class="modal__price">&nbsp;· <strong>240K FCFA</strong> / mois</span></p>
+            </div>
+            <a class="modal__close" data-modal-close href="#main">
+                <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>
+                <span class="visually-hidden">Fermer</span>
+            </a>
+        </header>
+
+        <form action="#visit" class="modal__body interest-form" data-interest-form method="post" novalidate>
+            <div class="interest-form__row">
+                <div class="field">
+                    <label for="first-name">Prénom</label>
+                    <input autocomplete="given-name" id="first-name" name="firstName" required type="text" value="Sandrine">
+                    <span aria-live="polite" class="field-error"></span>
+                </div>
+                <div class="field">
+                    <label for="last-name">Nom</label>
+                    <input autocomplete="family-name" id="last-name" name="lastName" required type="text" value="Eboa">
+                    <span aria-live="polite" class="field-error"></span>
+                </div>
+            </div>
+            <div class="field">
+                <label for="email">E-mail</label>
+                <input autocomplete="email" id="email" name="email" required type="email" value="sandrine.eboa@example.com">
+                <span aria-live="polite" class="field-error"></span>
+            </div>
+            <div class="field">
+                <label for="whatsapp">Numéro WhatsApp</label>
+                <input autocomplete="tel" data-phone-name="whatsappNumber" id="whatsapp" name="whatsappNumber"
+                       required type="tel" value="+237699887766">
+                <span aria-live="polite" class="field-error"></span>
+            </div>
+            <div class="field">
+                <label id="visit-type-label">Type de visite</label>
+                <div aria-labelledby="visit-type-label" class="option-grid option-grid--2" role="radiogroup">
+                    <label><input name="visitType" required type="radio" value="IN_PERSON">
+                        <svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>Sur place</label>
+                    <label><input name="visitType" required type="radio" value="VIDEO">
+                        <svg aria-hidden="true" class="icon"><use href="#i-video"/></svg>En vidéo</label>
+                </div>
+                <span aria-live="polite" class="field-error"></span>
+            </div>
+            <div class="field">
+                <label id="visit-date-label">Jour de la visite</label>
+                <div aria-labelledby="visit-date-label" class="interest-form__days" role="radiogroup">
+                    <label><input name="visitDate" required type="radio" value="2026-10-31">
+                        <span class="day__name">sam.</span><strong>31</strong><span class="day__month">oct.</span></label>
+                    <label><input name="visitDate" required type="radio" value="2026-11-01">
+                        <span class="day__name">dim.</span><strong>1</strong><span class="day__month">nov.</span></label>
+                    <label><input name="visitDate" required type="radio" value="2026-11-02">
+                        <span class="day__name">lun.</span><strong>2</strong><span class="day__month">nov.</span></label>
+                    <label><input name="visitDate" required type="radio" value="2026-11-03">
+                        <span class="day__name">mar.</span><strong>3</strong><span class="day__month">nov.</span></label>
+                    <label><input name="visitDate" required type="radio" value="2026-11-04">
+                        <span class="day__name">mer.</span><strong>4</strong><span class="day__month">nov.</span></label>
+                    <label><input name="visitDate" required type="radio" value="2026-11-05">
+                        <span class="day__name">jeu.</span><strong>5</strong><span class="day__month">nov.</span></label>
+                    <label><input name="visitDate" required type="radio" value="2026-11-06">
+                        <span class="day__name">ven.</span><strong>6</strong><span class="day__month">nov.</span></label>
+                    <label><input name="visitDate" required type="radio" value="2026-11-07">
+                        <span class="day__name">sam.</span><strong>7</strong><span class="day__month">nov.</span></label>
+                </div>
+                <span aria-live="polite" class="field-error"></span>
+            </div>
+            <div class="field">
+                <label for="visit-time">Heure de la visite</label>
+                <select id="visit-time" name="visitTime" required>
+                    <option value="">Choisissez une heure</option>
+                    <option value="10:00">10h00</option>
+                    <option value="10:30">10h30</option>
+                    <option value="11:00">11h00</option>
+                    <option value="11:30">11h30</option>
+                    <option value="12:00">12h00</option>
+                    <option value="12:30">12h30</option>
+                    <option value="13:00">13h00</option>
+                    <option value="13:30">13h30</option>
+                    <option value="14:00">14h00</option>
+                    <option value="14:30">14h30</option>
+                    <option value="15:00">15h00</option>
+                    <option value="15:30">15h30</option>
+                    <option value="16:00">16h00</option>
+                    <option value="16:30">16h30</option>
+                    <option value="17:00">17h00</option>
+                    <option value="17:30">17h30</option>
+                    <option value="18:00">18h00</option>
+                    <option value="18:30">18h30</option>
+                    <option value="19:00">19h00</option>
+                    <option value="19:30">19h30</option>
+                    <option value="20:00">20h00</option>
+                    <option value="20:30">20h30</option>
+                    <option value="21:00">21h00</option>
+                </select>
+                <span aria-live="polite" class="field-error"></span>
+            </div>
+            <button class="btn btn-primary interest-form__submit" type="submit">Envoyer la demande</button>
+            <p class="interest-form__privacy">Vos coordonnées sont celles de votre mandat. Serge vous confirme le créneau
+                sur WhatsApp.</p>
+        </form>
+
+        <div class="modal__body interest-done" data-interest-done hidden tabindex="-1">
+            <svg aria-hidden="true" class="icon icon--lg"><use href="#i-check"/></svg>
+            <h3>Merci, votre demande est envoyée</h3>
+            <p data-interest-done-text>Serge vous recontacte très vite sur WhatsApp pour confirmer la visite.</p>
+            <p>Les visites se règlent avec le Pass Visite par Mobile Money : aucun paiement en espèces.</p>
+            <a class="btn btn-secondary" data-modal-close href="#main">Fermer</a>
+        </div>
+    </div>
+</div>
+
+<script id="listing-photos" type="application/json">
+    [
+        {"src": "https://picsum.photos/seed/ndopify-m9001-living/1600/1067", "alt": "Grand salon carrelé avec fenêtres sur la cour"},
+        {"src": "https://picsum.photos/seed/ndopify-m9001-bedroom/1600/1067", "alt": "Chambre principale avec placard"},
+        {"src": "https://picsum.photos/seed/ndopify-m9001-bedroom2/1600/1067", "alt": "Deuxième chambre"},
+        {"src": "https://picsum.photos/seed/ndopify-m9001-kitchen/1600/1067", "alt": "Cuisine avec plan de travail"},
+        {"src": "https://picsum.photos/seed/ndopify-m9001-bathroom/1600/1067", "alt": "Salle de bains avec douche"},
+        {"src": "https://picsum.photos/seed/ndopify-m9001-facade/1600/1067", "alt": "Façade de l'immeuble et portail"}
+    ]
+</script>
+<div aria-label="Photos du logement" aria-modal="true" class="lightbox" data-lightbox hidden role="dialog">
+    <div class="lightbox__bar">
+        <p aria-live="polite" class="lightbox__counter" data-lightbox-counter></p>
+        <button class="lightbox__btn" data-lightbox-close type="button">
+            <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>
+            <span class="visually-hidden">Fermer les photos</span>
+        </button>
+    </div>
+    <ul class="lightbox__track" data-lightbox-track></ul>
+    <button class="lightbox__btn lightbox__nav lightbox__nav--prev" data-lightbox-prev type="button">
+        <svg aria-hidden="true" class="icon"><use href="#i-chevron-left"/></svg>
+        <span class="visually-hidden">Photo précédente</span>
+    </button>
+    <button class="lightbox__btn lightbox__nav lightbox__nav--next" data-lightbox-next type="button">
+        <svg aria-hidden="true" class="icon"><use href="#i-chevron-right"/></svg>
+        <span class="visually-hidden">Photo suivante</span>
+    </button>
+</div>
+
+<footer class="site-footer">
+    <div class="container site-footer__inner">
+        <img alt="Ndopify" height="32" src="assets/images/icon.png" width="32">
+        <nav aria-label="Navigation du pied de page">
+            <ul>
+                <li><a href="index.html">Locataires</a></li>
+                <li><a href="bailleur.html">Propriétaires</a></li>
+                <li><a href="agent.html">Agents</a></li>
+            </ul>
+        </nav>
+        <small>© 2026 Ndopify. Logements vérifiés. Locations fiables.</small>
+    </div>
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/js/intlTelInput.min.js"></script>
+<script src="assets/js/main.js"></script>
+<script src="assets/js/annonce.js"></script>
+<script src="assets/js/proposition.js"></script>
+</body>
+</html>

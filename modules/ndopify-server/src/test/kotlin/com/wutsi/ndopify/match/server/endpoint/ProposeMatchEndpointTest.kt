@@ -34,7 +34,7 @@ class ProposeMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals("Ray Sponsible <ray.sponsible@gmail.com>", message.allRecipients.single().toString())
         assertEquals("Ndopify: Kim Possible vous propose un bien à Bastos (Yaounde)", message.subject)
         val body = message.content.toString()
-        assertTrue(body.contains("https://www.ndopify.com/yaounde/bastos/listing/101/nice-apartment"))
+        assertTrue(body.contains("https://www.ndopify.com/match/1"))
         assertTrue(body.contains("Nice apartment"))
     }
 

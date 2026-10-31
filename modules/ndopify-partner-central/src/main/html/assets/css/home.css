@@ -745,3 +745,19 @@ h1.alert__title {
 .matches__dismissed {
     font-size: var(--step-hint);
 }
+
+/* The listings already sent to the client, and what it answered */
+.mandate-card__proposals {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--step-hint);
+}
+
+.mandate-card__proposals .icon {
+    flex: none;
+}
+
+.match__answer {
+    font-size: var(--step-hint);
+}

@@ -18,8 +18,8 @@
                     Bonjour <strong>{{recipient_name}}</strong>,
                 </mj-text>
                 <mj-text>
-                    Votre agent, <strong>{{agent_full_name}}</strong>, a trouvé un bien qui correspond à votre
-                    recherche :
+                    <strong>{{agent_full_name}}</strong>, votre agent, a sélectionné pour vous un bien qui correspond
+                    à votre recherche&#160;:
                 </mj-text>
 
                 <!-- In an mj-text: MJML drops raw HTML outside of it -->
@@ -29,23 +29,37 @@
                             <b>{{listing_title}}</b>
                         </li>
                         <li>
-                            <b>{{price_label}}</b>: {{price}}
+                            <b>{{price_label}}</b>&#160;: {{price}}
                         </li>
                     </ul>
                 </mj-text>
 
+                <!-- With the match's page: the customer answers there. Without it: by replying to the agent. -->
                 {{#listing_url}}
+                <mj-text>
+                    Découvrez ses photos et tous ses détails, puis dites-nous s'il vous intéresse. Si c'est le cas,
+                    vous pourrez demander une visite dans la foulée.
+                </mj-text>
+
                 <!-- Button with class for CSS injection -->
                 <mj-spacer/>
                 <mj-button href="{{listing_url}}" css-class="btn-primary" align="center">
-                    Voir le bien
+                    Voir le bien et répondre
                 </mj-button>
                 <mj-spacer/>
-                {{/listing_url}}
 
                 <mj-text>
-                    Dites à votre agent si ce bien vous intéresse : il organisera la visite avec vous.
+                    Il ne vous convient pas&#160;? Dites-le aussi&#160;: votre agent en tiendra compte pour ses
+                    prochaines propositions.
                 </mj-text>
+                {{/listing_url}}
+                {{^listing_url}}
+                <mj-text>
+                    Ce bien vous intéresse&#160;? Répondez à votre agent&#160;: il organisera la visite avec vous.
+                    S'il ne vous convient pas, dites-le-lui aussi, il en tiendra compte pour ses prochaines
+                    propositions.
+                </mj-text>
+                {{/listing_url}}
 
                 <!-- Sign-off -->
                 <mj-spacer/>

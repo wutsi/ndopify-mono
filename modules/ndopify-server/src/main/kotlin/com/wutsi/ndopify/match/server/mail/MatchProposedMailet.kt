@@ -2,21 +2,22 @@ package com.wutsi.ndopify.match.server.mail
 
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
-import com.wutsi.ndopify.listing.server.mail.ListingUrls
 import com.wutsi.ndopify.mandate.server.mail.MandateMailLabels
 import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.Receipient
+import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantFormatter
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.springframework.stereotype.Service
 
 /**
- * Sends the customer of a search the listing its agent proposes: title, price and a link to its page on the public
- * portal (none without the tenant's `publicPortalUrl`, or the listing's `url`).
+ * Sends the customer of a search the listing its agent proposes: title, price and a link to the proposal's page on
+ * the public portal, `{publicPortalUrl}/match/{matchId}`, where the customer accepts or rejects it (none without
+ * the tenant's `publicPortalUrl`).
  */
 @Service
 class MatchProposedMailet(
@@ -59,10 +60,15 @@ class MatchProposedMailet(
                             listing.pricePeriodicityType,
                             TenantFormatter(tenant),
                         ),
-                        "listing_url" to ListingUrls.publicUrl(tenant, listing),
+                        "listing_url" to proposalUrl(tenant, match),
                     ),
                 ),
             ),
         )
+    }
+
+    private fun proposalUrl(tenant: TenantEntity, match: MatchEntity): String? {
+        val baseUrl = tenant.publicPortalUrl ?: return null
+        return baseUrl.removeSuffix("/") + "/match/" + match.id
     }
 }
