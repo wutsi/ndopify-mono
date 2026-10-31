@@ -60,9 +60,12 @@ internal object MandateMailLabels {
     }
 
     // Ex: 150 000 FCFA / mois
-    fun budget(mandate: MandateEntity, formatter: TenantFormatter): String {
-        val amount = formatter.money(mandate.price, mandate.currencyCode)
-        val periodicity = PERIODICITIES[mandate.pricePeriodicityType]?.let { " / $it" } ?: ""
-        return "$amount$periodicity"
+    fun budget(mandate: MandateEntity, formatter: TenantFormatter): String =
+        price(mandate.price, mandate.currencyCode, mandate.pricePeriodicityType, formatter)
+
+    // Ex: 150 000 FCFA / mois, or 25 000 000 FCFA for a sale
+    fun price(amount: Long, currencyCode: String, periodicity: PeriodicityType?, formatter: TenantFormatter): String {
+        val suffix = PERIODICITIES[periodicity]?.let { " / $it" } ?: ""
+        return "${formatter.money(amount, currencyCode)}$suffix"
     }
 }

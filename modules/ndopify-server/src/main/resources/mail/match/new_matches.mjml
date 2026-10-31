@@ -1,0 +1,64 @@
+<mjml>
+    <mj-head>
+        <mj-style inline="inline">
+            {{__css__}}
+        </mj-style>
+    </mj-head>
+    <mj-body css-class="body">
+        <mj-section css-class="main-content">
+            <mj-column>
+                <!-- Logo -->
+                <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
+
+                <!-- Divider with class for CSS injection -->
+                <mj-divider css-class="divider"/>
+
+                <!-- Body Text -->
+                <mj-text>
+                    Bonjour <strong>{{recipient_name}}</strong>,
+                </mj-text>
+                <mj-text>
+                    Des biens de votre portefeuille correspondent aux recherches de vos clients :
+                </mj-text>
+
+                {{#mandates}}
+                <mj-text font-weight="bold">
+                    {{customer_name}} — {{listing_type}}{{#property_type}} - {{property_type}}{{/property_type}} à {{place}}
+                </mj-text>
+                <!-- In an mj-text: MJML drops raw HTML outside of it -->
+                <mj-text>
+                    <ul>
+                        {{#listings}}
+                        <li>
+                            <b>{{title}}</b> — {{price}} ({{score}} %)
+                        </li>
+                        {{/listings}}
+                    </ul>
+                    {{#more}}
+                    et {{more}} autre(s) bien(s)
+                    {{/more}}
+                </mj-text>
+                {{#mandate_url}}
+                <!-- Button with class for CSS injection -->
+                <mj-button href="{{mandate_url}}" css-class="btn-primary" align="center">
+                    Voir le mandat
+                </mj-button>
+                {{/mandate_url}}
+                <mj-spacer/>
+                {{/mandates}}
+
+                <mj-text>
+                    Proposez-les à vos clients et organisez les visites.
+                </mj-text>
+
+                <!-- Sign-off -->
+                <mj-spacer/>
+                <mj-text>
+                    Cordialement,
+                    <br/>
+                    L'équipe {{tenant_name}}
+                </mj-text>
+            </mj-column>
+        </mj-section>
+    </mj-body>
+</mjml>
