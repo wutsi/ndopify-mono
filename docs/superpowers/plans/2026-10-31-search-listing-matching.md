@@ -35,7 +35,8 @@ In: the algorithm, `T_MATCH`, the triggers, `GET /v1/matches`, `GET /v1/matches/
 `POST /v1/matches/{id}/dismiss`, `POST /v1/matches/run` (ops).
 
 Out, for the next plans: the agent alert (e-mail, `notifiedAt`: done in `2026-10-31-match-agent-alert.md`), proposing to the customer and the customer's
-accept / reject (statuses `PROPOSED`, `ACCEPTED`, `REJECTED`, the public-portal access), re-proposing after a price
+accept / reject (statuses `PROPOSED`, `ACCEPTED`, `REJECTED`: done in `2026-10-31-match-proposal.md`; the public-portal
+access), re-proposing after a price
 drop (needs a price change on a PUBLISHED listing, impossible today: `ListingService.update` is DRAFT only),
 visits, the Partner Central UI. The design below already leaves room for them: the matcher only ever creates,
 re-scores or deletes `ACTIVE` rows.
