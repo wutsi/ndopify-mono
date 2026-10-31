@@ -66,6 +66,7 @@ object ErrorCode {
     val LISTING_VERSION_CONFLICT = "$PREFIX:listing:version-conflict"
     val LISTING_NOT_DRAFT = "$PREFIX:listing:not-draft"
     val LISTING_NOT_VERIFIED = "$PREFIX:listing:not-verified"
+    val LISTING_NOT_PUBLISHED = "$PREFIX:listing:not-published"
     val LISTING_INCOMPLETE = "$PREFIX:listing:incomplete"
     val LISTING_IMAGE_NOT_FOUND = "$PREFIX:listing-image:not-found"
     val LISTING_NOT_ENOUGH_IMAGES = "$PREFIX:listing:not-enough-images"
@@ -88,6 +89,7 @@ object ErrorCode {
 
     val MATCH_NOT_FOUND = "$PREFIX:match:not-found"
     val MATCH_NOT_ACTIVE = "$PREFIX:match:not-active"
+    val MATCH_NOT_PROPOSED = "$PREFIX:match:not-proposed"
 
     val PARTY_NOT_FOUND = "$PREFIX:party:not-found"
     val PARTY_EMAIL_ALREADY_EXISTS = "$PREFIX:party:email-already-exists"
