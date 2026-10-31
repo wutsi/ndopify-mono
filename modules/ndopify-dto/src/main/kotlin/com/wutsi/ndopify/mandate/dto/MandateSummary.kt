@@ -1,6 +1,5 @@
 package com.wutsi.ndopify.mandate.dto
 
-import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
@@ -11,8 +10,9 @@ import java.time.LocalDate
 import java.util.Date
 
 /**
- * A mandate in a search: what a card shows (criteria, amenities, moving date, and its contract's dates), without its
- * terms nor the customer's comments, which only [Mandate] has.
+ * A mandate in a search: what a card shows (criteria, amenities, moving date), without its terms nor the customer's
+ * comments, which only [Mandate] has. Its contract is only referenced ([contractId]): a client needing the contract's
+ * dates searches the contracts by id, in one call.
  */
 data class MandateSummary(
     val id: Long = -1,
@@ -52,7 +52,7 @@ data class MandateSummary(
     val movingPeriod: MovingPeriod = MovingPeriod.UNKNOWN,
     val availableFrom: LocalDate? = null,
 
-    val contract: ContractSummary? = null, // The mandate's contract, if any (signature deadline, validity)
+    val contractId: String? = null,
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
 )

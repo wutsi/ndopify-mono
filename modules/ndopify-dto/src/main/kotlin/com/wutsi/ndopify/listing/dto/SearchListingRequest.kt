@@ -4,7 +4,7 @@ import org.springframework.web.bind.annotation.BindParam
 import java.time.LocalDate
 
 data class SearchListingRequest(
-    @param:BindParam("mandate-id") val mandateId: Long? = null,
+    @param:BindParam("mandate-id") val mandateIds: List<Long> = emptyList(),
     @param:BindParam("agent-id") val agentId: Long? = null,
     @param:BindParam("property-category") val propertyCategory: PropertyCategory? = null,
     @param:BindParam("listing-type") val listingType: ListingType? = null,
