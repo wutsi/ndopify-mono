@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.listing.dto
 
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import java.time.LocalDate
 import java.util.Date
 
 data class ListingSummary(
@@ -25,6 +26,7 @@ data class ListingSummary(
     val price: Long = -1,
     val currencyCode: String = "",
     val pricePeriodicityType: PeriodicityType = PeriodicityType.UNKNOWN,
+    val availableFrom: LocalDate? = null,
 
     val title: String? = null,
     val summary: String? = null,

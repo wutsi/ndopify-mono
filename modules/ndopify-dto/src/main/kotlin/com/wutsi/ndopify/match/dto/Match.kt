@@ -15,7 +15,11 @@ data class Match(
     val amenitiesScore: Double = 0.0,
     val availabilityScore: Double = 0.0,
     val furnitureScore: Double = 0.0,
+    // From the listing's neighbourhood to the nearest searched one: 0 inside, null when not nearby or none searched
+    val distanceKm: Double? = null,
+    val missingAmenities: List<String> = emptyList(), // Searched but not on the listing, by field name (ex: waterTank)
     val listingPrice: Long = -1, // When last scored, or when dismissed, proposed or rejected
+    val rejectionReasonCode: MatchRejectionReason? = null,
     val rejectionReason: String? = null,
 
     val proposedAt: Date? = null,
