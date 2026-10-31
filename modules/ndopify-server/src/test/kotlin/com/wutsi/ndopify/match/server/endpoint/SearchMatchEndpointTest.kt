@@ -20,7 +20,7 @@ class SearchMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(HttpStatus.OK, response.statusCode)
         val matches = response.body!!.matches
         assertEquals(listOf(1L, 2L), matches.map { it.id }) // 3: its listing is rented   4: dismissed
-        assertEquals(listOf(101L, 102L), matches.map { it.listing.id })
+        assertEquals(listOf(101L, 102L), matches.map { it.listingId })
         assertTrue(matches.all { it.status == MatchStatus.ACTIVE && it.mandateId == 1L })
         assertEquals(0.9, matches[0].score)
     }

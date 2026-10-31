@@ -30,7 +30,7 @@ class RunMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(3, response.body!!.count)
 
         val matches = rest.getForEntity("/v1/matches?mandate-id=1", SearchMatchResponse::class.java).body!!.matches
-        assertEquals(listOf("A", "C", "B"), matches.map { it.listing.title })
+        assertEquals(listOf(101L, 103L, 102L), matches.map { it.listingId }) // A, C, B
         assertEquals(0.95, matches[0].score, 0.005)
         assertEquals(0.745, matches[1].score, 0.005)
         assertEquals(0.58, matches[2].score, 0.01)

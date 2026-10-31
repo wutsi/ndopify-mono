@@ -1,12 +1,11 @@
 package com.wutsi.ndopify.match.dto
 
-import com.wutsi.ndopify.listing.dto.ListingSummary
 import java.util.Date
 
 data class Match(
     val id: Long = -1,
     val mandateId: Long = -1,
-    val listing: ListingSummary = ListingSummary(),
+    val listingId: Long = -1,
     val status: MatchStatus = MatchStatus.UNKNOWN,
 
     val score: Double = 0.0,

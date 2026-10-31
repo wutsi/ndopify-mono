@@ -1,19 +1,16 @@
 package com.wutsi.ndopify.match.server.mapper
 
-import com.wutsi.ndopify.listing.server.mapper.ListingMapper
 import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.server.domain.MatchEntity
 import org.springframework.stereotype.Service
 
 @Service
-class MatchMapper(
-    private val listingMapper: ListingMapper,
-) {
+class MatchMapper {
     fun toMatch(entity: MatchEntity): Match {
         return Match(
             id = entity.id ?: -1,
             mandateId = entity.mandate.id ?: -1,
-            listing = listingMapper.toListingSummary(entity.listing),
+            listingId = entity.listing.id ?: -1,
             status = entity.status,
             score = entity.score,
             neighborhoodScore = entity.neighborhoodScore,

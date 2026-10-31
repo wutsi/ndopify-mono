@@ -3,7 +3,6 @@ package com.wutsi.ndopify.match.server.endpoint
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
-import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.match.dto.GetMatchResponse
 import com.wutsi.ndopify.match.dto.MatchStatus
 import org.springframework.http.HttpStatus
@@ -29,9 +28,7 @@ class GetMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(0.5, match.amenitiesScore)
         assertEquals(1.0, match.availabilityScore)
         assertEquals(1.0, match.furnitureScore)
-        assertEquals(101L, match.listing.id)
-        assertEquals("Nice apartment", match.listing.title)
-        assertEquals(ListingStatus.PUBLISHED, match.listing.status)
+        assertEquals(101L, match.listingId)
     }
 
     @Test
