@@ -50,6 +50,9 @@ data class MatchEntity(
     // propose again a match turned down
     val listingPrice: Long = -1,
 
+    // When the agent was e-mailed about it (MatchJobs.notifyAgents): null until then, kept by a re-score
+    val notifiedAt: Date? = null,
+
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
 

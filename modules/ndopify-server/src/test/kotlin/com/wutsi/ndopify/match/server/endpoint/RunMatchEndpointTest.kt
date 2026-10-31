@@ -10,9 +10,11 @@ import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 /** The worked example of the plan: A, C and B match, in that order; D, E, agent 30's and the customer's own don't. */
 @Sql(value = ["/db/test/clean.sql", "/db/test/match/RunMatchEndpoint.sql"])
@@ -21,6 +23,9 @@ class RunMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
     @Autowired
     private lateinit var service: MatchService
+
+    @Autowired
+    private lateinit var jdbc: JdbcTemplate
 
     @Test
     fun run() {
@@ -44,6 +49,25 @@ class RunMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(3, response.body!!.count)
         val matches = rest.getForEntity("/v1/matches?mandate-id=1", SearchMatchResponse::class.java).body!!.matches
         assertEquals(3, matches.size)
+    }
+
+    @Test
+    fun `re-score keeps notifiedAt`() {
+        // A was matched, and the agent told, on a previous run
+        jdbc.update(
+            "INSERT INTO T_MATCH(tenant_id, mandate_id, listing_id, agent_id, status, score, listing_price, notified_at) " +
+                "VALUES (1, 1, 101, 20, 'ACTIVE', 0.9, 240000, '2026-10-01 10:00:00')"
+        )
+
+        rest.postForEntity("/v1/matches/run?mandate-id=1", null, RunMatchResponse::class.java)
+
+        // Read with SQL rather than the repository, whose queries are filtered by the tenant
+        val notifiedAt = jdbc.queryForList(
+            "SELECT listing_id, DATE_FORMAT(notified_at, '%Y-%m-%d %H:%i') AS notified_at FROM T_MATCH WHERE mandate_id=1"
+        ).associate { row -> (row["listing_id"] as Number).toLong() to row["notified_at"] }
+        assertEquals("2026-10-01 10:00", notifiedAt[101L]) // A: re-scored, the agent was already told
+        assertNull(notifiedAt[102L]) // B and C: new
+        assertNull(notifiedAt[103L])
     }
 
     @Test
