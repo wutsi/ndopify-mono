@@ -18,6 +18,7 @@ import com.wutsi.ndopify.mandate.dto.AssignmentStatus
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.party.dto.IdentificationStatus
 import com.wutsi.ndopify.party.dto.IdentificationType
 import com.wutsi.ndopify.party.dto.KycImageType
@@ -95,6 +96,10 @@ class MandateStatusConverter : EnumConverter<MandateStatus>(MandateStatus::class
 
 @Converter(autoApply = true)
 class MandateTypeConverter : EnumConverter<MandateType>(MandateType::class.java, MandateType.UNKNOWN)
+
+// match
+@Converter(autoApply = true)
+class MatchStatusConverter : EnumConverter<MatchStatus>(MatchStatus::class.java, MatchStatus.UNKNOWN)
 
 // party
 @Converter(autoApply = true)

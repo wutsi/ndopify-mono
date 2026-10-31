@@ -276,6 +276,20 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   link to `{publicPortalUrl}{url}` (`mail/listing/published_customer.mjml` / `published_agent.mjml`; no link without
   either). `RENTED`, `SOLD`, `EXPIRED`, `CANCELLED` aren't set by any code yet.
   Tenant-scoped.
+- **match** — the listings of an agent's inventory matching its SEARCH mandates (`MatchEntity`, `T_MATCH`, `V9_0`,
+  one row per (mandate, listing), `@Version`-ed), see `docs/superpowers/plans/2026-10-31-search-listing-matching.md`
+  for the algorithm. Depends on `mandate` and `listing`, never the reverse: `MatchEventListener` (async, after commit)
+  runs `MatchService.matchMandate` on `MandateApprovedEvent` and `matchListing` on `ListingPublishedEvent`. Only an
+  APPROVED SEARCH mandate with an agent is matched, against that agent's PUBLISHED listings; `Matcher` (pure, unit
+  tested case by case in `MatcherTest`) rules a pair out (the customer's own property, another type / category / city
+  / property type, currency or periodicity, over budget + `price-tolerance`) or scores it (neighbourhood, price, rooms,
+  amenities, availability, furniture); under `min-score` it isn't stored. `ACTIVE` rows are created, re-scored or
+  deleted; a `DISMISSED` one is never touched. The run isn't one transaction (each save is its own, a conflict skips
+  the pair), so it reads the mandates with their neighbourhoods (`@EntityGraph`). `/v1/matches`: search
+  (`mandate-id`, `status` default ACTIVE, best score first, only while the mandate is APPROVED and the listing
+  PUBLISHED), get, `POST /{id}/dismiss` (409 `MATCH_NOT_ACTIVE`), access as the mandate's (`MandateAccessService`:
+  404, then 403 `MANDATE_ACCESS_DENIED`); `POST /run?mandate-id=` (`@OpsEndpoint`) re-runs a mandate. Config:
+  `ndopify.match.*`. Tenant-scoped.
 - **error** — shared exception types (`WutsiException` subclasses: `BadRequestException`, `NotFoundException`,
   `ConflictException`, `ForbiddenException`, `UnauthorizedException`, `InternalErrorException`) and a global
   `ControllerErrorHandler`.
@@ -300,12 +314,12 @@ request-approval's step (3) (`ContractService.findByIdForUpdate`). The reverse o
 `ControllerErrorHandler` answers a lock not acquired (`PessimisticLockingFailureException`: deadlock, lock wait timeout)
 with 409 `HTTP_VERSION_CONFLICT` rather than 500.
 
-**Optimistic locking**: `MandateEntity`, `AgentEntity`, `ContractEntity`, `KycCaseEntity`, `AssignmentEntity` and
-`ListingEntity` are `@Version`-ed (`version` column, `V7_0` / `V7_1` / `V8_0`; a listing's conflict is
+**Optimistic locking**: `MandateEntity`, `AgentEntity`, `ContractEntity`, `KycCaseEntity`, `AssignmentEntity`,
+`ListingEntity` and `MatchEntity` are `@Version`-ed (`version` column, `V7_0` / `V7_1` / `V8_0`; a listing's conflict is
 `LISTING_VERSION_CONFLICT`, and `UpdateListingRequest.version` is checked like the mandate's). Hibernate checks it on flush (`UPDATE ... WHERE version = ?`), so it only
 catches concurrent transactions; `ControllerErrorHandler` turns the `ObjectOptimisticLockingFailureException` into a
 409 named after the entity (`MANDATE_VERSION_CONFLICT`, `AGENT_VERSION_CONFLICT`, `CONTRACT_VERSION_CONFLICT`,
-`KYC_CASE_VERSION_CONFLICT`; `ASSIGNMENT_NOT_PENDING` for an offer). Across requests, `Mandate` / `Agent` expose
+`KYC_CASE_VERSION_CONFLICT`; `ASSIGNMENT_NOT_PENDING` for an offer, `MATCH_NOT_ACTIVE` for a match). Across requests, `Mandate` / `Agent` expose
 `version`, and `UpdateMandateRequest.version` / `UpdateAgentRequest.version` (null: not checked) must still be the
 entity's, else the same 409 before anything is saved. With `@Version`, Spring Data treats an entity whose `version` is
 null as new: update with `copy()` of a loaded entity, never by building one with an existing id. Any write bumps the
@@ -358,7 +372,7 @@ Tenancy is enforced via **Hibernate's built-in multi-tenancy mechanism**, not ha
   query against it — no `CriteriaBuilder` predicate, repository override, or service-level check needed. Today
   that's `PartyEntity`, `PaymentMethodEntity`, `IdentificationEntity`, `IdentificationImageEntity`, `KycCaseEntity`,
   `AgentEntity`, `CustomerEntity`, `MandateEntity`, `AssignmentEntity`, `ContractEntity`, `ContractPartyEntity`,
-  `MembershipEntity`, `ListingEntity`, `ListingImageEntity` and `ListingSectionEntity`. Leave the field `null` on construction (see the comment on any of them) so Hibernate's
+  `MembershipEntity`, `ListingEntity`, `ListingImageEntity`, `ListingSectionEntity` and `MatchEntity`. Leave the field `null` on construction (see the comment on any of them) so Hibernate's
   `TenantIdGeneration` populates it from `TenantContext` on insert — setting a non-null value yourself makes
   Hibernate treat it as caller-assigned and throw if it doesn't match the resolved tenant.
 - `KycVerificationEntity` is deliberately **not** `@TenantId`-annotated: it's never loaded by its own id anywhere in

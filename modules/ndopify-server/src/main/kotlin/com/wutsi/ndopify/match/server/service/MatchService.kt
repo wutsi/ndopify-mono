@@ -2,6 +2,7 @@ package com.wutsi.ndopify.match.server.service
 
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.server.dao.ListingRepository
@@ -11,6 +12,7 @@ import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.match.dto.MatchStatus
+import com.wutsi.ndopify.match.dto.SearchMatchRequest
 import com.wutsi.ndopify.match.server.dao.MatchRepository
 import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.platform.logger.KVLogger
@@ -18,7 +20,11 @@ import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchNearestLocationRequest
 import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
+import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
+import jakarta.persistence.criteria.Predicate
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.data.domain.Sort
+import org.springframework.data.jpa.domain.Specification
 import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.stereotype.Service
 import java.time.Clock
@@ -50,6 +56,42 @@ class MatchService(
     @param:Value("\${ndopify.match.nearby-radius-km}") private val nearbyRadiusKm: Double,
     @param:Value("\${ndopify.match.nearby-max-neighborhoods}") private val nearbyMaxNeighborhoods: Int,
 ) {
+    fun findById(id: Long): MatchEntity {
+        return dao.findById(id).orElse(null)
+            ?: throw NotFoundException(error = Error(code = ErrorCode.MATCH_NOT_FOUND))
+    }
+
+    /**
+     * The matches of a mandate, in [SearchMatchRequest.statuses] (default: ACTIVE), best score first. Only while the
+     * mandate is APPROVED and the listing PUBLISHED: a closed search, or a rented listing, keeps its rows but isn't
+     * listed.
+     */
+    fun search(request: SearchMatchRequest): List<MatchEntity> {
+        val statuses = request.statuses.ifEmpty { listOf(MatchStatus.ACTIVE) }
+        val spec = Specification<MatchEntity> { root, _, cb ->
+            val mandate = root.get<MandateEntity>("mandate")
+            val predicates = mutableListOf<Predicate>(
+                cb.equal(mandate.get<Long>("id"), request.mandateId),
+                cb.equal(mandate.get<MandateStatus>("status"), MandateStatus.APPROVED),
+                cb.equal(root.get<ListingEntity>("listing").get<ListingStatus>("status"), ListingStatus.PUBLISHED),
+                root.get<Any>("status").`in`(statuses),
+            )
+            cb.and(*predicates.toTypedArray())
+        }
+
+        val sort = Sort.by(Sort.Order.desc("score"), Sort.Order.asc("id"))
+        return dao.findAll(spec, OffsetLimitPageRequest(request.offset, request.limit, sort)).content
+    }
+
+    /** Hides an ACTIVE match from the agent: it's never re-scored nor re-created. 409 MATCH_NOT_ACTIVE otherwise. */
+    fun dismiss(id: Long): MatchEntity {
+        val match = findById(id)
+        if (match.status != MatchStatus.ACTIVE) {
+            throw ConflictException(error = Error(code = ErrorCode.MATCH_NOT_ACTIVE))
+        }
+        return dao.save(match.copy(status = MatchStatus.DISMISSED, modifiedAt = Date(clock.millis())))
+    }
+
     /** Matches a search mandate against its agent's inventory. Returns the number of ACTIVE matches stored. */
     fun matchMandate(mandateId: Long): Int {
         // With its neighbourhoods: not in a transaction, the lazy collection couldn't be read later

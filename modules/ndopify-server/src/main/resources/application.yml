@@ -160,6 +160,12 @@ springdoc:
                 - /v1/assignments
                 - /v1/assignments/**
 
+        -   group: match
+            display-name: Match API
+            paths-to-match:
+                - /v1/matches
+                - /v1/matches/**
+
         -   group: party
             display-name: Party API
             paths-to-match:
