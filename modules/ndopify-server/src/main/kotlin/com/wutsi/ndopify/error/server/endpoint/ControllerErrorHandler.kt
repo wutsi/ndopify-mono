@@ -15,6 +15,7 @@ import com.wutsi.ndopify.error.server.exception.WutsiException
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.mandate.server.domain.AssignmentEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.party.server.domain.KycCaseEntity
 import com.wutsi.ndopify.platform.logger.KVLogger
 import jakarta.servlet.http.HttpServletRequest
@@ -81,6 +82,7 @@ class ControllerErrorHandler(private val logger: KVLogger) {
                 AssignmentEntity::class.java.name -> ErrorCode.ASSIGNMENT_NOT_PENDING
                 MandateEntity::class.java.name -> ErrorCode.MANDATE_VERSION_CONFLICT
                 ListingEntity::class.java.name -> ErrorCode.LISTING_VERSION_CONFLICT
+                MatchEntity::class.java.name -> ErrorCode.MATCH_NOT_ACTIVE
                 AgentEntity::class.java.name -> ErrorCode.AGENT_VERSION_CONFLICT
                 ContractEntity::class.java.name -> ErrorCode.CONTRACT_VERSION_CONFLICT
                 KycCaseEntity::class.java.name -> ErrorCode.KYC_CASE_VERSION_CONFLICT

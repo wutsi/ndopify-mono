@@ -86,6 +86,9 @@ object ErrorCode {
     val MANDATE_ALREADY_CLOSED = "$PREFIX:mandate:already-closed"
     val MANDATE_VERSION_CONFLICT = "$PREFIX:mandate:version-conflict"
 
+    val MATCH_NOT_FOUND = "$PREFIX:match:not-found"
+    val MATCH_NOT_ACTIVE = "$PREFIX:match:not-active"
+
     val PARTY_NOT_FOUND = "$PREFIX:party:not-found"
     val PARTY_EMAIL_ALREADY_EXISTS = "$PREFIX:party:email-already-exists"
 

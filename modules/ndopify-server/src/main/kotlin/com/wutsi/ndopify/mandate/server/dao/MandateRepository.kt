@@ -2,9 +2,11 @@ package com.wutsi.ndopify.mandate.server.dao
 
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
 import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import jakarta.persistence.LockModeType
 import org.springframework.data.domain.Pageable
+import org.springframework.data.jpa.repository.EntityGraph
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor
 import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
@@ -27,6 +29,18 @@ interface MandateRepository : CrudRepository<MandateEntity, Long>, JpaSpecificat
 
     @Query("SELECT m.contractId FROM MandateEntity m WHERE m.id = :id")
     fun findContractIdById(id: Long): String?
+
+    // With its neighbourhoods, for a caller outside a transaction (the lazy collection couldn't be read there)
+    @EntityGraph(attributePaths = ["neighborhoodIds"])
+    @Query("SELECT m FROM MandateEntity m WHERE m.id = :id")
+    fun findWithNeighborhoodsById(id: Long): MandateEntity?
+
+    @EntityGraph(attributePaths = ["neighborhoodIds"])
+    fun findByAgentIdAndMandateTypeAndStatus(
+        agentId: Long,
+        mandateType: MandateType,
+        status: MandateStatus,
+    ): List<MandateEntity>
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT m FROM MandateEntity m WHERE m.id = :id")

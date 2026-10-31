@@ -160,6 +160,12 @@ springdoc:
                 - /v1/assignments
                 - /v1/assignments/**
 
+        -   group: match
+            display-name: Match API
+            paths-to-match:
+                - /v1/matches
+                - /v1/matches/**
+
         -   group: party
             display-name: Party API
             paths-to-match:
@@ -266,6 +272,12 @@ ndopify:
                 cron: "0 */15 * * * ?"     # Every 15 minutes: mandates that came at night, or had no candidate
         contract:
             duration-months: 6             # A mandate's contract is valid for 6 months from its signature
+
+    match:
+        price-tolerance: 0.10           # A listing up to 10% over the budget is still a match, scored down
+        min-score: 0.5                  # Below, the pair isn't stored
+        nearby-radius-km: 3             # Neighbourhoods this close to the searched ones are "nearby"
+        nearby-max-neighborhoods: 20
 
     mobile-money:
         mtn:
