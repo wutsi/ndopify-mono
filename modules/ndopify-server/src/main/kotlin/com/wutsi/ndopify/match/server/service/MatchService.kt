@@ -64,8 +64,8 @@ class MatchService(
     }
 
     /**
-     * The matches of a mandate, in [SearchMatchRequest.statuses] (default: ACTIVE), best score first. Only while the
-     * mandate is APPROVED and the listing PUBLISHED: a closed search, or a rented listing, keeps its rows but isn't
+     * The matches of the mandates [SearchMatchRequest.mandateIds], in [SearchMatchRequest.statuses] (default: ACTIVE),
+     * best score first, all mandates together. Only while the mandate is APPROVED and the listing PUBLISHED: a closed search, or a rented listing, keeps its rows but isn't
      * listed.
      */
     fun search(request: SearchMatchRequest): List<MatchEntity> {
@@ -73,7 +73,7 @@ class MatchService(
         val spec = Specification<MatchEntity> { root, _, cb ->
             val mandate = root.get<MandateEntity>("mandate")
             val predicates = mutableListOf<Predicate>(
-                cb.equal(mandate.get<Long>("id"), request.mandateId),
+                mandate.get<Long>("id").`in`(request.mandateIds),
                 cb.equal(mandate.get<MandateStatus>("status"), MandateStatus.APPROVED),
                 cb.equal(root.get<ListingEntity>("listing").get<ListingStatus>("status"), ListingStatus.PUBLISHED),
                 root.get<Any>("status").`in`(statuses),

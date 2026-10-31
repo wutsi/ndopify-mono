@@ -26,6 +26,40 @@ class SearchMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `several mandates`() {
+        val matches = rest.getForEntity("/v1/matches?mandate-id=1&mandate-id=4", SearchMatchResponse::class.java)
+            .body!!.matches
+
+        assertEquals(listOf(1L, 7L, 2L), matches.map { it.id }) // Best score first, all mandates together
+        assertEquals(listOf(1L, 4L, 1L), matches.map { it.mandateId })
+    }
+
+    @Test
+    fun `several mandates, one of another agent`() {
+        val response = rest.getForEntity("/v1/matches?mandate-id=1&mandate-id=2", ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_ACCESS_DENIED, response.body?.error?.code)
+    }
+
+    @Test
+    fun `several mandates, one not found`() {
+        val response = rest.getForEntity("/v1/matches?mandate-id=1&mandate-id=999", ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_NOT_FOUND, response.body?.error?.code)
+    }
+
+    @Test
+    fun `no mandate`() {
+        val response = rest.getForEntity("/v1/matches", ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.HTTP_MISSING_PARAMETER, response.body?.error?.code)
+        assertEquals("mandate-id", response.body?.error?.parameter?.name)
+    }
+
+    @Test
     fun dismissed() {
         val matches = rest.getForEntity("/v1/matches?mandate-id=1&status=DISMISSED", SearchMatchResponse::class.java)
             .body!!.matches

@@ -57,8 +57,9 @@ and hands it to `platform/mail`'s `MailService`; its MJML template lives under `
 locale and `timeZone` — never a hard-coded pattern. Mailet unit tests mirror the package (`<domain>/server/mail/*MailetTest.kt`).
 
 Scheduled jobs live in `<domain>/server/job/`: `KycJobs` (party), `MandateJobs` (mandate), `ContractJobs`
-(contract) and `ListingJobs` (listing, every 15 minutes: `verify`, the UNDER_VERIFICATION listings through
-`ListingVerifierService`; `publish`, the VERIFIED ones sent for publication, then the PUBLISHING ones through `ListingPublisherService`). They loop over the
+(contract), `ListingJobs` (listing, every 15 minutes: `verify`, the UNDER_VERIFICATION listings through
+`ListingVerifierService`; `publish`, the VERIFIED ones sent for publication, then the PUBLISHING ones through `ListingPublisherService`) and
+`MatchJobs` (match, hourly: `notifyAgents`, see *match* below). They loop over the
 active tenants, setting `TenantContext` for each.
 
 Current domains:
@@ -287,10 +288,18 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   deleted; a `DISMISSED` one is never touched. Each row keeps `listingPrice` (when last scored, or dismissed): the
   price a match was turned down at, to tell a price drop later (re-proposing after one isn't built yet). The run isn't one transaction (each save is its own, a conflict skips
   the pair), so it reads the mandates with their neighbourhoods (`@EntityGraph`). `/v1/matches`: search
-  (`mandate-id`, `status` default ACTIVE, best score first, only while the mandate is APPROVED and the listing
+  (`mandate-id`, repeatable, at least one, else 400 `HTTP_MISSING_PARAMETER`, each one checked; `status` default
+  ACTIVE; best score first across them, only while the mandate is APPROVED and the listing
   PUBLISHED), get, `POST /{id}/dismiss` (409 `MATCH_NOT_ACTIVE`), access as the mandate's (`MandateAccessService`:
-  404, then 403 `MANDATE_ACCESS_DENIED`); `POST /run?mandate-id=` (`@OpsEndpoint`) re-runs a mandate. Config:
-  `ndopify.match.*`. Tenant-scoped.
+  404, then 403 `MANDATE_ACCESS_DENIED`); `POST /run?mandate-id=` (`@OpsEndpoint`) re-runs a mandate.
+  **Agent alert** (`docs/superpowers/plans/2026-10-31-match-agent-alert.md`): `notifiedAt` (`V9_1`) is null until the
+  agent is told, and never touched by the matcher (a re-score or re-run doesn't alert again). `MatchJobs.notifyAgents`
+  (hourly, `ndopify.match.notify.cron`) has `MatchNotificationService` e-mail each agent, once for all its ACTIVE
+  matches not notified yet (mandate APPROVED, listing PUBLISHED), grouped by mandate (`MatchNotificationMailet`,
+  `mail/match/new_matches.mjml`, at most 5 listings per mandate), then mark them (`MatchRepository.markNotified`, a bulk
+  update that skips `@Version`, so a dismiss meanwhile stays). A failed e-mail leaves the agent's matches to the next
+  run. A match re-proposed after a price drop must get `notifiedAt = null` again. Config: `ndopify.match.*`.
+  Tenant-scoped.
 - **error** — shared exception types (`WutsiException` subclasses: `BadRequestException`, `NotFoundException`,
   `ConflictException`, `ForbiddenException`, `UnauthorizedException`, `InternalErrorException`) and a global
   `ControllerErrorHandler`.

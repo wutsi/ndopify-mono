@@ -33,7 +33,7 @@ INSERT INTO T_AGENT(id, tenant_id, party_id, city_id) VALUES
     (30, 1, 300, 2370201),
     (90, 2, 900, 2370201);
 
--- Searches: 1: agent 20's   2: agent 30's   3: agent 20's, closed   9: other tenant
+-- Searches: 1, 4: agent 20's   2: agent 30's   3: agent 20's, closed   9: other tenant
 -- Listings' mandates: 11..14: agent 20's   19: agent 30's   99: other tenant
 INSERT INTO T_MANDATE(
     id, tenant_id, customer_id, agent_id, status, mandate_type, listing_type, property_category, city_id,
@@ -41,6 +41,7 @@ INSERT INTO T_MANDATE(
 ) VALUES
     (1, 1, 10, 20, 'APPROVED', 'SEARCH', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
     (2, 1, 10, 30, 'APPROVED', 'SEARCH', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
+    (4, 1, 10, 20, 'APPROVED', 'SEARCH', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
     (3, 1, 10, 20, 'CLOSED', 'SEARCH', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
     (9, 2, 90, 90, 'APPROVED', 'SEARCH', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
     (11, 1, 11, 20, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
@@ -65,7 +66,7 @@ INSERT INTO T_LISTING(
     (109, 1, 19, 30, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'APARTMENT', 2, 150000, 'XAF', 'MONTHLY', 'Agent 30 apartment'),
     (901, 2, 99, 90, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'APARTMENT', 2, 150000, 'XAF', 'MONTHLY', 'Other tenant');
 
--- 1, 2: active   3: active, listing rented   4: dismissed   5: agent 30's   6: closed search   9: other tenant
+-- 1, 2: active   3: active, listing rented   4: dismissed   5: agent 30's   6: closed search   7: search 4's   9: other tenant
 INSERT INTO T_MATCH(
     id, tenant_id, mandate_id, listing_id, agent_id, status, score, listing_price,
     neighborhood_score, price_score, rooms_score, amenities_score, availability_score, furniture_score,
@@ -77,4 +78,5 @@ INSERT INTO T_MATCH(
     (4, 1, 1, 104, 20, 'DISMISSED', 0.8, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
     (5, 1, 2, 109, 30, 'ACTIVE', 0.8, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
     (6, 1, 3, 101, 20, 'ACTIVE', 0.8, 160000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
+    (7, 1, 4, 102, 20, 'ACTIVE', 0.85, 140000, 1.0, 1.0, 0.7, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
     (9, 2, 9, 901, 90, 'ACTIVE', 0.8, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00');

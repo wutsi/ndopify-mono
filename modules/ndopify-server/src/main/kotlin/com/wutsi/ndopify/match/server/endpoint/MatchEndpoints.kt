@@ -1,5 +1,10 @@
 package com.wutsi.ndopify.match.server.endpoint
 
+import com.wutsi.ndopify.error.dto.Error
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.Parameter
+import com.wutsi.ndopify.error.dto.ParameterType
+import com.wutsi.ndopify.error.server.exception.BadRequestException
 import com.wutsi.ndopify.mandate.server.service.MandateAccessService
 import com.wutsi.ndopify.mandate.server.service.MandateService
 import com.wutsi.ndopify.match.dto.GetMatchResponse
@@ -20,7 +25,8 @@ import org.springframework.web.bind.annotation.RestController
 
 /**
  * A match is seen and dismissed by whoever may see / change its search mandate ([MandateAccessService]): its agent, or
- * an admin. The mandate (or match) is looked up first: 404, then 403.
+ * an admin. The mandate (or match) is looked up first: 404, then 403. A search needs at least one `mandate-id` (400
+ * `HTTP_MISSING_PARAMETER`), and each of them must be found and readable.
  */
 @RestController
 @RequestMapping("/v1/matches")
@@ -30,10 +36,18 @@ class MatchEndpoints(
     private val mandateService: MandateService,
     private val access: MandateAccessService,
 ) {
-    // Ex: the listings to propose for a search: GET /v1/matches?mandate-id=12
+    // Ex: the listings to propose for 2 searches: GET /v1/matches?mandate-id=12&mandate-id=15
     @GetMapping
     fun search(@ModelAttribute request: SearchMatchRequest): SearchMatchResponse {
-        access.ensureCanRead(mandateService.findById(request.mandateId))
+        if (request.mandateIds.isEmpty()) {
+            throw BadRequestException(
+                Error(
+                    code = ErrorCode.HTTP_MISSING_PARAMETER,
+                    parameter = Parameter(name = "mandate-id", type = ParameterType.PARAMETER_TYPE_QUERY),
+                )
+            )
+        }
+        request.mandateIds.distinct().forEach { id -> access.ensureCanRead(mandateService.findById(id)) }
         val matches = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
         return SearchMatchResponse(matches = matches.map { match -> mapper.toMatch(match) })
     }

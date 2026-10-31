@@ -33,7 +33,11 @@
         visit of the property (listing.html); the step's main button until the listing is sent.
       - Fermer (Actif: lease signed, with the agreed rent) and Annuler (any step: no lease, with a reason, danger
         style): two buttons at the bottom of the page, since they're rare and final.
-    PROTOTYPE: ?id=201, 202 or 203, or 101, 102 and 103 once accepted on index.html; any other mandate shows the
+      - Biens correspondants (Actif, a client's SEARCH mandate only): the listings of the agent's inventory that the
+        matcher found for the search (GET /v1/matches?mandate-id=), best score first. Each one is sent to the client
+        (Envoyer au client: the listing's link by e-mail), kept to send later (Retenir), or set aside (Écarter, after
+        a confirmation: never proposed again for this mandate). Two kept or more: "Envoyer les N biens retenus".
+    PROTOTYPE: ?id=201, 202, 203 or 204 (an active search with matches; 201 gets its own once signed), or 101, 102 and 103 once accepted on index.html; any other mandate shows the
     locked view. The statuses are kept in the session (KEYS.mandates), and "Simuler la signature" stands for the
     client signing the contract.
 -->
@@ -194,6 +198,64 @@
                         </div>
                     </div>
 
+                </section>
+
+                <section class="home-section" aria-labelledby="matches-title" hidden data-matches-section>
+                    <div class="matches__head">
+                        <h2 id="matches-title">Biens correspondants</h2>
+                        <button type="button" class="btn btn--primary" hidden data-match-send-kept></button>
+                    </div>
+                    <p>Les biens de vos annonces publiées qui correspondent à la recherche du client. Envoyez-les-lui,
+                        retenez-les pour plus tard ou écartez-les.</p>
+
+                    <div class="alert alert--success" role="status" hidden data-match-flash>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <p data-match-flash-text></p>
+                    </div>
+
+                    <ul class="assignments" data-match-list></ul>
+
+                    <p class="assignments__empty" hidden data-match-empty>
+                        Aucun de vos biens ne correspond à cette recherche pour le moment. Dès qu'une de vos annonces
+                        publiées correspond, elle apparaît ici et vous êtes prévenu par e-mail.
+                    </p>
+                    <p class="matches__dismissed" hidden data-match-dismissed></p>
+
+                    <template data-match-template>
+                        <li class="assignment" data-match>
+                            <article>
+                                <div class="assignment__head">
+                                    <h3 class="assignment__type" data-match-title></h3>
+                                    <p class="status-tag" data-match-tag></p>
+                                </div>
+                                <p class="match__score"><strong data-match-score></strong> de correspondance ·
+                                    annonce n°&nbsp;<span data-match-ref></span></p>
+                                <dl class="assignment__facts" data-match-facts></dl>
+                                <details class="assignment__details">
+                                    <summary>Pourquoi ce bien&nbsp;?</summary>
+                                    <div class="assignment__details-body">
+                                        <ul class="match__fit" data-match-fit></ul>
+                                    </div>
+                                </details>
+                                <div class="assignment__actions match__actions" data-match-actions>
+                                    <button type="button" class="btn btn--primary" data-match-send>Envoyer au client</button>
+                                    <button type="button" class="btn btn--outline" data-match-keep>Retenir</button>
+                                    <button type="button" class="btn btn--outline" data-match-dismiss>Écarter</button>
+                                </div>
+                                <div class="alert alert--warning assignment__confirm" hidden data-match-confirm>
+                                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                                    <div>
+                                        <p class="alert__title">Écarter ce bien&nbsp;?</p>
+                                        <p>Il ne vous sera plus proposé pour ce mandat.</p>
+                                        <div class="assignment__actions">
+                                            <button type="button" class="btn btn--primary" data-match-dismiss-confirmed>Confirmer</button>
+                                            <button type="button" class="btn btn--outline" data-match-dismiss-cancel>Annuler</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </article>
+                        </li>
+                    </template>
                 </section>
 
                 <section class="home-section" aria-labelledby="contact-title">

@@ -35,7 +35,9 @@
         // Status and dates of each of the agent's mandates, as changed on mandate.html (see stateOf).
         mandates: "npc.mandates.state",
         // The listings of the agent's approved LISTING mandates, by id (see createListing).
-        listings: "npc.listings"
+        listings: "npc.listings",
+        // The agent's decisions on the matches of its search mandates, by mandate then match (see matchStatesOf).
+        matches: "npc.matches"
     };
 
     /* ---------- Storage (fails soft: private mode, quota) ---------- */
@@ -1309,6 +1311,29 @@
                 securityDeposit: 3,
                 advanceRent: 6
             }
+        },
+        // A signed search: the matcher found listings of the agent's inventory for it (see MATCHES).
+        204: {
+            party: "client",
+            initial: { status: "APPROVED", acceptedAt: -12, requestedAt: -10, approvedAt: -8 },
+            contact: {
+                name: "Sandrine Eboa",
+                whatsapp: "+237699887766",
+                email: "sandrine.eboa@example.com",
+                period: "Soirée"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Bonapriso"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "APARTMENT",
+                furnitureType: "UNFURNISHED",
+                rooms: "3",
+                parkings: "1",
+                amenities: ["waterTank", "generatorSet", "securedFenced"],
+                price: 250000,
+                movingPeriod: "WITHIN_3_MONTHS"
+            }
         }
     };
 
@@ -1518,6 +1543,130 @@
         el.className = "status-tag status-tag--" + tag[1];
     }
 
+    /* ---------- Matches: listings of the agent's inventory that fit one of its signed searches ---------- */
+
+    // PROTOTYPE: GET /v1/matches?mandate-id= (best score first), with the listing of each. Only an APPROVED SEARCH
+    // mandate has matches (the matcher runs when it's signed): 204 has them now, 201 once its signature is simulated.
+    // availableIn: days from now (0: available now). fit: the partial scores of Matcher, as words, true when full.
+    var MATCHES = {
+        204: [
+            {
+                id: "9001", listingId: "3012", propertyType: "APARTMENT", rooms: 3, neighbourhood: "Bonapriso",
+                price: 240000, availableIn: 31, score: 0.95,
+                fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"], [true, "3 chambres, comme demandé"],
+                    [false, "2 équipements sur 3 : Clôturé et sécurisé, Citerne. Manque : Groupe électrogène"],
+                    [true, "Disponible avant la date d'emménagement"], [true, "Non meublé, comme demandé"]]
+            },
+            {
+                id: "9002", listingId: "3027", propertyType: "APARTMENT", rooms: 2, neighbourhood: "Bonapriso",
+                price: 200000, availableIn: 106, score: 0.745,
+                fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"],
+                    [false, "2 chambres, une de moins que demandé"],
+                    [false, "1 équipement sur 3 : Clôturé et sécurisé. Manque : Groupe électrogène, Citerne"],
+                    [false, "Disponible moins d'un mois après la date d'emménagement"],
+                    [true, "Non meublé, comme demandé"]]
+            },
+            {
+                id: "9003", listingId: "3041", propertyType: "APARTMENT", rooms: 4, neighbourhood: "Bonanjo",
+                distanceKm: 1.5, price: 265000, availableIn: 0, score: 0.58,
+                fit: [[false, "À 1,5 km du secteur recherché"], [false, "6 % au-dessus du budget"],
+                    [false, "4 chambres, une de plus que demandé"], [true, "Les 3 équipements demandés"],
+                    [true, "Disponible dès maintenant"], [true, "Non meublé, comme demandé"]]
+            }
+        ],
+        201: [
+            {
+                id: "9101", listingId: "3055", propertyType: "HOUSE", rooms: 3, neighbourhood: "Kotto",
+                price: 230000, availableIn: 20, score: 0.88,
+                fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"], [true, "3 chambres, comme demandé"],
+                    [false, "4 équipements sur 5. Manque : Citerne"],
+                    [true, "Disponible avant la date d'emménagement"], [true, "Non meublée, comme demandé"]]
+            },
+            {
+                id: "9102", listingId: "3060", propertyType: "HOUSE", rooms: 4, neighbourhood: "Logpom",
+                price: 260000, availableIn: 45, score: 0.67,
+                fit: [[true, "Dans le secteur recherché"], [false, "4 % au-dessus du budget"],
+                    [false, "4 chambres, une de plus que demandé"], [false, "3 équipements sur 5. Manque : Citerne, Route bitumée"],
+                    [true, "Disponible avant la date d'emménagement"], [false, "Meublée : le client la veut vide"]]
+            }
+        ]
+    };
+
+    // ACTIVE: new, to look at. SHORTLISTED: kept by the agent, to send. PROPOSED: sent to the client.
+    // DISMISSED: set aside, never proposed again for this mandate (the server's DISMISSED).
+    // NOTE: the server has ACTIVE and DISMISSED only; SHORTLISTED and PROPOSED are the next plans' statuses.
+    var MATCH_TAGS = {
+        ACTIVE: ["Nouveau", "info"],
+        SHORTLISTED: ["Retenu", "success"],
+        PROPOSED: ["Envoyé", "neutral"]
+    };
+
+    function allMatchStates() {
+        try {
+            return JSON.parse(store.get(KEYS.matches)) || {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function matchStatesOf(mandateId) {
+        return allMatchStates()[mandateId] || {};
+    }
+
+    function saveMatchState(mandateId, matchId, state) {
+        var all = allMatchStates();
+        all[mandateId] = all[mandateId] || {};
+        all[mandateId][matchId] = state;
+        store.set(KEYS.matches, JSON.stringify(all));
+    }
+
+    // Only a client's signed search is matched (SEARCH, APPROVED).
+    function hasMatches(mandateId) {
+        return MANDATES[mandateId].party !== "bailleur" && stateOf(mandateId).status === "APPROVED";
+    }
+
+    // The mandate's matches with their status, best score first.
+    function matchesOf(mandateId) {
+        if (!hasMatches(mandateId)) return [];
+        var states = matchStatesOf(mandateId);
+        return (MATCHES[mandateId] || []).map(function (match) {
+            var state = states[match.id] || { status: "ACTIVE" };
+            var copy = {};
+            Object.keys(match).forEach(function (key) {
+                copy[key] = match[key];
+            });
+            copy.status = state.status;
+            copy.sentAt = state.sentAt;
+            return copy;
+        });
+    }
+
+    function countMatches(matches, status) {
+        return matches.filter(function (m) {
+            return m.status === status;
+        }).length;
+    }
+
+    // The home card's line: "3 nouveaux biens correspondants · 1 retenu à envoyer", or "" when nothing is to do.
+    function matchesSummary(mandateId) {
+        var matches = matchesOf(mandateId);
+        var fresh = countMatches(matches, "ACTIVE");
+        var kept = countMatches(matches, "SHORTLISTED");
+        var parts = [];
+        if (fresh) parts.push(fresh + (fresh > 1 ? " nouveaux biens correspondants" : " nouveau bien correspondant"));
+        if (kept) parts.push(kept + (kept > 1 ? " retenus à envoyer" : " retenu à envoyer"));
+        return parts.join(" · ");
+    }
+
+    function matchTitle(match) {
+        var type = PROPERTY_TYPE_LABELS[match.propertyType];
+        return type + " · " + match.rooms + (match.rooms > 1 ? " chambres" : " chambre");
+    }
+
+    function matchAvailability(match) {
+        return match.availableIn <= 0 ? "Maintenant" : formatDate(Date.now() + match.availableIn * DAY_MS);
+    }
+
     function initMandates() {
         var list = $("[data-mandates]");
         if (!list) return null;
@@ -1549,6 +1698,12 @@
             });
             setStatusTag($("[data-status-tag]", item), state.status);
             $("[data-next-step]", item).textContent = nextStep(MANDATES[id], state, id);
+            // The matches still to handle, linking straight to the mandate's list.
+            var matches = $("[data-matches]", item);
+            var summary = matchesSummary(id);
+            matches.hidden = !summary;
+            $("[data-matches-link]", matches).textContent = summary;
+            $("[data-matches-link]", matches).href = "mandate.html?id=" + encodeURIComponent(id) + "#matches-title";
         }
 
         function card(id) {
@@ -1765,6 +1920,7 @@
             }
 
             renderListing();
+            renderMatches();
 
             $("[data-close]").hidden = closed;
             // Before its approval a mandate can't be closed with a lease (409 MANDATE_NOT_APPROVED): only cancelled.
@@ -1811,6 +1967,155 @@
                 var listing = listingOf(id) || createListing(id);
                 window.location.href = "listing.html?id=" + encodeURIComponent(listing.id);
             }, 500);
+        });
+
+        /* Biens correspondants: each match is sent to the client, kept for later (Retenir) or set aside (Écarter). */
+        var matchBox = $("[data-matches-section]");
+        var matchList = $("[data-match-list]", matchBox);
+        var matchTemplate = $("[data-match-template]");
+        var matchFlash = $("[data-match-flash]", matchBox);
+        var sendKept = $("[data-match-send-kept]", matchBox);
+
+        function showMatchFlash(text) {
+            $("[data-match-flash-text]", matchFlash).textContent = text;
+            matchFlash.hidden = false;
+        }
+
+        function setMatch(matchId, state) {
+            saveMatchState(id, matchId, state);
+            renderMatches();
+        }
+
+        function fact(list, term, value) {
+            var div = document.createElement("div");
+            var dt = document.createElement("dt");
+            var dd = document.createElement("dd");
+            dt.textContent = term;
+            dd.textContent = value;
+            div.appendChild(dt);
+            div.appendChild(dd);
+            list.appendChild(div);
+        }
+
+        function matchItem(match) {
+            var item = matchTemplate.content.firstElementChild.cloneNode(true);
+            var titleId = "match-" + match.id + "-title";
+            item.setAttribute("data-match-id", match.id);
+            $("article", item).setAttribute("aria-labelledby", titleId);
+            var title = $("[data-match-title]", item);
+            title.id = titleId;
+            title.textContent = matchTitle(match);
+            var tag = $("[data-match-tag]", item);
+            var t = MATCH_TAGS[match.status];
+            tag.textContent = match.status === "PROPOSED" ? "Envoyé le " + formatShortDate(match.sentAt) : t[0];
+            tag.className = "status-tag status-tag--" + t[1];
+            $("[data-match-score]", item).textContent = Math.round(match.score * 100) + " %";
+            $("[data-match-ref]", item).textContent = match.listingId;
+            var facts = $("[data-match-facts]", item);
+            fact(facts, "Quartier", match.neighbourhood + (match.distanceKm
+                ? " (à " + String(match.distanceKm).replace(".", ",") + " km)" : ""));
+            fact(facts, "Loyer", formatRent(match.price));
+            fact(facts, "Disponible", matchAvailability(match));
+            var fit = $("[data-match-fit]", item);
+            match.fit.forEach(function (row) {
+                var li = document.createElement("li");
+                li.className = "match__fit-item" + (row[0] ? " match__fit-item--full" : "");
+                li.innerHTML = row[0] ? CHECK_MARK : '<svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6.5 10h7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+                var span = document.createElement("span");
+                span.innerHTML = '<span class="visually-hidden">' + (row[0] ? "Oui : " : "En partie : ") + "</span>";
+                span.appendChild(document.createTextNode(row[1]));
+                li.appendChild(span);
+                fit.appendChild(li);
+            });
+
+            var actions = $("[data-match-actions]", item);
+            var keep = $("[data-match-keep]", item);
+            var confirm = $("[data-match-confirm]", item);
+            // Sent: nothing left to do here; the client answers on the public portal (next plans).
+            actions.hidden = match.status === "PROPOSED";
+            keep.hidden = match.status !== "ACTIVE";
+
+            var send = $("[data-match-send]", item);
+            send.addEventListener("click", function () {
+                if (!isActive(send)) return;
+                // PROTOTYPE: simulates POST /v1/matches/{id}/propose: the client gets the listing's link by e-mail.
+                setActive(send, false);
+                send.textContent = "Envoi…";
+                window.setTimeout(function () {
+                    setMatch(match.id, { status: "PROPOSED", sentAt: Date.now() });
+                    showMatchFlash("Annonce n° " + match.listingId + " envoyée à " + c.email + ".");
+                }, 600);
+            });
+            keep.addEventListener("click", function () {
+                // PROTOTYPE: simulates POST /v1/matches/{id}/shortlist.
+                setMatch(match.id, { status: "SHORTLISTED" });
+                showMatchFlash("Annonce n° " + match.listingId + " retenue : envoyez-la quand vous voulez.");
+            });
+            $("[data-match-dismiss]", item).addEventListener("click", function () {
+                actions.hidden = true;
+                confirm.hidden = false;
+                $("[data-match-dismiss-confirmed]", confirm).focus();
+            });
+            $("[data-match-dismiss-cancel]", confirm).addEventListener("click", function () {
+                confirm.hidden = true;
+                actions.hidden = false;
+                $("[data-match-dismiss]", item).focus();
+            });
+            $("[data-match-dismiss-confirmed]", confirm).addEventListener("click", function () {
+                // PROTOTYPE: simulates POST /v1/matches/{id}/dismiss.
+                setMatch(match.id, { status: "DISMISSED" });
+                showMatchFlash("Annonce n° " + match.listingId + " écartée : elle ne vous sera plus proposée pour ce mandat.");
+            });
+            return item;
+        }
+
+        function renderMatches() {
+            var show = hasMatches(id);
+            matchBox.hidden = !show;
+            if (!show) return;
+            var matches = matchesOf(id);
+            var shown = matches.filter(function (m) {
+                return m.status !== "DISMISSED";
+            });
+            // To handle first (new, then kept), then those already sent; best score first within each.
+            var order = { ACTIVE: 0, SHORTLISTED: 1, PROPOSED: 2 };
+            shown.sort(function (a, b) {
+                return order[a.status] - order[b.status] || b.score - a.score;
+            });
+            matchList.textContent = "";
+            shown.forEach(function (match) {
+                matchList.appendChild(matchItem(match));
+            });
+            matchList.hidden = shown.length === 0;
+            $("[data-match-empty]", matchBox).hidden = shown.length > 0;
+
+            var kept = countMatches(matches, "SHORTLISTED");
+            sendKept.hidden = kept < 2;
+            sendKept.textContent = "Envoyer les " + kept + " biens retenus";
+
+            var dismissed = countMatches(matches, "DISMISSED");
+            var dismissedNote = $("[data-match-dismissed]", matchBox);
+            dismissedNote.hidden = dismissed === 0;
+            dismissedNote.textContent = dismissed + (dismissed > 1 ? " biens écartés" : " bien écarté") +
+                " : ils ne vous seront plus proposés pour ce mandat.";
+        }
+
+        // PROTOTYPE: the kept matches in one e-mail, one POST /v1/matches/{id}/propose each.
+        sendKept.addEventListener("click", function () {
+            if (!isActive(sendKept)) return;
+            setActive(sendKept, false);
+            sendKept.textContent = "Envoi…";
+            window.setTimeout(function () {
+                var kept = matchesOf(id).filter(function (m) {
+                    return m.status === "SHORTLISTED";
+                });
+                kept.forEach(function (m) {
+                    saveMatchState(id, m.id, { status: "PROPOSED", sentAt: Date.now() });
+                });
+                setActive(sendKept, true);
+                renderMatches();
+                showMatchFlash(kept.length + " annonces envoyées à " + c.email + ".");
+            }, 600);
         });
 
         function update(changes) {

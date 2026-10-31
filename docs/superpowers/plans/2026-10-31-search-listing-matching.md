@@ -34,7 +34,7 @@ kotlin.test, `TestRestTemplate` endpoint tests.
 In: the algorithm, `T_MATCH`, the triggers, `GET /v1/matches`, `GET /v1/matches/{id}`,
 `POST /v1/matches/{id}/dismiss`, `POST /v1/matches/run` (ops).
 
-Out, for the next plans: the agent alert (e-mail, `notifiedAt`), proposing to the customer and the customer's
+Out, for the next plans: the agent alert (e-mail, `notifiedAt`: done in `2026-10-31-match-agent-alert.md`), proposing to the customer and the customer's
 accept / reject (statuses `PROPOSED`, `ACCEPTED`, `REJECTED`, the public-portal access), re-proposing after a price
 drop (needs a price change on a PUBLISHED listing, impossible today: `ListingService.update` is DRAFT only),
 visits, the Partner Central UI. The design below already leaves room for them: the matcher only ever creates,
@@ -120,7 +120,8 @@ logged.
 | `POST /v1/matches/{id}/dismiss`                     | `ensureCanUpdate(match.mandate)`         | 404 `MATCH_NOT_FOUND`, 401, 403, 409 `MATCH_NOT_ACTIVE`        |
 | `POST /v1/matches/run?mandate-id=`                  | `@OpsEndpoint`                           | 404 `MANDATE_NOT_FOUND`                                        |
 
-Search: `status` defaults to `ACTIVE`; only matches whose listing is PUBLISHED; best score first, then `id`. A
+Search: `mandate-id` is repeatable (`SearchMatchRequest.mandateIds`, decision of 2026-10-31): at least one (400
+`HTTP_MISSING_PARAMETER`), each found and readable (404 / 403 on the first that isn't); `status` defaults to `ACTIVE`; only matches whose listing is PUBLISHED; best score first, then `id`. A
 concurrent dismiss / re-score is a 409 `MATCH_NOT_ACTIVE` (`ControllerErrorHandler`'s optimistic-lock mapping).
 
 ## Review Focus
