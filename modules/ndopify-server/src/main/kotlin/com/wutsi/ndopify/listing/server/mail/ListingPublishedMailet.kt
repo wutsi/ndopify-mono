@@ -14,8 +14,9 @@ import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.springframework.stereotype.Service
 
 /**
- * Tells the customer (the property's owner) and the agent of a listing that it's published, with a link to its public
- * page: the tenant's `publicPortalUrl` followed by the listing's `url`, none without either.
+ * Tells the agent of a listing that it's published, with a link to its public page: the tenant's `publicPortalUrl`
+ * followed by the listing's `url`, none without either. The customer (the property's owner) isn't e-mailed for now:
+ * its subject and template ([SUBJECT_CUSTOMER], [TEMPLATE_CUSTOMER]) are kept for when it is again.
  */
 @Service
 class ListingPublishedMailet(
@@ -45,7 +46,6 @@ class ListingPublishedMailet(
             "listing_url" to ListingUrls.publicUrl(tenant, listing),
         )
 
-        send(tenant, customer.party, SUBJECT_CUSTOMER, TEMPLATE_CUSTOMER, city, context)
         send(tenant, agent.party, SUBJECT_AGENT, TEMPLATE_AGENT, city, context)
     }
 

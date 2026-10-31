@@ -2,9 +2,11 @@ package com.wutsi.ndopify.npc.ui.home
 
 import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.contract.dto.ContractSummary
+import com.wutsi.ndopify.contract.dto.SearchContractRequest
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
+import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
@@ -41,6 +43,7 @@ class HomeController(
     private val kycClient: NdKycClient,
     private val assignmentClient: NdAssignmentClient,
     private val mandateClient: NdMandateClient,
+    private val contractClient: NdContractClient,
     locationClient: NdLocationClient,
     private val tenantContext: TenantContext,
     private val clock: Clock,
@@ -118,14 +121,30 @@ class HomeController(
 
     /**
      * The agent's mandates in progress, in the search's order, each with its contract (for the signature deadline or
-     * the end of validity), all in the search; null when they can't be had.
+     * the end of validity); null when they can't be had. Without their contracts, the cards still show (no date).
      */
-    private fun mandates(agent: Agent): List<Pair<Mandate, ContractSummary?>>? =
-        try {
-            mandateClient.active(agent.id).map { summary -> MandateSummaries.toMandate(summary) to summary.contract }
+    private fun mandates(agent: Agent): List<Pair<Mandate, ContractSummary?>>? {
+        val mandates = try {
+            mandateClient.active(agent.id).map { summary -> MandateSummaries.toMandate(summary) }
         } catch (ex: RestClientException) {
             LOGGER.warn("No mandates for agent ${agent.id}: ${ex.message}")
-            null
+            return null
+        }
+        val contracts = contracts(mandates.mapNotNull { mandate -> mandate.contractId }.distinct())
+        return mandates.map { mandate -> mandate to mandate.contractId?.let { contracts[it] } }
+    }
+
+    /** The mandates' contracts by id, in one search. */
+    private fun contracts(ids: List<String>): Map<String, ContractSummary> =
+        if (ids.isEmpty()) {
+            emptyMap()
+        } else {
+            try {
+                contractClient.search(SearchContractRequest(ids = ids, limit = ids.size)).associateBy { it.id }
+            } catch (ex: RestClientException) {
+                LOGGER.warn("No contracts for the mandates: ${ex.message}")
+                emptyMap()
+            }
         }
 
     /** One lookup for every card; without the names, the cards still show (no sector). */

@@ -1,6 +1,5 @@
 package com.wutsi.ndopify.npc.ui.mandate
 
-import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
@@ -20,8 +19,8 @@ import kotlin.test.assertNull
 
 class MandateSummariesTest {
     companion object {
-        /** The search's summary of [mandate], with [contract] (by default, one with only the mandate's contract id). */
-        fun summary(mandate: Mandate, contract: ContractSummary? = mandate.contractId?.let { ContractSummary(id = it) }) =
+        /** The search's summary of [mandate]. */
+        fun summary(mandate: Mandate) =
             MandateSummary(
                 id = mandate.id,
                 customerId = mandate.customerId,
@@ -54,7 +53,7 @@ class MandateSummariesTest {
                 price = mandate.price,
                 movingPeriod = mandate.movingPeriod,
                 availableFrom = mandate.availableFrom,
-                contract = contract,
+                contractId = mandate.contractId,
                 createdAt = mandate.createdAt,
                 modifiedAt = mandate.modifiedAt,
             )
@@ -104,8 +103,8 @@ class MandateSummariesTest {
     }
 
     @Test
-    fun `contract id from the contract`() {
-        assertNull(MandateSummaries.toMandate(summary(MANDATE, contract = null)).contractId)
+    fun `without contract`() {
+        assertNull(MandateSummaries.toMandate(summary(MANDATE.copy(contractId = null))).contractId)
     }
 
     @Test

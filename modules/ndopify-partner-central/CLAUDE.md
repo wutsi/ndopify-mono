@@ -139,8 +139,8 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   are shared with the find-property review in `ui/mandate/MandateLabels`.
 - A VERIFIED agent's Espace agent also lists its mandates in progress (*Mes mandats*): `HomeController` reads
   `GET /v1/mandates?agent-id=&status=ASSIGNED&status=PENDING_APPROVAL&status=APPROVED` (search order, capped at 20),
-  one call for every card: each summary carries its contract, for the next step's date (a card shows none without
-  it); the location names
+  one call for every card, then their contracts in one `GET /v1/contracts?id=&id=` (`NdContractClient.search`), for
+  the next step's date (a card shows none without it, ex: the contract search failed); the location names
   of offers and mandates come in one lookup. Cards are `MandateCards` → `MandateCardView`; statuses, tags, party
   wording ("le client" / "le bailleur", after `mandateType`), dates and next
   steps are `ui/mandate/MandateRules`. Each card opens the mandate page, `MandateController` (`ui/mandate/`,

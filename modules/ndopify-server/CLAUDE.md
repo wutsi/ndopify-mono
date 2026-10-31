@@ -118,7 +118,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   get it, not change it. An agent's search is restricted to its own mandates (`agent-id` forced; another agent's is a
   403), or with `offered-to` (its own id only, else 403) to the mandates with a PENDING offer to it: those it may get.
   A search's `MandateSummary` has what a card shows (criteria, amenities, `movingPeriod`, `availableFrom`) and its
-  `contract` (`ContractSummary`, the contracts of the page in one query), not the terms nor the customer's comments. Reads are checked by `MandateEndpoints`, changes by `MandateService` (under the mandate's lock); the server's own
+  `contractId` only (a client needing the contract's dates searches `/v1/contracts?id=`), not the terms nor the
+  customer's comments. Reads are checked by `MandateEndpoints`, changes by `MandateService` (under the mandate's lock); the server's own
   reads (dispatch, listeners, jobs) aren't. Partner Central has no admin role: admins only exist in the admin console.
   `POST /v1/mandates/{id}` (update) locks the mandate's contract, then the mandate (see *Lock order*), then 409
   `MANDATE_ALREADY_CLOSED` (CLOSED / CANCELLED), `MANDATE_ALREADY_APPROVED`, then `MANDATE_VERSION_CONFLICT` (stale
@@ -249,7 +250,7 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   otherwise, after the 404 and before any 409, checked by the services. `ListingService.create` copies the mandate's
   property (404 `MANDATE_NOT_FOUND`, 409 `MANDATE_NOT_ASSIGNED` without agent, since the listing's agent is the
   mandate's; 409 `LISTING_ALREADY_EXISTS`) and starts it as `DRAFT`. A mandate's listing is found with
-  `GET /v1/listings?mandate-id=` (with the agent's own `agent-id` for a DRAFT): the `mandate` domain doesn't depend on
+  `GET /v1/listings?mandate-id=` (repeatable; with the agent's own `agent-id` for a DRAFT): the `mandate` domain doesn't depend on
   `listing`, so `Mandate` has no `listingId`. **Checklist**: an update saves *one* `ListingSection` (`LOCATION`, `GPS`, `PROPERTY`, `AMENITIES`,
   `TERMS`, `REMARKS`), only that section's fields, as sent (a null clears an optional field), and marks it
   `VERIFIED` (`ListingSectionService.verify`): a section counts only once the agent saved it, the landlord's answers
@@ -273,7 +274,7 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   largest), and its public `url`, the path `/<city>/<neighborhood>/listing/<id>/<slug of the title>` (no host: the
   tenant's `publicPortalUrl`; no neighbourhood nor title segment without them): `PUBLISHED`, or still `PUBLISHING` to be retried after a failure; after `MAX_RETRIES` failed attempts
   it's `PUBLISHED` without title, summary nor description (the UIs handle it), its last error kept. Either way it
-  publishes `ListingPublishedEvent`: `ListingPublishedMailet` e-mails the customer (the owner) and the agent, with a
+  publishes `ListingPublishedEvent`: `ListingPublishedMailet` e-mails the agent (not the customer, for now), with a
   link to `{publicPortalUrl}{url}` (`mail/listing/published_customer.mjml` / `published_agent.mjml`; no link without
   either). `RENTED`, `SOLD`, `EXPIRED`, `CANCELLED` aren't set by any code yet.
   Tenant-scoped.

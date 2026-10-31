@@ -1,7 +1,6 @@
 package com.wutsi.ndopify.mandate.server.endpoint
 
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
-import com.wutsi.ndopify.contract.dto.ContractStatus
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
@@ -17,7 +16,6 @@ import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -53,7 +51,7 @@ class SearchMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertTrue(mandate.securityGuard)
         assertFalse(mandate.solarPanel)
         assertEquals(MovingPeriod.WITHIN_1_MONTH, mandate.movingPeriod)
-        assertNull(mandate.contract)
+        assertNull(mandate.contractId)
     }
 
     @Test
@@ -70,21 +68,11 @@ class SearchMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
-    fun `with its contract`() {
-        val mandates = search("id=2&id=3")
+    fun `its contract's id only`() {
+        val json = rest.getForEntity("/v1/mandates?id=2&id=3", String::class.java).body!!
 
-        assertEquals("c-2", mandates[0].contract?.id)
-        assertEquals(ContractStatus.DRAFT, mandates[0].contract?.status)
-        assertNull(mandates[0].contract?.signatureDeadline)
-
-        val contract = mandates[1].contract!!
-        assertEquals("c-3", contract.id)
-        assertEquals("MNDT-2024-000003", contract.number)
-        assertEquals(ContractStatus.SIGNED, contract.status)
-        assertNotNull(contract.signatureRequestedAt)
-        assertNotNull(contract.signatureDeadline)
-        assertNotNull(contract.validFrom)
-        assertNotNull(contract.validUntil)
+        assertEquals(listOf("c-2", "c-3"), search("id=2&id=3").map { it.contractId })
+        assertFalse(json.contains("MNDT-2024-000003"))
     }
 
     @Test
@@ -151,7 +139,7 @@ class SearchMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
     @Test
     fun `query count does not grow with the number of mandates`() {
-        // One with a contract: their contracts come in one query, whatever their number
+        // One with a contract, whose id is the mandate's own column: no query for the contracts
         val one = countQueries { search("id=3") }
         val all = countQueries { search("") }
 

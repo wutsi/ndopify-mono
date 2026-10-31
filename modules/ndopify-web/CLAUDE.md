@@ -18,8 +18,8 @@ Package `com.wutsi.ndopify.web`:
 - `ui/listing/` — a listing's public page at its `Listing.url` (`/<city>/<neighborhood>/listing/<id>/<slug>`,
   `listing.html` from `annonce.html`): `ListingController` (another path to the same id → 301 to the url),
   `ListingPages` builds the `ListingPage` view (every text formatted, never `agentRemarks`). The "Demander une visite"
-  popup and the "Poser une question" drawer are still the prototype's: `listing.js` fakes their answers, no handler
-  posts them yet.
+  and "Poser une question" buttons are left out for now (the bottom bar on mobile only shows the price); their popup
+  and drawer are still in the page, the prototype's: `listing.js` fakes their answers, no handler posts them yet.
 - `ui/layout/HttpClientErrorHandler` — a 403/404 from ndopify-server (ex: a listing no longer published) is answered
   with the same status (`templates/error/404.html`).
 - `ui/layout/TenantAdvice` — puts the tenant in every page's model as `tenant`. Controllers read it from the model

@@ -10,7 +10,7 @@ import org.springframework.transaction.event.TransactionPhase
 import org.springframework.transaction.event.TransactionalEventListener
 
 /**
- * Tells the customer and the agent of a listing that it's published, once the publication is committed, so no e-mail
+ * Tells the agent of a listing that it's published (not the customer, for now), once the publication is committed, so no e-mail
  * goes out for a rolled-back one. A failure is only logged: the listing is already published, and isn't sent again.
  * The executor thread has no request: the tenant and a logger are set on it for the duration of the call, and removed
  * afterwards since the executor threads are reused.

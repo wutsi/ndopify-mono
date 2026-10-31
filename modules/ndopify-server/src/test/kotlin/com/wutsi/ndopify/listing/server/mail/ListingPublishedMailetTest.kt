@@ -5,7 +5,7 @@ import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
-import com.nhaarman.mockitokotlin2.times
+import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
@@ -70,22 +70,20 @@ class ListingPublishedMailetTest {
     }
 
     @Test
-    fun `send to the customer and the agent`() {
+    fun `send to the agent only`() {
         mailet.send(listing, customer, agent)
 
         val email = argumentCaptor<Email>()
-        verify(mailService, times(2)).send(email.capture())
-        assertEquals("ray.sponsible@gmail.com", email.firstValue.recipient.email)
-        assertEquals("Ray Sponsible", email.firstValue.recipient.displayName)
-        assertEquals("Ndopify: Votre bien à Yaounde est en ligne", email.firstValue.subject)
+        verify(mailService).send(email.capture())
+        assertEquals("kim.possible@gmail.com", email.firstValue.recipient.email)
+        assertEquals("Kim Possible", email.firstValue.recipient.displayName)
+        assertEquals("Ndopify: Votre annonce à Yaounde est publiée", email.firstValue.subject)
         assertEquals("<html>published</html>", email.firstValue.body)
-        assertEquals("kim.possible@gmail.com", email.secondValue.recipient.email)
-        assertEquals("Kim Possible", email.secondValue.recipient.displayName)
-        assertEquals("Ndopify: Votre annonce à Yaounde est publiée", email.secondValue.subject)
+        verify(mailBodyResolver, never()).resolve(eq(ListingPublishedMailet.TEMPLATE_CUSTOMER), any())
     }
 
     @Test
-    fun `customer e-mail`() {
+    fun `agent e-mail`() {
         assertEquals(
             mapOf(
                 "tenant_logo_url" to "https://cdn.ndopify.com/logo.png",
@@ -96,20 +94,15 @@ class ListingPublishedMailetTest {
                 "city" to "Yaounde",
                 "neighbourhood" to "Bastos",
                 "listing_url" to "https://www.ndopify.com/yaounde/bastos/listing/1/appartement-a-louer-3-chambres-yaounde-bastos",
-                "recipient_name" to "Ray Sponsible",
+                "recipient_name" to "Kim Possible",
             ),
-            context(ListingPublishedMailet.TEMPLATE_CUSTOMER),
+            context(ListingPublishedMailet.TEMPLATE_AGENT),
         )
     }
 
     @Test
-    fun `agent e-mail`() {
-        assertEquals("Kim Possible", context(ListingPublishedMailet.TEMPLATE_AGENT)["recipient_name"])
-    }
-
-    @Test
     fun `no neighbourhood nor title`() {
-        val context = context(ListingPublishedMailet.TEMPLATE_CUSTOMER, listing.copy(neighborhoodId = null, title = null))
+        val context = context(ListingPublishedMailet.TEMPLATE_AGENT, listing.copy(neighborhoodId = null, title = null))
 
         assertNull(context["neighbourhood"])
         assertNull(context["title"])
@@ -119,11 +112,11 @@ class ListingPublishedMailetTest {
     fun `no public portal - no link`() {
         doReturn(tenant.copy(publicPortalUrl = null)).whenever(tenantService).findById(1L)
 
-        assertNull(context(ListingPublishedMailet.TEMPLATE_CUSTOMER)["listing_url"])
+        assertNull(context(ListingPublishedMailet.TEMPLATE_AGENT)["listing_url"])
     }
 
     @Test
     fun `no url - no link`() {
-        assertNull(context(ListingPublishedMailet.TEMPLATE_CUSTOMER, listing.copy(url = null))["listing_url"])
+        assertNull(context(ListingPublishedMailet.TEMPLATE_AGENT, listing.copy(url = null))["listing_url"])
     }
 }

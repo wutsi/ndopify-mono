@@ -83,6 +83,7 @@ class ProfileTemplateTest {
                     kycClient,
                     assignmentClient,
                     mandateClient,
+                    mock(),
                     locationClient,
                     tenantContext,
                     clock,

@@ -58,6 +58,13 @@ class SearchListingEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `by mandates`() {
+        assertEquals(listOf(100L), search("mandate-id=1"))
+        assertEquals(listOf(102L, 100L), search("mandate-id=1&mandate-id=3"))
+        assertEquals(emptyList(), search("mandate-id=9"))
+    }
+
+    @Test
     fun `by agent`() {
         assertEquals(listOf(102L, 101L, 100L), search("agent-id=20"))
         assertEquals(emptyList(), search("agent-id=90"))

@@ -14,7 +14,7 @@ object MandateSummaries {
             id = summary.id,
             customerId = summary.customerId,
             agentId = summary.agentId,
-            contractId = summary.contract?.id,
+            contractId = summary.contractId,
             propertyCategory = summary.propertyCategory,
             status = summary.status,
             mandateType = summary.mandateType,

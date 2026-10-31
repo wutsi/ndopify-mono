@@ -19,8 +19,8 @@ import java.time.Clock
  * good (301), so the page has one address. ndopify-server only returns a PUBLISHED listing without a token: any other
  * is a 404 ([com.wutsi.ndopify.web.ui.layout.HttpClientErrorHandler]).
  *
- * The "Demander une visite" popup and the "Poser une question" drawer are still the prototype's: `listing.js` fakes
- * their answers, and nothing here handles their forms.
+ * The "Demander une visite" and "Poser une question" calls to action are left out for now. Their popup and drawer,
+ * still in the page, are the prototype's: `listing.js` fakes their answers, and nothing here handles their forms.
  *
  * The tenant is the one [com.wutsi.ndopify.web.ui.layout.TenantAdvice] put in the model, read from there rather than
  * taken as a `@ModelAttribute` parameter, which request parameters could bind.

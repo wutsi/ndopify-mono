@@ -14,7 +14,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/** A listing published by the job, and its customer and agent told, with the link to its page on the public portal. */
+/** A listing published by the job, and its agent told (not the customer, for now), with the link to its page on the public portal. */
 @Sql(value = ["/db/test/clean.sql", "/db/test/listing/PublishListingsJob.sql"])
 class PublishListingsJobTest : BaseEndpointIntegrationTest() {
     @Autowired
@@ -39,18 +39,10 @@ class PublishListingsJobTest : BaseEndpointIntegrationTest() {
         val url = "/yaounde/bastos/listing/100/appartement-a-louer-3-chambres-yaounde-bastos"
         assertEquals(url, listing["url"])
 
-        assertTrue(smtp.waitForIncomingEmail(5000, 2), "no email received")
-        val messages = smtp.receivedMessages.sortedBy { message -> message.allRecipients.single().toString() }
-        assertEquals(2, messages.size)
-        assertEquals("Kim Possible <kim.possible@gmail.com>", messages[0].allRecipients.single().toString())
-        assertEquals("Ndopify: Votre annonce à Yaoundé est publiée", messages[0].subject)
-        assertEquals("Ray Sponsible <ray.sponsible@gmail.com>", messages[1].allRecipients.single().toString())
-        assertEquals("Ndopify: Votre bien à Yaoundé est en ligne", messages[1].subject)
-        messages.forEach { message ->
-            assertTrue(
-                message.content.toString().contains("https://www.ndopify.com$url"),
-                "no link to the listing",
-            )
-        }
+        assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received")
+        val message = smtp.receivedMessages.single()
+        assertEquals("Kim Possible <kim.possible@gmail.com>", message.allRecipients.single().toString())
+        assertEquals("Ndopify: Votre annonce à Yaoundé est publiée", message.subject)
+        assertTrue(message.content.toString().contains("https://www.ndopify.com$url"), "no link to the listing")
     }
 }

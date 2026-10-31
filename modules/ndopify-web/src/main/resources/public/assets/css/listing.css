@@ -179,7 +179,7 @@
 }
 .price-card__price { margin-bottom: var(--space-lg); }
 .price-card__price strong { font-family: var(--font-heading); font-size: var(--h3-size); }
-.price-card__terms { list-style: none; margin: 0 0 var(--space-xl); padding: 0; display: grid; gap: var(--space-sm); }
+.price-card__terms { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-sm); }
 .price-card__cta { width: 100%; }
 .price-card__ask { margin-top: var(--space-md); }
 .price-card__hint { font-size: 0.875rem; text-align: center; margin: var(--space-lg) auto 0; }

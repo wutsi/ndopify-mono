@@ -1,6 +1,5 @@
 package com.wutsi.ndopify.mandate.server.mapper
 
-import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateSummary
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
@@ -61,8 +60,7 @@ class MandateMapper {
         )
     }
 
-    /** [contract] is the mandate's, loaded with the others of the search. */
-    fun toMandateSummary(entity: MandateEntity, contract: ContractSummary?): MandateSummary {
+    fun toMandateSummary(entity: MandateEntity): MandateSummary {
         return MandateSummary(
             id = entity.id ?: -1,
             customerId = entity.customerId,
@@ -95,7 +93,7 @@ class MandateMapper {
             price = toPrice(entity),
             movingPeriod = entity.movingPeriod,
             availableFrom = entity.availableFrom,
-            contract = contract,
+            contractId = entity.contractId,
             createdAt = entity.createdAt,
             modifiedAt = entity.modifiedAt,
         )

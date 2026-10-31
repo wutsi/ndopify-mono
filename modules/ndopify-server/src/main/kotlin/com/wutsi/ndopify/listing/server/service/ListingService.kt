@@ -51,8 +51,8 @@ class ListingService(
         val spec = Specification<ListingEntity> { root, _, cb ->
             val predicates = mutableListOf<Predicate>()
 
-            request.mandateId?.let { mandateId ->
-                predicates.add(cb.equal(root.get<MandateEntity>("mandate").get<Long>("id"), mandateId))
+            if (request.mandateIds.isNotEmpty()) {
+                predicates.add(root.get<MandateEntity>("mandate").get<Long>("id").`in`(request.mandateIds))
             }
             request.agentId?.let { agentId ->
                 predicates.add(cb.equal(root.get<Any>("agent").get<Long>("id"), agentId))
@@ -322,7 +322,7 @@ class ListingService(
     }
 
     /**
-     * E-mails the customer and the agent of a PUBLISHED listing that it's published. Nothing is sent once the listing
+     * E-mails the agent of a PUBLISHED listing that it's published (not the customer, for now). Nothing is sent once the listing
      * has moved on (no longer PUBLISHED). Returns whether it was sent.
      */
     @Transactional

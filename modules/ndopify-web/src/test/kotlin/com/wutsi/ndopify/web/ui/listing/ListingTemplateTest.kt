@@ -192,6 +192,15 @@ class ListingTemplateTest {
     }
 
     @Test
+    fun `no call to action to ask a question or request a visit`() {
+        val doc = render()
+
+        // Only the drawer, which nothing opens now, still links to the visit popup
+        assertTrue(doc.select("[data-modal-open], a[href=#visit], a[href=#ask]").all { it.closest(".modal") != null })
+        assertTrue(doc.select(".price-card__cta, .cta-bar__actions").isEmpty())
+    }
+
+    @Test
     fun `visit and question forms are the prototype's`() {
         val doc = render()
 

@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.npc.ui.home
 
 import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
@@ -9,11 +10,13 @@ import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.contract.dto.ContractSummary
+import com.wutsi.ndopify.contract.dto.SearchContractRequest
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateSummary
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
+import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
@@ -51,6 +54,7 @@ class HomeControllerTest {
     private val tenantContext = mock<TenantContext>()
     private val assignmentClient = mock<NdAssignmentClient>()
     private val mandateClient = mock<NdMandateClient>()
+    private val contractClient = mock<NdContractClient>()
     private val clock = mock<Clock>()
     private lateinit var mvc: MockMvc
 
@@ -67,6 +71,7 @@ class HomeControllerTest {
             kycClient,
             assignmentClient,
             mandateClient,
+            contractClient,
             locationClient,
             tenantContext,
             clock,
@@ -315,8 +320,9 @@ class HomeControllerTest {
     private val approved = assigned.copy(id = 203, status = MandateStatus.APPROVED, contractId = "c-203")
 
     private fun active(vararg mandates: Pair<Mandate, ContractSummary?>) {
-        doReturn(mandates.map { (mandate, contract) -> MandateSummariesTest.summary(mandate, contract) })
+        doReturn(mandates.map { (mandate, _) -> MandateSummariesTest.summary(mandate) })
             .whenever(mandateClient).active(AGENT.id)
+        doReturn(mandates.mapNotNull { (_, contract) -> contract }).whenever(contractClient).search(any())
     }
 
     @Test
@@ -329,8 +335,13 @@ class HomeControllerTest {
 
         val result = mvc.perform(get("/")).andReturn()
 
-        // Everything in the search: neither the mandates nor their contracts are loaded one by one
+        // Neither the mandates nor their contracts are loaded one by one: the contracts in one search
         verify(mandateClient, never()).get(any())
+        verify(contractClient, never()).get(any())
+        val request = argumentCaptor<SearchContractRequest>()
+        verify(contractClient).search(request.capture())
+        assertEquals(listOf("c-203", "c-202"), request.firstValue.ids)
+        assertEquals(2, request.firstValue.limit)
         val mandates = mandates(result)
         assertEquals(listOf(203L, 201L, 202L), mandates.map { it.id })
         assertEquals("Secteurs" to "Bonapriso, Akwa", mandates[1].facts[0])
@@ -348,6 +359,28 @@ class HomeControllerTest {
         val mandates = mandates(result)
         assertEquals("Le client doit signer le mandat.", mandates[0].nextStep)
         assertEquals("Trouvez un bien pour le client.", mandates[1].nextStep)
+    }
+
+    @Test
+    fun `contracts unavailable - cards kept without the dates`() {
+        active(pending to null, approved to null)
+        doThrow(ResourceAccessException("timeout")).whenever(contractClient).search(any())
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        val mandates = mandates(result)
+        assertEquals("Le client doit signer le mandat.", mandates[0].nextStep)
+        assertEquals("Trouvez un bien pour le client.", mandates[1].nextStep)
+        assertEquals(false, model(result)["mandatesUnavailable"])
+    }
+
+    @Test
+    fun `no contract - no contract search`() {
+        active(assigned.copy(contractId = null) to null)
+
+        mvc.perform(get("/")).andReturn()
+
+        verify(contractClient, never()).search(any())
     }
 
     @Test

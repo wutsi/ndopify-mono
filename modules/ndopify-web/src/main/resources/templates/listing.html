@@ -39,8 +39,9 @@
 <!--/*
   A listing's public page (ListingController), from the prototype src/main/html/annonce.html. Every text comes
   formatted in `page` (ListingPage); a section the listing has nothing for is left out.
-  The "Demander une visite" popup and the "Poser une question" drawer are still the prototype's: listing.js fakes the
-  confirmation and the replies, and nothing on the server handles their forms yet.
+  The "Demander une visite" and "Poser une question" calls to action are left out for now: their popup and drawer
+  below are still the prototype's (listing.js fakes the confirmation and the replies, nothing on the server handles
+  their forms) and no button opens them; only a #visit / #ask link would.
 */-->
 <body class="listing-page">
 <a class="skip-link" href="#main">Aller au contenu principal</a>
@@ -178,7 +179,7 @@
                 </section>
             </div>
 
-            <!-- Price card: sticky on desktop; on mobile, the fixed bottom bar carries the same call to action. -->
+            <!-- Price card: sticky on desktop; on mobile, the fixed bottom bar shows the price. -->
             <aside aria-label="Prix et contact" class="listing__aside">
                 <div class="price-card">
                     <p class="price-card__price"><strong th:text="${page.priceAmount}">175K FCFA</strong><th:block
@@ -186,29 +187,15 @@
                     <ul class="price-card__terms">
                         <li th:each="term : ${page.asideTerms}" th:text="${term}">Caution : 2 mois</li>
                     </ul>
-                    <a class="btn btn-primary price-card__cta" data-modal-open href="#visit">
-                        <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Demander une visite
-                    </a>
-                    <a class="btn btn-outline price-card__cta price-card__ask" data-modal-open href="#ask">
-                        <svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg>Poser une question
-                    </a>
-                    <p class="price-card__hint">Choisissez un créneau : l'agent vous confirme la visite sur
-                        WhatsApp.</p>
                 </div>
             </aside>
         </div>
     </div>
 
-    <!-- Below 1024px: the question button is an icon only, its label stays for screen readers -->
+    <!--/* Below 1024px, the price stays in the fixed bottom bar (the price card is hidden) */-->
     <div class="cta-bar">
         <p class="cta-bar__price"><strong th:text="${page.priceAmount}">175K FCFA</strong><th:block
                 th:if="${page.pricePeriod}" th:text="| ${page.pricePeriod}|"> / mois</th:block></p>
-        <div class="cta-bar__actions">
-            <a class="btn btn-outline cta-bar__ask" data-modal-open href="#ask">
-                <svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg><span class="cta-bar__ask-label">Poser une question</span>
-            </a>
-            <a class="btn btn-primary" data-modal-open href="#visit">Demander une visite</a>
-        </div>
     </div>
 </main>
 
