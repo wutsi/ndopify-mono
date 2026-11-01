@@ -162,7 +162,8 @@ object MatchRules {
     }
 
     private fun amenities(match: Match, mandate: Mandate): FitLine? {
-        val requested = Amenity.of(mandate).size
+        // As ndopify-server's Matcher counts them: a track only reachable on foot isn't an amenity
+        val requested = (Amenity.of(mandate) - Amenity.TRACK_INACCESSIBLE_BY_CAR).size
         if (requested == 0) {
             return null
         }

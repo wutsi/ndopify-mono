@@ -136,6 +136,24 @@ class MatchRulesTest {
     }
 
     @Test
+    fun `fit - track on foot asked, not an amenity`() {
+        val mandate = MANDATE.copy(securedFenced = false, trackInaccessibleByCar = true)
+        val match = MATCH_A.copy(amenitiesScore = 0.5)
+
+        assertEquals(FitLine(false, "1 équipement sur 2"), MatchRules.fit(match, mandate, LISTING_A)[3])
+    }
+
+    @Test
+    fun `fit - only the track on foot asked`() {
+        val mandate = MANDATE.copy(generatorSet = false, securedFenced = false, waterTank = false, trackInaccessibleByCar = true)
+
+        val fit = MatchRules.fit(MATCH_A.copy(amenitiesScore = 1.0), mandate, LISTING_A).map { it.text }
+
+        assertEquals(5, fit.size)
+        assertFalse(fit.any { it.contains("équipement") })
+    }
+
+    @Test
     fun `fit - sparse search`() {
         val mandate = MANDATE.copy(
             generatorSet = false,
