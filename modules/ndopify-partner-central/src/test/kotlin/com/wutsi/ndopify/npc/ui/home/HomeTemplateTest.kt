@@ -11,12 +11,15 @@ import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateSummary
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.match.dto.Match
+import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
+import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.assignment.AssignmentController
 import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.ASSIGNMENT
@@ -63,6 +66,7 @@ class HomeTemplateTest {
     private val mandateClient = mock<NdMandateClient>()
     private val contractClient = mock<NdContractClient>()
     private val listingClient = mock<NdListingClient>()
+    private val matchClient = mock<NdMatchClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
@@ -108,6 +112,7 @@ class HomeTemplateTest {
                     mandateClient,
                     contractClient,
                     listingClient,
+                    matchClient,
                     locationClient,
                     tenantContext,
                     clock
@@ -263,6 +268,41 @@ class HomeTemplateTest {
         assertEquals("/mandates/205", cards[1].selectFirst("a[data-listing-number]")?.attr("href"))
         assertEquals("À créer", cards[1].selectFirst("[data-listing-status-tag]")?.text())
         assertEquals("Créez l'annonce du bien, puis visitez-le pour la compléter.", cards[1].selectFirst(".mandate-card__next span")?.text())
+    }
+
+    @Test
+    fun `signed search - match lines`() {
+        val search = MandateCardsTest.MANDATE.copy(id = 203, status = MandateStatus.APPROVED)
+        doReturn(listOf(MandateSummariesTest.summary(search))).whenever(mandateClient).active(AGENT.id)
+        doReturn(
+            listOf(
+                Match(id = 1, mandateId = 203, status = MatchStatus.ACTIVE),
+                Match(id = 2, mandateId = 203, status = MatchStatus.ACTIVE),
+                Match(id = 3, mandateId = 203, status = MatchStatus.PROPOSED),
+            ),
+        ).whenever(matchClient).search(any(), any(), any())
+
+        val card = render(get("/")).selectFirst("[data-mandate-card]")!!
+
+        val link = card.selectFirst(".mandate-card__matches a[data-matches-link]")!!
+        assertEquals("/mandates/203#matches-title", link.attr("href"))
+        assertEquals("2 nouveaux biens correspondants", link.text())
+        assertEquals(
+            "Biens proposés au client : 1 envoyé · 1 sans réponse",
+            card.selectFirst(".mandate-card__proposals[data-proposals]")?.text(),
+        )
+        assertEquals(
+            "Envoyez au client les biens qui lui correspondent.",
+            card.selectFirst(".mandate-card__next span")?.text(),
+        )
+    }
+
+    @Test
+    fun `no match lines`() {
+        val page = render(get("/"))
+
+        assertNull(page.selectFirst("[data-matches]"))
+        assertNull(page.selectFirst("[data-proposals]"))
     }
 
     @Test

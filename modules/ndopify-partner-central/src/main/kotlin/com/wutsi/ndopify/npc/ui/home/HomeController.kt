@@ -6,12 +6,14 @@ import com.wutsi.ndopify.contract.dto.SearchContractRequest
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
+import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
+import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.kyc.KycRules
@@ -20,6 +22,7 @@ import com.wutsi.ndopify.npc.ui.mandate.MandateCardView
 import com.wutsi.ndopify.npc.ui.mandate.MandateCards
 import com.wutsi.ndopify.npc.ui.mandate.MandateRules
 import com.wutsi.ndopify.npc.ui.mandate.MandateSummaries
+import com.wutsi.ndopify.npc.ui.match.MatchRules
 import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.refdata.dto.Location
@@ -37,7 +40,8 @@ import java.time.Clock
  * The Espace agent (`index.html`), where every agent lands: its profile section (photo, name, area, biography
  * summary, and an invitation to add what's missing), the mandates offered to it ([offers]), each to accept or
  * decline (see `AssignmentController`), and its mandates in progress (*Mes mandats*, [mandates]), each opening its
- * page (see `MandateController`), a landlord's signed one with its listing's number and status ([listings]). An agent who isn't verified yet gets neither, but a banner leading to the KYC page,
+ * page (see `MandateController`), a landlord's signed one with its listing's number and status ([listings]), a
+ * signed search with its matches' lines ([matches]). An agent who isn't verified yet gets neither, but a banner leading to the KYC page,
  * worded after its case ([kyc]).
  */
 @Controller
@@ -48,6 +52,7 @@ class HomeController(
     private val mandateClient: NdMandateClient,
     private val contractClient: NdContractClient,
     private val listingClient: NdListingClient,
+    private val matchClient: NdMatchClient,
     locationClient: NdLocationClient,
     private val tenantContext: TenantContext,
     private val clock: Clock,
@@ -94,9 +99,12 @@ class HomeController(
             model.addAttribute("declining", assignments?.firstOrNull { it.id == declineId }?.id)
 
             val listings = mandates?.let { listings(agent, it.map { (mandate, _) -> mandate }) }
+            val matches = mandates?.let { matches(it.map { (mandate, _) -> mandate }) }
             model.addAttribute(
                 "mandates",
-                mandates?.map { (mandate, contract) -> MandateCards.of(mandate, contract, listings, names, now, formatter) }
+                mandates?.map { (mandate, contract) ->
+                    MandateCards.of(mandate, contract, listings, names, now, formatter, matches)
+                }
                     ?: emptyList<MandateCardView>(),
             )
             model.addAttribute("mandatesUnavailable", mandates == null)
@@ -150,6 +158,21 @@ class HomeController(
             listingClient.searchByMandates(ids, agent.id).associateBy { it.mandateId }
         } catch (ex: RestClientException) {
             LOGGER.warn("No listings for the mandates of agent ${agent.id}: ${ex.message}")
+            null
+        }
+    }
+
+    /**
+     * The matches of the signed searches by mandate id, in one search (none without such a mandate); null when they
+     * can't be had: the cards then show no match lines. DISMISSED ones aren't needed: the cards don't count them.
+     */
+    private fun matches(mandates: List<Mandate>): Map<Long, List<Match>>? {
+        val ids = mandates.filter { MatchRules.matched(it) }.map { it.id }
+        if (ids.isEmpty()) return emptyMap()
+        return try {
+            matchClient.search(ids, MatchRules.ORDER).groupBy { it.mandateId }
+        } catch (ex: RestClientException) {
+            LOGGER.warn("No matches for the mandates ${ids.joinToString()}: ${ex.message}")
             null
         }
     }

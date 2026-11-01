@@ -18,12 +18,15 @@ import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateSummary
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.match.dto.Match
+import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
+import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.ASSIGNMENT
 import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.MANDATE
@@ -60,6 +63,7 @@ class HomeControllerTest {
     private val mandateClient = mock<NdMandateClient>()
     private val contractClient = mock<NdContractClient>()
     private val listingClient = mock<NdListingClient>()
+    private val matchClient = mock<NdMatchClient>()
     private val clock = mock<Clock>()
     private lateinit var mvc: MockMvc
 
@@ -78,6 +82,7 @@ class HomeControllerTest {
             mandateClient,
             contractClient,
             listingClient,
+            matchClient,
             locationClient,
             tenantContext,
             clock,
@@ -451,6 +456,54 @@ class HomeControllerTest {
         val card = mandates(result).single()
         assertNull(card.listing)
         assertEquals("Trouvez un locataire.", card.nextStep)
+        assertEquals(false, model(result)["mandatesUnavailable"])
+    }
+
+    @Test
+    fun `matches of the signed searches - one search`() {
+        val other = approved.copy(id = 204)
+        active(approved to null, other to null, assigned to null, landlord to null)
+        doReturn(
+            listOf(
+                Match(id = 1, mandateId = 203, listingId = 3012, status = MatchStatus.ACTIVE),
+                Match(id = 2, mandateId = 204, listingId = 2987, status = MatchStatus.ACCEPTED),
+            ),
+        ).whenever(matchClient).search(any(), any(), any())
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        verify(matchClient).search(
+            listOf(203L, 204L),
+            listOf(MatchStatus.ACCEPTED, MatchStatus.ACTIVE, MatchStatus.PROPOSED, MatchStatus.REJECTED),
+            100,
+        )
+        val mandates = mandates(result)
+        assertEquals("1 nouveau bien correspondant", mandates[0].matches)
+        assertEquals("/mandates/203#matches-title", mandates[0].matchesUrl)
+        assertEquals("1 envoyé · 1 intéresse le client", mandates[1].proposals)
+        assertEquals("L'annonce n° 2987 intéresse le client : proposez-lui une visite.", mandates[1].nextStep)
+        assertNull(mandates[2].matches)
+    }
+
+    @Test
+    fun `no signed search - no match search`() {
+        active(assigned to null, landlord to null)
+
+        mvc.perform(get("/")).andReturn()
+
+        verify(matchClient, never()).search(any(), any(), any())
+    }
+
+    @Test
+    fun `matches unavailable - cards kept without the match lines`() {
+        active(approved to null)
+        doThrow(ResourceAccessException("timeout")).whenever(matchClient).search(any(), any(), any())
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        val card = mandates(result).single()
+        assertNull(card.matches)
+        assertNull(card.proposals)
         assertEquals(false, model(result)["mandatesUnavailable"])
     }
 
