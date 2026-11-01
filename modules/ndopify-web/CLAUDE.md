@@ -5,7 +5,9 @@ The public marketing site (port 8082, French UI): a Spring Boot + Thymeleaf app 
 tenant, and a PUBLISHED listing's `/v1/listings/{id}`, its `/images` and its `/v1/locations`; its calls to action link
 to Partner Central's public wizards. Its infrastructure (`TenantContext`, `TenantFormatter`, the logging and
 `X-Tenant-ID` interceptors, `NdTenantClient`) comes from `ndopify-web-core` (package `com.wutsi.ndopify.web.core`),
-minus everything about sign-in: no JWT, no cookie, no session.
+minus everything about sign-in, except one: a match link's `public-portal` token (`?token=`, see `MatchController`) is kept in the
+`__nweb_access_token` cookie (`AccessTokenService`, `JwtAuthenticationFilter`) and sent to ndopify-server as the bearer
+token; any other token is signed out. No other page reads it.
 
 ## Code Organization
 
@@ -28,9 +30,9 @@ Package `com.wutsi.ndopify.web`:
   `NdTenantClient`, a plain `RestTemplate`); `TenantFormatter` (web-core) — dates and amounts.
 - `client/ndopify/NdListingClient`, `NdLocationClient` — `RestClient`s that get `RestConfiguration`'s interceptors
   (web-core's logging and `X-Tenant-ID`).
-- `config/` — `SecurityConfiguration` permits only `/`, `/agent`, `/owner`, GET of the listing paths
-  (`/*/listing/*`, `/*/*/listing/*/*`…), `/assets/**` and `/error` (everything else is denied: a new page must be
-  added there), `RestConfiguration`, `ClockConfiguration`, and `WebCoreConfiguration` (`TenantContext` on
+- `config/` — `SecurityConfiguration` (CSRF on) permits only `/`, `/agent`, `/owner`, GET of the listing paths
+  (`/*/listing/*`, `/*/*/listing/*/*`…), `GET /match/*`, `POST /match/*/accept|reject`, `/assets/**` and `/error` (everything else is denied: a new page must
+  be added there), `RestConfiguration`, `ClockConfiguration`, and `WebCoreConfiguration` (`TenantContext` on
   `TenantPortal.PUBLIC_PORTAL`, `@Import(NdTenantClient)`).
 
 Static assets in `src/main/resources/public/assets/` (`main.js`, and the listing page's `listing.js` / `listing.css`,
