@@ -5,6 +5,7 @@ import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
@@ -15,6 +16,7 @@ import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.domain.MatchEntity
+import com.wutsi.ndopify.match.server.service.MatchLinkTokenService
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
@@ -34,7 +36,8 @@ class MatchProposedMailetTest {
     private val locationService = mock<LocationService>()
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
-    private val mailet = MatchProposedMailet(tenantService, locationService, mailService, mailBodyResolver)
+    private val linkTokenService = mock<MatchLinkTokenService>()
+    private val mailet = MatchProposedMailet(tenantService, locationService, mailService, mailBodyResolver, linkTokenService)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -75,6 +78,7 @@ class MatchProposedMailetTest {
         doReturn(LocationEntity(id = 2370201L, name = "Yaounde")).whenever(locationService).findByIdOrNull(2370201L)
         doReturn(LocationEntity(id = 111L, name = "Bastos")).whenever(locationService).findByIdOrNull(111L)
         doReturn("<html>proposed</html>").whenever(mailBodyResolver).resolve(any(), any())
+        doReturn("xxx.yyy.zzz").whenever(linkTokenService).create(customer)
     }
 
     @Test
@@ -94,7 +98,7 @@ class MatchProposedMailetTest {
                         "listing_title" to "Nice apartment",
                         "price_label" to "Loyer",
                         "price" to "150 000 FCFA / mois",
-                        "listing_url" to "https://www.ndopify.com/match/1",
+                        "listing_url" to "https://www.ndopify.com/match/1?token=xxx.yyy.zzz",
                     ),
                 ),
             ),
@@ -119,9 +123,13 @@ class MatchProposedMailetTest {
         assertEquals(2, context["count"])
         val listings = context["listings"] as List<*>
         assertEquals(
-            listOf("https://www.ndopify.com/match/1", "https://www.ndopify.com/match/2"),
+            listOf(
+                "https://www.ndopify.com/match/1?token=xxx.yyy.zzz",
+                "https://www.ndopify.com/match/2?token=xxx.yyy.zzz",
+            ),
             listings.map { (it as Map<*, *>)["listing_url"] },
         )
+        verify(linkTokenService).create(customer) // One token for all the links
         assertEquals("200 000 FCFA / mois", (listings[1] as Map<*, *>)["price"])
 
         val email = argumentCaptor<Email>()
@@ -137,13 +145,23 @@ class MatchProposedMailetTest {
 
         assertNull(context()["online"])
         assertNull(listing()["listing_url"])
+        verify(linkTokenService, never()).create(any())
+    }
+
+    @Test
+    fun `no token - the link without it`() {
+        doReturn(null).whenever(linkTokenService).create(customer)
+
+        mailet.send(listOf(match), customer, agent)
+
+        assertEquals("https://www.ndopify.com/match/1", listing()["listing_url"])
     }
 
     @Test
     fun `listing without url - the proposal's link`() {
         mailet.send(listOf(match.copy(listing = listing.copy(url = null))), customer, agent)
 
-        assertEquals("https://www.ndopify.com/match/1", listing()["listing_url"])
+        assertEquals("https://www.ndopify.com/match/1?token=xxx.yyy.zzz", listing()["listing_url"])
     }
 
     @Test

@@ -5,6 +5,11 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.dao.MatchRepository
+import com.wutsi.ndopify.refdata.dto.ApplicationCode
+import com.wutsi.ndopify.refdata.server.service.ApplicationService
+import com.wutsi.ndopify.security.server.dao.MembershipRepository
+import com.wutsi.ndopify.security.server.dao.UserApplicationRepository
+import com.wutsi.ndopify.security.server.service.AccessTokenService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
@@ -18,6 +23,18 @@ import kotlin.test.assertTrue
 class ProposeMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Autowired
     private lateinit var dao: MatchRepository
+
+    @Autowired
+    private lateinit var accessTokenService: AccessTokenService
+
+    @Autowired
+    private lateinit var membershipDao: MembershipRepository
+
+    @Autowired
+    private lateinit var userApplicationDao: UserApplicationRepository
+
+    @Autowired
+    private lateinit var applicationService: ApplicationService
 
     @Test
     fun propose() {
@@ -34,8 +51,26 @@ class ProposeMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals("Ray Sponsible <ray.sponsible@gmail.com>", message.allRecipients.single().toString())
         assertEquals("Ndopify: Kim Possible vous propose un bien à Bastos (Yaounde)", message.subject)
         val body = message.content.toString()
-        assertTrue(body.contains("https://www.ndopify.com/match/1"))
+        assertTrue(body.contains("https://www.ndopify.com/match/1?token="))
         assertTrue(body.contains("Nice apartment"))
+    }
+
+    @Test
+    fun `the link signs the customer in to the public portal`() {
+        rest.postForEntity("/v1/matches/1/propose", null, Any::class.java)
+
+        assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received")
+        val body = smtp.receivedMessages.single().content.toString()
+        val token = Regex("/match/1\\?token=([A-Za-z0-9._-]+)").find(body)!!.groupValues[1]
+        val principal = accessTokenService.decode(token)
+        assertEquals(ApplicationCode.PUBLIC_PORTAL, principal.getApplication())
+        assertEquals(13L, principal.getUserId())
+        assertEquals(1L, principal.getTenantId())
+        assertEquals(100L, principal.getPartyId())
+
+        val membership = membershipDao.findByPartyId(100L)!!
+        val publicPortal = applicationService.findByCode(ApplicationCode.PUBLIC_PORTAL)
+        assertTrue(userApplicationDao.findByMembershipAndApplication(membership, publicPortal).isPresent)
     }
 
     @Test

@@ -81,7 +81,8 @@ Current domains:
   `CallerService` still goes through the membership. A
   person in two tenants has one user, one set of credentials, and a membership (party, roles) in each. Nothing
   creates a membership on sign-in (not even Google One Tap): only registration (`AgentService.create`) does, and a request
-  for signature (`ContractSignerService`), for the parties asked to sign, with `e-signature` access.
+  for signature (`ContractSignerService`), for the parties asked to sign, with `e-signature` access, and a match
+  proposal e-mail (`MatchLinkTokenService`), for the customer, with `public-portal` access.
   `GET /v1/users/{id}` (`UserEndpoints`) returns the user with its party in the current tenant embedded, and 404
   `USER_NOT_FOUND` for a user who isn't a member of it. It needs a token (see *Authentication* below) but
   doesn't check whose user it is yet. A party's e-mail is its contact e-mail in the tenant, not synced to the user's (global) login
@@ -233,7 +234,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   (`ContractSignerService`, in the request's transaction, before the save): the one it has (an agent), else the user of
   its `legalEmail` (created if needed). An address already a member's as another party is a 409
   `CONTRACT_PARTY_MEMBERSHIP_CONFLICT`: contract unchanged, no e-mail. Idempotent. So a customer signs in to the
-  e-signature portal by OTP once asked to sign; nothing else (not `CustomerService`) creates its membership. A mandate's contract (`MandateService.createContract`) has the customer as
+  e-signature portal by OTP once asked to sign; only that and a match proposal (`MatchLinkTokenService`) create its
+  membership, never `CustomerService`. A mandate's contract (`MandateService.createContract`) has the customer as
   `MANDATOR` (signs it) and its agent as `AGENT` with `signatureRequired = false`: a party, so it can read the
   contract, but it's neither asked to sign nor waited for.
   `ContractJobs.expire` (daily, `ndopify.contract.expire.cron`) moves to `EXPIRED` the PENDING_SIGNATURE contracts past
@@ -311,7 +313,12 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   SHORTLISTED → PROPOSED, `proposedAt`, all or none; 409 `MATCH_NOT_ACTIVE`, `MANDATE_NOT_APPROVED`,
   `LISTING_NOT_PUBLISHED`. It publishes one `MatchProposedEvent` (`matchIds`): `MatchProposedMailet` sends the
   customer one e-mail with the listings, best score first, each with a link to its proposal page,
-  `{publicPortalUrl}/match/{matchId}` (`mail/match/proposed.mjml`), where the customer answers it. `POST /{id}/accept` and
+  `{publicPortalUrl}/match/{matchId}?token={jwt}` (`mail/match/proposed.mjml`), where the customer answers it. The
+  token (`MatchLinkTokenService`, one per e-mail) is a `public-portal` JWT of the customer's own user and party, so
+  that the link signs it in; it lives `ndopify.security.access-token.ttl.match-link` (2d) and isn't scoped to the
+  match: whoever has the e-mail is signed in as the customer until then. The customer gets a membership of the tenant
+  with `public-portal` access first (its own, else the user of its e-mail); no `token` without an e-mail, or when
+  that address is already a member's as another party. `POST /{id}/accept` and
   `POST /{id}/reject` (`RejectMatchRequest.reasonCode`, a `MatchRejectionReason`, `OTHER` when missing or `UNKNOWN`,
   and `reason`, a comment, optional, at most 1000) are for the mandate's customer only
   (`MandateAccessService.ensureIsCustomer`: the JWT's party is the customer's, any application; **no admin bypass,

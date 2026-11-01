@@ -232,11 +232,12 @@ ndopify:
         jwt:
             secret: local-dev-secret-not-for-prod-0123456789 # Dummy: test and prod use the JWT_SECRET env variable
         access-token:
-            ttl:                           # Per ApplicationCode: also how long the web apps keep their cookie
+            ttl: # Per ApplicationCode: also how long the web apps keep their cookie
                 public-portal: 5d
                 admin-console: 1h
                 partner-central: 1d
                 e-signature: 1h
+                match-link: 7d             # The token of the links of a match proposal e-mail (MatchLinkTokenService)
             default-ttl: 1h                # An application not listed above
     database:
         pool-size: 8
