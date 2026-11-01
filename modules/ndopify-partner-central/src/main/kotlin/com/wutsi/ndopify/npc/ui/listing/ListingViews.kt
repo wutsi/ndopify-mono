@@ -13,6 +13,7 @@ import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.npc.ui.mandate.Amenity
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.npc.ui.mandate.MandateRules
+import com.wutsi.ndopify.npc.ui.match.MatchRules
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
@@ -233,13 +234,15 @@ object ListingViews {
      * The listing's line on the page of [mandate] (the prototype's `renderListing`); null for a mandate that has none
      * to have: a search, or a landlord's not signed yet. [listingId] is null before it's created; [listing] is also
      * null when it can't be loaded (only the link is then shown). The photos aren't loaded here: what's left names the
-     * section only.
+     * section only. Once published, [interested] is how many clients it interests (its ACCEPTED matches, like the
+     * Espace agent's card), null when they can't be counted: no line then.
      */
     fun forMandate(
         mandate: Mandate,
         listingId: Long?,
         listing: Listing?,
-        formatter: TenantFormatter
+        formatter: TenantFormatter,
+        interested: Int? = null,
     ): MandateListingView? {
         if (!MandateRules.listed(mandate)) return null
 
@@ -286,6 +289,7 @@ object ListingViews {
                 else -> "Voir l'annonce"
             },
             primary = draft,
+            interest = interested?.takeIf { published }?.let { MatchRules.interest(it) },
         )
     }
 

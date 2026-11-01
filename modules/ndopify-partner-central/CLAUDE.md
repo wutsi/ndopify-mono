@@ -185,7 +185,8 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   returned; a failure to load it leaves only the link), starting with the same `ListingLineView` as the card (its
   number a link to the listing; once PUBLISHED, that line only: no text, no button): "Créer l'annonce" posts `POST /mandates/{id}/listing`
   (`ListingController.create` → `NdListingClient` → `POST /v1/listings`, a DRAFT pre-filled from the landlord's
-  answers; on 409 `LISTING_ALREADY_EXISTS`, ex: from another tab, the existing one is opened instead), then where it stands and "Continuer / Voir l'annonce". The listing
+  answers; on 409 `LISTING_ALREADY_EXISTS`, ex: from another tab, the existing one is opened instead), then where it stands and "Continuer / Voir l'annonce"; once published, how many clients it interests, like the card
+  (`GET /v1/matches?listing-id=&status=ACCEPTED`, a failure leaves the line out). The listing
   page, `GET /listings/{id}` (`templates/listing.html`, `ListingViews` → `ListingView`), is the checklist of the visit:
   one row per `ListingSection` (`ListingRules.SECTIONS`, linking to its page),
   each section done once ndopify-server's checklist says so (`Listing.sections`, `ListingRules.done`), which also
@@ -228,12 +229,15 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
 - A signed search (APPROVED, SEARCH: `MatchRules.matched`) has *Biens correspondants* on its mandate page: the
   PUBLISHED listings of the agent's inventory ndopify-server matched to it (`ui/match/`, see
   `docs/superpowers/plans/2026-10-31-partner-central-matches.md`). `MandateController` reads its matches in one
-  `GET /v1/matches?mandate-id=&status=…` (`NdMatchClient`, ACCEPTED / ACTIVE / PROPOSED / REJECTED, and DISMISSED, only
-  counted), then their listings in one `GET /v1/listings?id=&id=` (`NdListingClient.searchByIds`; a match whose listing
+  `GET /v1/matches?mandate-id=&status=…` (`NdMatchClient`, ACCEPTED / ACTIVE / PROPOSED, and REJECTED / DISMISSED, only
+  counted: a refused one isn't shown, the section's one-liner "1 intéressé · 1 refusé · 1 en attente",
+  `MatchRules.proposals` like the cards', counts it), then their listings in one `GET /v1/listings?id=&id=` (`NdListingClient.searchByIds`; a match whose listing
   isn't returned, unpublished meanwhile, is left out), and the location names with the mandate's. Either search failing
-  is the section's "unavailable": the mandate is still shown. `MatchViews` → `MatchView` (cards in `MatchRules.ORDER`,
-  best score first within each status) and `MatchRules`: tags, the client's answer ("Envoyé le … · refusé le … : {its
-  words}"), and "Pourquoi ce bien ?", the partial scores of ndopify-server's `Matcher` in words (neighbourhood, price,
+  is the section's "unavailable": the mandate is still shown. The cards are compact for phones: the title links to the
+  listing, then one line of facts (score, neighbourhood, the rent in bold and in short, `compact = true`: "245K FCFA /
+  mois", availability) and, once sent, "Envoyé le …" (tag "En attente" / "Intéressé"). `MatchViews` → `MatchView` (cards in `MatchRules.ORDER`,
+  best score first within each status) and `MatchRules`: tags, the client's answer ("Envoyé le … · intéressé le
+  …"), and "Pourquoi ce bien ?", the partial scores of ndopify-server's `Matcher` in words (neighbourhood, price,
   rooms, amenities when some were asked, availability, furniture when asked). An ACTIVE card is sent to the client or
   set aside by `MatchController`, `POST /mandates/{mandateId}/matches/{matchId}/propose|dismiss`, which reads the match
   first: one of another mandate than the URL's or no longer ACTIVE is `changed` without any call (no second e-mail on

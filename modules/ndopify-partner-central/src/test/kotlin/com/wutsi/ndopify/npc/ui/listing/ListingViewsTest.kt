@@ -557,6 +557,15 @@ class ListingViewsTest {
         )
         assertNull(view.text)
         assertNull(view.action)
+        assertNull(view.interest)
+    }
+
+    @Test
+    fun `mandate - published - clients interested`() {
+        val listing = COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT)
+
+        assertEquals("1 personne intéressée", ListingViews.forMandate(approved, 501, listing, formatter, 1)?.interest)
+        assertNull(ListingViews.forMandate(approved, 501, COMPLETE, formatter, 1)?.interest)
     }
 
     @Test

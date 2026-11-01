@@ -65,6 +65,8 @@ data class MandateListingView(
     val action: String?,
     /** The step's main button while there's something for the agent to do. */
     val primary: Boolean,
+    /** Published only: "2 personnes intéressées" (`MatchRules.interest`); null else, or when it can't be had. */
+    val interest: String? = null,
 )
 
 /**

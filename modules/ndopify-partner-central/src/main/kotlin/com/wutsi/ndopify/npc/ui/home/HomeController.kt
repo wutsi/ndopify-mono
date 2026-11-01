@@ -172,7 +172,7 @@ class HomeController(
         val ids = mandates.filter { MatchRules.matched(it) }.map { it.id }
         if (ids.isEmpty()) return emptyMap()
         return try {
-            matchClient.search(ids, MatchRules.ORDER).groupBy { it.mandateId }
+            matchClient.search(ids, MatchRules.COUNTED).groupBy { it.mandateId }
         } catch (ex: RestClientException) {
             LOGGER.warn("No matches for the mandates ${ids.joinToString()}: ${ex.message}")
             null

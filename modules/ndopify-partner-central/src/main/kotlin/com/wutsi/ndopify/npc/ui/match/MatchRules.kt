@@ -14,18 +14,25 @@ import kotlin.math.roundToInt
 
 /**
  * The wording of the listings ndopify-server matched to a signed search (`Matcher`'s partial scores as "Pourquoi ce
- * bien ?", tags, the client's answer, the card summaries), after the prototype's `renderMatches`.
+ * bien ?", tags, the client's answer, the card summaries), after the prototype's `renderMatches`. A match the client
+ * refused isn't shown: only [proposals] counts it.
  *
  * Not rendered, though the prototype has them: *Retenir* (SHORTLISTED) and sending several at once, the client's
  * visit request and coded rejection reasons, the distance of a nearby neighbourhood and the names of the missing
  * amenities. A SHORTLISTED match isn't shown at all: partner-central never shortlists one.
  */
 object MatchRules {
-    /** The statuses shown, in the section's order (best score first within each). DISMISSED ones are only counted. */
-    val ORDER: List<MatchStatus> = listOf(MatchStatus.ACCEPTED, MatchStatus.ACTIVE, MatchStatus.PROPOSED, MatchStatus.REJECTED)
+    /**
+     * The statuses shown, in the section's order (best score first within each). REJECTED and DISMISSED ones are only
+     * counted.
+     */
+    val ORDER: List<MatchStatus> = listOf(MatchStatus.ACCEPTED, MatchStatus.ACTIVE, MatchStatus.PROPOSED)
 
-    /** What the mandate page searches: [ORDER] and DISMISSED, to count them. */
-    val SEARCHED: List<MatchStatus> = ORDER + MatchStatus.DISMISSED
+    /** What [proposals] counts (the *Mes mandats* cards search it): [ORDER] and REJECTED. */
+    val COUNTED: List<MatchStatus> = ORDER + MatchStatus.REJECTED
+
+    /** What the mandate page searches: [COUNTED] and DISMISSED, to count them. */
+    val SEARCHED: List<MatchStatus> = COUNTED + MatchStatus.DISMISSED
 
     /** In a match's fit, unlike `MandateLabels.furniture` ("Oui" / "Non"). */
     val FURNITURE_LABELS: Map<FurnitureType, String> = mapOf(
@@ -35,9 +42,8 @@ object MatchRules {
 
     private val TAGS = mapOf(
         MatchStatus.ACTIVE to MandateRules.Tag("Nouveau", "info"),
-        MatchStatus.PROPOSED to MandateRules.Tag("Envoyé", "neutral"),
+        MatchStatus.PROPOSED to MandateRules.Tag("En attente", "neutral"),
         MatchStatus.ACCEPTED to MandateRules.Tag("Intéressé", "success"),
-        MatchStatus.REJECTED to MandateRules.Tag("Refusé", "neutral"),
     )
 
     private val SENT = setOf(MatchStatus.PROPOSED, MatchStatus.ACCEPTED, MatchStatus.REJECTED)
@@ -54,19 +60,17 @@ object MatchRules {
         matches.filter { it.status in ORDER }
             .sortedWith(compareBy<Match> { ORDER.indexOf(it.status) }.thenByDescending { it.score })
 
-    fun tag(match: Match): MandateRules.Tag = TAGS[match.status] ?: TAGS.getValue(MatchStatus.REJECTED)
+    fun tag(match: Match): MandateRules.Tag = TAGS[match.status] ?: TAGS.getValue(MatchStatus.PROPOSED)
 
-    /** Where a sent match stands: "Envoyé le 28 oct. 2026 · le client est intéressé."; null before it's sent. */
+    /**
+     * A sent match's one line, the tag saying the rest: "Envoyé le 28 octobre 2026", "… · intéressé le 29 octobre
+     * 2026"; null before it's sent (and for a refused one, not shown).
+     */
     fun answer(match: Match, formatter: TenantFormatter): String? {
         val sent = "Envoyé" + (match.proposedAt?.let { " le " + formatter.date(it) } ?: "")
         return when (match.status) {
-            MatchStatus.PROPOSED -> "$sent · le client n'a pas encore répondu."
-            MatchStatus.ACCEPTED -> "$sent · le client est intéressé."
-            MatchStatus.REJECTED -> {
-                val answered = match.answeredAt?.let { " le " + formatter.date(it) } ?: ""
-                val reason = match.rejectionReason?.trim()?.ifEmpty { null }?.let { " : $it" } ?: ""
-                "$sent · refusé$answered$reason."
-            }
+            MatchStatus.PROPOSED -> sent
+            MatchStatus.ACCEPTED -> sent + (match.answeredAt?.let { " · intéressé le " + formatter.date(it) } ?: "")
             else -> null
         }
     }
@@ -96,8 +100,9 @@ object MatchRules {
     }
 
     /**
-     * A card's line of the listings sent to the client, short enough for one line on a phone: what it answered,
-     * "1 intéressé · 1 refusé · 1 en attente" (no total: the counts add up to it); null when none was sent.
+     * A card's line of the listings sent to the client, also on the mandate page's *Biens correspondants*, short
+     * enough for one line on a phone: what it answered, "1 intéressé · 1 refusé · 1 en attente" (no total: the counts
+     * add up to it); null when none was sent.
      */
     fun proposals(matches: List<Match>): String? {
         if (matches.none { it.status in SENT }) {

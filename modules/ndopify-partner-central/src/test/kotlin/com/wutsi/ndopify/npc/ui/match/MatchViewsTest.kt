@@ -30,19 +30,43 @@ class MatchViewsTest {
         assertEquals(3012L, view.listingId)
         assertEquals("Appartement · 3 chambres", view.title)
         assertEquals(MandateRules.Tag("Nouveau", "info"), view.tag)
-        assertEquals("95 %", view.score)
         assertEquals("/listings/3012", view.listingUrl)
         assertEquals(
             listOf(
+                "Correspondance" to "95 %",
                 "Quartier" to "Bonapriso",
-                "Loyer" to "240 000 FCFA / mois",
-                "Disponible" to "01 déc. 2026",
+                "Loyer" to "240K\u00a0FCFA / mois",
+                "Disponibilité" to "Dès le 01 déc. 2026",
             ),
             view.facts,
         )
         assertNull(view.answer)
         assertEquals(6, view.fit.size)
         assertTrue(view.actionable)
+        assertNull(section.proposals)
+    }
+
+    @Test
+    fun `refused - left out, counted in the proposals`() {
+        val matches = listOf(
+            MATCH_A,
+            MATCH_B.copy(status = MatchStatus.REJECTED),
+            MATCH_C.copy(status = MatchStatus.PROPOSED),
+        )
+
+        val section = MatchViews.section(MANDATE, matches, LISTINGS, LOCATIONS, TODAY, FORMATTER)
+
+        assertEquals(listOf(9001L, 9002L), section.matches.map { it.id })
+        assertEquals("1 refusé · 1 en attente", section.proposals)
+    }
+
+    @Test
+    fun `rent - not round`() {
+        val listings = mapOf(3012L to LISTING_A.copy(price = 152_500))
+
+        val view = MatchViews.section(MANDATE, listOf(MATCH_A), listings, LOCATIONS, TODAY, FORMATTER).matches[0]
+
+        assertEquals("Loyer" to "152,5K\u00a0FCFA / mois", view.facts[2])
     }
 
     @Test
@@ -51,7 +75,7 @@ class MatchViewsTest {
 
         val view = MatchViews.section(MANDATE, listOf(MATCH_A), listings, LOCATIONS, TODAY, FORMATTER).matches[0]
 
-        assertEquals("Disponible" to "Maintenant", view.facts[2])
+        assertEquals("Disponibilité" to "Libre maintenant", view.facts[3])
     }
 
     @Test
@@ -60,7 +84,7 @@ class MatchViewsTest {
 
         val view = MatchViews.section(MANDATE, listOf(MATCH_A), listings, LOCATIONS, TODAY, FORMATTER).matches[0]
 
-        assertEquals("Disponible" to "Maintenant", view.facts[2])
+        assertEquals("Disponibilité" to "Libre maintenant", view.facts[3])
     }
 
     @Test
@@ -69,7 +93,7 @@ class MatchViewsTest {
 
         val view = MatchViews.section(MANDATE, listOf(MATCH_A), listings, LOCATIONS, TODAY, FORMATTER).matches[0]
 
-        assertEquals("Disponible" to "Maintenant", view.facts[2])
+        assertEquals("Disponibilité" to "Libre maintenant", view.facts[3])
     }
 
     @Test
@@ -79,7 +103,7 @@ class MatchViewsTest {
         val view = MatchViews.section(MANDATE, listOf(MATCH_A), listings, LOCATIONS, TODAY, FORMATTER).matches[0]
 
         assertEquals("Appartement", view.title)
-        assertEquals("Quartier" to "Douala", view.facts[0])
+        assertEquals("Quartier" to "Douala", view.facts[1])
     }
 
     @Test
@@ -118,7 +142,7 @@ class MatchViewsTest {
 
         assertEquals(listOf(9003L, 9001L), section.matches.map { it.id })
         assertFalse(section.matches.any { it.actionable })
-        assertEquals("Envoyé · le client n'a pas encore répondu.", section.matches[1].answer)
+        assertEquals("Envoyé", section.matches[1].answer)
     }
 
     @Test

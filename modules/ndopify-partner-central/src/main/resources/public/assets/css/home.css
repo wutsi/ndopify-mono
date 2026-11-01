@@ -775,14 +775,47 @@ h1.alert__title {
     gap: var(--space-3);
 }
 
-.match__score {
+/* A match: tighter than an offer, so that a phone shows two or three of them at once. */
+.match {
+    padding: var(--space-3);
+}
+
+.match article > * + * {
+    margin-top: var(--space-2);
+}
+
+.match__title a {
+    color: inherit;
+    text-underline-offset: 0.2em;
+}
+
+/* Score · neighbourhood · rent · availability, on one line where it fits; the terms are visually hidden. */
+.match__facts {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0;
     font-size: var(--step-hint);
 }
 
-.match__score strong {
-    font-size: var(--step-h4);
+.match__facts dd {
+    display: inline;
+    margin: 0;
+}
+
+/* After each fact, so that a wrapped line never starts with the dot. */
+.match__facts > div:not(:last-child)::after {
+    content: "\00a0·";
+    margin-inline-end: 0.3em;
+}
+
+.match__facts > div:first-child dd {
     font-weight: 600;
     color: var(--color-success-fg);
+}
+
+/* The rent: what the agent looks at first. */
+.match__facts .match__rent {
+    font-weight: 600;
 }
 
 .match__fit {
@@ -807,23 +840,14 @@ h1.alert__title {
     color: var(--color-success-fg);
 }
 
-/* Phones: "Envoyer au client" (in its form) on its own row, Écarter under it. */
-.match__actions {
-    flex-wrap: wrap;
-}
-
-.match__actions [data-match-send-form] {
-    display: flex;
-    flex-basis: 100%;
-}
-
-.match__actions [data-match-send-form] .btn {
-    flex: 1 1 auto;
+/* Envoyer (its form laid out as contents, see .assignment__actions form) and Écarter on one row, even on a phone. */
+.match__actions .btn {
+    padding-inline: var(--space-3);
 }
 
 @media (min-width: 640px) {
-    .match__actions [data-match-send-form] {
-        flex-basis: auto;
+    .match__actions .btn {
+        min-width: 8rem;
     }
 }
 

@@ -178,6 +178,11 @@
                                 <span th:if="${ml.line.tag}" th:class="|status-tag status-tag--${ml.line.tag.style}|"
                                       th:text="${ml.line.tag.label}" data-listing-status-tag>Brouillon</span>
                             </p>
+                            <!-- Published only: how many clients it interests, like the Espace agent's card. -->
+                            <p class="mandate-card__interest" th:if="${ml.interest}" data-listing-interest>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6.5 6.5 0 0 1 3.5 6"/></svg>
+                                <span th:text="${ml.interest}" data-listing-interest-text>2 personnes intéressées</span>
+                            </p>
                             <p th:if="${ml.text}" th:text="${ml.text}" data-listing-text></p>
                             <div class="mandate-panel__actions" th:if="${ml.action}">
                                 <form th:unless="${ml.url}" method="post" th:action="@{${ml.createUrl}}" data-listing-create-form>
@@ -229,6 +234,12 @@
                     <div class="matches__head">
                         <h2 id="matches-title">Biens correspondants</h2>
                     </div>
+                    <!-- Like the Espace agent's card: what the client answered, the refused ones included. -->
+                    <p class="mandate-card__proposals" th:if="${ms.proposals}" data-match-proposals>
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M4 12 20 4l-6 16-3-7zM11 13l9-9"/></svg>
+                        <span><span class="visually-hidden">Biens proposés au client : </span><span
+                                th:text="${ms.proposals}" data-match-proposals-text>1 intéressé · 1 refusé · 1 en attente</span></span>
+                    </p>
                     <p>Les biens de vos annonces publiées qui correspondent à la recherche du client. Envoyez-les-lui
                         ou écartez-les.</p>
 
@@ -244,29 +255,32 @@
                         Les biens correspondants ne peuvent pas être affichés pour le moment.</p>
 
                     <th:block th:unless="${ms.unavailable}">
+                        <!--
+                            Compact, for phones: the title opens the listing (new tab), then one line of facts and,
+                            once sent, one line of what became of it. A refused one isn't shown: the line above
+                            counts it.
+                        -->
                         <ul class="assignments" th:unless="${#lists.isEmpty(ms.matches)}" data-match-list>
-                            <li class="assignment" th:each="match : ${ms.matches}" th:id="|match-${match.id}|" data-match
+                            <li class="assignment match" th:each="match : ${ms.matches}" th:id="|match-${match.id}|" data-match
                                 th:attr="data-match-id=${match.id}" th:with="confirming=${dismissing == match.id}">
                                 <article th:attr="aria-labelledby=|match-${match.id}-title|">
                                     <div class="assignment__head">
-                                        <h3 class="assignment__type" th:id="|match-${match.id}-title|"
-                                            th:text="${match.title}" data-match-title>Appartement · 3 chambres</h3>
+                                        <h3 class="assignment__type match__title" th:id="|match-${match.id}-title|"><a
+                                                target="_blank" rel="noopener" th:href="@{${match.listingUrl}}" data-match-link><span
+                                                th:text="${match.title}" data-match-title>Appartement · 3 chambres</span><span
+                                                class="visually-hidden">, annonce n°&nbsp;<span th:text="${match.listingId}"
+                                                data-match-ref>3012</span> (s'ouvre dans un nouvel onglet)</span></a></h3>
                                         <p th:class="|status-tag status-tag--${match.tag.style}|"
                                            th:text="${match.tag.label}" data-match-tag>Nouveau</p>
                                     </div>
-                                    <p class="match__score"><strong th:text="${match.score}" data-match-score>95 %</strong>
-                                        de correspondance ·
-                                        <a target="_blank" rel="noopener" th:href="@{${match.listingUrl}}" data-match-link>annonce
-                                            n°&nbsp;<span th:text="${match.listingId}" data-match-ref>3012</span><span
-                                                class="visually-hidden"> (s'ouvre dans un nouvel onglet)</span></a></p>
-                                    <dl class="assignment__facts" data-match-facts>
+                                    <dl class="match__facts" data-match-facts>
                                         <div th:each="fact : ${match.facts}">
-                                            <dt th:text="${fact.first}">Quartier</dt>
-                                            <dd th:text="${fact.second}">Bonapriso</dd>
+                                            <dt class="visually-hidden" th:text="${fact.first}">Quartier</dt>
+                                            <dd th:text="${fact.second}" th:classappend="${fact.first == 'Loyer'} ? 'match__rent'">Bonapriso</dd>
                                         </div>
                                     </dl>
                                     <p class="match__answer" th:if="${match.answer}" th:text="${match.answer}"
-                                       data-match-answer>Envoyé le 28 oct. 2026 · le client n'a pas encore répondu.</p>
+                                       data-match-answer>Envoyé le 28 octobre 2026</p>
                                     <details class="assignment__details">
                                         <summary>Pourquoi ce bien&nbsp;?</summary>
                                         <div class="assignment__details-body">
@@ -287,7 +301,8 @@
                                              th:attr="hidden=${confirming} ? 'hidden' : null">
                                             <form method="post" data-match-send-form
                                                   th:action="@{/mandates/{mid}/matches/{id}/propose(mid=${m.id},id=${match.id})}">
-                                                <button type="submit" class="btn btn--primary" data-match-send>Envoyer au client</button>
+                                                <button type="submit" class="btn btn--primary" data-match-send>Envoyer<span
+                                                        class="visually-hidden"> au client</span></button>
                                             </form>
                                             <a class="btn btn--outline" data-match-dismiss
                                                th:href="@{|/mandates/${m.id}?dismiss=${match.id}#match-${match.id}-title|}">Écarter</a>
@@ -312,7 +327,7 @@
                             </li>
                         </ul>
 
-                        <p class="assignments__empty" th:if="${#lists.isEmpty(ms.matches)}" data-match-empty>
+                        <p class="assignments__empty" th:if="${#lists.isEmpty(ms.matches) && ms.proposals == null}" data-match-empty>
                             Aucun de vos biens ne correspond à cette recherche pour le moment. Dès qu'une de vos annonces
                             publiées correspond, elle apparaît ici et vous êtes prévenu par e-mail.
                         </p>

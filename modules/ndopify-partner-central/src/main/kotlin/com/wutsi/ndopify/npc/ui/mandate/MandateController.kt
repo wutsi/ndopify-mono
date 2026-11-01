@@ -5,6 +5,7 @@ import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.Listing
+import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
@@ -13,6 +14,7 @@ import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.match.dto.Match
+import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
@@ -68,7 +70,8 @@ import java.time.ZoneOffset
  * cancels the contract of one out for signature: the customer can't sign the old version, the agent sends it again.
  *
  * A landlord's signed mandate also shows its listing ([ListingViews.forMandate]): "Créer l'annonce", posted to
- * `ListingController`, then where the listing stands.
+ * `ListingController`, then where the listing stands and, once published, how many clients it interests (its ACCEPTED
+ * matches, a failure leaves the line out).
  *
  * A signed search ([MatchRules.matched]) shows the listings matched to it, *Biens correspondants* ([MatchViews]): its
  * matches and their listings in one search each, both secondary (a failure is the section's "unavailable"). Their
@@ -348,9 +351,10 @@ class MandateController(
         model.addAttribute("errors", errors)
         model.addAttribute("currency", formatter().currency())
         val listingId = listingId(mandate)
+        val listing = listingId?.let { listing(mandate, it) }
         model.addAttribute(
             "mandateListing",
-            ListingViews.forMandate(mandate, listingId, listingId?.let { listing(mandate, it) }, formatter()),
+            ListingViews.forMandate(mandate, listingId, listing, formatter(), listing?.let { interested(it) }),
         )
         (model.getAttribute(OUTCOME) as? String)?.let { outcome -> outcome(outcome, view, model) }
         (model.getAttribute(MatchController.OUTCOME) as? String)?.let { outcome ->
@@ -533,6 +537,14 @@ class MandateController(
         if (mandate.mandateType != MandateType.LISTING || mandate.status != MandateStatus.APPROVED) return null
         val agentId = mandate.agentId ?: return null
         return lookup("listing of mandate ${mandate.id}") { listingClient.findIdByMandate(mandate.id, agentId) }
+    }
+
+    /** A PUBLISHED listing only: how many clients it interests (its ACCEPTED matches); null when it can't be had. */
+    private fun interested(listing: Listing): Int? {
+        if (listing.status != ListingStatus.PUBLISHED) return null
+        return lookup("matches of listing ${listing.id}") {
+            matchClient.searchByListings(listOf(listing.id), listOf(MatchStatus.ACCEPTED)).size
+        }
     }
 
     /** Null when it can't be loaded. */

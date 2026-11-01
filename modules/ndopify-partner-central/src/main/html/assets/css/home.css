@@ -762,14 +762,47 @@ h1.alert__title {
     gap: var(--space-3);
 }
 
-.match__score {
+/* A match: tighter than an offer, so that a phone shows two or three of them at once. */
+.match {
+    padding: var(--space-3);
+}
+
+.match article > * + * {
+    margin-top: var(--space-2);
+}
+
+.match__title a {
+    color: inherit;
+    text-underline-offset: 0.2em;
+}
+
+/* Score · neighbourhood · rent · availability, on one line where it fits; the terms are visually hidden. */
+.match__facts {
+    display: flex;
+    flex-wrap: wrap;
+    margin: 0;
     font-size: var(--step-hint);
 }
 
-.match__score strong {
-    font-size: var(--step-h4);
+.match__facts dd {
+    display: inline;
+    margin: 0;
+}
+
+/* After each fact, so that a wrapped line never starts with the dot. */
+.match__facts > div:not(:last-child)::after {
+    content: "\00a0·";
+    margin-inline-end: 0.3em;
+}
+
+.match__facts > div:first-child dd {
     font-weight: 600;
     color: var(--color-success-fg);
+}
+
+/* The rent: what the agent looks at first. */
+.match__facts .match__rent {
+    font-weight: 600;
 }
 
 .match__fit {
@@ -794,18 +827,14 @@ h1.alert__title {
     color: var(--color-success-fg);
 }
 
-/* Phones: "Envoyer au client" on its own row, Retenir / Écarter side by side under it. */
-.match__actions {
-    flex-wrap: wrap;
-}
-
-.match__actions .btn[data-match-send] {
-    flex-basis: 100%;
+/* Envoyer, Retenir, Écarter on one row, even on a phone: short labels, tighter padding. */
+.match__actions .btn {
+    padding-inline: var(--space-3);
 }
 
 @media (min-width: 640px) {
-    .match__actions .btn[data-match-send] {
-        flex-basis: auto;
+    .match__actions .btn {
+        min-width: 8rem;
     }
 }
 
@@ -835,4 +864,15 @@ h1.alert__title {
 
 .match__answer {
     font-size: var(--step-hint);
+}
+
+/* A visit asked: its kind (on site, video) as an icon before the day */
+.match__answer--visit {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.match__answer--visit .icon {
+    flex: none;
 }

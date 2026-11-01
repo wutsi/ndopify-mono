@@ -11,6 +11,7 @@ import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
@@ -19,6 +20,7 @@ import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
+import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
@@ -140,6 +142,45 @@ class MandateControllerTest {
 
         assertEquals("/listings/501", view.url)
         assertEquals("Continuer l'annonce", view.action)
+    }
+
+    @Test
+    fun `approved landlord - published listing - clients interested`() {
+        doReturn(APPROVED.copy(mandateType = MandateType.LISTING)).whenever(mandateClient).get(201)
+        doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
+        doReturn(ListingViewsTest.COMPLETE.copy(status = ListingStatus.PUBLISHED)).whenever(listingClient).get(501)
+        doReturn(listOf(Match(id = 1, listingId = 501), Match(id = 2, listingId = 501)))
+            .whenever(matchClient).searchByListings(any(), any(), any())
+
+        val view = model(mvc.perform(get("/mandates/201")).andReturn())["mandateListing"] as MandateListingView
+
+        assertEquals("2 personnes intéressées", view.interest)
+        verify(matchClient).searchByListings(listOf(501L), listOf(MatchStatus.ACCEPTED), 100)
+    }
+
+    @Test
+    fun `approved landlord - published listing - interest unavailable`() {
+        doReturn(APPROVED.copy(mandateType = MandateType.LISTING)).whenever(mandateClient).get(201)
+        doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
+        doReturn(ListingViewsTest.COMPLETE.copy(status = ListingStatus.PUBLISHED)).whenever(listingClient).get(501)
+        doThrow(ResourceAccessException("down")).whenever(matchClient).searchByListings(any(), any(), any())
+
+        val view = model(mvc.perform(get("/mandates/201")).andReturn())["mandateListing"] as MandateListingView
+
+        assertEquals("/listings/501", view.url)
+        assertNull(view.interest)
+    }
+
+    @Test
+    fun `approved landlord - draft listing - no interest search`() {
+        doReturn(APPROVED.copy(mandateType = MandateType.LISTING)).whenever(mandateClient).get(201)
+        doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
+        doReturn(ListingViewsTest.LISTING).whenever(listingClient).get(501)
+
+        val view = model(mvc.perform(get("/mandates/201")).andReturn())["mandateListing"] as MandateListingView
+
+        assertNull(view.interest)
+        verify(matchClient, never()).searchByListings(any(), any(), any())
     }
 
     @Test
@@ -323,8 +364,8 @@ class MandateControllerTest {
         val section = section(result)
         assertEquals(listOf(9001L, 9003L), section.matches.map { it.id })
         assertEquals(1, section.dismissed)
-        assertEquals("Quartier" to "Bonapriso", section.matches[0].facts[0])
-        assertEquals("Quartier" to "Akwa", section.matches[1].facts[0])
+        assertEquals("Quartier" to "Bonapriso", section.matches[0].facts[1])
+        assertEquals("Quartier" to "Akwa", section.matches[1].facts[1])
         verify(matchClient).search(
             listOf(201L),
             listOf(MatchStatus.ACCEPTED, MatchStatus.ACTIVE, MatchStatus.PROPOSED, MatchStatus.REJECTED, MatchStatus.DISMISSED),

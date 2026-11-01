@@ -14,7 +14,7 @@ import java.time.LocalDate
 object MatchViews {
     /**
      * [matches] or [listings] null (their search failed) is [MatchSectionView.unavailable]. A match whose listing isn't
-     * in [listings] (unpublished meanwhile) is left out; DISMISSED ones are only counted.
+     * in [listings] (unpublished meanwhile) is left out; REJECTED and DISMISSED ones are only counted.
      */
     fun section(
         mandate: Mandate,
@@ -31,6 +31,7 @@ object MatchViews {
             matches = MatchRules.sort(matches).mapNotNull { match ->
                 listings[match.listingId]?.let { view(match, mandate, it, locations, today, formatter) }
             },
+            proposals = MatchRules.proposals(matches),
             dismissed = matches.count { it.status == MatchStatus.DISMISSED },
         )
     }
@@ -50,9 +51,9 @@ object MatchViews {
             listingId = listing.id,
             title = listOfNotNull(type, listing.rooms?.let { MatchRules.rooms(it) }).joinToString(" · "),
             tag = MatchRules.tag(match),
-            score = MatchRules.score(match),
             listingUrl = "/listings/${listing.id}",
             facts = listOf(
+                "Correspondance" to MatchRules.score(match),
                 "Quartier" to (
                     listing.neighborhoodId?.let { locations[it]?.name }
                         ?: locations[listing.cityId]?.name
@@ -61,8 +62,9 @@ object MatchViews {
                 "Loyer" to MandateLabels.price(
                     Money(listing.price, listing.currencyCode, listing.pricePeriodicityType),
                     formatter,
+                    compact = true,
                 ),
-                "Disponible" to (available?.let { formatter.date(it) } ?: "Maintenant"),
+                "Disponibilité" to (available?.let { "Dès le " + formatter.date(it) } ?: "Libre maintenant"),
             ),
             answer = MatchRules.answer(match, formatter),
             fit = MatchRules.fit(match, mandate, listing),

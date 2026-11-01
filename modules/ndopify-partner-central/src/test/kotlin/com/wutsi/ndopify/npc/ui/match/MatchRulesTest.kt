@@ -187,9 +187,8 @@ class MatchRulesTest {
     @Test
     fun tag() {
         assertEquals(MandateRules.Tag("Nouveau", "info"), MatchRules.tag(MATCH_A))
-        assertEquals(MandateRules.Tag("Envoyé", "neutral"), MatchRules.tag(MATCH_A.copy(status = MatchStatus.PROPOSED)))
+        assertEquals(MandateRules.Tag("En attente", "neutral"), MatchRules.tag(MATCH_A.copy(status = MatchStatus.PROPOSED)))
         assertEquals(MandateRules.Tag("Intéressé", "success"), MatchRules.tag(MATCH_A.copy(status = MatchStatus.ACCEPTED)))
-        assertEquals(MandateRules.Tag("Refusé", "neutral"), MatchRules.tag(MATCH_A.copy(status = MatchStatus.REJECTED)))
     }
 
     @Test
@@ -197,22 +196,13 @@ class MatchRulesTest {
         val proposed = MATCH_A.copy(status = MatchStatus.PROPOSED, proposedAt = sentAt)
 
         assertNull(MatchRules.answer(MATCH_A, FORMATTER))
-        assertEquals("Envoyé le 28 oct. 2026 · le client n'a pas encore répondu.", MatchRules.answer(proposed, FORMATTER))
+        assertEquals("Envoyé le 28 oct. 2026", MatchRules.answer(proposed, FORMATTER))
         assertEquals(
-            "Envoyé le 28 oct. 2026 · le client est intéressé.",
+            "Envoyé le 28 oct. 2026 · intéressé le 29 oct. 2026",
             MatchRules.answer(proposed.copy(status = MatchStatus.ACCEPTED, answeredAt = answeredAt), FORMATTER),
         )
-        assertEquals(
-            "Envoyé le 28 oct. 2026 · refusé le 29 oct. 2026.",
-            MatchRules.answer(proposed.copy(status = MatchStatus.REJECTED, answeredAt = answeredAt), FORMATTER),
-        )
-        assertEquals(
-            "Envoyé le 28 oct. 2026 · refusé le 29 oct. 2026 : trop loin de l'école.",
-            MatchRules.answer(
-                proposed.copy(status = MatchStatus.REJECTED, answeredAt = answeredAt, rejectionReason = " trop loin de l'école "),
-                FORMATTER,
-            ),
-        )
+        assertEquals("Envoyé le 28 oct. 2026", MatchRules.answer(proposed.copy(status = MatchStatus.ACCEPTED), FORMATTER))
+        assertNull(MatchRules.answer(proposed.copy(status = MatchStatus.REJECTED, answeredAt = answeredAt), FORMATTER))
     }
 
     @Test
@@ -224,7 +214,8 @@ class MatchRulesTest {
 
         val sorted = MatchRules.sort(listOf(rejected, MATCH_B, proposed, dismissed, MATCH_A, accepted))
 
-        assertEquals(listOf(9006L, 9001L, 9003L, 9004L, 9005L), sorted.map { it.id })
+        // The refused one isn't shown
+        assertEquals(listOf(9006L, 9001L, 9003L, 9004L), sorted.map { it.id })
     }
 
     @Test

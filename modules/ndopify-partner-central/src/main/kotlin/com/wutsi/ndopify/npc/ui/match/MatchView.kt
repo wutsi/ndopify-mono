@@ -11,8 +11,8 @@ data class MatchView(
     val listingId: Long,
     val title: String,
     val tag: MandateRules.Tag,
-    val score: String,
     val listingUrl: String,
+    /** One line: the score, neighbourhood, rent ("245K FCFA / mois") and availability; the terms are for screen readers. */
     val facts: List<Pair<String, String>>,
     val answer: String?,
     val fit: List<FitLine>,
@@ -20,11 +20,13 @@ data class MatchView(
 )
 
 /**
- * The *Biens correspondants* section: the cards in [MatchRules.ORDER], how many were set aside, and [unavailable] when
- * the matches or their listings couldn't be read.
+ * The *Biens correspondants* section: the cards in [MatchRules.ORDER], what the client answered ([proposals], the
+ * refused ones included), how many were set aside, and [unavailable] when the matches or their listings couldn't be
+ * read.
  */
 data class MatchSectionView(
     val matches: List<MatchView> = emptyList(),
+    val proposals: String? = null,
     val dismissed: Int = 0,
     val unavailable: Boolean = false,
 )

@@ -286,6 +286,17 @@ class MandateTemplateTest {
         assertEquals("Publiée le 22 oct. 2026", box.selectFirst("[data-listing-status-tag]")?.text())
         assertNull(box.selectFirst("[data-listing-text]"))
         assertNull(box.selectFirst(".mandate-panel__actions"))
+        assertEquals("Aucune personne intéressée pour l'instant", box.selectFirst("[data-listing-interest-text]")?.text())
+    }
+
+    @Test
+    fun `approved - landlord with listing not published - no interest line`() {
+        doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
+        doReturn(ListingViewsTest.LISTING).whenever(listingClient).get(501)
+
+        val box = render(APPROVED.copy(mandateType = MandateType.LISTING)).selectFirst("[data-listing-actions]")!!
+
+        assertNull(box.selectFirst("[data-listing-interest]"))
     }
 
     @Test
@@ -525,19 +536,23 @@ class MandateTemplateTest {
         val card = cards[0]
         assertEquals("match-9001", card.id())
         assertEquals("match-9001-title", card.selectFirst("article")?.attr("aria-labelledby"))
-        assertEquals("Appartement · 3 chambres", card.selectFirst("#match-9001-title")?.text())
+        assertEquals("Appartement · 3 chambres", card.selectFirst("[data-match-title]")?.text())
         assertEquals("status-tag status-tag--info", card.selectFirst("[data-match-tag]")?.className())
         assertEquals("Nouveau", card.selectFirst("[data-match-tag]")?.text())
-        assertEquals("95\u00a0%", card.selectFirst("[data-match-score]")?.wholeText())
-        val link = card.selectFirst("a[data-match-link]")!!
+        val link = card.selectFirst("#match-9001-title a[data-match-link]")!!
         assertEquals("/listings/3012", link.attr("href"))
         assertEquals("_blank", link.attr("target"))
         assertEquals("3012", link.selectFirst("[data-match-ref]")?.text())
         assertEquals(
-            listOf("Quartier", "Loyer", "Disponible"),
-            card.select("[data-match-facts] dt").map { it.text() },
+            listOf("Correspondance", "Quartier", "Loyer", "Disponibilité"),
+            card.select("[data-match-facts] dt.visually-hidden").map { it.text() },
         )
-        assertEquals("Bonapriso", card.selectFirst("[data-match-facts] dd")?.text())
+        assertEquals(
+            listOf("95\u00a0%", "Bonapriso", "240K\u00a0FCFA / mois"),
+            card.select("[data-match-facts] dd").take(3).map { it.wholeText() },
+        )
+        // The rent, in bold: what the agent looks at first
+        assertEquals("match__rent", card.select("[data-match-facts] dd")[2].className())
         val fit = card.select("[data-match-fit] li")
         assertEquals(6, fit.size)
         assertEquals("match__fit-item match__fit-item--full", fit[0].className())
@@ -550,16 +565,15 @@ class MandateTemplateTest {
         assertEquals("/mandates/201/matches/9001/propose", send.attr("action"))
         assertEquals("post", send.attr("method"))
         assertEquals("Envoyer au client", send.selectFirst("button")?.text())
+        assertEquals("au client", send.selectFirst("button .visually-hidden")?.text())
         assertEquals("/mandates/201?dismiss=9001#match-9001-title", card.selectFirst("a[data-match-dismiss]")?.attr("href"))
         assertFalse(card.selectFirst("[data-match-actions]")!!.hasAttr("hidden"))
         assertTrue(card.selectFirst("[data-match-confirm]")!!.hasAttr("hidden"))
 
         val proposed = cards[1]
-        assertEquals("Envoyé", proposed.selectFirst("[data-match-tag]")?.text())
-        assertEquals(
-            "Envoyé le 28 oct. 2026 · le client n'a pas encore répondu.",
-            proposed.selectFirst("[data-match-answer]")?.text(),
-        )
+        assertEquals("En attente", proposed.selectFirst("[data-match-tag]")?.text())
+        assertEquals("Envoyé le 28 oct. 2026", proposed.selectFirst("[data-match-answer]")?.text())
+        assertEquals("1 en attente", section.selectFirst("[data-match-proposals-text]")?.text())
         assertNull(proposed.selectFirst("[data-match-actions]"))
         assertNull(proposed.selectFirst("[data-match-confirm]"))
 
@@ -601,6 +615,17 @@ class MandateTemplateTest {
             section.selectFirst("[data-match-dismissed]")?.text(),
         )
         assertNotNull(section.selectFirst("[data-match-empty]"))
+    }
+
+    @Test
+    fun `matches - only refused ones`() {
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.REJECTED))
+
+        val section = render(APPROVED).selectFirst("[data-matches-section]")!!
+
+        assertNull(section.selectFirst("[data-match-list]"))
+        assertNull(section.selectFirst("[data-match-empty]"))
+        assertEquals("1 refusé", section.selectFirst("[data-match-proposals-text]")?.text())
     }
 
     @Test

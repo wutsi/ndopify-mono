@@ -1365,6 +1365,20 @@
     ];
 
     // 150000 → "150K FCFA / mois".
+    // A match card's rent, in thousands so the facts fit one line on a phone: "245K FCFA / mois", "152,5K FCFA / mois"
+    // (the BFF's TenantFormatter.compactMoney).
+    function formatCompactRent(amount) {
+        var value = amount < 1000 ? String(amount)
+            : (amount / 1000).toLocaleString("fr-FR", { maximumFractionDigits: 1 }) + "K";
+        return value + " FCFA / mois";
+    }
+
+    // The visit's kind, as an icon: a camera for a video call, a house on site. Its words for screen readers.
+    var VISIT_ICONS = {
+        VIDEO: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m16 10 6-3v10l-6-3z"/></svg>',
+        IN_PERSON: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>'
+    };
+
     function formatRent(amount) {
         var value = amount % 1000 === 0 ? amount / 1000 + "K" : amount.toLocaleString("fr-FR");
         return value + " FCFA / mois";
@@ -1436,6 +1450,7 @@
 
     var DATE_FORMAT = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
     // Where room is short (a status tag): "26 oct. 2026", as the tenant's dateFormat in the served pages.
+    // The cards' dates (Mes mandats, Biens correspondants), as the BFF's tenant dateFormat: "1 nov. 2026".
     var SHORT_DATE_FORMAT = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric" });
     var CHECK_MARK = '<svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
@@ -1510,7 +1525,7 @@
         if (state.status === "PENDING_APPROVAL") {
             var deadline = signatureDeadline(state);
             if (deadline < Date.now()) return "Délai de signature dépassé : renvoyez le mandat.";
-            return p.The + " a jusqu'au " + formatDate(deadline) + " pour signer le mandat.";
+            return p.The + " a jusqu'au " + formatShortDate(deadline) + " pour signer le mandat.";
         }
         if (state.status === "APPROVED") {
             // A landlord's property is let through its listing: created, completed on site, then published
@@ -1526,7 +1541,7 @@
                 var visit = matches.filter(function (m) {
                     return answerOf(m) === "VISIT";
                 })[0];
-                if (visit) return "Confirmez au client la visite du " + visitLabel(visit.visit) + " (annonce n° " + visit.listingId + ").";
+                if (visit) return "Confirmez au client la visite du " + formatShortDate(visit.visit.at) + " à " + visit.visit.time + (visit.visit.type === "VIDEO" ? ", en vidéo" : ", sur place") + " (annonce n° " + visit.listingId + ").";
                 var liked = matches.filter(function (m) {
                     return answerOf(m) === "ACCEPTED";
                 })[0];
@@ -1537,7 +1552,7 @@
             }
             // Signed: what's left is the property (a client) or the tenant (a landlord), within the mandate's validity
             var find = mandate.party === "bailleur" ? "Trouvez un locataire" : "Trouvez un bien pour " + p.the;
-            return find + " avant le " + formatDate(addMonths(state.approvedAt, CONTRACT_MONTHS)) + ".";
+            return find + " avant le " + formatShortDate(addMonths(state.approvedAt, CONTRACT_MONTHS)) + ".";
         }
         return "";
     }
@@ -1760,7 +1775,7 @@
     }
 
     function matchAvailability(match) {
-        return match.availableIn <= 0 ? "Maintenant" : formatDate(Date.now() + match.availableIn * DAY_MS);
+        return match.availableIn <= 0 ? "Libre maintenant" : "Dès le " + formatShortDate(Date.now() + match.availableIn * DAY_MS);
     }
 
     // PROTOTYPE: the clients interested by a published listing, by mandate: its matches whose client answered
@@ -2067,9 +2082,13 @@
             var show = canList(id);
             listingBox.hidden = !show;
             if (!show) return;
-            var listing = listingOf(id);
+            var listing = cardListingOf(id);
             var line = $("[data-listing-line]", listingBox);
             fillListingLine(line, id, listing, true);
+            // Published: how many clients it interested, like the Espace agent's card
+            var interest = $("[data-listing-interest]", listingBox);
+            interest.hidden = !listing || listing.status !== "PUBLISHED";
+            $("[data-listing-interest-text]", interest).textContent = interestSummary(id);
             listingCreate.hidden = !!listing;
             listingLink.hidden = !listing;
             var text = $("[data-listing-text]", listingBox);
@@ -2128,10 +2147,12 @@
             renderMatches();
         }
 
-        function fact(list, term, value) {
+        function fact(list, term, value, className) {
             var div = document.createElement("div");
             var dt = document.createElement("dt");
             var dd = document.createElement("dd");
+            if (className) dd.className = className;
+            dt.className = "visually-hidden";
             dt.textContent = term;
             dd.textContent = value;
             div.appendChild(dt);
@@ -2151,28 +2172,36 @@
             var t = MATCH_TAGS[match.status];
             var answer = answerOf(match);
             if (answer) t = ANSWER_TAGS[answer];
-            tag.textContent = match.status === "PROPOSED" && !answer ? "Envoyé le " + formatShortDate(match.sentAt) : t[0];
+            tag.textContent = match.status === "PROPOSED" && !answer ? "En attente" : t[0];
             tag.className = "status-tag status-tag--" + t[1];
-            // Sent: when, and the client's answer
+            // Sent: one line, the visit asked first, since it's what the agent acts on
             var answerLine = $("[data-match-answer]", item);
             answerLine.hidden = match.status !== "PROPOSED";
             if (match.status === "PROPOSED") {
-                var sentText = "Envoyé le " + formatDate(match.sentAt);
-                answerLine.textContent = answer === "VISIT"
-                    ? sentText + " · le client demande une visite le " + visitLabel(match.visit) + "."
-                    : answer === "ACCEPTED" ? sentText + " · le client est intéressé, sans visite demandée pour l'instant."
-                        : answer === "REJECTED" ? sentText + " · refusé le " + formatDate(match.answeredAt) + " : " +
-                            REJECTION_LABELS[match.reason] + "."
-                            : sentText + " · le client n'a pas encore répondu.";
+                var sentText = "Envoyé le " + formatShortDate(match.sentAt);
+                answerLine.textContent = answer === "ACCEPTED" ? sentText + " · intéressé le " + formatShortDate(match.answeredAt)
+                    : sentText;
+                // A visit: its kind as an icon (words for screen readers), then its day and time
+                if (answer === "VISIT") {
+                    var video = match.visit.type === "VIDEO";
+                    answerLine.innerHTML = VISIT_ICONS[video ? "VIDEO" : "IN_PERSON"] +
+                        '<span><span class="visually-hidden">' + (video ? "Visite en vidéo, " : "Visite sur place, ") +
+                        "</span><strong></strong></span>";
+                    $("strong", answerLine).textContent = "Le " + formatShortDate(match.visit.at) + " à " + match.visit.time;
+                    $("strong", answerLine).parentNode.appendChild(document.createTextNode(" · " + sentText));
+                }
+                answerLine.classList.toggle("match__answer--visit", answer === "VISIT");
             }
-            $("[data-match-score]", item).textContent = Math.round(match.score * 100) + " %";
             $("[data-match-ref]", item).textContent = match.listingId;
             $("[data-match-link]", item).href = "listing.html?id=" + encodeURIComponent(match.listingId);
+            // One line: the terms are for screen readers only, the values say it all.
             var facts = $("[data-match-facts]", item);
+            fact(facts, "Correspondance", Math.round(match.score * 100) + " %");
             fact(facts, "Quartier", match.neighbourhood + (match.distanceKm
                 ? " (à " + String(match.distanceKm).replace(".", ",") + " km)" : ""));
-            fact(facts, "Loyer", formatRent(match.price));
-            fact(facts, "Disponible", matchAvailability(match));
+            // In bold: what the agent looks at first
+            fact(facts, "Loyer", formatCompactRent(match.price), "match__rent");
+            fact(facts, "Disponibilité", matchAvailability(match));
             var fit = $("[data-match-fit]", item);
             match.fit.forEach(function (row) {
                 var li = document.createElement("li");
@@ -2231,16 +2260,16 @@
             matchBox.hidden = !show;
             if (!show) return;
             var matches = matchesOf(id);
+            // Neither set aside nor refused by the client: the proposals line counts the refused ones.
             var shown = matches.filter(function (m) {
-                return m.status !== "DISMISSED";
+                return m.status !== "DISMISSED" && answerOf(m) !== "REJECTED";
             });
-            // To handle first (new, then kept), then those already sent; best score first within each.
-            // A visit to confirm and a listing the client likes come first, then new, kept, sent, and refused last.
+            // A visit to confirm and a listing the client likes come first, then new, kept, and those still
+            // waiting for an answer; best score first within each.
             function rank(m) {
                 var answer = answerOf(m);
                 if (answer === "VISIT") return 0;
                 if (answer === "ACCEPTED") return 1;
-                if (answer === "REJECTED") return 6;
                 return { ACTIVE: 2, SHORTLISTED: 3, PROPOSED: 4 }[m.status];
             }
             shown.sort(function (a, b) {
@@ -2251,7 +2280,13 @@
                 matchList.appendChild(matchItem(match));
             });
             matchList.hidden = shown.length === 0;
-            $("[data-match-empty]", matchBox).hidden = shown.length > 0;
+            // None at all: those refused are still a match, the proposals line says so.
+            $("[data-match-empty]", matchBox).hidden = shown.length > 0 || countMatches(matches, "PROPOSED") > 0;
+
+            var proposals = proposalsSummary(matches);
+            var proposalsLine = $("[data-match-proposals]", matchBox);
+            proposalsLine.hidden = !proposals;
+            $("[data-match-proposals-text]", proposalsLine).textContent = proposals;
 
             var kept = countMatches(matches, "SHORTLISTED");
             sendKept.hidden = kept < 2;
