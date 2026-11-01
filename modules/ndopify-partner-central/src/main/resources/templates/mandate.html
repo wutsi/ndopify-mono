@@ -32,6 +32,9 @@
   "end" is the close / cancel form open without JS ("close", "cancel" or null), "form" its values (MandateEndForm)
   and "errors" its errors per field. "outcomeText" / "outcomeStyle" are the last action's outcome (flash attribute
   "outcome", worded by MandateController).
+  "matchSection" is a signed search's Biens correspondants (MatchSectionView), null for any other mandate; "dismissing"
+  the id of the match whose dismiss confirmation is open without JS; "matchOutcomeText" / "matchOutcomeStyle" the
+  outcome of MatchController's last action (flash attribute "match").
 */-->
 <body data-page="mandate" th:attr="data-currency=${currency}">
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -213,6 +216,110 @@
                                data-cancellation-reason></p>
                         </div>
                     </div>
+                </section>
+
+                <!--
+                    Biens correspondants: a signed search's matches (MatchSectionView), only for an APPROVED SEARCH
+                    mandate. Each ACTIVE one can be sent to the client (POST …/matches/{id}/propose) or set aside,
+                    after a confirmation opened without JS by GET /mandates/{id}?dismiss={matchId} ("dismissing").
+                    The prototype's Retenir and "Envoyer les N biens retenus" have no server support here.
+                -->
+                <section class="home-section" aria-labelledby="matches-title" th:if="${matchSection}"
+                         th:with="ms=${matchSection}" data-matches-section>
+                    <div class="matches__head">
+                        <h2 id="matches-title">Biens correspondants</h2>
+                    </div>
+                    <p>Les biens de vos annonces publiées qui correspondent à la recherche du client. Envoyez-les-lui
+                        ou écartez-les.</p>
+
+                    <div th:if="${matchOutcomeText}" th:class="|alert alert--${matchOutcomeStyle}|" tabindex="-1"
+                         th:attr="role=${matchOutcomeStyle == 'error'} ? 'alert' : 'status'" data-match-flash>
+                        <svg th:if="${matchOutcomeStyle == 'success'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <svg th:if="${matchOutcomeStyle == 'warning'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                        <svg th:if="${matchOutcomeStyle == 'error'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        <p data-match-flash-text th:text="${matchOutcomeText}">Annonce n° 3012 envoyée au client.</p>
+                    </div>
+
+                    <p class="assignments__empty" th:if="${ms.unavailable}" data-match-unavailable>
+                        Les biens correspondants ne peuvent pas être affichés pour le moment.</p>
+
+                    <th:block th:unless="${ms.unavailable}">
+                        <ul class="assignments" th:unless="${#lists.isEmpty(ms.matches)}" data-match-list>
+                            <li class="assignment" th:each="match : ${ms.matches}" th:id="|match-${match.id}|" data-match
+                                th:attr="data-match-id=${match.id}" th:with="confirming=${dismissing == match.id}">
+                                <article th:attr="aria-labelledby=|match-${match.id}-title|">
+                                    <div class="assignment__head">
+                                        <h3 class="assignment__type" th:id="|match-${match.id}-title|"
+                                            th:text="${match.title}" data-match-title>Appartement · 3 chambres</h3>
+                                        <p th:class="|status-tag status-tag--${match.tag.style}|"
+                                           th:text="${match.tag.label}" data-match-tag>Nouveau</p>
+                                    </div>
+                                    <p class="match__score"><strong th:text="${match.score}" data-match-score>95 %</strong>
+                                        de correspondance ·
+                                        <a target="_blank" rel="noopener" th:href="@{${match.listingUrl}}" data-match-link>annonce
+                                            n°&nbsp;<span th:text="${match.listingId}" data-match-ref>3012</span><span
+                                                class="visually-hidden"> (s'ouvre dans un nouvel onglet)</span></a></p>
+                                    <dl class="assignment__facts" data-match-facts>
+                                        <div th:each="fact : ${match.facts}">
+                                            <dt th:text="${fact.first}">Quartier</dt>
+                                            <dd th:text="${fact.second}">Bonapriso</dd>
+                                        </div>
+                                    </dl>
+                                    <p class="match__answer" th:if="${match.answer}" th:text="${match.answer}"
+                                       data-match-answer>Envoyé le 28 oct. 2026 · le client n'a pas encore répondu.</p>
+                                    <details class="assignment__details">
+                                        <summary>Pourquoi ce bien&nbsp;?</summary>
+                                        <div class="assignment__details-body">
+                                            <ul class="match__fit" data-match-fit>
+                                                <li th:each="line : ${match.fit}"
+                                                    class="match__fit-item" th:classappend="${line.full} ? 'match__fit-item--full'">
+                                                    <svg th:if="${line.full}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                                    <svg th:unless="${line.full}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6.5 10h7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                                                    <span><span class="visually-hidden"
+                                                                th:text="${line.full} ? 'Oui : ' : 'En partie : '">Oui : </span><th:block
+                                                            th:text="${line.text}">Dans le secteur recherché</th:block></span>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </details>
+                                    <th:block th:if="${match.actionable}">
+                                        <div class="assignment__actions match__actions" data-match-actions
+                                             th:attr="hidden=${confirming} ? 'hidden' : null">
+                                            <form method="post" data-match-send-form
+                                                  th:action="@{/mandates/{mid}/matches/{id}/propose(mid=${m.id},id=${match.id})}">
+                                                <button type="submit" class="btn btn--primary" data-match-send>Envoyer au client</button>
+                                            </form>
+                                            <a class="btn btn--outline" data-match-dismiss
+                                               th:href="@{|/mandates/${m.id}?dismiss=${match.id}#match-${match.id}-title|}">Écarter</a>
+                                        </div>
+                                        <div class="alert alert--warning assignment__confirm" data-match-confirm
+                                             th:attr="hidden=${confirming} ? null : 'hidden'">
+                                            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                                            <div>
+                                                <p class="alert__title">Écarter ce bien&nbsp;?</p>
+                                                <p>Il ne vous sera plus proposé pour ce mandat.</p>
+                                                <form class="assignment__actions" method="post"
+                                                      th:action="@{/mandates/{mid}/matches/{id}/dismiss(mid=${m.id},id=${match.id})}">
+                                                    <button type="submit" class="btn btn--primary" data-match-dismiss-confirmed>
+                                                        Confirmer</button>
+                                                    <a class="btn btn--outline" data-match-dismiss-cancel
+                                                       th:href="@{|/mandates/${m.id}#match-${match.id}-title|}">Annuler</a>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </th:block>
+                                </article>
+                            </li>
+                        </ul>
+
+                        <p class="assignments__empty" th:if="${#lists.isEmpty(ms.matches)}" data-match-empty>
+                            Aucun de vos biens ne correspond à cette recherche pour le moment. Dès qu'une de vos annonces
+                            publiées correspond, elle apparaît ici et vous êtes prévenu par e-mail.
+                        </p>
+                        <p class="matches__dismissed" th:if="${ms.dismissed > 0}" data-match-dismissed
+                           th:text="${ms.dismissed > 1} ? |${ms.dismissed} biens écartés : ils ne vous seront plus proposés pour ce mandat.| : '1 bien écarté : il ne vous sera plus proposé pour ce mandat.'">
+                            1 bien écarté : il ne vous sera plus proposé pour ce mandat.</p>
+                    </th:block>
                 </section>
 
                 <section class="home-section" aria-labelledby="contact-title">

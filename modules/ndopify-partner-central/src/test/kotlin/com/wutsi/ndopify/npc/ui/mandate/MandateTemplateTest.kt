@@ -10,12 +10,14 @@ import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
+import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdviceTest
@@ -28,8 +30,11 @@ import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.APPROVED
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.CUSTOMER
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.PENDING
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.date
+import com.wutsi.ndopify.npc.ui.match.MatchFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
+import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BONAPRISO
+import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.DOUALA
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -46,6 +51,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.client.ResourceAccessException
 import org.thymeleaf.spring6.SpringTemplateEngine
 import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
@@ -64,6 +70,7 @@ class MandateTemplateTest {
     private val customerClient = mock<NdCustomerClient>()
     private val assignmentClient = mock<NdAssignmentClient>()
     private val listingClient = mock<NdListingClient>()
+    private val matchClient = mock<NdMatchClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
@@ -104,6 +111,7 @@ class MandateTemplateTest {
                     customerClient,
                     assignmentClient,
                     listingClient,
+                    matchClient,
                     locationClient,
                     tenantContext,
                     clock,
@@ -478,6 +486,166 @@ class MandateTemplateTest {
 
         assertTrue(page.selectFirst("input[name=cancellationCode][value=OTHER]")!!.hasAttr("checked"))
         assertFalse(page.selectFirst("#cancellationReason-error")!!.hasAttr("hidden"))
+    }
+
+    // Biens correspondants
+
+    private val proposedAt = date("2026-10-28T10:00:00Z")
+
+    private fun withMatches(vararg matches: com.wutsi.ndopify.match.dto.Match) {
+        doReturn(matches.toList()).whenever(matchClient).search(any(), any(), any())
+        doReturn(
+            listOf(MatchFixtures.LISTING_A, MatchFixtures.LISTING_B, MatchFixtures.LISTING_C)
+                .map { it.copy(cityId = DOUALA, neighborhoodId = BONAPRISO) },
+        ).whenever(listingClient).searchByIds(any())
+    }
+
+    @Test
+    fun matches() {
+        withMatches(
+            MatchFixtures.MATCH_B.copy(mandateId = 201, status = MatchStatus.PROPOSED, proposedAt = proposedAt),
+            MatchFixtures.MATCH_A.copy(mandateId = 201),
+            MatchFixtures.MATCH_C.copy(mandateId = 201, status = MatchStatus.DISMISSED),
+        )
+        val search = APPROVED.copy(
+            generatorSet = true,
+            securedFenced = true,
+            waterTank = true,
+            furnitureType = MatchFixtures.MANDATE.furnitureType,
+        )
+
+        val page = render(search)
+
+        val section = page.selectFirst("section[data-matches-section]")!!
+        assertEquals("matches-title", section.attr("aria-labelledby"))
+        assertEquals("Biens correspondants", section.selectFirst("#matches-title")?.text())
+        val cards = section.select("[data-match]")
+        assertEquals(listOf("9001", "9003"), cards.map { it.attr("data-match-id") })
+
+        val card = cards[0]
+        assertEquals("match-9001", card.id())
+        assertEquals("match-9001-title", card.selectFirst("article")?.attr("aria-labelledby"))
+        assertEquals("Appartement · 3 chambres", card.selectFirst("#match-9001-title")?.text())
+        assertEquals("status-tag status-tag--info", card.selectFirst("[data-match-tag]")?.className())
+        assertEquals("Nouveau", card.selectFirst("[data-match-tag]")?.text())
+        assertEquals("95\u00a0%", card.selectFirst("[data-match-score]")?.wholeText())
+        val link = card.selectFirst("a[data-match-link]")!!
+        assertEquals("/listings/3012", link.attr("href"))
+        assertEquals("_blank", link.attr("target"))
+        assertEquals("3012", link.selectFirst("[data-match-ref]")?.text())
+        assertEquals(
+            listOf("Quartier", "Loyer", "Disponible"),
+            card.select("[data-match-facts] dt").map { it.text() },
+        )
+        assertEquals("Bonapriso", card.selectFirst("[data-match-facts] dd")?.text())
+        val fit = card.select("[data-match-fit] li")
+        assertEquals(6, fit.size)
+        assertEquals("match__fit-item match__fit-item--full", fit[0].className())
+        assertEquals("Oui : Dans le secteur recherché", fit[0].text())
+        assertEquals("match__fit-item", fit[3].className())
+        assertEquals("En partie : 2 équipements sur 3", fit[3].text())
+        assertNull(card.selectFirst("[data-match-answer]"))
+
+        val send = card.selectFirst("form[data-match-send-form]")!!
+        assertEquals("/mandates/201/matches/9001/propose", send.attr("action"))
+        assertEquals("post", send.attr("method"))
+        assertEquals("Envoyer au client", send.selectFirst("button")?.text())
+        assertEquals("/mandates/201?dismiss=9001#match-9001-title", card.selectFirst("a[data-match-dismiss]")?.attr("href"))
+        assertFalse(card.selectFirst("[data-match-actions]")!!.hasAttr("hidden"))
+        assertTrue(card.selectFirst("[data-match-confirm]")!!.hasAttr("hidden"))
+
+        val proposed = cards[1]
+        assertEquals("Envoyé", proposed.selectFirst("[data-match-tag]")?.text())
+        assertEquals(
+            "Envoyé le 28 oct. 2026 · le client n'a pas encore répondu.",
+            proposed.selectFirst("[data-match-answer]")?.text(),
+        )
+        assertNull(proposed.selectFirst("[data-match-actions]"))
+        assertNull(proposed.selectFirst("[data-match-confirm]"))
+
+        assertEquals(
+            "1 bien écarté : il ne vous sera plus proposé pour ce mandat.",
+            section.selectFirst("[data-match-dismissed]")?.text(),
+        )
+        assertNull(section.selectFirst("[data-match-empty]"))
+        assertNull(section.selectFirst("[data-match-unavailable]"))
+    }
+
+    @Test
+    fun `matches - dismiss confirmation open`() {
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201))
+
+        val card = render(APPROVED, "/mandates/201?dismiss=9001").selectFirst("[data-match]")!!
+
+        assertTrue(card.selectFirst("[data-match-actions]")!!.hasAttr("hidden"))
+        val confirm = card.selectFirst("[data-match-confirm]")!!
+        assertFalse(confirm.hasAttr("hidden"))
+        assertEquals("Écarter ce bien ?", confirm.selectFirst(".alert__title")?.text())
+        val form = confirm.selectFirst("form")!!
+        assertEquals("/mandates/201/matches/9001/dismiss", form.attr("action"))
+        assertEquals("post", form.attr("method"))
+        assertEquals("/mandates/201#match-9001-title", confirm.selectFirst("a[data-match-dismiss-cancel]")?.attr("href"))
+    }
+
+    @Test
+    fun `matches - several dismissed`() {
+        withMatches(
+            MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.DISMISSED),
+            MatchFixtures.MATCH_B.copy(mandateId = 201, status = MatchStatus.DISMISSED),
+        )
+
+        val section = render(APPROVED).selectFirst("[data-matches-section]")!!
+
+        assertEquals(
+            "2 biens écartés : ils ne vous seront plus proposés pour ce mandat.",
+            section.selectFirst("[data-match-dismissed]")?.text(),
+        )
+        assertNotNull(section.selectFirst("[data-match-empty]"))
+    }
+
+    @Test
+    fun `matches - empty`() {
+        withMatches()
+
+        val section = render(APPROVED).selectFirst("[data-matches-section]")!!
+
+        assertTrue(section.selectFirst("[data-match-empty]")!!.text().startsWith("Aucun de vos biens ne correspond"))
+        assertNull(section.selectFirst("[data-match-list]"))
+        assertNull(section.selectFirst("[data-match-dismissed]"))
+    }
+
+    @Test
+    fun `matches - unavailable`() {
+        doThrow(ResourceAccessException("down")).whenever(matchClient).search(any(), any(), any())
+
+        val page = render(APPROVED)
+
+        val section = page.selectFirst("[data-matches-section]")!!
+        assertEquals(
+            "Les biens correspondants ne peuvent pas être affichés pour le moment.",
+            section.selectFirst("[data-match-unavailable]")?.text(),
+        )
+        assertNull(section.selectFirst("[data-match-empty]"))
+        assertNotNull(page.selectFirst("#contact-title"))
+    }
+
+    @Test
+    fun `matches - outcome`() {
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201))
+        doReturn(APPROVED).whenever(mandateClient).get(201)
+
+        val page = render(get("/mandates/201").flashAttr("match", "proposed").flashAttr("matchListing", 3012L))
+
+        val flash = page.selectFirst("[data-matches-section] [data-match-flash]")!!
+        assertEquals("alert alert--success", flash.className())
+        assertEquals("status", flash.attr("role"))
+        assertEquals("Annonce n° 3012 envoyée à ray@gmail.com.", flash.text())
+        assertNull(page.selectFirst("[data-mandate-flash]"))
+    }
+
+    @Test
+    fun `no matches section before signature`() {
+        assertNull(render(get("/mandates/201")).selectFirst("[data-matches-section]"))
     }
 
     // mandate.js

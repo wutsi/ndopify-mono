@@ -19,12 +19,14 @@ import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
+import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
+import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest
@@ -36,10 +38,14 @@ import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.ACCEPTED
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.APPROVED
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.CUSTOMER
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.PENDING
+import com.wutsi.ndopify.npc.ui.match.MatchFixtures
+import com.wutsi.ndopify.npc.ui.match.MatchSectionView
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
+import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AKWA
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BASTOS
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BONAPRISO
+import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.DOUALA
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.web.core.service.TenantContext
@@ -68,6 +74,7 @@ class MandateControllerTest {
     private val customerClient = mock<NdCustomerClient>()
     private val assignmentClient = mock<NdAssignmentClient>()
     private val listingClient = mock<NdListingClient>()
+    private val matchClient = mock<NdMatchClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
@@ -92,6 +99,7 @@ class MandateControllerTest {
             customerClient,
             assignmentClient,
             listingClient,
+            matchClient,
             locationClient,
             tenantContext,
             clock,
@@ -288,6 +296,155 @@ class MandateControllerTest {
         doReturn(null).whenever(currentAgent).get()
 
         assertEquals("redirect:/login", mvc.perform(get("/mandates/201")).andReturn().modelAndView?.viewName)
+    }
+
+    // Matches
+
+    private val matchA = MatchFixtures.MATCH_A.copy(mandateId = 201)
+    private val matchB = MatchFixtures.MATCH_B.copy(mandateId = 201, status = MatchStatus.PROPOSED)
+    private val listingA = MatchFixtures.LISTING_A.copy(cityId = DOUALA, neighborhoodId = BONAPRISO)
+    private val listingB = MatchFixtures.LISTING_B.copy(cityId = DOUALA, neighborhoodId = AKWA)
+
+    private fun section(result: MvcResult) = model(result)["matchSection"] as MatchSectionView
+
+    private fun withMatches() {
+        doReturn(APPROVED).whenever(mandateClient).get(201)
+        doReturn(listOf(matchB, matchA, matchA.copy(id = 9009, listingId = 3099, status = MatchStatus.DISMISSED)))
+            .whenever(matchClient).search(any(), any(), any())
+        doReturn(listOf(listingA, listingB)).whenever(listingClient).searchByIds(any())
+    }
+
+    @Test
+    fun `approved search - matches`() {
+        withMatches()
+
+        val result = mvc.perform(get("/mandates/201")).andReturn()
+
+        val section = section(result)
+        assertEquals(listOf(9001L, 9003L), section.matches.map { it.id })
+        assertEquals(1, section.dismissed)
+        assertEquals("Quartier" to "Bonapriso", section.matches[0].facts[0])
+        assertEquals("Quartier" to "Akwa", section.matches[1].facts[0])
+        verify(matchClient).search(
+            listOf(201L),
+            listOf(MatchStatus.ACCEPTED, MatchStatus.ACTIVE, MatchStatus.PROPOSED, MatchStatus.REJECTED, MatchStatus.DISMISSED),
+            100,
+        )
+        verify(listingClient).searchByIds(listOf(3041L, 3012L))
+        assertNull(model(result)["dismissing"])
+    }
+
+    @Test
+    fun `approved search - no match`() {
+        doReturn(APPROVED).whenever(mandateClient).get(201)
+        doReturn(emptyList<Any>()).whenever(matchClient).search(any(), any(), any())
+
+        val section = section(mvc.perform(get("/mandates/201")).andReturn())
+
+        assertTrue(section.matches.isEmpty())
+        assertEquals(false, section.unavailable)
+    }
+
+    @Test
+    fun `approved search - matches unavailable`() {
+        doReturn(APPROVED).whenever(mandateClient).get(201)
+        doThrow(ResourceAccessException("down")).whenever(matchClient).search(any(), any(), any())
+
+        val result = mvc.perform(get("/mandates/201")).andReturn()
+
+        assertEquals("mandate", result.modelAndView?.viewName)
+        assertTrue(section(result).unavailable)
+        assertEquals(201L, mandate(result).id)
+        verify(listingClient, never()).searchByIds(any())
+    }
+
+    @Test
+    fun `approved search - listings unavailable`() {
+        withMatches()
+        doThrow(HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR)).whenever(listingClient).searchByIds(any())
+
+        val result = mvc.perform(get("/mandates/201")).andReturn()
+
+        assertTrue(section(result).unavailable)
+        assertEquals(201L, mandate(result).id)
+    }
+
+    @Test
+    fun `not a signed search - no matches`() {
+        doReturn(APPROVED.copy(mandateType = MandateType.LISTING)).whenever(mandateClient).get(201)
+
+        val landlord = mvc.perform(get("/mandates/201")).andReturn()
+        doReturn(MANDATE).whenever(mandateClient).get(201)
+        val assigned = mvc.perform(get("/mandates/201")).andReturn()
+
+        assertNull(model(landlord)["matchSection"])
+        assertNull(model(assigned)["matchSection"])
+        verify(matchClient, never()).search(any(), any(), any())
+    }
+
+    @Test
+    fun `dismiss confirmation open`() {
+        withMatches()
+
+        assertEquals(9001L, model(mvc.perform(get("/mandates/201?dismiss=9001")).andReturn())["dismissing"])
+    }
+
+    @Test
+    fun `dismiss confirmation - not an active match of the page`() {
+        withMatches()
+
+        assertNull(model(mvc.perform(get("/mandates/201?dismiss=9999")).andReturn())["dismissing"])
+        assertNull(model(mvc.perform(get("/mandates/201?dismiss=9003")).andReturn())["dismissing"])
+        assertNull(model(mvc.perform(get("/mandates/201?dismiss=abc")).andReturn())["dismissing"])
+    }
+
+    @Test
+    fun `match outcome - proposed`() {
+        withMatches()
+
+        val result = mvc.perform(get("/mandates/201").flashAttr("match", "proposed").flashAttr("matchListing", 3012L))
+            .andReturn()
+
+        assertEquals("Annonce n° 3012 envoyée à ray@gmail.com.", model(result)["matchOutcomeText"])
+        assertEquals("success", model(result)["matchOutcomeStyle"])
+        assertNull(model(result)["outcomeText"])
+    }
+
+    @Test
+    fun `match outcome - proposed without contact`() {
+        withMatches()
+        doThrow(ResourceAccessException("timeout")).whenever(customerClient).get(any())
+
+        val result = mvc.perform(get("/mandates/201").flashAttr("match", "proposed").flashAttr("matchListing", 3012L))
+            .andReturn()
+
+        assertEquals("Annonce n° 3012 envoyée au client.", model(result)["matchOutcomeText"])
+    }
+
+    @Test
+    fun `match outcome - dismissed`() {
+        withMatches()
+
+        val result = mvc.perform(get("/mandates/201").flashAttr("match", "dismissed").flashAttr("matchListing", 3012L))
+            .andReturn()
+
+        assertEquals(
+            "Annonce n° 3012 écartée : elle ne vous sera plus proposée pour ce mandat.",
+            model(result)["matchOutcomeText"],
+        )
+    }
+
+    @Test
+    fun `match outcome - changed and error`() {
+        withMatches()
+
+        val changed = mvc.perform(get("/mandates/201").flashAttr("match", "changed")).andReturn()
+        val failed = mvc.perform(get("/mandates/201").flashAttr("match", "error")).andReturn()
+
+        assertEquals("Ce bien a changé entre-temps : vérifiez son état avant de recommencer.", model(changed)["matchOutcomeText"])
+        assertEquals("warning", model(changed)["matchOutcomeStyle"])
+        assertEquals("Action impossible pour le moment. Réessayez dans quelques instants.", model(failed)["matchOutcomeText"])
+        assertEquals("error", model(failed)["matchOutcomeStyle"])
     }
 
     // Send for approval, close, cancel
