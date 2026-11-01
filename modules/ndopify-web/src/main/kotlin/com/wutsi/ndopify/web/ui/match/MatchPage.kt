@@ -19,7 +19,9 @@ data class MatchPage(
     /** "Serge", or "votre agent" when the agent has no name: for the sentences that name it. */
     val agentFirstName: String,
     val agentName: String,
+    /** Shown when the agent has no [agentPhotoUrl]. */
     val agentInitials: String,
+    val agentPhotoUrl: String?,
     /** `https://wa.me/<digits>`, null without a WhatsApp number. */
     val agentWhatsappUrl: String?,
     /** "Pourquoi ce logement ?". */

@@ -232,6 +232,14 @@ class MatchPagesTest {
     }
 
     @Test
+    fun `agent photo`() {
+        val photo = "https://cdn.ndopify.com/agents/3.jpg"
+
+        assertEquals(photo, page(agent = agent.copy(party = agent.party.copy(photoUrl = photo))).agentPhotoUrl)
+        assertNull(page(agent = agent.copy(party = agent.party.copy(photoUrl = " "))).agentPhotoUrl)
+    }
+
+    @Test
     fun `agent without name nor WhatsApp`() {
         val page = page(agent = Agent(), answer = "accepted", match = match.copy(status = MatchStatus.ACCEPTED))
 
@@ -239,6 +247,7 @@ class MatchPagesTest {
         assertEquals("votre agent", page.agentFirstName)
         assertEquals("Votre agent", page.agentName)
         assertEquals("", page.agentInitials)
+        assertNull(page.agentPhotoUrl)
         assertNull(page.agentWhatsappUrl)
         assertEquals("C'est noté : ce logement vous intéresse.", page.flash)
     }

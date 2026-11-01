@@ -70,7 +70,8 @@
         <!-- Who proposes it and why: the customer opened a personal link, this comes first. -->
         <section aria-labelledby="proposal-title" class="proposal">
             <div class="proposal__agent">
-                <span aria-hidden="true" class="proposal__avatar" th:text="${page.agentInitials}">SN</span>
+                <img alt="" class="proposal__avatar" th:if="${page.agentPhotoUrl}" th:src="${page.agentPhotoUrl}">
+                <span aria-hidden="true" class="proposal__avatar" th:text="${page.agentInitials}" th:unless="${page.agentPhotoUrl}">SN</span>
                 <div>
                     <h2 class="proposal__title" id="proposal-title" th:text="${page.title}">Serge vous propose ce logement</h2>
                     <p class="proposal__subtitle" th:text="${page.searchSummary}">Pour votre recherche : appartement 3 chambres à Bonapriso, jusqu'à 250K FCFA / mois.</p>
@@ -118,7 +119,8 @@
                 <section aria-labelledby="agent-heading" class="listing__section">
                     <h2 id="agent-heading">Votre agent</h2>
                     <div class="agent-card">
-                        <span aria-hidden="true" class="proposal__avatar" th:text="${page.agentInitials}">SN</span>
+                        <img alt="" class="proposal__avatar" th:if="${page.agentPhotoUrl}" th:src="${page.agentPhotoUrl}">
+                        <span aria-hidden="true" class="proposal__avatar" th:text="${page.agentInitials}" th:unless="${page.agentPhotoUrl}">SN</span>
                         <div>
                             <p class="agent-card__name" th:text="${page.agentName}">Serge Ngono</p>
                             <a class="btn btn-secondary" rel="noopener" target="_blank" th:href="${page.agentWhatsappUrl}"

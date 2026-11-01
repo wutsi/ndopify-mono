@@ -76,6 +76,7 @@ object MatchPages {
             agentInitials = listOf(agent.party.firstName, agent.party.lastName)
                 .mapNotNull { it.trim().firstOrNull()?.uppercaseChar() }
                 .joinToString(""),
+            agentPhotoUrl = agent.party.photoUrl?.ifBlank { null },
             agentWhatsappUrl = agent.whatsappNumber?.filter { it.isDigit() }?.ifEmpty { null }?.let { "https://wa.me/$it" },
             reasons = if (listing != null && listingPage != null) {
                 reasons(match, mandate, listing, listingPage.price, locations, formatter, today)

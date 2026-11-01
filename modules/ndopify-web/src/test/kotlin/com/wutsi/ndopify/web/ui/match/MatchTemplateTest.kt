@@ -242,6 +242,23 @@ class MatchTemplateTest {
     }
 
     @Test
+    fun `agent photo`() {
+        val photo = "https://cdn.ndopify.com/agents/3.jpg"
+        val doc = render(page(agent = agent.copy(party = agent.party.copy(photoUrl = photo))))
+
+        assertEquals(2, doc.select("img.proposal__avatar[src='$photo']").size)
+        assertTrue(doc.select("span.proposal__avatar").isEmpty())
+    }
+
+    @Test
+    fun `agent initials without photo`() {
+        val doc = render()
+
+        assertTrue(doc.select("img.proposal__avatar").isEmpty())
+        assertEquals(listOf("SN", "SN"), doc.select("span.proposal__avatar").map { it.text() })
+    }
+
+    @Test
     fun `no WhatsApp link without number`() {
         val doc = render(page(listing = null, agent = agent.copy(whatsappNumber = null)))
 
