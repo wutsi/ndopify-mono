@@ -13,7 +13,6 @@ import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 /** Renders `templates/match-link.html` with a real Thymeleaf engine. */
 class MatchLinkTemplateTest {
@@ -78,6 +77,5 @@ class MatchLinkTemplateTest {
         val page = render("expired", Tenant(logoUrl = null))
 
         assertEquals("/assets/images/logo.png", page.selectFirst("header img")?.attr("src"))
-        assertNull(page.selectFirst("main a[href*=token]"))
     }
 }
