@@ -7,7 +7,7 @@ INSERT INTO T_LOCATION(id, parent_fk, type, country, name, ascii_name) VALUES
     (2370201, NULL, 'CITY', 'CM', 'Yaounde', 'Yaounde'),
     (1001, 2370201, 'NEIGHBORHOOD', 'CM', 'Bastos', 'Bastos');
 
--- 100: search customer   101: owner   200: agent 20 (user 11, the caller)   300: agent 30 (user 12)   900: other tenant
+-- 100: search customer (user 13)   101: owner, a customer of its own (user 14)   200: agent 20 (user 11, the caller)   300: agent 30 (user 12)   900: other tenant
 INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name) VALUES
     (100, 1, 'ray.sponsible@gmail.com', 'Ray', 'Sponsible'),
     (101, 1, 'owner@gmail.com', 'Owen', 'Er'),
@@ -17,11 +17,15 @@ INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name) VALUES
 
 INSERT INTO T_USER (id, email, deleted, created_at) VALUES
     (11, 'kim.possible@gmail.com', false, '2024-06-10 00:00:00'),
-    (12, 'john.doe@gmail.com', false, '2024-06-10 00:00:00');
+    (12, 'john.doe@gmail.com', false, '2024-06-10 00:00:00'),
+    (13, 'ray.sponsible@gmail.com', false, '2024-06-10 00:00:00'),
+    (14, 'owner@gmail.com', false, '2024-06-10 00:00:00');
 
 INSERT INTO T_MEMBERSHIP (id, tenant_id, user_id, party_id, deleted) VALUES
     (11, 1, 11, 200, false),
-    (12, 1, 12, 300, false);
+    (12, 1, 12, 300, false),
+    (13, 1, 13, 100, false),
+    (14, 1, 14, 101, false);
 
 INSERT INTO T_CUSTOMER(id, tenant_id, party_id) VALUES
     (10, 1, 100),
@@ -65,7 +69,7 @@ INSERT INTO T_LISTING(
     (109, 1, 19, 30, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'APARTMENT', 2, 150000, 'XAF', 'MONTHLY', 'Agent 30 apartment'),
     (901, 2, 99, 90, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'APARTMENT', 2, 150000, 'XAF', 'MONTHLY', 'Other tenant');
 
--- 1, 2: active   3: active, listing rented   4: dismissed   5: agent 30's   6: closed search   9: other tenant
+-- 7: proposed, 8: rejected (search 3)   1, 2: active   3: active, listing rented   4: dismissed   5: agent 30's   6: closed search   9: other tenant
 INSERT INTO T_MATCH(
     id, tenant_id, mandate_id, listing_id, agent_id, status, score, listing_price,
     neighborhood_score, price_score, rooms_score, amenities_score, availability_score, furniture_score,
@@ -77,4 +81,6 @@ INSERT INTO T_MATCH(
     (4, 1, 1, 104, 20, 'DISMISSED', 0.8, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
     (5, 1, 2, 109, 30, 'ACTIVE', 0.8, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
     (6, 1, 3, 101, 20, 'ACTIVE', 0.8, 160000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
+    (7, 1, 3, 102, 20, 'PROPOSED', 0.8, 140000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
+    (8, 1, 3, 103, 20, 'REJECTED', 0.8, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
     (9, 2, 9, 901, 90, 'ACTIVE', 0.8, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00');

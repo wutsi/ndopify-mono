@@ -118,6 +118,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `MANDATE_ACCESS_DENIED`, after the 404 and before any 409. The agent it's offered to (PENDING assignment) may also
   get it, not change it. An agent's search is restricted to its own mandates (`agent-id` forced; another agent's is a
   403), or with `offered-to` (its own id only, else 403) to the mandates with a PENDING offer to it: those it may get.
+  `GET /{id}` is also open to the mandate's customer (`ensureCanReadAsCustomerOrAgent`, any application, any
+  status), for its match proposal page.
   A search's `MandateSummary` has what a card shows (criteria, amenities, `movingPeriod`, `availableFrom`) and its
   `contractId` only (a client needing the contract's dates searches `/v1/contracts?id=`), not the terms nor the
   customer's comments. Reads are checked by `MandateEndpoints`, changes by `MandateService` (under the mandate's lock); the server's own
@@ -314,6 +316,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `LISTING_NOT_PUBLISHED`. It publishes one `MatchProposedEvent` (`matchIds`): `MatchProposedMailet` sends the
   customer one e-mail with the listings, best score first, each with a link to its proposal page,
   `{publicPortalUrl}/match/{matchId}?token={jwt}` (`mail/match/proposed.mjml`), where the customer answers it. The
+  customer reads it with `GET /v1/matches/{id}` (and its mandate), only once PROPOSED, ACCEPTED or REJECTED (else 403
+  `MANDATE_ACCESS_DENIED`; an admin or agent reads any). The
   token (`MatchLinkTokenService`, one per e-mail) is a `public-portal` JWT of the customer's own user and party, so
   that the link signs it in; it lives `ndopify.security.access-token.ttl.match-link` (2d) and isn't scoped to the
   match: whoever has the e-mail is signed in as the customer until then. The customer gets a membership of the tenant

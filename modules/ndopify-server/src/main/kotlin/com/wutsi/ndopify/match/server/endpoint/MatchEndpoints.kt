@@ -5,9 +5,11 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
 import com.wutsi.ndopify.error.dto.ParameterType
 import com.wutsi.ndopify.error.server.exception.BadRequestException
+import com.wutsi.ndopify.error.server.exception.ForbiddenException
 import com.wutsi.ndopify.mandate.server.service.MandateAccessService
 import com.wutsi.ndopify.mandate.server.service.MandateService
 import com.wutsi.ndopify.match.dto.GetMatchResponse
+import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.dto.ProposeMatchRequest
 import com.wutsi.ndopify.match.dto.RejectMatchRequest
 import com.wutsi.ndopify.match.dto.RunMatchResponse
@@ -33,7 +35,8 @@ import org.springframework.web.bind.annotation.RestController
  * an admin, who also keeps it for later (shortlist) and proposes it to the customer, alone or with others of the same
  * mandate in one e-mail; only the customer accepts or rejects it. The mandate (or match) is
  * looked up first: 404, then 403. A search needs at least one `mandate-id` (400
- * `HTTP_MISSING_PARAMETER`), and each of them must be found and readable.
+ * `HTTP_MISSING_PARAMETER`), and each of them must be found and readable. `GET /{id}` is also open to the mandate's
+ * customer, for a match proposed to it or answered (PROPOSED, ACCEPTED, REJECTED), else 403 `MANDATE_ACCESS_DENIED`.
  */
 @RestController
 @RequestMapping("/v1/matches")
@@ -60,11 +63,15 @@ class MatchEndpoints(
         return SearchMatchResponse(matches = matches.map { match -> mapper.toMatch(match) })
     }
 
+    // The customer sees a match once proposed to it (and after it answered), not before: 403 MANDATE_ACCESS_DENIED
     // Digits only: with the ops endpoints off, POST /run must be a 404, not a 405 of this path
     @GetMapping("/{id:\\d+}")
     fun get(@PathVariable id: Long): GetMatchResponse {
         val match = service.findById(id)
-        access.ensureCanRead(match.mandate)
+        val customerOnly = access.ensureCanReadAsCustomerOrAgent(match.mandate)
+        if (customerOnly && match.status !in SEEN_BY_CUSTOMER) {
+            throw ForbiddenException(error = Error(code = ErrorCode.MANDATE_ACCESS_DENIED))
+        }
         return GetMatchResponse(match = mapper.toMatch(match))
     }
 
@@ -112,5 +119,9 @@ class MatchEndpoints(
     @PostMapping("/run")
     fun run(@RequestParam("mandate-id") mandateId: Long): RunMatchResponse {
         return RunMatchResponse(count = service.matchMandate(mandateId))
+    }
+
+    private companion object {
+        val SEEN_BY_CUSTOMER = setOf(MatchStatus.PROPOSED, MatchStatus.ACCEPTED, MatchStatus.REJECTED)
     }
 }

@@ -55,4 +55,48 @@ class GetMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
         assertEquals(ErrorCode.MANDATE_ACCESS_DENIED, response.body?.error?.code)
     }
+
+    @Test
+    fun customer() {
+        asCustomer(13L)
+
+        val response = rest.getForEntity("/v1/matches/7", GetMatchResponse::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(MatchStatus.PROPOSED, response.body!!.match.status)
+    }
+
+    @Test
+    fun customerAnswered() {
+        asCustomer(13L)
+
+        val response = rest.getForEntity("/v1/matches/8", GetMatchResponse::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(MatchStatus.REJECTED, response.body!!.match.status)
+    }
+
+    @Test
+    fun customerNotProposed() {
+        asCustomer(13L)
+
+        val response = rest.getForEntity("/v1/matches/1", ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_ACCESS_DENIED, response.body?.error?.code)
+    }
+
+    @Test
+    fun otherCustomer() {
+        asCustomer(14L)
+
+        val response = rest.getForEntity("/v1/matches/7", ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_ACCESS_DENIED, response.body?.error?.code)
+    }
+
+    private fun asCustomer(id: Long) {
+        userId = id
+    }
 }

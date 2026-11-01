@@ -40,6 +40,23 @@ class MandateAccessService(
         }
     }
 
+    /**
+     * As [ensureCanRead], plus the mandate's customer itself (see [ensureIsCustomer]), for what the customer reads
+     * from its match proposal page: the mandate and its proposed matches. Returns true when the caller is allowed only
+     * as the customer (not an admin nor an agent who could read it anyway), so the caller can limit what it shows.
+     */
+    fun ensureCanReadAsCustomerOrAgent(mandate: MandateEntity): Boolean {
+        try {
+            ensureCanRead(mandate)
+            return false
+        } catch (ex: ForbiddenException) {
+            if (isCustomer(mandate)) {
+                return true
+            }
+            throw ex
+        }
+    }
+
     fun ensureCanUpdate(mandate: MandateEntity) {
         val principal = callerService.getPrincipal()
         if (callerService.isAdmin(principal)) {
@@ -57,10 +74,7 @@ class MandateAccessService(
      * must be the customer's, whatever its application. No admin bypass, and the agent can't act for its customer.
      */
     fun ensureIsCustomer(mandate: MandateEntity) {
-        val principal = callerService.getPrincipal()
-        val partyId = callerService.findPartyIdOrNull(principal)
-        val customer = customerService.findByIdOrNull(mandate.customerId)
-        if (partyId == null || customer?.party?.id != partyId) {
+        if (!isCustomer(mandate)) {
             throw accessDenied()
         }
     }
@@ -80,6 +94,13 @@ class MandateAccessService(
             throw accessDenied()
         }
         return if (request.offeredTo != null) request else request.copy(agentIds = listOf(agentId))
+    }
+
+    private fun isCustomer(mandate: MandateEntity): Boolean {
+        val principal = callerService.getPrincipal()
+        val partyId = callerService.findPartyIdOrNull(principal)
+        val customer = customerService.findByIdOrNull(mandate.customerId)
+        return partyId != null && customer?.party?.id == partyId
     }
 
     private fun findAgentId(principal: JwtPrincipal): Long? {
