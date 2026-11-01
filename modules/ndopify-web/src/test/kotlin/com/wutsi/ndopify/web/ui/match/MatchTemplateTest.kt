@@ -189,6 +189,19 @@ class MatchTemplateTest {
         assertEquals(2, doc.select("a[href=#reject]").size)
         assertNull(doc.selectFirst("[data-state-badge]"))
         assertNull(doc.selectFirst(".proposal-flash"))
+        assertNull(doc.selectFirst("[data-share]"))
+    }
+
+    @Test
+    fun `never says the agent got the answer`() {
+        listOf(MatchStatus.PROPOSED, MatchStatus.ACCEPTED, MatchStatus.REJECTED).forEach { status ->
+            val text = render(page(status, answer = status.name.lowercase())).text()
+            listOf("transmise", "prévenu", "il vous").forEach { assertFalse(text.contains(it), "$status: $it") }
+        }
+        val rejected = render(page(MatchStatus.REJECTED, answer = "rejected"))
+        assertEquals("C'est noté : vous avez écarté ce logement.", rejected.selectFirst(".proposal-flash")?.text())
+        assertEquals("Serge continue de chercher pour vous.", rejected.select("[data-answer=REJECTED] p")[1].text())
+        assertTrue(render().select("#location-heading ~ p").text().contains("communiqués par Serge avant la visite"))
     }
 
     @Test
@@ -200,7 +213,7 @@ class MatchTemplateTest {
         assertNull(doc.selectFirst("#answer"))
         assertNull(doc.selectFirst("#reject"))
         assertEquals("Vous intéresse", doc.selectFirst("[data-state-badge]")?.text())
-        assertEquals("C'est noté : Serge est prévenu de votre intérêt.", doc.selectFirst(".proposal-flash")?.text())
+        assertEquals("C'est noté : ce logement vous intéresse.", doc.selectFirst(".proposal-flash")?.text())
     }
 
     @Test

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<!--/*
+  A listing's body, shared by listing.html (the public page) and match.html (a match proposed to a customer). `listing`
+  is a ListingPage: every text comes formatted, a section the listing has nothing for is left out.
+*/-->
+<body>
+
+<!--/*
+  The badges, the title and the place. `share`: the share button (listing.js shows it where the browser can share);
+  `state`: an extra badge (ex: "Vous intéresse"), none when null.
+*/-->
+<div class="listing__head" th:fragment="head(listing, share, state)">
+    <div class="listing__topline">
+        <p class="listing__badges">
+            <span class="badge badge--info" th:text="${listing.typeBadge}">À louer</span>
+            <span class="badge badge--success" th:if="${listing.verifiedAt}">
+                <svg aria-hidden="true" class="icon"><use href="#i-shield"/></svg>Logement audité
+            </span>
+            <span class="badge badge--state" data-state-badge th:if="${state}" th:text="${state}">Vous intéresse</span>
+        </p>
+        <button class="btn btn-outline listing__share" data-share hidden type="button" th:if="${share}">
+            <svg aria-hidden="true" class="icon"><use href="#i-share"/></svg><span class="listing__share-label">Partager</span>
+        </button>
+    </div>
+    <h1 th:text="${listing.title}">Appartement meublé 2 chambres à Bonapriso</h1>
+    <p class="listing__location">
+        <svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>
+        <th:block th:text="${listing.place}">Bonapriso, Douala</th:block><th:block th:if="${listing.landmark}" th:text="' · ' + ${listing.landmark}"> · près de la boulangerie Zepol</th:block>
+    </p>
+</div>
+
+<!--/* Gallery: the hero and the 4 next photos; the viewer (#listing-photos) has them all. */-->
+<section aria-label="Photos du logement" class="gallery" th:fragment="gallery(listing)" th:unless="${#lists.isEmpty(listing.photos)}">
+    <a th:each="photo, it : ${listing.photos}" th:if="${it.index < 5}"
+       class="gallery__item" th:classappend="${it.first} ? 'gallery__item--hero'"
+       th:data-photo="${it.index}" th:href="${photo.src}">
+        <img th:alt="${photo.alt}" th:src="${photo.src}" th:attr="loading=${it.first} ? null : 'lazy'">
+    </a>
+    <a class="btn btn-outline gallery__all" data-photo="0" th:if="${#lists.size(listing.photos) > 5}"
+       th:href="${listing.photos[0].src}" th:text="'Voir les ' + ${#lists.size(listing.photos)} + ' photos'">Voir les 8 photos</a>
+</section>
+
+<!--/*
+  The sections of the listing's content, from the key facts to the location. `agent`: who gives the address before the
+  visit ("Serge"), "l'agent" when null.
+*/-->
+<th:block th:fragment="content(listing, agent)">
+    <ul aria-label="En bref" class="key-facts" th:unless="${#lists.isEmpty(listing.keyFacts)}">
+        <li th:each="fact : ${listing.keyFacts}"><svg aria-hidden="true" class="icon"><use th:href="'#i-' + ${fact.icon}"/></svg><strong th:if="${fact.count}" th:text="${fact.count}">2</strong> [[${fact.label}]]</li>
+    </ul>
+
+    <div class="audit-note" th:if="${listing.verifiedAt}">
+        <svg aria-hidden="true" class="icon icon--lg"><use href="#i-shield"/></svg>
+        <div>
+            <p><strong th:text="'Logement audité par Ndopify le ' + ${listing.verifiedAt} + '.'">Logement audité par Ndopify le 12 octobre 2026.</strong></p>
+            <p>Un agent vérifié a visité ce logement : compteurs, photos et position GPS ont été contrôlés
+                sur place.</p>
+        </div>
+    </div>
+
+    <section aria-labelledby="description-heading" class="listing__section" th:unless="${#lists.isEmpty(listing.description)}">
+        <h2 id="description-heading">À propos de ce logement</h2>
+        <p th:each="paragraph : ${listing.description}" th:text="${paragraph}">Au 2e étage d'un petit immeuble calme.</p>
+    </section>
+
+    <section aria-labelledby="features-heading" class="listing__section" th:unless="${#lists.isEmpty(listing.specs)}">
+        <h2 id="features-heading">Caractéristiques</h2>
+        <dl class="spec-list">
+            <div th:each="spec : ${listing.specs}"><dt th:text="${spec.first}">Type de bien</dt><dd th:text="${spec.second}">Appartement</dd></div>
+        </dl>
+    </section>
+
+    <section aria-labelledby="amenities-heading" class="listing__section" th:unless="${#lists.isEmpty(listing.amenities)}">
+        <h2 id="amenities-heading">Équipements vérifiés</h2>
+        <div class="amenities">
+            <div th:each="group : ${listing.amenities}">
+                <h3 th:text="${group.title}">Eau</h3>
+                <ul class="check-list">
+                    <li th:each="item : ${group.items}"><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>[[${item}]]</li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="terms-heading" class="listing__section">
+        <h2 id="terms-heading">Conditions de location</h2>
+        <table class="terms-table">
+            <caption class="visually-hidden">Conditions de location du logement</caption>
+            <tbody>
+            <tr th:each="term : ${listing.terms}"><th scope="row" th:text="${term.first}">Loyer</th><td th:text="${term.second}">175K FCFA / mois</td></tr>
+            <tr><th scope="row">Commission Ndopify</th><td>1 mois de loyer, payable à la signature du bail</td></tr>
+            </tbody>
+        </table>
+        <p class="terms-note">Aucun paiement en espèces : les visites se règlent avec le Pass Visite par
+            Mobile Money.</p>
+    </section>
+
+    <section aria-labelledby="location-heading" class="listing__section">
+        <h2 id="location-heading">Emplacement</h2>
+        <p><th:block th:text="${listing.place}">Bonapriso, Douala</th:block><th:block th:if="${listing.landmark}" th:text="' — ' + ${listing.landmark}"> — près de la boulangerie Zepol</th:block>.
+            L'adresse exacte et l'itinéraire vous sont communiqués par <th:block th:text="${agent} ?: 'l\'agent'">l'agent</th:block>
+            avant la visite.</p>
+    </section>
+</th:block>
+
+</body>
+</html>

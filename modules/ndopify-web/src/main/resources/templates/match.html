@@ -16,7 +16,7 @@
 </head>
 <!--/*
   A match proposed to the customer of a search mandate (MatchController), from the prototype src/main/html/proposition.html:
-  the listing's page (as listing.html, from page.listing: ListingPage), without the share button nor the AI assistant,
+  the listing's page (fragments/listing-body.html, as listing.html, from page.listing: ListingPage), without the share button nor the AI assistant,
   plus who proposes it, for which search and why, and the customer's answer. Only the block of page.state is rendered
   (data-answer in the price card or the page, data-bar-answer in the bottom bar below 1024px):
     - PENDING: "Ça m'intéresse" (POST accept) or "Pas pour moi" (the #reject popup: a reason, an optional comment;
@@ -59,14 +59,9 @@
     <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6zM9 12l2 2 4-4"/></symbol>
     <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/></symbol>
     <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
-    <symbol id="i-share" viewBox="0 0 24 24"><path d="M12 15V4m0 0L8 8m4-4 4 4M5 13v6h14v-6"/></symbol>
     <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
     <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
-    <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 3v4m8-4v4"/></symbol>
     <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4zM8 9.5h8M8 12.5h5"/></symbol>
-    <symbol id="i-video" viewBox="0 0 24 24"><path d="M3 7h12v10H3zM15 10.5l6-3.5v10l-6-3.5"/></symbol>
-    <symbol id="i-send" viewBox="0 0 24 24"><path d="M4 12 20 4l-6 16-3-7zM11 13l9-9"/></symbol>
-    <symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM18 16l.8 2.2L21 19l-2.2.8L18 22l-.8-2.2L15 19l2.2-.8z"/></symbol>
 </svg>
 
 <main id="main" th:with="listing=${page.listing}">
@@ -94,7 +89,7 @@
         <!-- The outcome of the answer just posted -->
         <div class="proposal-flash" role="status" th:if="${page.flash}">
             <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
-            <p th:text="${page.flash}">C'est noté : Serge est prévenu de votre intérêt.</p>
+            <p th:text="${page.flash}">C'est noté : ce logement vous intéresse.</p>
         </div>
 
         <!--/* The listing can't be shown anymore: rented, withdrawn... */-->
@@ -110,94 +105,15 @@
         </section>
 
         <th:block th:if="${listing}">
-        <div class="listing__head">
-            <div class="listing__topline">
-                <p class="listing__badges">
-                    <span class="badge badge--info" th:text="${listing.typeBadge}">À louer</span>
-                    <span class="badge badge--success" th:if="${listing.verifiedAt}">
-                        <svg aria-hidden="true" class="icon"><use href="#i-shield"/></svg>Logement audité
-                    </span>
-                    <span class="badge badge--state" data-state-badge th:if="${page.state.name() == 'ACCEPTED'}">Vous intéresse</span>
-                    <span class="badge badge--state" data-state-badge th:if="${page.state.name() == 'REJECTED'}">Écarté</span>
-                </p>
-            </div>
-            <h1 th:text="${listing.title}">Appartement 3 chambres à Bonapriso</h1>
-            <p class="listing__location">
-                <svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>
-                <th:block th:text="${listing.place}">Bonapriso, Douala</th:block><th:block th:if="${listing.landmark}" th:text="' · ' + ${listing.landmark}"> · près du rond-point Total Joss</th:block>
-            </p>
-        </div>
+        <div th:replace="~{fragments/listing-body :: head(${listing}, false,
+                ${page.state.name() == 'ACCEPTED'} ? 'Vous intéresse' : (${page.state.name() == 'REJECTED'} ? 'Écarté' : null))}"></div>
 
-        <!--/* Gallery: the hero and the 4 next photos; the viewer (#listing-photos) has them all. */-->
-        <section aria-label="Photos du logement" class="gallery" th:unless="${#lists.isEmpty(listing.photos)}">
-            <a th:each="photo, it : ${listing.photos}" th:if="${it.index < 5}"
-               class="gallery__item" th:classappend="${it.first} ? 'gallery__item--hero'"
-               th:data-photo="${it.index}" th:href="${photo.src}">
-                <img th:alt="${photo.alt}" th:src="${photo.src}" th:attr="loading=${it.first} ? null : 'lazy'">
-            </a>
-            <a class="btn btn-outline gallery__all" data-photo="0" th:if="${#lists.size(listing.photos) > 5}"
-               th:href="${listing.photos[0].src}" th:text="'Voir les ' + ${#lists.size(listing.photos)} + ' photos'">Voir les 6 photos</a>
-        </section>
+        <section th:replace="~{fragments/listing-body :: gallery(${listing})}"></section>
 
         <div class="listing__layout">
             <div class="listing__content">
 
-                <ul aria-label="En bref" class="key-facts" th:unless="${#lists.isEmpty(listing.keyFacts)}">
-                    <li th:each="fact : ${listing.keyFacts}"><svg aria-hidden="true" class="icon"><use th:href="'#i-' + ${fact.icon}"/></svg><strong th:if="${fact.count}" th:text="${fact.count}">3</strong> [[${fact.label}]]</li>
-                </ul>
-
-                <div class="audit-note" th:if="${listing.verifiedAt}">
-                    <svg aria-hidden="true" class="icon icon--lg"><use href="#i-shield"/></svg>
-                    <div>
-                        <p><strong th:text="'Logement audité par Ndopify le ' + ${listing.verifiedAt} + '.'">Logement audité par Ndopify le 18 octobre 2026.</strong></p>
-                        <p>Un agent vérifié a visité ce logement : compteurs, photos et position GPS ont été contrôlés
-                            sur place.</p>
-                    </div>
-                </div>
-
-                <section aria-labelledby="description-heading" class="listing__section" th:unless="${#lists.isEmpty(listing.description)}">
-                    <h2 id="description-heading">À propos de ce logement</h2>
-                    <p th:each="paragraph : ${listing.description}" th:text="${paragraph}">Au 1er étage d'une résidence clôturée.</p>
-                </section>
-
-                <section aria-labelledby="features-heading" class="listing__section" th:unless="${#lists.isEmpty(listing.specs)}">
-                    <h2 id="features-heading">Caractéristiques</h2>
-                    <dl class="spec-list">
-                        <div th:each="spec : ${listing.specs}"><dt th:text="${spec.first}">Type de bien</dt><dd th:text="${spec.second}">Appartement</dd></div>
-                    </dl>
-                </section>
-
-                <section aria-labelledby="amenities-heading" class="listing__section" th:unless="${#lists.isEmpty(listing.amenities)}">
-                    <h2 id="amenities-heading">Équipements vérifiés</h2>
-                    <div class="amenities">
-                        <div th:each="group : ${listing.amenities}">
-                            <h3 th:text="${group.title}">Eau</h3>
-                            <ul class="check-list">
-                                <li th:each="item : ${group.items}"><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>[[${item}]]</li>
-                            </ul>
-                        </div>
-                    </div>
-                </section>
-
-                <section aria-labelledby="terms-heading" class="listing__section">
-                    <h2 id="terms-heading">Conditions de location</h2>
-                    <table class="terms-table">
-                        <caption class="visually-hidden">Conditions de location du logement</caption>
-                        <tbody>
-                        <tr th:each="term : ${listing.terms}"><th scope="row" th:text="${term.first}">Loyer</th><td th:text="${term.second}">240K FCFA / mois</td></tr>
-                        <tr><th scope="row">Commission Ndopify</th><td>1 mois de loyer, payable à la signature du bail</td></tr>
-                        </tbody>
-                    </table>
-                    <p class="terms-note">Aucun paiement en espèces : les visites se règlent avec le Pass Visite par
-                        Mobile Money.</p>
-                </section>
-
-                <section aria-labelledby="location-heading" class="listing__section">
-                    <h2 id="location-heading">Emplacement</h2>
-                    <p><th:block th:text="${listing.place}">Bonapriso, Douala</th:block><th:block th:if="${listing.landmark}" th:text="' — ' + ${listing.landmark}"> — près du rond-point Total Joss</th:block>.
-                        L'adresse exacte et l'itinéraire vous sont communiqués par <th:block th:text="${page.agentFirstName}">Serge</th:block>
-                        avant la visite.</p>
-                </section>
+                <th:block th:replace="~{fragments/listing-body :: content(${listing}, ${page.agentFirstName})}"></th:block>
 
                 <section aria-labelledby="agent-heading" class="listing__section">
                     <h2 id="agent-heading">Votre agent</h2>
@@ -229,8 +145,6 @@
                             <button class="btn btn-primary price-card__cta" type="submit">Ça m'intéresse</button>
                         </form>
                         <a class="btn btn-secondary price-card__cta answer__secondary" data-modal-open href="#reject">Pas pour moi</a>
-                        <p class="price-card__hint" th:text="|Votre réponse est transmise à ${page.agentFirstName}, votre agent.|">Votre
-                            réponse est transmise à Serge, votre agent.</p>
                     </div>
 
                     <div class="answer" data-answer="ACCEPTED" th:if="${page.state.name() == 'ACCEPTED'}">
@@ -243,8 +157,8 @@
 
                     <div class="answer" data-answer="REJECTED" th:if="${page.state.name() == 'REJECTED'}">
                         <p class="answer__status">Vous avez écarté ce logement.</p>
-                        <p th:text="|${#strings.capitalize(page.agentFirstName)} continue de chercher pour vous : il vous enverra d'autres logements.|">Serge
-                            continue de chercher pour vous : il vous enverra d'autres logements.</p>
+                        <p th:text="|${#strings.capitalize(page.agentFirstName)} continue de chercher pour vous.|">Serge continue
+                            de chercher pour vous.</p>
                     </div>
                 </div>
             </aside>
@@ -289,8 +203,6 @@
                 <button class="btn btn-primary answer-sheet__btn" type="submit">Ça m'intéresse</button>
             </form>
             <a class="btn btn-secondary answer-sheet__btn" data-modal-open href="#reject">Pas pour moi</a>
-            <p class="answer-sheet__hint" th:text="|Votre réponse est transmise à ${page.agentFirstName}, votre agent.|">Votre
-                réponse est transmise à Serge, votre agent.</p>
         </div>
     </div>
 </div>

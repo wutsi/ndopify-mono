@@ -169,7 +169,7 @@ class MatchPagesTest {
         val page = page(match = match.copy(status = MatchStatus.ACCEPTED), answer = "accepted")
 
         assertEquals(AnswerState.ACCEPTED, page.state)
-        assertEquals("C'est noté : Serge est prévenu de votre intérêt.", page.flash)
+        assertEquals("C'est noté : ce logement vous intéresse.", page.flash)
     }
 
     @Test
@@ -177,7 +177,7 @@ class MatchPagesTest {
         val page = page(match = match.copy(status = MatchStatus.REJECTED), answer = "rejected")
 
         assertEquals(AnswerState.REJECTED, page.state)
-        assertEquals("C'est noté : Serge va continuer à chercher pour vous.", page.flash)
+        assertEquals("C'est noté : vous avez écarté ce logement.", page.flash)
     }
 
     @Test
@@ -240,7 +240,7 @@ class MatchPagesTest {
         assertEquals("Votre agent", page.agentName)
         assertEquals("", page.agentInitials)
         assertNull(page.agentWhatsappUrl)
-        assertEquals("C'est noté : votre agent est prévenu de votre intérêt.", page.flash)
+        assertEquals("C'est noté : ce logement vous intéresse.", page.flash)
     }
 
     @Test

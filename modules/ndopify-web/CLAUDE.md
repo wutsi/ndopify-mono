@@ -20,7 +20,8 @@ Package `com.wutsi.ndopify.web`:
   null (the call to action is left out) when the tenant has no `partnerCentralUrl`.
 - `ui/listing/` — a listing's public page at its `Listing.url` (`/<city>/<neighborhood>/listing/<id>/<slug>`,
   `listing.html` from `annonce.html`): `ListingController` (another path to the same id → 301 to the url),
-  `ListingPages` builds the `ListingPage` view (every text formatted, never `agentRemarks`). The "Demander une visite"
+  `ListingPages` builds the `ListingPage` view (every text formatted, never `agentRemarks`); its body (head, gallery,
+  content sections) is `templates/fragments/listing-body.html`, shared with `match.html`. The "Demander une visite"
   and "Poser une question" buttons are left out for now (the bottom bar on mobile only shows the price); their popup
   and drawer are still in the page, the prototype's: `listing.js` fakes their answers, no handler posts them yet.
 - `ui/match/` — `MatchController`, the link of the proposition e-mail (`/match/{id}?token=`): the token goes to the
@@ -33,7 +34,8 @@ Package `com.wutsi.ndopify.web`:
   and "Pas pour moi" (`#reject` popup, `RejectForm`: `POST /match/{id}/reject`, missing reason → `OTHER`, blank comment
   → none); ACCEPTED / REJECTED → the answer, no form (answers are final: no "change my mind", unlike the prototype);
   UNAVAILABLE (listing 403/404 or not PUBLISHED, whatever the answer) → no listing, no form, the agent's WhatsApp.
-  An answer redirects to `/match/{id}?answer=accepted|rejected` (the flash, shown only in that state); a second answer
+  An answer redirects to `/match/{id}?answer=accepted|rejected` (the flash, shown only in that state; no text says the
+  agent was told: it isn't notified yet); a second answer
   (409 `MATCH_NOT_PROPOSED`) to `/match/{id}`. "Demander une visite" is left out, as on the listing page.
 - `ui/layout/HttpClientErrorHandler` — a 403/404 from ndopify-server (ex: a listing no longer published) is answered
   with the same status (`templates/error/404.html`).
