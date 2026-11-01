@@ -22,13 +22,18 @@ Package `com.wutsi.ndopify.web`:
   `ListingPages` builds the `ListingPage` view (every text formatted, never `agentRemarks`). The "Demander une visite"
   and "Poser une question" buttons are left out for now (the bottom bar on mobile only shows the price); their popup
   and drawer are still in the page, the prototype's: `listing.js` fakes their answers, no handler posts them yet.
+- `ui/match/` — `MatchController`, the link of the proposition e-mail (`/match/{id}?token=`): the token goes to the
+  cookie and is stripped from the address (302); signed out or a 401 from ndopify-server (cookie cleared) → `match-link.html`
+  with `reason = expired`, a 403 → `not-yours`, a 404 → the app's 404. Signed in → view `match` (page built in a later
+  task; no accept/reject handler yet).
 - `ui/layout/HttpClientErrorHandler` — a 403/404 from ndopify-server (ex: a listing no longer published) is answered
   with the same status (`templates/error/404.html`).
 - `ui/layout/TenantAdvice` — puts the tenant in every page's model as `tenant`. Controllers read it from the model
   (`model.getAttribute("tenant")`), never as a `@ModelAttribute` parameter, which request parameters could bind.
 - `TenantContext` (web-core) — the tenant whose `publicPortalUrl` prefixes the request URL (from web-core's
   `NdTenantClient`, a plain `RestTemplate`); `TenantFormatter` (web-core) — dates and amounts.
-- `client/ndopify/NdListingClient`, `NdLocationClient` — `RestClient`s that get `RestConfiguration`'s interceptors
+- `client/ndopify/NdListingClient`, `NdLocationClient`, `NdMatchClient` (get/accept/reject), `NdMandateClient`,
+  `NdAgentClient` — `RestClient`s that get `RestConfiguration`'s interceptors
   (web-core's logging and `X-Tenant-ID`).
 - `config/` — `SecurityConfiguration` permits only `/`, `/agent`, `/owner`, GET of the listing paths
   (`/*/listing/*`, `/*/*/listing/*/*`…), `GET /match/*`, `POST /match/*/accept|reject`, `/assets/**` and `/error` (everything else is denied: a new page must
