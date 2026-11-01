@@ -60,6 +60,23 @@ class NdMatchClientTest {
     }
 
     @Test
+    fun searchByListings() {
+        server.expect(requestTo("http://localhost:8080/v1/matches?listing-id=501&listing-id=502&status=ACCEPTED&limit=100"))
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(
+                withSuccess(
+                    json(SearchMatchResponse(listOf(Match(id = 9001, mandateId = 204, listingId = 501, status = MatchStatus.ACCEPTED)))),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val matches = client.searchByListings(listOf(501, 502), listOf(MatchStatus.ACCEPTED))
+
+        server.verify()
+        assertEquals(listOf(501L), matches.map { it.listingId })
+    }
+
+    @Test
     fun get() {
         server.expect(requestTo("http://localhost:8080/v1/matches/9001"))
             .andExpect(method(HttpMethod.GET))

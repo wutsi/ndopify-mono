@@ -6,7 +6,6 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
-import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.contract.dto.ContractSummary
@@ -100,12 +99,10 @@ class HomeControllerTest {
         val result = mvc.perform(get("/")).andReturn()
 
         assertEquals("index", result.modelAndView?.viewName)
-        assertEquals("Serge Ngono", model(result)["fullName"])
         assertEquals("SN", model(result)["initials"])
-        assertEquals("https://cdn.ndopify.com/party/100/photo/a.jpg", model(result)["photoUrl"])
         assertEquals("https://cdn.ndopify.com/party/100/photo/a.jpg", model(result)["userPhotoUrl"])
-        assertEquals("Démarcheur à Douala depuis 6 ans.", model(result)["biography"])
-        assertEquals("Bonapriso, Akwa — Douala", model(result)["area"])
+        assertEquals(false, model(result)["photoMissing"])
+        assertEquals(false, model(result)["biographyMissing"])
         assertNull(model(result)["kyc"])
         verify(kycClient, never()).current(any())
     }
@@ -116,29 +113,9 @@ class HomeControllerTest {
 
         val result = mvc.perform(get("/")).andReturn()
 
-        assertNull(model(result)["photoUrl"])
+        assertEquals(true, model(result)["photoMissing"])
         assertNull(model(result)["userPhotoUrl"])
-        assertNull(model(result)["biography"])
-    }
-
-    @Test
-    fun `no area`() {
-        doReturn(AGENT.copy(cityId = null, neighborhoodIds = emptyList())).whenever(currentAgent).get()
-
-        val result = mvc.perform(get("/")).andReturn()
-
-        assertEquals("index", result.modelAndView?.viewName)
-        assertNull(model(result)["area"])
-    }
-
-    @Test
-    fun `location names unavailable - page shown without the area`() {
-        whenever(locationClient.search(any())).thenThrow(ResourceAccessException("timeout"))
-
-        val result = mvc.perform(get("/")).andReturn()
-
-        assertEquals("index", result.modelAndView?.viewName)
-        assertNull(model(result)["area"])
+        assertEquals(true, model(result)["biographyMissing"])
     }
 
     private fun notVerified(case: KycCase?): MvcResult {
@@ -413,8 +390,7 @@ class HomeControllerTest {
 
         val result = mvc.perform(get("/")).andReturn()
 
-        // One for the profile's area, one for the cards.
-        verify(locationClient, times(2)).search(any())
+        verify(locationClient).search(any())
         assertEquals("Bonapriso, Akwa", assignments(result).single().sector)
         assertEquals("Bonapriso, Akwa", mandates(result).single().facts[0].second)
     }
@@ -432,8 +408,8 @@ class HomeControllerTest {
         verify(listingClient).searchByMandates(listOf(205L, 206L), AGENT.id)
         val mandates = mandates(result)
         assertNull(mandates[0].listing)
-        assertEquals("Annonce n° 501", mandates[1].listing?.label)
-        assertEquals("Annonce", mandates[2].listing?.label)
+        assertEquals("/listings/501", mandates[1].listing?.url)
+        assertEquals("/mandates/206", mandates[2].listing?.url)
         assertEquals("Créez l'annonce du bien, puis visitez-le pour la compléter.", mandates[2].nextStep)
     }
 
@@ -460,6 +436,59 @@ class HomeControllerTest {
     }
 
     @Test
+    fun `clients interested by the published listings - one search`() {
+        active(landlord to null, landlord.copy(id = 206) to null, landlord.copy(id = 207) to null)
+        doReturn(
+            listOf(
+                ListingSummary(id = 501, mandateId = 205, status = ListingStatus.PUBLISHED),
+                ListingSummary(id = 502, mandateId = 206, status = ListingStatus.PUBLISHED),
+                ListingSummary(id = 503, mandateId = 207, status = ListingStatus.DRAFT),
+            ),
+        ).whenever(listingClient).searchByMandates(any(), any())
+        doReturn(
+            listOf(
+                Match(id = 1, mandateId = 301, listingId = 501, status = MatchStatus.ACCEPTED),
+                Match(id = 2, mandateId = 302, listingId = 501, status = MatchStatus.ACCEPTED),
+            ),
+        ).whenever(matchClient).searchByListings(any(), any(), any())
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        verify(matchClient).searchByListings(listOf(501L, 502L), listOf(MatchStatus.ACCEPTED), 100)
+        val mandates = mandates(result)
+        assertEquals("2 personnes intéressées", mandates[0].interest)
+        assertEquals("Aucune personne intéressée pour l'instant", mandates[1].interest)
+        assertNull(mandates[2].interest)
+    }
+
+    @Test
+    fun `no published listing - no interest search`() {
+        active(landlord to null)
+        doReturn(listOf(ListingSummary(id = 501, mandateId = 205, status = ListingStatus.DRAFT)))
+            .whenever(listingClient).searchByMandates(any(), any())
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        verify(matchClient, never()).searchByListings(any(), any(), any())
+        assertNull(mandates(result).single().interest)
+    }
+
+    @Test
+    fun `interest unavailable - cards kept without the interest line`() {
+        active(landlord to null)
+        doReturn(listOf(ListingSummary(id = 501, mandateId = 205, status = ListingStatus.PUBLISHED)))
+            .whenever(listingClient).searchByMandates(any(), any())
+        doThrow(ResourceAccessException("timeout")).whenever(matchClient).searchByListings(any(), any(), any())
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        val card = mandates(result).single()
+        assertNull(card.interest)
+        assertEquals("/listings/501", card.listing?.url)
+        assertEquals(false, model(result)["mandatesUnavailable"])
+    }
+
+    @Test
     fun `matches of the signed searches - one search`() {
         val other = approved.copy(id = 204)
         active(approved to null, other to null, assigned to null, landlord to null)
@@ -480,7 +509,7 @@ class HomeControllerTest {
         val mandates = mandates(result)
         assertEquals("1 nouveau bien correspondant", mandates[0].matches)
         assertEquals("/mandates/203#matches-title", mandates[0].matchesUrl)
-        assertEquals("1 envoyé · 1 intéresse le client", mandates[1].proposals)
+        assertEquals("1 intéressé", mandates[1].proposals)
         assertEquals("L'annonce n° 2987 intéresse le client : proposez-lui une visite.", mandates[1].nextStep)
         assertNull(mandates[2].matches)
     }

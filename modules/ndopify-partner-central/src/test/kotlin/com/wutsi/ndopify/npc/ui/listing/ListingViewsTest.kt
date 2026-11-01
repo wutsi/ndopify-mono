@@ -575,7 +575,8 @@ class ListingViewsTest {
         val summary = ListingSummary(id = 501, mandateId = 203, status = ListingStatus.PUBLISHED, publishedAt = SENT)
 
         assertEquals(
-            ListingLineView("Annonce n° 501", "/listings/501", ListingRules.Tag("Publiée le 22 oct. 2026", "success")),
+            // No number: one line on a phone
+            ListingLineView("Annonce", "/listings/501", ListingRules.Tag("Publiée le 22 oct. 2026", "success")),
             ListingViews.line(approved, summary, formatter),
         )
         assertEquals(ListingRules.Tag("Brouillon", "info"), ListingViews.line(approved, summary.copy(status = ListingStatus.DRAFT), formatter)?.tag)

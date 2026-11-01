@@ -292,17 +292,25 @@ object ListingViews {
     /**
      * The card's line of [mandate] in the Espace agent (the prototype's `fillListingLine`); null for a mandate that
      * has no listing to have. [listing] is null before it's created. A summary has no `errorCodes`: a listing sent
-     * back to fix is "Brouillon" here, "À corriger" once opened.
+     * back to fix is "Brouillon" here, "À corriger" once opened. "Annonce", without its number, to fit one line on a
+     * phone with its tag.
      */
     fun line(mandate: Mandate, listing: ListingSummary?, formatter: TenantFormatter): ListingLineView? =
         if (MandateRules.listed(mandate)) {
-            line(mandate.id, listing?.id, listing?.let { ListingRules.tag(it.status) }, listing?.publishedAt, formatter)
+            line(mandate.id, listing?.id, listing?.let { ListingRules.tag(it.status) }, listing?.publishedAt, formatter, card = true)
         } else {
             null
         }
 
     // A published listing's tag has its date, as on the listing page: "Publiée le …"
-    private fun line(mandateId: Long, listingId: Long?, tag: ListingRules.Tag?, publishedAt: Date?, formatter: TenantFormatter): ListingLineView {
+    private fun line(
+        mandateId: Long,
+        listingId: Long?,
+        tag: ListingRules.Tag?,
+        publishedAt: Date?,
+        formatter: TenantFormatter,
+        card: Boolean = false,
+    ): ListingLineView {
         if (listingId == null) return ListingLineView("Annonce", "/mandates/$mandateId", TO_CREATE)
 
         val dated = if (tag != null && tag == ListingRules.tag(ListingStatus.PUBLISHED) && publishedAt != null) {
@@ -310,7 +318,7 @@ object ListingViews {
         } else {
             tag
         }
-        return ListingLineView("Annonce n° $listingId", "/listings/$listingId", dated)
+        return ListingLineView(if (card) "Annonce" else "Annonce n° $listingId", "/listings/$listingId", dated)
     }
 
     // "https://ndopify.com" + "/douala/bonapriso/listing/123/maison-a-louer"

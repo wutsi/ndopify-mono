@@ -95,22 +95,30 @@ object MatchRules {
         }
     }
 
-    /** A card's "3 envoyés · 1 intéresse le client · 1 refusé · 1 sans réponse"; null when none was sent. */
+    /**
+     * A card's line of the listings sent to the client, short enough for one line on a phone: what it answered,
+     * "1 intéressé · 1 refusé · 1 en attente" (no total: the counts add up to it); null when none was sent.
+     */
     fun proposals(matches: List<Match>): String? {
-        val sent = matches.count { it.status in SENT }
-        if (sent == 0) {
+        if (matches.none { it.status in SENT }) {
             return null
         }
         val accepted = matches.count { it.status == MatchStatus.ACCEPTED }
         val rejected = matches.count { it.status == MatchStatus.REJECTED }
         val pending = matches.count { it.status == MatchStatus.PROPOSED }
         return listOfNotNull(
-            "$sent " + plural(sent, "envoyé", "envoyés"),
-            accepted.takeIf { it > 0 }?.let { "$it " + plural(it, "intéresse", "intéressent") + " le client" },
+            accepted.takeIf { it > 0 }?.let { "$it " + plural(it, "intéressé", "intéressés") },
             rejected.takeIf { it > 0 }?.let { "$it " + plural(it, "refusé", "refusés") },
-            pending.takeIf { it > 0 }?.let { "$it sans réponse" },
+            pending.takeIf { it > 0 }?.let { "$it en attente" },
         ).joinToString(" · ")
     }
+
+    /** A published listing's card: "2 personnes intéressées", the clients who [accepted] it, or "Aucune …". */
+    fun interest(accepted: Int): String =
+        when (accepted) {
+            0 -> "Aucune personne intéressée pour l'instant"
+            else -> "$accepted " + plural(accepted, "personne intéressée", "personnes intéressées")
+        }
 
     /** A card's next step, before the mandate's: a visit for the best ACCEPTED one, else sending the ACTIVE ones. */
     fun nextStep(matches: List<Match>): String? {

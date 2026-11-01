@@ -154,7 +154,7 @@ class HomeTemplateTest {
         assertEquals(8, card.select(".review__item").size)
         assertEquals("Gardien de sécurité", card.select(".review__item").last()?.selectFirst(".review__value")?.text())
         assertFalse(page.text().contains("677")) // the mandate's comments
-        assertTrue(page.selectFirst("[data-assignments-empty]")!!.hasAttr("hidden"))
+        assertNotNull(page.selectFirst("[data-assignments-section] > p:not(.visually-hidden)"))
         assertNull(page.selectFirst("[data-assignments-unavailable]"))
         assertNull(page.selectFirst("[data-assignment-outcome]"))
     }
@@ -175,9 +175,19 @@ class HomeTemplateTest {
 
         val page = render(get("/"))
 
-        assertNotNull(page.selectFirst("#assignments-title"))
-        assertNull(page.selectFirst("[data-assignment]"))
-        assertFalse(page.selectFirst("[data-assignments-empty]")!!.hasAttr("hidden"))
+        assertNull(page.selectFirst("[data-assignments-section]")) // No section at all
+        assertNotNull(page.selectFirst("#mandates-title"))
+    }
+
+    @Test
+    fun `no offer left - the outcome only`() {
+        doReturn(emptyList<AssignmentSummary>()).whenever(assignmentClient).pending(AGENT.id)
+
+        val section = render(get("/").flashAttr("assignment", "declined")).selectFirst("[data-assignments-section]")!!
+
+        assertEquals("Mandat refusé", section.selectFirst("[data-assignment-outcome] .alert__title")?.text())
+        assertNull(section.selectFirst("[data-assignments]"))
+        assertEquals(listOf("visually-hidden"), section.select("> p").map { it.className() }) // no intro
     }
 
     @Test
@@ -186,8 +196,7 @@ class HomeTemplateTest {
 
         val page = render(get("/"))
 
-        assertNotNull(page.selectFirst("[data-assignments-unavailable]"))
-        assertTrue(page.selectFirst("[data-assignments-empty]")!!.hasAttr("hidden"))
+        assertNotNull(page.selectFirst("[data-assignments-section] [data-assignments-unavailable]"))
     }
 
     @Test
@@ -262,12 +271,26 @@ class HomeTemplateTest {
 
         val line = cards[0].selectFirst("[data-listing-line]")!!
         assertEquals("/listings/501", line.selectFirst("a[data-listing-number]")?.attr("href"))
-        assertEquals("Annonce n° 501", line.selectFirst("a[data-listing-number]")?.text())
+        assertEquals("Annonce", line.selectFirst("a[data-listing-number]")?.text()) // No number: one line on a phone
         assertEquals("status-tag status-tag--info", line.selectFirst("[data-listing-status-tag]")?.className())
         assertEquals("Brouillon", line.selectFirst("[data-listing-status-tag]")?.text())
         assertEquals("/mandates/205", cards[1].selectFirst("a[data-listing-number]")?.attr("href"))
         assertEquals("À créer", cards[1].selectFirst("[data-listing-status-tag]")?.text())
         assertEquals("Créez l'annonce du bien, puis visitez-le pour la compléter.", cards[1].selectFirst(".mandate-card__next span")?.text())
+    }
+
+    @Test
+    fun `published listing - interest line`() {
+        val landlord = MandateCardsTest.MANDATE.copy(id = 203, status = MandateStatus.APPROVED, mandateType = MandateType.LISTING)
+        doReturn(listOf(MandateSummariesTest.summary(landlord))).whenever(mandateClient).active(AGENT.id)
+        doReturn(listOf(ListingSummary(id = 501, mandateId = 203, status = ListingStatus.PUBLISHED)))
+            .whenever(listingClient).searchByMandates(any(), any())
+        doReturn(listOf(Match(id = 1, mandateId = 301, listingId = 501, status = MatchStatus.ACCEPTED)))
+            .whenever(matchClient).searchByListings(any(), any(), any())
+
+        val card = render(get("/")).selectFirst("[data-mandate-card]")!!
+
+        assertEquals("1 personne intéressée", card.selectFirst(".mandate-card__interest[data-listing-interest]")?.text())
     }
 
     @Test
@@ -288,7 +311,7 @@ class HomeTemplateTest {
         assertEquals("/mandates/203#matches-title", link.attr("href"))
         assertEquals("2 nouveaux biens correspondants", link.text())
         assertEquals(
-            "Biens proposés au client : 1 envoyé · 1 sans réponse",
+            "Biens proposés au client : 1 en attente",
             card.selectFirst(".mandate-card__proposals[data-proposals]")?.text(),
         )
         assertEquals(

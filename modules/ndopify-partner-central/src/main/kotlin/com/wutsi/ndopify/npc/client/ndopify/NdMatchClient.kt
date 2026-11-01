@@ -12,7 +12,7 @@ import org.springframework.web.client.body
 /**
  * Client for the ndopify-server match endpoints (`/v1/matches`): the PUBLISHED listings matched to a signed search
  * mandate. Matches are tenant-scoped (`X-Tenant-ID`, see `RestConfiguration`). ndopify-server lets only the mandate's
- * agent (or an admin) read or act on them, a 403 otherwise; the pages still check the match is of the mandate shown.
+ * agent (or an admin) read or act on them (the listing's agent for a search by listing), a 403 otherwise; the pages still check the match is of the mandate shown.
  */
 @Service
 class NdMatchClient(
@@ -29,6 +29,21 @@ class NdMatchClient(
         rest.get()
             .uri { uri ->
                 mandateIds.forEach { uri.queryParam("mandate-id", it) }
+                statuses.forEach { uri.queryParam("status", it) }
+                uri.path("/v1/matches")
+                    .queryParam("limit", limit)
+                    .build()
+            }
+            .retrieve()
+            .body<SearchMatchResponse>()
+            ?.matches
+            ?: emptyList()
+
+    /** The matches of the listings [listingIds] in [statuses] (ex: ACCEPTED, who they interest), for their agent only. */
+    fun searchByListings(listingIds: List<Long>, statuses: List<MatchStatus>, limit: Int = 100): List<Match> =
+        rest.get()
+            .uri { uri ->
+                listingIds.forEach { uri.queryParam("listing-id", it) }
                 statuses.forEach { uri.queryParam("status", it) }
                 uri.path("/v1/matches")
                     .queryParam("limit", limit)

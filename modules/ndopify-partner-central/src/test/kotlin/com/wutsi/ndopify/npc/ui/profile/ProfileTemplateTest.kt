@@ -111,13 +111,8 @@ class ProfileTemplateTest {
     fun home() {
         val page = render(get("/"))
 
-        assertEquals("Serge Ngono", page.selectFirst("[data-profile-name]")?.text())
-        assertEquals(AGENT.party.photoUrl, page.selectFirst("[data-profile-photo] img")?.attr("src"))
-        assertNull(page.selectFirst(".profile__initials"))
-        assertEquals("Quartiers : Bonapriso, Akwa — Douala", page.selectFirst("[data-profile-area]")?.text())
-        assertEquals("Démarcheur à Douala depuis 6 ans.", page.selectFirst("[data-profile-bio]")?.text())
-        assertNull(page.selectFirst("[data-profile-incomplete]"))
-        assertNull(page.selectFirst("[data-profile-saved]"))
+        assertNull(page.selectFirst("[data-profile]")) // A complete profile: nothing to show
+        assertFalse(page.text().contains("Démarcheur à Douala"))
         assertNull(page.selectFirst("[data-kyc-banner]"))
         assertEquals("/profile", page.select(".user-menu__item").first()?.attr("href"))
         assertNull(page.selectFirst("[data-user-email]"))
@@ -140,11 +135,9 @@ class ProfileTemplateTest {
 
         val page = render(get("/"))
 
-        assertEquals("SN", page.selectFirst(".profile__initials")?.text())
-        assertNull(page.selectFirst("[data-profile-photo] img"))
+        assertNotNull(page.selectFirst("[data-profile] [data-profile-incomplete]"))
         assertEquals("SN", page.selectFirst("[data-user-initials]")?.text())
         assertNull(page.selectFirst("[data-user-photo]"))
-        assertNotNull(page.selectFirst("[data-profile-bio-missing]"))
         assertEquals("/profile/photo", page.selectFirst("[data-profile-todo=photo] a")?.attr("href"))
         assertEquals("/profile", page.selectFirst("[data-profile-todo=bio] a")?.attr("href"))
     }
@@ -169,6 +162,8 @@ class ProfileTemplateTest {
             "Votre photo de profil a été enregistrée.",
             render(get("/").flashAttr(ProfileRules.SAVED, ProfileRules.SAVED_PHOTO)).selectFirst("[data-profile-saved]")?.text(),
         )
+        // The profile is complete: the confirmation only
+        assertNull(render(get("/").flashAttr(ProfileRules.SAVED, ProfileRules.SAVED_PHOTO)).selectFirst("[data-profile-incomplete]"))
     }
 
     @Test
@@ -188,7 +183,6 @@ class ProfileTemplateTest {
             assertEquals(listOf(banner.first), shown.map { it.attr("data-kyc-banner") })
             assertEquals(banner.second, shown.first()?.selectFirst("a")?.text())
             assertEquals("/kyc", shown.first()?.selectFirst("a")?.attr("href"))
-            assertEquals("Serge Ngono", page.selectFirst("[data-profile-name]")?.text())
         }
     }
 

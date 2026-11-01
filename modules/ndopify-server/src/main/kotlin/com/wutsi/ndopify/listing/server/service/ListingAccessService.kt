@@ -66,6 +66,11 @@ class ListingAccessService(
         ensureCanChange(listing.agent.id)
     }
 
+    /** Reading who a listing interests (its matches, ex: the customers who accepted it): an admin, or its agent. */
+    fun ensureIsAgent(listing: ListingEntity) {
+        ensureCanChange(listing.agent.id)
+    }
+
     private fun ensureCanChange(agentId: Long?) {
         val principal = callerService.getPrincipal()
         if (callerService.isAdmin(principal)) {

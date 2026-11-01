@@ -247,16 +247,23 @@ class MatchRulesTest {
             MATCH_A.copy(id = 3, status = MatchStatus.REJECTED),
         )
 
-        assertEquals("3 envoyés · 1 intéresse le client · 1 refusé · 1 sans réponse", MatchRules.proposals(matches))
+        assertEquals("1 intéressé · 1 refusé · 1 en attente", MatchRules.proposals(matches))
         assertEquals(
-            "4 envoyés · 2 intéressent le client · 2 refusés",
+            "2 intéressés · 2 refusés",
             MatchRules.proposals(
                 listOf(MatchStatus.ACCEPTED, MatchStatus.ACCEPTED, MatchStatus.REJECTED, MatchStatus.REJECTED)
                     .map { MATCH_A.copy(status = it) },
             ),
         )
-        assertEquals("1 envoyé · 1 sans réponse", MatchRules.proposals(listOf(MATCH_A.copy(status = MatchStatus.PROPOSED))))
+        assertEquals("1 en attente", MatchRules.proposals(listOf(MATCH_A.copy(status = MatchStatus.PROPOSED))))
         assertNull(MatchRules.proposals(listOf(MATCH_A)))
+    }
+
+    @Test
+    fun interest() {
+        assertEquals("Aucune personne intéressée pour l'instant", MatchRules.interest(0))
+        assertEquals("1 personne intéressée", MatchRules.interest(1))
+        assertEquals("3 personnes intéressées", MatchRules.interest(3))
     }
 
     @Test

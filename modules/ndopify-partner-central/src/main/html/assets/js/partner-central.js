@@ -956,45 +956,28 @@
         }
     }
 
-    // PROTOTYPE: shows the profile saved by the profile pages; until then, ?profile=complete or ?profile=empty
-    // shows the other states of the section.
+    // The section only shows while the photo or the biography is missing, or to confirm a save. PROTOTYPE: follows
+    // the profile saved by the profile pages; until then, ?profile=complete or ?profile=empty shows the other states.
     function initProfile() {
         var section = $("[data-profile]");
         if (!section) return;
         var params = new URLSearchParams(window.location.search);
         var saved = savedProfile();
         var state = params.get("profile");
-        var photoSrc = saved ? saved.photo : (state === "complete" ? "assets/images/icon.png" : null);
+        var hasPhoto = saved ? !!saved.photo : state === "complete";
         var hasBio = saved ? !!saved.biography : state !== "empty";
 
-        if (photoSrc) {
-            var img = document.createElement("img");
-            img.src = photoSrc;
-            img.alt = "";
-            img.width = 80;
-            img.height = 80;
-            var photo = $("[data-profile-photo]", section);
-            photo.textContent = "";
-            photo.appendChild(img);
-        }
-        if (saved) {
-            if (saved.biography) $("[data-profile-bio]", section).textContent = saved.biography;
-            if (saved.cityName) {
-                $("[data-profile-area-text]", section).textContent =
-                    (saved.neighborhoodNames || []).join(", ") + " — " + saved.cityName;
-            }
-        }
-        $("[data-profile-bio]", section).hidden = !hasBio;
-        $("[data-profile-bio-missing]", section).hidden = hasBio;
-        $("[data-profile-todo=photo]", section).hidden = !!photoSrc;
+        $("[data-profile-todo=photo]", section).hidden = hasPhoto;
         $("[data-profile-todo=bio]", section).hidden = hasBio;
-        $("[data-profile-incomplete]", section).hidden = !!photoSrc && hasBio;
+        $("[data-profile-incomplete]", section).hidden = hasPhoto && hasBio;
+        section.hidden = hasPhoto && hasBio;
 
         // Back from a profile page: confirm the save once, then drop the parameter so a reload doesn't repeat it.
         var message = PROFILE_SAVED[params.get("saved")];
         if (message) {
             $("[data-profile-saved-text]", section).textContent = message;
             $("[data-profile-saved]", section).hidden = false;
+            section.hidden = false;
             params.delete("saved");
             var query = params.toString();
             window.history.replaceState(null, "", window.location.pathname + (query ? "?" + query : ""));
@@ -1024,18 +1007,25 @@
         var list = $("[data-assignments]");
         if (!list) return;
         var status = $("[data-assignments-status]");
-        var empty = $("[data-assignments-empty]");
-        var heading = $("#assignments-title");
-        heading.setAttribute("tabindex", "-1");
+        var section = $("[data-assignments-section]");
+        // Where the focus goes once the last offer is declined: the section is gone.
+        var after = $("#mandates-title");
+        after.setAttribute("tabindex", "-1");
+
+        // PROTOTYPE: ?assignments=empty shows an agent without offers.
+        if (new URLSearchParams(window.location.search).get("assignments") === "empty") {
+            $all("[data-assignment]", list).forEach(function (item) {
+                item.remove();
+            });
+        }
 
         function pending() {
             return $all("[data-assignment]:not([data-closed])", list);
         }
 
+        // No offer: no section at all.
         function syncEmpty() {
-            var none = $all("[data-assignment]", list).length === 0;
-            list.hidden = none;
-            empty.hidden = !none;
+            section.hidden = $all("[data-assignment]", list).length === 0;
         }
 
         // Replaces the card's actions (and the details' timer) by an outcome message, with an optional link.
@@ -1075,7 +1065,7 @@
             var next = items[items.indexOf(item) + 1] || items[items.indexOf(item) - 1];
             item.remove();
             syncEmpty();
-            var target = next ? $("h3", next) : heading;
+            var target = next ? $("h3", next) : after;
             if (next) target.setAttribute("tabindex", "-1");
             target.focus();
         }
@@ -1524,7 +1514,7 @@
         }
         if (state.status === "APPROVED") {
             // A landlord's property is let through its listing: created, completed on site, then published
-            var listing = mandate.party === "bailleur" ? listingOf(id) : null;
+            var listing = mandate.party === "bailleur" ? cardListingOf(id) : null;
             if (mandate.party === "bailleur" && !listing) return "Créez l'annonce du bien, puis visitez-le pour la compléter.";
             if (listing && listing.status === "DRAFT") {
                 return listing.rejection ? "Annonce à corriger : voyez les points signalés." : "Complétez l'annonce, puis envoyez-la pour vérification.";
@@ -1728,7 +1718,8 @@
         return day + " à " + visit.time + (visit.type === "VIDEO" ? ", en vidéo" : ", sur place");
     }
 
-    // The home card's proposals line: "3 envoyés · 1 visite demandée · 1 refusé · 1 sans réponse", or "".
+    // The home card's proposals line, short enough for one line on a phone: what the client answered, "1 visite ·
+    // 1 refusé · 1 en attente" (no total: the counts add up to it), or "". The mandate page has the details.
     function proposalsSummary(matches) {
         var sent = matches.filter(function (m) {
             return m.status === "PROPOSED";
@@ -1738,11 +1729,11 @@
         sent.forEach(function (m) {
             counts[answerOf(m) || "NONE"]++;
         });
-        var parts = [sent.length + (sent.length > 1 ? " envoyés" : " envoyé")];
-        if (counts.VISIT) parts.push(counts.VISIT + (counts.VISIT > 1 ? " visites demandées" : " visite demandée"));
-        if (counts.ACCEPTED) parts.push(counts.ACCEPTED + (counts.ACCEPTED > 1 ? " intéressent le client" : " intéresse le client"));
+        var parts = [];
+        if (counts.VISIT) parts.push(counts.VISIT + (counts.VISIT > 1 ? " visites" : " visite"));
+        if (counts.ACCEPTED) parts.push(counts.ACCEPTED + (counts.ACCEPTED > 1 ? " intéressés" : " intéressé"));
         if (counts.REJECTED) parts.push(counts.REJECTED + (counts.REJECTED > 1 ? " refusés" : " refusé"));
-        if (counts.NONE) parts.push(counts.NONE + " sans réponse");
+        if (counts.NONE) parts.push(counts.NONE + " en attente");
         return parts.join(" · ");
     }
 
@@ -1770,6 +1761,25 @@
 
     function matchAvailability(match) {
         return match.availableIn <= 0 ? "Maintenant" : formatDate(Date.now() + match.availableIn * DAY_MS);
+    }
+
+    // PROTOTYPE: the clients interested by a published listing, by mandate: its matches whose client answered
+    // "intéressé" (with or without a visit), on the searches of other agents too.
+    var LISTING_INTEREST = { 203: 2 };
+
+    // "2 personnes intéressées", or "Aucune personne intéressée pour l'instant".
+    function interestSummary(mandateId) {
+        var n = LISTING_INTEREST[mandateId] || 0;
+        if (!n) return "Aucune personne intéressée pour l'instant";
+        return n + (n > 1 ? " personnes intéressées" : " personne intéressée");
+    }
+
+    // PROTOTYPE: ?listing=published shows 203 with a published listing, without going through listing.html.
+    function cardListingOf(mandateId) {
+        var listing = listingOf(mandateId);
+        if (listing || String(mandateId) !== "203" ||
+            new URLSearchParams(window.location.search).get("listing") !== "published") return listing;
+        return { id: "501", mandateId: "203", status: "PUBLISHED", publishedAt: Date.now() - 5 * DAY_MS };
     }
 
     function initMandates() {
@@ -1805,8 +1815,13 @@
             // A client's static card has no listing line: only 203 (here) and 102 (the template) are landlords'
             var listingLine = $("[data-listing-line]", item);
             if (listingLine) {
+                var listing = cardListingOf(id);
                 listingLine.hidden = !canList(id);
-                if (canList(id)) fillListingLine(listingLine, id);
+                if (canList(id)) fillListingLine(listingLine, id, listing, false);
+                // Published: how many clients it interested
+                var interest = $("[data-listing-interest]", item);
+                interest.hidden = !canList(id) || !listing || listing.status !== "PUBLISHED";
+                $("[data-listing-interest-text]", interest).textContent = interestSummary(id);
             }
             $("[data-next-step]", item).textContent = nextStep(MANDATES[id], state, id);
             // The matches still to handle, linking straight to the mandate's list.
@@ -2054,7 +2069,7 @@
             if (!show) return;
             var listing = listingOf(id);
             var line = $("[data-listing-line]", listingBox);
-            fillListingLine(line, id);
+            fillListingLine(line, id, listing, true);
             listingCreate.hidden = !!listing;
             listingLink.hidden = !listing;
             var text = $("[data-listing-text]", listingBox);
@@ -2753,13 +2768,13 @@
     }
 
     // The listing's line of a landlord's approved mandate ([data-listing-line]): "Annonce n° 501" and its status tag,
-    // "Annonce" "À créer" before it's created. [data-listing-number] is a link: the listing, or the mandate (where
-    // it's created) on index.html's card.
-    function fillListingLine(line, mandateId) {
-        var listing = listingOf(mandateId);
+    // "Annonce" "À créer" before it's created; just "Annonce" on index.html's card (numbered false), so that it fits
+    // one line on a phone with its tag. [data-listing-number] is a link: the listing, or the mandate (where it's
+    // created) on index.html's card.
+    function fillListingLine(line, mandateId, listing, numbered) {
         var tag = listing ? listingTag(listing) : "NONE";
         var number = $("[data-listing-number]", line);
-        number.textContent = listing ? "Annonce n° " + listing.id : "Annonce";
+        number.textContent = listing && numbered ? "Annonce n° " + listing.id : "Annonce";
         if (number.tagName === "A") {
             number.href = listing ? "listing.html?id=" + encodeURIComponent(listing.id)
                 : "mandate.html?id=" + encodeURIComponent(mandateId);

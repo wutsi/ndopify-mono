@@ -118,8 +118,9 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   limit). `public/assets/js/kyc.js` only enhances (shrinks photos, in-page selfie camera); every step posts without it.
 - Login redirects to `/`, the *Espace agent* (`HomeController`, `ui/home/`, `templates/index.html`), whatever the
   KYC status: an agent who isn't `VERIFIED` gets a banner linking to `/kyc`, worded after its newest case (documents
-  to send, under review, rejected), since the party's status only changes on verification. Its profile section shows the agent's photo, name,
-  area and biography summary. The signed-in agent is `CurrentAgent` (`CurrentParty.id()`, the token's `partyId`, or
+  to send, under review, rejected), since the party's status only changes on verification. Its profile section only
+  invites the agent to add its photo or biography while one is missing (`photoMissing` / `biographyMissing`), or
+  confirms a save: the agent doesn't need to see its own profile on each visit. The signed-in agent is `CurrentAgent` (`CurrentParty.id()`, the token's `partyId`, or
   `GET /v1/users/{id}` for a token without it → `GET /v1/agents?party-id=` → `GET /v1/agents/{id}`): agent and party ids always come from the token, never from a form, since ndopify-server doesn't
   check who updates an agent. The profile pages (`ProfileController`, `ui/profile/`) are open whatever the KYC
   status: `GET|POST /profile` (`templates/profile/edit.html`, `POST /v1/agents/{id}`; the name isn't editable, the party's e-mail is shown read-only until changing it checks ownership of both addresses) and
@@ -134,7 +135,8 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `ui/mandate/MandateSummaries` for the labels, and the location names in one lookup, into `AssignmentView`s (`AssignmentViews`): no customer
   data (no id, no comments) before acceptance. `AssignmentController` posts `POST /assignments/{id}/accept|decline`
   and goes back to `/#assignments-title` with an `assignment` flash attribute (`accepted`, `declined`, `closed` for a 403/404/409,
-  `error`); ndopify-server checks the caller is the offer's agent. Without JS, "Refuser" opens the confirmation via
+  `error`); ndopify-server checks the caller is the offer's agent. Without any offer (nor an outcome or "unavailable"
+  to show) the section isn't rendered at all. Without JS, "Refuser" opens the confirmation via
   `GET /?decline={id}`; `public/assets/js/home.js` does it in place and counts the deadline down. The mandate labels
   are shared with the find-property review in `ui/mandate/MandateLabels`.
 - A VERIFIED agent's Espace agent also lists its mandates in progress (*Mes mandats*): `HomeController` reads
@@ -142,11 +144,14 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   one call for every card, then their contracts in one `GET /v1/contracts?id=&id=` (`NdContractClient.search`), for
   the next step's date (a card shows none without it, ex: the contract search failed); the location names
   of offers and mandates come in one lookup. A landlord's signed mandate (`MandateRules.listed`) also gets its
-  listing's line (`ListingViews.line` → `ListingLineView`: "Annonce n° 501" linking to the listing and its tag, or
-  "Annonce" "À créer" linking to the mandate) and, until it's published, a next step about the listing
+  listing's line (`ListingViews.line` → `ListingLineView`: "Annonce" linking to the listing and its tag ("Publiée le
+  …" in the tenant's `dateFormat`), or "À créer" linking to the mandate; no number, so that it fits one line on a phone) and, until it's published, a next step about the listing
   (`MandateRules.listingStep`): their listings come in one `GET /v1/listings?mandate-id=&mandate-id=&agent-id=`
   (`NdListingClient.searchByMandates`, skipped without such a mandate; a failure leaves the line out and the
-  mandate's next step). The summaries have no `errorCodes`, so a listing sent back to fix is "Brouillon" on the
+  mandate's next step). A published listing's card also says how many clients it interests ("2 personnes
+  intéressées", `MatchRules.interest`): its ACCEPTED matches, in one `GET /v1/matches?listing-id=&status=ACCEPTED`
+  (`NdMatchClient.searchByListings`, skipped without a published listing; a failure leaves the line out). The
+  summaries have no `errorCodes`, so a listing sent back to fix is "Brouillon" on the
   card, "À corriger" on the mandate page. Cards are `MandateCards` → `MandateCardView`; statuses, tags, party
   wording ("le client" / "le bailleur", after `mandateType`), dates and next
   steps are `ui/mandate/MandateRules`. Each card opens the mandate page, `MandateController` (`ui/mandate/`,
@@ -237,7 +242,8 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   e-mail). Without JS, "Écarter" opens the confirmation with `GET /mandates/{id}?dismiss={matchId}` (only an ACTIVE match
   shown on the page); `mandate.js` does it in place. *Mes mandats* cards of signed searches get the matches' lines
   (`MandateCards`, from one `GET /v1/matches` for all of them, skipped without such a card, a failure leaves the lines
-  out): "3 nouveaux biens correspondants" linking to the section, "3 envoyés · 1 intéresse le client · …", and a next
+  out): "3 nouveaux biens correspondants" linking to the section, "1 intéressé · 1 refusé · 1 en attente" (no total,
+  short enough for one line on a phone), and a next
   step before the mandate's (a visit for an ACCEPTED one, else sending the ACTIVE ones). Not built, though the
   prototype and ndopify-server have them: *Retenir* (SHORTLISTED, never shown here) and sending several at once, the
   coded rejection reasons, the distance and the missing amenities' names; the client's visit request has no server

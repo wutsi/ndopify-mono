@@ -3,10 +3,12 @@ package com.wutsi.ndopify.npc.ui.home
 import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.contract.dto.SearchContractRequest
+import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.match.dto.Match
+import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
@@ -37,11 +39,12 @@ import org.springframework.web.client.RestClientException
 import java.time.Clock
 
 /**
- * The Espace agent (`index.html`), where every agent lands: its profile section (photo, name, area, biography
- * summary, and an invitation to add what's missing), the mandates offered to it ([offers]), each to accept or
- * decline (see `AssignmentController`), and its mandates in progress (*Mes mandats*, [mandates]), each opening its
- * page (see `MandateController`), a landlord's signed one with its listing's number and status ([listings]), a
- * signed search with its matches' lines ([matches]). An agent who isn't verified yet gets neither, but a banner leading to the KYC page,
+ * The Espace agent (`index.html`), where every agent lands: an invitation to add the photo or the biography while
+ * one is missing (the agent doesn't need to see its own profile on each visit), the mandates offered to it
+ * ([offers], no section without any), each to accept or decline (see `AssignmentController`), and its mandates in
+ * progress (*Mes mandats*, [mandates]), each opening its page (see `MandateController`), a landlord's signed one with
+ * its listing's status ([listings]) and, once published, how many clients it interests ([interest]), a signed search
+ * with its matches' lines ([matches]). An agent who isn't verified yet gets neither, but a banner leading to the KYC page,
  * worded after its case ([kyc]).
  */
 @Controller
@@ -75,10 +78,8 @@ class HomeController(
         val agent = currentAgent.get() ?: throw SignInRequiredException()
 
         ProfileRules.header(agent, model)
-        model.addAttribute("fullName", ProfileRules.fullName(agent))
-        model.addAttribute("photoUrl", agent.party.photoUrl?.ifBlank { null })
-        model.addAttribute("biography", agent.biography?.trim()?.ifEmpty { null })
-        model.addAttribute("area", area(agent))
+        model.addAttribute("photoMissing", agent.party.photoUrl.isNullOrBlank())
+        model.addAttribute("biographyMissing", agent.biography.isNullOrBlank())
         model.addAttribute("kyc", kyc(agent))
         if (agent.party.kycStatus == KycStatus.VERIFIED) {
             val now = clock.millis()
@@ -100,10 +101,11 @@ class HomeController(
 
             val listings = mandates?.let { listings(agent, it.map { (mandate, _) -> mandate }) }
             val matches = mandates?.let { matches(it.map { (mandate, _) -> mandate }) }
+            val interest = listings?.let { interest(it.values) }
             model.addAttribute(
                 "mandates",
                 mandates?.map { (mandate, contract) ->
-                    MandateCards.of(mandate, contract, listings, names, now, formatter, matches)
+                    MandateCards.of(mandate, contract, listings, names, now, formatter, matches, interest)
                 }
                     ?: emptyList<MandateCardView>(),
             )
@@ -177,6 +179,21 @@ class HomeController(
         }
     }
 
+    /**
+     * How many clients accepted each PUBLISHED listing (its ACCEPTED matches), by listing id, in one search (none
+     * without such a listing); null when it can't be had: the cards then show no interest line.
+     */
+    private fun interest(listings: Collection<ListingSummary>): Map<Long, Int>? {
+        val ids = listings.filter { it.status == ListingStatus.PUBLISHED }.map { it.id }
+        if (ids.isEmpty()) return emptyMap()
+        return try {
+            matchClient.searchByListings(ids, listOf(MatchStatus.ACCEPTED)).groupingBy { it.listingId }.eachCount()
+        } catch (ex: RestClientException) {
+            LOGGER.warn("No matches for the listings ${ids.joinToString()}: ${ex.message}")
+            null
+        }
+    }
+
     /** The mandates' contracts by id, in one search. */
     private fun contracts(ids: List<String>): Map<String, ContractSummary> =
         if (ids.isEmpty()) {
@@ -222,14 +239,4 @@ class HomeController(
             else -> KYC_PENDING
         }
     }
-
-    /** Left out (the section still shows) when the location names can't be had. */
-    private fun area(agent: Agent): String? =
-        try {
-            val locations = sector.locations(listOfNotNull(agent.cityId) + agent.neighborhoodIds)
-            ProfileRules.area(agent.cityId?.let { locations[it] }, agent.neighborhoodIds.mapNotNull { locations[it] })
-        } catch (ex: RestClientException) {
-            LOGGER.warn("No location names for agent ${agent.id}: ${ex.message}")
-            null
-        }
 }

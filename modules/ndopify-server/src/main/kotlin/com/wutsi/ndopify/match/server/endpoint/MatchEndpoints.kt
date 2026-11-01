@@ -6,6 +6,8 @@ import com.wutsi.ndopify.error.dto.Parameter
 import com.wutsi.ndopify.error.dto.ParameterType
 import com.wutsi.ndopify.error.server.exception.BadRequestException
 import com.wutsi.ndopify.error.server.exception.ForbiddenException
+import com.wutsi.ndopify.listing.server.service.ListingAccessService
+import com.wutsi.ndopify.listing.server.service.ListingService
 import com.wutsi.ndopify.mandate.server.service.MandateAccessService
 import com.wutsi.ndopify.mandate.server.service.MandateService
 import com.wutsi.ndopify.match.dto.GetMatchResponse
@@ -34,8 +36,10 @@ import org.springframework.web.bind.annotation.RestController
  * A match is seen and dismissed by whoever may see / change its search mandate ([MandateAccessService]): its agent, or
  * an admin, who also keeps it for later (shortlist) and proposes it to the customer, alone or with others of the same
  * mandate in one e-mail; only the customer accepts or rejects it. The mandate (or match) is
- * looked up first: 404, then 403. A search needs at least one `mandate-id` (400
- * `HTTP_MISSING_PARAMETER`), and each of them must be found and readable. `GET /{id}` is also open to the mandate's
+ * looked up first: 404, then 403. A search needs at least one `mandate-id` or `listing-id` (400
+ * `HTTP_MISSING_PARAMETER`, named `mandate-id`), and each of them must be found and readable: a mandate as above, a
+ * listing by its agent or an admin only ([ListingAccessService]: 404 `LISTING_NOT_FOUND` for a listing the caller
+ * can't read, then 403 `HTTP_ACCESS_DENIED`), since an agent's listings are only matched to its own searches. `GET /{id}` is also open to the mandate's
  * customer, for a match proposed to it or answered (PROPOSED, ACCEPTED, REJECTED), else 403 `MANDATE_ACCESS_DENIED`.
  */
 @RestController
@@ -46,11 +50,14 @@ class MatchEndpoints(
     private val mapper: MatchMapper,
     private val mandateService: MandateService,
     private val access: MandateAccessService,
+    private val listingService: ListingService,
+    private val listingAccess: ListingAccessService,
 ) {
     // Ex: the listings to propose for 2 searches: GET /v1/matches?mandate-id=12&mandate-id=15
+    // Ex: the customers a listing interests: GET /v1/matches?listing-id=101&status=ACCEPTED
     @GetMapping
     fun search(@ModelAttribute request: SearchMatchRequest): SearchMatchResponse {
-        if (request.mandateIds.isEmpty()) {
+        if (request.mandateIds.isEmpty() && request.listingIds.isEmpty()) {
             throw BadRequestException(
                 Error(
                     code = ErrorCode.HTTP_MISSING_PARAMETER,
@@ -59,6 +66,11 @@ class MatchEndpoints(
             )
         }
         request.mandateIds.distinct().forEach { id -> access.ensureCanRead(mandateService.findById(id)) }
+        request.listingIds.distinct().forEach { id ->
+            val listing = listingService.findById(id)
+            listingAccess.ensureCanRead(listing)
+            listingAccess.ensureIsAgent(listing)
+        }
         val matches = service.search(request.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
         return SearchMatchResponse(matches = matches.map { match -> mapper.toMatch(match) })
     }

@@ -91,6 +91,54 @@ class SearchMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `by listing`() {
+        val matches = rest.getForEntity("/v1/matches?listing-id=101", SearchMatchResponse::class.java).body!!.matches
+
+        assertEquals(listOf(1L), matches.map { it.id }) // 6: closed search   10: accepted
+    }
+
+    @Test
+    fun `by listing, accepted`() {
+        val matches = rest.getForEntity("/v1/matches?listing-id=101&listing-id=102&status=ACCEPTED", SearchMatchResponse::class.java)
+            .body!!.matches
+
+        assertEquals(listOf(10L), matches.map { it.id })
+        assertEquals(listOf(101L), matches.map { it.listingId })
+    }
+
+    @Test
+    fun `by mandate and listing`() {
+        val matches = rest.getForEntity("/v1/matches?mandate-id=1&listing-id=102", SearchMatchResponse::class.java)
+            .body!!.matches
+
+        assertEquals(listOf(2L), matches.map { it.id })
+    }
+
+    @Test
+    fun `listing of another agent`() {
+        val response = rest.getForEntity("/v1/matches?listing-id=101&listing-id=109", ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
+    }
+
+    @Test
+    fun `listing not found`() {
+        val response = rest.getForEntity("/v1/matches?listing-id=999", ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
+        assertEquals(ErrorCode.LISTING_NOT_FOUND, response.body?.error?.code)
+    }
+
+    @Test
+    fun `listing of another tenant is not found`() {
+        val response = rest.getForEntity("/v1/matches?listing-id=901", ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
+        assertEquals(ErrorCode.LISTING_NOT_FOUND, response.body?.error?.code)
+    }
+
+    @Test
     fun anonymous() {
         anonymousUser = true
 

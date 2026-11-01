@@ -69,7 +69,7 @@ data class MandateListingView(
 
 /**
  * The listing of a landlord's signed mandate, as one line (the Espace agent's card, the mandate page): "Annonce n° 501"
- * and its status, "Annonce" "À créer" before it's created.
+ * and its status ("Annonce" on the card, to fit one line on a phone), "Annonce" "À créer" before it's created.
  */
 data class ListingLineView(
     val label: String,

@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.contract.dto.ContractSummary
+import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.match.dto.Match
@@ -17,7 +18,8 @@ object MandateCards {
      * [contract] is the mandate's, null when it has none yet or it can't be loaded (no date in the next step).
      * [listings] are the agent's by mandate id, null when they can't be loaded: a landlord's signed mandate then has
      * no listing line, and the next step is the mandate's. [matches] are the signed searches' by mandate id, null when
-     * they can't be loaded: no match lines, and the next step is the mandate's.
+     * they can't be loaded: no match lines, and the next step is the mandate's. [interest] is, by listing id, how many
+     * clients accepted a published listing (none: 0), null when it can't be loaded: no interest line.
      */
     fun of(
         mandate: Mandate,
@@ -27,6 +29,7 @@ object MandateCards {
         now: Long,
         formatter: TenantFormatter,
         matches: Map<Long, List<Match>>? = null,
+        interest: Map<Long, Int>? = null,
     ): MandateCardView {
         val facts = MandateLabels.criteria(mandate, locations, formatter).take(FACTS)
         val city = locations[mandate.cityId]?.name
@@ -45,6 +48,8 @@ object MandateCards {
                 }
             },
             listing = listings?.let { ListingViews.line(mandate, listing, formatter) },
+            interest = listing?.takeIf { it.status == ListingStatus.PUBLISHED && MandateRules.listed(mandate) }
+                ?.let { published -> interest?.let { MatchRules.interest(it[published.id] ?: 0) } },
             nextStep = MatchRules.nextStep(matched)
                 ?: listings?.takeIf { MandateRules.listed(mandate) }?.let { MandateRules.listingStep(listing) }
                 ?: MandateRules.nextStep(mandate, contract, now, formatter),

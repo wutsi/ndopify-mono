@@ -113,7 +113,7 @@ class MandateCardsTest {
     }
 
     /** A landlord's signed mandate (203), with [listing] as the listings' search returns it. */
-    private fun listed(listing: ListingSummary?): MandateCardView =
+    private fun listed(listing: ListingSummary?, interest: Map<Long, Int>? = emptyMap()): MandateCardView =
         MandateCards.of(
             MANDATE.copy(id = 203, status = MandateStatus.APPROVED, mandateType = MandateType.LISTING),
             CONTRACT_SUMMARY,
@@ -121,7 +121,19 @@ class MandateCardsTest {
             NAMES,
             NOW,
             FORMATTER,
+            interest = interest,
         )
+
+    @Test
+    fun `listing published - interest`() {
+        val published = ListingSummary(id = 501, mandateId = 203, status = ListingStatus.PUBLISHED)
+
+        assertEquals("2 personnes intéressées", listed(published, mapOf(501L to 2)).interest)
+        assertEquals("Aucune personne intéressée pour l'instant", listed(published, mapOf(502L to 2)).interest)
+        assertNull(listed(published, null).interest) // Unavailable
+        assertNull(listed(published.copy(status = ListingStatus.DRAFT), mapOf(501L to 2)).interest)
+        assertNull(listed(null).interest)
+    }
 
     @Test
     fun `listing to create`() {
@@ -135,7 +147,7 @@ class MandateCardsTest {
     fun `listing in draft`() {
         val card = listed(ListingSummary(id = 501, mandateId = 203, status = ListingStatus.DRAFT))
 
-        assertEquals(ListingLineView("Annonce n° 501", "/listings/501", ListingRules.Tag("Brouillon", "info")), card.listing)
+        assertEquals(ListingLineView("Annonce", "/listings/501", ListingRules.Tag("Brouillon", "info")), card.listing)
         assertEquals("Complétez l'annonce, puis envoyez-la pour vérification.", card.nextStep)
     }
 
@@ -227,7 +239,7 @@ class MandateCardsTest {
         )
 
         assertEquals("1 nouveau bien correspondant", card.matches)
-        assertEquals("3 envoyés · 1 intéresse le client · 1 refusé · 1 sans réponse", card.proposals)
+        assertEquals("1 intéressé · 1 refusé · 1 en attente", card.proposals)
         assertEquals("L'annonce n° 2987 intéresse le client : proposez-lui une visite.", card.nextStep)
     }
 
@@ -237,7 +249,7 @@ class MandateCardsTest {
 
         assertNull(card.matches)
         assertNull(card.matchesUrl)
-        assertEquals("1 envoyé · 1 sans réponse", card.proposals)
+        assertEquals("1 en attente", card.proposals)
         assertEquals("Trouvez un bien pour le client avant le 28 mars 2027.", card.nextStep)
     }
 

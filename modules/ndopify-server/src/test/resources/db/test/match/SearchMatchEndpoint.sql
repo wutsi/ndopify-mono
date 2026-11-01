@@ -67,6 +67,7 @@ INSERT INTO T_LISTING(
     (901, 2, 99, 90, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'APARTMENT', 2, 150000, 'XAF', 'MONTHLY', 'Other tenant');
 
 -- 1, 2: active   3: active, listing rented   4: dismissed   5: agent 30's   6: closed search   7: search 4's   9: other tenant
+-- 10: search 4's, accepted by its customer
 INSERT INTO T_MATCH(
     id, tenant_id, mandate_id, listing_id, agent_id, status, score, listing_price,
     neighborhood_score, price_score, rooms_score, amenities_score, availability_score, furniture_score,
@@ -79,4 +80,5 @@ INSERT INTO T_MATCH(
     (5, 1, 2, 109, 30, 'ACTIVE', 0.8, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
     (6, 1, 3, 101, 20, 'ACTIVE', 0.8, 160000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
     (7, 1, 4, 102, 20, 'ACTIVE', 0.85, 140000, 1.0, 1.0, 0.7, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
-    (9, 2, 9, 901, 90, 'ACTIVE', 0.8, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00');
+    (9, 2, 9, 901, 90, 'ACTIVE', 0.8, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
+    (10, 1, 4, 101, 20, 'ACCEPTED', 0.75, 160000, 1.0, 1.0, 0.7, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00');

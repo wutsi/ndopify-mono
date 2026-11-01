@@ -16,6 +16,20 @@
     border-top: 1px solid var(--color-border);
 }
 
+/* Espace agent: the profile and the offers may be hidden (complete profile, no offer), so its separators follow the
+   sections shown, not the markup: none above the first one shown. */
+[data-page="agent-home"] .home-section {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
+[data-page="agent-home"] .home-section:not([hidden]) ~ .home-section {
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border);
+}
+
 .home-section > * + * {
     margin-top: var(--space-3);
 }
@@ -327,10 +341,24 @@
     gap: var(--space-2);
 }
 
-/* Above the title's link, which covers the card: the number opens the listing itself. */
+/* Above the title's link, which covers the card: the number opens the listing itself. "Annonce" and its tag, no
+   number: one line on a phone (a "Publiée le …" tag may wrap on the narrowest ones). */
 .mandate-card__listing {
     position: relative;
     z-index: 1;
+    column-gap: var(--space-1);
+}
+
+/* A published listing: how many clients it interested */
+.mandate-card__interest {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--step-hint);
+}
+
+.mandate-card__interest .icon {
+    flex: none;
 }
 
 .mandate-card__listing a,
@@ -795,6 +823,14 @@ h1.alert__title {
 
 .mandate-card__proposals .icon {
     flex: none;
+}
+
+/* One line, even on a phone: the wording is short, and the mandate page has the details. */
+.mandate-card__proposals > span {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 .match__answer {

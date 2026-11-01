@@ -18,9 +18,10 @@
     <script th:src="@{/assets/js/home.js}" defer></script>
 </head>
 <!--/*
-  The Espace agent (HomeController), where every agent lands. Its profile section: photo (or initials), name, area,
-  biography summary, and an invitation to add the photo or the biography while one is missing. Then the mandates
-  offered to the agent (Mandats proposés), each to accept or decline (AssignmentController).
+  The Espace agent (HomeController), where every agent lands. Its profile section only invites the agent to add the
+  photo or the biography while one is missing ("photoMissing", "biographyMissing"), or confirms a save: a complete
+  profile shows nothing. Then the mandates offered to the agent (Mandats proposés), each to accept or decline
+  (AssignmentController): no section without any offer, nor an outcome or an error to show.
   "kyc" is the banner of an agent who isn't verified yet ("todo", "pending" or "rejected"), null once verified.
   "saved" is the flash attribute the profile pages leave ("profile" or "photo").
   "assignments" are the offers (AssignmentView), null for an agent who isn't verified (no section);
@@ -29,9 +30,10 @@
   "declined", "closed" or "error").
   "mandates" are the agent's mandates in progress (MandateCardView: Assigné, En approbation, Actif), each opening its
   page (MandateController), null for an agent who isn't verified (no section); "mandatesUnavailable" when they
-  couldn't be loaded. A landlord's signed mandate has its listing's line (m.listing: "Annonce n° 501" and its status,
-  "À créer" before it exists), none when the listings couldn't be loaded. A signed search has its matches' lines
-  (m.matches, linking to m.matchesUrl, and m.proposals), none when the matches couldn't be loaded.
+  couldn't be loaded. A landlord's signed mandate has its listing's line (m.listing: "Annonce" and its status, "À créer"
+  before it exists; no number, to fit one line on a phone), none when the listings couldn't be loaded, and once
+  published how many clients it interests (m.interest). A signed search has its matches' lines (m.matches, linking to
+  m.matchesUrl, and m.proposals, one line on a phone), none when the matches couldn't be loaded.
 */-->
 <body data-page="agent-home">
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -88,43 +90,25 @@
                 </div>
             </div>
 
-            <section class="home-section" aria-labelledby="profile-title" data-profile>
+            <section class="home-section" aria-labelledby="profile-title" th:if="${photoMissing or biographyMissing or saved != null}"
+                     data-profile>
                 <h2 id="profile-title" class="visually-hidden">Mon profil</h2>
                 <div class="alert alert--success" role="status" th:if="${saved}" data-profile-saved>
                     <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     <p th:text="${saved == 'photo'} ? 'Votre photo de profil a été enregistrée.' : 'Votre profil a été enregistré.'">
                         Votre profil a été enregistré.</p>
                 </div>
-                <div class="profile">
-                    <div class="profile__photo" data-profile-photo>
-                        <img th:if="${photoUrl}" th:src="${photoUrl}" alt="Votre photo de profil" width="80" height="80">
-                        <span class="profile__initials" aria-hidden="true" th:unless="${photoUrl}" th:text="${initials}">NP</span>
-                    </div>
-                    <div class="profile__body">
-                        <p class="profile__name" data-profile-name th:text="${fullName}">Serge Ngono</p>
-                        <p class="profile__area" th:if="${area}" data-profile-area>
-                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                 aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
-                            <span><span class="visually-hidden">Quartiers : </span><span th:text="${area}">Bonapriso, Akwa — Douala</span></span>
-                        </p>
-                        <p class="profile__bio" th:if="${biography}" th:text="${biography}" data-profile-bio></p>
-                        <p class="profile__bio profile__bio--missing" th:unless="${biography}" data-profile-bio-missing>
-                            Aucune biographie pour le moment.
-                        </p>
-                    </div>
-                </div>
-
-                <div class="hint" th:if="${photoUrl == null or biography == null}" data-profile-incomplete>
+                <div class="hint" th:if="${photoMissing or biographyMissing}" data-profile-incomplete>
                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                          aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
                     <div>
                         <p><strong>Complétez votre profil.</strong> Les clients voient votre photo et votre biographie
                             lorsque vous acceptez leur mandat : un profil complet inspire confiance.</p>
                         <ul class="profile__todo">
-                            <li th:unless="${photoUrl}" data-profile-todo="photo">
+                            <li th:if="${photoMissing}" data-profile-todo="photo">
                                 <a th:href="@{/profile/photo}">Ajouter une photo professionnelle</a>
                             </li>
-                            <li th:unless="${biography}" data-profile-todo="bio">
+                            <li th:if="${biographyMissing}" data-profile-todo="bio">
                                 <a th:href="@{/profile}">Rédiger votre biographie</a>
                             </li>
                         </ul>
@@ -132,11 +116,11 @@
                 </div>
             </section>
 
-            <section class="home-section" aria-labelledby="assignments-title" th:if="${assignments != null}"
-                     data-assignments-section>
+            <section class="home-section" aria-labelledby="assignments-title" data-assignments-section
+                     th:if="${assignments != null and (!#lists.isEmpty(assignments) or assignmentsUnavailable or assignment != null)}">
                 <h2 id="assignments-title">Mandats proposés</h2>
-                <p>Chaque mandat vous est proposé en exclusivité. Acceptez-le ou refusez-le avant la fin du délai :
-                    passé ce délai, il est proposé à un autre agent.</p>
+                <p th:unless="${#lists.isEmpty(assignments)}">Chaque mandat vous est proposé en exclusivité. Acceptez-le
+                    ou refusez-le avant la fin du délai : passé ce délai, il est proposé à un autre agent.</p>
                 <p class="visually-hidden" role="status" data-assignments-status></p>
 
                 <th:block th:switch="${assignment}">
@@ -247,12 +231,6 @@
                         </article>
                     </li>
                 </ul>
-
-                <p class="assignments__empty" data-assignments-empty
-                   th:attr="hidden=${#lists.isEmpty(assignments) and !assignmentsUnavailable} ? null : 'hidden'">
-                    Aucun mandat ne vous est proposé pour le moment. Vous recevrez un e-mail dès qu'un client de
-                    votre secteur vous est attribué.
-                </p>
             </section>
             <section class="home-section" aria-labelledby="mandates-title" th:if="${mandates != null}"
                      data-mandates-section>
@@ -281,12 +259,16 @@
                                     <dd th:text="${fact.second}">Kotto, Logpom</dd>
                                 </div>
                             </dl>
-                            <!-- A landlord's signed mandate only: its listing's number (the listing, or the mandate to create it) and status. -->
+                            <!-- A landlord's signed mandate only: its listing (the link: the listing, or the mandate to create it) and status. -->
                             <p class="mandate-card__listing" th:if="${m.listing}" th:with="l=${m.listing}" data-listing-line>
                                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M6 3h9l3 3v15H6z"/><path d="M9 12h6M9 16h6"/></svg>
-                                <a th:href="@{${l.url}}" th:text="${l.label}" data-listing-number>Annonce n° 501</a>
+                                <a th:href="@{${l.url}}" th:text="${l.label}" data-listing-number>Annonce</a>
                                 <span th:if="${l.tag}" th:class="|status-tag status-tag--${l.tag.style}|" th:text="${l.tag.label}"
                                       data-listing-status-tag>Brouillon</span>
+                            </p>
+                            <p class="mandate-card__interest" th:if="${m.interest}" data-listing-interest>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6.5 6.5 0 0 1 3.5 6"/></svg>
+                                <span th:text="${m.interest}">2 personnes intéressées</span>
                             </p>
                             <p class="mandate-card__matches" th:if="${m.matches}" data-matches>
                                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg>
@@ -295,7 +277,7 @@
                             <p class="mandate-card__proposals" th:if="${m.proposals}" data-proposals>
                                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M4 12 20 4l-6 16-3-7zM11 13l9-9"/></svg>
                                 <span><span class="visually-hidden">Biens proposés au client : </span><span
-                                        th:text="${m.proposals}" data-proposals-text>3 envoyés · 1 sans réponse</span></span>
+                                        th:text="${m.proposals}" data-proposals-text>1 refusé · 1 en attente</span></span>
                             </p>
                             <p class="mandate-card__next" th:if="${m.nextStep}"><strong>Prochaine étape&nbsp;:</strong>
                                 <span th:text="${m.nextStep}">Contactez le client, puis envoyez-lui le mandat à approuver.</span></p>

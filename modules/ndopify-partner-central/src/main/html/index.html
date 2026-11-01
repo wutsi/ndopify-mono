@@ -42,37 +42,17 @@
             <h1 class="visually-hidden">Espace agent</h1>
 
             <!--
-                Section Profile (source doc): photo, name, bio summary. Invites the agent to complete the profile
-                while the photo or the biography is missing. PROTOTYPE: shows the profile saved by profile/edit.html
-                and profile/photo.html; until then, ?profile=complete or ?profile=empty shows the other states (the
-                default is a profile without photo).
+                Section Profile (source doc): the agent doesn't need to see its own profile on each visit, so the
+                section only invites it to complete the profile while the photo or the biography is missing (and
+                confirms a save, back from a profile page); a complete profile shows nothing. PROTOTYPE: follows the
+                profile saved by profile/edit.html and profile/photo.html; until then, ?profile=complete or
+                ?profile=empty shows the other states (the default is a profile without photo).
             -->
             <section class="home-section" aria-labelledby="profile-title" data-profile>
                 <h2 id="profile-title" class="visually-hidden">Mon profil</h2>
                 <div class="alert alert--success" role="status" hidden data-profile-saved>
                     <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
                     <p data-profile-saved-text></p>
-                </div>
-                <div class="profile">
-                    <div class="profile__photo" data-profile-photo>
-                        <span class="profile__initials" aria-hidden="true" data-profile-initials>SN</span>
-                    </div>
-                    <div class="profile__body">
-                        <p class="profile__name" data-profile-name>Serge Ngono</p>
-                        <p class="profile__area" data-profile-area>
-                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                 aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
-                            <span><span class="visually-hidden">Quartiers : </span><span data-profile-area-text>Bonapriso, Akwa, Bonanjo — Douala</span></span>
-                        </p>
-                        <p class="profile__bio" data-profile-bio>
-                            Démarcheur à Douala depuis 6 ans, je connais Bonapriso, Akwa et Bonanjo rue par rue.
-                            J'accompagne familles et jeunes actifs jusqu'à la signature du bail, avec des visites
-                            organisées et des biens vérifiés.
-                        </p>
-                        <p class="profile__bio profile__bio--missing" hidden data-profile-bio-missing>
-                            Aucune biographie pour le moment.
-                        </p>
-                    </div>
                 </div>
 
                 <div class="hint" data-profile-incomplete>
@@ -97,13 +77,15 @@
                 Section Assignments (source doc): the active mandates offered to the agent, each to accept or
                 decline before its deadline. Anti-bypass: no client information, and the neighbourhood is the only
                 location given, until the agent accepts: mandate.html?id=… then shows the whole mandate, and the mandate joins
-                "Mes mandats" below. PROTOTYPE: deadlines are relative to the page load (data-expires-in, in minutes).
+                "Mes mandats" below. Without any offer, the section isn't shown at all (also once the last one is
+                declined). PROTOTYPE: deadlines are relative to the page load (data-expires-in, in minutes);
+                ?assignments=empty shows an agent without offers.
             -->
-            <section class="home-section" aria-labelledby="assignments-title">
+            <p class="visually-hidden" role="status" data-assignments-status></p>
+            <section class="home-section" aria-labelledby="assignments-title" data-assignments-section>
                 <h2 id="assignments-title">Mandats proposés</h2>
                 <p>Chaque mandat vous est proposé en exclusivité. Acceptez-le ou refusez-le avant la fin du délai :
                     passé ce délai, il est proposé à un autre agent.</p>
-                <p class="visually-hidden" role="status" data-assignments-status></p>
 
                 <ul class="assignments" data-assignments>
                     <li class="assignment" data-assignment data-mandate-id="101" data-expires-in="52">
@@ -315,11 +297,6 @@
                         </article>
                     </li>
                 </ul>
-
-                <p class="assignments__empty" hidden data-assignments-empty>
-                    Aucun mandat ne vous est proposé pour le moment. Vous recevrez un e-mail dès qu'un client de
-                    votre secteur vous est attribué.
-                </p>
             </section>
 
             <!--
@@ -330,7 +307,12 @@
                 matches are still to handle, linking to them on mandate.html (see MATCHES / KEYS.matches): 204 has
                 some, and what became of
                 those already sent to the client (data-proposals: sent, visit asked, liked, refused, no answer yet),
-                whose answers also set the card's next step. ?mandates=empty shows the empty state.
+                whose answers also set the card's next step; that line is kept short enough for one line on a phone.
+                A landlord's signed mandate (203) has its listing's line, "Annonce" and its status (no number, for the
+                same reason), and once the listing is published, how many clients it interested (data-listing-interest:
+                the matches of the listing whose client answered "intéressé", with or without a visit; see
+                LISTING_INTEREST). ?listing=published shows 203 with a published listing. ?mandates=empty shows the
+                empty state.
             -->
             <section class="home-section" aria-labelledby="mandates-title">
                 <h2 id="mandates-title">Mes mandats</h2>
@@ -440,6 +422,11 @@
                                 <a href="mandate.html?id=203" data-listing-number>Annonce</a>
                                 <span class="status-tag status-tag--neutral" data-listing-status-tag>À créer</span>
                             </p>
+                            <!-- A published listing only: how many clients its matches interested. -->
+                            <p class="mandate-card__interest" hidden data-listing-interest>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6.5 6.5 0 0 1 3.5 6"/></svg>
+                                <span data-listing-interest-text></span>
+                            </p>
                             <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-next-step>Créez l'annonce du bien, puis visitez-le pour la compléter.</span></p>
                         </article>
                     </li>
@@ -500,11 +487,16 @@
                                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M4 12 20 4l-6 16-3-7zM11 13l9-9"/></svg>
                                 <span><span class="visually-hidden">Biens proposés au client : </span><span data-proposals-text></span></span>
                             </p>
-                            <!-- A landlord's signed mandate only: its listing's number and status. -->
+                            <!-- A landlord's signed mandate only: its listing's status (no number on the card: it fits one line). -->
                             <p class="mandate-card__listing" hidden data-listing-line>
                                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M6 3h9l3 3v15H6z"/><path d="M9 12h6M9 16h6"/></svg>
                                 <a data-listing-number></a>
                                 <span class="status-tag" data-listing-status-tag></span>
+                            </p>
+                            <!-- A published listing only: how many clients its matches interested. -->
+                            <p class="mandate-card__interest" hidden data-listing-interest>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6.5 6.5 0 0 1 3.5 6"/></svg>
+                                <span data-listing-interest-text></span>
                             </p>
                             <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-next-step></span></p>
                         </article>
