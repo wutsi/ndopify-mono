@@ -148,6 +148,30 @@ class NdMandateClientTest {
     }
 
     @Test
+    fun searchByIds() {
+        server.expect(requestTo("http://localhost:8080/v1/mandates?id=204&id=305&agent-id=20&limit=2"))
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(
+                withSuccess(
+                    json(SearchMandateResponse(listOf(MandateSummary(id = 204, customerId = 14, agentId = 20)))),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val mandates = client.searchByIds(listOf(204, 305), 20)
+
+        server.verify()
+        assertEquals(listOf(204L), mandates.map { it.id })
+        assertEquals(14L, mandates[0].customerId)
+    }
+
+    @Test
+    fun `searchByIds - none`() {
+        assertEquals(emptyList(), client.searchByIds(emptyList(), 20))
+        server.verify()
+    }
+
+    @Test
     fun offered() {
         server.expect(requestTo("http://localhost:8080/v1/mandates?offered-to=20"))
             .andExpect(method(HttpMethod.GET))

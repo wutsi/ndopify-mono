@@ -1,7 +1,9 @@
 package com.wutsi.ndopify.npc.client.ndopify
 
 import com.wutsi.ndopify.customer.dto.Customer
+import com.wutsi.ndopify.customer.dto.CustomerSummary
 import com.wutsi.ndopify.customer.dto.GetCustomerResponse
+import com.wutsi.ndopify.customer.dto.SearchCustomerResponse
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestClient
@@ -28,4 +30,22 @@ class NdCustomerClient(
             .body<GetCustomerResponse>()
             ?.customer
             ?: Customer()
+
+    /** The customers [ids], in one call (none without [ids]). */
+    fun search(ids: List<Long>): List<CustomerSummary> {
+        if (ids.isEmpty()) {
+            return emptyList()
+        }
+        return rest.get()
+            .uri { uri ->
+                ids.forEach { uri.queryParam("id", it) }
+                uri.path("/v1/customers")
+                    .queryParam("limit", ids.size)
+                    .build()
+            }
+            .retrieve()
+            .body<SearchCustomerResponse>()
+            ?.customers
+            ?: emptyList()
+    }
 }

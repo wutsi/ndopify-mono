@@ -196,7 +196,15 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   ndopify-server's 409 `LISTING_INCOMPLETE`) since the button still posts without JS; sent, the listing is read-only (PENDING_VERIFICATION, UNDER_VERIFICATION,
   VERIFIED, PUBLISHING: "En vérification", "Envoyée le" its `modifiedAt`, the server having no sent date; VERIFIED
   included since ndopify-server publishes it, the agent doesn't), then PUBLISHED, with no panel: its date in the
-  tag ("Publiée le …") and "Voir l'annonce en ligne" under the title, `{publicPortalUrl}{Listing.url}` (none without either). ndopify-server has no rejected status: a failed
+  tag ("Publiée le …") and "Voir l'annonce en ligne" under the title, `{publicPortalUrl}{Listing.url}` (none without either). A
+  published listing also has its *Propositions* (`ListingViews.proposals` → `ProposalsView`), above the checklist:
+  its matches sent to a client (`GET /v1/matches?listing-id=&status=PROPOSED|ACCEPTED|REJECTED`, `MatchRules.SENT`),
+  the answers' line (`MatchRules.proposals`), and one row per client who didn't refuse it (interested first), linking
+  to the search's `/mandates/{id}#matches-title`. **Another agent's mandate is protected**: only the agent's own
+  mandates among the matches' are looked up (`NdMandateClient.searchByIds`, `id=&agent-id=`, checked again on
+  `agentId`), and only their customers (`NdCustomerClient.search`); any other match is "Client d'un autre agent",
+  never named nor linked, its customer never asked of ndopify-server. The matches or mandates failing leave the section
+  out (rather than mislabel a client); the customers failing show the mandate's number instead of the name. ndopify-server has no rejected status: a failed
   verification sends the listing back to DRAFT with its `errorCodes`, which this page shows "À corriger" (tag, panel
   `TO_FIX` listing the reasons, `ListingRules.rejections`, an unknown code or `INTERNAL_ERROR` as a generic one, and
   their sections marked "À corriger"), editable and sent again like any DRAFT; the mandate's line says "Corriger

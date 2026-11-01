@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.listing
 
+import com.wutsi.ndopify.customer.dto.CustomerSummary
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ImageStatus
 import com.wutsi.ndopify.listing.dto.Listing
@@ -10,6 +11,9 @@ import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
+import com.wutsi.ndopify.mandate.dto.MandateSummary
+import com.wutsi.ndopify.match.dto.Match
+import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.ui.mandate.Amenity
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.npc.ui.mandate.MandateRules
@@ -35,6 +39,8 @@ object ListingViews {
     private val OPTIONAL = ListingRules.Tag("Facultatif", "neutral")
     private val TO_FIX = ListingRules.Tag("À corriger", "warning")
     private val TO_CREATE = ListingRules.Tag("À créer", "neutral")
+
+    private const val OTHER_AGENT = "Client d'un autre agent"
 
     /**
      * [images] is null when they couldn't be loaded: the photos' row then has no count. [publicPortalUrl] is the
@@ -228,6 +234,45 @@ object ListingViews {
         }
 
         return owner.mapNotNull { (field, text) -> text?.let { field to "Indiqué par le propriétaire : $it" } }.toMap()
+    }
+
+    /**
+     * A published listing's *Propositions*: its [matches] sent to a client (`MatchRules.SENT`), a refused one only
+     * counted in the summary. [mandates] are the agent's own among the matches' (`NdMandateClient.searchByIds`), and
+     * [customers] theirs: a match of any other mandate is another agent's, whose client is never named nor linked.
+     * A client whose name can't be had is its mandate's number.
+     */
+    fun proposals(
+        matches: List<Match>,
+        mandates: Collection<MandateSummary>,
+        customers: Collection<CustomerSummary>,
+        agentId: Long,
+        formatter: TenantFormatter,
+    ): ProposalsView {
+        val own = mandates.filter { it.agentId == agentId }.associateBy { it.id }
+        val names = customers.mapNotNull { customer ->
+            val name = listOf(customer.party.firstName, customer.party.lastName).filter { it.isNotBlank() }.joinToString(" ")
+            customer.id?.let { id -> name.ifBlank { null }?.let { id to it } }
+        }.toMap()
+        val rows = matches
+            .filter { it.status == MatchStatus.ACCEPTED || it.status == MatchStatus.PROPOSED }
+            .sortedWith(
+                compareBy<Match> { if (it.status == MatchStatus.ACCEPTED) 0 else 1 }
+                    .thenByDescending { it.answeredAt ?: it.proposedAt },
+            )
+            .map { match ->
+                val mandate = own[match.mandateId]
+                ProposalRow(
+                    client = when (mandate) {
+                        null -> OTHER_AGENT
+                        else -> names[mandate.customerId] ?: "Mandat n° ${mandate.id}"
+                    },
+                    url = mandate?.let { "/mandates/${it.id}#matches-title" },
+                    tag = MatchRules.tag(match),
+                    sent = "Envoyé" + (match.proposedAt?.let { " le " + formatter.date(it) } ?: ""),
+                )
+            }
+        return ProposalsView(summary = MatchRules.proposals(matches), rows = rows)
     }
 
     /**

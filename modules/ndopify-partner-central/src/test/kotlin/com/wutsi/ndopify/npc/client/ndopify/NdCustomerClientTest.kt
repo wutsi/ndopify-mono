@@ -1,7 +1,9 @@
 package com.wutsi.ndopify.npc.client.ndopify
 
 import com.wutsi.ndopify.customer.dto.Customer
+import com.wutsi.ndopify.customer.dto.CustomerSummary
 import com.wutsi.ndopify.customer.dto.GetCustomerResponse
+import com.wutsi.ndopify.customer.dto.SearchCustomerResponse
 import com.wutsi.ndopify.party.dto.Party
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -59,5 +61,31 @@ class NdCustomerClientTest {
             .andRespond(withStatus(HttpStatus.NOT_FOUND))
 
         assertFailsWith<HttpClientErrorException> { client.get(5) }
+    }
+
+    @Test
+    fun search() {
+        server.expect(requestTo("http://localhost:8080/v1/customers?id=14&id=17&limit=2"))
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(
+                withSuccess(
+                    JsonMapper.builder().build().writeValueAsString(
+                        SearchCustomerResponse(listOf(CustomerSummary(id = 14, party = Party(firstName = "Sandrine")))),
+                    ),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val customers = client.search(listOf(14, 17))
+
+        server.verify()
+        assertEquals(listOf(14L), customers.map { it.id })
+        assertEquals("Sandrine", customers[0].party.firstName)
+    }
+
+    @Test
+    fun `search - none`() {
+        assertEquals(emptyList(), client.search(emptyList()))
+        server.verify()
     }
 }

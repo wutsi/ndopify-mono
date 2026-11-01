@@ -61,6 +61,28 @@ class NdMandateClient(
             ?.mandates
             ?: emptyList()
 
+    /**
+     * The mandates among [ids] that are [agentId]'s, in one call (none without [ids]): ndopify-server leaves out any
+     * other agent's, so a mandate that isn't returned isn't the agent's.
+     */
+    fun searchByIds(ids: List<Long>, agentId: Long): List<MandateSummary> {
+        if (ids.isEmpty()) {
+            return emptyList()
+        }
+        return rest.get()
+            .uri { uri ->
+                ids.forEach { uri.queryParam("id", it) }
+                uri.path("/v1/mandates")
+                    .queryParam("agent-id", agentId)
+                    .queryParam("limit", ids.size)
+                    .build()
+            }
+            .retrieve()
+            .body<SearchMandateResponse>()
+            ?.mandates
+            ?: emptyList()
+    }
+
     /** The mandates offered to the agent (a PENDING offer), in one call. */
     fun offered(agentId: Long): List<MandateSummary> =
         rest.get()

@@ -2,6 +2,7 @@ package com.wutsi.ndopify.npc.ui.listing
 
 import com.wutsi.ndopify.listing.dto.ListingSection
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.npc.ui.mandate.MandateRules
 
 /**
  * A listing as its checklist page shows it (`templates/listing.html`): dates already worded in the tenant's time
@@ -31,6 +32,8 @@ data class ListingView(
     val editable: Boolean,
     /** Every required section done: "Envoyer pour vérification" is active. */
     val sendable: Boolean,
+    /** Published only: the clients it was sent to; null else, or when they can't be had (no section). */
+    val proposals: ProposalsView? = null,
 ) {
     companion object {
         const val PANEL_DRAFT = "DRAFT"
@@ -38,6 +41,28 @@ data class ListingView(
         const val PANEL_TO_FIX = "TO_FIX"
     }
 }
+
+/** A published listing's *Propositions* (`ListingViews.proposals`). */
+data class ProposalsView(
+    /** "2 intéressés · 1 refusé · 1 en attente" (`MatchRules.proposals`); null when it wasn't sent to anyone. */
+    val summary: String?,
+    /** The clients who didn't refuse it, interested first, the latest first within each. */
+    val rows: List<ProposalRow>,
+)
+
+/**
+ * A client the listing was sent to. Another agent's client is "Client d'un autre agent" with no [url]: that agent's
+ * mandate is protected, neither its customer nor its mandate is on the page.
+ */
+data class ProposalRow(
+    val client: String,
+    /** The search's *Biens correspondants*, where the match is handled; null for another agent's. */
+    val url: String?,
+    /** "Intéressé", "En attente". */
+    val tag: MandateRules.Tag,
+    /** "Envoyé le 28 oct. 2026". */
+    val sent: String,
+)
 
 /** A row of the checklist: it opens its section, to edit it while a draft, to view it once sent. */
 data class ChecklistRow(

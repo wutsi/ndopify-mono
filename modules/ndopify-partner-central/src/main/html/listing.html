@@ -27,7 +27,8 @@
     The photos count once there are 5. "Envoyer pour vérification" stays inactive until every section but the
     remarks is done, and says what's left. Sent, the listing is read-only while it's checked; then it's published
     (its date in the tag, a link to its public page under the title), or sent back "À corriger" with
-    the reason and the sections to fix.
+    the reason and the sections to fix. Published, it also has its Propositions: the clients it was sent to and what
+    they answered.
     PROTOTYPE: ?id= of a listing created from mandate.html?id=203 (or 102 once accepted and signed); any other shows
     the locked view. The listing is kept in the session (KEYS.listings). "Simuler la publication" / "Simuler un refus"
     stand for the check, which ndopify-server doesn't have yet.
@@ -113,6 +114,36 @@
                         </p>
                     </div>
                 </div>
+
+                <!--
+                    Published: the clients this listing was sent to (GET /v1/matches?listing-id=), above the checklist
+                    since it's done by then. What they answered on one line, like the mandate page's Biens
+                    correspondants; then one row per client who didn't refuse it, a visit asked first, then
+                    interested, then waiting, opening the search's mandate page, where the match is handled. A refused
+                    one isn't listed: the line counts it. A client of another agent's search is "Client d'un autre
+                    agent", not a link: that agent's mandate is protected, neither its client nor its mandate shown.
+                -->
+                <section class="home-section" aria-labelledby="proposals-title" hidden data-listing-proposals>
+                    <h2 id="proposals-title">Propositions</h2>
+                    <p class="mandate-card__proposals" hidden data-proposals-summary>
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M4 12 20 4l-6 16-3-7zM11 13l9-9"/></svg>
+                        <span><span class="visually-hidden">Réponses des clients : </span><span data-proposals-summary-text></span></span>
+                    </p>
+                    <ul class="checklist" data-proposals-list></ul>
+                    <p class="assignments__empty" hidden data-proposals-empty>
+                        Ce bien n'a encore été envoyé à aucun client. Quand il correspond à une de vos recherches
+                        signées, il apparaît dans ses <em>Biens correspondants</em>, d'où vous l'envoyez au client.
+                    </p>
+                    <template data-proposals-template>
+                        <li>
+                            <a class="checklist__row" data-proposal-link>
+                                <span class="checklist__title" data-proposal-client></span>
+                                <span class="status-tag" data-proposal-tag></span>
+                                <span class="checklist__summary" data-proposal-summary></span>
+                            </a>
+                        </li>
+                    </template>
+                </section>
 
                 <section class="home-section" aria-labelledby="checklist-title">
                     <h2 id="checklist-title">Détails de la propriété</h2>

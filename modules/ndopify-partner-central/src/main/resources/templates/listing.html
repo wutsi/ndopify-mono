@@ -135,6 +135,40 @@
                         <p>Corrigez les sections signalées, puis renvoyez-la.</p>
                     </div>
                 </div>
+                <!--
+                    Published: the clients it was sent to, interested first. Each opens its search's mandate page;
+                    another agent's client is neither named nor linked (its mandate is protected).
+                -->
+                <section class="home-section" aria-labelledby="proposals-title" th:if="${l.proposals}"
+                         th:with="p=${l.proposals}" data-listing-proposals>
+                    <h2 id="proposals-title">Propositions</h2>
+                    <p class="mandate-card__proposals" th:if="${p.summary}" data-proposals-summary>
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M4 12 20 4l-6 16-3-7zM11 13l9-9"/></svg>
+                        <span><span class="visually-hidden">Réponses des clients : </span><span
+                                th:text="${p.summary}" data-proposals-summary-text>1 intéressé · 1 refusé · 1 en attente</span></span>
+                    </p>
+                    <ul class="checklist" th:unless="${#lists.isEmpty(p.rows)}" data-proposals-list>
+                        <li th:each="row : ${p.rows}">
+                            <a class="checklist__row" th:if="${row.url}" th:href="@{${row.url}}" data-proposal-link>
+                                <span class="checklist__title" th:text="${row.client}" data-proposal-client>Sandrine Eboa</span>
+                                <span th:class="|status-tag status-tag--${row.tag.style}|" th:text="${row.tag.label}"
+                                      data-proposal-tag>Intéressé</span>
+                                <span class="checklist__summary" th:text="${row.sent}" data-proposal-summary></span>
+                            </a>
+                            <div class="checklist__row" th:unless="${row.url}" data-proposal-protected>
+                                <span class="checklist__title" th:text="${row.client}" data-proposal-client>Client d'un autre agent</span>
+                                <span th:class="|status-tag status-tag--${row.tag.style}|" th:text="${row.tag.label}"
+                                      data-proposal-tag>Intéressé</span>
+                                <span class="checklist__summary" th:text="${row.sent}" data-proposal-summary></span>
+                            </div>
+                        </li>
+                    </ul>
+                    <p class="assignments__empty" th:if="${p.summary == null}" data-proposals-empty>
+                        Ce bien n'a encore été envoyé à aucun client. Quand il correspond à une de vos recherches
+                        signées, il apparaît dans ses <em>Biens correspondants</em>, d'où vous l'envoyez au client.
+                    </p>
+                </section>
+
                 <section class="home-section" aria-labelledby="checklist-title">
                     <h2 id="checklist-title">Détails de la propriété</h2>
                     <p class="checklist__progress" th:text="${l.progress}" data-checklist-progress>1 sections sur 6 vérifiées</p>

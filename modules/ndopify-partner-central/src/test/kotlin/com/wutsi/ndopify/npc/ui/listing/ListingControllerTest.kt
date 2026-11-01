@@ -14,15 +14,22 @@ import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
+import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.COMPLETE
+import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.CUSTOMERS
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.IMAGES
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.LISTING
+import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.PROPOSALS
+import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.SEARCHES
+import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.SENT
 import com.wutsi.ndopify.npc.ui.mandate.MandateController
+import com.wutsi.ndopify.npc.ui.match.MatchRules
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
 import com.wutsi.ndopify.web.core.service.TenantContext
@@ -45,6 +52,8 @@ class ListingControllerTest {
     private val currentAgent = mock<CurrentAgent>()
     private val listingClient = mock<NdListingClient>()
     private val mandateClient = mock<NdMandateClient>()
+    private val matchClient = mock<NdMatchClient>()
+    private val customerClient = mock<NdCustomerClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
     private lateinit var mvc: MockMvc
@@ -66,7 +75,15 @@ class ListingControllerTest {
         doReturn(IMAGES).whenever(listingClient).images(501)
         doReturn(mandate).whenever(mandateClient).get(203)
 
-        val controller = ListingController(currentAgent, listingClient, mandateClient, locationClient, tenantContext)
+        val controller = ListingController(
+            currentAgent,
+            listingClient,
+            mandateClient,
+            matchClient,
+            customerClient,
+            locationClient,
+            tenantContext,
+        )
         mvc = MockMvcBuilders.standaloneSetup(controller)
             .setControllerAdvice(HttpClientErrorHandler(mock()))
             .setViewResolvers(InternalResourceViewResolver("/templates/", ".html"))
@@ -94,6 +111,72 @@ class ListingControllerTest {
         assertEquals("2 photos · 5 au moins", view.rows.first { it.url.endsWith("/photos") }.summary)
         assertEquals("SN", model(result)["initials"])
         assertNull(model(result)["locked"])
+    }
+
+    private val published = COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT)
+
+    private fun publish() {
+        doReturn(published).whenever(listingClient).get(501)
+        doReturn(PROPOSALS).whenever(matchClient).searchByListings(listOf(501), MatchRules.SENT)
+        doReturn(SEARCHES).whenever(mandateClient).searchByIds(listOf(207L, 204L, 305L), AGENT.id)
+        doReturn(CUSTOMERS).whenever(customerClient).search(listOf(14L, 17L))
+    }
+
+    private fun proposals(): ProposalsView? =
+        (model(mvc.perform(get("/listings/501")).andReturn())["listing"] as ListingView).proposals
+
+    @Test
+    fun `show - a draft has no proposals`() {
+        assertNull(proposals())
+        verify(matchClient, never()).searchByListings(any(), any(), any())
+    }
+
+    @Test
+    fun `show - published, its proposals`() {
+        publish()
+
+        val view = proposals()!!
+
+        assertEquals("2 intéressés · 1 refusé · 1 en attente", view.summary)
+        assertEquals(listOf("Client d'un autre agent", "Sandrine Eboa", "Carine Ndongo"), view.rows.map { it.client })
+    }
+
+    @Test
+    fun `show - published, another agent's mandate returned anyway is protected, its customer not asked`() {
+        publish()
+        val other = SEARCHES[1].copy(agentId = 999)
+        doReturn(listOf(SEARCHES[0], other)).whenever(mandateClient).searchByIds(any(), any())
+        doReturn(CUSTOMERS.take(1)).whenever(customerClient).search(listOf(14L))
+
+        val view = proposals()!!
+
+        verify(customerClient).search(listOf(14L))
+        assertEquals(listOf("Client d'un autre agent", "Sandrine Eboa", "Client d'un autre agent"), view.rows.map { it.client })
+    }
+
+    @Test
+    fun `show - published, matches unavailable - no section`() {
+        publish()
+        doThrow(ResourceAccessException("down")).whenever(matchClient).searchByListings(any(), any(), any())
+
+        assertNull(proposals())
+    }
+
+    @Test
+    fun `show - published, mandates unavailable - no section`() {
+        publish()
+        doThrow(ResourceAccessException("down")).whenever(mandateClient).searchByIds(any(), any())
+
+        assertNull(proposals())
+        verify(customerClient, never()).search(any())
+    }
+
+    @Test
+    fun `show - published, customers unavailable - the mandates' numbers`() {
+        publish()
+        doThrow(ResourceAccessException("down")).whenever(customerClient).search(any())
+
+        assertEquals(listOf("Client d'un autre agent", "Mandat n° 204", "Mandat n° 207"), proposals()!!.rows.map { it.client })
     }
 
     @Test

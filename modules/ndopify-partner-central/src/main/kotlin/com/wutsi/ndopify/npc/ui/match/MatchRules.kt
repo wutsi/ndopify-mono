@@ -34,6 +34,9 @@ object MatchRules {
     /** What the mandate page searches: [COUNTED] and DISMISSED, to count them. */
     val SEARCHED: List<MatchStatus> = COUNTED + MatchStatus.DISMISSED
 
+    /** Sent to the client, answered or not: what [proposals] counts, and a published listing's *Propositions*. */
+    val SENT: List<MatchStatus> = listOf(MatchStatus.PROPOSED, MatchStatus.ACCEPTED, MatchStatus.REJECTED)
+
     /** In a match's fit, unlike `MandateLabels.furniture` ("Oui" / "Non"). */
     val FURNITURE_LABELS: Map<FurnitureType, String> = mapOf(
         FurnitureType.UNFURNISHED to "Non meublé",
@@ -45,8 +48,6 @@ object MatchRules {
         MatchStatus.PROPOSED to MandateRules.Tag("En attente", "neutral"),
         MatchStatus.ACCEPTED to MandateRules.Tag("Intéressé", "success"),
     )
-
-    private val SENT = setOf(MatchStatus.PROPOSED, MatchStatus.ACCEPTED, MatchStatus.REJECTED)
 
     // A partial score this close to 1 is full
     private const val FULL = 0.999

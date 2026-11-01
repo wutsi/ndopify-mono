@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.listing
 
+import com.wutsi.ndopify.customer.dto.CustomerSummary
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ImageStatus
@@ -14,11 +15,15 @@ import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.mandate.dto.MandateSummary
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.match.dto.Match
+import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BONAPRISO
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.DOUALA
+import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.web.core.service.TenantFormatter
@@ -72,6 +77,27 @@ class ListingViewsTest {
             latitude = 4.0335,
             longitude = 9.6942,
             sections = LISTING.sections.map { it.copy(status = ListingSectionStatus.VERIFIED) },
+        )
+
+        private fun day(day: Int): Date = Date.from(Instant.parse("2026-10-%02dT10:00:00Z".format(day)))
+
+        /** The published listing's matches sent to a client: 204 and 207 are the agent's searches, 305 another agent's. */
+        val PROPOSALS = listOf(
+            Match(id = 9001, mandateId = 207, listingId = 501, status = MatchStatus.PROPOSED, proposedAt = day(31)),
+            Match(id = 9002, mandateId = 204, listingId = 501, status = MatchStatus.ACCEPTED, proposedAt = day(28), answeredAt = day(29)),
+            Match(id = 9003, mandateId = 305, listingId = 501, status = MatchStatus.ACCEPTED, proposedAt = day(29), answeredAt = day(30)),
+            Match(id = 9004, mandateId = 204, listingId = 501, status = MatchStatus.REJECTED, proposedAt = day(25), answeredAt = day(26)),
+        )
+
+        /** The agent's own mandates among the matches' (305 isn't: another agent's). */
+        val SEARCHES = listOf(
+            MandateSummary(id = 204, customerId = 14, agentId = ProfileFixtures.AGENT.id, mandateType = MandateType.SEARCH),
+            MandateSummary(id = 207, customerId = 17, agentId = ProfileFixtures.AGENT.id, mandateType = MandateType.SEARCH),
+        )
+
+        val CUSTOMERS = listOf(
+            CustomerSummary(id = 14, party = Party(firstName = "Sandrine", lastName = "Eboa")),
+            CustomerSummary(id = 17, party = Party(firstName = "Carine", lastName = "Ndongo")),
         )
 
         /** The landlord's answers the listing was created from. */
@@ -597,5 +623,41 @@ class ListingViewsTest {
     fun `mandate - none for a search or before approval`() {
         assertNull(ListingViews.forMandate(approved.copy(mandateType = MandateType.SEARCH), null, null, formatter))
         assertNull(ListingViews.forMandate(approved.copy(status = MandateStatus.PENDING_APPROVAL), null, null, formatter))
+    }
+
+    @Test
+    fun proposals() {
+        val view = ListingViews.proposals(PROPOSALS, SEARCHES, CUSTOMERS, ProfileFixtures.AGENT.id, formatter)
+
+        assertEquals("2 intéressés · 1 refusé · 1 en attente", view.summary)
+        // Interested first, the latest answer first; the refused one only counted
+        assertEquals(listOf("Client d'un autre agent", "Sandrine Eboa", "Carine Ndongo"), view.rows.map { it.client })
+        assertEquals(listOf(null, "/mandates/204#matches-title", "/mandates/207#matches-title"), view.rows.map { it.url })
+        assertEquals(listOf("Intéressé", "Intéressé", "En attente"), view.rows.map { it.tag.label })
+        assertEquals("Envoyé le 28 oct. 2026", view.rows[1].sent)
+    }
+
+    @Test
+    fun `proposals - another agent's mandate is protected even when returned`() {
+        val other = SEARCHES[0].copy(agentId = 999)
+
+        val view = ListingViews.proposals(PROPOSALS, listOf(other), CUSTOMERS, ProfileFixtures.AGENT.id, formatter)
+
+        assertTrue(view.rows.all { it.client == "Client d'un autre agent" && it.url == null })
+    }
+
+    @Test
+    fun `proposals - without the customer's name, its mandate's number`() {
+        val view = ListingViews.proposals(PROPOSALS, SEARCHES, emptyList(), ProfileFixtures.AGENT.id, formatter)
+
+        assertEquals(listOf("Client d'un autre agent", "Mandat n° 204", "Mandat n° 207"), view.rows.map { it.client })
+    }
+
+    @Test
+    fun `proposals - none sent`() {
+        val view = ListingViews.proposals(emptyList(), emptyList(), emptyList(), ProfileFixtures.AGENT.id, formatter)
+
+        assertNull(view.summary)
+        assertTrue(view.rows.isEmpty())
     }
 }

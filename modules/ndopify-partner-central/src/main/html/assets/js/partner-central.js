@@ -1778,13 +1778,42 @@
         return match.availableIn <= 0 ? "Libre maintenant" : "Dès le " + formatShortDate(Date.now() + match.availableIn * DAY_MS);
     }
 
-    // PROTOTYPE: the clients interested by a published listing, by mandate: its matches whose client answered
-    // "intéressé" (with or without a visit), on the searches of other agents too.
-    var LISTING_INTEREST = { 203: 2 };
+    // PROTOTYPE: a published listing's matches sent to a client (GET /v1/matches?listing-id=&status=PROPOSED&
+    // status=ACCEPTED&status=REJECTED), by the listing's mandate, in the shape of matchesOf's. Dates in days from now
+    // (the visit's day too). 102's listing has none: the empty view.
+    // A search of the signed-in agent has its client's name and mandate (204 is the only one of this prototype, the
+    // others' mandate pages show the locked view). Another agent's search (otherAgent) protects that agent's mandate:
+    // neither its client nor its mandate is on the page, only what the client answered about this listing.
+    var LISTING_PROPOSALS = {
+        203: [
+            { mandateId: "204", client: "Sandrine Eboa", sentAt: -3, answer: "ACCEPTED", answeredAt: -2,
+                visit: { in: 2, time: "10h00", type: "IN_PERSON" } },
+            { mandateId: "207", client: "Hervé Mbarga", sentAt: -4, answer: "ACCEPTED", answeredAt: -4 },
+            { otherAgent: true, sentAt: -2, answer: "ACCEPTED", answeredAt: -1 },
+            { mandateId: "208", client: "Carine Ndongo", sentAt: -1 },
+            { otherAgent: true, sentAt: -5 },
+            { mandateId: "209", client: "Rodrigue Essomba", sentAt: -6, answer: "REJECTED", answeredAt: -5,
+                reason: "PRICE" }
+        ]
+    };
+
+    // The listing's proposals, as PROPOSED matches with their dates (see initialMatchState).
+    function listingProposalsOf(mandateId) {
+        return (LISTING_PROPOSALS[mandateId] || []).map(function (p) {
+            var match = initialMatchState({ initial: p });
+            match.status = "PROPOSED";
+            match.otherAgent = !!p.otherAgent;
+            match.mandateId = p.mandateId;
+            match.client = p.client;
+            return match;
+        });
+    }
 
     // "2 personnes intéressées", or "Aucune personne intéressée pour l'instant".
     function interestSummary(mandateId) {
-        var n = LISTING_INTEREST[mandateId] || 0;
+        var n = listingProposalsOf(mandateId).filter(function (m) {
+            return m.answer === "ACCEPTED";
+        }).length;
         if (!n) return "Aucune personne intéressée pour l'instant";
         return n + (n > 1 ? " personnes intéressées" : " personne intéressée");
     }
@@ -3040,11 +3069,71 @@
                 list.appendChild(item);
             });
 
+            renderProposals(listing);
+
             var left = missingSections(listing);
             $("[data-listing-send]").hidden = !editable;
             setActive(submit, left.length === 0);
             missing.textContent = left.length ? "Encore à faire : " + left.join(", ") + "." :
                 "Tout est vérifié : vous pouvez envoyer l'annonce.";
+        }
+
+        // Published: who it was sent to. A visit asked first, then interested, then waiting; the latest first within
+        // each. A refused one is only counted, in the line.
+        var PROPOSAL_TAGS = {
+            VISIT: ANSWER_TAGS.VISIT,
+            ACCEPTED: ANSWER_TAGS.ACCEPTED,
+            NONE: ["En attente", "neutral"]
+        };
+
+        function renderProposals(listing) {
+            var box = $("[data-listing-proposals]");
+            box.hidden = listing.status !== "PUBLISHED";
+            if (box.hidden) return;
+            var matches = listingProposalsOf(listing.mandateId);
+            var summary = proposalsSummary(matches);
+            $("[data-proposals-summary]", box).hidden = !summary;
+            $("[data-proposals-summary-text]", box).textContent = summary;
+            $("[data-proposals-empty]", box).hidden = matches.length > 0;
+
+            var RANKS = { VISIT: 0, ACCEPTED: 1, NONE: 2 };
+
+            function rank(m) {
+                return RANKS[answerOf(m) || "NONE"];
+            }
+            var shown = matches.filter(function (m) {
+                return answerOf(m) !== "REJECTED";
+            }).sort(function (a, b) {
+                return rank(a) - rank(b) || (b.answeredAt || b.sentAt) - (a.answeredAt || a.sentAt);
+            });
+            var list = $("[data-proposals-list]", box);
+            var template = $("[data-proposals-template]", box);
+            list.textContent = "";
+            list.hidden = shown.length === 0;
+            shown.forEach(function (m) {
+                var item = template.content.firstElementChild.cloneNode(true);
+                var answer = answerOf(m) || "NONE";
+                var row = $("[data-proposal-link]", item);
+                if (m.otherAgent) {
+                    // Another agent's client: no name, no link to a mandate the agent can't open
+                    var plain = document.createElement("div");
+                    plain.className = row.className;
+                    while (row.firstChild) plain.appendChild(row.firstChild);
+                    row.replaceWith(plain);
+                } else {
+                    row.href = "mandate.html?id=" + encodeURIComponent(m.mandateId) + "#matches-title";
+                }
+                $("[data-proposal-client]", item).textContent = m.otherAgent ? "Client d'un autre agent" : m.client;
+                var tag = $("[data-proposal-tag]", item);
+                tag.textContent = PROPOSAL_TAGS[answer][0];
+                tag.className = "status-tag status-tag--" + PROPOSAL_TAGS[answer][1];
+                // Short enough for one line on a phone: the visit asked, else when it was sent
+                $("[data-proposal-summary]", item).textContent = answer === "VISIT"
+                    ? "Visite le " + formatShortDate(m.visit.at) + " à " + m.visit.time +
+                        (m.visit.type === "VIDEO" ? ", en vidéo" : ", sur place")
+                    : "Envoyé le " + formatShortDate(m.sentAt);
+                list.appendChild(item);
+            });
         }
 
         function update(changes) {

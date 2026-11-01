@@ -4,16 +4,20 @@ import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.Listing
+import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
+import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.npc.ui.mandate.MandateController
+import com.wutsi.ndopify.npc.ui.match.MatchRules
 import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import com.wutsi.ndopify.web.core.service.TenantContext
 import com.wutsi.ndopify.web.core.service.TenantFormatter
@@ -36,12 +40,18 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
  *
  * The listing is created from the mandate page (`POST /mandates/{id}/listing`), pre-filled by ndopify-server from the
  * landlord's answers; a mandate that can't have one goes back to its page with the mandate page's own outcomes.
+ *
+ * Published, it has its *Propositions*: the clients it was sent to ([proposals]). A match of another agent's search
+ * protects that agent's mandate: only the agent's own mandates are looked up, and their customers only, so another
+ * agent's client is never asked of ndopify-server, let alone shown.
  */
 @Controller
 class ListingController(
     private val currentAgent: CurrentAgent,
     private val listingClient: NdListingClient,
     private val mandateClient: NdMandateClient,
+    private val matchClient: NdMatchClient,
+    private val customerClient: NdCustomerClient,
     locationClient: NdLocationClient,
     private val tenantContext: TenantContext,
 ) {
@@ -79,7 +89,7 @@ class ListingController(
         val listing = id.toLongOrNull()?.let { load(it, agent, model) } ?: return locked(model)
         val images = lookup("images of listing ${listing.id}") { listingClient.images(listing.id) }
         val view = ListingViews.of(listing, images, locations(listing), formatter(), tenantContext.getTenant().publicPortalUrl)
-        model.addAttribute("listing", view)
+        model.addAttribute("listing", view.copy(proposals = proposals(listing, agent)))
         return VIEW
     }
 
@@ -201,6 +211,27 @@ class ListingController(
                 null
             }
         }
+
+    /**
+     * A published listing's proposals: its sent matches, the agent's own mandates among theirs, and those mandates'
+     * customers, one search each. Null before it's published, or when the matches or mandates can't be had: no
+     * section, rather than another agent's client shown as the agent's or the other way round. Customers failing
+     * only leave the names out.
+     */
+    private fun proposals(listing: Listing, agent: Agent): ProposalsView? {
+        if (listing.status != ListingStatus.PUBLISHED) return null
+        val matches = lookup("matches of listing ${listing.id}") {
+            matchClient.searchByListings(listOf(listing.id), MatchRules.SENT)
+        } ?: return null
+        val mandateIds = matches.map { it.mandateId }.distinct()
+        val mandates = lookup("mandates of the matches of listing ${listing.id}") {
+            mandateClient.searchByIds(mandateIds, agent.id)
+        }?.filter { it.agentId == agent.id } ?: return null
+        val customers = lookup("customers of the matches of listing ${listing.id}") {
+            customerClient.search(mandates.map { it.customerId }.distinct())
+        } ?: emptyList()
+        return ListingViews.proposals(matches, mandates, customers, agent.id, formatter())
+    }
 
     private fun locations(listing: Listing) =
         lookup("location names of listing ${listing.id}") {

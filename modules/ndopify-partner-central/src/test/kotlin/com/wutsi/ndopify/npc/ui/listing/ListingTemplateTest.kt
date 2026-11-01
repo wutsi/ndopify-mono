@@ -7,17 +7,23 @@ import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
+import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdviceTest
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.COMPLETE
+import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.CUSTOMERS
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.IMAGES
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.LISTING
+import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.PROPOSALS
+import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.SEARCHES
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.SENT
+import com.wutsi.ndopify.npc.ui.match.MatchRules
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
 import com.wutsi.ndopify.web.core.service.TenantContext
@@ -46,6 +52,8 @@ class ListingTemplateTest {
     private val currentAgent = mock<CurrentAgent>()
     private val listingClient = mock<NdListingClient>()
     private val mandateClient = mock<NdMandateClient>()
+    private val matchClient = mock<NdMatchClient>()
+    private val customerClient = mock<NdCustomerClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
     private lateinit var mvc: MockMvc
@@ -72,7 +80,17 @@ class ListingTemplateTest {
             characterEncoding = "UTF-8"
         }
         mvc = MockMvcBuilders
-            .standaloneSetup(ListingController(currentAgent, listingClient, mandateClient, locationClient, tenantContext))
+            .standaloneSetup(
+                ListingController(
+                    currentAgent,
+                    listingClient,
+                    mandateClient,
+                    matchClient,
+                    customerClient,
+                    locationClient,
+                    tenantContext,
+                ),
+            )
             .setControllerAdvice(SignedInAdvice())
             .setViewResolvers(viewResolver)
             .build()
@@ -182,6 +200,49 @@ class ListingTemplateTest {
         assertNull(page.selectFirst("[data-generated-title]"))
         assertNull(page.selectFirst("[data-listing-public-url]"))
         assertNull(page.selectFirst("[data-listing-send]"))
+    }
+
+    @Test
+    fun `published - proposals`() {
+        doReturn(PROPOSALS).whenever(matchClient).searchByListings(listOf(501), MatchRules.SENT)
+        doReturn(SEARCHES).whenever(mandateClient).searchByIds(listOf(207L, 204L, 305L), AGENT.id)
+        doReturn(CUSTOMERS).whenever(customerClient).search(listOf(14L, 17L))
+
+        val page = render(COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT))
+
+        val section = page.selectFirst("[data-listing-proposals]")!!
+        assertEquals("Propositions", section.selectFirst("h2")?.text())
+        assertEquals("2 intéressés · 1 refusé · 1 en attente", section.selectFirst("[data-proposals-summary-text]")?.text())
+        assertEquals(
+            listOf("Client d'un autre agent", "Sandrine Eboa", "Carine Ndongo"),
+            section.select("[data-proposal-client]").map { it.text() },
+        )
+        // Another agent's client: not a link
+        val protected = section.selectFirst("[data-proposal-protected]")!!
+        assertEquals("div", protected.tagName())
+        assertEquals(
+            listOf("/mandates/204#matches-title", "/mandates/207#matches-title"),
+            section.select("a[data-proposal-link]").map { it.attr("href") },
+        )
+        assertEquals("status-tag status-tag--success", section.selectFirst("[data-proposal-tag]")?.className())
+        assertEquals("Envoyé le 28 oct. 2026", section.select("[data-proposal-summary]")[1].text())
+        assertNull(section.selectFirst("[data-proposals-empty]"))
+    }
+
+    @Test
+    fun `published - not sent to anyone`() {
+        doReturn(emptyList<Any>()).whenever(matchClient).searchByListings(listOf(501), MatchRules.SENT)
+
+        val page = render(COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT))
+
+        assertNotNull(page.selectFirst("[data-proposals-empty]"))
+        assertNull(page.selectFirst("[data-proposals-summary]"))
+        assertNull(page.selectFirst("[data-proposals-list]"))
+    }
+
+    @Test
+    fun `draft - no proposals`() {
+        assertNull(render().selectFirst("[data-listing-proposals]"))
     }
 
     @Test
