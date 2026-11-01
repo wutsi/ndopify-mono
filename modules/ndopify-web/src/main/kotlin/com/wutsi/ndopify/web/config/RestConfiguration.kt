@@ -1,8 +1,10 @@
 package com.wutsi.ndopify.web.config
 
+import com.wutsi.ndopify.web.core.client.AuthorizationClientHttpRequestInterceptor
 import com.wutsi.ndopify.web.core.client.LoggingClientHttpRequestInterceptor
 import com.wutsi.ndopify.web.core.client.TenantIdClientHttpRequestInterceptor
 import com.wutsi.ndopify.web.core.service.TenantContext
+import com.wutsi.ndopify.web.core.service.security.AccessTokenService
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.restclient.RestClientCustomizer
 import org.springframework.context.annotation.Bean
@@ -14,7 +16,9 @@ import java.time.Duration
 
 /**
  * Applied to every `RestClient.Builder` Spring Boot hands out, so all clients built from it log their calls and
- * send the current tenant. `NdTenantClient`, which resolves the tenant, is on the plain [RestTemplate] instead.
+ * send the current tenant and, while the visitor's access-token cookie is present, that token (on every call, not only
+ * the match page's).
+ * `NdTenantClient`, which resolves the tenant, is on the plain [RestTemplate] instead.
  */
 @Configuration
 class RestConfiguration(
@@ -28,6 +32,12 @@ class RestConfiguration(
     @Bean
     fun tenantIdRestClientCustomizer(tenantContext: TenantContext): RestClientCustomizer =
         RestClientCustomizer { builder -> builder.requestInterceptor(TenantIdClientHttpRequestInterceptor(tenantContext)) }
+
+    @Bean
+    fun authorizationRestClientCustomizer(accessTokenService: AccessTokenService): RestClientCustomizer =
+        RestClientCustomizer { builder ->
+            builder.requestInterceptor(AuthorizationClientHttpRequestInterceptor(accessTokenService.cookieName))
+        }
 
     @Bean
     fun restTemplate(): RestTemplate {

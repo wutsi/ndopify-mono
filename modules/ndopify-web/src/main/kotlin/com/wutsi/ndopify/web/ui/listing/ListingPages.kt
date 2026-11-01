@@ -22,7 +22,7 @@ import java.time.LocalTime
  * its times from 10:00 to 21:00 every 30 minutes.
  */
 object ListingPages {
-    private val PROPERTY_TYPE_LABELS: Map<PropertyType, String> = mapOf(
+    internal val PROPERTY_TYPE_LABELS: Map<PropertyType, String> = mapOf(
         PropertyType.ROOM to "Chambre",
         PropertyType.STUDIO to "Studio",
         PropertyType.APARTMENT to "Appartement",
@@ -36,7 +36,7 @@ object ListingPages {
         PropertyType.LAND to "Terrain",
     )
 
-    private val FURNITURE_LABELS = mapOf(
+    internal val FURNITURE_LABELS = mapOf(
         FurnitureType.FULLY_FURNISHED to "Meublé",
         FurnitureType.UNFURNISHED to "Non meublé",
     )
@@ -50,7 +50,7 @@ object ListingPages {
         PropertyType.ROOM to "Room",
     )
 
-    private val PERIODS = mapOf(
+    internal val PERIODS = mapOf(
         PeriodicityType.MONTHLY to "/ mois",
         PeriodicityType.YEARLY to "/ an",
         PeriodicityType.WEEKLY to "/ semaine",

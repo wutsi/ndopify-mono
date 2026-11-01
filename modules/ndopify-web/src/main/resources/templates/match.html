@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title th:text="${page.title} + ' | ' + (${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name})">Serge vous propose ce logement | Ndopify</title>
+    <!--/* A personal page (the link of the proposal e-mail): never indexed nor shared, nor its address sent as Referer. */-->
+    <meta content="noindex, nofollow" name="robots">
+    <meta content="no-referrer" name="referrer">
+    <meta content="#1d7edf" name="theme-color">
+    <link rel="icon" th:href="${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
+    <link rel="apple-touch-icon" th:href="${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
+    <link rel="stylesheet" th:href="@{/assets/css/styles.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/listing.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/proposal.css}">
+</head>
+<!--/*
+  A match proposed to the customer of a search mandate (MatchController), from the prototype src/main/html/proposition.html:
+  the listing's page (fragments/listing-body.html, as listing.html, from page.listing: ListingPage), without the share button nor the AI assistant,
+  plus who proposes it, for which search and why, and the customer's answer. Only the block of page.state is rendered
+  (data-answer in the price card or the page, data-bar-answer in the bottom bar below 1024px):
+    - PENDING: "Ça m'intéresse" (POST accept) or "Pas pour moi" (the #reject popup: a reason, an optional comment;
+      POST reject); below 1024px the bar's "Répondre" opens the #answer popup with both.
+    - ACCEPTED / REJECTED: the answer, no form: answers are final (no "change my mind" control, unlike the prototype).
+    - UNAVAILABLE: the listing can't be shown anymore (page.listing is null): no photo, no form, a link to the agent.
+  "Demander une visite" is left out, as on the listing page. Without JavaScript the forms post and the popups open
+  with :target; listing.js (photos, popups) and proposal.js (focus in the popups) only enhance. Never agentRemarks.
+*/-->
+<body class="listing-page" data-page="match">
+<a class="skip-link" href="#main">Aller au contenu principal</a>
+<header class="site-header">
+    <a aria-label="Ndopify — accueil" class="site-header__logo" th:href="@{/}">
+        <img alt="Ndopify" height="36" width="140"
+             th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
+             th:src="${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}">
+    </a>
+    <nav aria-label="Navigation principale" class="site-nav">
+        <button aria-controls="primary-nav-list" aria-expanded="false" class="nav-toggle"><span aria-hidden="true"
+                                                                                                class="nav-toggle__icon">☰</span>
+            Menu
+        </button>
+        <ul class="site-nav__list" id="primary-nav-list">
+            <li><a th:href="@{/}">Locataires</a></li>
+            <li><a th:href="@{/owner}">Propriétaires</a></li>
+            <li><a th:href="@{/agent}">Agents</a></li>
+        </ul>
+    </nav>
+</header>
+
+<!-- Icon sprite (decorative: every icon sits next to its text) -->
+<svg aria-hidden="true" class="visually-hidden" focusable="false" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-bed" viewBox="0 0 24 24"><path d="M3 18V7m0 7h18v4M21 14v-2a3 3 0 0 0-3-3h-7v5M7 11.5a1.5 1.5 0 1 0 0-.01"/></symbol>
+    <symbol id="i-bath" viewBox="0 0 24 24"><path d="M4 12h16v2a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5v-2zM6 12V6a2 2 0 0 1 4 0M7 19l-1 2m11-2 1 2"/></symbol>
+    <symbol id="i-area" viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 9h5V4m11 11h-5v5"/></symbol>
+    <symbol id="i-sofa" viewBox="0 0 24 24"><path d="M5 11V8a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v3M3 13a2 2 0 0 1 4 0v2h10v-2a2 2 0 0 1 4 0v5H3zM5 18v2m14-2v2"/></symbol>
+    <symbol id="i-car" viewBox="0 0 24 24"><path d="M5 16V11l2-5h10l2 5v5M3 16h18v3h-3v-1H6v1H3zM5 11h14M7.5 13.5h.01m9 0h.01"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5m0-8h.01"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5 10 17 19 7"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6zM9 12l2 2 4-4"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+    <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4zM8 9.5h8M8 12.5h5"/></symbol>
+</svg>
+
+<main id="main" th:with="listing=${page.listing}">
+    <div class="container listing">
+
+        <!-- Who proposes it and why: the customer opened a personal link, this comes first. -->
+        <section aria-labelledby="proposal-title" class="proposal">
+            <div class="proposal__agent">
+                <span aria-hidden="true" class="proposal__avatar" th:text="${page.agentInitials}">SN</span>
+                <div>
+                    <h2 class="proposal__title" id="proposal-title" th:text="${page.title}">Serge vous propose ce logement</h2>
+                    <p class="proposal__subtitle" th:text="${page.searchSummary}">Pour votre recherche : appartement 3 chambres à Bonapriso, jusqu'à 250K FCFA / mois.</p>
+                </div>
+            </div>
+            <!-- Folded by default: the listing comes first, the reasons are a tap away. -->
+            <details class="proposal__why" th:unless="${#lists.isEmpty(page.reasons)}">
+                <summary>Pourquoi ce logement&nbsp;?<svg aria-hidden="true" class="icon proposal__chevron"><use href="#i-chevron-right"/></svg></summary>
+                <ul class="check-list proposal__fit">
+                    <li th:each="reason : ${page.reasons}" th:classappend="${reason.partial} ? 'proposal__fit--partial'"><svg
+                            aria-hidden="true" class="icon"><use th:href="${reason.partial} ? '#i-info' : '#i-check'"/></svg>[[${reason.text}]]</li>
+                </ul>
+            </details>
+        </section>
+
+        <!-- The outcome of the answer just posted -->
+        <div class="proposal-flash" role="status" th:if="${page.flash}">
+            <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
+            <p th:text="${page.flash}">C'est noté : ce logement vous intéresse.</p>
+        </div>
+
+        <!--/* The listing can't be shown anymore: rented, withdrawn... */-->
+        <section aria-label="Votre réponse" class="answer" data-answer="UNAVAILABLE" th:if="${page.state.name() == 'UNAVAILABLE'}">
+            <p class="answer__status">Ce logement n'est plus disponible.</p>
+            <p>Il a été loué ou retiré. <th:block th:text="${#strings.capitalize(page.agentFirstName)}">Serge</th:block>
+                continue de chercher pour vous.</p>
+            <a class="btn btn-secondary" rel="noopener" target="_blank" th:href="${page.agentWhatsappUrl}"
+               th:if="${page.agentWhatsappUrl}">
+                <svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg>Contacter<span class="visually-hidden"
+                    th:text="| ${page.agentFirstName} sur WhatsApp|"> Serge sur WhatsApp</span>
+            </a>
+        </section>
+
+        <th:block th:if="${listing}">
+        <div th:replace="~{fragments/listing-body :: head(${listing}, false,
+                ${page.state.name() == 'ACCEPTED'} ? 'Vous intéresse' : (${page.state.name() == 'REJECTED'} ? 'Écarté' : null))}"></div>
+
+        <section th:replace="~{fragments/listing-body :: gallery(${listing})}"></section>
+
+        <div class="listing__layout">
+            <div class="listing__content">
+
+                <th:block th:replace="~{fragments/listing-body :: content(${listing}, ${page.agentFirstName})}"></th:block>
+
+                <section aria-labelledby="agent-heading" class="listing__section">
+                    <h2 id="agent-heading">Votre agent</h2>
+                    <div class="agent-card">
+                        <span aria-hidden="true" class="proposal__avatar" th:text="${page.agentInitials}">SN</span>
+                        <div>
+                            <p class="agent-card__name" th:text="${page.agentName}">Serge Ngono</p>
+                            <a class="btn btn-secondary" rel="noopener" target="_blank" th:href="${page.agentWhatsappUrl}"
+                               th:if="${page.agentWhatsappUrl}">
+                                <svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg>Contacter<span class="visually-hidden"
+                                    th:text="| ${page.agentFirstName} sur WhatsApp|"> Serge sur WhatsApp</span>
+                            </a>
+                        </div>
+                    </div>
+                </section>
+            </div>
+
+            <aside aria-label="Prix et réponse" class="listing__aside">
+                <div class="price-card">
+                    <p class="price-card__price"><strong th:text="${listing.priceAmount}">240K FCFA</strong><th:block
+                            th:if="${listing.pricePeriod}" th:text="| ${listing.pricePeriod}|"> / mois</th:block></p>
+                    <ul class="price-card__terms">
+                        <li th:each="term : ${listing.asideTerms}" th:text="${term}">Caution : 2 mois</li>
+                    </ul>
+
+                    <div class="answer" data-answer="PENDING" th:if="${page.state.name() == 'PENDING'}">
+                        <p class="answer__question">Ce logement vous intéresse&nbsp;?</p>
+                        <form method="post" th:action="@{/match/{id}/accept(id=${page.id})}">
+                            <button class="btn btn-primary price-card__cta" type="submit">Ça m'intéresse</button>
+                        </form>
+                        <a class="btn btn-secondary price-card__cta answer__secondary" data-modal-open href="#reject">Pas pour moi</a>
+                    </div>
+
+                    <div class="answer" data-answer="ACCEPTED" th:if="${page.state.name() == 'ACCEPTED'}">
+                        <p class="answer__status answer__status--success">
+                            <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>Ce logement vous intéresse
+                        </p>
+                        <p th:text="|Pour organiser une visite, contactez ${page.agentFirstName}.|">Pour organiser une
+                            visite, contactez Serge.</p>
+                    </div>
+
+                    <div class="answer" data-answer="REJECTED" th:if="${page.state.name() == 'REJECTED'}">
+                        <p class="answer__status">Vous avez écarté ce logement.</p>
+                        <p th:text="|${#strings.capitalize(page.agentFirstName)} continue de chercher pour vous.|">Serge continue
+                            de chercher pour vous.</p>
+                    </div>
+                </div>
+            </aside>
+        </div>
+        </th:block>
+    </div>
+
+    <!--/* Below 1024px, the price and one answer at a time stay in the fixed bottom bar (the price card is hidden) */-->
+    <div class="cta-bar" th:if="${listing}">
+        <p class="cta-bar__price"><strong th:text="${listing.priceAmount}">240K FCFA</strong><th:block
+                th:if="${listing.pricePeriod}" th:text="| ${listing.pricePeriod}|"> / mois</th:block></p>
+        <!--/* Buttons never carry the agent's name (a first name can be long, and a button doesn't wrap) */-->
+        <div class="cta-bar__actions" data-bar-answer="PENDING" th:if="${page.state.name() == 'PENDING'}">
+            <a class="btn btn-primary" data-modal-open href="#answer">Répondre</a>
+        </div>
+        <p class="cta-bar__note" data-bar-answer="ACCEPTED" th:if="${page.state.name() == 'ACCEPTED'}">Vous intéresse</p>
+        <p class="cta-bar__note" data-bar-answer="REJECTED" th:if="${page.state.name() == 'REJECTED'}">Logement écarté</p>
+    </div>
+</main>
+
+<th:block th:if="${page.state.name() == 'PENDING'}">
+<!--/*
+  The answer popup, below 1024px (the bottom bar's "Répondre"): the price card's two answers. "Pas pour moi" opens the
+  #reject popup in its place. Without JavaScript it opens with :target (#answer).
+*/-->
+<div aria-labelledby="answer-title" class="modal" id="answer">
+    <a aria-hidden="true" class="modal__backdrop" data-modal-close href="#main" tabindex="-1"></a>
+    <div class="modal__panel">
+        <header class="modal__header">
+            <div>
+                <h2 class="modal__title" id="answer-title">Ce logement vous intéresse&nbsp;?</h2>
+                <p class="modal__subtitle"><th:block th:text="${page.listing.title}">Appartement 3 chambres à Bonapriso</th:block><span
+                        class="modal__price">&nbsp;· <strong th:text="${page.listing.price}">240K FCFA / mois</strong></span></p>
+            </div>
+            <a class="modal__close" data-modal-close href="#main">
+                <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>
+                <span class="visually-hidden">Fermer</span>
+            </a>
+        </header>
+        <div class="modal__body answer-sheet">
+            <form method="post" th:action="@{/match/{id}/accept(id=${page.id})}">
+                <button class="btn btn-primary answer-sheet__btn" type="submit">Ça m'intéresse</button>
+            </form>
+            <a class="btn btn-secondary answer-sheet__btn" data-modal-open href="#reject">Pas pour moi</a>
+        </div>
+    </div>
+</div>
+
+<!--/*
+  "Pas pour moi" popup: why (the agent learns from it for the next proposals), and an optional comment. Without
+  JavaScript it opens with :target (#reject) and the form posts; the browser asks for the reason (required), and
+  MatchController takes a missing one as OTHER.
+*/-->
+<div aria-labelledby="reject-title" class="modal" id="reject">
+    <a aria-hidden="true" class="modal__backdrop" data-modal-close href="#main" tabindex="-1"></a>
+    <div class="modal__panel">
+        <header class="modal__header">
+            <div>
+                <h2 class="modal__title" id="reject-title">Pourquoi pas ce logement&nbsp;?</h2>
+                <p class="modal__subtitle" th:text="|Votre réponse aide ${page.agentFirstName} à mieux choisir les prochains.|">Votre
+                    réponse aide Serge à mieux choisir les prochains.</p>
+            </div>
+            <a class="modal__close" data-modal-close href="#main">
+                <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>
+                <span class="visually-hidden">Fermer</span>
+            </a>
+        </header>
+
+        <form class="modal__body interest-form" method="post" th:action="@{/match/{id}/reject(id=${page.id})}">
+            <fieldset class="field reject-reasons">
+                <legend>La raison principale</legend>
+                <label><input name="reason" required type="radio" value="PRICE">Trop cher</label>
+                <label><input name="reason" required type="radio" value="LOCATION">Le quartier ne me convient pas</label>
+                <label><input name="reason" required type="radio" value="SIZE">Trop petit ou trop grand</label>
+                <label><input name="reason" required type="radio" value="AMENITIES">Il manque des équipements</label>
+                <label><input name="reason" required type="radio" value="AVAILABILITY">Disponible trop tard</label>
+                <label><input name="reason" required type="radio" value="OTHER">Autre raison</label>
+            </fieldset>
+            <div class="field">
+                <label for="reject-comment">Précisions <span class="field__optional">(facultatif)</span></label>
+                <textarea id="reject-comment" maxlength="500" name="comment" rows="3"></textarea>
+            </div>
+            <button class="btn btn-primary interest-form__submit" type="submit">Envoyer ma réponse</button>
+        </form>
+    </div>
+</div>
+</th:block>
+
+<th:block th:if="${page.listing}">
+<!--
+  Photo viewer: listing.js fills it from the listing's photos (#listing-photos, all of them, in order) and opens it on
+  a click on a gallery picture. Without JavaScript, the gallery pictures are plain links to the full-size image.
+-->
+<script id="listing-photos" type="application/json" th:inline="javascript">
+    /*[[${page.listing.photos}]]*/ []
+</script>
+<div aria-label="Photos du logement" aria-modal="true" class="lightbox" data-lightbox hidden role="dialog">
+    <div class="lightbox__bar">
+        <p aria-live="polite" class="lightbox__counter" data-lightbox-counter></p>
+        <button class="lightbox__btn" data-lightbox-close type="button">
+            <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>
+            <span class="visually-hidden">Fermer les photos</span>
+        </button>
+    </div>
+    <ul class="lightbox__track" data-lightbox-track></ul>
+    <button class="lightbox__btn lightbox__nav lightbox__nav--prev" data-lightbox-prev type="button">
+        <svg aria-hidden="true" class="icon"><use href="#i-chevron-left"/></svg>
+        <span class="visually-hidden">Photo précédente</span>
+    </button>
+    <button class="lightbox__btn lightbox__nav lightbox__nav--next" data-lightbox-next type="button">
+        <svg aria-hidden="true" class="icon"><use href="#i-chevron-right"/></svg>
+        <span class="visually-hidden">Photo suivante</span>
+    </button>
+</div>
+</th:block>
+
+<footer class="site-footer">
+    <div class="container site-footer__inner">
+        <img alt="Ndopify" height="32" width="32"
+             th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
+             th:src="${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
+        <nav aria-label="Navigation du pied de page">
+            <ul>
+                <li><a th:href="@{/}">Locataires</a></li>
+                <li><a th:href="@{/owner}">Propriétaires</a></li>
+                <li><a th:href="@{/agent}">Agents</a></li>
+            </ul>
+        </nav>
+        <small>© 2026 Ndopify. Logements vérifiés. Locations fiables.</small>
+    </div>
+</footer>
+
+<script th:src="@{/assets/js/main.js}"></script>
+<script th:src="@{/assets/js/listing.js}"></script>
+<script th:src="@{/assets/js/proposal.js}"></script>
+</body>
+</html>

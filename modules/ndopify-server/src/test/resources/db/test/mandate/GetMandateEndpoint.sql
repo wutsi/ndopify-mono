@@ -17,10 +17,21 @@ INSERT INTO T_LOCATION(id, parent_fk, type, country, name, ascii_name) VALUES
 
 INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name) VALUES
     (100, 1, 'ray.sponsible@gmail.com', 'Ray', 'Sponsible'),
+    (101, 1, 'sam.sung@gmail.com', 'Sam', 'Sung'),
     (900, 2, 'other.tenant@example.com', 'Other', 'Tenant');
+
+-- Users 13 and 14: the customers 10 (mandate 1's) and 11
+INSERT INTO T_USER (id, email, deleted, created_at) VALUES
+    (13, 'ray.sponsible@gmail.com', false, '2024-06-10 00:00:00'),
+    (14, 'sam.sung@gmail.com', false, '2024-06-10 00:00:00');
+
+INSERT INTO T_MEMBERSHIP (id, tenant_id, user_id, party_id, deleted) VALUES
+    (13, 1, 13, 100, false),
+    (14, 1, 14, 101, false);
 
 INSERT INTO T_CUSTOMER(id, tenant_id, party_id) VALUES
     (10, 1, 100),
+    (11, 1, 101),
     (90, 2, 900);
 
 INSERT INTO T_MANDATE(

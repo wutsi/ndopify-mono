@@ -25,7 +25,9 @@ import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/GetMandateEndpoint.sql"])
 class GetMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
-    override val roles = arrayOf(RoleCode.ADMIN)
+    // Admin, but for the customers (users 13 and 14), who have no role
+    override val roles: Array<String>
+        get() = if (userId == USER_ID) arrayOf(RoleCode.ADMIN) else arrayOf("ROLE_USER")
 
     @Test
     fun get() {
@@ -89,5 +91,25 @@ class GetMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals(ErrorCode.MANDATE_NOT_FOUND, response.body?.error?.code)
+    }
+
+    @Test
+    fun customer() {
+        userId = 13L
+
+        val response = rest.getForEntity("/v1/mandates/1", GetMandateResponse::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(1L, response.body!!.mandate.id)
+    }
+
+    @Test
+    fun otherCustomer() {
+        userId = 14L
+
+        val response = rest.getForEntity("/v1/mandates/1", ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_ACCESS_DENIED, response.body?.error?.code)
     }
 }

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>Votre proposition — Ndopify</title>
+    <meta content="noindex, nofollow" name="robots">
+    <meta content="#1d7edf" name="theme-color">
+    <!--/* The tenant's icon, falling back to Ndopify's when it has none. */-->
+    <link rel="icon" th:href="${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
+    <link rel="apple-touch-icon" th:href="${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
+    <link rel="stylesheet" th:href="@{/assets/css/styles.css}">
+</head>
+<!--/*
+  A match link that can't be opened (MatchController): `reason` is "expired" (signed out, or the token was refused) or
+  "not-yours" (the token is another customer's). Nothing about the match is shown.
+*/-->
+<body data-page="match-link">
+<a class="skip-link" href="#main">Aller au contenu principal</a>
+<header class="site-header">
+    <a aria-label="Ndopify — accueil" class="site-header__logo" th:href="@{/}">
+        <img alt="Ndopify" height="36" width="140"
+             th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
+             th:src="${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}">
+    </a>
+</header>
+
+<main id="main">
+    <section class="section section--default">
+        <div class="container hero">
+            <h1>Votre proposition</h1>
+            <p class="hero__sub" th:if="${reason == 'not-yours'}">Ce lien a été envoyé à une autre personne.</p>
+            <p class="hero__sub" th:unless="${reason == 'not-yours'}">Ce lien a expiré. Demandez à votre agent de vous
+                renvoyer la proposition.</p>
+        </div>
+    </section>
+</main>
+</body>
+</html>

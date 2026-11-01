@@ -45,7 +45,7 @@ class MandateEndpoints(
     @GetMapping("/{id}")
     fun get(@PathVariable id: Long): GetMandateResponse {
         val mandate = service.findById(id)
-        access.ensureCanRead(mandate)
+        access.ensureCanReadAsCustomerOrAgent(mandate) // The customer reads its own mandate too
         return GetMandateResponse(mandate = mapper.toMandate(mandate))
     }
 
