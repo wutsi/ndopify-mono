@@ -15,13 +15,10 @@ CREATE TABLE T_MATCH(
     availability_score      DOUBLE NOT NULL DEFAULT 0.0,
     furniture_score         DOUBLE NOT NULL DEFAULT 0.0,
     listing_price           BIGINT NOT NULL DEFAULT -1,
-    rejection_reason        TEXT DEFAULT NULL,
 
     created_at              DATETIME DEFAULT NOW(),
     modified_at             DATETIME NOT NULL DEFAULT now() ON UPDATE now(),
     notified_at             DATETIME DEFAULT NULL,
-    proposed_at             DATETIME DEFAULT NULL,
-    answered_at             DATETIME DEFAULT NULL,
     version                 BIGINT NOT NULL DEFAULT 0,
 
     UNIQUE(mandate_id, listing_id),

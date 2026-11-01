@@ -298,7 +298,7 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   PUBLISHED), get, `POST /{id}/shortlist` (the agent keeps it to propose later: ACTIVE → SHORTLISTED, else 409
   `MATCH_NOT_ACTIVE`), `POST /{id}/dismiss` (ACTIVE or SHORTLISTED, else 409 `MATCH_NOT_ACTIVE`), access as the mandate's (`MandateAccessService`:
   404, then 403 `MANDATE_ACCESS_DENIED`); `POST /run?mandate-id=` (`@OpsEndpoint`) re-runs a mandate.
-  **Agent alert** (`docs/superpowers/plans/2026-10-31-match-agent-alert.md`): `notifiedAt` (`V9_0`) is null until the
+  **Agent alert** (`docs/superpowers/plans/2026-10-31-match-agent-alert.md`): `notifiedAt` (`V9_2`) is null until the
   agent is told, and never touched by the matcher (a re-score or re-run doesn't alert again). `MatchJobs.notifyAgents`
   (hourly, `ndopify.match.notify.cron`) has `MatchNotificationService` e-mail each agent, once for all its ACTIVE
   matches not notified yet (mandate APPROVED, listing PUBLISHED), grouped by mandate (`MatchNotificationMailet`,
