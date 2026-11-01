@@ -81,7 +81,7 @@ class MatchControllerTest {
         MockMvcBuilders.standaloneSetup(
             MatchController(matchClient, mandateClient, agentClient, listingClient, locationClient, tokens, clock),
         )
-            .setControllerAdvice(TenantAdvice(context), HttpClientErrorHandler())
+            .setControllerAdvice(TenantAdvice(context), HttpClientErrorHandler(accessTokenService))
             .setViewResolvers(InternalResourceViewResolver("/templates/", ".html"))
             .build()
             .perform(request)
@@ -94,9 +94,9 @@ class MatchControllerTest {
 
     @Test
     fun tokenIsStoredAndStripped() {
-        val result = request("/match/12?token=abc.def&utm=mail")
+        val result = request("/match/12?token=aaa.bbb.ccc&utm=mail")
 
-        verify(accessTokenService).set("abc.def")
+        verify(accessTokenService).set("aaa.bbb.ccc")
         assertEquals(302, result.response.status)
         assertEquals("/match/12?utm=mail", result.response.getHeader(HttpHeaders.LOCATION))
         verify(matchClient, never()).get(12)
@@ -131,7 +131,7 @@ class MatchControllerTest {
 
     @Test
     fun tokenIsTheOnlyParameterStripped() {
-        val result = request("/match/12?token=abc.def")
+        val result = request("/match/12?token=aaa.bbb.ccc")
 
         assertEquals("/match/12", result.response.getHeader(HttpHeaders.LOCATION))
     }
@@ -206,6 +206,28 @@ class MatchControllerTest {
 
         assertEquals("Votre agent vous propose ce logement", page(result).title)
         verify(agentClient, never()).get(any())
+    }
+
+    @Test
+    fun `token that is not a JWT is not kept`() {
+        listOf("abc", "a.b", "a.b.c.d", "a.b;c.d", "a.b c.d", "a.\"b.c", "a.b,c.d").forEach { token ->
+            val result = perform(get("/match/12").param("token", token))
+
+            assertEquals(MatchController.VIEW_LINK, result.modelAndView?.viewName, token)
+            assertEquals(MatchController.REASON_EXPIRED, result.modelAndView?.model?.get("reason"), token)
+        }
+        verify(accessTokenService, never()).set(any())
+    }
+
+    @Test
+    fun `agent gone`() {
+        MatchFixtures.signIn()
+        doThrow(failure(HttpStatus.NOT_FOUND)).whenever(agentClient).get(3)
+
+        val result = request("/match/12")
+
+        assertEquals(MatchController.VIEW, result.modelAndView?.viewName)
+        assertEquals("Votre agent vous propose ce logement", page(result).title)
     }
 
     @Test

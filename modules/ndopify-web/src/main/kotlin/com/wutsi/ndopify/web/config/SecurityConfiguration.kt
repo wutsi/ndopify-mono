@@ -15,6 +15,10 @@ import org.springframework.security.web.authentication.AnonymousAuthenticationFi
  * A public site: only the pages it serves are open. The only sign-in is the `public-portal` token of a match link,
  * kept in a cookie by `MatchController` and read by [authorizationFilter]; the controller decides what a visitor
  * without it sees.
+ *
+ * CSRF is off because the cookie is `SameSite=Lax`, which keeps it off cross-site posts. A same-site sibling origin
+ * (portals sharing a registrable domain) could still post: turn CSRF on, with a cookie repository, if the portals move
+ * to shared subdomains.
  */
 @Configuration
 @EnableWebSecurity

@@ -45,9 +45,10 @@ import java.time.Clock
  * - 401: it rejected the token (ex: signed with another secret): the cookie is cleared, `expired`;
  * - 403: the token is another customer's, or the match isn't PROPOSED/ACCEPTED/REJECTED: `not-yours`, with
  *   nothing about the match;
- * - 404: left to [com.wutsi.ndopify.web.ui.layout.HttpClientErrorHandler], the app's 404 page.
+ * - 404 on the match: left to [com.wutsi.ndopify.web.ui.layout.HttpClientErrorHandler], the app's 404 page.
  *
- * The page ([MatchPages]) also reads the mandate (the search), its agent and the listing; a listing the customer can't
+ * The page ([MatchPages]) also reads the mandate (the search), its agent and the listing; an agent that is gone (404)
+ * is shown as "votre agent", and a listing the customer can't
  * read anymore (403/404: no longer published) is not an error, the page shows it as unavailable.
  *
  * Answers are final, as ndopify-server's (a match leaves PROPOSED once): the page has no "change my mind" control,
@@ -73,6 +74,9 @@ class MatchController(
         const val REASON_EXPIRED = "expired"
         const val REASON_NOT_YOURS = "not-yours"
 
+        /** Three base64url segments: all a link's token must look like to be kept (its signature is ndopify-server's to check). */
+        private val JWT_SHAPE = Regex("[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+")
+
         /** `RejectMatchRequest.reason`'s size on ndopify-server: the form allows 500, a longer post is cut. */
         private const val MAX_COMMENT = 1000
     }
@@ -86,6 +90,10 @@ class MatchController(
         model: Model,
     ): Any {
         if (!token.isNullOrBlank()) {
+            if (!JWT_SHAPE.matches(token)) {
+                // Not a token: setting it as a cookie value could even fail (`;`, space, `"`, `,`)
+                return link(REASON_EXPIRED, model)
+            }
             accessTokenService.set(token)
             return redirect(withoutToken(request))
         }
@@ -93,7 +101,7 @@ class MatchController(
         return signedIn("GET /match/$id", model) {
             val match = matchClient.get(id)
             val mandate = mandateClient.get(match.mandateId)
-            val agent = mandate.agentId?.let { agentClient.get(it) } ?: Agent()
+            val agent = mandate.agentId?.let { agent(it) } ?: Agent()
             val listing = publishedListing(match.listingId)
             val images = listing?.let { listingClient.images(it.id) } ?: emptyList<ListingImage>()
             val locations = locationClient.search(
@@ -149,6 +157,14 @@ class MatchController(
         } catch (ex: HttpClientErrorException.Conflict) {
             LOGGER.info("Match #$id already answered")
             redirect("/match/$id")
+        }
+
+    /** The agent, or an empty one ("votre agent") when ndopify-server no longer has it: the page doesn't need it. */
+    private fun agent(id: Long): Agent =
+        try {
+            agentClient.get(id)
+        } catch (ex: HttpClientErrorException.NotFound) {
+            Agent()
         }
 
     /** The listing when the customer can still see it, null when not readable (403/404) or not PUBLISHED. */

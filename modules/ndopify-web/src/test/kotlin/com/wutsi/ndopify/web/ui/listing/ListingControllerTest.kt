@@ -13,6 +13,7 @@ import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.web.client.ndopify.NdListingClient
 import com.wutsi.ndopify.web.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.web.core.service.TenantContext
+import com.wutsi.ndopify.web.core.service.security.AccessTokenService
 import com.wutsi.ndopify.web.service.TenantFixtures.TENANT
 import com.wutsi.ndopify.web.ui.layout.HttpClientErrorHandler
 import com.wutsi.ndopify.web.ui.layout.TenantAdvice
@@ -45,16 +46,29 @@ class ListingControllerTest {
     private val locationClient = mock<NdLocationClient> {
         on { search(any()) } doReturn listOf(Location(id = 2370201, name = "Douala"), Location(id = 5, name = "Bonapriso"))
     }
+    private val accessTokenService = mock<AccessTokenService>()
     private val context = mock<TenantContext> { on { getTenant() } doReturn TENANT }
     private val clock = Clock.fixed(Instant.parse("2026-10-30T10:00:00Z"), ZoneOffset.UTC)
 
     private fun request(path: String): MvcResult =
         MockMvcBuilders.standaloneSetup(ListingController(listingClient, locationClient, clock))
-            .setControllerAdvice(TenantAdvice(context), HttpClientErrorHandler())
+            .setControllerAdvice(TenantAdvice(context), HttpClientErrorHandler(accessTokenService))
             .setViewResolvers(InternalResourceViewResolver("/templates/", ".html"))
             .build()
             .perform(get(path))
             .andReturn()
+
+    @Test
+    fun `token rejected by the server clears the cookie and reloads the page`() {
+        doReturn("aaa.bbb.ccc").`when`(accessTokenService).get()
+        doThrow(HttpClientErrorException.create(HttpStatus.UNAUTHORIZED, "", HttpHeaders.EMPTY, null, null)).`when`(listingClient).get(123)
+
+        val result = request("/douala/bonapriso/listing/123/appartement")
+
+        assertEquals(302, result.response.status)
+        assertEquals("/douala/bonapriso/listing/123/appartement", result.response.redirectedUrl)
+        verify(accessTokenService).remove()
+    }
 
     @Test
     fun `listing page`() {

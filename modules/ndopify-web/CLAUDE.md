@@ -8,7 +8,7 @@ to Partner Central's public wizards. Its infrastructure (`TenantContext`, `Tenan
 minus everything about sign-in, except one: a match link's `public-portal` token (`?token=`, see `MatchController`) is kept in the
 `__nweb_access_token` cookie (`AccessTokenService`, `JwtAuthenticationFilter`) and sent to ndopify-server as the bearer
 token (to read the match, its mandate, its agent and its listing, and post the answer); any other token is signed
-out. No other page reads it.
+out. The token is sent on every ndopify-server call while the cookie is present (a 401 clears it: `HttpClientErrorHandler`).
 
 ## Code Organization
 
@@ -26,7 +26,7 @@ Package `com.wutsi.ndopify.web`:
   and drawer are still in the page, the prototype's: `listing.js` fakes their answers, no handler posts them yet.
 - `ui/match/` — `MatchController`, the link of the proposition e-mail (`/match/{id}?token=`): the token goes to the
   cookie and is stripped from the address (302); signed out or a 401 from ndopify-server (cookie cleared) → `match-link.html`
-  with `reason = expired`, a 403 → `not-yours`, a 404 → the app's 404 — the same for the page and its two answers.
+  with `reason = expired`, a 403 → `not-yours`, a 404 → the app's 404 (an agent that's gone → "votre agent"), a `token` that isn't JWT-shaped → `expired`, never set as a cookie — the same for the page and its two answers.
   Signed in → `match.html` (from `proposition.html`), the `MatchPage` that `MatchPages` builds from the match, its
   mandate (the search summary), its agent and its listing (the listing body is `ListingPages`'s, never
   `agentRemarks`); "Pourquoi ce logement ?" lists the criteria fully met that the mandate sets, and the missing
@@ -38,7 +38,8 @@ Package `com.wutsi.ndopify.web`:
   agent was told: it isn't notified yet); a second answer
   (409 `MATCH_NOT_PROPOSED`) to `/match/{id}`. "Demander une visite" is left out, as on the listing page.
 - `ui/layout/HttpClientErrorHandler` — a 403/404 from ndopify-server (ex: a listing no longer published) is answered
-  with the same status (`templates/error/404.html`).
+  with the same status (`templates/error/404.html`); a 401 (it rejected the cookie's token) clears the cookie and
+  redirects to the same page (a 404 when the request had no cookie, so it can't loop).
 - `ui/layout/TenantAdvice` — puts the tenant in every page's model as `tenant`. Controllers read it from the model
   (`model.getAttribute("tenant")`), never as a `@ModelAttribute` parameter, which request parameters could bind.
 - `TenantContext` (web-core) — the tenant whose `publicPortalUrl` prefixes the request URL (from web-core's

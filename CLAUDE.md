@@ -13,7 +13,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `modules/ndopify-esignature` — signer-facing contract sign page (Spring Boot + Thymeleaf, French UI), package
   `com.wutsi.ndopify.esignature`. No database; talks to `ndopify-server` over REST.
 - `modules/ndopify-web` — public marketing site (Spring Boot + Thymeleaf, French UI), package
-  `com.wutsi.ndopify.web`. No database; only reads the tenants from `ndopify-server`, and links to Partner Central's
+  `com.wutsi.ndopify.web`. No database; reads the tenants and the published listings from `ndopify-server` (and, signed in with the match link's
+  `public-portal` token, the customer's match, mandate and agent), and links to Partner Central's
   public wizards.
 - `modules/ndopify-web-core` — library of the infrastructure shared by the web apps (`TenantContext`,
   `TenantFormatter`, REST interceptors, `NdTenantClient`, the access-token and JWT classes), package
@@ -165,9 +166,9 @@ The detail is in each module's `CLAUDE.md`; these hold across modules:
 - **Tenancy**: ndopify-server enforces it with Hibernate multi-tenancy (`@TenantId` entities, `TenantContext`), never
   hand-written predicates. The tenant comes from the JWT; the `X-Tenant-ID` header only counts on a public endpoint
   without a token. The web apps resolve the tenant from the request URL (`partnerCentralUrl` / `eSignaturePortalUrl`
-  / `publicPortalUrl`); Partner Central and the e-signature portal send it as `X-Tenant-ID`.
-- **Token trust**: only ndopify-server has the JWT secret and checks signatures. Partner Central's and the e-signature
-  portal's `JwtDecoder` read the claims **without checking the signature**: a web app never acts on a claim alone,
+  / `publicPortalUrl`); Partner Central, the e-signature portal and the public web app send it as `X-Tenant-ID`.
+- **Token trust**: only ndopify-server has the JWT secret and checks signatures. Partner Central's, the e-signature
+  portal's and the public web app's `JwtDecoder` read the claims **without checking the signature**: a web app never acts on a claim alone,
   only uses it to pick what to ask ndopify-server, which checks the token on each call (a 401 from it clears the
   web app's cookie).
 - **Contract signing**: only the contract party itself signs, from the e-signature portal (`e-signature` JWT whose

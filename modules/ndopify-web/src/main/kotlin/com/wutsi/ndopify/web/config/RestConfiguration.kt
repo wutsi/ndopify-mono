@@ -16,7 +16,8 @@ import java.time.Duration
 
 /**
  * Applied to every `RestClient.Builder` Spring Boot hands out, so all clients built from it log their calls and
- * send the current tenant and, when there is one, the visitor's access token (none on the other pages).
+ * send the current tenant and, while the visitor's access-token cookie is present, that token (on every call, not only
+ * the match page's).
  * `NdTenantClient`, which resolves the tenant, is on the plain [RestTemplate] instead.
  */
 @Configuration

@@ -80,10 +80,12 @@ class GetMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     fun customerNotProposed() {
         asCustomer(13L)
 
-        val response = rest.getForEntity("/v1/matches/1", ErrorResponse::class.java)
+        listOf(1L, 4L, 10L).forEach { id -> // ACTIVE, DISMISSED, SHORTLISTED
+            val response = rest.getForEntity("/v1/matches/$id", ErrorResponse::class.java)
 
-        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
-        assertEquals(ErrorCode.MANDATE_ACCESS_DENIED, response.body?.error?.code)
+            assertEquals(HttpStatus.FORBIDDEN, response.statusCode, "match $id")
+            assertEquals(ErrorCode.MANDATE_ACCESS_DENIED, response.body?.error?.code, "match $id")
+        }
     }
 
     @Test
