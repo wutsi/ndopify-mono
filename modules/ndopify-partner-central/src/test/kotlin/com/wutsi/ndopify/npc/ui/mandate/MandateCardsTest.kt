@@ -10,6 +10,8 @@ import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.match.dto.Match
+import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import com.wutsi.ndopify.npc.ui.listing.ListingLineView
 import com.wutsi.ndopify.npc.ui.listing.ListingRules
@@ -189,5 +191,71 @@ class MandateCardsTest {
         val card = MandateCards.of(MANDATE.copy(neighborhoodIds = emptyList()), null, emptyMap(), emptyMap(), NOW, FORMATTER)
 
         assertEquals("Secteur" to "Toute la ville", card.facts[0])
+    }
+
+    // Matches
+
+    private val search = MANDATE.copy(status = MandateStatus.APPROVED)
+
+    private fun match(id: Long, status: MatchStatus, listingId: Long = 3000 + id) =
+        Match(id = id, mandateId = 201, listingId = listingId, status = status, score = 0.5)
+
+    private fun card(matches: Map<Long, List<Match>>?) =
+        MandateCards.of(search, CONTRACT_SUMMARY, emptyMap(), NAMES, NOW, FORMATTER, matches)
+
+    @Test
+    fun `new matches`() {
+        val card = card(mapOf(201L to (1L..3L).map { match(it, MatchStatus.ACTIVE) }))
+
+        assertEquals("3 nouveaux biens correspondants", card.matches)
+        assertEquals("/mandates/201#matches-title", card.matchesUrl)
+        assertNull(card.proposals)
+        assertEquals("Envoyez au client les biens qui lui correspondent.", card.nextStep)
+    }
+
+    @Test
+    fun `matches sent`() {
+        val card = card(
+            mapOf(
+                201L to listOf(
+                    match(1, MatchStatus.PROPOSED),
+                    match(2, MatchStatus.ACCEPTED, listingId = 2987),
+                    match(3, MatchStatus.REJECTED),
+                    match(4, MatchStatus.ACTIVE),
+                ),
+            ),
+        )
+
+        assertEquals("1 nouveau bien correspondant", card.matches)
+        assertEquals("3 envoyés · 1 intéresse le client · 1 refusé · 1 sans réponse", card.proposals)
+        assertEquals("L'annonce n° 2987 intéresse le client : proposez-lui une visite.", card.nextStep)
+    }
+
+    @Test
+    fun `matches all sent`() {
+        val card = card(mapOf(201L to listOf(match(1, MatchStatus.PROPOSED))))
+
+        assertNull(card.matches)
+        assertNull(card.matchesUrl)
+        assertEquals("1 envoyé · 1 sans réponse", card.proposals)
+        assertEquals("Trouvez un bien pour le client avant le 28 mars 2027.", card.nextStep)
+    }
+
+    @Test
+    fun `no match`() {
+        val card = card(emptyMap())
+
+        assertNull(card.matches)
+        assertNull(card.proposals)
+        assertEquals("Trouvez un bien pour le client avant le 28 mars 2027.", card.nextStep)
+    }
+
+    @Test
+    fun `matches unavailable`() {
+        val card = card(null)
+
+        assertNull(card.matches)
+        assertNull(card.proposals)
+        assertEquals("Trouvez un bien pour le client avant le 28 mars 2027.", card.nextStep)
     }
 }

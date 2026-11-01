@@ -126,6 +126,29 @@ class NdListingClientTest {
     }
 
     @Test
+    fun searchByIds() {
+        server.expect(requestTo("http://localhost:8080/v1/listings?id=3012&id=3044&limit=2"))
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(
+                withSuccess(
+                    json(SearchListingResponse(listOf(ListingSummary(id = 3012, status = ListingStatus.PUBLISHED)))),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val listings = client.searchByIds(listOf(3012, 3044))
+
+        assertEquals(listOf(3012L), listings.map { it.id })
+        server.verify()
+    }
+
+    @Test
+    fun `searchByIds - no id`() {
+        assertEquals(emptyList(), client.searchByIds(emptyList()))
+        server.verify()
+    }
+
+    @Test
     fun verify() {
         server.expect(requestTo("http://localhost:8080/v1/listings/501/verify"))
             .andExpect(method(HttpMethod.POST))

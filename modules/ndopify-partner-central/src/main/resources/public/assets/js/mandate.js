@@ -5,6 +5,8 @@
  * - mandate page: "Fermer le mandat" / "Annuler le mandat" open their form in place, "Retour" closes it; the form is
  *   checked before posting, with the server's messages; a button that posted is disabled ("Envoi…", "Fermeture…",
  *   "Annulation…"), so a double click doesn't post twice; the outcome of the last action gets the focus;
+ * - mandate page, *Biens correspondants*: "Écarter" / "Annuler" toggle the confirmation in place (?dismiss= without
+ *   JS), "Envoyer au client" and "Confirmer" can't post twice;
  * - edit page: the types of the chosen category only, the follow-up questions of the type only, each folded group's
  *   summary kept up to date, the neighbourhoods a slim-select over the mandate's city (GET /locations, at most 3),
  *   amounts formatted as typed.
@@ -109,6 +111,38 @@
         }
 
         initEnd();
+        initMatches();
+    }
+
+    /* Biens correspondants: "Écarter" opens its confirmation in place, as ?dismiss= does without JS. */
+    function initMatches() {
+        var section = $("[data-matches-section]");
+        if (!section) return;
+        var flash = $("[data-match-flash]", section);
+        if (flash) flash.focus();
+
+        $all("[data-match]", section).forEach(function (item) {
+            var actions = $("[data-match-actions]", item);
+            var confirm = $("[data-match-confirm]", item);
+            // Sent or answered: nothing to do on it.
+            if (!actions || !confirm) return;
+
+            $("[data-match-dismiss]", actions).addEventListener("click", function (event) {
+                event.preventDefault();
+                actions.hidden = true;
+                confirm.hidden = false;
+                $("[data-match-dismiss-confirmed]", confirm).focus();
+            });
+            $("[data-match-dismiss-cancel]", confirm).addEventListener("click", function (event) {
+                event.preventDefault();
+                confirm.hidden = true;
+                actions.hidden = false;
+                $("[data-match-dismiss]", actions).focus();
+            });
+
+            guardSubmit($("[data-match-send-form]", actions), "Envoi…");
+            guardSubmit($("form", confirm), "Envoi…");
+        });
     }
 
     /* Fermer (lease signed) and Annuler: each button opens its form in place, as ?end= does without JS. */

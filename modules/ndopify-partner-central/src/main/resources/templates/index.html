@@ -30,7 +30,8 @@
   "mandates" are the agent's mandates in progress (MandateCardView: Assigné, En approbation, Actif), each opening its
   page (MandateController), null for an agent who isn't verified (no section); "mandatesUnavailable" when they
   couldn't be loaded. A landlord's signed mandate has its listing's line (m.listing: "Annonce n° 501" and its status,
-  "À créer" before it exists), none when the listings couldn't be loaded.
+  "À créer" before it exists), none when the listings couldn't be loaded. A signed search has its matches' lines
+  (m.matches, linking to m.matchesUrl, and m.proposals), none when the matches couldn't be loaded.
 */-->
 <body data-page="agent-home">
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -286,6 +287,15 @@
                                 <a th:href="@{${l.url}}" th:text="${l.label}" data-listing-number>Annonce n° 501</a>
                                 <span th:if="${l.tag}" th:class="|status-tag status-tag--${l.tag.style}|" th:text="${l.tag.label}"
                                       data-listing-status-tag>Brouillon</span>
+                            </p>
+                            <p class="mandate-card__matches" th:if="${m.matches}" data-matches>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg>
+                                <a th:href="@{${m.matchesUrl}}" th:text="${m.matches}" data-matches-link>3 nouveaux biens correspondants</a>
+                            </p>
+                            <p class="mandate-card__proposals" th:if="${m.proposals}" data-proposals>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M4 12 20 4l-6 16-3-7zM11 13l9-9"/></svg>
+                                <span><span class="visually-hidden">Biens proposés au client : </span><span
+                                        th:text="${m.proposals}" data-proposals-text>3 envoyés · 1 sans réponse</span></span>
                             </p>
                             <p class="mandate-card__next" th:if="${m.nextStep}"><strong>Prochaine étape&nbsp;:</strong>
                                 <span th:text="${m.nextStep}">Contactez le client, puis envoyez-lui le mandat à approuver.</span></p>

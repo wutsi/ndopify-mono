@@ -718,3 +718,103 @@ h1.alert__title {
     font-size: var(--step-hint);
     box-shadow: none;
 }
+
+/* ---------- Matches (index.html › Mes mandats, mandate.html › Biens correspondants) ---------- */
+
+/* The card's matches: its own link, above the one covering the card, to the mandate's list. */
+.mandate-card__matches {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    color: var(--color-success-fg);
+    font-weight: 600;
+}
+
+.mandate-card__matches a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    color: inherit;
+}
+
+.matches__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.match__score {
+    font-size: var(--step-hint);
+}
+
+.match__score strong {
+    font-size: var(--step-h4);
+    font-weight: 600;
+    color: var(--color-success-fg);
+}
+
+.match__fit {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.match__fit-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    padding-block: var(--space-1);
+}
+
+.match__fit-item .icon {
+    flex: none;
+    margin-top: 0.15em;
+}
+
+.match__fit-item--full .icon {
+    color: var(--color-success-fg);
+}
+
+/* Phones: "Envoyer au client" (in its form) on its own row, Écarter under it. */
+.match__actions {
+    flex-wrap: wrap;
+}
+
+.match__actions [data-match-send-form] {
+    display: flex;
+    flex-basis: 100%;
+}
+
+.match__actions [data-match-send-form] .btn {
+    flex: 1 1 auto;
+}
+
+@media (min-width: 640px) {
+    .match__actions [data-match-send-form] {
+        flex-basis: auto;
+    }
+}
+
+.matches__dismissed {
+    font-size: var(--step-hint);
+}
+
+/* The listings already sent to the client, and what it answered */
+.mandate-card__proposals {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--step-hint);
+}
+
+.mandate-card__proposals .icon {
+    flex: none;
+}
+
+.match__answer {
+    font-size: var(--step-hint);
+}

@@ -5,23 +5,30 @@ import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.Listing
+import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
 import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
+import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.npc.ui.listing.ListingViews
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
+import com.wutsi.ndopify.npc.ui.match.MatchController
+import com.wutsi.ndopify.npc.ui.match.MatchRules
+import com.wutsi.ndopify.npc.ui.match.MatchSectionView
+import com.wutsi.ndopify.npc.ui.match.MatchViews
 import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
@@ -42,6 +49,9 @@ import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClientException
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
 import java.time.Clock
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 
 /**
  * The page of one of the agent's mandates (`mandate.html`), opened from *Mes mandats*: its status as steps, the
@@ -60,6 +70,10 @@ import java.time.Clock
  * A landlord's signed mandate also shows its listing ([ListingViews.forMandate]): "Créer l'annonce", posted to
  * `ListingController`, then where the listing stands.
  *
+ * A signed search ([MatchRules.matched]) shows the listings matched to it, *Biens correspondants* ([MatchViews]): its
+ * matches and their listings in one search each, both secondary (a failure is the section's "unavailable"). Their
+ * actions are `MatchController`'s; the dismiss confirmation opens without JS through `GET /mandates/{id}?dismiss=`.
+ *
  * Out of scope for now (and not checked by ndopify-server either): that the mandate is the signed-in agent's.
  */
 @Controller
@@ -71,6 +85,7 @@ class MandateController(
     private val customerClient: NdCustomerClient,
     private val assignmentClient: NdAssignmentClient,
     private val listingClient: NdListingClient,
+    private val matchClient: NdMatchClient,
     locationClient: NdLocationClient,
     private val tenantContext: TenantContext,
     private val clock: Clock,
@@ -118,14 +133,22 @@ class MandateController(
 
     private val sector = SectorValidator(locationClient, tenantContext)
 
-    /** [end] is a String so that a hand-edited value is ignored instead of failing the page; same for [id]. */
+    /**
+     * [end] and [dismiss] (the id of an ACTIVE match shown on the page, whose confirmation is open) are Strings so that
+     * a hand-edited value is ignored instead of failing the page; same for [id].
+     */
     @GetMapping("/{id}")
-    fun show(@PathVariable id: String, @RequestParam(required = false) end: String?, model: Model): String {
+    fun show(
+        @PathVariable id: String,
+        @RequestParam(required = false) end: String?,
+        @RequestParam(required = false) dismiss: String?,
+        model: Model,
+    ): String {
         val agent = currentAgent.get() ?: throw SignInRequiredException()
         ProfileRules.header(agent, model)
 
         val mandate = id.toLongOrNull()?.let { load(it) } ?: return locked(model)
-        return render(mandate, end, MandateEndForm(), emptyMap(), model)
+        return render(mandate, end, MandateEndForm(), emptyMap(), model, dismiss)
     }
 
     @PostMapping("/{id}/request-approval")
@@ -305,9 +328,18 @@ class MandateController(
         form: MandateEndForm,
         errors: Map<String, String>,
         model: Model,
+        dismiss: String? = null,
     ): String {
-        val view = view(mandate)
+        val matches = if (MatchRules.matched(mandate)) matches(mandate) else null
+        val listings = matches?.let { listings(mandate, it) }
+        val locations = locations(mandate, listings?.values.orEmpty())
+        val view = view(mandate, locations)
         model.addAttribute("mandate", view)
+        if (MatchRules.matched(mandate)) {
+            val section = MatchViews.section(mandate, matches, listings, locations, today(), formatter())
+            model.addAttribute("matchSection", section)
+            model.addAttribute("dismissing", dismissing(section, dismiss))
+        }
         model.addAttribute(
             "end",
             end?.takeIf { (it == END_CLOSE && view.closable) || (it == END_CANCEL && view.cancellable) },
@@ -321,7 +353,49 @@ class MandateController(
             ListingViews.forMandate(mandate, listingId, listingId?.let { listing(mandate, it) }, formatter()),
         )
         (model.getAttribute(OUTCOME) as? String)?.let { outcome -> outcome(outcome, view, model) }
+        (model.getAttribute(MatchController.OUTCOME) as? String)?.let { outcome ->
+            matchOutcome(outcome, model.getAttribute(MatchController.LISTING) as? Long, view, model)
+        }
         return VIEW
+    }
+
+    /** The match whose dismiss confirmation is open: only an ACTIVE one shown on the page. */
+    private fun dismissing(section: MatchSectionView, dismiss: String?): Long? {
+        val id = dismiss?.toLongOrNull() ?: return null
+        return id.takeIf { section.matches.any { it.id == id && it.actionable } }
+    }
+
+    /** The flash outcome of `MatchController`'s last action. */
+    private fun matchOutcome(outcome: String, listingId: Long?, view: MandateView, model: Model) {
+        val listing = listingId?.let { "Annonce n° $it" } ?: "Annonce"
+        val text = when (outcome) {
+            MatchController.PROPOSED -> "$listing envoyée ${view.contact?.let { "à ${it.email}" } ?: view.words.to}."
+            MatchController.DISMISSED -> "$listing écartée : elle ne vous sera plus proposée pour ce mandat."
+            MatchController.CHANGED -> "Ce bien a changé entre-temps : vérifiez son état avant de recommencer."
+            MatchController.FAILED -> "Action impossible pour le moment. Réessayez dans quelques instants."
+            else -> return
+        }
+        model.addAttribute("matchOutcomeText", text)
+        model.addAttribute(
+            "matchOutcomeStyle",
+            when (outcome) {
+                MatchController.CHANGED -> "warning"
+                MatchController.FAILED -> "error"
+                else -> "success"
+            },
+        )
+    }
+
+    /** The signed search's matches, DISMISSED ones included (to count them); null when they can't be searched. */
+    private fun matches(mandate: Mandate): List<Match>? =
+        lookup("matches of mandate ${mandate.id}") { matchClient.search(listOf(mandate.id), MatchRules.SEARCHED) }
+
+    /** The listings of the matches shown, by id; null when they can't be searched. */
+    private fun listings(mandate: Mandate, matches: List<Match>): Map<Long, ListingSummary>? {
+        val ids = matches.filter { it.status in MatchRules.ORDER }.map { it.listingId }.distinct()
+        return lookup("listings of the matches of mandate ${mandate.id}") {
+            listingClient.searchByIds(ids).associateBy { it.id }
+        }
     }
 
     /** The flash outcome of the last action, worded after the mandate as it is now. */
@@ -430,18 +504,21 @@ class MandateController(
         }
 
     /** Each secondary lookup that fails leaves its lines out: only the mandate itself is required. */
-    private fun view(mandate: Mandate): MandateView =
+    private fun view(mandate: Mandate, locations: Map<Long, Location>): MandateView =
         MandateViews.of(
             mandate,
             contract(mandate),
             customer(mandate),
             accepted(mandate),
-            locations(mandate),
+            locations,
             clock.millis(),
             formatter(),
         )
 
     private fun formatter(): TenantFormatter = TenantFormatter(tenantContext.getTenant())
+
+    /** Today in the tenant's time zone. Like the rest of this controller, only reads `clock.millis()`. */
+    private fun today(): LocalDate = formatter().today(Clock.fixed(Instant.ofEpochMilli(clock.millis()), ZoneOffset.UTC))
 
     private fun contract(mandate: Mandate): Contract? {
         val id = mandate.contractId ?: return null
@@ -468,9 +545,13 @@ class MandateController(
     private fun accepted(mandate: Mandate): AssignmentSummary? =
         lookup("accepted offer of mandate ${mandate.id}") { assignmentClient.accepted(mandate.id) }
 
-    private fun locations(mandate: Mandate): Map<Long, Location> =
+    /** The names of the mandate's city and neighbourhoods, and of its matched [listings]', in one lookup. */
+    private fun locations(mandate: Mandate, listings: Collection<ListingSummary>): Map<Long, Location> =
         lookup("location names of mandate ${mandate.id}") {
-            sector.locations(listOf(mandate.cityId) + mandate.neighborhoodIds)
+            sector.locations(
+                listOf(mandate.cityId) + mandate.neighborhoodIds +
+                    listings.flatMap { listOfNotNull(it.cityId, it.neighborhoodId) },
+            )
         } ?: emptyMap()
 
     private fun <T> lookup(what: String, call: () -> T?): T? =
