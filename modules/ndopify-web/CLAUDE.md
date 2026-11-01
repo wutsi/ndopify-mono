@@ -30,7 +30,7 @@ Package `com.wutsi.ndopify.web`:
   `NdTenantClient`, a plain `RestTemplate`); `TenantFormatter` (web-core) — dates and amounts.
 - `client/ndopify/NdListingClient`, `NdLocationClient` — `RestClient`s that get `RestConfiguration`'s interceptors
   (web-core's logging and `X-Tenant-ID`).
-- `config/` — `SecurityConfiguration` (CSRF on) permits only `/`, `/agent`, `/owner`, GET of the listing paths
+- `config/` — `SecurityConfiguration` permits only `/`, `/agent`, `/owner`, GET of the listing paths
   (`/*/listing/*`, `/*/*/listing/*/*`…), `GET /match/*`, `POST /match/*/accept|reject`, `/assets/**` and `/error` (everything else is denied: a new page must
   be added there), `RestConfiguration`, `ClockConfiguration`, and `WebCoreConfiguration` (`TenantContext` on
   `TenantPortal.PUBLIC_PORTAL`, `@Import(NdTenantClient)`).

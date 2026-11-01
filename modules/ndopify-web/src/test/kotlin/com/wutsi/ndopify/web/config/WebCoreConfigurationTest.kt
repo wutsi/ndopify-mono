@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
 import java.time.Clock
+import java.time.Instant
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
@@ -62,6 +63,6 @@ class WebCoreConfigurationTest {
             .withClaim(JwtPrincipal.CLAIM_TENANT_ID, 1L)
             .withClaim(JwtPrincipal.CLAIM_APPLICATION, application)
             .withArrayClaim(JwtPrincipal.CLAIM_ROLE, emptyArray<String>())
-            .withExpiresAt(java.time.Instant.now().plusSeconds(3600))
+            .withExpiresAt(Instant.now().plusSeconds(3600))
             .sign(Algorithm.HMAC256("any-secret"))
 }

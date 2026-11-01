@@ -7,6 +7,7 @@ import org.springframework.http.HttpHeaders
 import org.springframework.mock.web.MockHttpServletRequest
 import org.springframework.mock.web.MockHttpServletResponse
 import org.springframework.test.web.client.MockRestServiceServer
+import org.springframework.test.web.client.ResponseActions
 import org.springframework.test.web.client.match.MockRestRequestMatchers.header
 import org.springframework.test.web.client.match.MockRestRequestMatchers.headerDoesNotExist
 import org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
@@ -39,7 +40,7 @@ class RestConfigurationTest {
 
     private fun call(
         cookie: Cookie?,
-        expect: (org.springframework.test.web.client.ResponseActions) -> org.springframework.test.web.client.ResponseActions,
+        expect: (ResponseActions) -> ResponseActions,
     ): MockRestServiceServer {
         val request = MockHttpServletRequest().apply { cookie?.let { setCookies(it) } }
         RequestContextHolder.setRequestAttributes(ServletRequestAttributes(request))

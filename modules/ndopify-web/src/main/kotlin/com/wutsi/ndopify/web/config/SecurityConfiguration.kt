@@ -32,7 +32,7 @@ class SecurityConfiguration(
                     // prototype's
                     .requestMatchers(HttpMethod.GET, "/*/listing/*", "/*/listing/*/*", "/*/*/listing/*", "/*/*/listing/*/*")
                     .permitAll()
-                    // A match proposal (MatchController): the page, and the customer's answer (CSRF-protected)
+                    // A match proposal (MatchController): the page, and the customer's answer
                     .requestMatchers(HttpMethod.GET, "/match/*").permitAll()
                     .requestMatchers(HttpMethod.POST, "/match/*/accept", "/match/*/reject").permitAll()
                     .requestMatchers("/assets/**").permitAll()
@@ -40,6 +40,7 @@ class SecurityConfiguration(
                     .anyRequest().denyAll() // nothing else is served
             }
             .addFilterBefore(authorizationFilter(), AnonymousAuthenticationFilter::class.java)
+            .csrf { customizer -> customizer.disable() }
             .httpBasic { customizer -> customizer.disable() }
             .formLogin { customizer -> customizer.disable() }
             .logout { customizer -> customizer.disable() }
