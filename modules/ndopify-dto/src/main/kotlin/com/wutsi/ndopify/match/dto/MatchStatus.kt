@@ -8,4 +8,5 @@ enum class MatchStatus {
     PROPOSED,
     ACCEPTED,
     REJECTED,
+    EXPIRED
 }
