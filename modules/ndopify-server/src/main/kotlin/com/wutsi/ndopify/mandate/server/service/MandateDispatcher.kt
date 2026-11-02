@@ -50,6 +50,7 @@ class MandateDispatcher(
     @param:Value("\${ndopify.mandate.assignment.ttl-minutes}") private val ttlMinutes: Long,
     @param:Value("\${ndopify.mandate.assignment.manual-after-days}") private val manualAfterDays: Long,
     @param:Value("\${ndopify.mandate.assignment.max-load}") private val maxLoad: Int,
+    @param:Value("\${ndopify.mandate.assignment.max-pending}") private val maxPending: Long,
     @param:Value("\${ndopify.mandate.assignment.nearby-radius-km}") private val nearbyRadiusKm: Double,
     @param:Value("\${ndopify.mandate.assignment.nearby-max-neighborhoods}") private val nearbyMaxNeighborhoods: Int,
     @param:Value("\${ndopify.mandate.assignment.jitter}") private val jitter: Double,
@@ -212,6 +213,8 @@ class MandateDispatcher(
 
         return candidates
             .filter { agent -> (loads[agent.id] ?: 0) < maxLoad } // At capacity: not a candidate
+            // Offers still unanswered: not flooded with more until answering one, or until they expire
+            .filter { agent -> pending(counts[agent.id].orEmpty()) < maxPending }
             .map { agent ->
                 val score = WEIGHT_NEIGHBORHOOD * neighborhood(mandate, agent, distances) +
                     WEIGHT_FAIRNESS * fairness(agent, now) +
@@ -247,6 +250,9 @@ class MandateDispatcher(
     // 1..5 stars → 0..1. Unrated (default 3.0) → 0.5. Clamped, in case a bad value gets in
     private fun rating(agent: AgentEntity): Double =
         (agent.rating.coerceIn(MIN_RATING, MAX_RATING) - MIN_RATING) / (MAX_RATING - MIN_RATING)
+
+    private fun pending(counts: List<AgentAssignmentCount>): Long =
+        counts.filter { it.status == AssignmentStatus.PENDING }.sumOf { it.total }
 
     // Smoothed acceptance rate, so that a new agent starts at 0.5. PENDING offers aren't answered yet
     private fun responsiveness(counts: List<AgentAssignmentCount>): Double {

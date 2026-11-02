@@ -108,6 +108,7 @@ class MandateDispatcherTest {
         ttlMinutes = 60,
         manualAfterDays = 3,
         maxLoad = 5,
+        maxPending = 3,
         nearbyRadiusKm = 3.0,
         nearbyMaxNeighborhoods = 20,
         jitter = jitter,
@@ -352,6 +353,38 @@ class MandateDispatcherTest {
     }
 
     @Test
+    fun `candidates - an agent with too many offers unanswered is excluded`() {
+        inCity = listOf(agent(20), agent(30, neighborhoodIds = listOf(N9)))
+        doReturn(offers(20, pending = 3)).whenever(assignmentDao).countByAgentIds(any())
+
+        assertEquals(30L, dispatcher().dispatch(MANDATE_ID)?.agentId)
+    }
+
+    @Test
+    fun `candidates - one offer below the max unanswered - still a candidate`() {
+        inCity = listOf(agent(20), agent(30, neighborhoodIds = listOf(N9)))
+        doReturn(offers(20, pending = 2)).whenever(assignmentDao).countByAgentIds(any())
+
+        assertEquals(20L, dispatcher().dispatch(MANDATE_ID)?.agentId)
+    }
+
+    @Test
+    fun `candidates - only the unanswered offers count, not the answered nor ignored ones`() {
+        inCity = listOf(agent(20), agent(30, neighborhoodIds = listOf(N9)))
+        doReturn(offers(20, accepted = 5, declined = 5, expired = 5)).whenever(assignmentDao).countByAgentIds(any())
+
+        assertEquals(20L, dispatcher().dispatch(MANDATE_ID)?.agentId)
+    }
+
+    @Test
+    fun `candidates - every agent with too many offers unanswered - nothing offered`() {
+        inCity = listOf(agent(20))
+        doReturn(offers(20, pending = 4)).whenever(assignmentDao).countByAgentIds(any())
+
+        assertNothingOffered(dispatcher().dispatch(MANDATE_ID))
+    }
+
+    @Test
     fun `candidates - the load only counts the mandates being worked on`() {
         inCity = listOf(agent(20))
 
@@ -544,7 +577,7 @@ class MandateDispatcherTest {
 
     @Test
     fun `responsiveness - pending offers are not answered yet`() {
-        doReturn(offers(20, pending = 4)).whenever(assignmentDao).countByAgentIds(any())
+        doReturn(offers(20, pending = 2)).whenever(assignmentDao).countByAgentIds(any())
 
         assertEquals(PERFECT_NEWCOMER, scoreOf(agent(20)), DELTA)
     }

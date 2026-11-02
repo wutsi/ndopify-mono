@@ -160,7 +160,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
 
   **Dispatch.** `MandateDispatcher.dispatch(mandateId)` offers a `PENDING_ASSIGNMENT` mandate, exclusively and for
   `ttl-minutes`, to its best-scoring candidate (verified agents of its city; not the customer; not an agent who
-  declined / ignored it; under `max-load`), scored on neighbourhood match (incl. nearby ones of the same city, via
+  declined / ignored it; under `max-load`; fewer than `max-pending` (3) PENDING offers, so an agent who doesn't answer
+  isn't flooded), scored on neighbourhood match (incl. nearby ones of the same city, via
   `searchNearest(parentId)`), rotation (`lastAssignedAt`, set on offer), `AgentEntity.rating`, acceptance rate and
   load. No offer at night (`DispatchHours`, tenant's `timeZone`), whose hours also pause the TTL; past
   `manual-after-days` it moves the mandate to `MANUAL_ASSIGNMENT` instead (`MandateManualAssignmentEvent`, no listener
