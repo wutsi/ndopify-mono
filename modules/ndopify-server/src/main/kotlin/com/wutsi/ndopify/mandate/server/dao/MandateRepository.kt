@@ -42,6 +42,13 @@ interface MandateRepository : CrudRepository<MandateEntity, Long>, JpaSpecificat
         status: MandateStatus,
     ): List<MandateEntity>
 
+    // Ids only: each mandate is then loaded with its neighbourhoods. With an agent, oldest first
+    @Query(
+        "SELECT m.id FROM MandateEntity m WHERE m.mandateType = :mandateType AND m.status = :status " +
+            "AND m.agentId IS NOT NULL ORDER BY m.id"
+    )
+    fun findIdsWithAgent(mandateType: MandateType, status: MandateStatus): List<Long>
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT m FROM MandateEntity m WHERE m.id = :id")
     fun findByIdForUpdate(id: Long): MandateEntity?

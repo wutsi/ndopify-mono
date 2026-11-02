@@ -59,7 +59,7 @@ locale and `timeZone` — never a hard-coded pattern. Mailet unit tests mirror t
 Scheduled jobs live in `<domain>/server/job/`: `KycJobs` (party), `MandateJobs` (mandate), `ContractJobs`
 (contract), `ListingJobs` (listing, every 15 minutes: `verify`, the UNDER_VERIFICATION listings through
 `ListingVerifierService`; `publish`, the VERIFIED ones sent for publication, then the PUBLISHING ones through `ListingPublisherService`) and
-`MatchJobs` (match: `notifyAgents` hourly, `expire` daily, see *match* below). They loop over the
+`MatchJobs` (match: `notifyAgents` hourly, `rematch` and `expire` daily, see *match* below). They loop over the
 active tenants, setting `TenantContext` for each.
 
 Current domains:
@@ -304,7 +304,7 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   ACTIVE; best score first across them, only while the mandate is APPROVED and the listing
   PUBLISHED), get, `POST /{id}/shortlist` (the agent keeps it to propose later: ACTIVE → SHORTLISTED, else 409
   `MATCH_NOT_ACTIVE`), `POST /{id}/dismiss` (ACTIVE, SHORTLISTED or EXPIRED, `MatchService.OPEN_STATUSES`, else 409 `MATCH_NOT_ACTIVE`), access as the mandate's (`MandateAccessService`:
-  404, then 403 `MANDATE_ACCESS_DENIED`); `POST /run?mandate-id=` (`@OpsEndpoint`) re-runs a mandate.
+  404, then 403 `MANDATE_ACCESS_DENIED`); `POST /run?mandate-id=` (`@OpsEndpoint`) re-runs a mandate. `MatchJobs.rematch` (daily, `ndopify.match.rematch.cron`, `MatchService.matchAll`) re-runs every APPROVED SEARCH mandate with an agent: it catches up on a run lost after an approval or a publication (the listener only logs a failure) and re-scores against today (availability); a mandate failing is logged and skipped.
   **Agent alert** (`docs/superpowers/plans/2026-10-31-match-agent-alert.md`): `notifiedAt` (`V9_2`) is null until the
   agent is told, and never touched by the matcher (a re-score or re-run doesn't alert again). `MatchJobs.notifyAgents`
   (hourly, `ndopify.match.notify.cron`) has `MatchNotificationService` e-mail each agent, once for all its ACTIVE

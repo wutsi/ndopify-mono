@@ -22,6 +22,7 @@ import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.dao.DataIntegrityViolationException
 import org.springframework.data.domain.Sort
@@ -59,6 +60,8 @@ class MatchService(
     @param:Value("\${ndopify.match.nearby-max-neighborhoods}") private val nearbyMaxNeighborhoods: Int,
 ) {
     companion object {
+        private val LOGGER = LoggerFactory.getLogger(MatchService::class.java)
+
         // Not proposed (or the proposal expired unanswered) nor dismissed: the agent may still propose or dismiss it
         val OPEN_STATUSES = setOf(MatchStatus.ACTIVE, MatchStatus.SHORTLISTED, MatchStatus.EXPIRED)
     }
@@ -147,6 +150,25 @@ class MatchService(
         val distances = distances(mandate)
         val today = today(mandate.tenantId!!)
         return matchAll(listings.map { listing -> Triple(mandate, listing, distances) }, today)
+    }
+
+    /**
+     * Re-matches every APPROVED SEARCH mandate with an agent, as [matchMandate]: catches up on a run lost after an
+     * approval or a publication (failed, server stopped, executor queue full), and re-scores against today (a listing's
+     * availability gets closer to a search's moving deadline). Safe to re-run: only ACTIVE rows change, and
+     * `notifiedAt` is kept, so the agent isn't told twice. A mandate failing is logged and skipped. Returns the number
+     * of ACTIVE matches stored.
+     */
+    fun matchAll(): Int {
+        val ids = mandateDao.findIdsWithAgent(MandateType.SEARCH, MandateStatus.APPROVED)
+        return ids.sumOf { id ->
+            try {
+                matchMandate(id)
+            } catch (ex: Exception) {
+                LOGGER.warn("Unable to match Mandate#$id", ex)
+                0
+            }
+        }
     }
 
     /** Matches a published listing against its agent's open searches. Returns the number of ACTIVE matches stored. */

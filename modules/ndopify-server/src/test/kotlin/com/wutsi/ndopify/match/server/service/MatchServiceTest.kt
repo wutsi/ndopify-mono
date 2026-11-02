@@ -137,6 +137,26 @@ class MatchServiceTest {
     }
 
     @Test
+    fun `matchAll matches each open search, skipping one failing`() {
+        doReturn(listOf(99L, MANDATE_ID)).whenever(mandateDao)
+            .findIdsWithAgent(MandateType.SEARCH, MandateStatus.APPROVED)
+        doThrow(RuntimeException("boom")).whenever(mandateDao).findWithNeighborhoodsById(99L)
+        doReturn(listOf(listing1, listing2)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
+        doReturn(score(0.9)).whenever(matcher).score(any(), any(), any(), any())
+
+        assertEquals(2, service.matchAll())
+        verify(matchDao, times(2)).save(any<MatchEntity>())
+    }
+
+    @Test
+    fun `matchAll without open search`() {
+        doReturn(emptyList<Long>()).whenever(mandateDao).findIdsWithAgent(MandateType.SEARCH, MandateStatus.APPROVED)
+
+        assertEquals(0, service.matchAll())
+        verify(matchDao, never()).save(any<MatchEntity>())
+    }
+
+    @Test
     fun `matchMandate skips scores below min-score`() {
         doReturn(listOf(listing1)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
         doReturn(score(0.4)).whenever(matcher).score(any(), any(), any(), any())
