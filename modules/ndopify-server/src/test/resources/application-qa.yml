@@ -37,6 +37,8 @@ ndopify:
     match:
         notify:
             cron: "-" # Never on its own: tests call MatchJobs
+        expire:
+            cron: "-" # Never on its own: tests call MatchJobs
     mandate:
         assignment:
             jitter: 0 # Deterministic scores

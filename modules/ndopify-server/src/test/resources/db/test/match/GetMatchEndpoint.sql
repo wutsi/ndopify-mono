@@ -51,13 +51,14 @@ INSERT INTO T_MANDATE(
     (12, 1, 11, 20, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
     (13, 1, 11, 20, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
     (14, 1, 11, 20, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
+    (15, 1, 11, 20, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
     (19, 1, 11, 30, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
     (99, 2, 90, 90, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF');
 
 INSERT INTO T_MANDATE_NEIGHBORHOOD(mandate_id, neighborhood_id) VALUES
     (1, 1001);
 
--- 101, 102, 104: published   103: rented   109: agent 30's   901: other tenant
+-- 101, 102, 104, 105: published   103: rented   109: agent 30's   901: other tenant
 INSERT INTO T_LISTING(
     id, tenant_id, mandate_id, agent_id, property_category, listing_type, status, city_id, neighborhood_id,
     property_type, rooms, price, currency_code, price_periodicity_type, title
@@ -66,10 +67,11 @@ INSERT INTO T_LISTING(
     (102, 1, 12, 20, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'APARTMENT', 2, 140000, 'XAF', 'MONTHLY', 'Small apartment'),
     (103, 1, 13, 20, 'RESIDENTIAL', 'RENTAL', 'RENTED', 2370201, 1001, 'APARTMENT', 2, 150000, 'XAF', 'MONTHLY', 'Rented apartment'),
     (104, 1, 14, 20, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'APARTMENT', 2, 150000, 'XAF', 'MONTHLY', 'Dismissed apartment'),
+    (105, 1, 15, 20, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'APARTMENT', 2, 150000, 'XAF', 'MONTHLY', 'Expired apartment'),
     (109, 1, 19, 30, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'APARTMENT', 2, 150000, 'XAF', 'MONTHLY', 'Agent 30 apartment'),
     (901, 2, 99, 90, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'APARTMENT', 2, 150000, 'XAF', 'MONTHLY', 'Other tenant');
 
--- 7: proposed, 8: rejected (search 3)   1, 2: active   3: active, listing rented   4: dismissed   5: agent 30's   6: closed search   9: other tenant   10: shortlisted (search 3)
+-- 7: proposed, 8: rejected (search 3)   1, 2: active   3: active, listing rented   4: dismissed   5: agent 30's   6: closed search   9: other tenant   10: shortlisted (search 3)   11: expired (search 3)
 INSERT INTO T_MATCH(
     id, tenant_id, mandate_id, listing_id, agent_id, status, score, listing_price,
     neighborhood_score, price_score, rooms_score, amenities_score, availability_score, furniture_score,
@@ -84,4 +86,5 @@ INSERT INTO T_MATCH(
     (7, 1, 3, 102, 20, 'PROPOSED', 0.8, 140000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
     (8, 1, 3, 103, 20, 'REJECTED', 0.8, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
     (9, 2, 9, 901, 90, 'ACTIVE', 0.8, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
-    (10, 1, 3, 104, 20, 'SHORTLISTED', 0.8, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00');
+    (10, 1, 3, 104, 20, 'SHORTLISTED', 0.8, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
+    (11, 1, 3, 105, 20, 'EXPIRED', 0.8, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00');

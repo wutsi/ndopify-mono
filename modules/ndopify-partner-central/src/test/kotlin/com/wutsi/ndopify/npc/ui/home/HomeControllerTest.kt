@@ -503,7 +503,7 @@ class HomeControllerTest {
 
         verify(matchClient).search(
             listOf(203L, 204L),
-            listOf(MatchStatus.ACCEPTED, MatchStatus.ACTIVE, MatchStatus.PROPOSED, MatchStatus.REJECTED),
+            listOf(MatchStatus.ACCEPTED, MatchStatus.ACTIVE, MatchStatus.PROPOSED, MatchStatus.EXPIRED, MatchStatus.REJECTED),
             100,
         )
         val mandates = mandates(result)

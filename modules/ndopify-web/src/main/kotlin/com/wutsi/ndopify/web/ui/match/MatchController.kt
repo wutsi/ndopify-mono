@@ -43,7 +43,7 @@ import java.time.Clock
  * with `reason = "expired"`. Signed in, the match is read (or answered) on ndopify-server, which checks the token and
  * the match (the claims are not trusted here); the page and the two answers handle its errors the same way:
  * - 401: it rejected the token (ex: signed with another secret): the cookie is cleared, `expired`;
- * - 403: the token is another customer's, or the match isn't PROPOSED/ACCEPTED/REJECTED: `not-yours`, with
+ * - 403: the token is another customer's, or the match isn't PROPOSED/ACCEPTED/REJECTED/EXPIRED: `not-yours`, with
  *   nothing about the match;
  * - 404 on the match: left to [com.wutsi.ndopify.web.ui.layout.HttpClientErrorHandler], the app's 404 page.
  *

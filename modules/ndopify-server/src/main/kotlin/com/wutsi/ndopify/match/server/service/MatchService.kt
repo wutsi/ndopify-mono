@@ -59,8 +59,8 @@ class MatchService(
     @param:Value("\${ndopify.match.nearby-max-neighborhoods}") private val nearbyMaxNeighborhoods: Int,
 ) {
     companion object {
-        // Not yet proposed nor dismissed: the agent may still propose or dismiss it
-        val OPEN_STATUSES = setOf(MatchStatus.ACTIVE, MatchStatus.SHORTLISTED)
+        // Not proposed (or the proposal expired unanswered) nor dismissed: the agent may still propose or dismiss it
+        val OPEN_STATUSES = setOf(MatchStatus.ACTIVE, MatchStatus.SHORTLISTED, MatchStatus.EXPIRED)
     }
 
     fun findById(id: Long): MatchEntity {
@@ -110,7 +110,7 @@ class MatchService(
     }
 
     /**
-     * Hides an ACTIVE or SHORTLISTED match from the agent: it's never re-scored nor re-created. 409 MATCH_NOT_ACTIVE
+     * Hides an ACTIVE, SHORTLISTED or EXPIRED match from the agent: it's never re-scored nor re-created. 409 MATCH_NOT_ACTIVE
      * otherwise. Keeps the listing's price the agent said no to (`listingPrice`), to tell a price drop later.
      */
     fun dismiss(id: Long): MatchEntity {

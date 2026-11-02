@@ -288,6 +288,9 @@ ndopify:
         nearby-max-neighborhoods: 20
         notify:
             cron: "0 0 * * * ?"         # Every hour: e-mails the agents about their new matches
+        expire:
+            days: 7                     # A proposal the customer doesn't answer within 7 days expires
+            cron: "0 0 2 * * ?"         # Every day at 02:00: expires the proposals not answered in time
 
     mobile-money:
         mtn:

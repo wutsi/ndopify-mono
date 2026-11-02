@@ -77,6 +77,16 @@ class GetMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun customerExpired() {
+        asCustomer(13L)
+
+        val response = rest.getForEntity("/v1/matches/11", GetMatchResponse::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(MatchStatus.EXPIRED, response.body!!.match.status)
+    }
+
+    @Test
     fun customerNotProposed() {
         asCustomer(13L)
 

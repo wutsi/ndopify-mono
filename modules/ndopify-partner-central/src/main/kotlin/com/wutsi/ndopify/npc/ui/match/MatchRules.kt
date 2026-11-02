@@ -24,9 +24,13 @@ import kotlin.math.roundToInt
 object MatchRules {
     /**
      * The statuses shown, in the section's order (best score first within each). REJECTED and DISMISSED ones are only
-     * counted.
+     * counted. An EXPIRED one (not answered in time) can be sent again, like an ACTIVE one.
      */
-    val ORDER: List<MatchStatus> = listOf(MatchStatus.ACCEPTED, MatchStatus.ACTIVE, MatchStatus.PROPOSED)
+    val ORDER: List<MatchStatus> =
+        listOf(MatchStatus.ACCEPTED, MatchStatus.ACTIVE, MatchStatus.PROPOSED, MatchStatus.EXPIRED)
+
+    /** What can be sent to the client or set aside: never sent, or sent and not answered in time. */
+    val ACTIONABLE: Set<MatchStatus> = setOf(MatchStatus.ACTIVE, MatchStatus.EXPIRED)
 
     /** What [proposals] counts (the *Mes mandats* cards search it): [ORDER] and REJECTED. */
     val COUNTED: List<MatchStatus> = ORDER + MatchStatus.REJECTED
@@ -35,7 +39,8 @@ object MatchRules {
     val SEARCHED: List<MatchStatus> = COUNTED + MatchStatus.DISMISSED
 
     /** Sent to the client, answered or not: what [proposals] counts, and a published listing's *Propositions*. */
-    val SENT: List<MatchStatus> = listOf(MatchStatus.PROPOSED, MatchStatus.ACCEPTED, MatchStatus.REJECTED)
+    val SENT: List<MatchStatus> =
+        listOf(MatchStatus.PROPOSED, MatchStatus.ACCEPTED, MatchStatus.REJECTED, MatchStatus.EXPIRED)
 
     /** In a match's fit, unlike `MandateLabels.furniture` ("Oui" / "Non"). */
     val FURNITURE_LABELS: Map<FurnitureType, String> = mapOf(
@@ -47,6 +52,7 @@ object MatchRules {
         MatchStatus.ACTIVE to MandateRules.Tag("Nouveau", "info"),
         MatchStatus.PROPOSED to MandateRules.Tag("En attente", "neutral"),
         MatchStatus.ACCEPTED to MandateRules.Tag("Intéressé", "success"),
+        MatchStatus.EXPIRED to MandateRules.Tag("Expirée", "warning"),
     )
 
     // A partial score this close to 1 is full
@@ -65,13 +71,15 @@ object MatchRules {
 
     /**
      * A sent match's one line, with the date of its latest step only: "Envoyé le 28 octobre 2026", "Intéressé le 29
-     * octobre 2026" (sent, without its answer's date); null before it's sent (and for a refused one, not shown).
+     * octobre 2026" (sent, without its answer's date), "Envoyé le 28 octobre 2026, sans réponse" (expired); null before
+     * it's sent (and for a refused one, not shown).
      */
     fun answer(match: Match, formatter: TenantFormatter): String? {
         val sent = "Envoyé" + (match.proposedAt?.let { " le " + formatter.date(it) } ?: "")
         return when (match.status) {
             MatchStatus.PROPOSED -> sent
             MatchStatus.ACCEPTED -> match.answeredAt?.let { "Intéressé le " + formatter.date(it) } ?: sent
+            MatchStatus.EXPIRED -> "$sent, sans réponse"
             else -> null
         }
     }
@@ -102,8 +110,8 @@ object MatchRules {
 
     /**
      * A card's line of the listings sent to the client, also on the mandate page's *Biens correspondants*, short
-     * enough for one line on a phone: what it answered, "1 intéressé · 1 refusé · 1 en attente" (no total: the counts
-     * add up to it); null when none was sent.
+     * enough for one line on a phone: what it answered, "1 intéressé · 1 refusé · 1 en attente · 1 sans réponse" (no
+     * total: the counts add up to it); null when none was sent.
      */
     fun proposals(matches: List<Match>): String? {
         if (matches.none { it.status in SENT }) {
@@ -112,10 +120,12 @@ object MatchRules {
         val accepted = matches.count { it.status == MatchStatus.ACCEPTED }
         val rejected = matches.count { it.status == MatchStatus.REJECTED }
         val pending = matches.count { it.status == MatchStatus.PROPOSED }
+        val expired = matches.count { it.status == MatchStatus.EXPIRED }
         return listOfNotNull(
             accepted.takeIf { it > 0 }?.let { "$it " + plural(it, "intéressé", "intéressés") },
             rejected.takeIf { it > 0 }?.let { "$it " + plural(it, "refusé", "refusés") },
             pending.takeIf { it > 0 }?.let { "$it en attente" },
+            expired.takeIf { it > 0 }?.let { "$it sans réponse" },
         ).joinToString(" · ")
     }
 

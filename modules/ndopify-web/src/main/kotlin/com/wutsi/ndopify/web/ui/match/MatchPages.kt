@@ -20,7 +20,8 @@ import java.time.LocalDate
  *
  * The state: [AnswerState.UNAVAILABLE] when the listing couldn't be read (null: a 403/404 to the customer) or isn't
  * PUBLISHED anymore, whatever the answer, since nothing can be done with it; otherwise PROPOSED → PENDING, ACCEPTED,
- * REJECTED (any other status, which ndopify-server doesn't show the customer, → UNAVAILABLE).
+ * REJECTED, EXPIRED (not answered in time: no answer anymore, the agent may propose it again; any other status, which
+ * ndopify-server doesn't show the customer, → UNAVAILABLE).
  *
  * "Pourquoi ce logement ?" only says what is true and was searched: one line per criterion fully met (score 1.0) that
  * the mandate sets (the neighbourhood when the listing is inside a searched one, `distanceKm == 0`), and one partial
@@ -97,6 +98,7 @@ object MatchPages {
         match.status == MatchStatus.PROPOSED -> AnswerState.PENDING
         match.status == MatchStatus.ACCEPTED -> AnswerState.ACCEPTED
         match.status == MatchStatus.REJECTED -> AnswerState.REJECTED
+        match.status == MatchStatus.EXPIRED -> AnswerState.EXPIRED
         else -> AnswerState.UNAVAILABLE
     }
 

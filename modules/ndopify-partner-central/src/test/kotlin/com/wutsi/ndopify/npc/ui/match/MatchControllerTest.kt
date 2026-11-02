@@ -89,6 +89,16 @@ class MatchControllerTest {
     }
 
     @Test
+    fun `propose an expired match again`() {
+        doReturn(MATCH_A.copy(status = MatchStatus.EXPIRED)).whenever(client).get(9001)
+
+        val result = mvc.perform(post("/mandates/204/matches/9001/propose")).andReturn()
+
+        verify(client).propose(9001)
+        assertEquals("proposed", outcome(result))
+    }
+
+    @Test
     fun `propose - conflict`() {
         doThrow(HttpClientErrorException(HttpStatus.CONFLICT)).whenever(client).propose(9001)
 

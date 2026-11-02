@@ -3,7 +3,7 @@ package com.wutsi.ndopify.web.ui.match
 import com.wutsi.ndopify.web.ui.listing.ListingPage
 
 /** Which answer block `match.html` renders (see [MatchPages] for how a match gets one). */
-enum class AnswerState { PENDING, ACCEPTED, REJECTED, UNAVAILABLE }
+enum class AnswerState { PENDING, ACCEPTED, REJECTED, EXPIRED, UNAVAILABLE }
 
 /**
  * The page of a match proposed to its customer, as [MatchPages] builds it: every text already formatted. [listing] is
