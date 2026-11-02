@@ -1,6 +1,5 @@
 package com.wutsi.ndopify.npc.ui.match
 
-import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Controller
@@ -64,7 +63,7 @@ class MatchController(
             try {
                 val match = client.get(id)
                 redirect.addFlashAttribute(LISTING, match.listingId)
-                if (match.mandateId != mid || match.status != MatchStatus.ACTIVE) {
+                if (match.mandateId != mid || match.status !in MatchRules.ACTIONABLE) {
                     LOGGER.warn("Match $id not $outcome: ${match.status}, of mandate ${match.mandateId}")
                     CHANGED
                 } else {

@@ -146,6 +146,19 @@ class MatchViewsTest {
     }
 
     @Test
+    fun `expired - actionable again`() {
+        val matches = listOf(MATCH_A.copy(status = MatchStatus.EXPIRED))
+
+        val section = MatchViews.section(MANDATE, matches, LISTINGS, LOCATIONS, TODAY, FORMATTER)
+
+        assertEquals(listOf(9001L), section.matches.map { it.id })
+        assertTrue(section.matches[0].actionable)
+        assertEquals("Expirée", section.matches[0].tag.label)
+        assertEquals("Envoyé, sans réponse", section.matches[0].answer)
+        assertEquals("1 sans réponse", section.proposals)
+    }
+
+    @Test
     fun `matches unavailable`() {
         val section = MatchViews.section(MANDATE, null, LISTINGS, LOCATIONS, TODAY, FORMATTER)
 

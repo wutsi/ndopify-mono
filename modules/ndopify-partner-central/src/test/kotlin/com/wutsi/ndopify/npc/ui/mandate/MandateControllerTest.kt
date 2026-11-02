@@ -368,7 +368,14 @@ class MandateControllerTest {
         assertEquals("Quartier" to "Akwa", section.matches[1].facts[1])
         verify(matchClient).search(
             listOf(201L),
-            listOf(MatchStatus.ACCEPTED, MatchStatus.ACTIVE, MatchStatus.PROPOSED, MatchStatus.REJECTED, MatchStatus.DISMISSED),
+            listOf(
+                MatchStatus.ACCEPTED,
+                MatchStatus.ACTIVE,
+                MatchStatus.PROPOSED,
+                MatchStatus.EXPIRED,
+                MatchStatus.REJECTED,
+                MatchStatus.DISMISSED,
+            ),
             100,
         )
         verify(listingClient).searchByIds(listOf(3041L, 3012L))

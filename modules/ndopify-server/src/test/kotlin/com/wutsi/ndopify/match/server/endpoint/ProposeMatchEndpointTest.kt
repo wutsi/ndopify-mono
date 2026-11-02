@@ -90,6 +90,17 @@ class ProposeMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `propose again an expired one`() {
+        val response = rest.postForEntity("/v1/matches/11/propose", null, Any::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val match = dao.findById(11L).get()
+        assertEquals(MatchStatus.PROPOSED, match.status)
+        assertTrue(match.proposedAt!!.after(java.sql.Timestamp.valueOf("2026-10-02 00:00:00")))
+        assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received")
+    }
+
+    @Test
     fun `a run leaves it proposed`() {
         rest.postForEntity("/v1/matches/1/propose", null, Any::class.java)
 

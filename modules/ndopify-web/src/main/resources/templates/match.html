@@ -22,6 +22,7 @@
     - PENDING: "Ça m'intéresse" (POST accept) or "Pas pour moi" (the #reject popup: a reason, an optional comment;
       POST reject); below 1024px the bar's "Répondre" opens the #answer popup with both.
     - ACCEPTED / REJECTED: the answer, no form: answers are final (no "change my mind" control, unlike the prototype).
+    - EXPIRED: not answered in time: no form, a link to the agent (who may propose it again).
     - UNAVAILABLE: the listing can't be shown anymore (page.listing is null): no photo, no form, a link to the agent.
   "Demander une visite" is left out, as on the listing page. Without JavaScript the forms post and the popups open
   with :target; listing.js (photos, popups) and proposal.js (focus in the popups) only enhance. Never agentRemarks.
@@ -157,6 +158,12 @@
                             visite, contactez Serge.</p>
                     </div>
 
+                    <div class="answer" data-answer="EXPIRED" th:if="${page.state.name() == 'EXPIRED'}">
+                        <p class="answer__status">Cette proposition a expiré.</p>
+                        <p th:text="|Ce logement vous intéresse toujours ? Contactez ${page.agentFirstName}.|">Ce
+                            logement vous intéresse toujours&nbsp;? Contactez Serge.</p>
+                    </div>
+
                     <div class="answer" data-answer="REJECTED" th:if="${page.state.name() == 'REJECTED'}">
                         <p class="answer__status">Vous avez écarté ce logement.</p>
                         <p th:text="|${#strings.capitalize(page.agentFirstName)} continue de chercher pour vous.|">Serge continue
@@ -178,6 +185,7 @@
         </div>
         <p class="cta-bar__note" data-bar-answer="ACCEPTED" th:if="${page.state.name() == 'ACCEPTED'}">Vous intéresse</p>
         <p class="cta-bar__note" data-bar-answer="REJECTED" th:if="${page.state.name() == 'REJECTED'}">Logement écarté</p>
+        <p class="cta-bar__note" data-bar-answer="EXPIRED" th:if="${page.state.name() == 'EXPIRED'}">Proposition expirée</p>
     </div>
 </main>
 

@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.match.server.job
 
 import com.wutsi.ndopify.match.server.service.MatchNotificationService
+import com.wutsi.ndopify.match.server.service.MatchProposalService
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.slf4j.LoggerFactory
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service
 @Service
 class MatchJobs(
     private val notificationService: MatchNotificationService,
+    private val proposalService: MatchProposalService,
     private val tenantService: TenantService,
 ) {
     companion object {
@@ -24,15 +26,25 @@ class MatchJobs(
     /** E-mails the agents about their new matches. */
     @Scheduled(cron = "\${ndopify.match.notify.cron}")
     fun notifyAgents() {
+        forEachTenant("notifyAgents", "agent(s)") { notificationService.notifyAgents() }
+    }
+
+    /** Expires the proposals the customers didn't answer in time. */
+    @Scheduled(cron = "\${ndopify.match.expire.cron}")
+    fun expire() {
+        forEachTenant("expire", "match(es)") { proposalService.expireDue() }
+    }
+
+    private fun forEachTenant(job: String, unit: String, run: () -> Int) {
         tenantService.search(true).forEach { tenant ->
             val tenantId = tenant.id!!
             try {
                 TenantContext.set(tenantId)
-                val count = notificationService.notifyAgents()
-                LOGGER.info("Tenant#$tenantId - MatchJobs.notifyAgents() completed: $count agent(s)")
+                val count = run()
+                LOGGER.info("Tenant#$tenantId - MatchJobs.$job() completed: $count $unit")
             } catch (ex: Exception) {
                 // A tenant failing must not prevent the others to be processed
-                LOGGER.warn("Tenant#$tenantId - MatchJobs.notifyAgents() failed", ex)
+                LOGGER.warn("Tenant#$tenantId - MatchJobs.$job() failed", ex)
             } finally {
                 TenantContext.remove()
             }

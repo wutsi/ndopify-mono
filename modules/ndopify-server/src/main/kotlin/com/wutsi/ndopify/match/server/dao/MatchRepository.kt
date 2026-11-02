@@ -6,6 +6,7 @@ import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.domain.MatchEntity
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
@@ -23,6 +24,13 @@ interface MatchRepository : CrudRepository<MatchEntity, Long>, JpaSpecificationE
         status: MatchStatus,
         mandateStatus: MandateStatus,
         listingStatus: ListingStatus,
+    ): List<MatchEntity>
+
+    // The matches to expire: proposed before, oldest first (MatchProposalService.expireDue)
+    fun findByStatusAndProposedAtBeforeOrderByProposedAt(
+        status: MatchStatus,
+        before: Date,
+        page: Pageable,
     ): List<MatchEntity>
 
     /**

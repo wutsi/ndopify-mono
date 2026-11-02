@@ -59,7 +59,7 @@ locale and `timeZone` — never a hard-coded pattern. Mailet unit tests mirror t
 Scheduled jobs live in `<domain>/server/job/`: `KycJobs` (party), `MandateJobs` (mandate), `ContractJobs`
 (contract), `ListingJobs` (listing, every 15 minutes: `verify`, the UNDER_VERIFICATION listings through
 `ListingVerifierService`; `publish`, the VERIFIED ones sent for publication, then the PUBLISHING ones through `ListingPublisherService`) and
-`MatchJobs` (match, hourly: `notifyAgents`, see *match* below). They loop over the
+`MatchJobs` (match: `notifyAgents` hourly, `expire` daily, see *match* below). They loop over the
 active tenants, setting `TenantContext` for each.
 
 Current domains:
@@ -293,7 +293,7 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   the agent (`V9_1`): `distanceKm` (to the nearest searched neighbourhood: 0 inside one, null when not nearby or none
   searched) and `missingAmenities` (the amenities searched that the listing lacks, by DTO field name, ex:
   `waterTank`). `ACTIVE` rows are created, re-scored or deleted; any other status (`SHORTLISTED`, `DISMISSED`,
-  `PROPOSED`, `ACCEPTED`, `REJECTED`) is never touched. Each row keeps
+  `PROPOSED`, `ACCEPTED`, `REJECTED`, `EXPIRED`) is never touched. Each row keeps
   `listingPrice` (when last scored, or dismissed, proposed or rejected): the
   price a match was turned down at, to tell a price drop later (re-proposing after one isn't built yet). The run isn't one transaction (each save is its own, a conflict skips
   the pair), so it reads the mandates with their neighbourhoods (`@EntityGraph`). `/v1/matches`: search
@@ -302,7 +302,7 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   then 403 `HTTP_ACCESS_DENIED`, ex: who a published listing interests with `status=ACCEPTED`; `status` default
   ACTIVE; best score first across them, only while the mandate is APPROVED and the listing
   PUBLISHED), get, `POST /{id}/shortlist` (the agent keeps it to propose later: ACTIVE → SHORTLISTED, else 409
-  `MATCH_NOT_ACTIVE`), `POST /{id}/dismiss` (ACTIVE or SHORTLISTED, else 409 `MATCH_NOT_ACTIVE`), access as the mandate's (`MandateAccessService`:
+  `MATCH_NOT_ACTIVE`), `POST /{id}/dismiss` (ACTIVE, SHORTLISTED or EXPIRED, `MatchService.OPEN_STATUSES`, else 409 `MATCH_NOT_ACTIVE`), access as the mandate's (`MandateAccessService`:
   404, then 403 `MANDATE_ACCESS_DENIED`); `POST /run?mandate-id=` (`@OpsEndpoint`) re-runs a mandate.
   **Agent alert** (`docs/superpowers/plans/2026-10-31-match-agent-alert.md`): `notifiedAt` (`V9_2`) is null until the
   agent is told, and never touched by the matcher (a re-score or re-run doesn't alert again). `MatchJobs.notifyAgents`
@@ -313,12 +313,12 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   run. A match re-proposed after a price drop must get `notifiedAt = null` again.
   **Proposal** (`docs/superpowers/plans/2026-10-31-match-proposal.md`, `MatchProposalService`): `POST /{id}/propose`,
   or several matches of one mandate with `POST /propose` (`ProposeMatchRequest.matchIds`, 1 to 20; 400
-  `HTTP_INVALID_PARAMETER` when of several mandates), by the mandate's agent or an admin, as dismiss: ACTIVE or
-  SHORTLISTED → PROPOSED, `proposedAt`, all or none; 409 `MATCH_NOT_ACTIVE`, `MANDATE_NOT_APPROVED`,
+  `HTTP_INVALID_PARAMETER` when of several mandates), by the mandate's agent or an admin, as dismiss: ACTIVE,
+  SHORTLISTED or EXPIRED → PROPOSED, `proposedAt`, all or none; 409 `MATCH_NOT_ACTIVE`, `MANDATE_NOT_APPROVED`,
   `LISTING_NOT_PUBLISHED`. It publishes one `MatchProposedEvent` (`matchIds`): `MatchProposedMailet` sends the
   customer one e-mail with the listings, best score first, each with a link to its proposal page,
   `{publicPortalUrl}/match/{matchId}?token={jwt}` (`mail/match/proposed.mjml`), where the customer answers it. The
-  customer reads it with `GET /v1/matches/{id}` (and its mandate), only once PROPOSED, ACCEPTED or REJECTED (else 403
+  customer reads it with `GET /v1/matches/{id}` (and its mandate), only once PROPOSED, ACCEPTED, REJECTED or EXPIRED (else 403
   `MANDATE_ACCESS_DENIED`; as `ensureCanRead` for an admin or agent: an agent only its own / offered mandates). The
   token (`MatchLinkTokenService`, one per e-mail) is a `public-portal` JWT of the customer's own user and party, so
   that the link signs it in; it lives `ndopify.security.access-token.ttl.match-link` (2d) and isn't scoped to the
@@ -329,7 +329,12 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   and `reason`, a comment, optional, at most 1000) are for the mandate's customer only
   (`MandateAccessService.ensureIsCustomer`: the JWT's party is the customer's, any application; **no admin bypass,
   the agent can't answer for its customer**): PROPOSED → ACCEPTED / REJECTED, final, `answeredAt`, else 409
-  `MATCH_NOT_PROPOSED`. The agent isn't told of the answer yet. Config: `ndopify.match.*`. Tenant-scoped.
+  `MATCH_NOT_PROPOSED`. The agent isn't told of the answer yet.
+  **Expiry**: `MatchJobs.expire` (daily, `ndopify.match.expire.cron`) has `MatchProposalService.expireDue` move to
+  `EXPIRED` the PROPOSED matches whose `proposedAt` is older than `ndopify.match.expire.days` (7), oldest first, 100
+  per run; each save is its own transaction, so a match answered meanwhile fails on its `@Version` and is skipped. No
+  e-mail, no event. The customer can no longer answer it (409 `MATCH_NOT_PROPOSED`); the agent may propose it again
+  (new `proposedAt` and e-mail) or dismiss it. Config: `ndopify.match.*`. Tenant-scoped.
 - **error** — shared exception types (`WutsiException` subclasses: `BadRequestException`, `NotFoundException`,
   `ConflictException`, `ForbiddenException`, `UnauthorizedException`, `InternalErrorException`) and a global
   `ControllerErrorHandler`.

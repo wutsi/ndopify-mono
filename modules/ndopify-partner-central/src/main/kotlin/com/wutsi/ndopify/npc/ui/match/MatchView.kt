@@ -16,7 +16,7 @@ data class MatchView(
     val facts: List<Pair<String, String>>,
     val answer: String?,
     val fit: List<FitLine>,
-    val actionable: Boolean, // ACTIVE: can be sent to the client or set aside
+    val actionable: Boolean, // ACTIVE or EXPIRED: can be sent to the client or set aside
 )
 
 /**

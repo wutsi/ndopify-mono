@@ -68,7 +68,7 @@ object MatchViews {
             ),
             answer = MatchRules.answer(match, formatter),
             fit = MatchRules.fit(match, mandate, listing),
-            actionable = match.status == MatchStatus.ACTIVE,
+            actionable = match.status in MatchRules.ACTIONABLE,
         )
     }
 }

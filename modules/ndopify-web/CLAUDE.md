@@ -33,6 +33,8 @@ Package `com.wutsi.ndopify.web`:
   amenities. One answer block per `AnswerState`: PENDING (match PROPOSED) → "Ça m'intéresse" (`POST /match/{id}/accept`)
   and "Pas pour moi" (`#reject` popup, `RejectForm`: `POST /match/{id}/reject`, missing reason → `OTHER`, blank comment
   → none); ACCEPTED / REJECTED → the answer, no form (answers are final: no "change my mind", unlike the prototype);
+  EXPIRED (not answered within ndopify-server's `ndopify.match.expire.days`) → the listing, "Cette proposition a
+  expiré", no form, contact the agent;
   UNAVAILABLE (listing 403/404 or not PUBLISHED, whatever the answer) → no listing, no form, the agent's WhatsApp.
   An answer redirects to `/match/{id}?answer=accepted|rejected` (the flash, shown only in that state; no text says the
   agent was told: it isn't notified yet); a second answer

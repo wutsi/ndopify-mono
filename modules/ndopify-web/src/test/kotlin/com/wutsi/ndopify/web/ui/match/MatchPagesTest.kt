@@ -181,6 +181,15 @@ class MatchPagesTest {
     }
 
     @Test
+    fun expired() {
+        val page = page(match = match.copy(status = MatchStatus.EXPIRED), answer = "accepted")
+
+        assertEquals(AnswerState.EXPIRED, page.state)
+        assertNotNull(page.listing)
+        assertNull(page.flash)
+    }
+
+    @Test
     fun `no flash for another state than the answer`() {
         assertNull(page(answer = "accepted").flash)
         assertNull(page(match = match.copy(status = MatchStatus.REJECTED), answer = "accepted").flash)

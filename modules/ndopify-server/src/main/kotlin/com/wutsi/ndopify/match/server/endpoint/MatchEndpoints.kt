@@ -40,7 +40,7 @@ import org.springframework.web.bind.annotation.RestController
  * `HTTP_MISSING_PARAMETER`, named `mandate-id`), and each of them must be found and readable: a mandate as above, a
  * listing by its agent or an admin only ([ListingAccessService]: 404 `LISTING_NOT_FOUND` for a listing the caller
  * can't read, then 403 `HTTP_ACCESS_DENIED`), since an agent's listings are only matched to its own searches. `GET /{id}` is also open to the mandate's
- * customer, for a match proposed to it or answered (PROPOSED, ACCEPTED, REJECTED), else 403 `MANDATE_ACCESS_DENIED`.
+ * customer, for a match proposed to it, answered or expired (PROPOSED, ACCEPTED, REJECTED, EXPIRED), else 403 `MANDATE_ACCESS_DENIED`.
  */
 @RestController
 @RequestMapping("/v1/matches")
@@ -134,6 +134,7 @@ class MatchEndpoints(
     }
 
     private companion object {
-        val SEEN_BY_CUSTOMER = setOf(MatchStatus.PROPOSED, MatchStatus.ACCEPTED, MatchStatus.REJECTED)
+        val SEEN_BY_CUSTOMER =
+            setOf(MatchStatus.PROPOSED, MatchStatus.ACCEPTED, MatchStatus.REJECTED, MatchStatus.EXPIRED)
     }
 }

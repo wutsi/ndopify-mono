@@ -1618,6 +1618,15 @@
                 fit: [[false, "À 0,8 km du secteur recherché"], [true, "Dans le budget"],
                     [true, "3 chambres, comme demandé"], [false, "1 équipement sur 3 : Citerne"],
                     [true, "Disponible avant la date d'emménagement"], [true, "Non meublé, comme demandé"]]
+            },
+            // Sent 9 days ago, never answered: expired by the server after 7 days (MatchJobs.expire), to send again.
+            {
+                id: "9007", listingId: "3010", propertyType: "APARTMENT", rooms: 3, neighbourhood: "Bonapriso",
+                price: 250000, availableIn: 10, score: 0.74,
+                initial: { status: "EXPIRED", sentAt: -9 },
+                fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"],
+                    [true, "3 chambres, comme demandé"], [false, "2 équipements sur 3. Manque : Citerne"],
+                    [true, "Disponible avant la date d'emménagement"], [true, "Non meublé, comme demandé"]]
             }
         ],
         201: [
@@ -1640,11 +1649,13 @@
 
     // ACTIVE: new, to look at. SHORTLISTED: kept by the agent, to send. PROPOSED: sent to the client.
     // DISMISSED: set aside, never proposed again for this mandate (the server's DISMISSED).
+    // EXPIRED: sent, but the client didn't answer within 7 days: can be sent again, or set aside.
     // NOTE: the server has ACTIVE and DISMISSED only; SHORTLISTED and PROPOSED are the next plans' statuses.
     var MATCH_TAGS = {
         ACTIVE: ["Nouveau", "info"],
         SHORTLISTED: ["Retenu", "success"],
-        PROPOSED: ["Envoyé", "neutral"]
+        PROPOSED: ["Envoyé", "neutral"],
+        EXPIRED: ["Expirée", "warning"]
     };
     // The client's answer to a PROPOSED match, on the public portal: interested (then maybe a visit) or not.
     // NOTE: not on the server yet either (the plan's ACCEPTED / REJECTED, and the visit request).
@@ -1734,21 +1745,23 @@
     }
 
     // The home card's proposals line, short enough for one line on a phone: what the client answered, "1 visite ·
-    // 1 refusé · 1 en attente" (no total: the counts add up to it), or "". The mandate page has the details.
+    // 1 refusé · 1 en attente · 1 sans réponse" (no total: the counts add up to it), or "". The mandate page has the
+    // details.
     function proposalsSummary(matches) {
         var sent = matches.filter(function (m) {
-            return m.status === "PROPOSED";
+            return m.status === "PROPOSED" || m.status === "EXPIRED";
         });
         if (!sent.length) return "";
-        var counts = { VISIT: 0, ACCEPTED: 0, REJECTED: 0, NONE: 0 };
+        var counts = { VISIT: 0, ACCEPTED: 0, REJECTED: 0, NONE: 0, EXPIRED: 0 };
         sent.forEach(function (m) {
-            counts[answerOf(m) || "NONE"]++;
+            counts[m.status === "EXPIRED" ? "EXPIRED" : answerOf(m) || "NONE"]++;
         });
         var parts = [];
         if (counts.VISIT) parts.push(counts.VISIT + (counts.VISIT > 1 ? " visites" : " visite"));
         if (counts.ACCEPTED) parts.push(counts.ACCEPTED + (counts.ACCEPTED > 1 ? " intéressés" : " intéressé"));
         if (counts.REJECTED) parts.push(counts.REJECTED + (counts.REJECTED > 1 ? " refusés" : " refusé"));
         if (counts.NONE) parts.push(counts.NONE + " en attente");
+        if (counts.EXPIRED) parts.push(counts.EXPIRED + " sans réponse");
         return parts.join(" · ");
     }
 
@@ -2205,7 +2218,10 @@
             tag.className = "status-tag status-tag--" + t[1];
             // Sent: one line, the visit asked first, since it's what the agent acts on
             var answerLine = $("[data-match-answer]", item);
-            answerLine.hidden = match.status !== "PROPOSED";
+            answerLine.hidden = match.status !== "PROPOSED" && match.status !== "EXPIRED";
+            if (match.status === "EXPIRED") {
+                answerLine.textContent = "Envoyé le " + formatShortDate(match.sentAt) + ", sans réponse";
+            }
             if (match.status === "PROPOSED") {
                 var sentText = "Envoyé le " + formatShortDate(match.sentAt);
                 answerLine.textContent = answer === "ACCEPTED" ? sentText + " · intéressé le " + formatShortDate(match.answeredAt)
@@ -2246,7 +2262,8 @@
             var actions = $("[data-match-actions]", item);
             var keep = $("[data-match-keep]", item);
             var confirm = $("[data-match-confirm]", item);
-            // Sent: nothing left to do here; the client answers on the public portal (next plans).
+            // Sent: nothing left to do here; the client answers on the public portal. Expired: send it again or set it
+            // aside, like a new one.
             actions.hidden = match.status === "PROPOSED";
             keep.hidden = match.status !== "ACTIVE";
 
@@ -2293,13 +2310,13 @@
             var shown = matches.filter(function (m) {
                 return m.status !== "DISMISSED" && answerOf(m) !== "REJECTED";
             });
-            // A visit to confirm and a listing the client likes come first, then new, kept, and those still
-            // waiting for an answer; best score first within each.
+            // A visit to confirm and a listing the client likes come first, then new, kept, those still
+            // waiting for an answer, and those expired unanswered; best score first within each.
             function rank(m) {
                 var answer = answerOf(m);
                 if (answer === "VISIT") return 0;
                 if (answer === "ACCEPTED") return 1;
-                return { ACTIVE: 2, SHORTLISTED: 3, PROPOSED: 4 }[m.status];
+                return { ACTIVE: 2, SHORTLISTED: 3, PROPOSED: 4, EXPIRED: 5 }[m.status];
             }
             shown.sort(function (a, b) {
                 return rank(a) - rank(b) || b.score - a.score;

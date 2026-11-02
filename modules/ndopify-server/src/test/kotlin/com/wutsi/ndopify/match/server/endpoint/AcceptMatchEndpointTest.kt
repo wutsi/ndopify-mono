@@ -48,6 +48,7 @@ class AcceptMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     fun `not proposed`() {
         assertConflict(1L) // Active
         assertConflict(7L) // Already accepted
+        assertConflict(11L) // Expired
     }
 
     @Test

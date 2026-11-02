@@ -228,6 +228,18 @@ class MatchTemplateTest {
     }
 
     @Test
+    fun expired() {
+        val doc = render(page(MatchStatus.EXPIRED))
+
+        assertEquals(listOf("EXPIRED"), answers(doc))
+        assertTrue(doc.select("form").isEmpty())
+        assertNull(doc.selectFirst("#reject"))
+        assertNotNull(doc.selectFirst(".price-card"))
+        assertEquals("Cette proposition a expiré.", doc.selectFirst("[data-answer=EXPIRED] .answer__status")?.text())
+        assertEquals("Proposition expirée", doc.selectFirst("[data-bar-answer=EXPIRED]")?.text())
+    }
+
+    @Test
     fun unavailable() {
         val doc = render(page(listing = null))
 
