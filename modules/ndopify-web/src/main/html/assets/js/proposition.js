@@ -1,12 +1,13 @@
 // Ndopify — proposition page: the client's answer to a listing its agent proposed ("Ça m'intéresse" / "Pas pour
 // moi"). Only enhances: without JavaScript the answers are forms that post and the #reject popup opens with :target.
 // annonce.js does the popups (#reject, #visit) and the photos.
-// PROTOTYPE: the answer is kept in the session; ?state=accepted|rejected|unavailable shows a state.
+// PROTOTYPE: the answer is kept in the session; ?state=accepted|rejected|expired|unavailable shows a state.
+// EXPIRED: the client didn't answer within 7 days, no answer anymore (set by the server only, never from here).
 (function () {
   'use strict';
 
   var KEY = 'ndw.proposition.9001';
-  var STATES = { accepted: 'ACCEPTED', rejected: 'REJECTED', unavailable: 'UNAVAILABLE' };
+  var STATES = { accepted: 'ACCEPTED', rejected: 'REJECTED', expired: 'EXPIRED', unavailable: 'UNAVAILABLE' };
   var BADGES = { ACCEPTED: 'Vous intéresse', REJECTED: 'Écarté', UNAVAILABLE: 'Plus disponible' };
 
   var store = {

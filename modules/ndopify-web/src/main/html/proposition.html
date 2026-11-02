@@ -28,9 +28,11 @@
         - Accepted: "Demander une visite" (the #visit popup of annonce.html, the contact pre-filled from the mandate),
           and "Finalement, pas pour moi" to change one's mind.
         - Rejected: the agent goes on searching; "Ce logement m'intéresse finalement" accepts it.
+        - Expired (not answered within 7 days): the listing still shown, no answer anymore, a link to the agent, who
+          may send it again.
         - Unavailable (the listing is no longer published, or the mandate is closed): no answer, a link to the agent.
   Without JavaScript the answers are forms that post and the popups open with :target.
-  PROTOTYPE: ?state=accepted|rejected|unavailable shows a state; otherwise the answer is kept in the session
+  PROTOTYPE: ?state=accepted|rejected|expired|unavailable shows a state; otherwise the answer is kept in the session
   (proposition.js). Match 9001 of mandate 204 in Partner Central's prototype.
 -->
 <body class="listing-page">
@@ -304,6 +306,12 @@
                         </form>
                     </div>
 
+                    <div class="answer" data-answer="EXPIRED" hidden>
+                        <p class="answer__status">Cette proposition a expiré.</p>
+                        <p>Ce logement vous intéresse toujours&nbsp;? Contactez Serge.</p>
+                        <a class="btn btn-secondary price-card__cta" href="https://wa.me/237677000111" rel="noopener" target="_blank">Contacter<span class="visually-hidden"> Serge sur WhatsApp</span></a>
+                    </div>
+
                     <div class="answer" data-answer="UNAVAILABLE" hidden>
                         <p class="answer__status">Ce logement n'est plus disponible.</p>
                         <p>Il a été loué ou retiré. Serge continue de chercher pour vous.</p>
@@ -328,6 +336,7 @@
         </div>
         <p class="cta-bar__note" data-bar-answer="REJECTED" hidden>Logement écarté ·
             <button class="link-button" form="accept-again" type="submit">changer d'avis</button></p>
+        <p class="cta-bar__note" data-bar-answer="EXPIRED" hidden>Proposition expirée</p>
         <p class="cta-bar__note" data-bar-answer="UNAVAILABLE" hidden>Plus disponible</p>
         <form action="#main" data-accept-form hidden id="accept-again" method="post"></form>
     </div>
