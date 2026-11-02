@@ -64,14 +64,14 @@ object MatchRules {
     fun tag(match: Match): MandateRules.Tag = TAGS[match.status] ?: TAGS.getValue(MatchStatus.PROPOSED)
 
     /**
-     * A sent match's one line, the tag saying the rest: "Envoyé le 28 octobre 2026", "… · intéressé le 29 octobre
-     * 2026"; null before it's sent (and for a refused one, not shown).
+     * A sent match's one line, with the date of its latest step only: "Envoyé le 28 octobre 2026", "Intéressé le 29
+     * octobre 2026" (sent, without its answer's date); null before it's sent (and for a refused one, not shown).
      */
     fun answer(match: Match, formatter: TenantFormatter): String? {
         val sent = "Envoyé" + (match.proposedAt?.let { " le " + formatter.date(it) } ?: "")
         return when (match.status) {
             MatchStatus.PROPOSED -> sent
-            MatchStatus.ACCEPTED -> sent + (match.answeredAt?.let { " · intéressé le " + formatter.date(it) } ?: "")
+            MatchStatus.ACCEPTED -> match.answeredAt?.let { "Intéressé le " + formatter.date(it) } ?: sent
             else -> null
         }
     }

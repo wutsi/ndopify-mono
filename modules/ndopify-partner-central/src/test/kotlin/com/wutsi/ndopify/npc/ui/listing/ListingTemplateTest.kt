@@ -225,7 +225,7 @@ class ListingTemplateTest {
             section.select("a[data-proposal-link]").map { it.attr("href") },
         )
         assertEquals("status-tag status-tag--success", section.selectFirst("[data-proposal-tag]")?.className())
-        assertEquals("Envoyé le 28 oct. 2026", section.select("[data-proposal-summary]")[1].text())
+        assertEquals("Intéressé le 29 oct. 2026", section.select("[data-proposal-summary]")[1].text())
         assertNull(section.selectFirst("[data-proposals-empty]"))
     }
 

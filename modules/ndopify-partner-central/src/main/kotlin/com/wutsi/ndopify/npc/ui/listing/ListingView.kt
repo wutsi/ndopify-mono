@@ -60,7 +60,7 @@ data class ProposalRow(
     val url: String?,
     /** "Intéressé", "En attente". */
     val tag: MandateRules.Tag,
-    /** "Envoyé le 28 oct. 2026". */
+    /** "Envoyé le 28 oct. 2026", "Intéressé le 29 oct. 2026" (`MatchRules.answer`). */
     val sent: String,
 )
 

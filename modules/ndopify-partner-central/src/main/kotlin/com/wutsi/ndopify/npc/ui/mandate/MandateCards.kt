@@ -19,7 +19,7 @@ object MandateCards {
      * [listings] are the agent's by mandate id, null when they can't be loaded: a landlord's signed mandate then has
      * no listing line, and the next step is the mandate's. [matches] are the signed searches' by mandate id, null when
      * they can't be loaded: no match lines, and the next step is the mandate's. [interest] is, by listing id, how many
-     * clients accepted a published listing (none: 0), null when it can't be loaded: no interest line.
+     * clients accepted a published listing, null when it can't be loaded: no interest line, nor when none did.
      */
     fun of(
         mandate: Mandate,
@@ -49,7 +49,9 @@ object MandateCards {
             },
             listing = listings?.let { ListingViews.line(mandate, listing, formatter) },
             interest = listing?.takeIf { it.status == ListingStatus.PUBLISHED && MandateRules.listed(mandate) }
-                ?.let { published -> interest?.let { MatchRules.interest(it[published.id] ?: 0) } },
+                ?.let { published -> interest?.get(published.id) }
+                ?.takeIf { it > 0 } // None: nothing to highlight on the card
+                ?.let { MatchRules.interest(it) },
             nextStep = MatchRules.nextStep(matched)
                 ?: listings?.takeIf { MandateRules.listed(mandate) }?.let { MandateRules.listingStep(listing) }
                 ?: MandateRules.nextStep(mandate, contract, now, formatter),

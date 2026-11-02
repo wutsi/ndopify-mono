@@ -68,8 +68,15 @@ class ProposeMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(1L, principal.getTenantId())
         assertEquals(100L, principal.getPartyId())
 
+        // The e-mail leaves before the transaction that grants the access commits: wait for it
         val membership = membershipDao.findByPartyId(100L)!!
         val publicPortal = applicationService.findByCode(ApplicationCode.PUBLIC_PORTAL)
+        val deadline = System.currentTimeMillis() + 5000
+        while (!userApplicationDao.findByMembershipAndApplication(membership, publicPortal).isPresent &&
+            System.currentTimeMillis() < deadline
+        ) {
+            Thread.sleep(50)
+        }
         assertTrue(userApplicationDao.findByMembershipAndApplication(membership, publicPortal).isPresent)
     }
 

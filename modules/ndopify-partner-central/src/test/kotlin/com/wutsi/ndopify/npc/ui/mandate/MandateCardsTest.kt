@@ -129,7 +129,7 @@ class MandateCardsTest {
         val published = ListingSummary(id = 501, mandateId = 203, status = ListingStatus.PUBLISHED)
 
         assertEquals("2 personnes intéressées", listed(published, mapOf(501L to 2)).interest)
-        assertEquals("Aucune personne intéressée pour l'instant", listed(published, mapOf(502L to 2)).interest)
+        assertNull(listed(published, mapOf(502L to 2)).interest) // None: not highlighted
         assertNull(listed(published, null).interest) // Unavailable
         assertNull(listed(published.copy(status = ListingStatus.DRAFT), mapOf(501L to 2)).interest)
         assertNull(listed(null).interest)

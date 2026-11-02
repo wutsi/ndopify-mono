@@ -457,7 +457,7 @@ class HomeControllerTest {
         verify(matchClient).searchByListings(listOf(501L, 502L), listOf(MatchStatus.ACCEPTED), 100)
         val mandates = mandates(result)
         assertEquals("2 personnes intéressées", mandates[0].interest)
-        assertEquals("Aucune personne intéressée pour l'instant", mandates[1].interest)
+        assertNull(mandates[1].interest) // None: not highlighted
         assertNull(mandates[2].interest)
     }
 

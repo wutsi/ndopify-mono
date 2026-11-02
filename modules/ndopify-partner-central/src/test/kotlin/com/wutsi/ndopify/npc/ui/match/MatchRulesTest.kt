@@ -198,7 +198,7 @@ class MatchRulesTest {
         assertNull(MatchRules.answer(MATCH_A, FORMATTER))
         assertEquals("Envoyé le 28 oct. 2026", MatchRules.answer(proposed, FORMATTER))
         assertEquals(
-            "Envoyé le 28 oct. 2026 · intéressé le 29 oct. 2026",
+            "Intéressé le 29 oct. 2026",
             MatchRules.answer(proposed.copy(status = MatchStatus.ACCEPTED, answeredAt = answeredAt), FORMATTER),
         )
         assertEquals("Envoyé le 28 oct. 2026", MatchRules.answer(proposed.copy(status = MatchStatus.ACCEPTED), FORMATTER))

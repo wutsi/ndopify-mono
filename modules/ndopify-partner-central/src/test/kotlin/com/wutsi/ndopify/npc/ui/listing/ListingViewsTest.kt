@@ -634,7 +634,10 @@ class ListingViewsTest {
         assertEquals(listOf("Client d'un autre agent", "Sandrine Eboa", "Carine Ndongo"), view.rows.map { it.client })
         assertEquals(listOf(null, "/mandates/204#matches-title", "/mandates/207#matches-title"), view.rows.map { it.url })
         assertEquals(listOf("Intéressé", "Intéressé", "En attente"), view.rows.map { it.tag.label })
-        assertEquals("Envoyé le 28 oct. 2026", view.rows[1].sent)
+        assertEquals(
+            listOf("Intéressé le 30 oct. 2026", "Intéressé le 29 oct. 2026", "Envoyé le 31 oct. 2026"),
+            view.rows.map { it.sent },
+        )
     }
 
     @Test

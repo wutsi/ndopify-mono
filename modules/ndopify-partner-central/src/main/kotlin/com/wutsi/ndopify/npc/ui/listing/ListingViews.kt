@@ -269,7 +269,7 @@ object ListingViews {
                     },
                     url = mandate?.let { "/mandates/${it.id}#matches-title" },
                     tag = MatchRules.tag(match),
-                    sent = "Envoyé" + (match.proposedAt?.let { " le " + formatter.date(it) } ?: ""),
+                    sent = MatchRules.answer(match, formatter).orEmpty(),
                 )
             }
         return ProposalsView(summary = MatchRules.proposals(matches), rows = rows)
