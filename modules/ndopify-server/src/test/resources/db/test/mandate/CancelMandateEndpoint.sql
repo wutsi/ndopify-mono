@@ -46,3 +46,15 @@ INSERT INTO T_MANDATE(
 INSERT INTO T_ASSIGNMENT(id, tenant_id, mandate_id, agent_id, status, score, created_at, modified_at, expires_at) VALUES
     (1, 1, 1, 20, 'PENDING', 0.8, '2024-06-10 00:00:00', '2024-06-10 00:00:00', '2099-01-01 00:00:00'),
     (2, 1, 2, 20, 'ACCEPTED', 0.8, '2024-06-10 00:00:00', '2024-06-10 00:00:00', '2099-01-01 00:00:00');
+
+-- LISTING mandates: 8 approved, its listing published   10 assigned, its listing not published yet
+INSERT INTO T_MANDATE(
+    id, tenant_id, customer_id, agent_id, status, mandate_type, listing_type, city_id, property_type,
+    price, currency_code, created_at, modified_at, approved_at
+) VALUES
+    (8, 1, 10, 20, 'APPROVED', 'LISTING', 'RENTAL', 2370201, 'APARTMENT', 150000, 'XAF', '2024-06-01 00:00:00', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (10, 1, 10, 20, 'ASSIGNED', 'LISTING', 'RENTAL', 2370201, 'APARTMENT', 150000, 'XAF', '2024-06-01 00:00:00', '2024-06-10 00:00:00', null);
+
+INSERT INTO T_LISTING(id, tenant_id, mandate_id, agent_id, listing_type, status, city_id, modified_at) VALUES
+    (80, 1, 8, 20, 'RENTAL', 'PUBLISHED', 2370201, '2024-06-10 00:00:00'),
+    (100, 1, 10, 20, 'RENTAL', 'DRAFT', 2370201, '2024-06-10 00:00:00');

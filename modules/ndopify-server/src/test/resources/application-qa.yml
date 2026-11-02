@@ -34,6 +34,8 @@ ndopify:
             cron: "-" # Never on its own: tests call ListingJobs
         publish:
             cron: "-" # Never on its own: tests call ListingJobs
+        close:
+            cron: "-" # Never on its own: tests call ListingJobs
     match:
         notify:
             cron: "-" # Never on its own: tests call MatchJobs

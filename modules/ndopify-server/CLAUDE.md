@@ -58,7 +58,8 @@ locale and `timeZone` — never a hard-coded pattern. Mailet unit tests mirror t
 
 Scheduled jobs live in `<domain>/server/job/`: `KycJobs` (party), `MandateJobs` (mandate), `ContractJobs`
 (contract), `ListingJobs` (listing, every 15 minutes: `verify`, the UNDER_VERIFICATION listings through
-`ListingVerifierService`; `publish`, the VERIFIED ones sent for publication, then the PUBLISHING ones through `ListingPublisherService`) and
+`ListingVerifierService`; `publish`, the VERIFIED ones sent for publication, then the PUBLISHING ones through `ListingPublisherService`;
+`close`, daily, the PUBLISHED listings of closed mandates) and
 `MatchJobs` (match: `notifyAgents` hourly, `rematch` and `expire` daily, see *match* below). They loop over the
 active tenants, setting `TenantContext` for each.
 
@@ -148,7 +149,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `cancellationReason` and `closedAt` (no age), expires its PENDING offer, without re-dispatch, and cancels its contract
   (`ContractService.cancel`, in the same transaction: a DRAFT, PENDING_SIGNATURE or SIGNED one becomes `CANCELLED`; an
   EXPIRED one is left as is; the contract is locked before the mandate, see *Lock order*). Both lock the
-  mandate and publish `MandateClosedEvent` (no listener yet). Accepting an offer of a mandate that's no longer
+  mandate and publish `MandateClosedEvent`: `ListingMandateEventListener` (listing domain, synchronous, in the
+  closing's transaction) takes the mandate's PUBLISHED listing off the market (see *listing*). Accepting an offer of a mandate that's no longer
   `PENDING_ASSIGNMENT` is 409 `ASSIGNMENT_NOT_PENDING`.
   Offers of a mandate to agents are `AssignmentEntity` (`T_ASSIGNMENT`, `@Version`-ed; `/v1/assignments`: search
   (newest first), get, `POST /{id}/accept`, `POST /{id}/decline`), see `docs/superpowers/plans/2026-10-14-mandate-dispatch.md`.
@@ -281,7 +283,12 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   it's `PUBLISHED` without title, summary nor description (the UIs handle it), its last error kept. Either way it
   publishes `ListingPublishedEvent`: `ListingPublishedMailet` e-mails the agent (not the customer, for now), with a
   link to `{publicPortalUrl}{url}` (`mail/listing/published_customer.mjml` / `published_agent.mjml`; no link without
-  either). `RENTED`, `SOLD`, `EXPIRED`, `CANCELLED` aren't set by any code yet.
+  either). **Close**: a mandate's closing (`MandateClosedEvent`, `ListingMandateEventListener`, synchronous, so it
+  commits or rolls back with the mandate; a listing `@Version` conflict fails the closing) moves its listing, if
+  PUBLISHED, to `SOLD` / `RENTED` (its `listingType`; an UNKNOWN one is left as is) once CLOSED, or `CANCELLED` once
+  CANCELLED, with `closedAt` (`ListingService.onMandateClosed`); a listing in any other status is left as is.
+  `ListingJobs.close` (daily, `ndopify.listing.close.cron`) does the same for the PUBLISHED listings of closed mandates
+  the listener missed (closed before it existed). `EXPIRED` isn't set by any code yet.
   Tenant-scoped.
 - **match** — the listings of an agent's inventory matching its SEARCH mandates (`MatchEntity`, `T_MATCH`, `V9_0`,
   one row per (mandate, listing), `@Version`-ed), see `docs/superpowers/plans/2026-10-31-search-listing-matching.md`

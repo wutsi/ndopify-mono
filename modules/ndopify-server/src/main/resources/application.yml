@@ -262,6 +262,8 @@ ndopify:
             cron: "0 */15 * * * ?"         # Every 15 minutes: publish listings that are VERIFIED or PUBLISHING
         verify:
             cron: "0 */15 * * * ?"         # Every 15 minutes: verify listings that are UNDER_VERIFICATION
+        close:
+            cron: "0 30 1 * * ?"           # Every day at 01:30: PUBLISHED listings of closed mandates the listener missed
 
     mandate:
         assignment:
