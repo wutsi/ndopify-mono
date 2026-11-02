@@ -14,6 +14,7 @@ import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -32,6 +33,9 @@ class CancelMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
     @Autowired
     private lateinit var contractDao: ContractRepository
+
+    @Autowired
+    private lateinit var jdbc: JdbcTemplate
 
     private val request = CancelMandateRequest(
         cancellationCode = MandateCancellationCode.FOUND_INDEPENDENTLY,
@@ -54,6 +58,27 @@ class CancelMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
         assertEquals(AssignmentStatus.ACCEPTED, assignmentDao.findById(2L).get().status)
         assertEquals(ContractStatus.CANCELLED, contractDao.findById("c-2").get().status)
+    }
+
+    @Test
+    fun `the published listing is cancelled`() {
+        val response = rest.postForEntity("/v1/mandates/8/cancel", request, Any::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        // Read without the tenant filter: the test thread has no tenant
+        val listing = jdbc.queryForMap("SELECT status, closed_at FROM T_LISTING WHERE id=80")
+        assertEquals("CANCELLED", listing["status"])
+        assertNotNull(listing["closed_at"])
+    }
+
+    @Test
+    fun `a listing not published is left as is`() {
+        val response = rest.postForEntity("/v1/mandates/10/cancel", request, Any::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val listing = jdbc.queryForMap("SELECT status, closed_at FROM T_LISTING WHERE id=100")
+        assertEquals("DRAFT", listing["status"])
+        assertNull(listing["closed_at"])
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.wutsi.ndopify.match.server.job
 
 import com.wutsi.ndopify.match.server.service.MatchNotificationService
 import com.wutsi.ndopify.match.server.service.MatchProposalService
+import com.wutsi.ndopify.match.server.service.MatchService
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.slf4j.LoggerFactory
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service
 class MatchJobs(
     private val notificationService: MatchNotificationService,
     private val proposalService: MatchProposalService,
+    private val matchService: MatchService,
     private val tenantService: TenantService,
 ) {
     companion object {
@@ -27,6 +29,12 @@ class MatchJobs(
     @Scheduled(cron = "\${ndopify.match.notify.cron}")
     fun notifyAgents() {
         forEachTenant("notifyAgents", "agent(s)") { notificationService.notifyAgents() }
+    }
+
+    /** Re-matches the open searches: catches up on the runs lost, re-scores against today. */
+    @Scheduled(cron = "\${ndopify.match.rematch.cron}")
+    fun rematch() {
+        forEachTenant("rematch", "match(es)") { matchService.matchAll() }
     }
 
     /** Expires the proposals the customers didn't answer in time. */

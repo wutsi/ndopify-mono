@@ -50,12 +50,28 @@ class ListingJobs(
         run("publishing", ListingStatus.PUBLISHING) { listing -> publisherService.publish(listing) }
     }
 
+    /**
+     * Takes off the market the PUBLISHED listings whose mandate is closed (CLOSED or CANCELLED), as
+     * `ListingMandateEventListener` does on the closing: catches up on the mandates closed before that listener
+     * existed, or by a path that didn't publish `MandateClosedEvent`.
+     */
+    @Scheduled(cron = "\${ndopify.listing.close.cron}")
+    fun close() {
+        run("close", { service.findPublishedOfClosedMandates(LIMIT) }) { listing ->
+            service.onMandateClosed(listing.mandate.id!!)
+        }
+    }
+
     private fun run(job: String, status: ListingStatus, process: (ListingEntity) -> Unit) {
+        run(job, { service.search(SearchListingRequest(statuses = listOf(status), limit = LIMIT)) }, process)
+    }
+
+    private fun run(job: String, find: () -> List<ListingEntity>, process: (ListingEntity) -> Unit) {
         tenantService.search(true).forEach { tenant ->
             val tenantId = tenant.id!!
             try {
                 TenantContext.set(tenantId)
-                run(tenantId, job, status, process)
+                run(tenantId, job, find, process)
             } catch (ex: Exception) {
                 // A tenant failing must not prevent the others to be processed
                 LOGGER.warn("Tenant#$tenantId - Unable to $job the listings", ex)
@@ -65,15 +81,10 @@ class ListingJobs(
         }
     }
 
-    private fun run(tenantId: Long, job: String, status: ListingStatus, process: (ListingEntity) -> Unit) {
+    private fun run(tenantId: Long, job: String, find: () -> List<ListingEntity>, process: (ListingEntity) -> Unit) {
         LOGGER.info("Tenant#$tenantId - Running ListingJobs.$job()")
 
-        val listings = service.search(
-            SearchListingRequest(
-                statuses = listOf(status),
-                limit = LIMIT,
-            )
-        )
+        val listings = find()
 
         var processed = 0
         var errors = 0

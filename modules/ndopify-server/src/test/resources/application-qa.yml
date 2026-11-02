@@ -34,10 +34,14 @@ ndopify:
             cron: "-" # Never on its own: tests call ListingJobs
         publish:
             cron: "-" # Never on its own: tests call ListingJobs
+        close:
+            cron: "-" # Never on its own: tests call ListingJobs
     match:
         notify:
             cron: "-" # Never on its own: tests call MatchJobs
         expire:
+            cron: "-" # Never on its own: tests call MatchJobs
+        rematch:
             cron: "-" # Never on its own: tests call MatchJobs
     mandate:
         assignment:

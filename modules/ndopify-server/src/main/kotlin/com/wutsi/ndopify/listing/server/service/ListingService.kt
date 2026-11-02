@@ -13,12 +13,14 @@ import com.wutsi.ndopify.listing.dto.CreateListingRequest
 import com.wutsi.ndopify.listing.dto.ListingSection
 import com.wutsi.ndopify.listing.dto.ListingSectionStatus
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.SearchListingRequest
 import com.wutsi.ndopify.listing.dto.UpdateListingRequest
 import com.wutsi.ndopify.listing.server.dao.ListingRepository
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.mail.ListingPublishedMailet
+import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.mandate.server.service.MandateService
 import com.wutsi.ndopify.refdata.dto.LocationType
@@ -341,6 +343,44 @@ class ListingService(
             agent = listing.agent,
         )
         return true
+    }
+
+    /**
+     * Takes the PUBLISHED listing of a closed mandate off the market: SOLD or RENTED (its `listingType`) once the
+     * mandate is CLOSED, CANCELLED once it's CANCELLED, with `closedAt`. A listing in any other status (DRAFT, being
+     * verified or published...) is left as is, and so is the listing of a mandate that isn't closed, or of an
+     * UNKNOWN type. Returns the listing changed, or null. Called by `ListingMandateEventListener` in the mandate's
+     * transaction, and by `ListingJobs.close` for a closing it missed.
+     */
+    @Transactional
+    fun onMandateClosed(mandateId: Long): ListingEntity? {
+        val mandate = mandateService.findById(mandateId)
+        val listing = dao.findByMandate(mandate)
+        if (listing == null || listing.status != ListingStatus.PUBLISHED) {
+            return null
+        }
+
+        val status = when (mandate.status) {
+            MandateStatus.CLOSED -> when (listing.listingType) {
+                ListingType.SALE -> ListingStatus.SOLD
+                ListingType.RENTAL -> ListingStatus.RENTED
+                else -> null
+            }
+            MandateStatus.CANCELLED -> ListingStatus.CANCELLED
+            else -> null
+        } ?: return null
+
+        val now = Date(clock.millis())
+        return dao.save(listing.copy(status = status, closedAt = now, modifiedAt = now))
+    }
+
+    /** The PUBLISHED listings whose mandate is closed (CLOSED or CANCELLED): closings [onMandateClosed] missed. */
+    fun findPublishedOfClosedMandates(limit: Int): List<ListingEntity> {
+        return dao.findByStatusAndMandateStatusIn(
+            ListingStatus.PUBLISHED,
+            listOf(MandateStatus.CLOSED, MandateStatus.CANCELLED),
+            OffsetLimitPageRequest(0, limit, Sort.by(Sort.Direction.ASC, "id")),
+        )
     }
 
     // A neighbourhood of the city

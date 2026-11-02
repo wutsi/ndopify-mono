@@ -30,3 +30,17 @@ INSERT INTO T_MANDATE(
     (3, 1, 10, 20, 'CLOSED', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', '2024-06-01 00:00:00', '2024-06-10 00:00:00', '2024-06-10 00:00:00', '2024-06-20 00:00:00'),
     (4, 1, 10, 20, 'CANCELLED', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', '2024-06-01 00:00:00', '2024-06-10 00:00:00', null, '2024-06-20 00:00:00'),
     (9, 2, 90, 90, 'APPROVED', 'SEARCH', 'RENTAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF', '2024-06-01 00:00:00', '2024-06-10 00:00:00', '2024-06-10 00:00:00', null);
+
+-- LISTING mandates, approved: 5 for sale, its listing published   6 for rent, its listing published   7 its listing not published yet
+INSERT INTO T_MANDATE(
+    id, tenant_id, customer_id, agent_id, status, mandate_type, listing_type, city_id, property_type,
+    price, currency_code, created_at, modified_at, approved_at
+) VALUES
+    (5, 1, 10, 20, 'APPROVED', 'LISTING', 'SALE', 2370201, 'HOUSE', 50000000, 'XAF', '2024-06-01 00:00:00', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (6, 1, 10, 20, 'APPROVED', 'LISTING', 'RENTAL', 2370201, 'APARTMENT', 150000, 'XAF', '2024-06-01 00:00:00', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (7, 1, 10, 20, 'APPROVED', 'LISTING', 'RENTAL', 2370201, 'APARTMENT', 150000, 'XAF', '2024-06-01 00:00:00', '2024-06-10 00:00:00', '2024-06-10 00:00:00');
+
+INSERT INTO T_LISTING(id, tenant_id, mandate_id, agent_id, listing_type, status, city_id, modified_at) VALUES
+    (50, 1, 5, 20, 'SALE', 'PUBLISHED', 2370201, '2024-06-10 00:00:00'),
+    (60, 1, 6, 20, 'RENTAL', 'PUBLISHED', 2370201, '2024-06-10 00:00:00'),
+    (70, 1, 7, 20, 'RENTAL', 'DRAFT', 2370201, '2024-06-10 00:00:00');

@@ -10,6 +10,7 @@ import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.jdbc.Sql
 import java.time.Duration
 import kotlin.test.Test
@@ -23,6 +24,9 @@ class CloseMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
     @Autowired
     private lateinit var dao: MandateRepository
+
+    @Autowired
+    private lateinit var jdbc: JdbcTemplate
 
     private val request = CloseMandateRequest(finalPrice = Money(amount = 140000, currency = "XAF"))
 
@@ -42,6 +46,36 @@ class CloseMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         val age = Duration.ofMillis(mandate.closedAt.time - mandate.approvedAt!!.time).toDays().toInt()
         assertEquals(age, mandate.age)
         assertNull(mandate.cancellationCode)
+    }
+
+    @Test
+    fun `the published listing of a sale is sold`() {
+        assertListingClosed(5L, 50L, "SOLD")
+    }
+
+    @Test
+    fun `the published listing of a rental is rented`() {
+        assertListingClosed(6L, 60L, "RENTED")
+    }
+
+    @Test
+    fun `a listing not published is left as is`() {
+        val response = rest.postForEntity("/v1/mandates/7/close", request, Any::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val listing = jdbc.queryForMap("SELECT status, closed_at FROM T_LISTING WHERE id=70")
+        assertEquals("DRAFT", listing["status"])
+        assertNull(listing["closed_at"])
+    }
+
+    private fun assertListingClosed(mandateId: Long, listingId: Long, status: String) {
+        val response = rest.postForEntity("/v1/mandates/$mandateId/close", request, Any::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        // Read without the tenant filter: the test thread has no tenant
+        val listing = jdbc.queryForMap("SELECT status, closed_at FROM T_LISTING WHERE id=$listingId")
+        assertEquals(status, listing["status"])
+        assertNotNull(listing["closed_at"])
     }
 
     @Test

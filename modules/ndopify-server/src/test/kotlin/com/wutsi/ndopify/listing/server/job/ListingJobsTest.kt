@@ -16,6 +16,7 @@ import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingService
 import com.wutsi.ndopify.listing.server.service.publisher.ListingPublisherService
 import com.wutsi.ndopify.listing.server.service.verifier.ListingVerifierService
+import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
@@ -264,6 +265,47 @@ class ListingJobsTest {
 
         verify(service).publish(listing2.copy(status = ListingStatus.VERIFIED))
         verify(publisherService).publish(listing2.copy(status = ListingStatus.PUBLISHING))
+        assertNull(TenantContext.get())
+    }
+
+    @Test
+    fun `close - closes the listing of each closed mandate found, at most 100 per run`() {
+        val published = listOf(10L, 20L).map { ListingEntity(mandate = MandateEntity(id = it), status = ListingStatus.PUBLISHED) }
+        doReturn(published).whenever(service).findPublishedOfClosedMandates(100)
+
+        jobs.close()
+
+        val order = inOrder(service)
+        order.verify(service).findPublishedOfClosedMandates(100)
+        order.verify(service).onMandateClosed(10L)
+        order.verify(service).onMandateClosed(20L)
+    }
+
+    @Test
+    fun `close - a failing listing doesn't stop the others`() {
+        val published = listOf(10L, 20L, 30L).map { ListingEntity(mandate = MandateEntity(id = it), status = ListingStatus.PUBLISHED) }
+        doReturn(published).whenever(service).findPublishedOfClosedMandates(100)
+        doThrow(IllegalStateException("version conflict")).whenever(service).onMandateClosed(20L)
+
+        jobs.close()
+
+        verify(service, times(3)).onMandateClosed(any())
+    }
+
+    @Test
+    fun `close - each tenant processed with its id in the tenant context`() {
+        doReturn(listOf(tenant1, tenant2)).whenever(tenantService).search(true)
+        val tenants = mutableListOf<Long?>()
+        doAnswer {
+            tenants.add(TenantContext.get())
+            listOf(ListingEntity(mandate = MandateEntity(id = TenantContext.get()), status = ListingStatus.PUBLISHED))
+        }.whenever(service).findPublishedOfClosedMandates(any())
+
+        jobs.close()
+
+        assertEquals(listOf<Long?>(1L, 2L), tenants)
+        verify(service).onMandateClosed(1L)
+        verify(service).onMandateClosed(2L)
         assertNull(TenantContext.get())
     }
 }
