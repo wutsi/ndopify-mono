@@ -1868,6 +1868,64 @@
         });
     }
 
+    // A landlord's mandate page, its listing published: who the listing was sent to (its Propositions). A visit asked
+    // first, then interested, then waiting; the latest first within each. A refused one is only counted, in the line.
+    var PROPOSAL_TAGS = {
+        VISIT: ANSWER_TAGS.VISIT,
+        ACCEPTED: ANSWER_TAGS.ACCEPTED,
+        NONE: ["En attente", "neutral"]
+    };
+
+    function renderListingProposals(box, mandateId, published) {
+        if (!box) return;
+        box.hidden = !published;
+        if (box.hidden) return;
+        var matches = listingProposalsOf(mandateId);
+        var summary = proposalsSummary(matches);
+        $("[data-proposals-summary]", box).hidden = !summary;
+        $("[data-proposals-summary-text]", box).textContent = summary;
+        $("[data-proposals-empty]", box).hidden = matches.length > 0;
+
+        var RANKS = { VISIT: 0, ACCEPTED: 1, NONE: 2 };
+
+        function rank(m) {
+            return RANKS[answerOf(m) || "NONE"];
+        }
+        var shown = matches.filter(function (m) {
+            return answerOf(m) !== "REJECTED";
+        }).sort(function (a, b) {
+            return rank(a) - rank(b) || (b.answeredAt || b.sentAt) - (a.answeredAt || a.sentAt);
+        });
+        var list = $("[data-proposals-list]", box);
+        var template = $("[data-proposals-template]", box);
+        list.textContent = "";
+        list.hidden = shown.length === 0;
+        shown.forEach(function (m) {
+            var item = template.content.firstElementChild.cloneNode(true);
+            var answer = answerOf(m) || "NONE";
+            var row = $("[data-proposal-link]", item);
+            if (m.otherAgent) {
+                // Another agent's client: no name, no link to a mandate the agent can't open
+                var plain = document.createElement("div");
+                plain.className = row.className;
+                while (row.firstChild) plain.appendChild(row.firstChild);
+                row.replaceWith(plain);
+            } else {
+                row.href = "mandate.html?id=" + encodeURIComponent(m.mandateId) + "#matches-title";
+            }
+            $("[data-proposal-client]", item).textContent = m.otherAgent ? "Client d'un autre agent" : m.client;
+            var tag = $("[data-proposal-tag]", item);
+            tag.textContent = PROPOSAL_TAGS[answer][0];
+            tag.className = "status-tag status-tag--" + PROPOSAL_TAGS[answer][1];
+            // Short enough for one line on a phone: the visit asked, else when it was sent
+            $("[data-proposal-summary]", item).textContent = answer === "VISIT"
+                ? "Visite le " + formatShortDate(m.visit.at) + " à " + m.visit.time +
+                    (m.visit.type === "VIDEO" ? ", en vidéo" : ", sur place")
+                : "Envoyé le " + formatShortDate(m.sentAt);
+            list.appendChild(item);
+        });
+    }
+
     // "2 personnes intéressées", or "Aucune personne intéressée pour l'instant".
     function interestSummary(mandateId) {
         var n = listingProposalsOf(mandateId).filter(function (m) {
@@ -2179,6 +2237,7 @@
             var interest = $("[data-listing-interest]", listingBox);
             interest.hidden = !listing || listing.status !== "PUBLISHED";
             $("[data-listing-interest-text]", interest).textContent = interestSummary(id);
+            renderListingProposals($("[data-listing-proposals]"), id, !!listing && listing.status === "PUBLISHED");
             listingCreate.hidden = !!listing;
             listingLink.hidden = !listing;
             var text = $("[data-listing-text]", listingBox);
@@ -3157,71 +3216,11 @@
                 list.appendChild(item);
             });
 
-            renderProposals(listing);
-
             var left = missingSections(listing);
             $("[data-listing-send]").hidden = !editable;
             setActive(submit, left.length === 0);
             missing.textContent = left.length ? "Encore à faire : " + left.join(", ") + "." :
                 "Tout est vérifié : vous pouvez envoyer l'annonce.";
-        }
-
-        // Published: who it was sent to. A visit asked first, then interested, then waiting; the latest first within
-        // each. A refused one is only counted, in the line.
-        var PROPOSAL_TAGS = {
-            VISIT: ANSWER_TAGS.VISIT,
-            ACCEPTED: ANSWER_TAGS.ACCEPTED,
-            NONE: ["En attente", "neutral"]
-        };
-
-        function renderProposals(listing) {
-            var box = $("[data-listing-proposals]");
-            box.hidden = listing.status !== "PUBLISHED";
-            if (box.hidden) return;
-            var matches = listingProposalsOf(listing.mandateId);
-            var summary = proposalsSummary(matches);
-            $("[data-proposals-summary]", box).hidden = !summary;
-            $("[data-proposals-summary-text]", box).textContent = summary;
-            $("[data-proposals-empty]", box).hidden = matches.length > 0;
-
-            var RANKS = { VISIT: 0, ACCEPTED: 1, NONE: 2 };
-
-            function rank(m) {
-                return RANKS[answerOf(m) || "NONE"];
-            }
-            var shown = matches.filter(function (m) {
-                return answerOf(m) !== "REJECTED";
-            }).sort(function (a, b) {
-                return rank(a) - rank(b) || (b.answeredAt || b.sentAt) - (a.answeredAt || a.sentAt);
-            });
-            var list = $("[data-proposals-list]", box);
-            var template = $("[data-proposals-template]", box);
-            list.textContent = "";
-            list.hidden = shown.length === 0;
-            shown.forEach(function (m) {
-                var item = template.content.firstElementChild.cloneNode(true);
-                var answer = answerOf(m) || "NONE";
-                var row = $("[data-proposal-link]", item);
-                if (m.otherAgent) {
-                    // Another agent's client: no name, no link to a mandate the agent can't open
-                    var plain = document.createElement("div");
-                    plain.className = row.className;
-                    while (row.firstChild) plain.appendChild(row.firstChild);
-                    row.replaceWith(plain);
-                } else {
-                    row.href = "mandate.html?id=" + encodeURIComponent(m.mandateId) + "#matches-title";
-                }
-                $("[data-proposal-client]", item).textContent = m.otherAgent ? "Client d'un autre agent" : m.client;
-                var tag = $("[data-proposal-tag]", item);
-                tag.textContent = PROPOSAL_TAGS[answer][0];
-                tag.className = "status-tag status-tag--" + PROPOSAL_TAGS[answer][1];
-                // Short enough for one line on a phone: the visit asked, else when it was sent
-                $("[data-proposal-summary]", item).textContent = answer === "VISIT"
-                    ? "Visite le " + formatShortDate(m.visit.at) + " à " + m.visit.time +
-                        (m.visit.type === "VIDEO" ? ", en vidéo" : ", sur place")
-                    : "Envoyé le " + formatShortDate(m.sentAt);
-                list.appendChild(item);
-            });
         }
 
         function update(changes) {

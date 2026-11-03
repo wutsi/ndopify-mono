@@ -31,6 +31,7 @@ import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.CUSTOMER
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.PENDING
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.date
 import com.wutsi.ndopify.npc.ui.match.MatchFixtures
+import com.wutsi.ndopify.npc.ui.match.MatchRules
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BONAPRISO
@@ -289,6 +290,59 @@ class MandateTemplateTest {
         assertNull(box.selectFirst("[data-listing-text]"))
         assertNull(box.selectFirst(".mandate-panel__actions"))
         assertEquals("Aucune personne intéressée pour l'instant", box.selectFirst("[data-listing-interest-text]")?.text())
+    }
+
+    @Test
+    fun `approved - landlord with listing published - proposals`() {
+        doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
+        doReturn(ListingViewsTest.COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = ListingViewsTest.SENT))
+            .whenever(listingClient).get(501)
+        doReturn(ListingViewsTest.PROPOSALS).whenever(matchClient).searchByListings(listOf(501), MatchRules.SENT)
+        doReturn(ListingViewsTest.SEARCHES).whenever(mandateClient).searchByIds(listOf(207L, 204L, 305L), AGENT.id)
+        doReturn(ListingViewsTest.CUSTOMERS).whenever(customerClient).search(listOf(14L, 17L))
+
+        val page = render(APPROVED.copy(mandateType = MandateType.LISTING))
+
+        val section = page.selectFirst("[data-listing-proposals]")!!
+        assertEquals("Propositions", section.selectFirst("h2")?.text())
+        assertEquals("2 intéressés · 1 refusé · 1 en attente", section.selectFirst("[data-proposals-summary-text]")?.text())
+        assertEquals(
+            listOf("Client d'un autre agent", "Sandrine Eboa", "Carine Ndongo"),
+            section.select("[data-proposal-client]").map { it.text() },
+        )
+        // Another agent's client: not a link
+        assertEquals("div", section.selectFirst("[data-proposal-protected]")?.tagName())
+        assertEquals(
+            listOf("/mandates/204#matches-title", "/mandates/207#matches-title"),
+            section.select("a[data-proposal-link]").map { it.attr("href") },
+        )
+        assertEquals("status-tag status-tag--success", section.selectFirst("[data-proposal-tag]")?.className())
+        assertEquals("Intéressé le 29 oct. 2026", section.select("[data-proposal-summary]")[1].text())
+        assertNull(section.selectFirst("[data-proposals-empty]"))
+        // After the progress, where a search has its Biens correspondants
+        assertEquals("mandate-progress", section.previousElementSiblings().first { it.tagName() == "section" }.className())
+    }
+
+    @Test
+    fun `approved - landlord with listing published - not sent to anyone`() {
+        doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
+        doReturn(ListingViewsTest.COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = ListingViewsTest.SENT))
+            .whenever(listingClient).get(501)
+        doReturn(emptyList<Any>()).whenever(matchClient).searchByListings(listOf(501), MatchRules.SENT)
+
+        val section = render(APPROVED.copy(mandateType = MandateType.LISTING)).selectFirst("[data-listing-proposals]")!!
+
+        assertNotNull(section.selectFirst("[data-proposals-empty]"))
+        assertNull(section.selectFirst("[data-proposals-summary]"))
+        assertNull(section.selectFirst("[data-proposals-list]"))
+    }
+
+    @Test
+    fun `approved - landlord with listing not published - no proposals`() {
+        doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
+        doReturn(ListingViewsTest.LISTING).whenever(listingClient).get(501)
+
+        assertNull(render(APPROVED.copy(mandateType = MandateType.LISTING)).selectFirst("[data-listing-proposals]"))
     }
 
     @Test

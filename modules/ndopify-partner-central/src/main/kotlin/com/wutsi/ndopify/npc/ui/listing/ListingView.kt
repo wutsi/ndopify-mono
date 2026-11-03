@@ -32,8 +32,6 @@ data class ListingView(
     val editable: Boolean,
     /** Every required section done: "Envoyer pour vérification" is active. */
     val sendable: Boolean,
-    /** Published only: the clients it was sent to; null else, or when they can't be had (no section). */
-    val proposals: ProposalsView? = null,
 ) {
     companion object {
         const val PANEL_DRAFT = "DRAFT"
@@ -42,7 +40,7 @@ data class ListingView(
     }
 }
 
-/** A published listing's *Propositions* (`ListingViews.proposals`). */
+/** A published listing's *Propositions* (`ListingViews.proposals`), on its mandate's page. */
 data class ProposalsView(
     /** "2 intéressés · 1 refusé · 1 en attente" (`MatchRules.proposals`); null when it wasn't sent to anyone. */
     val summary: String?,

@@ -33,6 +33,7 @@ import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest
 import com.wutsi.ndopify.npc.ui.listing.MandateListingView
+import com.wutsi.ndopify.npc.ui.listing.ProposalsView
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.CONTRACT
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.MANDATE
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.NOW
@@ -41,6 +42,7 @@ import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.APPROVED
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.CUSTOMER
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.PENDING
 import com.wutsi.ndopify.npc.ui.match.MatchFixtures
+import com.wutsi.ndopify.npc.ui.match.MatchRules
 import com.wutsi.ndopify.npc.ui.match.MatchSectionView
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
@@ -156,6 +158,75 @@ class MandateControllerTest {
 
         assertEquals("2 personnes intéressées", view.interest)
         verify(matchClient).searchByListings(listOf(501L), listOf(MatchStatus.ACCEPTED), 100)
+    }
+
+    private fun publishedListing() {
+        doReturn(APPROVED.copy(mandateType = MandateType.LISTING)).whenever(mandateClient).get(201)
+        doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
+        doReturn(ListingViewsTest.COMPLETE.copy(status = ListingStatus.PUBLISHED)).whenever(listingClient).get(501)
+        doReturn(ListingViewsTest.PROPOSALS).whenever(matchClient).searchByListings(listOf(501), MatchRules.SENT)
+        doReturn(ListingViewsTest.SEARCHES).whenever(mandateClient).searchByIds(listOf(207L, 204L, 305L), AGENT.id)
+        doReturn(ListingViewsTest.CUSTOMERS).whenever(customerClient).search(listOf(14L, 17L))
+    }
+
+    private fun proposals(): ProposalsView? =
+        model(mvc.perform(get("/mandates/201")).andReturn())["listingProposals"] as ProposalsView?
+
+    @Test
+    fun `approved landlord - published listing - its proposals`() {
+        publishedListing()
+
+        val view = proposals()!!
+
+        assertEquals("2 intéressés · 1 refusé · 1 en attente", view.summary)
+        assertEquals(listOf("Client d'un autre agent", "Sandrine Eboa", "Carine Ndongo"), view.rows.map { it.client })
+    }
+
+    @Test
+    fun `approved landlord - published listing - another agent's mandate returned anyway is protected`() {
+        publishedListing()
+        val other = ListingViewsTest.SEARCHES[1].copy(agentId = 999)
+        doReturn(listOf(ListingViewsTest.SEARCHES[0], other)).whenever(mandateClient).searchByIds(any(), any())
+        doReturn(ListingViewsTest.CUSTOMERS.take(1)).whenever(customerClient).search(listOf(14L))
+
+        val view = proposals()!!
+
+        verify(customerClient).search(listOf(14L))
+        assertEquals(listOf("Client d'un autre agent", "Sandrine Eboa", "Client d'un autre agent"), view.rows.map { it.client })
+    }
+
+    @Test
+    fun `approved landlord - published listing - proposals' matches unavailable - no section`() {
+        publishedListing()
+        doThrow(ResourceAccessException("down")).whenever(matchClient).searchByListings(listOf(501), MatchRules.SENT)
+
+        assertNull(proposals())
+    }
+
+    @Test
+    fun `approved landlord - published listing - proposals' mandates unavailable - no section`() {
+        publishedListing()
+        doThrow(ResourceAccessException("down")).whenever(mandateClient).searchByIds(any(), any())
+
+        assertNull(proposals())
+        verify(customerClient, never()).search(any())
+    }
+
+    @Test
+    fun `approved landlord - published listing - proposals' customers unavailable - the mandates' numbers`() {
+        publishedListing()
+        doThrow(ResourceAccessException("down")).whenever(customerClient).search(any())
+
+        assertEquals(listOf("Client d'un autre agent", "Mandat n° 204", "Mandat n° 207"), proposals()!!.rows.map { it.client })
+    }
+
+    @Test
+    fun `approved landlord - draft listing - no proposals`() {
+        doReturn(APPROVED.copy(mandateType = MandateType.LISTING)).whenever(mandateClient).get(201)
+        doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
+        doReturn(ListingViewsTest.LISTING).whenever(listingClient).get(501)
+
+        assertNull(proposals())
     }
 
     @Test
