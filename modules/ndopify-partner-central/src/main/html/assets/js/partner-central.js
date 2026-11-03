@@ -37,7 +37,9 @@
         // The listings of the agent's approved LISTING mandates, by id (see createListing).
         listings: "npc.listings",
         // The agent's decisions on the matches of its search mandates, by mandate then match (see matchStatesOf).
-        matches: "npc.matches"
+        matches: "npc.matches",
+        // The visits' changes made on visit.html, by id (see visit.js)
+        visits: "npc.visits"
     };
 
     /* ---------- Storage (fails soft: private mode, quota) ---------- */
@@ -1389,10 +1391,23 @@
         return saved && saved.fields ? saved.fields : MANDATES[id].fields;
     }
 
+    // The kind of mandate, before its title (cards, mandate page): a magnifying glass for a search (the agent looks
+    // for a property), a key for a listing (the owner's property, to let). Not a house: the visit cards use one for
+    // "Sur place". Decorative: the title says "Locataire" / "Propriétaire".
+    var KIND_ICONS = {
+        search: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+        listing: '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8M17 6l3 3M14.5 8.5l2 2"/></svg>'
+    };
+
+    function setKindIcon(el, id) {
+        if (el) el.innerHTML = KIND_ICONS[MANDATES[id].party === "bailleur" ? "listing" : "search"];
+    }
+
     function titleOf(id) {
         var f = fieldsOf(id);
         var type = PROPERTY_TYPE_SHORT[f.propertyType] || PROPERTY_TYPE_LABELS[f.propertyType] || "Tout type";
-        return (MANDATES[id].party === "bailleur" ? "Bailleur" : "Locataire") + " · " + type;
+        // "Propriétaire", as the public site's menu says it (not "Bailleur")
+        return (MANDATES[id].party === "bailleur" ? "Propriétaire" : "Locataire") + " · " + type;
     }
 
     // The search as [term, value] rows: sector, amount and date first (a card's three facts), then the rest.
@@ -1538,8 +1553,22 @@
             // A client's search: a visit to confirm, a listing the client likes, then new matches to send
             if (mandate.party !== "bailleur") {
                 var matches = matchesOf(id);
-                var visit = matches.filter(function (m) {
+                var visits = matches.filter(function (m) {
                     return answerOf(m) === "VISIT";
+                });
+                // A visit of visit.js (with an id): the one to confirm first, else the next one
+                var toConfirm = visits.filter(function (m) {
+                    return m.visit.id && m.visit.status === "REQUESTED";
+                })[0];
+                if (toConfirm) return "Confirmez la visite " + (toConfirm.visit.type === "VIDEO" ? "vidéo " : "") + "demandée pour le " + window.NpcVisits.formatAt(toConfirm.visit.at) + " (annonce n° " + toConfirm.listingId + ").";
+                var next = visits.filter(function (m) {
+                    return m.visit.id && m.visit.status !== "COMPLETED";
+                }).sort(function (a, b) {
+                    return a.visit.at - b.visit.at;
+                })[0];
+                if (next) return (next.visit.type === "VIDEO" ? "Visite vidéo le " : "Visite le ") + window.NpcVisits.formatAt(next.visit.at) + " (annonce n° " + next.listingId + ").";
+                var visit = visits.filter(function (m) {
+                    return !m.visit.id;
                 })[0];
                 if (visit) return "Confirmez au client la visite du " + formatShortDate(visit.visit.at) + " à " + visit.visit.time + (visit.visit.type === "VIDEO" ? ", en vidéo" : ", sur place") + " (annonce n° " + visit.listingId + ").";
                 var liked = matches.filter(function (m) {
@@ -1570,9 +1599,13 @@
     // availableIn: days from now (0: available now). fit: the partial scores of Matcher, as words, true when full.
     var MATCHES = {
         204: [
+            // Sent 3 days ago; the client asked for a visit on ndopify-web's proposition.html (visit 7001 of visit.js,
+            // to confirm on visit.html: "visit" is only the fallback of a page without visit.js).
             {
                 id: "9001", listingId: "3012", propertyType: "APARTMENT", rooms: 3, neighbourhood: "Bonapriso",
                 price: 240000, availableIn: 31, score: 0.95,
+                initial: { status: "PROPOSED", sentAt: -3, answer: "ACCEPTED", answeredAt: -2,
+                    visit: { in: 5, time: "10h30", type: "IN_PERSON" } },
                 fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"], [true, "3 chambres, comme demandé"],
                     [false, "2 équipements sur 3 : Clôturé et sécurisé, Citerne. Manque : Groupe électrogène"],
                     [true, "Disponible avant la date d'emménagement"], [true, "Non meublé, comme demandé"]]
@@ -1593,7 +1626,8 @@
                     [false, "4 chambres, une de plus que demandé"], [true, "Les 3 équipements demandés"],
                     [true, "Disponible dès maintenant"], [true, "Non meublé, comme demandé"]]
             },
-            // Sent to the client 3 days ago, answered on the public portal (ndopify-web's proposition.html).
+            // Sent to the client 3 days ago, answered on the public portal (ndopify-web's proposition.html): its visit
+            // is confirmed (visit 7004 of visit.js).
             {
                 id: "9004", listingId: "2987", propertyType: "APARTMENT", rooms: 3, neighbourhood: "Bonapriso",
                 price: 245000, availableIn: 15, score: 0.9,
@@ -1614,7 +1648,9 @@
             {
                 id: "9006", listingId: "3002", propertyType: "APARTMENT", rooms: 3, neighbourhood: "Bonanjo",
                 distanceKm: 0.8, price: 235000, availableIn: 25, score: 0.79,
-                initial: { status: "PROPOSED", sentAt: -1 },
+                // Liked the next day, with a video visit asked (visit 7019 of visit.js)
+                initial: { status: "PROPOSED", sentAt: -1, answer: "ACCEPTED", answeredAt: -0.5,
+                    visit: { in: 3, time: "18h00", type: "VIDEO" } },
                 fit: [[false, "À 0,8 km du secteur recherché"], [true, "Dans le budget"],
                     [true, "3 chambres, comme demandé"], [false, "1 équipement sur 3 : Citerne"],
                     [true, "Disponible avant la date d'emménagement"], [true, "Non meublé, comme demandé"]]
@@ -1664,6 +1700,13 @@
         VISIT: ["Visite demandée", "warning"],
         REJECTED: ["Refusé", "neutral"]
     };
+    // A match's visit (visit.js), by its status: what the agent does next.
+    var VISIT_TAGS = {
+        REQUESTED: ["Visite demandée", "warning"],
+        CONFIRMED: ["Visite confirmée", "success"],
+        CHECKED_IN: ["Visite en cours", "info"],
+        COMPLETED: ["Visité", "success"]
+    };
     // proposition.html's "Pas pour moi" reasons.
     var REJECTION_LABELS = {
         PRICE: "trop cher",
@@ -1711,6 +1754,9 @@
             ["status", "sentAt", "answer", "answeredAt", "reason", "visit"].forEach(function (key) {
                 copy[key] = state[key];
             });
+            // The match's visit as visit.html left it (visit.js): null once cancelled, expired or missed
+            var visit = window.NpcVisits && window.NpcVisits.forMatch(match.id);
+            if (visit !== undefined && copy.status === "PROPOSED") copy.visit = visit;
             return copy;
         });
     }
@@ -1855,6 +1901,7 @@
         function render(item, id) {
             var state = stateOf(id);
             $("[data-mandate-link]", item).textContent = titleOf(id);
+            setKindIcon($("[data-mandate-kind]", item), id);
             var facts = $(".assignment__facts", item);
             facts.textContent = "";
             criteriaOf(id).slice(0, 3).forEach(function (row, i) {
@@ -1954,6 +2001,7 @@
         var c = mandate.contact;
         document.title = titleOf(id) + " — Ndopify Partner Central";
         $("[data-mandate-title]").textContent = titleOf(id);
+        setKindIcon($("[data-mandate-kind]"), id);
         $all("[data-edit-link]").forEach(function (a) {
             a.href = "mandate/edit.html?id=" + encodeURIComponent(id);
         });
@@ -2214,6 +2262,7 @@
             var t = MATCH_TAGS[match.status];
             var answer = answerOf(match);
             if (answer) t = ANSWER_TAGS[answer];
+            if (answer === "VISIT" && match.visit.id) t = VISIT_TAGS[match.visit.status];
             tag.textContent = match.status === "PROPOSED" && !answer ? "En attente" : t[0];
             tag.className = "status-tag status-tag--" + t[1];
             // Sent: one line, the visit asked first, since it's what the agent acts on
@@ -2226,8 +2275,30 @@
                 var sentText = "Envoyé le " + formatShortDate(match.sentAt);
                 answerLine.textContent = answer === "ACCEPTED" ? sentText + " · intéressé le " + formatShortDate(match.answeredAt)
                     : sentText;
-                // A visit: its kind as an icon (words for screen readers), then its day and time
-                if (answer === "VISIT") {
+                // A visit of visit.js: asked ("Visite vidéo demandée pour le … — Confirmer") or confirmed ("Visite le
+                // …"), its type as the icon and in the words, linking to visit.html
+                if (answer === "VISIT" && match.visit.id) {
+                    var isVideo = match.visit.type === "VIDEO";
+                    var kind = isVideo ? "Visite vidéo" : "Visite";
+                    answerLine.innerHTML = VISIT_ICONS[isVideo ? "VIDEO" : "IN_PERSON"] + "<span></span>";
+                    var visitText = $("span", answerLine);
+                    var visitLink = document.createElement("a");
+                    visitLink.href = "visit.html?id=" + encodeURIComponent(match.visit.id);
+                    var at = window.NpcVisits.formatAt(match.visit.at);
+                    if (match.visit.status === "REQUESTED") {
+                        visitText.appendChild(document.createElement("strong")).textContent = kind + " demandée pour le " + at;
+                        visitText.appendChild(document.createTextNode(" — "));
+                        visitLink.textContent = "Confirmer";
+                        visitLink.className = "match__visit-cta";
+                        visitText.appendChild(visitLink);
+                    } else {
+                        visitLink.textContent = match.visit.status === "CHECKED_IN" ? kind + " en cours"
+                            : match.visit.status === "COMPLETED" ? (isVideo ? "Visité en vidéo le " : "Visité le ") + at
+                                : kind + " le " + at;
+                        visitText.appendChild(document.createElement("strong")).appendChild(visitLink);
+                    }
+                } else if (answer === "VISIT") {
+                    // A visit: its kind as an icon (words for screen readers), then its day and time
                     var video = match.visit.type === "VIDEO";
                     answerLine.innerHTML = VISIT_ICONS[video ? "VIDEO" : "IN_PERSON"] +
                         '<span><span class="visually-hidden">' + (video ? "Visite en vidéo, " : "Visite sur place, ") +
@@ -3682,6 +3753,18 @@
             }, 500);
         });
     }
+
+    // For the pages' own scripts (visit.js): the helpers they share with this file.
+    window.NPC = {
+        store: store,
+        $: $,
+        $all: $all,
+        announce: announce,
+        setFieldError: setFieldError,
+        setActive: setActive,
+        isActive: isActive,
+        displayPhone: displayPhone
+    };
 
     /* ---------- Boot ---------- */
     var pages = {

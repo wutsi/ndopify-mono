@@ -141,6 +141,8 @@ class HomeTemplateTest {
         assertEquals("7", card.attr("data-assignment-id"))
         assertEquals((AssignmentViewsTest.NOW + 52 * 60_000L).toString(), card.attr("data-expires-at"))
         assertEquals("Recherche", card.selectFirst("h3")?.text())
+        assertEquals("search", card.selectFirst("h3 [data-mandate-kind]")?.attr("data-mandate-kind"))
+        assertEquals("true", card.selectFirst("h3 [data-mandate-kind] svg")?.attr("aria-hidden"))
         assertEquals("52 min", card.selectFirst("[data-timer-value]")?.text())
         assertEquals("Secteurs", card.selectFirst("[data-fact=sector]")?.previousElementSibling()?.text())
         assertEquals("Bonapriso, Akwa", card.selectFirst("[data-fact=sector]")?.text())
@@ -237,6 +239,7 @@ class HomeTemplateTest {
         val link = card.selectFirst("h3 a.mandate-card__link")!!
         assertEquals("Locataire · Maison", link.text())
         assertEquals("/mandates/201", link.attr("href"))
+        assertEquals("search", card.selectFirst("h3 [data-mandate-kind]")?.attr("data-mandate-kind"))
         assertEquals("mandate-201-title", card.selectFirst("h3")?.id())
         assertEquals("mandate-201-title", card.selectFirst("article")?.attr("aria-labelledby"))
         assertEquals("status-tag status-tag--info", card.selectFirst(".status-tag")?.className())
@@ -269,6 +272,7 @@ class HomeTemplateTest {
 
         val cards = render(get("/")).select("[data-mandate-card]")
 
+        assertEquals("listing", cards[0].selectFirst("h3 [data-mandate-kind]")?.attr("data-mandate-kind"))
         val line = cards[0].selectFirst("[data-listing-line]")!!
         assertEquals("/listings/501", line.selectFirst("a[data-listing-number]")?.attr("href"))
         assertEquals("Annonce", line.selectFirst("a[data-listing-number]")?.text()) // No number: one line on a phone

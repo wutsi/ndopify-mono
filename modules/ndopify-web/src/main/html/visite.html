@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>Votre visite : appartement 3 chambres, Bonapriso — Douala | Ndopify</title>
+    <meta content="Votre visite de l'appartement 3 chambres à Bonapriso, Douala, avec Serge Ngono, votre agent Ndopify."
+          name="description">
+    <!-- A personal page (the link of the visit e-mails): never indexed nor shared. -->
+    <meta content="noindex, nofollow" name="robots">
+    <meta content="no-referrer" name="referrer">
+    <meta content="#1d7edf" name="theme-color">
+    <link href="assets/images/icon.png" rel="icon">
+    <link href="assets/images/icon.png" rel="apple-touch-icon">
+    <link href="assets/css/styles.css" rel="stylesheet">
+    <link href="assets/css/annonce.css" rel="stylesheet">
+    <link href="assets/css/proposition.css" rel="stylesheet">
+    <link href="assets/css/visite.css" rel="stylesheet">
+</head>
+<!--
+  Visit page (source doc): the customer's visit of a listing its agent proposed (a match ACCEPTED, then "Demander une
+  visite" on proposition.html). The link of every visit e-mail: /visits/{id}?token= (a public-portal token, kept in
+  the cookie and stripped from the address, as the match link). Only the mandate's customer sees it: the agent has its
+  own page in Partner Central. Visits are free: no fee, no payment.
+  Two types, shown wherever the date is ("Sur place · …" / "Visite vidéo · …"): ON_SITE, at the property; VIDEO, a
+  live WhatsApp video call from the agent, at the property, to the customer's WhatsApp number at the time set. The
+  customer picks the type, the agent may change it (and the date) when confirming. Same states, same code, same
+  feedback for both; a video visit never shows the exact address (the neighbourhood only).
+  On top, whatever the state: the listing (photo, title, neighbourhood, price; links to the proposition) and the agent
+  (name, WhatsApp). Then a 3-step progress (Demande, Date confirmée, Visite; not for an ended visit) and one block per
+  state, the server renders only the current one:
+    - REQUESTED: the type, the requested slot and note; the agent confirms within 48 h (else EXPIRED). Cancel.
+    - CONFIRMED: the agent confirmed the type and the date (they may differ from the requested ones, same slot rules:
+      one of the 7 days starting tomorrow, 8h00–20h00, every 30 minutes); the 4-digit visit code is generated and
+      e-mailed. The type, date and time (and the requested ones when they changed), the code (only ever shown to the
+      customer, never to the agent: given at the start of the visit, or read out at the start of the call), the
+      agent's contact, then:
+        - ON_SITE: the exact address, landmark and "Itinéraire" (only from now on), what to bring, the 15-minute
+          lateness rule;
+        - VIDEO: the neighbourhood only ("L'adresse exacte vous sera donnée si vous visitez sur place"), the day's
+          instructions (WhatsApp open, a good connection, the number and time of the call, the code), "if you don't
+          answer within 15 minutes…".
+      Cancel.
+    - CHECKED_IN: "Visite en cours" / "Appel en cours", started at (the agent entered the code).
+    - COMPLETED: "Le bien vous intéresse ?" Oui / Non; Non → the main reason (the match's reject reasons) and an
+      optional comment (≤ 1000). Once only: then the thanks (interested → the agent follows up: file, lease).
+    - CANCELLED: by the customer or by the agent, from REQUESTED or CONFIRMED, any time before the check-in. A new visit
+      can be requested from the proposition.
+    - EXPIRED: the agent didn't confirm within 48 h.
+    - NO_SHOW: the customer was absent / didn't answer the call, or refused the code; or the agent didn't come / didn't
+      call (no check-in within 4 h of the time): ask for another visit, or contact us.
+  The #cancel popup: the agent is told, an optional reason (≤ 500), the confirm button.
+  E-mails only, no SMS.
+  Without JavaScript the forms post and the popup opens with :target (#cancel).
+  PROTOTYPE: ?state=requested|confirmed|checked-in|completed|feedback-sent|feedback-sent-no|cancelled|
+  cancelled-by-agent|expired|no-show|no-show-agent shows a state (default confirmed), and &type=video (or ?type=video
+  alone) its video variant (data-visit-type); the forms move to the next state (visite.js). Visit of match 9001
+  (proposition.html), mandate 204 in Partner Central's prototype.
+-->
+<body class="visit-page">
+<a class="skip-link" href="#main">Aller au contenu principal</a>
+<header class="site-header">
+    <a aria-label="Ndopify — accueil" class="site-header__logo" href="index.html">
+        <img alt="Ndopify" height="36" src="assets/images/logo.png" width="140">
+    </a>
+    <nav aria-label="Navigation principale" class="site-nav">
+        <button aria-controls="primary-nav-list" aria-expanded="false" class="nav-toggle"><span aria-hidden="true"
+                                                                                                class="nav-toggle__icon">☰</span>
+            Menu
+        </button>
+        <ul class="site-nav__list" id="primary-nav-list">
+            <li><a href="index.html">Locataires</a></li>
+            <li><a href="bailleur.html">Propriétaires</a></li>
+            <li><a href="agent.html">Agents</a></li>
+        </ul>
+    </nav>
+</header>
+
+<!-- Icon sprite (decorative: every icon sits next to its text) -->
+<svg aria-hidden="true" class="visually-hidden" focusable="false" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5 10 17 19 7"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5m0-8h.01"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5 2.5 20h19zM12 10v4.5m0 2.5h.01"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><path d="M3 7h12v10H3zM15 10.5l6-3.5v10l-6-3.5"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 3v4m8-4v4"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4zM8 9.5h8M8 12.5h5"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM11 18h2"/></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><path d="M6 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM8 18h7.5a3 3 0 0 0 0-6h-7a3 3 0 0 1 0-6H16"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><path d="M8.5 15.5a4 4 0 1 1 2.8-1.2L20 23m-4-4 2-2m-4.5-.5 2-2"/></symbol>
+    <symbol id="i-id" viewBox="0 0 24 24"><path d="M3 6h18v12H3zM6.5 10h5M6.5 13.5h7M15.5 9.5h3v4h-3z"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6zM9 12l2 2 4-4"/></symbol>
+</svg>
+
+<main id="main">
+    <div class="container visit">
+
+        <div class="visit__head">
+            <h1>Votre visite</h1>
+            <!-- The state, in words (visite.js keeps it in step with the block shown) -->
+            <span class="badge visit-badge visit-badge--success" data-visit-badge>Confirmée</span>
+        </div>
+
+        <!-- What and with whom, whatever the state -->
+        <div class="visit-summary">
+            <a class="visit-listing" href="proposition.html?state=visit-requested">
+                <img alt="" height="80" src="https://picsum.photos/seed/ndopify-m9001-living/240/160" width="120">
+                <span class="visit-listing__text">
+                    <strong class="visit-listing__title">Appartement 3 chambres à Bonapriso</strong>
+                    <span class="visit-listing__place">Bonapriso, Douala</span>
+                    <span class="visit-listing__price"><strong>240K FCFA</strong> / mois</span>
+                </span>
+            </a>
+            <div class="visit-agent">
+                <span aria-hidden="true" class="proposal__avatar">SN</span>
+                <div class="visit-agent__text">
+                    <p class="visit-agent__name">Serge Ngono</p>
+                    <p class="visit-agent__role">Votre agent</p>
+                </div>
+                <a class="btn btn-secondary visit-agent__btn" href="https://wa.me/237677000111" rel="noopener" target="_blank">
+                    <svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg>WhatsApp<span class="visually-hidden"> : écrire à Serge</span>
+                </a>
+            </div>
+        </div>
+
+        <!--
+          Progress: done / current / to come. Left out for an ended visit (cancelled, expired, no-show). The server
+          sets the classes; visite.js only follows the prototype's state.
+        -->
+        <ol aria-label="Étapes de la visite" class="visit-steps" data-visit-steps>
+            <li class="is-done"><span class="visit-steps__dot"><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg></span>Demande</li>
+            <li class="is-done"><span class="visit-steps__dot"><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg></span>Date confirmée</li>
+            <li aria-current="step" class="is-current"><span class="visit-steps__dot"><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg></span>Visite</li>
+        </ol>
+
+        <!-- ============================================================ REQUESTED -->
+        <section aria-labelledby="requested-title" class="visit-state" data-visit-state="REQUESTED" hidden>
+            <h2 id="requested-title">Votre demande est envoyée</h2>
+            <dl class="visit-facts">
+                <div>
+                    <dt>Créneau demandé</dt>
+                    <dd><span data-visit-type="ON_SITE">Sur place</span><span data-visit-type="VIDEO" hidden>Visite vidéo</span> · samedi 7 novembre 2026 à 10h30</dd>
+                </div>
+                <div>
+                    <dt>Visite</dt>
+                    <dd data-visit-type="ON_SITE">Sur place, avec Serge</dd>
+                    <dd data-visit-type="VIDEO" hidden>En direct, par appel vidéo WhatsApp de Serge au
+                        <span class="nowrap">+237 699 88 77 66</span></dd>
+                </div>
+                <div>
+                    <dt>Votre message</dt>
+                    <dd class="visit-facts__note">« Je peux aussi venir en fin de journée. »</dd>
+                </div>
+            </dl>
+            <p class="notice notice--info">
+                <svg aria-hidden="true" class="icon"><use href="#i-clock"/></svg>
+                <span>Serge confirme la visite sous 48&nbsp;h, par e-mail : il peut vous proposer une autre heure ou un
+                    autre type de visite. Sans
+                    réponse de sa part avant le mercredi 4 novembre 2026 à 14h10, la demande expire.</span>
+            </p>
+            <p data-visit-type="ON_SITE">Une fois la date confirmée, vous recevez par e-mail votre code de visite et l'adresse
+                exacte.</p>
+            <p data-visit-type="VIDEO" hidden>Une fois la date confirmée, vous recevez par e-mail votre code de visite, à
+                lire à Serge au début de l'appel.</p>
+            <p class="visit-cancel"><a data-modal-open href="#cancel">Annuler ma demande</a></p>
+        </section>
+
+        <!-- ============================================================ CONFIRMED -->
+        <section aria-labelledby="confirmed-title" class="visit-state" data-visit-state="CONFIRMED">
+            <h2 id="confirmed-title">Votre visite est confirmée</h2>
+
+            <div class="visit-when">
+                <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>
+                <div>
+                    <p class="visit-when__date"><span data-visit-type="ON_SITE">Sur place</span><span data-visit-type="VIDEO" hidden>Visite vidéo</span> · samedi 7 novembre 2026 à 11h00</p>
+                    <!-- Only when the agent changed the requested slot (or type) -->
+                    <p class="visit-when__changed">Vous aviez demandé le samedi 7 novembre 2026 à 10h30 : Serge a
+                        proposé une autre heure.</p>
+                </div>
+            </div>
+
+            <!-- Only ever shown to the customer: the agent asks for it to start the visit -->
+            <div class="visit-code">
+                <p class="visit-code__label" id="code-label">Votre code de visite</p>
+                <p aria-labelledby="code-label" class="visit-code__digits"><span aria-hidden="true">4827</span><span
+                        class="visually-hidden">4 8 2 7</span></p>
+                <p class="visit-code__help" data-visit-type="ON_SITE">Donnez ce code à Serge au début de la visite. Ne
+                    le communiquez à personne d'autre.</p>
+                <p class="visit-code__help" data-visit-type="VIDEO" hidden>Lisez ce code à Serge au début de l'appel
+                    vidéo. Ne le communiquez à personne d'autre.</p>
+            </div>
+
+            <div class="visit-block" data-visit-type="ON_SITE">
+                <h3>Adresse</h3>
+                <address class="visit-address">
+                    Rue Njo-Njo, résidence Les Palmiers, 1<sup>er</sup> étage, porte 3<br>
+                    Bonapriso, Douala
+                </address>
+                <p class="visit-address__landmark"><svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>
+                    <span>Repère : portail bleu en face de la pharmacie du Rond-Point, à 200&nbsp;m du rond-point Total
+                        Joss.</span></p>
+                <a class="btn btn-outline" href="https://www.google.com/maps/dir/?api=1&amp;destination=4.0247,9.6943"
+                   rel="noopener" target="_blank">
+                    <svg aria-hidden="true" class="icon"><use href="#i-route"/></svg>Itinéraire<span
+                        class="visually-hidden"> (Google Maps, nouvel onglet)</span>
+                </a>
+            </div>
+
+            <!-- Video: never the exact address -->
+            <div class="visit-block" data-visit-type="VIDEO" hidden>
+                <h3>Le logement</h3>
+                <p class="visit-address__landmark"><svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>
+                    <span>Bonapriso, Douala · près du rond-point Total Joss.</span></p>
+                <p>L'adresse exacte vous sera donnée si vous visitez sur place.</p>
+            </div>
+
+            <div class="visit-block">
+                <h3>Votre agent</h3>
+                <p>Serge Ngono · <a class="nowrap" href="tel:+237677000111">+237 677 00 01 11</a></p>
+                <p><span data-visit-type="ON_SITE">Du retard&nbsp;?</span><span data-visit-type="VIDEO" hidden>Un
+                    souci de connexion&nbsp;?</span> Prévenez-le sur
+                    <a href="https://wa.me/237677000111" rel="noopener" target="_blank">WhatsApp</a>.</p>
+            </div>
+
+            <div class="visit-block" data-visit-type="ON_SITE">
+                <h3>À prévoir</h3>
+                <ul class="check-list">
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-id"/></svg>Votre pièce d'identité (CNI ou
+                        passeport).</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-key"/></svg>Votre code de visite, sur votre
+                        téléphone ou noté.</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg>Vos questions : charges, eau,
+                        électricité, voisinage.</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-clock"/></svg>Soyez à l'heure : après
+                        15&nbsp;minutes de retard, Serge peut noter votre absence.</li>
+                </ul>
+            </div>
+
+            <div class="visit-block" data-visit-type="VIDEO" hidden>
+                <h3>Le jour J</h3>
+                <ul class="check-list">
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-video"/></svg><span>Gardez WhatsApp ouvert,
+                        avec une bonne connexion. Serge vous appelle en vidéo au
+                        <span class="nowrap">+237 699 88 77 66</span> à 11h00.</span></li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-key"/></svg>Au début de l'appel, donnez-lui
+                        votre code.</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg>Vos questions : charges, eau,
+                        électricité, voisinage. Demandez à voir chaque pièce de près.</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-clock"/></svg>Si vous ne répondez pas dans les
+                        15&nbsp;minutes, Serge peut noter votre absence.</li>
+                </ul>
+            </div>
+
+            <p class="visit-cancel">Un empêchement&nbsp;? <a data-modal-open href="#cancel">Annuler la visite</a></p>
+        </section>
+
+        <!-- ============================================================ CHECKED_IN -->
+        <section aria-labelledby="checked-in-title" class="visit-state" data-visit-state="CHECKED_IN" hidden>
+            <h2 data-visit-type="ON_SITE" id="checked-in-title">Visite en cours</h2>
+            <h2 data-visit-type="VIDEO" hidden>Appel en cours</h2>
+            <div class="visit-when">
+                <svg aria-hidden="true" class="icon"><use href="#i-clock"/></svg>
+                <div>
+                    <p class="visit-when__date"><span data-visit-type="ON_SITE">Commencée</span><span
+                            data-visit-type="VIDEO" hidden>Commencé</span> à 11h06</p>
+                    <p class="visit-when__changed"><span data-visit-type="ON_SITE">Sur place</span><span data-visit-type="VIDEO" hidden>Visite vidéo</span> · samedi 7 novembre 2026, avec Serge.</p>
+                </div>
+            </div>
+            <p data-visit-type="ON_SITE">Prenez le temps de tout regarder : robinets, prises, compteurs, fenêtres,
+                serrures. Posez vos questions à Serge.</p>
+            <p data-visit-type="VIDEO" hidden>Demandez à Serge de vous montrer chaque pièce de près : robinets, prises,
+                compteurs, fenêtres, serrures. Posez-lui vos questions.</p>
+            <p>À la fin, Serge clôture la visite : vous recevez un e-mail pour nous dire si le logement vous
+                intéresse.</p>
+        </section>
+
+        <!-- ============================================================ COMPLETED: feedback, once -->
+        <section aria-labelledby="completed-title" class="visit-state" data-visit-state="COMPLETED" hidden>
+            <h2 id="completed-title">Le bien vous intéresse&nbsp;?</h2>
+            <p>Votre visite (<span data-visit-type="ON_SITE">sur place</span><span data-visit-type="VIDEO" hidden>vidéo</span>) du samedi 7 novembre 2026 à 11h00 est terminée. Votre réponse aide Serge pour la suite.</p>
+            <form action="#main" class="feedback" data-feedback-form method="post" novalidate>
+                <fieldset class="field feedback__interest">
+                    <legend class="visually-hidden">Le bien vous intéresse&nbsp;?</legend>
+                    <div class="option-grid option-grid--2">
+                        <label><input name="interest" required type="radio" value="INTERESTED">Oui, il m'intéresse</label>
+                        <label><input name="interest" required type="radio" value="NOT_INTERESTED">Non</label>
+                    </div>
+                    <span aria-live="polite" class="field-error"></span>
+                </fieldset>
+                <!-- Only when "Non" (CSS :has; shown to all without it): the match's reject reasons -->
+                <fieldset class="field reject-reasons feedback__no">
+                    <legend>La raison principale</legend>
+                    <label><input name="reasonCode" type="radio" value="PRICE">Trop cher</label>
+                    <label><input name="reasonCode" type="radio" value="LOCATION">Le quartier ne me convient pas</label>
+                    <label><input name="reasonCode" type="radio" value="SIZE">Trop petit ou trop grand</label>
+                    <label><input name="reasonCode" type="radio" value="AMENITIES">Il manque des équipements</label>
+                    <label><input name="reasonCode" type="radio" value="AVAILABILITY">Disponible trop tard</label>
+                    <label><input name="reasonCode" type="radio" value="OTHER">Autre raison</label>
+                    <span aria-live="polite" class="field-error"></span>
+                </fieldset>
+                <div class="field">
+                    <label for="feedback-comment">Un commentaire <span class="field__optional">(facultatif)</span></label>
+                    <textarea id="feedback-comment" maxlength="1000" name="comment" rows="3"></textarea>
+                </div>
+                <button class="btn btn-primary visit-submit" type="submit">Envoyer ma réponse</button>
+            </form>
+        </section>
+
+        <!-- ============================================================ Feedback sent -->
+        <section aria-labelledby="feedback-title" class="visit-state" data-visit-state="FEEDBACK_SENT FEEDBACK_SENT_NO"
+                 hidden>
+            <h2 id="feedback-title">Merci pour votre réponse</h2>
+            <div data-visit-only="FEEDBACK_SENT">
+                <p class="notice notice--success">
+                    <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
+                    <span>Le logement vous intéresse : Serge vous recontacte pour la suite (dossier, bail).</span>
+                </p>
+                <p>Vous pouvez aussi lui écrire dès maintenant.</p>
+                <a class="btn btn-secondary" href="https://wa.me/237677000111" rel="noopener" target="_blank">
+                    <svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg>Écrire à Serge<span
+                        class="visually-hidden"> sur WhatsApp</span>
+                </a>
+            </div>
+            <div data-visit-only="FEEDBACK_SENT_NO" hidden>
+                <p>C'est noté : Serge est prévenu et continue de chercher pour vous. Il vous enverra d'autres
+                    logements.</p>
+            </div>
+        </section>
+
+        <!-- ============================================================ CANCELLED -->
+        <section aria-labelledby="cancelled-title" class="visit-state" data-visit-state="CANCELLED CANCELLED_BY_AGENT"
+                 hidden>
+            <h2 data-visit-only="CANCELLED" id="cancelled-title">Vous avez annulé la visite</h2>
+            <h2 data-visit-only="CANCELLED_BY_AGENT" hidden>Serge a annulé la visite</h2>
+            <p class="visit-ended"><span data-visit-type="ON_SITE">Sur place</span><span data-visit-type="VIDEO" hidden>Visite vidéo</span> · samedi 7 novembre 2026 à 11h00, annulée le jeudi 5 novembre 2026 à
+                16h40.</p>
+            <p data-visit-only="CANCELLED">Serge est prévenu.</p>
+            <p class="visit-facts__note" data-visit-only="CANCELLED_BY_AGENT" hidden>Son message : « Le propriétaire
+                n'est pas disponible ce jour-là, je vous propose une autre date. »</p>
+            <p>Le logement vous intéresse toujours&nbsp;? Vous pouvez demander une autre visite.</p>
+            <a class="btn btn-primary" href="proposition.html?state=accepted">Demander une autre visite</a>
+        </section>
+
+        <!-- ============================================================ EXPIRED: not confirmed within 48 h -->
+        <section aria-labelledby="expired-title" class="visit-state" data-visit-state="EXPIRED" hidden>
+            <h2 id="expired-title">Cette demande a expiré</h2>
+            <p class="visit-ended"><span data-visit-type="ON_SITE">Sur place</span><span data-visit-type="VIDEO" hidden>Visite vidéo</span> · samedi 7 novembre 2026 à 10h30.</p>
+            <p>Serge n'a pas confirmé votre demande sous 48&nbsp;h : elle a expiré.</p>
+            <p>Le logement vous intéresse toujours&nbsp;? Vous pouvez demander une autre visite.</p>
+            <a class="btn btn-primary" href="proposition.html?state=accepted">Demander une autre visite</a>
+        </section>
+
+        <!-- ============================================================ NO_SHOW -->
+        <section aria-labelledby="no-show-title" class="visit-state" data-visit-state="NO_SHOW NO_SHOW_AGENT" hidden>
+            <h2 id="no-show-title">La visite n'a pas eu lieu</h2>
+            <div data-visit-only="NO_SHOW">
+                <p data-visit-type="ON_SITE">Serge a signalé votre absence à la visite sur place du samedi 7 novembre
+                    2026 à 11h00.</p>
+                <p data-visit-type="VIDEO" hidden>Serge a signalé que vous n'avez pas répondu à son appel vidéo du samedi
+                    7 novembre 2026 à 11h00.</p>
+                <p>Une erreur&nbsp;? Contactez Serge sur
+                    <a href="https://wa.me/237677000111" rel="noopener" target="_blank">WhatsApp</a>.</p>
+            </div>
+            <div data-visit-only="NO_SHOW_AGENT" hidden>
+                <p data-visit-type="ON_SITE">Serge n'est pas venu à la visite sur place du samedi 7 novembre 2026 à
+                    11h00. Nous en sommes désolés.</p>
+                <p data-visit-type="VIDEO" hidden>Serge ne vous a pas appelé pour la visite vidéo du samedi 7 novembre
+                    2026 à 11h00. Nous en sommes désolés.</p>
+                <p>Demandez une autre visite, ou <a href="mailto:contact@ndopify.com">contactez-nous</a>.</p>
+                <a class="btn btn-primary" href="proposition.html?state=accepted">Demander une autre visite</a>
+            </div>
+        </section>
+
+    </div>
+</main>
+
+<!--
+  "Annuler" popup (REQUESTED or CONFIRMED, before the check-in): the agent is told, an optional reason (≤ 500, for
+  the agent), the confirm button. Without JavaScript it opens with :target (#cancel) and the form posts.
+-->
+<div aria-labelledby="cancel-title" class="modal" id="cancel">
+    <a aria-hidden="true" class="modal__backdrop" data-modal-close href="#main" tabindex="-1"></a>
+    <div class="modal__panel">
+        <header class="modal__header">
+            <div>
+                <h2 class="modal__title" id="cancel-title"><span data-visit-only="REQUESTED" hidden>Annuler votre
+                    demande&nbsp;?</span><span data-visit-only="CONFIRMED">Annuler la visite&nbsp;?</span></h2>
+                <p class="modal__subtitle">Appartement 3 chambres · Bonapriso</p>
+            </div>
+            <a class="modal__close" data-modal-close href="#main">
+                <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>
+                <span class="visually-hidden">Fermer</span>
+            </a>
+        </header>
+        <form action="#main" class="modal__body" data-cancel-form method="post">
+            <p class="notice notice--info">
+                <svg aria-hidden="true" class="icon"><use href="#i-info"/></svg>
+                <span>Serge est prévenu par e-mail. Vous pourrez demander une autre visite.</span>
+            </p>
+            <div class="field">
+                <label for="cancel-reason">Pourquoi&nbsp;? <span class="field__optional">(facultatif)</span></label>
+                <textarea id="cancel-reason" maxlength="500" name="reason" rows="3"></textarea>
+                <span class="hint">Serge reçoit votre message.</span>
+            </div>
+            <button class="btn btn-danger visit-submit" type="submit">
+                <span data-visit-only="REQUESTED" hidden>Annuler ma demande</span><span
+                    data-visit-only="CONFIRMED">Annuler la visite</span>
+            </button>
+            <p class="visit-cancel"><a data-modal-close href="#main">Garder ma visite</a></p>
+        </form>
+    </div>
+</div>
+
+<footer class="site-footer">
+    <div class="container site-footer__inner">
+        <img alt="Ndopify" height="32" src="assets/images/icon.png" width="32">
+        <nav aria-label="Navigation du pied de page">
+            <ul>
+                <li><a href="index.html">Locataires</a></li>
+                <li><a href="bailleur.html">Propriétaires</a></li>
+                <li><a href="agent.html">Agents</a></li>
+            </ul>
+        </nav>
+        <small>© 2026 Ndopify. Logements vérifiés. Locations fiables.</small>
+    </div>
+</footer>
+
+<script src="assets/js/main.js"></script>
+<script src="assets/js/annonce.js"></script>
+<script src="assets/js/visite.js"></script>
+</body>
+</html>

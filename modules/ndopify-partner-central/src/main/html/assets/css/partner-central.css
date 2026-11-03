@@ -29,6 +29,7 @@
     --border-error: #fee2e2;
     --surface-lowest: #ffffff;
     --surface-low: #f8f8f8;
+    --surface-container: #f0f1f3; /* light gray: a panel holding the page's next action, its white fields on top */
     --button-primary-text: #ffffff;
     --primary-glow: 0 4px 12px rgba(29, 126, 223, 0.25);
 
@@ -69,6 +70,7 @@
     --color-focus: var(--primary);
     --color-surface: var(--surface-lowest);
     --color-surface-alt: var(--surface-low);
+    --color-surface-action: var(--surface-container);
 
     --color-info-bg: var(--background-info);
     --color-info-fg: var(--text-info);
@@ -915,4 +917,27 @@ a.user-menu__item:hover {
 .field__counter {
     font-size: var(--step-hint);
     font-variant-numeric: tabular-nums;
+}
+
+/* A mandate's title with the icon of its kind (search: magnifying glass, listing: key), on the cards and the
+   mandate page: the icon in the title's colour, on its first line. */
+.mandate-title {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+}
+
+.mandate-title__icon {
+    display: inline-flex;
+    flex: none;
+    margin-top: 0.15em;
+}
+
+.mandate-title__icon:empty {
+    display: none;
+}
+
+h1.mandate-title .mandate-title__icon .icon {
+    width: 1.5rem;
+    height: 1.5rem;
 }

@@ -141,6 +141,7 @@ class MandateTemplateTest {
 
         assertEquals("Locataire · Maison — Ndopify Partner Central", page.title())
         assertEquals("Locataire · Maison", page.selectFirst("h1")?.text())
+        assertEquals("search", page.selectFirst("h1 [data-mandate-kind]")?.attr("data-mandate-kind"))
         assertEquals("status-tag status-tag--warning", page.selectFirst(".mandate-intro .status-tag")?.className())
         assertEquals("En approbation", page.selectFirst(".mandate-intro .status-tag")?.text())
         assertEquals("Mandat n° 201 · accepté le 10 oct. 2026", page.selectFirst(".mandate__meta")?.text())
@@ -233,6 +234,7 @@ class MandateTemplateTest {
     fun `approved - landlord`() {
         val page = render(APPROVED.copy(mandateType = MandateType.LISTING))
 
+        assertEquals("listing", page.selectFirst("h1 [data-mandate-kind]")?.attr("data-mandate-kind"))
         assertEquals("Le bailleur", page.selectFirst("#contact-title")?.text())
         assertEquals("Son bien", page.selectFirst("#search-title")?.text())
         assertTrue(page.text().contains("Présentez le bien aux locataires et organisez les visites."))
@@ -342,6 +344,10 @@ class MandateTemplateTest {
 
         val card = page.selectFirst(".contact-card")!!
         assertEquals("Le client", page.selectFirst("#contact-title")?.text())
+        assertEquals("visually-hidden", page.selectFirst("#contact-title")?.className()) // For screen readers only
+        // Right under the title, above the progress
+        val contact = page.selectFirst("section[aria-labelledby=contact-title]")!!
+        assertEquals("mandate-progress", contact.nextElementSiblings().first { it.tagName() == "section" }.className())
         assertEquals("Ray Sponsible · à appeler le matin", card.selectFirst("p")?.text())
         assertEquals("tel:+237699123456", card.selectFirst("a[data-contact=whatsapp]")?.attr("href"))
         assertEquals("+237 6 99 12 34 56", card.selectFirst("[data-contact-number]")?.text())

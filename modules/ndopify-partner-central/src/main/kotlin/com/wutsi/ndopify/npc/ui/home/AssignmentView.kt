@@ -7,6 +7,8 @@ package com.wutsi.ndopify.npc.ui.home
 data class AssignmentView(
     val id: Long,
     val title: String,
+    /** A landlord's listing (the key icon before the title), not a search (the magnifying glass). */
+    val owner: Boolean,
     val sectorTerm: String,
     val sector: String?,
     val priceTerm: String,

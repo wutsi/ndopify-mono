@@ -25,14 +25,20 @@
     - the client's answer, in the price card (and the bottom bar below 1024px):
         - Pending: "Ça m'intéresse" (POST, accept) or "Pas pour moi" (the #reject popup: a reason, an optional
           comment; POST, reject). The agent is told either way.
-        - Accepted: "Demander une visite" (the #visit popup of annonce.html, the contact pre-filled from the mandate),
-          and "Finalement, pas pour moi" to change one's mind.
+        - Accepted: "Demander une visite" (the #visit popup: the type, "Sur place" or "Visite vidéo" (a live WhatsApp
+          video call from the agent at the property), a day among the 7 starting tomorrow, a time from 8h00 to 20h00
+          every 30 minutes, an optional note; the contact is the mandate's, its WhatsApp number shown read-only),
+          and "Finalement, pas pour moi" to change one's mind. Visits are free: the agent confirms the date and the
+          type (or changes them) by e-mail with the visit code; the visit page (visite.html) is the link of the visit e-mails.
+        - Accepted, a visit requested (or any open visit: one per match): "Visite demandée : <type> · <date>" and
+          "Voir ma visite" (visite.html) instead of the button; no "pas pour moi" while a visit is open.
         - Rejected: the agent goes on searching; "Ce logement m'intéresse finalement" accepts it.
         - Expired (not answered within 7 days): the listing still shown, no answer anymore, a link to the agent, who
           may send it again.
         - Unavailable (the listing is no longer published, or the mandate is closed): no answer, a link to the agent.
   Without JavaScript the answers are forms that post and the popups open with :target.
-  PROTOTYPE: ?state=accepted|rejected|expired|unavailable shows a state; otherwise the answer is kept in the session
+  PROTOTYPE: ?state=accepted|visit-requested|rejected|expired|unavailable shows a state (&type=video: the visit
+  requested is a video one); otherwise the answer is kept in the session
   (proposition.js). Match 9001 of mandate 204 in Partner Central's prototype.
 -->
 <body class="listing-page">
@@ -239,8 +245,7 @@
                         <tr><th scope="row">Disponible</th><td>À partir du 1<sup>er</sup> décembre 2026</td></tr>
                         </tbody>
                     </table>
-                    <p class="terms-note">Aucun paiement en espèces : les visites se règlent avec le Pass Visite par
-                        Mobile Money.</p>
+                    <p class="terms-note">Les visites sont gratuites et organisées par votre agent.</p>
                 </section>
 
                 <section aria-labelledby="location-heading" class="listing__section">
@@ -293,9 +298,23 @@
                         <a class="btn btn-primary price-card__cta" data-modal-open href="#visit">
                             <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Demander une visite
                         </a>
-                        <p class="price-card__hint">Choisissez un créneau : Serge vous confirme la visite sur
-                            WhatsApp.</p>
+                        <p class="price-card__hint">Choisissez un créneau : Serge vous confirme la date par
+                            e-mail.</p>
                         <p class="answer__change"><a data-modal-open href="#reject">Finalement, pas pour moi</a></p>
+                    </div>
+
+                    <!-- Accepted, a visit open (REQUESTED, CONFIRMED, CHECKED_IN): its slot and its
+                         page instead of the button (one open visit per match). -->
+                    <div class="answer" data-answer="VISIT_REQUESTED" hidden>
+                        <p class="answer__status answer__status--success">
+                            <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>Ce logement vous intéresse
+                        </p>
+                        <p class="answer__visit">
+                            <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>
+                            <span>Visite demandée : <strong data-visit-slot>Sur place · samedi 7 novembre 2026 à 10h30</strong>.</span>
+                        </p>
+                        <a class="btn btn-primary price-card__cta" href="visite.html?state=requested">Voir ma visite</a>
+                        <p class="price-card__hint">Serge vous confirme la date par e-mail sous 48&nbsp;h.</p>
                     </div>
 
                     <div class="answer" data-answer="REJECTED" hidden>
@@ -333,6 +352,9 @@
         </div>
         <div class="cta-bar__actions" data-bar-answer="ACCEPTED" hidden>
             <a class="btn btn-primary" data-modal-open href="#visit">Demander une visite</a>
+        </div>
+        <div class="cta-bar__actions" data-bar-answer="VISIT_REQUESTED" hidden>
+            <a class="btn btn-primary" href="visite.html?state=requested">Voir ma visite</a>
         </div>
         <p class="cta-bar__note" data-bar-answer="REJECTED" hidden>Logement écarté ·
             <button class="link-button" form="accept-again" type="submit">changer d'avis</button></p>
@@ -409,6 +431,16 @@
     </div>
 </div>
 
+<!--
+  "Demander une visite" popup (match ACCEPTED): the type first, ON_SITE ("Sur place", pre-checked) or VIDEO
+  ("Visite vidéo": the agent, at the property, calls the customer's WhatsApp number at the time set, and the customer
+  reads the visit code out to start); the customer's contact is the mandate's (read-only, no field: its WhatsApp
+  number, needed for a video visit). A day among the 7 starting tomorrow, a time from 8h00 to 20h00 on a 30-minute
+  boundary (the tenant's time zone), an optional note (≤ 500): POST, the visit is REQUESTED and the agent is e-mailed.
+  The agent confirms the date and the type by e-mail (both may differ from the requested ones), the visit is then CONFIRMED with its
+  code (visite.html). Visits are free: nothing to pay. Without JavaScript it opens with :target (#visit) and the form
+  posts; the type, the day and the time are required.
+-->
 <div aria-labelledby="visit-title" class="modal" id="visit">
     <a aria-hidden="true" class="modal__backdrop" data-modal-close href="#main" tabindex="-1"></a>
     <div class="modal__panel">
@@ -424,49 +456,28 @@
             </a>
         </header>
 
-        <form action="#visit" class="modal__body interest-form" data-interest-form method="post" novalidate>
-            <div class="interest-form__row">
-                <div class="field">
-                    <label for="first-name">Prénom</label>
-                    <input autocomplete="given-name" id="first-name" name="firstName" required type="text" value="Sandrine">
-                    <span aria-live="polite" class="field-error"></span>
-                </div>
-                <div class="field">
-                    <label for="last-name">Nom</label>
-                    <input autocomplete="family-name" id="last-name" name="lastName" required type="text" value="Eboa">
-                    <span aria-live="polite" class="field-error"></span>
-                </div>
-            </div>
-            <div class="field">
-                <label for="email">E-mail</label>
-                <input autocomplete="email" id="email" name="email" required type="email" value="sandrine.eboa@example.com">
-                <span aria-live="polite" class="field-error"></span>
-            </div>
-            <div class="field">
-                <label for="whatsapp">Numéro WhatsApp</label>
-                <input autocomplete="tel" data-phone-name="whatsappNumber" id="whatsapp" name="whatsappNumber"
-                       required type="tel" value="+237699887766">
-                <span aria-live="polite" class="field-error"></span>
-            </div>
-            <div class="field">
+        <form action="#visit" class="modal__body interest-form" data-interest-form data-visit-request-form method="post" novalidate>
+            <div class="field visit-type">
                 <label id="visit-type-label">Type de visite</label>
                 <div aria-labelledby="visit-type-label" class="option-grid option-grid--2" role="radiogroup">
-                    <label><input name="visitType" required type="radio" value="IN_PERSON">
+                    <label><input checked name="type" required type="radio" value="ON_SITE">
                         <svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>Sur place</label>
-                    <label><input name="visitType" required type="radio" value="VIDEO">
+                    <label><input name="type" required type="radio" value="VIDEO">
                         <svg aria-hidden="true" class="icon"><use href="#i-video"/></svg>En vidéo</label>
                 </div>
+                <!-- The chosen type's line (CSS :has; both shown without it) -->
+                <p class="visit-type__hint visit-type__hint--on-site">Serge vous fait visiter le logement sur place.</p>
+                <p class="visit-type__hint visit-type__hint--video">Serge vous fait visiter le logement en direct, par
+                    appel vidéo WhatsApp.</p>
                 <span aria-live="polite" class="field-error"></span>
             </div>
+            <p class="visit-request__contact">
+                <svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg>
+                <span>Vos coordonnées : Sandrine Eboa · WhatsApp <span class="nowrap">+237 699 88 77 66</span></span>
+            </p>
             <div class="field">
                 <label id="visit-date-label">Jour de la visite</label>
-                <div aria-labelledby="visit-date-label" class="interest-form__days" role="radiogroup">
-                    <label><input name="visitDate" required type="radio" value="2026-10-31">
-                        <span class="day__name">sam.</span><strong>31</strong><span class="day__month">oct.</span></label>
-                    <label><input name="visitDate" required type="radio" value="2026-11-01">
-                        <span class="day__name">dim.</span><strong>1</strong><span class="day__month">nov.</span></label>
-                    <label><input name="visitDate" required type="radio" value="2026-11-02">
-                        <span class="day__name">lun.</span><strong>2</strong><span class="day__month">nov.</span></label>
+                <div aria-labelledby="visit-date-label" class="interest-form__days interest-form__days--week" role="radiogroup">
                     <label><input name="visitDate" required type="radio" value="2026-11-03">
                         <span class="day__name">mar.</span><strong>3</strong><span class="day__month">nov.</span></label>
                     <label><input name="visitDate" required type="radio" value="2026-11-04">
@@ -477,6 +488,10 @@
                         <span class="day__name">ven.</span><strong>6</strong><span class="day__month">nov.</span></label>
                     <label><input name="visitDate" required type="radio" value="2026-11-07">
                         <span class="day__name">sam.</span><strong>7</strong><span class="day__month">nov.</span></label>
+                    <label><input name="visitDate" required type="radio" value="2026-11-08">
+                        <span class="day__name">dim.</span><strong>8</strong><span class="day__month">nov.</span></label>
+                    <label><input name="visitDate" required type="radio" value="2026-11-09">
+                        <span class="day__name">lun.</span><strong>9</strong><span class="day__month">nov.</span></label>
                 </div>
                 <span aria-live="polite" class="field-error"></span>
             </div>
@@ -484,6 +499,10 @@
                 <label for="visit-time">Heure de la visite</label>
                 <select id="visit-time" name="visitTime" required>
                     <option value="">Choisissez une heure</option>
+                    <option value="08:00">8h00</option>
+                    <option value="08:30">8h30</option>
+                    <option value="09:00">9h00</option>
+                    <option value="09:30">9h30</option>
                     <option value="10:00">10h00</option>
                     <option value="10:30">10h30</option>
                     <option value="11:00">11h00</option>
@@ -505,22 +524,26 @@
                     <option value="19:00">19h00</option>
                     <option value="19:30">19h30</option>
                     <option value="20:00">20h00</option>
-                    <option value="20:30">20h30</option>
-                    <option value="21:00">21h00</option>
                 </select>
                 <span aria-live="polite" class="field-error"></span>
             </div>
+            <div class="field">
+                <label for="visit-note">Un mot pour Serge <span class="field__optional">(facultatif)</span></label>
+                <textarea id="visit-note" maxlength="500" name="note" placeholder="Ex : je peux aussi venir en fin de journée."
+                          rows="2"></textarea>
+            </div>
             <button class="btn btn-primary interest-form__submit" type="submit">Envoyer la demande</button>
-            <p class="interest-form__privacy">Vos coordonnées sont celles de votre mandat. Serge vous confirme le créneau
-                sur WhatsApp.</p>
+            <p class="interest-form__privacy">Serge vous confirme la date par e-mail, avec votre code de visite.</p>
         </form>
 
         <div class="modal__body interest-done" data-interest-done hidden tabindex="-1">
             <svg aria-hidden="true" class="icon icon--lg"><use href="#i-check"/></svg>
             <h3>Merci, votre demande est envoyée</h3>
-            <p data-interest-done-text>Serge vous recontacte très vite sur WhatsApp pour confirmer la visite.</p>
-            <p>Les visites se règlent avec le Pass Visite par Mobile Money : aucun paiement en espèces.</p>
-            <a class="btn btn-secondary" data-modal-close href="#main">Fermer</a>
+            <p data-interest-done-text>Vous avez demandé une visite sur place le samedi 7 novembre 2026 à 10h30. Serge vous
+                confirme la date par e-mail sous 48&nbsp;h.</p>
+            <p>Vous recevrez alors votre code de visite, à donner à Serge au début de la visite.</p>
+            <a class="btn btn-primary" href="visite.html?state=requested">Voir ma visite</a>
+            <p class="interest-done__close"><a data-modal-close href="#main">Fermer</a></p>
         </div>
     </div>
 </div>

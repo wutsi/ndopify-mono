@@ -4,6 +4,7 @@ import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
+import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.npc.ui.listing.ListingViews
 import com.wutsi.ndopify.npc.ui.match.MatchRules
@@ -39,6 +40,7 @@ object MandateCards {
         return MandateCardView(
             id = mandate.id,
             title = MandateLabels.title(mandate),
+            owner = mandate.mandateType == MandateType.LISTING,
             tag = MandateRules.tag(mandate.status),
             facts = facts.mapIndexed { i, (term, value) ->
                 when (i) {

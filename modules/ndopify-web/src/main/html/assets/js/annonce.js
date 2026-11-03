@@ -244,7 +244,7 @@
     {
       keys: ['visite', 'visiter', 'voir', 'rendez'],
       text: 'Dans « Demander une visite », choisissez une visite sur place ou en vidéo (un appel vidéo WhatsApp avec ' +
-        'l\'agent), puis un jour et une heure : l\'agent vous confirme le créneau sur WhatsApp. La visite se règle avec le Pass Visite par Mobile Money, jamais en espèces.',
+        'l\'agent), puis un jour et une heure : l\'agent vous confirme le créneau sur WhatsApp.',
       visit: true
     },
     {
@@ -487,7 +487,8 @@
   document.addEventListener('DOMContentLoaded', function () {
     initDialogs();
     var visit = document.getElementById('visit');
-    if (visit) initVisitForm(visit);
+    // proposition.html's #visit popup has no contact fields (the mandate's): proposition.js does its form
+    if (visit && visit.querySelector('[data-phone-name]')) initVisitForm(visit);
     var ask = document.getElementById('ask');
     if (ask) initChat(ask);
     initLightbox();

@@ -213,7 +213,7 @@ class MandateViewsTest {
         val owner = view(MANDATE.copy(mandateType = MandateType.LISTING))
         assertEquals("Le bailleur", owner.words.theUpper)
         assertTrue(owner.owner)
-        assertEquals("Bailleur · Maison", owner.title)
+        assertEquals("Propriétaire · Maison", owner.title)
     }
 
     @Test

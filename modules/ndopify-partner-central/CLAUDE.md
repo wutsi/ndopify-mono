@@ -29,7 +29,9 @@ Package `com.wutsi.ndopify.npc`:
   cookie, `JwtDecoder` accepting only `ApplicationCode.PARTNER_CENTRAL`) and `@Import(NdTenantClient)`.
 
 Resources: one Thymeleaf template per page in `src/main/resources/templates/` (sub-pages in a folder named after
-the feature, ex: `profile/edit.html`; `error/403.html` / `404.html`), and page scripts in `public/assets/js/`, one per
+the feature, ex: `profile/edit.html`; `error/403.html` / `404.html`; fragments shared by several pages in
+`fragments/`, ex: `fragments/mandate-kind.html`, the icon before a mandate's title — magnifying glass for a search,
+key for a landlord's listing, from the views' `owner`), and page scripts in `public/assets/js/`, one per
 page (`<page>.js`, picked by the body's `data-page`) plus `partner-central.js` / `util.js`. Every page works without
 JS: a script only enhances it, and the rules it mirrors are always re-checked server-side by `<Feature>Rules`.
 `src/main/html/` is the prototype (see below).

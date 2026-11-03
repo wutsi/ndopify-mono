@@ -74,7 +74,7 @@ class MandateLabelsTest {
 
     @Test
     fun party() {
-        assertEquals("Bailleur", MandateLabels.party(MandateType.LISTING))
+        assertEquals("Propriétaire", MandateLabels.party(MandateType.LISTING))
         assertEquals("Locataire", MandateLabels.party(MandateType.SEARCH))
     }
 
@@ -89,7 +89,7 @@ class MandateLabelsTest {
     @Test
     fun title() {
         assertEquals(
-            "Bailleur · Appartement",
+            "Propriétaire · Appartement",
             MandateLabels.title(Mandate(mandateType = MandateType.LISTING, propertyType = PropertyType.APARTMENT)),
         )
         assertEquals("Locataire", MandateLabels.title(Mandate(mandateType = MandateType.SEARCH)))

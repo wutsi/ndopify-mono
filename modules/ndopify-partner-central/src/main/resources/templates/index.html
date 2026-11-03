@@ -165,8 +165,9 @@
                         th:with="confirming=${declining == a.id}">
                         <article th:attr="aria-labelledby=|assignment-${a.id}-title|">
                             <div class="assignment__head">
-                                <h3 th:id="|assignment-${a.id}-title|" class="assignment__type" th:text="${a.title}">
-                                    Locataire</h3>
+                                <h3 th:id="|assignment-${a.id}-title|" class="assignment__type mandate-title"><span
+                                        th:replace="~{fragments/mandate-kind :: icon(${a.owner})}"></span><span
+                                        th:text="${a.title}">Locataire</span></h3>
                                 <p class="assignment__timer" data-timer>
                                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                          stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
@@ -247,7 +248,8 @@
                         th:attr="data-mandate-id=${m.id}">
                         <article th:attr="aria-labelledby=|mandate-${m.id}-title|">
                             <div class="assignment__head">
-                                <h3 th:id="|mandate-${m.id}-title|" class="assignment__type">
+                                <h3 th:id="|mandate-${m.id}-title|" class="assignment__type mandate-title">
+                                    <span th:replace="~{fragments/mandate-kind :: icon(${m.owner})}"></span>
                                     <a class="mandate-card__link" th:href="@{/mandates/{id}(id=${m.id})}"
                                        th:text="${m.title}">Locataire · Maison</a>
                                 </h3>

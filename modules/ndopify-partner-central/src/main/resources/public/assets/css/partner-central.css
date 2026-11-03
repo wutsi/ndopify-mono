@@ -931,3 +931,22 @@ button.user-menu__item:hover {
     font-size: var(--step-hint);
     font-variant-numeric: tabular-nums;
 }
+
+/* A mandate's title with the icon of its kind (search: magnifying glass, listing: key), on the cards and the
+   mandate page: the icon in the title's colour, on its first line. */
+.mandate-title {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+}
+
+.mandate-title__icon {
+    display: inline-flex;
+    flex: none;
+    margin-top: 0.15em;
+}
+
+h1.mandate-title .mandate-title__icon .icon {
+    width: 1.5rem;
+    height: 1.5rem;
+}

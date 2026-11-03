@@ -10,7 +10,8 @@
 }
 
 .home-section + .home-section,
-.mandate-progress + .home-section {
+.mandate-progress + .home-section,
+.mandate-contact + .mandate-progress {
     margin-top: var(--space-4);
     padding-top: var(--space-4);
     border-top: 1px solid var(--color-border);

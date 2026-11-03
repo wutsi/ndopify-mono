@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Visite — Ndopify Partner Central</title>
+    <meta name="description" content="Une visite d'un client de l'agent : la confirmer, la démarrer avec le code du client, la terminer.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="assets/images/icon.png">
+    <link rel="apple-touch-icon" href="assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="assets/css/partner-central.css">
+    <link rel="stylesheet" href="assets/css/rejoindre.css">
+    <link rel="stylesheet" href="assets/css/home.css">
+    <link rel="stylesheet" href="assets/css/listing.css">
+    <link rel="stylesheet" href="assets/css/visit.css">
+    <script src="assets/js/partner-central.js" defer></script>
+    <script src="assets/js/visit.js" defer></script>
+</head>
+<!--
+    Visit page (source doc): one visit of a client of the agent, GET /visits/{id} (GET /v1/visits/{id} as the
+    mandate's agent: never the client's code). Used on a phone, at the property: one panel per state, one main button,
+    full width. The rules are the Design section of docs/superpowers/plans/2026-11-02-visit-management.md.
+    The header: the client (name, number calling, WhatsApp), the listing (title · neighbourhood linking to its page,
+    number, rent), the mandate (its matches) and the status tag. Dates are the tenant's dateFormat with the year,
+    "sam. 7 novembre 2026 à 10h30". Visits are free: no fee, no payment. Two types (VisitType), the client's
+    choice, shown in the header (and on the home cards and mandate.html's match line): ON_SITE ("Sur place"), and
+    VIDEO ("Visite vidéo"): at the time set, the agent, at the property, calls the client by WhatsApp video (the
+    mandate's WhatsApp number). The rest is the same for both: the client reads the code out during the call, the
+    agent's position is still taken and compared with the listing's (the agent shows the property from there), the
+    10-min minimum, the report, the no-shows ("Le client ne répond pas" for a video one) and the agent's 4 h. The
+    parts that differ are marked data-for-type. Each action is a form posting to the page
+    (post-redirect-get, the outcome as a flash message): POST /visits/{id}/schedule | cancel | check-in | no-show |
+    check-out.
+      - REQUESTED ("À confirmer"): the client's slot and note. "Confirmer la visite": a day (the 7 days starting
+        tomorrow) and a time (08h00–20h00, every 30 min), prefilled with the client's slot; any slot of the lists is
+        valid; and the type ("Sur place" / "Vidéo WhatsApp", prefilled with the client's), which the agent may change. Confirmed, the visit is CONFIRMED at once: the client is e-mailed the date, the address and the code.
+        "Refuser la demande" (a reason, optional): the client is told by e-mail. Not confirmed within 48 h, the
+        request expires.
+      - CONFIRMED ("Confirmée"), before the check-in window: the slot, the address and its map; the client gives the
+        agent a 4-digit code on the day: they start the visit (a video one: "À l'heure prévue, appelez le client en
+        vidéo sur WhatsApp depuis le bien."). "Annuler la visite": the client is told by e-mail.
+      - CONFIRMED in the check-in window ("À démarrer", scheduledAt − 1 h → + 4 h): a video one first has "Appeler
+        {client} sur WhatsApp" (wa.me, then the agent starts the video call) and "Au début de l'appel, demandez son
+        code au client."; then, for both, "Démarrer la visite" with the
+        client's code (one numeric field) and the position, taken at once (navigator.geolocation, high accuracy; over
+        50 m asks to take it again outside; never required: without it, or without JS, the hidden inputs stay empty
+        and the visit still starts; its distance to the listing is recorded, over 300 m flagged for review). A wrong
+        code: "Code incorrect. Il vous reste N essais."; after 5, the check-in is locked for good. From + 15 min:
+        "Le client est absent ou refuse de donner le code" (#no-show: Client absent / Code refusé; the client's
+        absence is recorded, with the agent's position). "Annuler la visite" stays (the client is told by e-mail).
+      - CHECKED_IN ("En cours"): since when, how far the agent was from the listing (over 300 m: a warning, the
+        visit is reviewed, not blocked). "Terminer la visite": the agent's report (required, 2 000 characters,
+        private: never shown to the client), the position; "Terminer" only 10 min after the start (aria-disabled
+        before, with the time it opens).
+      - COMPLETED ("Terminée"): start, end, duration, distance, the agent's report, and the client's answer once
+        given (intéressé, or pas intéressé and why) or "Le client n'a pas encore répondu".
+      - CANCELLED (by the client or the agent, from REQUESTED or CONFIRMED, before the check-in), EXPIRED (only: not
+        confirmed within 48 h), NO_SHOW (the client absent or refusing the code; the agent not starting it within
+        4 h: counted as the agent's absence): what happened, with the slot.
+    PROTOTYPE: ?id= one of visit.js's VISITS (dates relative to the page load), 7001 by default: 7001, 7002 À
+    confirmer · 7003 Confirmée at another time than asked · 7004, 7005 Confirmée · 7006 À démarrer, before the time · 7007 À démarrer,
+    the no-show open · 7008 En cours, can be ended · 7009 En cours, 820 m away and under 10 min · 7010, 7011, 7012
+    Terminée (intéressé, pas intéressé, no answer) · 7013, 7014 Annulée (by the client, by the agent) · 7015
+    Expirée · 7016 Annulée by the client before confirmation · 7017, 7018 Absence (the client, the agent). In
+    video: 7019 À confirmer (match 9006 of mandate 204) · 7020 Confirmée · 7021 À démarrer, the call to make, the
+    no-show open · 7022 En cours · 7023 Terminée · 7024 Absence (the client didn't answer). The client's code is 4827;
+    ?error=invalid shows a wrong code with 3 tries left, ?error=locked the locked check-in. Changes are kept in the
+    session (npc.visits), so the Espace agent and the mandate page follow; "Réinitialiser" goes back to the fixtures. Another visit than the agent's (any other id) shows the
+    locked view.
+-->
+<body data-page="visit" data-currency="FCFA">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" href="index.html">
+                <img src="assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <span aria-hidden="true" data-user-initials>NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li class="user-menu__email" data-user-email></li>
+                    <li><a class="user-menu__item" href="profile/edit.html">Profil</a></li>
+                    <li><a class="user-menu__item" href="login.html" data-logout>Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="back-link"><a href="index.html#visits-title">← Retour à l'espace agent</a></p>
+
+            <!-- Locked: not a visit of the agent's clients. -->
+            <div class="alert alert--warning" hidden data-visit-locked>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <h1 class="alert__title">Cette visite n'est pas disponible</h1>
+                    <p>Retrouvez les visites de vos clients dans votre <a href="index.html#visits-title">espace agent</a>.</p>
+                </div>
+            </div>
+
+            <div class="visit" data-visit>
+                <div class="page-intro mandate-intro visit-intro">
+                    <div class="mandate-intro__head">
+                        <h1>Visite de <span data-v="clientName">Sandrine Eboa</span></h1>
+                        <p class="status-tag status-tag--warning" data-visit-tag>À confirmer</p>
+                    </div>
+                    <p class="mandate__meta">Visite n° <span data-v="id">7001</span> ·
+                        <a href="mandate.html?id=204#matches-title" data-mandate-link>Mandat n° <span data-v="mandateId">204</span></a></p>
+                </div>
+
+                <!-- Who and what: the client to call, the listing to show. -->
+                <div class="visit-header">
+                    <div class="contact-card__line contact-card__phone">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>
+                        <a href="tel:+237699887766" data-phone-link><span class="visually-hidden">Appeler le client au </span><span data-v="phone">+237 6 99 88 77 66</span></a>
+                        <a class="btn btn--primary btn--compact" href="https://wa.me/237699887766" target="_blank" rel="noopener" data-whatsapp-link><svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>WhatsApp</a>
+                    </div>
+                    <div class="visit-listing">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg>
+                        <div>
+                            <p><a href="listing.html?id=3012" data-listing-link><span data-v="listingTitle">Appartement 3 chambres · Bonapriso</span></a></p>
+                            <p class="visit-listing__meta" data-v="listingMeta">Annonce n° 3012 · 240K FCFA / mois</p>
+                        </div>
+                    </div>
+                    <p class="visit-type">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false" data-type-icon="ON_SITE"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false" hidden data-type-icon="VIDEO"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m16 10 6-3v10l-6-3z"/></svg>
+                        <span data-v="typeLabel">Visite sur place</span>
+                    </p>
+                </div>
+
+                <!-- Outcome of the last action. -->
+                <div class="alert alert--success" role="status" tabindex="-1" hidden data-visit-flash>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <p data-visit-flash-text></p>
+                </div>
+
+                <!-- ===== REQUESTED: the client's slot, to confirm or move, or the request to refuse ===== -->
+                <section class="visit-panel" aria-labelledby="requested-title" data-panel="REQUESTED">
+                    <h2 id="requested-title" class="visit-panel__title">Demande de visite</h2>
+                    <div>
+                        <p><span data-v="firstName">Sandrine</span> souhaite visiter le bien <strong data-v="requestedType">sur place</strong>, le</p>
+                        <p class="visit-when">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                            <span data-v="requestedAt">sam. 7 novembre 2026 à 10h30</span>
+                        </p>
+                    </div>
+                    <figure class="visit-note" data-note>
+                        <blockquote><p data-v="note">Je viendrai avec mon mari. Le matin nous arrange, mais nous pouvons nous adapter.</p></blockquote>
+                        <figcaption>Message de <span data-v="firstName">Sandrine</span></figcaption>
+                    </figure>
+                    <p class="visit-deadline">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                        <span>À confirmer avant le <strong data-v="expiresAt">mer. 4 novembre 2026 à 08h00</strong>
+                            (<span data-v="expiresIn">dans 42 h</span>) : sans réponse sous 48 h, la demande expire.</span>
+                    </p>
+
+                    <form class="form visit-form" method="post" novalidate data-schedule-form>
+                        <h3 class="visit-form__title">Confirmer la visite</h3>
+                        <p class="field__optional">Gardez le créneau et le type demandés, ou changez-les avec
+                            <span data-v="firstName">Sandrine</span>.</p>
+                        <div class="visit-slot">
+                            <div class="field">
+                                <label class="field__label" for="visit-date">Jour</label>
+                                <select class="input select" id="visit-date" name="date" aria-describedby="slot-error">
+                                    <option value="2026-11-03">mar. 3 novembre 2026</option>
+                                    <option value="2026-11-04">mer. 4 novembre 2026</option>
+                                    <option value="2026-11-05">jeu. 5 novembre 2026</option>
+                                    <option value="2026-11-06">ven. 6 novembre 2026</option>
+                                    <option value="2026-11-07" selected>sam. 7 novembre 2026</option>
+                                    <option value="2026-11-08">dim. 8 novembre 2026</option>
+                                    <option value="2026-11-09">lun. 9 novembre 2026</option>
+                                    <option value="2026-11-10">mar. 10 novembre 2026</option>
+                                    <option value="2026-11-11">mer. 11 novembre 2026</option>
+                                    <option value="2026-11-12">jeu. 12 novembre 2026</option>
+                                    <option value="2026-11-13">ven. 13 novembre 2026</option>
+                                    <option value="2026-11-14">sam. 14 novembre 2026</option>
+                                    <option value="2026-11-15">dim. 15 novembre 2026</option>
+                                    <option value="2026-11-16">lun. 16 novembre 2026</option>
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label class="field__label" for="visit-time">Heure</label>
+                                <select class="input select" id="visit-time" name="time" aria-describedby="slot-error">
+                                    <option value="08:00">08h00</option>
+                                    <option value="08:30">08h30</option>
+                                    <option value="09:00">09h00</option>
+                                    <option value="09:30">09h30</option>
+                                    <option value="10:00">10h00</option>
+                                    <option value="10:30" selected>10h30</option>
+                                    <option value="11:00">11h00</option>
+                                    <option value="11:30">11h30</option>
+                                    <option value="12:00">12h00</option>
+                                    <option value="12:30">12h30</option>
+                                    <option value="13:00">13h00</option>
+                                    <option value="13:30">13h30</option>
+                                    <option value="14:00">14h00</option>
+                                    <option value="14:30">14h30</option>
+                                    <option value="15:00">15h00</option>
+                                    <option value="15:30">15h30</option>
+                                    <option value="16:00">16h00</option>
+                                    <option value="16:30">16h30</option>
+                                    <option value="17:00">17h00</option>
+                                    <option value="17:30">17h30</option>
+                                    <option value="18:00">18h00</option>
+                                    <option value="18:30">18h30</option>
+                                    <option value="19:00">19h00</option>
+                                    <option value="19:30">19h30</option>
+                                    <option value="20:00">20h00</option>
+                                </select>
+                            </div>
+                        </div>
+                        <p class="field__error" id="slot-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                        <fieldset class="choices">
+                            <legend class="choices__legend">Type de visite</legend>
+                            <div class="choices__grid choices__grid--2">
+                                <label class="choice"><input name="type" type="radio" value="ON_SITE" checked> Sur place</label>
+                                <label class="choice"><input name="type" type="radio" value="VIDEO"> Vidéo WhatsApp</label>
+                            </div>
+                            <p class="field__optional" data-type-hint>Vous retrouvez Sandrine au bien, à l'heure choisie.</p>
+                        </fieldset>
+                        <div class="hint">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                            <p>La visite est confirmée aussitôt&nbsp;: <span data-v="firstName">Sandrine</span> reçoit par
+                                e-mail la date, l'adresse et son code à 4 chiffres.</p>
+                        </div>
+                        <div class="form__actions">
+                            <button type="submit" class="btn btn--primary">Confirmer</button>
+                        </div>
+                    </form>
+
+                    <details class="visit-secondary">
+                        <summary>Refuser la demande</summary>
+                        <form class="form visit-secondary__body" method="post" novalidate data-cancel-form>
+                            <p>Le client est prévenu par e-mail et peut demander un
+                                autre créneau.</p>
+                            <div class="field">
+                                <label class="field__label" for="refuse-reason">Raison <span class="field__optional">(facultatif, envoyée au client)</span></label>
+                                <textarea class="input input--textarea" id="refuse-reason" name="reason" rows="3" maxlength="500"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn--danger">Refuser la demande</button>
+                        </form>
+                    </details>
+                </section>
+
+                <!-- ===== CONFIRMED, before the check-in window ===== -->
+                <section class="visit-panel" aria-labelledby="confirmed-title" hidden data-panel="CONFIRMED">
+                    <h2 id="confirmed-title" class="visit-panel__title">Visite confirmée</h2>
+                    <p class="visit-when">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                        <span data-v="scheduledAt"></span>
+                    </p>
+                    <div class="visit-address">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+                        <div>
+                            <p data-v="address"></p>
+                            <p><a target="_blank" rel="noopener" data-map-link>Voir sur la carte<span class="visually-hidden"> (s'ouvre dans un nouvel onglet)</span></a></p>
+                        </div>
+                    </div>
+                    <div class="hint">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                        <p data-for-type="ON_SITE"><strong>Le jour de la visite, demandez au client son code à 4 chiffres&nbsp;: c'est lui qui
+                            démarre la visite.</strong> Vous le saisirez ici, à partir du <span data-v="windowFrom"></span>.</p>
+                        <p hidden data-for-type="VIDEO"><strong>À l'heure prévue, appelez le client en vidéo sur WhatsApp depuis
+                            le bien.</strong> Au début de l'appel, demandez-lui son code à 4 chiffres&nbsp;: c'est lui qui
+                            démarre la visite. Vous le saisirez ici, à partir du <span data-v="windowFrom"></span>.</p>
+                    </div>
+                    <details class="visit-secondary">
+                        <summary>Annuler la visite</summary>
+                        <form class="form visit-secondary__body" method="post" novalidate data-cancel-form>
+                            <p>Le client est prévenu par e-mail.</p>
+                            <div class="field">
+                                <label class="field__label" for="confirmed-cancel-reason">Raison <span class="field__optional">(facultatif, envoyée au client)</span></label>
+                                <textarea class="input input--textarea" id="confirmed-cancel-reason" name="reason" rows="3" maxlength="500"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn--danger">Annuler la visite</button>
+                        </form>
+                    </details>
+                </section>
+
+                <!-- ===== CONFIRMED, in the check-in window: start it with the client's code, or the no-show ===== -->
+                <section class="visit-panel" aria-labelledby="window-title" hidden data-panel="WINDOW">
+                    <h2 id="window-title" class="visit-panel__title">Démarrer la visite</h2>
+                    <p class="visit-when">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                        <span data-v="scheduledWhen"></span>
+                    </p>
+                    <div class="visit-address">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+                        <div>
+                            <p data-v="address"></p>
+                            <p><a target="_blank" rel="noopener" data-map-link>Voir sur la carte<span class="visually-hidden"> (s'ouvre dans un nouvel onglet)</span></a></p>
+                        </div>
+                    </div>
+
+                    <!-- A video visit: the call first, from the property, to the client's WhatsApp (the mandate's number). -->
+                    <div class="visit-call" hidden data-for-type="VIDEO">
+                        <a class="btn btn--primary visit-call__button" href="https://wa.me/237699887766" target="_blank"
+                           rel="noopener" data-whatsapp-link><svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg><span>Appeler <span data-v="firstName"></span> sur WhatsApp</span></a>
+                        <p class="field__optional">puis lancez l'appel vidéo, depuis le bien.</p>
+                        <p><strong>Au début de l'appel, demandez son code au client.</strong></p>
+                    </div>
+
+                    <form class="form visit-form" method="post" novalidate data-checkin-form>
+                        <div class="field">
+                            <label class="field__label" for="visit-code">Code du client</label>
+                            <p class="field__optional" id="code-hint"><span data-for-type="ON_SITE">Demandez-le à
+                                <span data-v="firstName"></span>&nbsp;: il est dans son e-mail de confirmation et sur sa
+                                page de visite.</span><span hidden data-for-type="VIDEO"><span data-v="firstName"></span>
+                                vous le lit pendant l'appel&nbsp;: il est dans son e-mail de confirmation et sur sa page de
+                                visite.</span></p>
+                            <input class="input input--code visit-code" id="visit-code" name="code" type="text"
+                                   inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="one-time-code" placeholder="0000" required
+                                   aria-describedby="code-hint code-error">
+                            <p class="field__error" id="code-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                        </div>
+                        <input type="hidden" name="latitude" data-position-input>
+                        <input type="hidden" name="longitude" data-position-input>
+                        <input type="hidden" name="accuracyMeters" data-position-input>
+                        <div class="visit-position" hidden data-position-status data-none-text="Position non disponible&nbsp;: la visite peut quand même démarrer.">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+                            <span role="status" data-position-text></span>
+                            <button type="button" class="link-button" hidden data-position-retry>Relever à nouveau</button>
+                        </div>
+                        <div class="form__actions">
+                            <button type="submit" class="btn btn--primary">Démarrer</button>
+                        </div>
+                        <p class="mandate-panel__prototype">Code du client dans ce prototype&nbsp;: 4827.
+                            <button type="button" class="link-button" data-simulate-gps>Simuler une position (prototype)</button></p>
+                    </form>
+
+                    <!-- 5 wrong codes: no more tries (409 VISIT_CODE_LOCKED). -->
+                    <div class="alert alert--error" hidden data-code-locked>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        <div>
+                            <p class="alert__title">Trop d'essais&nbsp;: contactez le support ou déclarez le client absent.</p>
+                            <p>Le code ne peut plus être saisi pour cette visite.
+                                <a href="#no-show" data-locked-noshow>Déclarer le client absent</a><span data-locked-later>Vous
+                                pourrez déclarer le client absent à partir de <span data-v="noShowFrom"></span>.</span></p>
+                        </div>
+                    </div>
+
+                    <p class="visit-later" data-noshow-later><span data-for-type="ON_SITE">Le client n'est pas là&nbsp;?</span><span
+                        hidden data-for-type="VIDEO">Le client ne répond pas&nbsp;?</span> À partir de
+                        <strong data-v="noShowFrom"></strong>, 15 min après l'heure prévue, vous pourrez le déclarer absent.</p>
+                    <details id="no-show" class="visit-secondary" hidden>
+                        <summary><span data-for-type="ON_SITE">Le client est absent ou refuse de donner le code</span><span
+                            hidden data-for-type="VIDEO">Le client ne répond pas ou refuse de donner le code</span></summary>
+                        <form class="form visit-secondary__body" method="post" novalidate data-noshow-form>
+                            <fieldset class="choices" aria-describedby="noshow-error">
+                                <legend class="choices__legend">Que s'est-il passé&nbsp;?</legend>
+                                <div class="choices__grid choices__grid--2">
+                                    <label class="choice"><input name="reason" type="radio" value="CUSTOMER_ABSENT"> <span data-for-type="ON_SITE">Client absent</span><span hidden data-for-type="VIDEO">Le client ne répond pas</span></label>
+                                    <label class="choice"><input name="reason" type="radio" value="CODE_REFUSED"> Code refusé</label>
+                                </div>
+                                <p class="field__error" id="noshow-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                            </fieldset>
+                            <div class="alert alert--warning">
+                                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                                <div>
+                                    <p class="alert__title">L'absence du client est enregistrée, votre position aussi</p>
+                                    <p>Faites la déclaration devant le bien.</p>
+                                </div>
+                            </div>
+                            <input type="hidden" name="latitude" data-position-input>
+                            <input type="hidden" name="longitude" data-position-input>
+                            <input type="hidden" name="accuracyMeters" data-position-input>
+                            <div class="visit-position" hidden data-position-status data-none-text="Position non disponible&nbsp;: la déclaration est quand même enregistrée.">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+                            <span role="status" data-position-text></span>
+                            <button type="button" class="link-button" hidden data-position-retry>Relever à nouveau</button>
+                        </div>
+                            <button type="submit" class="btn btn--danger">Déclarer l'absence</button>
+                        </form>
+                    </details>
+
+                    <details class="visit-secondary">
+                        <summary>Vous ne pouvez pas venir&nbsp;?</summary>
+                        <form class="form visit-secondary__body" method="post" novalidate data-cancel-form>
+                            <p>Annulez la visite&nbsp;: le client est prévenu par e-mail.</p>
+                            <div class="field">
+                                <label class="field__label" for="window-cancel-reason">Raison <span class="field__optional">(facultatif, envoyée au client)</span></label>
+                                <textarea class="input input--textarea" id="window-cancel-reason" name="reason" rows="3" maxlength="500"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn--danger">Annuler la visite</button>
+                        </form>
+                    </details>
+                </section>
+
+                <!-- ===== CHECKED_IN: the visit is on; end it with the agent's report ===== -->
+                <section class="visit-panel" aria-labelledby="checkedin-title" hidden data-panel="CHECKED_IN">
+                    <h2 id="checkedin-title" class="visit-panel__title">Visite en cours depuis <span data-v="checkedInTime"></span></h2>
+                    <p class="visit-distance" data-distance-ok>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <span>Vous étiez à <strong data-v="distance"></strong> du bien au démarrage.</span>
+                    </p>
+                    <div class="alert alert--warning" hidden data-distance-far>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <p class="alert__title">Vous étiez à <span data-v="distance"></span> du bien au démarrage</p>
+                            <p>La visite sera vérifiée par l'équipe Ndopify. Vous pouvez la terminer normalement.</p>
+                        </div>
+                    </div>
+                    <p class="visit-distance" hidden data-distance-none>Votre position n'a pas pu être relevée au démarrage.</p>
+
+                    <form class="form visit-form" method="post" novalidate data-checkout-form>
+                        <h3 class="visit-form__title">Terminer la visite</h3>
+                        <div class="field">
+                            <label class="field__label" for="visit-comment">Compte rendu de la visite</label>
+                            <p class="field__optional" id="comment-hint">Ce que le client a pensé du bien, ses questions,
+                                la suite à donner. Visible par vous et l'équipe Ndopify seulement, jamais par le client.</p>
+                            <textarea class="input input--textarea" id="visit-comment" name="comment" rows="5"
+                                      maxlength="2000" required
+                                      aria-describedby="comment-hint comment-counter comment-error"></textarea>
+                            <p class="field__counter" id="comment-counter" data-counter>0 / 2000</p>
+                            <p class="field__error" id="comment-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                        </div>
+                        <input type="hidden" name="latitude" data-position-input>
+                        <input type="hidden" name="longitude" data-position-input>
+                        <input type="hidden" name="accuracyMeters" data-position-input>
+                        <div class="visit-position" hidden data-position-status data-none-text="Position non disponible&nbsp;: la visite peut quand même se terminer.">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+                            <span role="status" data-position-text></span>
+                            <button type="button" class="link-button" hidden data-position-retry>Relever à nouveau</button>
+                        </div>
+                        <p class="visit-later" id="checkout-wait" tabindex="-1" hidden data-checkout-wait>
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                            <span>Vous pourrez terminer la visite à partir de <strong data-v="checkOutFrom"></strong>,
+                                10 min après son démarrage.</span>
+                        </p>
+                        <div class="form__actions">
+                            <button type="submit" class="btn btn--primary" aria-describedby="checkout-wait" data-checkout-submit>Terminer</button>
+                        </div>
+                        <p class="mandate-panel__prototype">
+                            <button type="button" class="link-button" data-simulate-gps>Simuler une position (prototype)</button></p>
+                    </form>
+                </section>
+
+                <!-- ===== COMPLETED: what happened, and what the client thought ===== -->
+                <section class="visit-panel" aria-labelledby="completed-title" hidden data-panel="COMPLETED">
+                    <h2 id="completed-title" class="visit-panel__title">Visite terminée</h2>
+                    <dl class="review visit-summary">
+                        <div class="review__item"><dt class="review__term">Type</dt><dd class="review__value" data-v="completedType"></dd></div>
+                        <div class="review__item"><dt class="review__term">Démarrée</dt><dd class="review__value" data-v="checkedInAt"></dd></div>
+                        <div class="review__item"><dt class="review__term">Terminée</dt><dd class="review__value" data-v="checkedOutAt"></dd></div>
+                        <div class="review__item"><dt class="review__term">Durée</dt><dd class="review__value" data-v="duration"></dd></div>
+                        <div class="review__item"><dt class="review__term">Votre position au démarrage</dt><dd class="review__value" data-v="startDistance"></dd></div>
+                        <div class="review__item"><dt class="review__term">Votre compte rendu <span class="field__optional">(jamais montré au client)</span></dt><dd class="review__value review__multiline" data-v="agentComment"></dd></div>
+                    </dl>
+                    <h3 class="visit-form__title">L'avis du client</h3>
+                    <p data-feedback-none>Le client n'a pas encore répondu. Il a reçu un e-mail pour dire si le bien
+                        l'intéresse.</p>
+                    <div class="visit-feedback" hidden data-feedback>
+                        <p><span class="status-tag" data-feedback-tag></span> <span data-feedback-reason></span></p>
+                        <figure class="visit-note" data-feedback-comment>
+                            <blockquote><p data-v="feedbackComment"></p></blockquote>
+                            <figcaption>Commentaire de <span data-v="firstName"></span></figcaption>
+                        </figure>
+                    </div>
+                </section>
+
+                <!-- ===== CANCELLED / EXPIRED / NO_SHOW: what happened ===== -->
+                <div class="alert alert--info" hidden data-panel="CANCELLED">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <div>
+                        <h2 class="alert__title" data-v="cancelTitle"></h2>
+                        <p data-v="cancelText"></p>
+                        <p class="review__multiline" data-cancel-reason data-v="cancellationReason"></p>
+                        <p>Visite prévue le <span data-v="plannedAt"></span>.</p>
+                    </div>
+                </div>
+
+                <div class="alert alert--info" hidden data-panel="EXPIRED">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <div>
+                        <h2 class="alert__title">Demande expirée</h2>
+                        <p data-v="expiredText"></p>
+                        <p>Visite prévue le <span data-v="plannedAt"></span>.</p>
+                    </div>
+                </div>
+
+                <div class="alert alert--warning" hidden data-panel="NO_SHOW">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                    <div>
+                        <h2 class="alert__title" data-v="noShowTitle"></h2>
+                        <p data-v="noShowText"></p>
+                        <p data-noshow-distance data-v="noShowDistance"></p>
+                        <p>Visite prévue le <span data-v="plannedAt"></span>.</p>
+                    </div>
+                </div>
+
+                <!-- PROTOTYPE: every state, and back to the fixtures. -->
+                <details class="assignment__details mandate-panel__prototype visit-prototype">
+                    <summary>Autres visites (prototype)</summary>
+                    <ul class="visit-prototype__list">
+                        <li><a href="visit.html?id=7001">7001 · À confirmer</a></li>
+                        <li><a href="visit.html?id=7002">7002 · À confirmer, expire bientôt</a></li>
+                        <li><a href="visit.html?id=7003">7003 · Confirmée, à une autre heure que demandé</a></li>
+                        <li><a href="visit.html?id=7004">7004 · Confirmée</a></li>
+                        <li><a href="visit.html?id=7005">7005 · Confirmée, aujourd'hui</a></li>
+                        <li><a href="visit.html?id=7006">7006 · À démarrer, avant l'heure</a></li>
+                        <li><a href="visit.html?id=7007">7007 · À démarrer, client en retard</a></li>
+                        <li><a href="visit.html?id=7007&amp;error=invalid">7007 · Code incorrect</a></li>
+                        <li><a href="visit.html?id=7007&amp;error=locked">7007 · Trop d'essais</a></li>
+                        <li><a href="visit.html?id=7008">7008 · En cours</a></li>
+                        <li><a href="visit.html?id=7009">7009 · En cours, loin du bien, moins de 10 min</a></li>
+                        <li><a href="visit.html?id=7010">7010 · Terminée, intéressé</a></li>
+                        <li><a href="visit.html?id=7011">7011 · Terminée, pas intéressé</a></li>
+                        <li><a href="visit.html?id=7012">7012 · Terminée, sans réponse</a></li>
+                        <li><a href="visit.html?id=7013">7013 · Annulée par le client</a></li>
+                        <li><a href="visit.html?id=7014">7014 · Annulée par vous</a></li>
+                        <li><a href="visit.html?id=7015">7015 · Expirée, non confirmée</a></li>
+                        <li><a href="visit.html?id=7016">7016 · Demande annulée par le client</a></li>
+                        <li><a href="visit.html?id=7017">7017 · Absence du client</a></li>
+                        <li><a href="visit.html?id=7018">7018 · Absence de l'agent</a></li>
+                        <li><a href="visit.html?id=7019">7019 · Vidéo, à confirmer</a></li>
+                        <li><a href="visit.html?id=7020">7020 · Vidéo, confirmée</a></li>
+                        <li><a href="visit.html?id=7021">7021 · Vidéo, à démarrer (appel), client en retard</a></li>
+                        <li><a href="visit.html?id=7022">7022 · Vidéo, en cours</a></li>
+                        <li><a href="visit.html?id=7023">7023 · Vidéo, terminée</a></li>
+                        <li><a href="visit.html?id=7024">7024 · Vidéo, le client ne répond pas</a></li>
+                    </ul>
+                    <p><button type="button" class="link-button" data-visit-reset>Réinitialiser les visites</button></p>
+                </details>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

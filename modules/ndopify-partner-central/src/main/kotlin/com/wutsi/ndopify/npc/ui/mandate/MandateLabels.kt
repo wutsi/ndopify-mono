@@ -141,8 +141,11 @@ object MandateLabels {
             group to amenities.joinToString(", ") { it.label }
         }
 
-    /** Who the agent works for: a landlord for a listing, else someone looking for a rental. */
-    fun party(type: MandateType): String = if (type == MandateType.LISTING) "Bailleur" else "Locataire"
+    /**
+     * Who the agent works for, the first word of a mandate's title: an owner for a listing ("Propriétaire", the public
+     * site's word, ndopify-web's menu), else someone looking for a rental.
+     */
+    fun party(type: MandateType): String = if (type == MandateType.LISTING) "Propriétaire" else "Locataire"
 
     /** null without a type: any type will do. */
     fun shortPropertyType(type: PropertyType?): String? = PROPERTY_TYPE_SHORT[type] ?: PROPERTY_TYPE_LABELS[type]

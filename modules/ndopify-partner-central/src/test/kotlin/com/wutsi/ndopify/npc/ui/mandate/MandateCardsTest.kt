@@ -103,7 +103,7 @@ class MandateCardsTest {
 
         val card = MandateCards.of(mandate, CONTRACT_SUMMARY, mapOf(201L to ListingSummary(id = 501, mandateId = 201, status = ListingStatus.PUBLISHED)), NAMES, NOW, FORMATTER)
 
-        assertEquals("Bailleur · Maison", card.title)
+        assertEquals("Propriétaire · Maison", card.title)
         assertEquals(MandateRules.Tag("Actif", "success"), card.tag)
         assertEquals(
             listOf("Secteur" to "Bonapriso", "Loyer" to "250K\u00a0FCFA / mois", "Disponibilité" to "Dans 1 à 3\u00a0mois"),

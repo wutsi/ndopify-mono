@@ -80,7 +80,8 @@
                 <!-- The status sits by the title, so the steps below can stay compact. -->
                 <div class="page-intro mandate-intro">
                     <div class="mandate-intro__head">
-                        <h1 th:text="${m.title}">Locataire · Maison</h1>
+                        <h1 class="mandate-title"><span th:replace="~{fragments/mandate-kind :: icon(${m.owner})}"></span><span
+                                th:text="${m.title}">Locataire · Maison</span></h1>
                         <p th:class="|status-tag status-tag--${m.tag.style}|" th:text="${m.tag.label}">Assigné</p>
                     </div>
                     <p class="mandate__meta">Mandat n° <span th:text="${m.id}">201</span><th:block th:if="${m.acceptedAt}">
@@ -95,6 +96,34 @@
                     <svg th:if="${outcomeStyle == 'error'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                     <p data-mandate-flash-text th:text="${outcomeText}">Mandat envoyé pour signature.</p>
                 </div>
+
+                <!-- The contact first, under the title: who the agent works for, a tap to call. Its title is for screen
+                     readers only. -->
+                <section class="home-section mandate-contact" aria-labelledby="contact-title">
+                    <h2 id="contact-title" class="visually-hidden" th:text="${m.words.theUpper}">Le client</h2>
+                    <!--
+                        Compact: the name and best time to call on one line, then the number and e-mail, unlabelled.
+                        The number calls (tel:, as phones expect of a number) and its WhatsApp button sits beside it.
+                    -->
+                    <div class="contact-card" th:if="${m.contact}" th:with="c=${m.contact}">
+                        <p><strong data-contact="name" th:text="${c.name}">Ray Sponsible</strong><span class="contact-card__period"
+                                th:if="${c.period}"> · à appeler <span data-contact="period" th:text="${c.period}">le matin</span></span></p>
+                        <div class="contact-card__line contact-card__phone" th:if="${c.whatsapp}">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>
+                            <a data-contact="whatsapp" th:href="|tel:${c.whatsapp}|"><span class="visually-hidden">Appeler le </span><span
+                                    data-contact-number th:text="${c.whatsappDisplay}">+237 6 99 12 34 56</span></a>
+                            <a class="btn btn--primary btn--compact" target="_blank" rel="noopener" data-contact-whatsapp
+                               th:href="|https://wa.me/${c.whatsappDigits}|"><svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.870 9.870 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.860 9.860 0 0 1-1.510-5.260c.001-5.450 4.436-9.884 9.888-9.884 2.640 0 5.122 1.030 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.450-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.050 0C5.495 0 .160 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.890-5.335 11.893-11.893a11.821 11.821 0 0 0-3.480-8.413Z"/></svg>WhatsApp</a>
+                        </div>
+                        <p class="contact-card__line">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>
+                            <span><span class="visually-hidden">Adresse e-mail&nbsp;: </span><a data-contact="email"
+                                    th:href="|mailto:${c.email}|" th:text="${c.email}">ray@gmail.com</a></span>
+                        </p>
+                    </div>
+                    <p th:unless="${m.contact}" data-contact-unavailable>Les coordonnées <span th:text="${m.words.of}">du client</span>
+                        ne peuvent pas être affichées pour le moment. Réessayez dans quelques instants.</p>
+                </section>
 
                 <section class="mandate-progress" aria-labelledby="progress-title">
                     <h2 id="progress-title" class="visually-hidden">Suivi du mandat</h2>
@@ -335,32 +364,6 @@
                            th:text="${ms.dismissed > 1} ? |${ms.dismissed} biens écartés : ils ne vous seront plus proposés pour ce mandat.| : '1 bien écarté : il ne vous sera plus proposé pour ce mandat.'">
                             1 bien écarté : il ne vous sera plus proposé pour ce mandat.</p>
                     </th:block>
-                </section>
-
-                <section class="home-section" aria-labelledby="contact-title">
-                    <h2 id="contact-title" th:text="${m.words.theUpper}">Le client</h2>
-                    <!--
-                        Compact: the name and best time to call on one line, then the number and e-mail, unlabelled.
-                        The number calls (tel:, as phones expect of a number) and its WhatsApp button sits beside it.
-                    -->
-                    <div class="contact-card" th:if="${m.contact}" th:with="c=${m.contact}">
-                        <p><strong data-contact="name" th:text="${c.name}">Ray Sponsible</strong><span class="contact-card__period"
-                                th:if="${c.period}"> · à appeler <span data-contact="period" th:text="${c.period}">le matin</span></span></p>
-                        <div class="contact-card__line contact-card__phone" th:if="${c.whatsapp}">
-                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>
-                            <a data-contact="whatsapp" th:href="|tel:${c.whatsapp}|"><span class="visually-hidden">Appeler le </span><span
-                                    data-contact-number th:text="${c.whatsappDisplay}">+237 6 99 12 34 56</span></a>
-                            <a class="btn btn--primary btn--compact" target="_blank" rel="noopener" data-contact-whatsapp
-                               th:href="|https://wa.me/${c.whatsappDigits}|"><svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.870 9.870 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.860 9.860 0 0 1-1.510-5.260c.001-5.450 4.436-9.884 9.888-9.884 2.640 0 5.122 1.030 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.450-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.050 0C5.495 0 .160 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.890-5.335 11.893-11.893a11.821 11.821 0 0 0-3.480-8.413Z"/></svg>WhatsApp</a>
-                        </div>
-                        <p class="contact-card__line">
-                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>
-                            <span><span class="visually-hidden">Adresse e-mail&nbsp;: </span><a data-contact="email"
-                                    th:href="|mailto:${c.email}|" th:text="${c.email}">ray@gmail.com</a></span>
-                        </p>
-                    </div>
-                    <p th:unless="${m.contact}" data-contact-unavailable>Les coordonnées <span th:text="${m.words.of}">du client</span>
-                        ne peuvent pas être affichées pour le moment. Réessayez dans quelques instants.</p>
                 </section>
 
                 <section class="home-section" aria-labelledby="search-title">

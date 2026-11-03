@@ -6,6 +6,8 @@ import com.wutsi.ndopify.npc.ui.listing.ListingLineView
 data class MandateCardView(
     val id: Long,
     val title: String,
+    /** A landlord's listing (the key icon before the title), not a search (the magnifying glass). */
+    val owner: Boolean,
     val tag: MandateRules.Tag,
     /** Sector (neighbourhoods only: the city is the agent's), amount and moving date: term → value. */
     val facts: List<Pair<String, String>>,

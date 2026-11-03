@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--
+    The kind of a mandate, before its title (the Espace agent's offer and mandate cards, the mandate page): a
+    magnifying glass for a search (the agent looks for a property), a key for a landlord's listing (the property to
+    let). Not a house: the visit cards use one for "Sur place". Decorative (aria-hidden): the title says it in words.
+    Copied from the prototype's partner-central.js (KIND_ICONS).
+-->
+<span th:fragment="icon(owner)" class="mandate-title__icon" th:attr="data-mandate-kind=${owner ? 'listing' : 'search'}"><svg
+        th:if="${owner}" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="7.5" cy="15.5"
+        r="4.5"/><path d="m10.7 12.3 9.8-9.8M17 6l3 3M14.5 8.5l2 2"/></svg><svg th:unless="${owner}" class="icon"
+        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+        stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path
+        d="m20 20-3.5-3.5"/></svg></span>
+</body>
+</html>

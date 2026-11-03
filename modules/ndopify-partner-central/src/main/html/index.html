@@ -14,7 +14,9 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
     <link rel="stylesheet" href="assets/css/partner-central.css">
     <link rel="stylesheet" href="assets/css/home.css">
+    <link rel="stylesheet" href="assets/css/visit.css">
     <script src="assets/js/partner-central.js" defer></script>
+    <script src="assets/js/visit.js" defer></script>
 </head>
 <body data-page="agent-home">
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -91,7 +93,7 @@
                     <li class="assignment" data-assignment data-mandate-id="101" data-expires-in="52">
                         <article aria-labelledby="assignment-101-title">
                             <div class="assignment__head">
-                                <h3 id="assignment-101-title" class="assignment__type">Locataire</h3>
+                                <h3 id="assignment-101-title" class="assignment__type mandate-title"><span class="mandate-title__icon" data-mandate-kind><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><span>Locataire</span></h3>
                                 <p class="assignment__timer" data-timer>
                                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                          stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
@@ -161,7 +163,7 @@
                     <li class="assignment" data-assignment data-mandate-id="102" data-expires-in="9">
                         <article aria-labelledby="assignment-102-title">
                             <div class="assignment__head">
-                                <h3 id="assignment-102-title" class="assignment__type">Bailleur</h3>
+                                <h3 id="assignment-102-title" class="assignment__type mandate-title"><span class="mandate-title__icon" data-mandate-kind><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8M17 6l3 3M14.5 8.5l2 2"/></svg></span><span>Propriétaire</span></h3>
                                 <p class="assignment__timer" data-timer>
                                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                          stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
@@ -231,7 +233,7 @@
                     <li class="assignment" data-assignment data-mandate-id="103" data-expires-in="38">
                         <article aria-labelledby="assignment-103-title">
                             <div class="assignment__head">
-                                <h3 id="assignment-103-title" class="assignment__type">Locataire</h3>
+                                <h3 id="assignment-103-title" class="assignment__type mandate-title"><span class="mandate-title__icon" data-mandate-kind><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><span>Locataire</span></h3>
                                 <p class="assignment__timer" data-timer>
                                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                          stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
@@ -300,6 +302,188 @@
             </section>
 
             <!--
+                Section Visits (source doc): the visits of the agent's clients (GET /v1/visits?agent-id=&status=REQUESTED&
+                status=CONFIRMED&status=CHECKED_IN, soonest first), each card opening
+                visit.html?id=…. First "À confirmer": the requests to schedule (REQUESTED), the soonest to expire first,
+                with the time left (a request not confirmed within 48 h expires; under 12 h left, the timer is in the
+                warning colour). Then "À venir": the others by date, so today's come first ("Aujourd'hui · 10h30", the
+                tag "À démarrer" once the check-in window is open, "En cours" once started), then the whole date with
+                the year. Each card says the type before the listing ("Sur place", "Visite vidéo": a WhatsApp video call
+                from the property), and ends with its next step (one short line: confirm the date; on the day, ask the client's
+                code, or call by video from the property; start with the code, or declare the absence once the client is
+                15 min late; end with the report). A group without visits isn't shown; without any, the section says so. Done, cancelled, expired
+                and missed visits leave the list (their page stays, from the mandate). PROTOTYPE: visit.js's VISITS
+                (dates relative to the page load), as changed on visit.html; ?visits=empty shows the empty state.
+            -->
+            <section class="home-section" aria-labelledby="visits-title" data-visits-section>
+                <h2 id="visits-title">Visites</h2>
+
+                <div class="visit-group" data-visit-group="requested">
+                    <h3 class="visit-group__title">À confirmer</h3>
+                    <ul class="assignments visit-cards" data-visit-list>
+                    <li class="mandate-card visit-card" data-urgent data-visit-card data-visit-id="7002">
+                        <article aria-labelledby="visit-7002-title">
+                            <div class="assignment__head">
+                                <h4 id="visit-7002-title" class="assignment__type">
+                                    <a class="mandate-card__link" href="visit.html?id=7002" data-visit-link>Carine Ndongo</a>
+                                </h4>
+                                <p class="status-tag" hidden data-visit-tag></p>
+                            </div>
+                            <p class="visit-card__when">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                                <span data-visit-when>Demandée pour le mer. 4 novembre 2026 à 16h00</span>
+                            </p>
+                            <p class="visit-card__listing" data-visit-listing>Sur place · Appartement 3 chambres · Bonanjo</p>
+                            <p class="assignment__timer visit-card__timer" data-visit-timer>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                <span>Il reste <strong data-visit-left>8 h</strong> pour confirmer</span>
+                            </p>
+                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-visit-next>Confirmez la date avec le client.</span></p>
+                        </article>
+                    </li>
+                    <li class="mandate-card visit-card" data-visit-card data-visit-id="7001">
+                        <article aria-labelledby="visit-7001-title">
+                            <div class="assignment__head">
+                                <h4 id="visit-7001-title" class="assignment__type">
+                                    <a class="mandate-card__link" href="visit.html?id=7001" data-visit-link>Sandrine Eboa</a>
+                                </h4>
+                                <p class="status-tag" hidden data-visit-tag></p>
+                            </div>
+                            <p class="visit-card__when">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                                <span data-visit-when>Demandée pour le sam. 7 novembre 2026 à 10h30</span>
+                            </p>
+                            <p class="visit-card__listing" data-visit-listing>Sur place · Appartement 3 chambres · Bonapriso</p>
+                            <p class="assignment__timer visit-card__timer" data-visit-timer>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                <span>Il reste <strong data-visit-left>42 h</strong> pour confirmer</span>
+                            </p>
+                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-visit-next>Confirmez la date avec le client.</span></p>
+                        </article>
+                    </li>
+                    </ul>
+                </div>
+
+                <div class="visit-group" data-visit-group="upcoming">
+                    <h3 class="visit-group__title">À venir</h3>
+                    <ul class="assignments visit-cards" data-visit-list>
+                    <li class="mandate-card visit-card" data-visit-card data-visit-id="7008">
+                        <article aria-labelledby="visit-7008-title">
+                            <div class="assignment__head">
+                                <h4 id="visit-7008-title" class="assignment__type">
+                                    <a class="mandate-card__link" href="visit.html?id=7008" data-visit-link>Grace Nkeng</a>
+                                </h4>
+                                <p class="status-tag status-tag--info" data-visit-tag>En cours</p>
+                            </div>
+                            <p class="visit-card__when">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                                <span data-visit-when>En cours depuis 10h05</span>
+                            </p>
+                            <p class="visit-card__listing" data-visit-listing>Sur place · Appartement 3 chambres · Bonapriso</p>
+                            <p class="assignment__timer visit-card__timer" hidden data-visit-timer></p>
+                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-visit-next>Terminez la visite avec votre compte rendu.</span></p>
+                        </article>
+                    </li>
+                    <li class="mandate-card visit-card" data-visit-card data-visit-id="7007">
+                        <article aria-labelledby="visit-7007-title">
+                            <div class="assignment__head">
+                                <h4 id="visit-7007-title" class="assignment__type">
+                                    <a class="mandate-card__link" href="visit.html?id=7007" data-visit-link>Paul Atangana</a>
+                                </h4>
+                                <p class="status-tag status-tag--info" data-visit-tag>À démarrer</p>
+                            </div>
+                            <p class="visit-card__when">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                                <span data-visit-when>Aujourd'hui · 10h00</span>
+                            </p>
+                            <p class="visit-card__listing" data-visit-listing>Sur place · Appartement 3 chambres · Bonanjo</p>
+                            <p class="assignment__timer visit-card__timer" hidden data-visit-timer></p>
+                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-visit-next>Démarrez avec son code, ou déclarez son absence.</span></p>
+                        </article>
+                    </li>
+                    <li class="mandate-card visit-card" data-visit-card data-visit-id="7005">
+                        <article aria-labelledby="visit-7005-title">
+                            <div class="assignment__head">
+                                <h4 id="visit-7005-title" class="assignment__type">
+                                    <a class="mandate-card__link" href="visit.html?id=7005" data-visit-link>Rodrigue Essomba</a>
+                                </h4>
+                                <p class="status-tag status-tag--success" data-visit-tag>Confirmée</p>
+                            </div>
+                            <p class="visit-card__when">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                                <span data-visit-when>Aujourd'hui · 13h30</span>
+                            </p>
+                            <p class="visit-card__listing" data-visit-listing>Sur place · Appartement 2 chambres · Bonapriso</p>
+                            <p class="assignment__timer visit-card__timer" hidden data-visit-timer></p>
+                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-visit-next>Le jour J, demandez son code au client.</span></p>
+                        </article>
+                    </li>
+                    <li class="mandate-card visit-card" data-visit-card data-visit-id="7004">
+                        <article aria-labelledby="visit-7004-title">
+                            <div class="assignment__head">
+                                <h4 id="visit-7004-title" class="assignment__type">
+                                    <a class="mandate-card__link" href="visit.html?id=7004" data-visit-link>Sandrine Eboa</a>
+                                </h4>
+                                <p class="status-tag status-tag--success" data-visit-tag>Confirmée</p>
+                            </div>
+                            <p class="visit-card__when">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                                <span data-visit-when>mer. 4 novembre 2026 à 10h00</span>
+                            </p>
+                            <p class="visit-card__listing" data-visit-listing>Sur place · Appartement 3 chambres · Bonapriso</p>
+                            <p class="assignment__timer visit-card__timer" hidden data-visit-timer></p>
+                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-visit-next>Le jour J, demandez son code au client.</span></p>
+                        </article>
+                    </li>
+                    <li class="mandate-card visit-card" data-visit-card data-visit-id="7003">
+                        <article aria-labelledby="visit-7003-title">
+                            <div class="assignment__head">
+                                <h4 id="visit-7003-title" class="assignment__type">
+                                    <a class="mandate-card__link" href="visit.html?id=7003" data-visit-link>Hervé Mbarga</a>
+                                </h4>
+                                <p class="status-tag status-tag--success" data-visit-tag>Confirmée</p>
+                            </div>
+                            <p class="visit-card__when">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                                <span data-visit-when>jeu. 5 novembre 2026 à 09h30</span>
+                            </p>
+                            <p class="visit-card__listing" data-visit-listing>Sur place · Appartement 3 chambres · Bonapriso</p>
+                            <p class="assignment__timer visit-card__timer" hidden data-visit-timer></p>
+                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-visit-next>Le jour J, demandez son code au client.</span></p>
+                        </article>
+                    </li>
+                    </ul>
+                </div>
+
+                <p class="assignments__empty" hidden data-visits-empty>
+                    Aucune visite prévue. Quand un client demande à visiter un bien que vous lui avez envoyé, sa
+                    demande apparaît ici et vous êtes prévenu par e-mail.
+                </p>
+
+                <!-- A visit's card, filled by visit.js (initHomeVisits). -->
+                <template data-visit-card-template>
+                    <li class="mandate-card visit-card" data-visit-card>
+                        <article>
+                            <div class="assignment__head">
+                                <h4 class="assignment__type"><a class="mandate-card__link" data-visit-link></a></h4>
+                                <p class="status-tag" data-visit-tag></p>
+                            </div>
+                            <p class="visit-card__when">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                                <span data-visit-when></span>
+                            </p>
+                            <p class="visit-card__listing" data-visit-listing></p>
+                            <p class="assignment__timer visit-card__timer" data-visit-timer>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                <span>Il reste <strong data-visit-left></strong> pour confirmer</span>
+                            </p>
+                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-visit-next></span></p>
+                        </article>
+                    </li>
+                </template>
+            </section>
+
+            <!--
                 Section Mandates (source doc): the agent's active mandates (Assigné, En approbation, Actif), each
                 opening its page, mandate.html?id=…. Closed mandates (Fermé) leave the list. PROTOTYPE: 201, 202 and
                 203 (and 204) are already the agent's; an offer accepted above joins them at the top, and the statuses follow
@@ -322,7 +506,8 @@
                     <li class="mandate-card" data-mandate-card data-mandate-id="201">
                         <article aria-labelledby="mandate-201-title">
                             <div class="assignment__head">
-                                <h3 id="mandate-201-title" class="assignment__type">
+                                <h3 id="mandate-201-title" class="assignment__type mandate-title">
+                                    <span class="mandate-title__icon" data-mandate-kind><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
                                     <a class="mandate-card__link" href="mandate.html?id=201" data-mandate-link>Locataire · Maison</a>
                                 </h3>
                                 <p class="status-tag status-tag--info" data-status-tag>Assigné</p>
@@ -356,7 +541,8 @@
                     <li class="mandate-card" data-mandate-card data-mandate-id="202">
                         <article aria-labelledby="mandate-202-title">
                             <div class="assignment__head">
-                                <h3 id="mandate-202-title" class="assignment__type">
+                                <h3 id="mandate-202-title" class="assignment__type mandate-title">
+                                    <span class="mandate-title__icon" data-mandate-kind><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
                                     <a class="mandate-card__link" href="mandate.html?id=202" data-mandate-link>Locataire · Appartement</a>
                                 </h3>
                                 <p class="status-tag status-tag--warning" data-status-tag>En approbation</p>
@@ -390,8 +576,9 @@
                     <li class="mandate-card" data-mandate-card data-mandate-id="203">
                         <article aria-labelledby="mandate-203-title">
                             <div class="assignment__head">
-                                <h3 id="mandate-203-title" class="assignment__type">
-                                    <a class="mandate-card__link" href="mandate.html?id=203" data-mandate-link>Bailleur · Appartement</a>
+                                <h3 id="mandate-203-title" class="assignment__type mandate-title">
+                                    <span class="mandate-title__icon" data-mandate-kind><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.8-9.8M17 6l3 3M14.5 8.5l2 2"/></svg></span>
+                                    <a class="mandate-card__link" href="mandate.html?id=203" data-mandate-link>Propriétaire · Appartement</a>
                                 </h3>
                                 <p class="status-tag status-tag--success" data-status-tag>Actif</p>
                             </div>
@@ -434,7 +621,8 @@
                     <li class="mandate-card" data-mandate-card data-mandate-id="204">
                         <article aria-labelledby="mandate-204-title">
                             <div class="assignment__head">
-                                <h3 id="mandate-204-title" class="assignment__type">
+                                <h3 id="mandate-204-title" class="assignment__type mandate-title">
+                                    <span class="mandate-title__icon" data-mandate-kind><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
                                     <a class="mandate-card__link" href="mandate.html?id=204" data-mandate-link>Locataire · Appartement</a>
                                 </h3>
                                 <p class="status-tag status-tag--success" data-status-tag>Actif</p>
@@ -455,13 +643,13 @@
                             </dl>
                             <p class="mandate-card__matches" data-matches>
                                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg>
-                                <a href="mandate.html?id=204#matches-title" data-matches-link>3 nouveaux biens correspondants</a>
+                                <a href="mandate.html?id=204#matches-title" data-matches-link>2 nouveaux biens correspondants</a>
                             </p>
                             <p class="mandate-card__proposals" hidden data-proposals>
                                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M4 12 20 4l-6 16-3-7zM11 13l9-9"/></svg>
                                 <span><span class="visually-hidden">Biens proposés au client : </span><span data-proposals-text></span></span>
                             </p>
-                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-next-step>Confirmez au client la visite du mardi 3 novembre à 10h00, sur place (annonce n° 2987).</span></p>
+                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-next-step>Confirmez la visite demandée pour le sam. 7 novembre 2026 à 10h30 (annonce n° 3012).</span></p>
                         </article>
                     </li>
                 </ul>
@@ -475,7 +663,7 @@
                     <li class="mandate-card" data-mandate-card>
                         <article>
                             <div class="assignment__head">
-                                <h3 class="assignment__type"><a class="mandate-card__link" data-mandate-link></a></h3>
+                                <h3 class="assignment__type mandate-title"><span class="mandate-title__icon" data-mandate-kind></span><a class="mandate-card__link" data-mandate-link></a></h3>
                                 <p class="status-tag" data-status-tag></p>
                             </div>
                             <dl class="assignment__facts" data-mandate-facts></dl>
