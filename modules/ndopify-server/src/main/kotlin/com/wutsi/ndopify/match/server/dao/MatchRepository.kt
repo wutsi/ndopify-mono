@@ -6,8 +6,10 @@ import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.domain.MatchEntity
+import jakarta.persistence.LockModeType
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor
+import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
@@ -19,6 +21,11 @@ import java.util.Date
 @Repository
 interface MatchRepository : CrudRepository<MatchEntity, Long>, JpaSpecificationExecutor<MatchEntity> {
     fun findByMandateAndListing(mandate: MandateEntity, listing: ListingEntity): MatchEntity?
+
+    // A visit request locks the match, so that two requests for the same match can't both pass the open-visit check
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM MatchEntity m WHERE m.id = :id")
+    fun findByIdForUpdate(id: Long): MatchEntity?
 
     fun findByStatusAndNotifiedAtIsNullAndMandateStatusAndListingStatus(
         status: MatchStatus,

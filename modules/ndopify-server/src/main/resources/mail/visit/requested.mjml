@@ -1,0 +1,67 @@
+<mjml>
+    <mj-head>
+        <mj-style inline="inline">
+            {{__css__}}
+        </mj-style>
+    </mj-head>
+    <mj-body css-class="body">
+        <mj-section css-class="main-content">
+            <mj-column>
+                <!-- Logo -->
+                <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
+
+                <!-- Divider with class for CSS injection -->
+                <mj-divider css-class="divider"/>
+
+                <!-- Body Text -->
+                <mj-text>
+                    Bonjour <strong>{{recipient_name}}</strong>,
+                </mj-text>
+                <mj-text>
+                    <strong>{{customer_name}}</strong> souhaite visiter un bien que vous lui avez proposé.
+                </mj-text>
+
+                <!-- In an mj-text: MJML drops raw HTML outside of it -->
+                <mj-text>
+                    <ul>
+                        <li>
+                            <b>Bien</b>&#160;: {{listing_title}}
+                        </li>
+                        <li>
+                            <b>Date souhaitée</b>&#160;: {{requested_date}} à {{requested_time}}
+                        </li>
+                        {{#customer_whatsapp}}
+                        <li>
+                            <b>WhatsApp</b>&#160;: {{customer_whatsapp}}
+                        </li>
+                        {{/customer_whatsapp}}
+                        {{#note}}
+                        <li>
+                            <b>Note</b>&#160;: {{note}}
+                        </li>
+                        {{/note}}
+                    </ul>
+                </mj-text>
+
+                <mj-text>
+                    Confirmez la visite avec la date et l'heure qui vous conviennent. Le client recevra alors un code
+                    de visite à vous présenter sur place, ou à vous lire au téléphone pour une visite en vidéo.
+                </mj-text>
+
+                {{#visit_url}}
+                <mj-button href="{{visit_url}}" css-class="btn-primary" align="center">
+                    Confirmer la visite
+                </mj-button>
+                {{/visit_url}}
+
+                <!-- Sign-off -->
+                <mj-spacer/>
+                <mj-text>
+                    Cordialement,
+                    <br/>
+                    L'équipe {{tenant_name}}
+                </mj-text>
+            </mj-column>
+        </mj-section>
+    </mj-body>
+</mjml>
