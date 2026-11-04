@@ -38,6 +38,17 @@ class VisitNoShowTemplateTest {
     }
 
     @Test
+    fun `the agent is told to contact the customer`() {
+        val html = resolver.resolve(
+            VisitNoShowMailet.TEMPLATE,
+            context + mapOf("other_party" to "Ray Sponsible", "agent_recipient" to true),
+        )
+
+        assertTrue(html.contains("Contactez votre client"))
+        assertFalse(html.contains("demander une nouvelle visite"))
+    }
+
+    @Test
     fun `without link`() {
         val html = resolver.resolve(VisitNoShowMailet.TEMPLATE, context - "visit_url")
 

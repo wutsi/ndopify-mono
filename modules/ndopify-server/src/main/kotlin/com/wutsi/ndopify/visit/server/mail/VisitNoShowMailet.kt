@@ -62,6 +62,7 @@ class VisitNoShowMailet(
                         listing = listing,
                         reason = reason,
                         visitUrl = customerUrl,
+                        agentRecipient = false,
                     ),
                 ),
             ),
@@ -84,6 +85,7 @@ class VisitNoShowMailet(
                             listing = listing,
                             reason = reason,
                             visitUrl = agentUrl,
+                            agentRecipient = true,
                         ),
                     ),
                 ),
@@ -99,6 +101,7 @@ class VisitNoShowMailet(
         listing: ListingEntity,
         reason: String,
         visitUrl: String?,
+        agentRecipient: Boolean,
     ): Map<String, Any?> {
         val formatter = TenantFormatter(tenant)
         return mapOf(
@@ -110,6 +113,7 @@ class VisitNoShowMailet(
             "visit_date" to formatter.date(visit.scheduledAt!!),
             "visit_time" to formatter.time(visit.scheduledAt),
             "reason_label" to reason,
+            "agent_recipient" to agentRecipient,
             "visit_url" to visitUrl,
         )
     }

@@ -24,10 +24,17 @@
                 <mj-text>
                     {{reason_label}}
                 </mj-text>
+                {{#agent_recipient}}
+                <mj-text>
+                    Contactez votre client ({{other_party}}) pour convenir d'une nouvelle visite.
+                </mj-text>
+                {{/agent_recipient}}
+                {{^agent_recipient}}
                 <mj-text>
                     Vous pouvez demander une nouvelle visite&#160;: votre agent ({{other_party}}) organisera celle qui
                     vous convient.
                 </mj-text>
+                {{/agent_recipient}}
 
                 {{#visit_url}}
                 <mj-button href="{{visit_url}}" css-class="btn-primary" align="center">

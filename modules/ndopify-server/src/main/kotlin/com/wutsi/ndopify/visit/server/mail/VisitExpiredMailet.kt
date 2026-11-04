@@ -47,7 +47,7 @@ class VisitExpiredMailet(
                 subject = SUBJECT_CUSTOMER.replace("{{tenant_name}}", tenant.name),
                 body = mailBodyResolver.resolve(
                     path = TEMPLATE,
-                    context = context(tenant, customerName, agentName, visit, listing, customerUrl),
+                    context = context(tenant, customerName, agentName, visit, listing, customerUrl, agentRecipient = false),
                 ),
             ),
         )
@@ -58,7 +58,7 @@ class VisitExpiredMailet(
                     .replace("{{customer_name}}", customerName),
                 body = mailBodyResolver.resolve(
                     path = TEMPLATE,
-                    context = context(tenant, agentName, customerName, visit, listing, agentUrl),
+                    context = context(tenant, agentName, customerName, visit, listing, agentUrl, agentRecipient = true),
                 ),
             ),
         )
@@ -71,6 +71,7 @@ class VisitExpiredMailet(
         visit: VisitEntity,
         listing: ListingEntity,
         visitUrl: String?,
+        agentRecipient: Boolean,
     ): Map<String, Any?> {
         val formatter = TenantFormatter(tenant)
         return mapOf(
@@ -81,6 +82,7 @@ class VisitExpiredMailet(
             "listing_title" to (listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"),
             "requested_date" to formatter.date(visit.requestedAt),
             "requested_time" to formatter.time(visit.requestedAt),
+            "agent_recipient" to agentRecipient,
             "visit_url" to visitUrl,
         )
     }

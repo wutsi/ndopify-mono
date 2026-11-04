@@ -99,6 +99,7 @@ class VisitNoShowMailetTest {
                 "visit_date" to "02/12/2026",
                 "visit_time" to "10:00",
                 "reason_label" to "Le client ne s'est pas présenté.",
+                "agent_recipient" to false,
                 "visit_url" to "https://www.ndopify.com/visits/1?token=xxx.yyy.zzz",
             ),
             contexts().single(),
