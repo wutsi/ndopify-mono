@@ -14,6 +14,8 @@ import jakarta.persistence.JoinColumn
 import jakarta.persistence.OneToOne
 import jakarta.persistence.Table
 import jakarta.persistence.Version
+import org.hibernate.annotations.Fetch
+import org.hibernate.annotations.FetchMode
 import org.hibernate.annotations.TenantId
 import java.util.Date
 
@@ -33,12 +35,15 @@ data class AgentEntity(
     @JoinColumn(name = "party_id")
     val party: PartyEntity = PartyEntity(),
 
+    // SUBSELECT, not per-agent lazy loads: the dispatch scores up to 100 candidates and reads their neighbourhoods,
+    // which would otherwise be one query per candidate (or per batch of 50 with default_batch_fetch_size).
     @ElementCollection
     @CollectionTable(
         name = "T_AGENT_NEIGHBORHOOD",
         joinColumns = [JoinColumn(name = "agent_id")]
     )
     @Column(name = "neighborhood_id")
+    @Fetch(FetchMode.SUBSELECT)
     val neighborhoodIds: List<Long> = emptyList(),
 
     val cityId: Long? = null,

@@ -10,7 +10,9 @@ import com.wutsi.ndopify.mandate.dto.GetMandateResponse
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.SearchAssignmentResponse
 import com.wutsi.ndopify.refdata.dto.RoleCode
+import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -21,6 +23,9 @@ import kotlin.test.assertTrue
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/DispatchMandateEndpoint.sql"])
 class DispatchMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     override val roles = arrayOf(RoleCode.ADMIN)
+
+    @Autowired
+    private lateinit var jdbc: JdbcTemplate
 
     private fun dispatch(mandateId: Long) =
         rest.postForEntity("/v1/mandates/$mandateId/dispatch", null, DispatchMandateResponse::class.java)
@@ -95,6 +100,45 @@ class DispatchMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() 
     }
 
     @Test
+    fun `query count does not grow with the number of candidates`() {
+        // The mandate has a neighbourhood, so the dispatcher reads every candidate's neighbourhoods to score it.
+        // More candidates than default_batch_fetch_size (50): a per-batch load would add a query, a SUBSELECT not.
+        jdbc.update(
+            "INSERT IGNORE INTO T_LOCATION(id, parent_fk, type, country, name, ascii_name) " +
+                "VALUES (111, 2370201, 'NEIGHBORHOOD', 'CM', 'Bastos', 'Bastos')",
+        )
+        awaitAsyncTasks()
+        insertMandate(6)
+        val few = countQueries {
+            dispatch(6)
+            awaitAsyncTasks() // the offer e-mail runs on another thread: count its queries too, or the comparison races
+        }
+
+        (1..60).forEach { i ->
+            val partyId = 1000L + i
+            jdbc.update(
+                "INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name, kyc_status) " +
+                    "VALUES (?, 1, ?, 'Agent', ?, 'VERIFIED')",
+                partyId,
+                "candidate$i@example.com",
+                "Number$i",
+            )
+            jdbc.update(
+                "INSERT INTO T_AGENT(id, tenant_id, party_id, city_id) VALUES (?, 1, ?, 2370201)",
+                2000L + i,
+                partyId,
+            )
+        }
+        insertMandate(7)
+        val many = countQueries {
+            dispatch(7)
+            awaitAsyncTasks()
+        }
+
+        assertEquals(few, many)
+    }
+
+    @Test
     fun `mandate not found`() {
         val response = rest.postForEntity("/v1/mandates/999/dispatch", null, ErrorResponse::class.java)
 
@@ -108,5 +152,15 @@ class DispatchMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() 
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals(ErrorCode.MANDATE_NOT_FOUND, response.body?.error?.code)
+    }
+
+    private fun insertMandate(id: Long) {
+        jdbc.update(
+            "INSERT INTO T_MANDATE(id, tenant_id, customer_id, city_id, status, mandate_type, listing_type, " +
+                "created_at, modified_at) " +
+                "VALUES (?, 1, 10, 2370201, 'PENDING_ASSIGNMENT', 'SEARCH', 'RENTAL', NOW(), NOW())",
+            id,
+        )
+        jdbc.update("INSERT INTO T_MANDATE_NEIGHBORHOOD(mandate_id, neighborhood_id) VALUES (?, 111)", id)
     }
 }

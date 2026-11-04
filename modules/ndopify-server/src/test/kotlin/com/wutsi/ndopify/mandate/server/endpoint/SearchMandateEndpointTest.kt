@@ -11,6 +11,8 @@ import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.dto.SearchMandateResponse
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.dto.RoleCode
+import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.jdbc.Sql
 import java.time.LocalDate
 import kotlin.test.Test
@@ -22,6 +24,9 @@ import kotlin.test.assertTrue
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/SearchMandateEndpoint.sql"])
 class SearchMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     override val roles = arrayOf(RoleCode.ADMIN)
+
+    @Autowired
+    private lateinit var jdbc: JdbcTemplate
 
     @Test
     fun all() {
@@ -142,6 +147,28 @@ class SearchMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         // One with a contract, whose id is the mandate's own column: no query for the contracts
         val one = countQueries { search("id=3") }
         val all = countQueries { search("") }
+
+        assertEquals(one, all)
+    }
+
+    @Test
+    fun `query count does not grow past a batch of mandates`() {
+        // More mandates than default_batch_fetch_size (50), each with a neighbourhood: a per-batch load would add a
+        // 2nd query for the neighbourhoods, whereas the SUBSELECT loads them all at once (see MandateEntity).
+        (1..60).forEach { i ->
+            val id = 1000L + i
+            jdbc.update(
+                "INSERT INTO T_MANDATE(id, tenant_id, customer_id, city_id, status, mandate_type, listing_type, " +
+                    "created_at, modified_at) " +
+                    "VALUES (?, 2, 90, 2370201, 'PENDING_ASSIGNMENT', 'SEARCH', 'RENTAL', NOW(), NOW())",
+                id,
+            )
+            jdbc.update("INSERT INTO T_MANDATE_NEIGHBORHOOD(mandate_id, neighborhood_id) VALUES (?, 111)", id)
+        }
+        overrideTenantId = 2L
+
+        val one = countQueries { search("id=1060&limit=100") }
+        val all = countQueries { search("limit=100") }
 
         assertEquals(one, all)
     }

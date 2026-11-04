@@ -20,6 +20,8 @@ import jakarta.persistence.Id
 import jakarta.persistence.JoinColumn
 import jakarta.persistence.Table
 import jakarta.persistence.Version
+import org.hibernate.annotations.Fetch
+import org.hibernate.annotations.FetchMode
 import org.hibernate.annotations.TenantId
 import java.time.LocalDate
 import java.util.Date
@@ -47,12 +49,15 @@ data class MandateEntity(
 
     val cityId: Long = -1,
 
+    // SUBSELECT, not per-mandate lazy loads: a mandate search maps every row to a DTO that carries its neighbourhoods,
+    // which would otherwise be one query per mandate (or per batch of 50 with default_batch_fetch_size).
     @ElementCollection
     @CollectionTable(
         name = "T_MANDATE_NEIGHBORHOOD",
         joinColumns = [JoinColumn(name = "mandate_id")]
     )
     @Column(name = "neighborhood_id")
+    @Fetch(FetchMode.SUBSELECT)
     val neighborhoodIds: List<Long> = emptyList(),
 
     val propertyType: PropertyType? = null,
