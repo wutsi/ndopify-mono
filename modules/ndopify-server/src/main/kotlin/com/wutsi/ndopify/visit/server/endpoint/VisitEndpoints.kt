@@ -5,9 +5,12 @@ import com.wutsi.ndopify.mandate.server.service.MandateAccessService
 import com.wutsi.ndopify.mandate.server.service.MandateService
 import com.wutsi.ndopify.match.server.service.MatchService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
+import com.wutsi.ndopify.visit.dto.CheckInVisitRequest
+import com.wutsi.ndopify.visit.dto.CheckOutVisitRequest
 import com.wutsi.ndopify.visit.dto.CreateVisitRequest
 import com.wutsi.ndopify.visit.dto.CreateVisitResponse
 import com.wutsi.ndopify.visit.dto.GetVisitResponse
+import com.wutsi.ndopify.visit.dto.NoShowVisitRequest
 import com.wutsi.ndopify.visit.dto.ScheduleVisitRequest
 import com.wutsi.ndopify.visit.dto.SearchVisitRequest
 import com.wutsi.ndopify.visit.dto.SearchVisitResponse
@@ -53,6 +56,27 @@ class VisitEndpoints(
         val visit = service.findById(id)
         mandateAccess.ensureCanUpdate(mandateService.findById(visit.mandateId))
         service.schedule(id, request)
+    }
+
+    // The agent checks the customer in with the code it reads to it; an admin can't
+    @PostMapping("/{id}/check-in")
+    fun checkIn(@PathVariable id: Long, @RequestBody @Valid request: CheckInVisitRequest) {
+        access.ensureIsAgent(service.findById(id))
+        service.checkIn(id, request)
+    }
+
+    // The agent reports the customer's absence (absent, or refused the code); an admin can't
+    @PostMapping("/{id}/no-show")
+    fun noShow(@PathVariable id: Long, @RequestBody @Valid request: NoShowVisitRequest) {
+        access.ensureIsAgent(service.findById(id))
+        service.noShow(id, request)
+    }
+
+    // The agent closes the visit with its private comment; an admin can't
+    @PostMapping("/{id}/check-out")
+    fun checkOut(@PathVariable id: Long, @RequestBody @Valid request: CheckOutVisitRequest) {
+        access.ensureIsAgent(service.findById(id))
+        service.checkOut(id, request)
     }
 
     // The customer sees its code and, for an ON_SITE visit, the exact address; the agent and the admins see neither

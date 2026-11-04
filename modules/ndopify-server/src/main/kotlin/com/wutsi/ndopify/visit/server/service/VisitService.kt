@@ -17,16 +17,25 @@ import com.wutsi.ndopify.match.server.dao.MatchRepository
 import com.wutsi.ndopify.platform.logger.KVLogger
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
+import com.wutsi.ndopify.visit.dto.CheckInVisitRequest
+import com.wutsi.ndopify.visit.dto.CheckOutVisitRequest
 import com.wutsi.ndopify.visit.dto.CreateVisitRequest
+import com.wutsi.ndopify.visit.dto.NoShowVisitRequest
 import com.wutsi.ndopify.visit.dto.ScheduleVisitRequest
 import com.wutsi.ndopify.visit.dto.SearchVisitRequest
+import com.wutsi.ndopify.visit.dto.VisitNoShowReason
+import com.wutsi.ndopify.visit.dto.VisitParty
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.visit.server.dao.VisitRepository
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
+import com.wutsi.ndopify.visit.server.event.VisitCompletedEvent
 import com.wutsi.ndopify.visit.server.event.VisitConfirmedEvent
+import com.wutsi.ndopify.visit.server.event.VisitNoShowEvent
 import com.wutsi.ndopify.visit.server.event.VisitRequestedEvent
+import com.wutsi.ndopify.visit.server.mail.VisitCompletedMailet
 import com.wutsi.ndopify.visit.server.mail.VisitConfirmedMailet
+import com.wutsi.ndopify.visit.server.mail.VisitNoShowMailet
 import com.wutsi.ndopify.visit.server.mail.VisitRequestedMailet
 import jakarta.persistence.criteria.Predicate
 import org.springframework.context.ApplicationEventPublisher
@@ -51,6 +60,8 @@ class VisitService(
     private val tenantService: TenantService,
     private val requestedMailet: VisitRequestedMailet,
     private val confirmedMailet: VisitConfirmedMailet,
+    private val completedMailet: VisitCompletedMailet,
+    private val noShowMailet: VisitNoShowMailet,
     private val codeGenerator: VisitCodeGenerator,
     private val eventPublisher: ApplicationEventPublisher,
     private val clock: Clock,
@@ -61,6 +72,13 @@ class VisitService(
         val OPEN_STATUSES = setOf(VisitStatus.REQUESTED, VisitStatus.CONFIRMED, VisitStatus.CHECKED_IN)
 
         private const val DAY_MILLIS = 24L * 60 * 60 * 1000
+        private const val HOUR_MILLIS = 60L * 60 * 1000
+        private const val CHECK_IN_BEFORE_MILLIS = HOUR_MILLIS
+        private const val CHECK_IN_AFTER_MILLIS = 4 * HOUR_MILLIS
+        private const val NO_SHOW_DELAY_MILLIS = 15 * 60 * 1000L
+        private const val CHECK_OUT_MIN_MILLIS = 10 * 60 * 1000L
+        private const val MAX_CODE_ATTEMPTS = 5
+        private const val FLAG_DISTANCE_METERS = 300
     }
 
     fun findById(id: Long): VisitEntity {
@@ -181,6 +199,133 @@ class VisitService(
         return saved
     }
 
+    /**
+     * The agent checks the customer in. 409 VISIT_NOT_CONFIRMED (ex: cancelled meanwhile), then VISIT_CODE_LOCKED after
+     * [MAX_CODE_ATTEMPTS] wrong codes (for good), then VISIT_OUTSIDE_WINDOW (from 1 h before to 4 h after the time). A
+     * wrong code is counted and kept even though the call fails: a right code after the 5th is still locked.
+     */
+    @Transactional(noRollbackFor = [ConflictException::class])
+    fun checkIn(id: Long, request: CheckInVisitRequest): VisitEntity {
+        val now = Date(clock.millis())
+        val visit = lock(id)
+        if (visit.status != VisitStatus.CONFIRMED) {
+            throw ConflictException(error = Error(code = ErrorCode.VISIT_NOT_CONFIRMED))
+        }
+        if (visit.codeAttempts >= MAX_CODE_ATTEMPTS) {
+            throw ConflictException(error = Error(code = ErrorCode.VISIT_CODE_LOCKED))
+        }
+        ensureInWindow(visit, now, -CHECK_IN_BEFORE_MILLIS, CHECK_IN_AFTER_MILLIS)
+
+        if (visit.code != request.code) {
+            val attempts = visit.codeAttempts + 1
+            dao.save(visit.copy(codeAttempts = attempts))
+            throw ConflictException(
+                error = Error(
+                    code = if (attempts >= MAX_CODE_ATTEMPTS) ErrorCode.VISIT_CODE_LOCKED else ErrorCode.VISIT_CODE_INVALID,
+                ),
+            )
+        }
+
+        val distance = distance(visit.listingId, request.latitude, request.longitude)
+        return dao.save(
+            visit.copy(
+                status = VisitStatus.CHECKED_IN,
+                checkedInAt = now,
+                checkInDistanceMeters = distance,
+                checkInFlagged = distance != null && distance > FLAG_DISTANCE_METERS,
+                checkInLatitude = request.latitude,
+                checkInLongitude = request.longitude,
+                checkInAccuracy = request.accuracyMeters,
+            ),
+        )
+    }
+
+    /**
+     * The agent reports the customer's absence: 400 HTTP_INVALID_PARAMETER for the agent's own absence (a job marks it),
+     * 409 VISIT_NOT_CONFIRMED, then VISIT_OUTSIDE_WINDOW (from 15 min to 4 h after the time).
+     */
+    @Transactional
+    fun noShow(id: Long, request: NoShowVisitRequest): VisitEntity {
+        val now = Date(clock.millis())
+        if (request.reason != VisitNoShowReason.CUSTOMER_ABSENT && request.reason != VisitNoShowReason.CODE_REFUSED) {
+            throw BadRequestException(
+                error = Error(
+                    code = ErrorCode.HTTP_INVALID_PARAMETER,
+                    parameter = Parameter(name = "reason", type = ParameterType.PARAMETER_TYPE_PAYLOAD),
+                ),
+            )
+        }
+
+        val visit = lock(id)
+        if (visit.status != VisitStatus.CONFIRMED) {
+            throw ConflictException(error = Error(code = ErrorCode.VISIT_NOT_CONFIRMED))
+        }
+        ensureInWindow(visit, now, NO_SHOW_DELAY_MILLIS, CHECK_IN_AFTER_MILLIS)
+
+        val saved = dao.save(
+            visit.copy(
+                status = VisitStatus.NO_SHOW,
+                noShowParty = VisitParty.CUSTOMER,
+                noShowReason = request.reason,
+                noShowLatitude = request.latitude,
+                noShowLongitude = request.longitude,
+                noShowAccuracy = request.accuracyMeters,
+            ),
+        )
+        eventPublisher.publishEvent(VisitNoShowEvent(visitId = saved.id!!, tenantId = visit.tenantId!!))
+        return saved
+    }
+
+    /**
+     * The agent checks the customer out: 409 VISIT_NOT_CHECKED_IN, then VISIT_OUTSIDE_WINDOW until 10 minutes after the
+     * check-in. The comment is private to the agent and the admins.
+     */
+    @Transactional
+    fun checkOut(id: Long, request: CheckOutVisitRequest): VisitEntity {
+        val now = Date(clock.millis())
+        val visit = lock(id)
+        if (visit.status != VisitStatus.CHECKED_IN) {
+            throw ConflictException(error = Error(code = ErrorCode.VISIT_NOT_CHECKED_IN))
+        }
+        if (now.time < visit.checkedInAt!!.time + CHECK_OUT_MIN_MILLIS) {
+            throw ConflictException(error = Error(code = ErrorCode.VISIT_OUTSIDE_WINDOW))
+        }
+
+        val saved = dao.save(
+            visit.copy(
+                status = VisitStatus.COMPLETED,
+                checkedOutAt = now,
+                agentComment = request.comment.trim(),
+                checkOutLatitude = request.latitude,
+                checkOutLongitude = request.longitude,
+                checkOutAccuracy = request.accuracyMeters,
+            ),
+        )
+        eventPublisher.publishEvent(VisitCompletedEvent(visitId = saved.id!!, tenantId = visit.tenantId!!))
+        return saved
+    }
+
+    private fun lock(id: Long): VisitEntity =
+        dao.findByIdForUpdate(id) ?: throw NotFoundException(error = Error(code = ErrorCode.VISIT_NOT_FOUND))
+
+    // The visit's time, shifted by [before] (negative: before) and [after] milliseconds
+    private fun ensureInWindow(visit: VisitEntity, now: Date, before: Long, after: Long) {
+        val scheduled = visit.scheduledAt!!.time
+        if (now.time < scheduled + before || now.time > scheduled + after) {
+            throw ConflictException(error = Error(code = ErrorCode.VISIT_OUTSIDE_WINDOW))
+        }
+    }
+
+    private fun distance(listingId: Long, latitude: Double?, longitude: Double?): Int? {
+        if (latitude == null || longitude == null) {
+            return null
+        }
+        val listing = listingService.findById(listingId)
+        val listingLatitude = listing.latitude ?: return null
+        val listingLongitude = listing.longitude ?: return null
+        return GeoDistance.meters(listingLatitude, listingLongitude, latitude, longitude)
+    }
+
     /** Soonest first. */
     fun search(request: SearchVisitRequest): List<VisitEntity> {
         val spec = Specification<VisitEntity> { root, _, cb ->
@@ -239,6 +384,40 @@ class VisitService(
         }
         logger.add("visit_id", visitId)
         confirmedMailet.send(
+            visit = visit,
+            customer = customerService.findById(visit.customerId),
+            agent = agentService.findById(visit.agentId),
+            listing = listingService.findById(visit.listingId),
+        )
+    }
+
+    /** E-mails the customer that the visit is over. Called by `VisitEventListener`; nothing when not COMPLETED. */
+    @Transactional
+    fun sendCompletedEmail(visitId: Long) {
+        val visit = dao.findById(visitId).orElse(null) ?: return
+        if (visit.status != VisitStatus.COMPLETED) {
+            return
+        }
+        logger.add("visit_id", visitId)
+        completedMailet.send(
+            visit = visit,
+            customer = customerService.findById(visit.customerId),
+            listing = listingService.findById(visit.listingId),
+        )
+    }
+
+    /**
+     * E-mails the no-show: the customer only when it caused it, both sides when the agent did. Called by
+     * `VisitEventListener`; nothing when not NO_SHOW.
+     */
+    @Transactional
+    fun sendNoShowEmails(visitId: Long) {
+        val visit = dao.findById(visitId).orElse(null) ?: return
+        if (visit.status != VisitStatus.NO_SHOW || visit.noShowParty == null) {
+            return
+        }
+        logger.add("visit_id", visitId)
+        noShowMailet.send(
             visit = visit,
             customer = customerService.findById(visit.customerId),
             agent = agentService.findById(visit.agentId),

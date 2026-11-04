@@ -19,7 +19,9 @@ import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.visit.server.dao.VisitRepository
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
+import com.wutsi.ndopify.visit.server.mail.VisitCompletedMailet
 import com.wutsi.ndopify.visit.server.mail.VisitConfirmedMailet
+import com.wutsi.ndopify.visit.server.mail.VisitNoShowMailet
 import com.wutsi.ndopify.visit.server.mail.VisitRequestedMailet
 import org.springframework.context.ApplicationEventPublisher
 import java.time.Clock
@@ -41,6 +43,8 @@ class VisitServiceTest {
     private val tenantService = mock<TenantService>()
     private val requestedMailet = mock<VisitRequestedMailet>()
     private val confirmedMailet = mock<VisitConfirmedMailet>()
+    private val completedMailet = mock<VisitCompletedMailet>()
+    private val noShowMailet = mock<VisitNoShowMailet>()
     private val codeGenerator = mock<VisitCodeGenerator>()
     private val eventPublisher = mock<ApplicationEventPublisher>()
     private val logger = DefaultKVLogger()
@@ -57,6 +61,8 @@ class VisitServiceTest {
         tenantService,
         requestedMailet,
         confirmedMailet,
+        completedMailet,
+        noShowMailet,
         codeGenerator,
         eventPublisher,
         clock,

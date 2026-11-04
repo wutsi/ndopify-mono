@@ -63,4 +63,50 @@ class VisitEventListener(
             KVLoggerThreadLocal.remove()
         }
     }
+
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    fun onVisitCompleted(event: VisitCompletedEvent) {
+        val logger = DefaultKVLogger()
+        KVLoggerThreadLocal.set(logger)
+        TenantContext.set(event.tenantId)
+        try {
+            logger.add("event", VisitCompletedEvent::class.java.simpleName)
+            logger.add("tenant_id", event.tenantId)
+            logger.add("visit_id", event.visitId)
+
+            service.sendCompletedEmail(event.visitId)
+            logger.add("success", true)
+        } catch (ex: Exception) {
+            logger.add("success", false)
+            logger.setException(ex)
+        } finally {
+            logger.log()
+            TenantContext.remove()
+            KVLoggerThreadLocal.remove()
+        }
+    }
+
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    fun onVisitNoShow(event: VisitNoShowEvent) {
+        val logger = DefaultKVLogger()
+        KVLoggerThreadLocal.set(logger)
+        TenantContext.set(event.tenantId)
+        try {
+            logger.add("event", VisitNoShowEvent::class.java.simpleName)
+            logger.add("tenant_id", event.tenantId)
+            logger.add("visit_id", event.visitId)
+
+            service.sendNoShowEmails(event.visitId)
+            logger.add("success", true)
+        } catch (ex: Exception) {
+            logger.add("success", false)
+            logger.setException(ex)
+        } finally {
+            logger.log()
+            TenantContext.remove()
+            KVLoggerThreadLocal.remove()
+        }
+    }
 }
