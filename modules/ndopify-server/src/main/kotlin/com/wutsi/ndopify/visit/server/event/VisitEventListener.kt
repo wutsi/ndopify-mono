@@ -132,4 +132,50 @@ class VisitEventListener(
             KVLoggerThreadLocal.remove()
         }
     }
+
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    fun onVisitReminder(event: VisitReminderEvent) {
+        val logger = DefaultKVLogger()
+        KVLoggerThreadLocal.set(logger)
+        TenantContext.set(event.tenantId)
+        try {
+            logger.add("event", VisitReminderEvent::class.java.simpleName)
+            logger.add("tenant_id", event.tenantId)
+            logger.add("visit_id", event.visitId)
+
+            service.sendReminderEmails(event.visitId)
+            logger.add("success", true)
+        } catch (ex: Exception) {
+            logger.add("success", false)
+            logger.setException(ex)
+        } finally {
+            logger.log()
+            TenantContext.remove()
+            KVLoggerThreadLocal.remove()
+        }
+    }
+
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    fun onVisitExpired(event: VisitExpiredEvent) {
+        val logger = DefaultKVLogger()
+        KVLoggerThreadLocal.set(logger)
+        TenantContext.set(event.tenantId)
+        try {
+            logger.add("event", VisitExpiredEvent::class.java.simpleName)
+            logger.add("tenant_id", event.tenantId)
+            logger.add("visit_id", event.visitId)
+
+            service.sendExpiredEmails(event.visitId)
+            logger.add("success", true)
+        } catch (ex: Exception) {
+            logger.add("success", false)
+            logger.setException(ex)
+        } finally {
+            logger.log()
+            TenantContext.remove()
+            KVLoggerThreadLocal.remove()
+        }
+    }
 }

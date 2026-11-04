@@ -36,19 +36,28 @@ import com.wutsi.ndopify.visit.server.domain.VisitEntity
 import com.wutsi.ndopify.visit.server.event.VisitCancelledEvent
 import com.wutsi.ndopify.visit.server.event.VisitCompletedEvent
 import com.wutsi.ndopify.visit.server.event.VisitConfirmedEvent
+import com.wutsi.ndopify.visit.server.event.VisitExpiredEvent
 import com.wutsi.ndopify.visit.server.event.VisitNoShowEvent
+import com.wutsi.ndopify.visit.server.event.VisitReminderEvent
 import com.wutsi.ndopify.visit.server.event.VisitRequestedEvent
 import com.wutsi.ndopify.visit.server.mail.VisitCancelledMailet
 import com.wutsi.ndopify.visit.server.mail.VisitCompletedMailet
 import com.wutsi.ndopify.visit.server.mail.VisitConfirmedMailet
+import com.wutsi.ndopify.visit.server.mail.VisitExpiredMailet
 import com.wutsi.ndopify.visit.server.mail.VisitNoShowMailet
+import com.wutsi.ndopify.visit.server.mail.VisitReminderMailet
 import com.wutsi.ndopify.visit.server.mail.VisitRequestedMailet
 import jakarta.persistence.criteria.Predicate
+import org.slf4j.LoggerFactory
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
+import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.stereotype.Service
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionTemplate
 import java.time.Clock
 import java.util.Date
 
@@ -69,8 +78,11 @@ class VisitService(
     private val completedMailet: VisitCompletedMailet,
     private val noShowMailet: VisitNoShowMailet,
     private val cancelledMailet: VisitCancelledMailet,
+    private val reminderMailet: VisitReminderMailet,
+    private val expiredMailet: VisitExpiredMailet,
     private val codeGenerator: VisitCodeGenerator,
     private val eventPublisher: ApplicationEventPublisher,
+    private val transactionManager: PlatformTransactionManager,
     private val clock: Clock,
     private val logger: KVLogger,
 ) {
@@ -78,14 +90,23 @@ class VisitService(
         // The statuses in which a match already has a visit: only one at a time
         val OPEN_STATUSES = setOf(VisitStatus.REQUESTED, VisitStatus.CONFIRMED, VisitStatus.CHECKED_IN)
 
+        private val LOGGER = LoggerFactory.getLogger(VisitService::class.java)
+
         private const val DAY_MILLIS = 24L * 60 * 60 * 1000
         private const val HOUR_MILLIS = 60L * 60 * 1000
         private const val CHECK_IN_BEFORE_MILLIS = HOUR_MILLIS
         private const val CHECK_IN_AFTER_MILLIS = 4 * HOUR_MILLIS
         private const val NO_SHOW_DELAY_MILLIS = 15 * 60 * 1000L
         private const val CHECK_OUT_MIN_MILLIS = 10 * 60 * 1000L
+        private const val EXPIRE_AFTER_MILLIS = 48 * HOUR_MILLIS
+        private const val REMIND_BEFORE_MILLIS = DAY_MILLIS
         private const val MAX_CODE_ATTEMPTS = 5
         private const val FLAG_DISTANCE_METERS = 300
+    }
+
+    // Each due visit is processed in its own transaction, so that a conflict (changed meanwhile) only skips that one
+    private val transactionTemplate = TransactionTemplate(transactionManager).apply {
+        propagationBehavior = TransactionDefinition.PROPAGATION_REQUIRES_NEW
     }
 
     fun findById(id: Long): VisitEntity {
@@ -254,6 +275,7 @@ class VisitService(
     @Transactional
     fun noShow(id: Long, request: NoShowVisitRequest): VisitEntity {
         val now = Date(clock.millis())
+        val visit = lock(id)
         if (request.reason != VisitNoShowReason.CUSTOMER_ABSENT && request.reason != VisitNoShowReason.CODE_REFUSED) {
             throw BadRequestException(
                 error = Error(
@@ -262,8 +284,6 @@ class VisitService(
                 ),
             )
         }
-
-        val visit = lock(id)
         if (visit.status != VisitStatus.CONFIRMED) {
             throw ConflictException(error = Error(code = ErrorCode.VISIT_NOT_CONFIRMED))
         }
@@ -361,6 +381,78 @@ class VisitService(
             ),
         )
     }
+
+    /**
+     * Expires the REQUESTED visits older than 48 h, each in its own transaction: a visit scheduled meanwhile fails on
+     * its `@Version` and is skipped. E-mails both sides after commit. Returns how many expired.
+     */
+    fun expireDue(): Int {
+        val before = Date(clock.millis() - EXPIRE_AFTER_MILLIS)
+        val due = dao.findByStatusAndCreatedAtBefore(VisitStatus.REQUESTED, before)
+        return due.count { visit ->
+            update(visit) { current ->
+                val saved = dao.save(current.copy(status = VisitStatus.EXPIRED))
+                eventPublisher.publishEvent(VisitExpiredEvent(visitId = saved.id!!, tenantId = saved.tenantId!!))
+                saved
+            }
+        }
+    }
+
+    /**
+     * Reminds both sides of the CONFIRMED visits starting within 24 h whose reminder wasn't sent: `reminderSentAt` is set
+     * then, so a visit isn't reminded twice (nor one confirmed less than 24 h before, which was marked at confirmation).
+     * Each in its own transaction. Returns how many were reminded.
+     */
+    fun remindDue(): Int {
+        val now = Date(clock.millis())
+        val due = dao.findByStatusAndScheduledAtBetweenAndReminderSentAtIsNull(
+            VisitStatus.CONFIRMED,
+            now,
+            Date(now.time + REMIND_BEFORE_MILLIS),
+        )
+        return due.count { visit ->
+            update(visit) { current ->
+                val saved = dao.save(current.copy(reminderSentAt = now))
+                eventPublisher.publishEvent(VisitReminderEvent(visitId = saved.id!!, tenantId = saved.tenantId!!))
+                saved
+            }
+        }
+    }
+
+    /**
+     * Marks NO_SHOW the CONFIRMED visits whose agent didn't check in within 4 h of the time, each in its own transaction.
+     * `noShowParty = AGENT`, so both sides are e-mailed. Returns how many were marked.
+     */
+    fun markAgentNoShows(): Int {
+        val before = Date(clock.millis() - CHECK_IN_AFTER_MILLIS)
+        val due = dao.findByStatusAndScheduledAtBefore(VisitStatus.CONFIRMED, before)
+        return due.count { visit ->
+            update(visit) { current ->
+                val saved = dao.save(
+                    current.copy(
+                        status = VisitStatus.NO_SHOW,
+                        noShowParty = VisitParty.AGENT,
+                        noShowReason = VisitNoShowReason.AGENT_ABSENT,
+                    ),
+                )
+                eventPublisher.publishEvent(VisitNoShowEvent(visitId = saved.id!!, tenantId = saved.tenantId!!))
+                saved
+            }
+        }
+    }
+
+    // Runs [block] in its own transaction; a visit changed meanwhile is skipped, never overwritten
+    private fun update(visit: VisitEntity, block: (VisitEntity) -> VisitEntity): Boolean =
+        try {
+            transactionTemplate.execute { block(visit) }
+            true
+        } catch (ex: ObjectOptimisticLockingFailureException) {
+            LOGGER.info("Visit#${visit.id} - Changed while processing, left as is")
+            false
+        } catch (ex: Exception) {
+            LOGGER.warn("Visit#${visit.id} - Unable to process", ex)
+            false
+        }
 
     private fun lock(id: Long): VisitEntity =
         dao.findByIdForUpdate(id) ?: throw NotFoundException(error = Error(code = ErrorCode.VISIT_NOT_FOUND))
@@ -491,6 +583,38 @@ class VisitService(
         }
         logger.add("visit_id", visitId)
         cancelledMailet.send(
+            visit = visit,
+            customer = customerService.findById(visit.customerId),
+            agent = agentService.findById(visit.agentId),
+            listing = listingService.findById(visit.listingId),
+        )
+    }
+
+    /** E-mails both sides the 24 h reminder. Called by `VisitEventListener`; nothing when no longer CONFIRMED. */
+    @Transactional
+    fun sendReminderEmails(visitId: Long) {
+        val visit = dao.findById(visitId).orElse(null) ?: return
+        if (visit.status != VisitStatus.CONFIRMED || visit.scheduledAt == null) {
+            return
+        }
+        logger.add("visit_id", visitId)
+        reminderMailet.send(
+            visit = visit,
+            customer = customerService.findById(visit.customerId),
+            agent = agentService.findById(visit.agentId),
+            listing = listingService.findById(visit.listingId),
+        )
+    }
+
+    /** E-mails both sides an expired request. Called by `VisitEventListener`; nothing when not EXPIRED. */
+    @Transactional
+    fun sendExpiredEmails(visitId: Long) {
+        val visit = dao.findById(visitId).orElse(null) ?: return
+        if (visit.status != VisitStatus.EXPIRED) {
+            return
+        }
+        logger.add("visit_id", visitId)
+        expiredMailet.send(
             visit = visit,
             customer = customerService.findById(visit.customerId),
             agent = agentService.findById(visit.agentId),

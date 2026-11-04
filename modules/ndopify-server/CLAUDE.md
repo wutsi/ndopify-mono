@@ -60,7 +60,8 @@ Scheduled jobs live in `<domain>/server/job/`: `KycJobs` (party), `MandateJobs` 
 (contract), `ListingJobs` (listing, every 15 minutes: `verify`, the UNDER_VERIFICATION listings through
 `ListingVerifierService`; `publish`, the VERIFIED ones sent for publication, then the PUBLISHING ones through `ListingPublisherService`;
 `close`, daily, the PUBLISHED listings of closed mandates) and
-`MatchJobs` (match: `notifyAgents` hourly, `rematch` and `expire` daily, see *match* below). They loop over the
+`MatchJobs` (match: `notifyAgents` hourly, `rematch` and `expire` daily, see *match* below), and
+`VisitJobs` (visit: `expire` hourly, `reminder` every 15 minutes, `noShow` hourly, see *visit* below). They loop over the
 active tenants, setting `TenantContext` for each.
 
 Current domains:
@@ -343,19 +344,42 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   per run; each save is its own transaction, so a match answered meanwhile fails on its `@Version` and is skipped. No
   e-mail, no event. The customer can no longer answer it (409 `MATCH_NOT_PROPOSED`); the agent may propose it again
   (new `proposedAt` and e-mail) or dismiss it. Config: `ndopify.match.*`. Tenant-scoped.
+- **visit** — a customer's visit of a listing an agent matched to its search (`VisitEntity`, `T_VISIT`, `V10_0`,
+  `@Version`-ed), see `docs/superpowers/plans/2026-11-02-visit-management.md`. The customer requests an `ON_SITE` or
+  `VIDEO` visit (the agent, at the property, calls it on WhatsApp video) of one of its ACCEPTED matches, on a slot in the
+  7 days starting tomorrow, 08:00-20:00 in the tenant's `timeZone`, on a 30-minute boundary (`VisitSlots`); a `VIDEO`
+  request needs its `whatsappNumber`. The agent, or an admin, schedules it (the requested date and type may change) with a
+  4-digit code (`VisitCodeGenerator`, `SecureRandom`); a `CONFIRMED` visit less than 24 h ahead is its own reminder
+  (`reminderSentAt`). The agent checks the customer in with that code from 1 h before to 4 h after the time (a wrong code
+  is counted, the 5th locks the check-in for good: `VISIT_CODE_INVALID` / `VISIT_CODE_LOCKED`), marks the customer's
+  no-show from 15 min to 4 h after (`CUSTOMER_ABSENT`, `CODE_REFUSED`), checks out at least 10 min after the check-in with
+  a private comment, and cancels before the check-in. The customer gives its feedback once `COMPLETED`. A location, when
+  given, is kept as its distance to the listing (`checkInDistanceMeters`, flagged over 300 m) and never refused. The exact
+  address (the listing's `landmark`, `accessDirections`, position) is only in the confirmed e-mail and in the customer's
+  `GET` of a confirmed `ON_SITE` visit; the code is only ever returned to the customer. Access (`VisitAccessService`): the
+  customer alone requests / answers / cancels as itself, the visit's agent alone checks in, marks a no-show and checks out
+  (no admin bypass); schedule and cancel-as-agent follow `MandateAccessService`. A search is restricted to the caller's own
+  visits (`agent-id` or `customer-id` forced). `VisitJobs`: `expire` hourly moves a `REQUESTED` visit older than 48 h to
+  `EXPIRED`, `reminder` every 15 min e-mails both sides 24 h ahead (once), `noShow` hourly marks the `CONFIRMED` visits
+  whose agent didn't check in 4 h after the time as `NO_SHOW` (both sides e-mailed). Config: `ndopify.visit.*`.
+  Tenant-scoped.
 - **error** — shared exception types (`WutsiException` subclasses: `BadRequestException`, `NotFoundException`,
   `ConflictException`, `ForbiddenException`, `UnauthorizedException`, `InternalErrorException`) and a global
   `ControllerErrorHandler`.
 
-**Asynchronous e-mails** (welcome, OTP, KYC status, mandate offered, mandate assigned, mandate approved, contract to sign, listing published, match proposed): the service publishes an event
+**Asynchronous e-mails** (welcome, OTP, KYC status, mandate offered, mandate assigned, mandate approved, contract to sign, listing published, match proposed, visit requested / confirmed / completed / cancelled / no-show / expired / reminded): the service publishes an event
 from its transaction (`AgentCreatedEvent`, `OtpCreatedEvent`, `KycCaseCompletedEvent`, `AssignmentCreatedEvent`,
-`AssignmentAcceptedEvent`, `MandateApprovedEvent`, `ContractSignatureRequestedEvent`, `ListingPublishedEvent`, `MatchProposedEvent` in `<domain>/server/event/`), carrying ids plus the `tenantId` — never entities. Its
+`AssignmentAcceptedEvent`, `MandateApprovedEvent`, `ContractSignatureRequestedEvent`, `ListingPublishedEvent`, `MatchProposedEvent`,
+`VisitRequestedEvent`, `VisitConfirmedEvent`, `VisitCompletedEvent`, `VisitCancelledEvent`, `VisitNoShowEvent`, `VisitExpiredEvent`,
+`VisitReminderEvent` in `<domain>/server/event/`), carrying ids plus the `tenantId` — never entities. Its
 listener is `@Async @TransactionalEventListener(AFTER_COMMIT)`, so nothing is sent for a rolled-back transaction. The
 executor thread has no request, so the listener sets `TenantContext` and a `DefaultKVLogger` in `KVLoggerThreadLocal`
 (which the injected `KVLogger` falls back to), calls `logger.log()` in `finally` to flush it, and removes both
 (threads are reused). The work runs in a `@Transactional` service method (`AgentService.sendWelcomeEmail`,
 `OtpService.sendEmail`, `KycService.sendStatusEmail`, `AssignmentService.sendOfferEmail` / `sendAssignedEmail`, `MandateService.sendApprovedEmail`,
-`ContractService.sendSignatureRequestEmails`, `ListingService.sendPublishedEmails`, `MatchProposalService.sendProposedEmail`); the signed PDF (`ContractSignedEvent` → `SignedContractService.generate`,
+`ContractService.sendSignatureRequestEmails`, `ListingService.sendPublishedEmails`, `MatchProposalService.sendProposedEmail`,
+`VisitService.sendRequestedEmail` / `sendConfirmedEmails` / `sendCompletedEmail` / `sendCancelledEmail` / `sendNoShowEmails` /
+`sendExpiredEmails` / `sendReminderEmails`); the signed PDF (`ContractSignedEvent` → `SignedContractService.generate`,
 not an e-mail, not transactional) follows the same listener pattern. The service methods are
 entered *after* `TenantContext` is set since Hibernate resolves the tenant when the session opens. Failures are
 logged, never rethrown. Tests must wait for the mail (`smtp.waitForIncomingEmail`);
@@ -368,7 +392,7 @@ request-approval's step (3) (`ContractService.findByIdForUpdate`). The reverse o
 with 409 `HTTP_VERSION_CONFLICT` rather than 500.
 
 **Optimistic locking**: `MandateEntity`, `AgentEntity`, `ContractEntity`, `KycCaseEntity`, `AssignmentEntity`,
-`ListingEntity` and `MatchEntity` are `@Version`-ed (`version` column, `V7_0` / `V7_1` / `V8_0`; a listing's conflict is
+`ListingEntity`, `MatchEntity` and `VisitEntity` are `@Version`-ed (`version` column, `V7_0` / `V7_1` / `V8_0` / `V10_0`; a listing's conflict is
 `LISTING_VERSION_CONFLICT`, and `UpdateListingRequest.version` is checked like the mandate's). Hibernate checks it on flush (`UPDATE ... WHERE version = ?`), so it only
 catches concurrent transactions; `ControllerErrorHandler` turns the `ObjectOptimisticLockingFailureException` into a
 409 named after the entity (`MANDATE_VERSION_CONFLICT`, `AGENT_VERSION_CONFLICT`, `CONTRACT_VERSION_CONFLICT`,
@@ -425,7 +449,7 @@ Tenancy is enforced via **Hibernate's built-in multi-tenancy mechanism**, not ha
   query against it — no `CriteriaBuilder` predicate, repository override, or service-level check needed. Today
   that's `PartyEntity`, `PaymentMethodEntity`, `IdentificationEntity`, `IdentificationImageEntity`, `KycCaseEntity`,
   `AgentEntity`, `CustomerEntity`, `MandateEntity`, `AssignmentEntity`, `ContractEntity`, `ContractPartyEntity`,
-  `MembershipEntity`, `ListingEntity`, `ListingImageEntity`, `ListingSectionEntity` and `MatchEntity`. Leave the field `null` on construction (see the comment on any of them) so Hibernate's
+  `MembershipEntity`, `ListingEntity`, `ListingImageEntity`, `ListingSectionEntity`, `MatchEntity` and `VisitEntity`. Leave the field `null` on construction (see the comment on any of them) so Hibernate's
   `TenantIdGeneration` populates it from `TenantContext` on insert — setting a non-null value yourself makes
   Hibernate treat it as caller-assigned and throw if it doesn't match the resolved tenant.
 - `KycVerificationEntity` is deliberately **not** `@TenantId`-annotated: it's never loaded by its own id anywhere in

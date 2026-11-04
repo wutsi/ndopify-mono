@@ -1,9 +1,13 @@
 package com.wutsi.ndopify.visit.server.service
 
 import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.argThat
 import com.nhaarman.mockitokotlin2.argumentCaptor
+import com.nhaarman.mockitokotlin2.atLeastOnce
 import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.doThrow
+import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
@@ -15,6 +19,8 @@ import com.wutsi.ndopify.platform.logger.DefaultKVLogger
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.visit.dto.ScheduleVisitRequest
+import com.wutsi.ndopify.visit.dto.VisitNoShowReason
+import com.wutsi.ndopify.visit.dto.VisitParty
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.visit.server.dao.VisitRepository
@@ -22,9 +28,14 @@ import com.wutsi.ndopify.visit.server.domain.VisitEntity
 import com.wutsi.ndopify.visit.server.mail.VisitCancelledMailet
 import com.wutsi.ndopify.visit.server.mail.VisitCompletedMailet
 import com.wutsi.ndopify.visit.server.mail.VisitConfirmedMailet
+import com.wutsi.ndopify.visit.server.mail.VisitExpiredMailet
 import com.wutsi.ndopify.visit.server.mail.VisitNoShowMailet
+import com.wutsi.ndopify.visit.server.mail.VisitReminderMailet
 import com.wutsi.ndopify.visit.server.mail.VisitRequestedMailet
 import org.springframework.context.ApplicationEventPublisher
+import org.springframework.orm.ObjectOptimisticLockingFailureException
+import org.springframework.transaction.PlatformTransactionManager
+import org.springframework.transaction.TransactionStatus
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDateTime
@@ -47,7 +58,10 @@ class VisitServiceTest {
     private val completedMailet = mock<VisitCompletedMailet>()
     private val noShowMailet = mock<VisitNoShowMailet>()
     private val cancelledMailet = mock<VisitCancelledMailet>()
+    private val reminderMailet = mock<VisitReminderMailet>()
+    private val expiredMailet = mock<VisitExpiredMailet>()
     private val codeGenerator = mock<VisitCodeGenerator>()
+    private val transactionManager = mock<PlatformTransactionManager>()
     private val eventPublisher = mock<ApplicationEventPublisher>()
     private val logger = DefaultKVLogger()
 
@@ -66,8 +80,11 @@ class VisitServiceTest {
         completedMailet,
         noShowMailet,
         cancelledMailet,
+        reminderMailet,
+        expiredMailet,
         codeGenerator,
         eventPublisher,
+        transactionManager,
         clock,
         logger,
     )
@@ -91,6 +108,7 @@ class VisitServiceTest {
         doReturn(tenant).whenever(tenantService).findById(1L)
         doReturn("1234").whenever(codeGenerator).generate()
         doAnswer { it.arguments[0] }.whenever(dao).save(any())
+        doReturn(mock<TransactionStatus>()).whenever(transactionManager).getTransaction(any())
     }
 
     @Test
@@ -110,10 +128,58 @@ class VisitServiceTest {
         assertNull(saved().reminderSentAt)
     }
 
+    @Test
+    fun `expire the requests older than 48h`() {
+        val other = visit.copy(id = 2L)
+        doReturn(listOf(visit, other)).whenever(dao).findByStatusAndCreatedAtBefore(eq(VisitStatus.REQUESTED), any())
+
+        assertEquals(2, service.expireDue())
+
+        assertEquals(VisitStatus.EXPIRED, saved().status)
+    }
+
+    @Test
+    fun `a visit changed meanwhile is skipped when expiring`() {
+        val other = visit.copy(id = 2L)
+        doReturn(listOf(visit, other)).whenever(dao).findByStatusAndCreatedAtBefore(eq(VisitStatus.REQUESTED), any())
+        doThrow(ObjectOptimisticLockingFailureException(VisitEntity::class.java, 1L))
+            .whenever(dao).save(argThat { id == 1L })
+
+        assertEquals(1, service.expireDue())
+
+        assertEquals(VisitStatus.EXPIRED, saved().status)
+    }
+
+    @Test
+    fun `remind the confirmed visits starting within 24h, once`() {
+        val confirmed = visit.copy(status = VisitStatus.CONFIRMED)
+        doReturn(listOf(confirmed)).whenever(dao)
+            .findByStatusAndScheduledAtBetweenAndReminderSentAtIsNull(eq(VisitStatus.CONFIRMED), any(), any())
+
+        assertEquals(1, service.remindDue())
+
+        val saved = saved()
+        assertEquals(VisitStatus.CONFIRMED, saved.status)
+        assertEquals(Date(clock.millis()), saved.reminderSentAt)
+    }
+
+    @Test
+    fun `a missing check-in 4h later is the agent's no-show`() {
+        doReturn(listOf(visit.copy(status = VisitStatus.CONFIRMED))).whenever(dao)
+            .findByStatusAndScheduledAtBefore(eq(VisitStatus.CONFIRMED), any())
+
+        assertEquals(1, service.markAgentNoShows())
+
+        val saved = saved()
+        assertEquals(VisitStatus.NO_SHOW, saved.status)
+        assertEquals(VisitParty.AGENT, saved.noShowParty)
+        assertEquals(VisitNoShowReason.AGENT_ABSENT, saved.noShowReason)
+    }
+
     private fun saved(): VisitEntity {
         val captor = argumentCaptor<VisitEntity>()
-        verify(dao).save(captor.capture())
-        return captor.firstValue
+        verify(dao, atLeastOnce()).save(captor.capture())
+        return captor.lastValue
     }
 
     private fun date(year: Int, month: Int, day: Int, hour: Int, minute: Int): Date =

@@ -36,7 +36,7 @@ class VisitMapper {
             checkInDistanceMeters = visit.checkInDistanceMeters,
             checkInFlagged = visit.checkInFlagged,
             checkedOutAt = visit.checkedOutAt,
-            agentComment = visit.agentComment,
+            agentComment = visit.agentComment.takeIf { !showCode }, // Private to the agent and the admins
             interest = visit.interest,
             feedbackReasonCode = visit.feedbackReasonCode,
             feedbackComment = visit.feedbackComment,

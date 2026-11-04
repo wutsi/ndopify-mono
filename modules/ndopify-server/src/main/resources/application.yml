@@ -284,6 +284,14 @@ ndopify:
         contract:
             duration-months: 6             # A mandate's contract is valid for 6 months from its signature
 
+    visit:
+        expire:
+            cron: "0 0 * * * ?"         # Every hour: visit requests the agent didn't schedule in 48 h
+        reminder:
+            cron: "0 */15 * * * ?"      # Every 15 minutes: confirmed visits starting within 24 h
+        no-show:
+            cron: "0 0 * * * ?"         # Every hour: confirmed visits whose agent didn't check in 4 h after the time
+
     match:
         price-tolerance: 0.10           # A listing up to 10% over the budget is still a match, scored down
         min-score: 0.5                  # Below, the pair isn't stored

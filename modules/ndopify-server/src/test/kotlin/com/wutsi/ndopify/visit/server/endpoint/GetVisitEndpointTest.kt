@@ -27,6 +27,7 @@ class GetVisitEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertNull(visit.address)
         assertNull(visit.latitude)
         assertNull(visit.longitude)
+        assertEquals("Client en retard", visit.agentComment) // Private to the agent and the admins
     }
 
     @Test
@@ -41,6 +42,7 @@ class GetVisitEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals("Rue 1.234, Bonapriso, Derrière la pharmacie", visit.address)
         assertEquals(4.0511, visit.latitude)
         assertEquals(9.7679, visit.longitude)
+        assertNull(visit.agentComment) // Private to the agent and the admins
     }
 
     @Test

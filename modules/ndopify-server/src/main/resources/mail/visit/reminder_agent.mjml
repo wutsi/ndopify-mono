@@ -1,0 +1,58 @@
+<mjml>
+    <mj-head>
+        <mj-style inline="inline">
+            {{__css__}}
+        </mj-style>
+    </mj-head>
+    <mj-body css-class="body">
+        <mj-section css-class="main-content">
+            <mj-column>
+                <!-- Logo -->
+                <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
+
+                <!-- Divider with class for CSS injection -->
+                <mj-divider css-class="divider"/>
+
+                <!-- Body Text -->
+                <mj-text>
+                    Bonjour <strong>{{recipient_name}}</strong>,
+                </mj-text>
+                <mj-text>
+                    Petit rappel&#160;: la visite du bien <strong>{{listing_title}}</strong> avec
+                    <strong>{{customer_name}}</strong> a lieu <strong>demain, {{visit_date}} à {{visit_time}}</strong>.
+                </mj-text>
+
+                {{#on_site}}
+                <mj-text>
+                    <strong>{{customer_name}}</strong> vous attend sur place. Vous pouvez le joindre sur WhatsApp au
+                    <strong>{{customer_whatsapp}}</strong>.
+                </mj-text>
+                <mj-text>
+                    Demandez le code de visite au client et saisissez-le sur la page de la visite pour pointer son
+                    arrivée.
+                </mj-text>
+                {{/on_site}}
+                {{^on_site}}
+                <mj-text>
+                    Depuis le bien, appelez le client en vidéo sur WhatsApp au
+                    <strong>{{customer_whatsapp}}</strong>. Il vous lira son code de visite pendant l'appel.
+                </mj-text>
+                {{/on_site}}
+
+                {{#visit_url}}
+                <mj-button href="{{visit_url}}" css-class="btn-primary" align="center">
+                    Voir la visite
+                </mj-button>
+                {{/visit_url}}
+
+                <!-- Sign-off -->
+                <mj-spacer/>
+                <mj-text>
+                    Cordialement,
+                    <br/>
+                    L'équipe {{tenant_name}}
+                </mj-text>
+            </mj-column>
+        </mj-section>
+    </mj-body>
+</mjml>

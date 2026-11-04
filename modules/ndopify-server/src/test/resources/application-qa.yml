@@ -43,6 +43,13 @@ ndopify:
             cron: "-" # Never on its own: tests call MatchJobs
         rematch:
             cron: "-" # Never on its own: tests call MatchJobs
+    visit:
+        expire:
+            cron: "-" # Never on its own: tests call VisitJobs
+        reminder:
+            cron: "-" # Never on its own: tests call VisitJobs
+        no-show:
+            cron: "-" # Never on its own: tests call VisitJobs
     mandate:
         assignment:
             jitter: 0 # Deterministic scores
