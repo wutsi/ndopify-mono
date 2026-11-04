@@ -12,27 +12,33 @@ import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.server.service.ListingService
 import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.match.dto.MatchRejectionReason
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.dao.MatchRepository
 import com.wutsi.ndopify.platform.logger.KVLogger
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
+import com.wutsi.ndopify.visit.dto.CancelVisitRequest
 import com.wutsi.ndopify.visit.dto.CheckInVisitRequest
 import com.wutsi.ndopify.visit.dto.CheckOutVisitRequest
 import com.wutsi.ndopify.visit.dto.CreateVisitRequest
 import com.wutsi.ndopify.visit.dto.NoShowVisitRequest
 import com.wutsi.ndopify.visit.dto.ScheduleVisitRequest
 import com.wutsi.ndopify.visit.dto.SearchVisitRequest
+import com.wutsi.ndopify.visit.dto.VisitFeedbackRequest
+import com.wutsi.ndopify.visit.dto.VisitInterest
 import com.wutsi.ndopify.visit.dto.VisitNoShowReason
 import com.wutsi.ndopify.visit.dto.VisitParty
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.visit.server.dao.VisitRepository
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
+import com.wutsi.ndopify.visit.server.event.VisitCancelledEvent
 import com.wutsi.ndopify.visit.server.event.VisitCompletedEvent
 import com.wutsi.ndopify.visit.server.event.VisitConfirmedEvent
 import com.wutsi.ndopify.visit.server.event.VisitNoShowEvent
 import com.wutsi.ndopify.visit.server.event.VisitRequestedEvent
+import com.wutsi.ndopify.visit.server.mail.VisitCancelledMailet
 import com.wutsi.ndopify.visit.server.mail.VisitCompletedMailet
 import com.wutsi.ndopify.visit.server.mail.VisitConfirmedMailet
 import com.wutsi.ndopify.visit.server.mail.VisitNoShowMailet
@@ -62,6 +68,7 @@ class VisitService(
     private val confirmedMailet: VisitConfirmedMailet,
     private val completedMailet: VisitCompletedMailet,
     private val noShowMailet: VisitNoShowMailet,
+    private val cancelledMailet: VisitCancelledMailet,
     private val codeGenerator: VisitCodeGenerator,
     private val eventPublisher: ApplicationEventPublisher,
     private val clock: Clock,
@@ -305,6 +312,56 @@ class VisitService(
         return saved
     }
 
+    /**
+     * The customer or the agent cancels a visit that hasn't started: 409 VISIT_CANNOT_BE_CANCELLED once checked in,
+     * completed or already cancelled. The other side is e-mailed after commit.
+     */
+    @Transactional
+    fun cancel(id: Long, request: CancelVisitRequest, cancelledBy: VisitParty): VisitEntity {
+        val visit = lock(id)
+        if (visit.status != VisitStatus.REQUESTED && visit.status != VisitStatus.CONFIRMED) {
+            throw ConflictException(error = Error(code = ErrorCode.VISIT_CANNOT_BE_CANCELLED))
+        }
+        val saved = dao.save(
+            visit.copy(
+                status = VisitStatus.CANCELLED,
+                cancelledBy = cancelledBy,
+                cancellationReason = request.reason?.trim()?.ifEmpty { null },
+                cancelledAt = Date(clock.millis()),
+            ),
+        )
+        eventPublisher.publishEvent(VisitCancelledEvent(visitId = saved.id!!, tenantId = visit.tenantId!!))
+        return saved
+    }
+
+    /**
+     * The customer's feedback on a COMPLETED visit, once: 409 VISIT_NOT_COMPLETED, then VISIT_FEEDBACK_ALREADY_SENT. A
+     * reason only when the property doesn't interest it (OTHER when none given).
+     */
+    @Transactional
+    fun feedback(id: Long, request: VisitFeedbackRequest): VisitEntity {
+        val visit = lock(id)
+        if (visit.status != VisitStatus.COMPLETED) {
+            throw ConflictException(error = Error(code = ErrorCode.VISIT_NOT_COMPLETED))
+        }
+        if (visit.interest != null) {
+            throw ConflictException(error = Error(code = ErrorCode.VISIT_FEEDBACK_ALREADY_SENT))
+        }
+
+        val notInterested = request.interest == VisitInterest.NOT_INTERESTED
+        return dao.save(
+            visit.copy(
+                interest = request.interest,
+                feedbackReasonCode = if (notInterested) {
+                    request.reasonCode?.takeIf { it != MatchRejectionReason.UNKNOWN } ?: MatchRejectionReason.OTHER
+                } else {
+                    null
+                },
+                feedbackComment = request.comment?.trim()?.ifEmpty { null },
+            ),
+        )
+    }
+
     private fun lock(id: Long): VisitEntity =
         dao.findByIdForUpdate(id) ?: throw NotFoundException(error = Error(code = ErrorCode.VISIT_NOT_FOUND))
 
@@ -418,6 +475,22 @@ class VisitService(
         }
         logger.add("visit_id", visitId)
         noShowMailet.send(
+            visit = visit,
+            customer = customerService.findById(visit.customerId),
+            agent = agentService.findById(visit.agentId),
+            listing = listingService.findById(visit.listingId),
+        )
+    }
+
+    /** E-mails the other side of a cancellation. Called by `VisitEventListener`; nothing when not CANCELLED. */
+    @Transactional
+    fun sendCancelledEmail(visitId: Long) {
+        val visit = dao.findById(visitId).orElse(null) ?: return
+        if (visit.status != VisitStatus.CANCELLED || visit.cancelledBy == null) {
+            return
+        }
+        logger.add("visit_id", visitId)
+        cancelledMailet.send(
             visit = visit,
             customer = customerService.findById(visit.customerId),
             agent = agentService.findById(visit.agentId),

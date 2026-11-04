@@ -19,6 +19,7 @@ import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.visit.server.dao.VisitRepository
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
+import com.wutsi.ndopify.visit.server.mail.VisitCancelledMailet
 import com.wutsi.ndopify.visit.server.mail.VisitCompletedMailet
 import com.wutsi.ndopify.visit.server.mail.VisitConfirmedMailet
 import com.wutsi.ndopify.visit.server.mail.VisitNoShowMailet
@@ -45,6 +46,7 @@ class VisitServiceTest {
     private val confirmedMailet = mock<VisitConfirmedMailet>()
     private val completedMailet = mock<VisitCompletedMailet>()
     private val noShowMailet = mock<VisitNoShowMailet>()
+    private val cancelledMailet = mock<VisitCancelledMailet>()
     private val codeGenerator = mock<VisitCodeGenerator>()
     private val eventPublisher = mock<ApplicationEventPublisher>()
     private val logger = DefaultKVLogger()
@@ -63,6 +65,7 @@ class VisitServiceTest {
         confirmedMailet,
         completedMailet,
         noShowMailet,
+        cancelledMailet,
         codeGenerator,
         eventPublisher,
         clock,

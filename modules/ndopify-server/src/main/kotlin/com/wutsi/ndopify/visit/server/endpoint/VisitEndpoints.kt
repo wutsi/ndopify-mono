@@ -5,6 +5,7 @@ import com.wutsi.ndopify.mandate.server.service.MandateAccessService
 import com.wutsi.ndopify.mandate.server.service.MandateService
 import com.wutsi.ndopify.match.server.service.MatchService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
+import com.wutsi.ndopify.visit.dto.CancelVisitRequest
 import com.wutsi.ndopify.visit.dto.CheckInVisitRequest
 import com.wutsi.ndopify.visit.dto.CheckOutVisitRequest
 import com.wutsi.ndopify.visit.dto.CreateVisitRequest
@@ -14,6 +15,8 @@ import com.wutsi.ndopify.visit.dto.NoShowVisitRequest
 import com.wutsi.ndopify.visit.dto.ScheduleVisitRequest
 import com.wutsi.ndopify.visit.dto.SearchVisitRequest
 import com.wutsi.ndopify.visit.dto.SearchVisitResponse
+import com.wutsi.ndopify.visit.dto.VisitFeedbackRequest
+import com.wutsi.ndopify.visit.dto.VisitParty
 import com.wutsi.ndopify.visit.server.mapper.VisitMapper
 import com.wutsi.ndopify.visit.server.service.VisitAccessService
 import com.wutsi.ndopify.visit.server.service.VisitService
@@ -77,6 +80,24 @@ class VisitEndpoints(
     fun checkOut(@PathVariable id: Long, @RequestBody @Valid request: CheckOutVisitRequest) {
         access.ensureIsAgent(service.findById(id))
         service.checkOut(id, request)
+    }
+
+    // The customer (as itself) or the agent (or an admin, as the agent) cancels, before the check-in
+    @PostMapping("/{id}/cancel")
+    fun cancel(@PathVariable id: Long, @RequestBody @Valid request: CancelVisitRequest) {
+        val visit = service.findById(id)
+        val byCustomer = access.isCustomer(visit)
+        if (!byCustomer) {
+            mandateAccess.ensureCanUpdate(mandateService.findById(visit.mandateId))
+        }
+        service.cancel(id, request, if (byCustomer) VisitParty.CUSTOMER else VisitParty.AGENT)
+    }
+
+    // The customer alone answers the visit, once completed
+    @PostMapping("/{id}/feedback")
+    fun feedback(@PathVariable id: Long, @RequestBody @Valid request: VisitFeedbackRequest) {
+        access.ensureIsCustomer(service.findById(id))
+        service.feedback(id, request)
     }
 
     // The customer sees its code and, for an ON_SITE visit, the exact address; the agent and the admins see neither
