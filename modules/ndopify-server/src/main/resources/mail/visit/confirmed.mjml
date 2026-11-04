@@ -1,0 +1,63 @@
+<mjml>
+    <mj-head>
+        <mj-style inline="inline">
+            {{__css__}}
+        </mj-style>
+    </mj-head>
+    <mj-body css-class="body">
+        <mj-section css-class="main-content">
+            <mj-column>
+                <!-- Logo -->
+                <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
+
+                <!-- Divider with class for CSS injection -->
+                <mj-divider css-class="divider"/>
+
+                <!-- Body Text -->
+                <mj-text>
+                    Bonjour <strong>{{recipient_name}}</strong>,
+                </mj-text>
+                <mj-text>
+                    Votre visite du bien <strong>{{listing_title}}</strong> est confirmée le
+                    <strong>{{visit_date}} à {{visit_time}}</strong>.
+                </mj-text>
+
+                {{#on_site}}
+                <mj-text>
+                    <b>Adresse</b>&#160;: {{address}}
+                </mj-text>
+                <mj-text>
+                    <strong>{{agent_full_name}}</strong>, votre agent, vous attend sur place. Vous pouvez le joindre
+                    sur WhatsApp au <strong>{{agent_whatsapp}}</strong>.
+                </mj-text>
+                <mj-text>
+                    Votre code de visite est <strong>{{code}}</strong>. Présentez-le à votre agent à votre arrivée.
+                </mj-text>
+                {{/on_site}}
+                {{^on_site}}
+                <mj-text>
+                    <strong>{{agent_full_name}}</strong>, votre agent, vous appellera en vidéo sur WhatsApp au
+                    <strong>{{agent_whatsapp}}</strong> depuis le bien, à l'heure convenue.
+                </mj-text>
+                <mj-text>
+                    Votre code de visite est <strong>{{code}}</strong>. Lisez-le à votre agent pendant l'appel.
+                </mj-text>
+                {{/on_site}}
+
+                {{#visit_url}}
+                <mj-button href="{{visit_url}}" css-class="btn-primary" align="center">
+                    Voir ma visite
+                </mj-button>
+                {{/visit_url}}
+
+                <!-- Sign-off -->
+                <mj-spacer/>
+                <mj-text>
+                    Cordialement,
+                    <br/>
+                    L'équipe {{tenant_name}}
+                </mj-text>
+            </mj-column>
+        </mj-section>
+    </mj-body>
+</mjml>

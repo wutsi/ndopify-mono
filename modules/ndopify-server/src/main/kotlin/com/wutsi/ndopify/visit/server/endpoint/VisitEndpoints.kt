@@ -1,12 +1,14 @@
 package com.wutsi.ndopify.visit.server.endpoint
 
 import com.wutsi.ndopify.listing.server.service.ListingService
+import com.wutsi.ndopify.mandate.server.service.MandateAccessService
 import com.wutsi.ndopify.mandate.server.service.MandateService
 import com.wutsi.ndopify.match.server.service.MatchService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import com.wutsi.ndopify.visit.dto.CreateVisitRequest
 import com.wutsi.ndopify.visit.dto.CreateVisitResponse
 import com.wutsi.ndopify.visit.dto.GetVisitResponse
+import com.wutsi.ndopify.visit.dto.ScheduleVisitRequest
 import com.wutsi.ndopify.visit.dto.SearchVisitRequest
 import com.wutsi.ndopify.visit.dto.SearchVisitResponse
 import com.wutsi.ndopify.visit.server.mapper.VisitMapper
@@ -35,6 +37,7 @@ class VisitEndpoints(
     private val mapper: VisitMapper,
     private val matchService: MatchService,
     private val mandateService: MandateService,
+    private val mandateAccess: MandateAccessService,
     private val listingService: ListingService,
 ) {
     @PostMapping
@@ -42,6 +45,14 @@ class VisitEndpoints(
         val match = matchService.findById(request.matchId)
         access.ensureCanRequest(mandateService.findById(match.mandate.id!!))
         return CreateVisitResponse(visitId = service.create(request).id!!)
+    }
+
+    // The agent (or an admin) confirms the visit: the customer gets its code and the address
+    @PostMapping("/{id}/schedule")
+    fun schedule(@PathVariable id: Long, @RequestBody @Valid request: ScheduleVisitRequest) {
+        val visit = service.findById(id)
+        mandateAccess.ensureCanUpdate(mandateService.findById(visit.mandateId))
+        service.schedule(id, request)
     }
 
     // The customer sees its code and, for an ON_SITE visit, the exact address; the agent and the admins see neither
