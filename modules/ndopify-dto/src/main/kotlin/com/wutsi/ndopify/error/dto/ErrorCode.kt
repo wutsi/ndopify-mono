@@ -89,6 +89,7 @@ object ErrorCode {
 
     val MATCH_NOT_FOUND = "$PREFIX:match:not-found"
     val MATCH_NOT_ACTIVE = "$PREFIX:match:not-active"
+    val MATCH_NOT_ACCEPTED = "$PREFIX:match:not-accepted"
     val MATCH_NOT_PROPOSED = "$PREFIX:match:not-proposed"
 
     val PARTY_NOT_FOUND = "$PREFIX:party:not-found"
@@ -106,6 +107,22 @@ object ErrorCode {
 
     val USER_NOT_FOUND: String = "$PREFIX:user:not-found"
     val USER_EMAIL_ALREADY_EXISTS: String = "$PREFIX:user:email-already-exists"
+
+    val VISIT_NOT_FOUND = "$PREFIX:visit:not-found"
+    val VISIT_ACCESS_DENIED = "$PREFIX:visit:access-denied"
+    val VISIT_ALREADY_EXISTS = "$PREFIX:visit:already-exists"
+    val VISIT_INVALID_SLOT = "$PREFIX:visit:invalid-slot"
+    val VISIT_NOT_REQUESTED = "$PREFIX:visit:not-requested"
+    val VISIT_NOT_CONFIRMED = "$PREFIX:visit:not-confirmed"
+    val VISIT_NOT_CHECKED_IN = "$PREFIX:visit:not-checked-in"
+    val VISIT_NOT_COMPLETED = "$PREFIX:visit:not-completed"
+    val VISIT_OUTSIDE_WINDOW = "$PREFIX:visit:outside-window"
+    val VISIT_CODE_INVALID = "$PREFIX:visit:code-invalid"
+    val VISIT_CODE_LOCKED = "$PREFIX:visit:code-locked"
+    val VISIT_FEEDBACK_ALREADY_SENT = "$PREFIX:visit:feedback-already-sent"
+    val VISIT_CANNOT_BE_CANCELLED = "$PREFIX:visit:cannot-be-cancelled"
+    val VISIT_VERSION_CONFLICT = "$PREFIX:visit:version-conflict"
+    val VISIT_WHATSAPP_MISSING = "$PREFIX:visit:whatsapp-missing"
 
     val INTERNAL_ERROR: String = "$PREFIX:internal-error"
 }
