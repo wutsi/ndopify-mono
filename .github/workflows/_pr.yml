@@ -37,7 +37,6 @@ jobs:
                 env:
                     GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
                     DEEPSEEK_API_KEY: ${{secrets.DEEPSEEK_API_KEY}}
-                    KIMI_API_KEY: ${{secrets.KIMI_API_KEY}}
                     MTN_COLLECTION_SUBSCRIPTION_KEY: ${{secrets.MTN_COLLECTION_SUBSCRIPTION_KEY}}
                 run: |
                     mvn -s settings.xml validate

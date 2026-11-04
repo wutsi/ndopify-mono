@@ -40,6 +40,11 @@ ndopify:
                 start: "22:00"
                 end: "07:00"
 
+    mobile-money:
+        mtn:
+            collection:
+                subscription-key: ${MTN_COLLECTION_SUBSCRIPTION_KEY}
+
     storage:
         default-type: s3
         s3:

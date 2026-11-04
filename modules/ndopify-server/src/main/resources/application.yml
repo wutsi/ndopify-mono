@@ -10,11 +10,11 @@ spring:
             client:
                 enabled: false # Two ChatModels: the ChatClients are built by AIConfiguration
         openai: # Vision model
-            api-key: ${KIMI_API_KEY}
-            base-url: https://api.moonshot.ai/v1
+            api-key: ${DEEPSEEK_API_KEY}
+            base-url: https://api.deepseek.com
             chat:
                 options:
-                    model: kimi-k2.6
+                    model: deepseek-flash
         deepseek: # Text model
             api-key: ${DEEPSEEK_API_KEY}
             base-url: https://api.deepseek.com
@@ -319,9 +319,9 @@ ndopify:
             environment: sandbox
             callback-url: http://127.0.0.1/mtn/callback
             collection:
-                user-id:
-                api-key:
-                subscription-key: ${MTN_COLLECTION_SUBSCRIPTION_KEY}
+                user-id: "no-user-id" # Dummy: test and prod use the MTN_COLLECTION_USER_ID env variable
+                api-key: "no-api-key" # Dummy: test and prod use the MTN_COLLECTION_API_KEY env variable
+                subscription-key: "no-api-key" # Dummy: test and prod use the MTN_COLLECTION_SUBSCRIPTION_KEY env variable
 
     party:
         kyc:

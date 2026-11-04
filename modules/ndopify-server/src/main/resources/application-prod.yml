@@ -68,6 +68,15 @@ ndopify:
                 start: "22:00"
                 end: "07:00"
 
+    mobile-money:
+        mtn:
+            environment: production
+            callback-url: http://127.0.0.1/mtn/callback
+            collection:
+                user-id: ${MTN_COLLECTION_USER_ID}
+                api-key: ${MTN_COLLECTION_API_KEY}
+                subscription-key: ${MTN_COLLECTION_SUBSCRIPTION_KEY}
+
     party:
         kyc:
             verify:
