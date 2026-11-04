@@ -2,44 +2,48 @@
 
 Maven monorepo for Ndopify — a multi-tenant rental platform built on mobile-money agents: agents and their KYC
 verification, mandates (tenants searching for a property, owners offering one for rent) dispatched to those agents,
-contracts signed online, and mobile-money payment integrations across Africa.
+the listings those mandates produce, the matching of listings to searches, customer visits, contracts signed online,
+and mobile-money payment integrations across Africa.
 
 [![main](https://github.com/wutsi/ndopify-mono/actions/workflows/_main.yml/badge.svg)](https://github.com/wutsi/ndopify-mono/actions/workflows/_main.yml)
 [![pr](https://github.com/wutsi/ndopify-mono/actions/workflows/_pr.yml/badge.svg)](https://github.com/wutsi/ndopify-mono/actions/workflows/_pr.yml)
 
 ## Project Status
 
-Early-stage. Only five modules exist today — there is no SDK or tracking-server module (yet).
+Early-stage. Six modules exist today — there is no SDK, admin console or tracking-server module (yet).
 
 ## Modules
 
 | Module                                                     | Description                                                                              |
 |------------------------------------------------------------|------------------------------------------------------------------------------------------|
 | [ndopify-dto](modules/ndopify-dto)                         | Shared request/response DTOs and contracts — no business logic                           |
-| [ndopify-server](modules/ndopify-server)                   | REST API backend (Spring Boot)                                                           |
-| [ndopify-partner-central](modules/ndopify-partner-central) | Agent-facing web app (Spring Boot + Thymeleaf, French): sign-up, e-mail OTP sign-in, KYC, mandate offers and follow-up, plus the public *Trouver un bien* and *Proposer un bien* wizards |
+| [ndopify-server](modules/ndopify-server)                   | REST API backend (Spring Boot): agents and KYC, mandates and dispatch, contracts and e-signature, listings, matching, visits and mobile money |
+| [ndopify-partner-central](modules/ndopify-partner-central) | Agent-facing web app (Spring Boot + Thymeleaf, French): sign-up, e-mail OTP sign-in, KYC, mandate offers and follow-up, listings, matched properties, plus the public *Trouver un bien* and *Proposer un bien* wizards |
 | [ndopify-esignature](modules/ndopify-esignature)           | Signer-facing contract sign page (Spring Boot + Thymeleaf, French): e-mail OTP sign-in, read and sign a contract, plus the public verify page of a signature's QR code |
-| [ndopify-web](modules/ndopify-web)                         | Public marketing site (Spring Boot + Thymeleaf, French): reads the tenants from `ndopify-server` and links to Partner Central's public wizards |
+| [ndopify-web](modules/ndopify-web)                         | Public marketing site (Spring Boot + Thymeleaf, French): tenant pages, a published listing's public page, the match-proposal page and its answer, plus links to Partner Central's public wizards |
+| [ndopify-web-core](modules/ndopify-web-core)               | Library of the infrastructure shared by the three web apps: tenant resolution and formatting, access-token cookie and JWT decoding, REST interceptors and the tenant client |
 
 ### Module Dependency
 
 ```
 ndopify-dto  →  ndopify-server
-ndopify-dto  →  ndopify-partner-central  ──(REST, runtime)──▶  ndopify-server
-ndopify-dto  →  ndopify-esignature       ──(REST, runtime)──▶  ndopify-server
-ndopify-dto  →  ndopify-web              ──(REST, runtime)──▶  ndopify-server
+ndopify-dto  →  ndopify-web-core
+ndopify-dto, ndopify-web-core  →  ndopify-partner-central  ──(REST, runtime)──▶  ndopify-server
+ndopify-dto, ndopify-web-core  →  ndopify-esignature       ──(REST, runtime)──▶  ndopify-server
+ndopify-dto, ndopify-web-core  →  ndopify-web              ──(REST, runtime)──▶  ndopify-server
 ```
 
-`ndopify-partner-central`, `ndopify-esignature` and `ndopify-web` depend on `ndopify-dto` at build time and call
-`ndopify-server` over HTTP at runtime (`ndopify.server.api.base-url`); none has a database of its own, nor depends on
-another web app.
+`ndopify-partner-central`, `ndopify-esignature` and `ndopify-web` depend on `ndopify-dto` and `ndopify-web-core` at
+build time and call `ndopify-server` over HTTP at runtime (`ndopify.server.api.base-url`); none has a database of its
+own, nor depends on another web app.
 
 ## Technologies
 
 - **Language**: Kotlin, JDK 17
 - **Framework**: Spring Boot (Web, Data JPA, Security, Cache, Validation, Actuator), Thymeleaf (partner central, e-signature, web)
-- **AI**: Spring AI, with two models: a vision model (Kimi, OpenAI-compatible client) for the KYC documents and
-  listing pictures, and a text model (DeepSeek) for text-only prompts
+- **AI**: Spring AI, with two `ChatClient`s: a vision client (OpenAI-compatible, for the KYC documents and listing
+  pictures) and a text client (DeepSeek, for text-only prompts). Both currently point at DeepSeek's API
+  (`deepseek-flash`) and read `DEEPSEEK_API_KEY`
 - **Database**: MySQL, with Flyway for versioned schema migrations
 - **API docs**: SpringDoc OpenAPI / Swagger UI
 - **Build**: Maven
@@ -65,24 +69,32 @@ layering (`endpoint` → `service` → `dao` → `domain`, plus `mapper` for ent
 - **contract** — contracts to be signed by their parties on ndopify-esignature: a mandate's contract is generated
   from its type's template (search mandate, or exclusive listing mandate), and the last required signature makes it
   `SIGNED`, with a signed PDF whose QR codes open the signatures' verify page.
+- **listing** — the property a `LISTING` mandate offers, checked on site by its agent: checklist and photos,
+  asynchronous verification, LLM-generated title/summary/description and hero image, then a public page; closed when
+  its mandate closes.
+- **match** — the listings of an agent's inventory that match its `APPROVED` `SEARCH` mandates: scored, notified to
+  the agent, proposed to the customer, then accepted or rejected by the customer and expired if unanswered.
+- **visit** — a customer's on-site or video visit of a matched listing: requested, scheduled with a code, checked in
+  and out, no-show or cancelled, then rated; reminded and expired by scheduled jobs.
 - **error** — shared exception types and a global error handler.
 
 A non-domain **`platform`** package holds shared infrastructure: the mobile-money gateway integration
 (`platform.momo`, MTN only today), file storage (`platform.storage`, local or S3), mail (`platform.mail`),
-request logging (`platform.logger`), tenant resolution (`platform.tenant`) and operational endpoints, off in prod
-(`platform.endpoint`).
+request logging (`platform.logger`), tenant resolution (`platform.tenant`), the Spring AI clients (`platform.ai`)
+and operational endpoints, off in prod (`platform.endpoint`).
 
 Tenancy is request/token-scoped via the `X-Tenant-ID` header and a `tenantId` JWT claim, and enforced by Hibernate's
-`@TenantId` on the tenant-scoped entities (party, agent, customer, mandate, contract, membership) — every query
-against them is filtered automatically. Reference data (`refdata`) and users / credentials are global.
+`@TenantId` on the tenant-scoped entities (party, agent, customer, mandate, assignment, contract, listing, match,
+visit, membership) — every query against them is filtered automatically. Reference data (`refdata`) and users /
+credentials are global.
 
 See [CLAUDE.md](CLAUDE.md) for detailed build/test commands and architecture notes for AI-assisted development.
 
 ## Getting Started
 
 Requirements: JDK 17, Maven 3.9+, MySQL 8+ (local `root` user with no password). For OTP sign-in e-mails, a local
-SMTP catcher such as [Mailpit](https://mailpit.axllent.org/) on `localhost:1025`. For the LLM calls, a `KIMI_API_KEY`
-(vision model) and a `DEEPSEEK_API_KEY` (text model).
+SMTP catcher such as [Mailpit](https://mailpit.axllent.org/) on `localhost:1025`. For the LLM calls, a
+`DEEPSEEK_API_KEY` (both the vision and the text client currently use DeepSeek).
 
 ```bash
 # Build the whole monorepo
@@ -133,7 +145,7 @@ AI tooling for [Claude Code](https://claude.com/claude-code) lives in [`.claude/
 
 | Command                                                            | Purpose                                                                                                   |
 |--------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
-| [`/init-website-design`](.claude/commands/init-website-design.md)   | Generates `modules/ndopify-web/DESIGN.md` (colors, typography, spacing, components) from the canonical design doc. Run it before `/init-website`, which reads that file. |
+| [`/init-website-design`](.claude/commands/init-website-design.md)   | Generates [DESIGN.md](DESIGN.md) (colors, typography, spacing, components) from the canonical design doc. Run it before `/init-website`, which reads that file. |
 | [`/init-website`](.claude/commands/init-website.md)                 | Builds the French website prototype in `modules/ndopify-web/src/main/html/` in three stages: journey planning (`neo-user-journey`), generation (`power-design`), critique and fixes (`impeccable`). |
 | [`/init-partner-central`](.claude/commands/init-partner-central.md) | Builds the French partner central pages in `modules/ndopify-partner-central/src/main/html/` using the same three-stage pipeline (`neo-user-journey` → `power-design` → `impeccable`). |
 | [`/init-esignature`](.claude/commands/init-esignature.md)           | Builds the French e-signature prototype in `modules/ndopify-esignature/src/main/html/` with the same pipeline. |
@@ -144,9 +156,11 @@ Used by `/init-website`, `/init-partner-central` and `/init-esignature`; not spe
 
 | Skill                                                          | Purpose                                                                                           |
 |----------------------------------------------------------------|---------------------------------------------------------------------------------------------------|
-| [`neo-user-journey`](.claude/skills/neo-user-journey/SKILL.md) | UX research: user journeys, personas, synthetic-user walkthroughs, accessibility audits           |
-| [`power-design`](.claude/skills/power-design/SKILL.md)         | On-brand HTML decks and websites, using 20 codified web design rules                              |
-| [`impeccable`](.claude/skills/impeccable/SKILL.md)             | Design critique, audit, polish and an anti-pattern detector for frontend interfaces               |
+| [`neo-user-journey`](.claude/skills/neo-user-journey) | UX research: user journeys, personas, synthetic-user walkthroughs, accessibility audits           |
+| [`power-design`](.claude/skills/power-design)         | On-brand HTML decks and websites, using 20 codified web design rules                              |
+
+The commands also use `impeccable` (design critique, audit, polish and an anti-pattern detector) from the AI
+environment's own skill set; it isn't vendored in this repository.
 
 ## License
 

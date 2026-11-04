@@ -8,8 +8,10 @@ E-signature portal — the page where a contract's parties (customers, landlords
 were asked to sign. Server-side rendered with Kotlin + Spring Boot + Thymeleaf, UI in French.
 
 It has no database: every read/write goes to [ndopify-server](../ndopify-server) over REST, using the shared
-contracts from [ndopify-dto](../ndopify-dto). It never depends on [ndopify-partner-central](../ndopify-partner-central),
-whose infrastructure it copies (same class names), minus the agent and login parts.
+contracts from [ndopify-dto](../ndopify-dto) and the infrastructure from
+[ndopify-web-core](../ndopify-web-core). It never depends on
+[ndopify-partner-central](../ndopify-partner-central); both are built on `ndopify-web-core`, minus the agent and
+sign-up parts here.
 
 ## Features
 
@@ -41,7 +43,8 @@ state against double submit, focus).
 - **Authentication** — the access token is stored in the `__nes_access_token` HTTP-only cookie (`AccessTokenService`,
   1 hour) and decoded by `JwtAuthenticationFilter`; only `e-signature` tokens are accepted. `SecurityConfiguration`
   permits `/assets/**`, `/sign/**`, `/verify/**` and `/error`, and denies everything else.
-  Note: tokens are decoded with `Algorithm.none()` — the same unsigned-JWT gap as ndopify-server.
+  The web app's `JwtDecoder` reads the claims without checking the signature (only ndopify-server has the secret and
+  checks it on each call); it is never trusted on its own.
 - **Membership** — a party can sign in only once ndopify-server has given it a membership with `e-signature` access,
   which a request for signature does. An e-mail with no contract is told "Aucun contrat n'a été envoyé à cette adresse".
 - **Access** — the contract is found with `GET /v1/contracts?contract-party-id=…`, which ndopify-server restricts to
@@ -60,9 +63,8 @@ state against double submit, focus).
 
 ```
 src/main/kotlin/com/wutsi/ndopify/esignature/
-    client/      REST clients for ndopify-server, the contract-content client, request interceptors
-    config/      Spring configuration (security, REST, clock)
-    service/     TenantContext, TenantFormatter, security/ (access-token cookie, JWT decoding, auth filter)
+    client/      REST clients for ndopify-server, the contract-content client
+    config/      Spring configuration (security, REST, clock, ndopify-web-core beans)
     ui/          MVC: sign (the sign page), verify (the signature verification page), layout (tenant advice, error handler)
 src/main/resources/
     templates/   Thymeleaf pages served by the app (sign.html, verify.html, error/)

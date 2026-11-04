@@ -9,7 +9,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `modules/ndopify-dto` — shared DTOs/contracts (no business logic)
 - `modules/ndopify-server` — the REST API backend (Spring Boot)
 - `modules/ndopify-partner-central` — agent-facing web app (Spring Boot + Thymeleaf, French UI), package
-  `com.wutsi.ndopify.npc`. No database; talks to `ndopify-server` over REST.
+  `com.wutsi.ndopify.npc`. No database; talks to `ndopify-server` over REST. Covers sign-up, KYC, mandate offers and
+  follow-up, listings, matched properties, and the public *Trouver un bien* / *Proposer un bien* wizards.
 - `modules/ndopify-esignature` — signer-facing contract sign page (Spring Boot + Thymeleaf, French UI), package
   `com.wutsi.ndopify.esignature`. No database; talks to `ndopify-server` over REST.
 - `modules/ndopify-web` — public marketing site (Spring Boot + Thymeleaf, French UI), package
@@ -21,14 +22,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   `com.wutsi.ndopify.web.core`. Used by all three web apps, each declaring its beans in `config/WebCoreConfiguration`.
 
 All six are in the root `pom.xml` reactor. The Spring Boot apps are deployed to Heroku by their own GitHub
-workflows; `ndopify-dto` is released to GitHub Packages. There is no SDK, admin console or tracking-server module
-yet (the tenant has an `adminConsoleUrl`, and `admin-console` tokens exist, but no code here). Do not assume they
-exist or scaffold code that depends on them.
+workflows; `ndopify-dto` and `ndopify-web-core` are released to GitHub Packages. There is no SDK, admin console or
+tracking-server module yet (the tenant has an `adminConsoleUrl`, and `admin-console` tokens exist, but no code here).
+Do not assume they exist or scaffold code that depends on them.
 
 Each module has its own `CLAUDE.md`, loaded when working on its files: code organization, testing patterns, and
 the module's rules. `modules/ndopify-server/CLAUDE.md` (domains, platform, multi-tenancy, tests, migrations, JPA
 utilities), `modules/ndopify-partner-central/CLAUDE.md`, `modules/ndopify-esignature/CLAUDE.md`,
-`modules/ndopify-web/CLAUDE.md` and `modules/ndopify-dto/CLAUDE.md` (DTO conventions and the release flow). Keep
+`modules/ndopify-web/CLAUDE.md`, `modules/ndopify-web-core/CLAUDE.md` and `modules/ndopify-dto/CLAUDE.md` (DTO
+conventions and the release flow). Keep
 module-specific guidance there, and in this file only what applies to several modules.
 
 ## Repository Layout
@@ -72,9 +74,9 @@ mvn test -Dtest=ClassName#methodName
 ```
 
 `ndopify-server` endpoint tests use `TestRestTemplate` against a real MySQL database (Flyway-migrated), so a local
-MySQL instance must be running (see Environment Setup below). `ndopify-partner-central`, `ndopify-esignature` and
-`ndopify-web` tests are plain unit tests / standalone `MockMvc` and need neither MySQL nor a running server.
-`ndopify-dto` has no tests.
+MySQL instance must be running (see Environment Setup below). `ndopify-partner-central`, `ndopify-esignature`,
+`ndopify-web` and `ndopify-web-core` tests are plain unit tests / standalone `MockMvc` and need neither MySQL nor a
+running server. `ndopify-dto` has no tests.
 
 ### Code Quality
 
@@ -103,7 +105,7 @@ cd modules/ndopify-partner-central
 mvn spring-boot:run          # starts on port 8081, calls ndopify-server at ndopify.server.api.base-url
 
 cd modules/ndopify-web
-mvn spring-boot:run          # starts on port 8082, reads the tenants from ndopify-server
+mvn spring-boot:run          # starts on port 8082, reads tenants, listings and matches from ndopify-server
 
 cd modules/ndopify-esignature
 mvn spring-boot:run          # starts on port 8083, calls ndopify-server like partner-central
@@ -121,8 +123,7 @@ curl "http://localhost:8080/v1/locations/import?country=<ISO-country-code>"
 
 ## Environment Setup
 
-Required for local development (there is no `CONTRIBUTING.md` in this repo — this is derived from `application.yml`
-and the module POMs):
+Required for local development (see `application.yml` and the module POMs):
 
 - JDK 17, Maven 3.9+
 - MySQL 8+, with the `root` user having **no password** (matches the default `application.yml` datasource)
@@ -131,12 +132,14 @@ and the module POMs):
   OTP codes) — see `spring.mail` in `application.yml`.
 - No JWT secret to set: `application.yml` has a dummy `ndopify.security.jwt.secret` (deployed servers use
   `JWT_SECRET`, see *Token signing* in `modules/ndopify-server/CLAUDE.md`).
-- `KIMI_API_KEY` and `DEEPSEEK_API_KEY` for the LLMs of `ndopify-server` (Spring AI): the vision model, Kimi
-  (`spring.ai.openai`, OpenAI-compatible), reads the KYC documents and listing pictures; the text model, DeepSeek
-  (`spring.ai.deepseek`), is for text-only prompts. See `AIConfiguration` / `ChatClients`.
+- `DEEPSEEK_API_KEY` for the LLMs of `ndopify-server` (Spring AI): the vision client (`spring.ai.openai`,
+  OpenAI-compatible) reads the KYC documents and listing pictures; the text client (`spring.ai.deepseek`) is for
+  text-only prompts. Both currently point at DeepSeek (`deepseek-flash`) and read the same key. See
+  `AIConfiguration` / `ChatClients`.
 
-No RabbitMQ or messaging broker is wired up in `ndopify-server` today — don't assume one exists. MTN Mobile Money credentials (`ndopify.mobile-money.mtn.*` in `application.yml`) default to
-sandbox values and don't need to be set for local dev unless you're exercising real MTN calls.
+No RabbitMQ or messaging broker is wired up in `ndopify-server` today — don't assume one exists. MTN Mobile Money
+credentials (`ndopify.mobile-money.mtn.*` in `application.yml`) default to dummy sandbox placeholders and don't need
+to be set for local dev unless you're exercising real MTN calls.
 
 ## Architecture Overview
 
@@ -217,8 +220,8 @@ Every module README (`modules/<module>/README.md`) has CI-managed badges as the 
 
 - `main` and `pull_request` GitHub Actions workflow-status badges (all modules), pointing at
   `.github/workflows/<module>-main.yml` / `<module>-pr.yml`.
-- A JaCoCo coverage badge (`ndopify-server`, `ndopify-partner-central`, `ndopify-esignature` and `ndopify-web`),
-  pointing at the auto-generated SVG in `.github/badges/<module>-jacoco.svg`.
+- A JaCoCo coverage badge (`ndopify-server`, `ndopify-partner-central`, `ndopify-esignature`, `ndopify-web` and
+  `ndopify-web-core`), pointing at the auto-generated SVG in `.github/badges/<module>-jacoco.svg`.
 
 These badges must be preserved whenever a README is edited. Edit module READMEs with a targeted edit (not a
 full-file rewrite) so the badge block isn't clobbered — and if a full rewrite is unavoidable, read the existing

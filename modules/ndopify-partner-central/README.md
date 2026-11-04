@@ -6,11 +6,14 @@
 
 Partner Central — the web app where Ndopify agents (démarcheurs) sign up, sign in, verify their identity (KYC), and
 handle the mandates of people looking for a rental: accept the ones offered to them, follow them up to the contract's
-signature, then close them. It also hosts the public *Trouver un bien* wizard, where those people submit their search.
+signature, then close them. For a signed listing mandate they complete the property's checklist, send it for
+verification and follow its publication; for a signed search mandate they propose matching listings to their client.
+It also hosts the public *Trouver un bien* and *Proposer un bien* wizards.
 Server-side rendered with Kotlin + Spring Boot + Thymeleaf, UI in French.
 
 It has no database: every read/write goes to [ndopify-server](../ndopify-server) over REST, using the shared
-contracts from [ndopify-dto](../ndopify-dto).
+contracts from [ndopify-dto](../ndopify-dto) and the infrastructure from
+[ndopify-web-core](../ndopify-web-core).
 
 ## Features
 
@@ -27,9 +30,13 @@ Public pages:
       e-mail that already has an agent account (409 `AGENT_ALREADY_EXISTS`) is reported on the review.
 - **Property search wizard, *Trouver un bien*** (`ui/findproperty/FindPropertyController`) — for people looking for
   a rental. One page, `templates/find-property.html`, built like *Rejoindre Ndopify*: seven steps, `need` → `area` →
-  `property` → `amenities` → `budget` → `contact` → `review`, then a confirmation. The review creates a TENANT
+  `property` → `amenities` → `budget` → `contact` → `review`, then a confirmation. The review creates a `SEARCH`
   rental mandate (`POST /v1/mandates`), which ndopify-server then offers to an agent. These rules
   (`FindPropertyRules`) are the only validation a mandate gets, since ndopify-server doesn't validate mandates yet.
+- **Property offer wizard, *Proposer un bien*** (`ui/offerproperty/OfferPropertyController`) — for owners offering a
+  property for rent. One page, `templates/offer-property.html`, seven steps, `property` → `address` → `terms` →
+  `features` → `amenities` → `contact` → `review`, then a confirmation. The review creates a `LISTING` rental
+  mandate (`POST /v1/mandates`), with a monthly price and an `availableFrom` in the next 365 days.
 - **Location search for dropdowns** (`ui/location/LocationController`) — `GET /locations`, a JSON proxy to
   ndopify-server's location search for the wizards' city and neighbourhood dropdowns: only cities and
   neighbourhoods, always in the tenant's country, with a capped page size.
@@ -59,10 +66,19 @@ Signed-in pages:
   [ndopify-esignature](../ndopify-esignature)), `/close` and `/cancel`. `GET|POST /mandates/{id}/edit` edits an
   assigned or pending-approval mandate, with optimistic locking (the version it was loaded with).
   Another agent's mandate is shown as locked.
+- **Listing checklist** (`ui/listing/`) — a signed LISTING mandate's property: `GET /listings/{id}` shows one row per
+  section (`location`, `gps`, `property`, `amenities`, `terms`, `remarks`, plus photos), each with its
+  `GET|POST /listings/{id}/{section}` page prefilled from the landlord's answers; `POST /listings/{id}/verify` sends
+  the listing for verification once every required section is done. `POST /mandates/{id}/listing` creates it from the
+  mandate. `GET|POST /listings/{id}/photos` uploads sniffed photos (5 MB, 20 max) and deletes one.
+- **Matched properties** (`ui/match/`) — an APPROVED SEARCH mandate's page lists the PUBLISHED listings ndopify-server
+  matched to it (`GET /v1/matches`), best score first, with the client's answer and a short explanation. The agent
+  proposes a match (`POST /mandates/{mandateId}/matches/{matchId}/propose`) or sets it aside
+  (`.../dismiss`). Another agent's mandate a match belongs to is never named nor linked.
 
-Every form posts without JavaScript; the scripts in `public/assets/js/` (`join.js`, `find-property.js`, `kyc.js`,
-`home.js`, `mandate.js`) only enhance (dropdowns, intl-tel-input, photo resizing, in-page camera, countdowns, in-place
-confirmations).
+Every form posts without JavaScript; the scripts in `public/assets/js/` (`join.js`, `find-property.js`,
+`offer-property.js`, `kyc.js`, `home.js`, `mandate.js`, `listing.js`) only enhance (dropdowns, intl-tel-input, photo
+resizing, in-page camera, countdowns, in-place confirmations).
 
 ## How it works
 
@@ -71,17 +87,19 @@ confirmations).
   [`ndopify-web-core`](../ndopify-web-core/README.md), declared by `config/WebCoreConfiguration`.
 - **Authentication** — the access token is stored in the `__npc_access_token` HTTP-only cookie
   (`AccessTokenService`). `JwtAuthenticationFilter` decodes it on each request and clears it once it no longer
-  decodes (expired); everything except `/assets/**`, `/login/**`, `/error`, `/join/**`, `/find-property/**` and
-  `/locations/**` requires authentication, and unauthenticated requests are redirected to `/login`.
-  Note: tokens are decoded with `Algorithm.none()` — the same unsigned-JWT gap as ndopify-server.
+  decodes (expired); everything except `/assets/**`, `/login/**`, `/error`, `/join/**`, `/find-property/**`,
+  `/offer-property/**` and `/locations/**` requires authentication, and unauthenticated requests are redirected to
+  `/login`.
+  The web app's `JwtDecoder` reads the claims without checking the signature (only ndopify-server has the secret and
+  checks it on each call); it is never trusted on its own.
 - **The signed-in agent** — agent and party ids always come from the token (`CurrentParty`, `CurrentAgent`), never
   from a form. ndopify-server checks that an agent only reads and changes its own mandates and offers.
 - **Tenant resolution** — `TenantContext` loads the active tenants from ndopify-server and picks the one whose
   `partnerCentralUrl` is a prefix of the incoming request URL. Dates and amounts go through `TenantFormatter` (the
   tenant's formats, currency, locale and time zone).
 - **REST clients** (`client/ndopify/`: `NdAgentClient`, `NdAssignmentClient`, `NdAuthClient`, `NdContractClient`,
-  `NdCustomerClient`, `NdKycClient`, `NdLocationClient`, `NdMandateClient`, `NdOtpClient`, `NdPartyClient`,
-  `NdTenantClient`, `NdUserClient`) — every `RestClient` built by Spring gets three interceptors
+  `NdCustomerClient`, `NdKycClient`, `NdListingClient`, `NdLocationClient`, `NdMandateClient`, `NdMatchClient`,
+  `NdOtpClient`, `NdPartyClient`, `NdTenantClient`, `NdUserClient`) — every `RestClient` built by Spring gets three interceptors
   (`config/RestConfiguration`): request logging, `Authorization` (from the cookie) and `X-Tenant-ID` (from
   `TenantContext`). `NdTenantClient` opts out, since tenants are global reference data. For the endpoints these
   clients call, see ndopify-server's Swagger UI ([API Documentation](../ndopify-server/README.md#api-documentation)).
@@ -95,8 +113,8 @@ src/main/kotlin/com/wutsi/ndopify/npc/
     client/      REST clients for ndopify-server
     config/      Spring configuration (security, REST, clock, ndopify-web-core beans)
     service/     security/ (the signed-in agent: CurrentParty, CurrentAgent)
-    ui/          MVC controllers: home, assignment, mandate, kyc, profile, join, findproperty, location, login,
-                 logout, layout (advices, error handler)
+    ui/          MVC controllers: home, assignment, mandate, listing, match, kyc, profile, join, findproperty,
+                 offerproperty, location, login, logout, layout (advices, error handler)
 src/main/resources/
     templates/   Thymeleaf pages served by the app
     public/      Static assets (CSS, JS, images) served under /assets

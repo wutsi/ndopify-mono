@@ -8,8 +8,8 @@ dependencies are `jakarta.validation-api` (the `@NotEmpty` / `@Size`... the serv
 ## Code Organization
 
 One package per server domain, `com.wutsi.ndopify.<domain>.dto` (`agent`, `contract`, `customer`, `listing`,
-`mandate`, `party`, `refdata`, `security`), plus `common.dto` (`HttpHeader`: the custom header names, ex:
-`X-Tenant-ID`; import messages) and `error.dto` (`ErrorResponse`, `Error`, `Parameter`, `ErrorCode`).
+`mandate`, `match`, `party`, `refdata`, `security`, `visit`), plus `common.dto` (`HttpHeader`: the custom header
+names, ex: `X-Tenant-ID`; import messages) and `error.dto` (`ErrorResponse`, `Error`, `Parameter`, `ErrorCode`).
 
 Naming, per resource `<Entity>`:
 

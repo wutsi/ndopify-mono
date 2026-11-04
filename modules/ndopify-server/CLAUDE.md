@@ -45,7 +45,7 @@ Each domain under `com.wutsi.ndopify.<domain>.server` follows the same layering:
     domain/     - JPA entities (*Entity.kt)
     mapper/     - Entity ↔ DTO mapping (*Mapper.kt)
     io/         - import/export (refdata only, e.g. GeonamesImporter, NeighbourhoodImporter)
-    event/      - application events + their listeners (agent, party, security, mandate, listing so far)
+    event/      - application events + their listeners (agent, contract, listing, mandate, match, party, security, visit)
     mail/       - the domain's e-mails (*Mailet.kt: recipient, subject, template context), e.g. WelcomeMailet
 ```
 
@@ -106,12 +106,14 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   e-mails* below). `joinedAt` is set on the agent's first VERIFIED case by `AgentKycEventListener`, a
   synchronous `@EventListener` on `KycCaseCompletedEvent` (same transaction as the KYC), so the party domain never
   depends on the agent one. Tenant-scoped.
-- **customer** — people looking for a property (`CustomerEntity`, linked to a `Party`; `/v1/customers`).
-  `CustomerService.findOrCreate` reuses the party and customer of an e-mail. Tenant-scoped.
-- **mandate** — a customer's search request (`MandateEntity`; `/v1/mandates`: get, search, create, update).
+- **customer** — the people behind the mandates: tenants searching for a property and owners offering one
+  (`CustomerEntity`, linked to a `Party`; `/v1/customers`). `CustomerService.findOrCreate` reuses the party and
+  customer of an e-mail. Tenant-scoped.
+- **mandate** — a customer's SEARCH (tenant) or LISTING (owner) mandate (`MandateEntity`; `/v1/mandates`: get,
+  search, create, update).
   `MandateService.create` finds or creates the customer from the request's contact fields and starts the mandate
   as `PENDING_ASSIGNMENT`. It only checks that the contact fields aren't empty (`@NotEmpty`): categories, cities,
-  neighbourhoods, prices and enums aren't validated server-side yet. `availableFrom` (`V7_2`) is a LISTING's
+  neighbourhoods, prices and enums aren't validated server-side yet. `availableFrom` (`V7_0`) is a LISTING's
   availability date (the date from which the property can be let): stored and returned, not checked by the server.
   Tenant-scoped.
   **Access** (`MandateAccessService`): every endpoint but create (public) needs a JWT (401
@@ -249,7 +251,7 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `ContractExpiredEvent` (no listener yet). Tenant-scoped.
 - **listing** — the property a LISTING mandate offers, as checked on site by its agent (`ListingEntity`, one per
   mandate, `@Version`-ed; its photos `ListingImageEntity`; its checklist `ListingSectionEntity`; `V8_0`, `V8_1`,
-  `V8_3`). `/v1/listings`: search, get, create, update, `POST /{id}/verify`, `POST /{id}/publish`, `POST /{id}/images/upload`, `GET /{id}/images`,
+  `V8_2`). `/v1/listings`: search, get, create, update, `POST /{id}/verify`, `POST /{id}/publish`, `POST /{id}/images/upload`, `GET /{id}/images`,
   `DELETE /images/{id}`. Search, get and the images list are public (`PublicEndpoints.TENANT`), for PUBLISHED
   listings only (`ListingAccessService`): another status is only for an admin or the listing's agent, a 404
   `LISTING_NOT_FOUND` for anybody else (get, images), with or without a token; a search is forced to PUBLISHED but an
@@ -330,7 +332,7 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   customer reads it with `GET /v1/matches/{id}` (and its mandate), only once PROPOSED, ACCEPTED, REJECTED or EXPIRED (else 403
   `MANDATE_ACCESS_DENIED`; as `ensureCanRead` for an admin or agent: an agent only its own / offered mandates). The
   token (`MatchLinkTokenService`, one per e-mail) is a `public-portal` JWT of the customer's own user and party, so
-  that the link signs it in; it lives `ndopify.security.access-token.ttl.match-link` (2d) and isn't scoped to the
+  that the link signs it in; it lives `ndopify.security.access-token.ttl.match-link` (7d) and isn't scoped to the
   match: whoever has the e-mail is signed in as the customer until then. The customer gets a membership of the tenant
   with `public-portal` access first (its own, else the user of its e-mail); no `token` without an e-mail, or when
   that address is already a member's as another party. `POST /{id}/accept` and
@@ -367,7 +369,7 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `ConflictException`, `ForbiddenException`, `UnauthorizedException`, `InternalErrorException`) and a global
   `ControllerErrorHandler`.
 
-**Asynchronous e-mails** (welcome, OTP, KYC status, mandate offered, mandate assigned, mandate approved, contract to sign, listing published, match proposed, visit requested / confirmed / completed / cancelled / no-show / expired / reminded): the service publishes an event
+**Asynchronous e-mails** (welcome, OTP, KYC status, mandate offered, mandate assigned, mandate approved, contract to sign, listing published, new matches, match proposed, visit requested / confirmed / completed / cancelled / no-show / expired / reminded): the service publishes an event
 from its transaction (`AgentCreatedEvent`, `OtpCreatedEvent`, `KycCaseCompletedEvent`, `AssignmentCreatedEvent`,
 `AssignmentAcceptedEvent`, `MandateApprovedEvent`, `ContractSignatureRequestedEvent`, `ListingPublishedEvent`, `MatchProposedEvent`,
 `VisitRequestedEvent`, `VisitConfirmedEvent`, `VisitCompletedEvent`, `VisitCancelledEvent`, `VisitNoShowEvent`, `VisitExpiredEvent`,
@@ -414,6 +416,9 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
   `src/main/resources/mail/`.
 - `platform/logger` — key-value request logging (`KVLogger`, `KVLoggerFilter`).
 - `platform/tenant` — tenant resolution (see Multi-Tenancy below).
+- `platform/ai` — the two Spring AI `ChatClient`s (`ChatClients.VISION` for images, `ChatClients.TEXT` for text) and
+  their cached health indicators, wired by `config/platform/AIConfiguration`.
+- `platform/util` — small helpers (`PhoneNumberUtils`, `MimeUtils`, `UrlUtils`, `KycUtils`, HTTP utilities).
 - `platform/endpoint` — `@OpsEndpoint`: marks an operational endpoint method (ex: dispatching a mandate by hand).
   `OpsEndpointHandlerMapping` (wired by `EndpointConfiguration`) doesn't map them unless `ndopify.endpoints.ops` is
   `true` (default config; `false` in `application-prod.yml`, and when missing): the route doesn't exist, and
@@ -439,8 +444,9 @@ Tenancy is enforced via **Hibernate's built-in multi-tenancy mechanism**, not ha
 - **Authentication**: `SecurityConfiguration` denies by default: every endpoint needs a token
   (`JwtAuthenticationFilter` authenticates a decoded `Authorization: Bearer` one) but `PublicEndpoints`, the single
   list shared with `TenantContextFilter`: `GLOBAL` (refdata, Swagger, storage, actuator, `/error`; no tenant) and
-  `TENANT` (`POST /v1/otp`, `POST /v1/auth`, `POST /v1/agents`, `POST /v1/mandates`,
-  `GET /v1/contracts/{id}/signatures/{hash}`: called before the caller has a token). Without a token, anything else,
+  `TENANT` (`POST /v1/otp`, `POST /v1/auth`, `POST /v1/agents`, `POST /v1/mandates`, `GET /v1/listings`,
+  `GET /v1/listings/{id}`, `GET /v1/listings/{id}/images`, `GET /v1/contracts/{id}/signatures/{hash}`: called before
+  the caller has a token). Without a token, anything else,
   incl. an unknown path, is a 401 `AUTH_UNAUTHORIZED` (`ErrorResponse`, through `ControllerErrorHandler`). A new
   endpoint called before sign-in must be added to `PublicEndpoints.TENANT`. Authentication only: who may do what is
   still each domain's access service (`MandateAccessService`, `ContractAccessService`...), and many endpoints have none
@@ -461,7 +467,7 @@ Tenancy is enforced via **Hibernate's built-in multi-tenancy mechanism**, not ha
   `tenantId` and are not filtered. `UserEntity` and `AuthFactorEntity` in the `security` domain are global too: a
   user is looked up by e-mail before its membership of the tenant is checked (see `AbstractAuthenticator`). There
   are no cross-tenant users: a user only sees the tenants it has a membership of. `T_USER.tenant_id`,
-  `T_USER.party_id` and `T_USER_APPLICATION.user_id` are left over from before memberships (`V7_0`), no longer
+  `T_USER.party_id` and `T_USER_APPLICATION.user_id` are left over from before memberships (`V3_1`), no longer
   mapped or written, and still to be dropped.
 - **Token signing**: `AccessTokenService` signs and verifies the JWTs with HS256 (`ndopify.security.jwt.secret`, at
   least 32 bytes, else the server doesn't start): a dummy secret in `application.yml` (local dev) and

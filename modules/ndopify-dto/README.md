@@ -4,8 +4,8 @@
 [![pull_request](https://github.com/wutsi/ndopify-mono/actions/workflows/ndopify-dto-pr.yml/badge.svg)](https://github.com/wutsi/ndopify-mono/actions/workflows/ndopify-dto-pr.yml)
 
 Shared request/response DTOs and contracts for Ndopify. This module has no business logic — it exists purely to be
-a dependency of `ndopify-server` and of its clients, `ndopify-partner-central` and `ndopify-esignature` (and, in the
-future, other consumers such as SDKs).
+a dependency of `ndopify-server` and of its clients: `ndopify-partner-central`, `ndopify-esignature`, `ndopify-web`
+and `ndopify-web-core` (and, in the future, other consumers such as SDKs).
 
 ## Packages
 
@@ -18,11 +18,13 @@ All packages live under `com.wutsi.ndopify.<package>.dto`.
 | `contract` | `Contract`, `ContractSummary`, `ContractParty`, create/search/content (`SetContractRequest`)/sign requests, `ContractStatus`, `ContractType`, `ContractPartyRole` |
 | `customer` | `Customer`, `CustomerSummary`, create/search requests and responses                                       |
 | `error`    | The shared error contract: `ErrorCode`, `Error`, `ErrorResponse`, `Parameter`, `ParameterType`            |
-| `listing`  | Property vocabulary shared by mandates: `PropertyCategory`, `PropertyType`, `ListingType`, `FurnitureType`, `MovingPeriod`, `ContactPeriodType` |
+| `listing`  | The property a LISTING mandate offers: `Listing`, `ListingSummary`, `ListingImage`, the checklist (`ListingSection`, `ListingSectionSummary`), create/update/search requests, `ListingStatus`, `ListingSectionStatus`, `ImageStatus`; plus the property vocabulary shared with mandates: `PropertyCategory`, `PropertyType`, `ListingType`, `FurnitureType`, `MovingPeriod`, `ContactPeriodType` |
 | `mandate`  | `Mandate`, `MandateSummary`, create/update/search/close/cancel requests, `MandateStatus`, `MandateType`, `MandateCancellationCode`; the offers to agents: `Assignment`, `AssignmentSummary`, `AssignmentStatus`, search requests |
+| `match`    | `Match`, `GetMatchResponse`, search/propose/reject requests, `RunMatchResponse`, `MatchStatus`, `MatchRejectionReason` |
 | `party`    | Party, identification (and images), KYC case/verification, and payment method DTOs and enums              |
-| `refdata`  | Reference data: `Tenant`, `Location` (+ search, nearest-location search), `Application`, `ApplicationCode`, `Role`, `RoleCode`, `AuthType`, `Money`, `MoMoGatewayType`, `StorageType`, `KycErrorCode`, etc. |
+| `refdata`  | Reference data: `Tenant`, `Location` (+ search, nearest-location search), `Application`, `ApplicationCode`, `Role`, `RoleCode`, `AuthType`, `Money`, `MoMoGatewayType`, `StorageType`, `KycErrorCode`, `PeriodicityType`, etc. |
 | `security` | `AuthenticateRequest` / `AuthenticateResponse`, `CreateOtpRequest`, `User` / `GetUserResponse`, `GoogleOneTapPayload`, `JwtPrincipal` |
+| `visit`    | `Visit`, `VisitSummary`, request/schedule/check-in/check-out/no-show/cancel/feedback requests, search requests, `VisitStatus`, `VisitType`, `VisitInterest`, `VisitNoShowReason`, `VisitParty` |
 
 ## Build
 
@@ -42,8 +44,9 @@ mvn antrun:run@ktlint-format          # auto-format
 
 This module is versioned and released independently of `ndopify-server` (its own `<version>` in `pom.xml`, distinct
 from the parent/root version) and published to GitHub Packages (`maven.pkg.github.com/wutsi/ndopify-mono`).
-`ndopify-server`, `ndopify-partner-central` and `ndopify-esignature` depend on it via the `${ndopify-dto.version}`
-property in the root `pom.xml`. A push to `main` that touches this module releases it (`ndopify-dto-main` workflow:
+`ndopify-server`, `ndopify-partner-central`, `ndopify-esignature`, `ndopify-web` and `ndopify-web-core` depend on it
+via the `${ndopify-dto.version}` property in the root `pom.xml`. A push to `main` that touches this module releases
+it (`ndopify-dto-main` workflow:
 `maven-release-plugin`, tag `ndopify-dto-<version>`); bump `ndopify-dto.version` in the root `pom.xml` to pick up the
 new release in the other modules.
 
@@ -55,4 +58,4 @@ new release in the other modules.
   consumers don't inherit it.
 - Enums and constants that are part of an API contract (e.g. `IdentificationType`, `KycStatus`, `StorageType`)
   belong here, not in `ndopify-server`.
-- `ndopify-dto` must never depend on `ndopify-server`, `ndopify-partner-central` or `ndopify-esignature`.
+- `ndopify-dto` must never depend on another module of this repository.
