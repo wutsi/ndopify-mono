@@ -74,7 +74,7 @@ Swagger UI.
 
 Required for local development:
 
-- JDK 17, Maven 3.9+
+- JDK 25, Maven 3.9+
 - MySQL 8+, with the `root` user having **no password** (matches the default `application.yml` datasource)
 
 No RabbitMQ or messaging broker is wired up today. E-mails (agent welcome, OTP codes, KYC status, mandate offers

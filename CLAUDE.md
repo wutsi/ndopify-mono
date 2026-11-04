@@ -125,7 +125,7 @@ curl "http://localhost:8080/v1/locations/import?country=<ISO-country-code>"
 
 Required for local development (see `application.yml` and the module POMs):
 
-- JDK 17, Maven 3.9+
+- JDK 25, Maven 3.9+
 - MySQL 8+, with the `root` user having **no password** (matches the default `application.yml` datasource)
 
 - An SMTP server on `localhost:1025` (e.g. Mailpit) to receive e-mails sent by `ndopify-server` (agent welcome,

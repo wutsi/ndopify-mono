@@ -125,7 +125,7 @@ ux/journeys/     User-journey maps produced by Stage 1 of /init-partner-central
 
 ## Environment Setup
 
-- JDK 17, Maven 3.9+
+- JDK 25, Maven 3.9+
 - A running [ndopify-server](../ndopify-server) — by default on `http://localhost:8080`
   (`ndopify.server.api.base-url` in `application.yml`)
 - A tenant whose `partnerCentralUrl` matches the URL you browse to (e.g. `http://localhost:8081`), otherwise tenant

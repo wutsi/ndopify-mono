@@ -8,7 +8,7 @@ clients today), and, only when exercising real calls, the MTN Mobile Money API.
 
 | Tool    | Version | Notes                                                              |
 |---------|---------|--------------------------------------------------------------------|
-| JDK     | 17      |                                                                    |
+| JDK     | 25      |                                                                    |
 | Maven   | 3.9+    |                                                                    |
 | MySQL   | 8+      | `root` user with **no password** (matches `application.yml`)       |
 | Mailpit | latest  | Local SMTP server that catches outgoing email (see [Email](#email-mailpit)) |
@@ -16,7 +16,7 @@ clients today), and, only when exercising real calls, the MTN Mobile Money API.
 On macOS:
 
 ```bash
-brew install openjdk@17 maven mysql mailpit
+brew install openjdk@25 maven mysql mailpit
 brew services start mysql
 ```
 

@@ -76,7 +76,7 @@ ux/journeys/     User-journey maps for the sign page
 
 ## Environment Setup
 
-- JDK 17, Maven 3.9+
+- JDK 25, Maven 3.9+
 - A running [ndopify-server](../ndopify-server) — by default on `http://localhost:8080`
   (`ndopify.server.api.base-url` in `application.yml`)
 - A tenant whose `eSignaturePortalUrl` matches the URL you browse to (e.g. `http://localhost:8083`), otherwise tenant

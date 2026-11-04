@@ -39,7 +39,7 @@ own, nor depends on another web app.
 
 ## Technologies
 
-- **Language**: Kotlin, JDK 17
+- **Language**: Kotlin, JDK 25
 - **Framework**: Spring Boot (Web, Data JPA, Security, Cache, Validation, Actuator), Thymeleaf (partner central, e-signature, web)
 - **AI**: Spring AI, with two `ChatClient`s: a vision client (OpenAI-compatible, for the KYC documents and listing
   pictures) and a text client (DeepSeek, for text-only prompts). Both currently point at DeepSeek's API
@@ -92,7 +92,7 @@ See [CLAUDE.md](CLAUDE.md) for detailed build/test commands and architecture not
 
 ## Getting Started
 
-Requirements: JDK 17, Maven 3.9+, MySQL 8+ (local `root` user with no password). For OTP sign-in e-mails, a local
+Requirements: JDK 25, Maven 3.9+, MySQL 8+ (local `root` user with no password). For OTP sign-in e-mails, a local
 SMTP catcher such as [Mailpit](https://mailpit.axllent.org/) on `localhost:1025`. For the LLM calls, a
 `DEEPSEEK_API_KEY` (both the vision and the text client currently use DeepSeek).
 

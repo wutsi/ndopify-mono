@@ -54,7 +54,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
         <kotlin.code.style>official</kotlin.code.style>
-        <jdk.version>17</jdk.version>
+        <jdk.version>25</jdk.version>
 
         <jacoco.threshold.line>0.98</jacoco.threshold.line>
         <jacoco.threshold.class>0.95</jacoco.threshold.class>
