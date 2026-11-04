@@ -36,6 +36,7 @@ import org.springframework.context.ApplicationEventPublisher
 import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.TransactionStatus
+import org.springframework.transaction.support.TransactionTemplate
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDateTime
@@ -62,6 +63,7 @@ class VisitServiceTest {
     private val expiredMailet = mock<VisitExpiredMailet>()
     private val codeGenerator = mock<VisitCodeGenerator>()
     private val transactionManager = mock<PlatformTransactionManager>()
+    private val tx = TransactionTemplate(transactionManager)
     private val eventPublisher = mock<ApplicationEventPublisher>()
     private val logger = DefaultKVLogger()
 
@@ -84,9 +86,10 @@ class VisitServiceTest {
         expiredMailet,
         codeGenerator,
         eventPublisher,
-        transactionManager,
+        tx,
         clock,
         logger,
+        VisitPolicyProperties(),
     )
 
     private val tenant = TenantEntity(id = 1L, timeZone = "Africa/Douala")

@@ -49,16 +49,16 @@ import com.wutsi.ndopify.visit.server.mail.VisitReminderMailet
 import com.wutsi.ndopify.visit.server.mail.VisitRequestedMailet
 import jakarta.persistence.criteria.Predicate
 import org.slf4j.LoggerFactory
+import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.Sort
 import org.springframework.data.jpa.domain.Specification
 import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.stereotype.Service
-import org.springframework.transaction.PlatformTransactionManager
-import org.springframework.transaction.TransactionDefinition
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.transaction.support.TransactionTemplate
 import java.time.Clock
+import java.time.Duration
 import java.util.Date
 
 /**
@@ -66,6 +66,7 @@ import java.util.Date
  * checked by [VisitAccessService] (from `VisitEndpoints`); this service checks the state of the entities.
  */
 @Service
+@EnableConfigurationProperties(VisitPolicyProperties::class)
 class VisitService(
     private val dao: VisitRepository,
     private val matchDao: MatchRepository,
@@ -82,31 +83,16 @@ class VisitService(
     private val expiredMailet: VisitExpiredMailet,
     private val codeGenerator: VisitCodeGenerator,
     private val eventPublisher: ApplicationEventPublisher,
-    private val transactionManager: PlatformTransactionManager,
+    private val tx: TransactionTemplate,
     private val clock: Clock,
     private val logger: KVLogger,
+    private val policy: VisitPolicyProperties,
 ) {
     companion object {
         // The statuses in which a match already has a visit: only one at a time
         val OPEN_STATUSES = setOf(VisitStatus.REQUESTED, VisitStatus.CONFIRMED, VisitStatus.CHECKED_IN)
 
         private val LOGGER = LoggerFactory.getLogger(VisitService::class.java)
-
-        private const val DAY_MILLIS = 24L * 60 * 60 * 1000
-        private const val HOUR_MILLIS = 60L * 60 * 1000
-        private const val CHECK_IN_BEFORE_MILLIS = HOUR_MILLIS
-        private const val CHECK_IN_AFTER_MILLIS = 4 * HOUR_MILLIS
-        private const val NO_SHOW_DELAY_MILLIS = 15 * 60 * 1000L
-        private const val CHECK_OUT_MIN_MILLIS = 10 * 60 * 1000L
-        private const val EXPIRE_AFTER_MILLIS = 48 * HOUR_MILLIS
-        private const val REMIND_BEFORE_MILLIS = DAY_MILLIS
-        private const val MAX_CODE_ATTEMPTS = 5
-        private const val FLAG_DISTANCE_METERS = 300
-    }
-
-    // Each due visit is processed in its own transaction, so that a conflict (changed meanwhile) only skips that one
-    private val transactionTemplate = TransactionTemplate(transactionManager).apply {
-        propagationBehavior = TransactionDefinition.PROPAGATION_REQUIRES_NEW
     }
 
     fun findById(id: Long): VisitEntity {
@@ -182,7 +168,7 @@ class VisitService(
      * The agent (or an admin) confirms the visit: 400 HTTP_INVALID_PARAMETER for an UNKNOWN type, 400 VISIT_INVALID_SLOT for
      * a date outside the allowed slots, then 409 VISIT_NOT_REQUESTED, VISIT_WHATSAPP_MISSING (a VIDEO visit needs the
      * customer's WhatsApp number). The code is generated here, and the reminder is marked as sent when the visit is
-     * confirmed less than 24 h before it: the confirmation e-mail is the reminder.
+     * confirmed within [VisitPolicyProperties.remindBefore] of it: the confirmation e-mail is the reminder.
      */
     @Transactional
     fun schedule(id: Long, request: ScheduleVisitRequest): VisitEntity {
@@ -220,7 +206,7 @@ class VisitService(
                 type = type,
                 code = codeGenerator.generate(),
                 codeAttempts = 0,
-                reminderSentAt = now.takeIf { request.scheduledAt.time - now.time < DAY_MILLIS },
+                reminderSentAt = now.takeIf { request.scheduledAt.time - now.time < policy.remindBefore.toMillis() },
             ),
         )
         eventPublisher.publishEvent(VisitConfirmedEvent(visitId = saved.id!!, tenantId = visit.tenantId!!))
@@ -229,8 +215,9 @@ class VisitService(
 
     /**
      * The agent checks the customer in. 409 VISIT_NOT_CONFIRMED (ex: cancelled meanwhile), then VISIT_CODE_LOCKED after
-     * [MAX_CODE_ATTEMPTS] wrong codes (for good), then VISIT_OUTSIDE_WINDOW (from 1 h before to 4 h after the time). A
-     * wrong code is counted and kept even though the call fails: a right code after the 5th is still locked.
+     * [VisitPolicyProperties.maxCodeAttempts] wrong codes (for good), then VISIT_OUTSIDE_WINDOW (from
+     * [VisitPolicyProperties.checkInBefore] before to [VisitPolicyProperties.checkInAfter] after the time). A wrong
+     * code is counted and kept even though the call fails: a right code after the last attempt is still locked.
      */
     @Transactional(noRollbackFor = [ConflictException::class])
     fun checkIn(id: Long, request: CheckInVisitRequest): VisitEntity {
@@ -239,17 +226,21 @@ class VisitService(
         if (visit.status != VisitStatus.CONFIRMED) {
             throw ConflictException(error = Error(code = ErrorCode.VISIT_NOT_CONFIRMED))
         }
-        if (visit.codeAttempts >= MAX_CODE_ATTEMPTS) {
+        if (visit.codeAttempts >= policy.maxCodeAttempts) {
             throw ConflictException(error = Error(code = ErrorCode.VISIT_CODE_LOCKED))
         }
-        ensureInWindow(visit, now, -CHECK_IN_BEFORE_MILLIS, CHECK_IN_AFTER_MILLIS)
+        ensureInWindow(visit, now, policy.checkInBefore.negated(), policy.checkInAfter)
 
         if (visit.code != request.code) {
             val attempts = visit.codeAttempts + 1
             dao.save(visit.copy(codeAttempts = attempts))
             throw ConflictException(
                 error = Error(
-                    code = if (attempts >= MAX_CODE_ATTEMPTS) ErrorCode.VISIT_CODE_LOCKED else ErrorCode.VISIT_CODE_INVALID,
+                    code = if (attempts >= policy.maxCodeAttempts) {
+                        ErrorCode.VISIT_CODE_LOCKED
+                    } else {
+                        ErrorCode.VISIT_CODE_INVALID
+                    },
                 ),
             )
         }
@@ -260,7 +251,7 @@ class VisitService(
                 status = VisitStatus.CHECKED_IN,
                 checkedInAt = now,
                 checkInDistanceMeters = distance,
-                checkInFlagged = distance != null && distance > FLAG_DISTANCE_METERS,
+                checkInFlagged = distance != null && distance > policy.flagDistanceMeters,
                 checkInLatitude = request.latitude,
                 checkInLongitude = request.longitude,
                 checkInAccuracy = request.accuracyMeters,
@@ -270,7 +261,8 @@ class VisitService(
 
     /**
      * The agent reports the customer's absence: 400 HTTP_INVALID_PARAMETER for the agent's own absence (a job marks it),
-     * 409 VISIT_NOT_CONFIRMED, then VISIT_OUTSIDE_WINDOW (from 15 min to 4 h after the time).
+     * 409 VISIT_NOT_CONFIRMED, then VISIT_OUTSIDE_WINDOW (from [VisitPolicyProperties.noShowDelay] to
+     * [VisitPolicyProperties.checkInAfter] after the time).
      */
     @Transactional
     fun noShow(id: Long, request: NoShowVisitRequest): VisitEntity {
@@ -287,7 +279,7 @@ class VisitService(
         if (visit.status != VisitStatus.CONFIRMED) {
             throw ConflictException(error = Error(code = ErrorCode.VISIT_NOT_CONFIRMED))
         }
-        ensureInWindow(visit, now, NO_SHOW_DELAY_MILLIS, CHECK_IN_AFTER_MILLIS)
+        ensureInWindow(visit, now, policy.noShowDelay, policy.checkInAfter)
 
         val saved = dao.save(
             visit.copy(
@@ -304,8 +296,8 @@ class VisitService(
     }
 
     /**
-     * The agent checks the customer out: 409 VISIT_NOT_CHECKED_IN, then VISIT_OUTSIDE_WINDOW until 10 minutes after the
-     * check-in. The comment is private to the agent and the admins.
+     * The agent checks the customer out: 409 VISIT_NOT_CHECKED_IN, then VISIT_OUTSIDE_WINDOW until
+     * [VisitPolicyProperties.checkOutMinimum] after the check-in. The comment is private to the agent and the admins.
      */
     @Transactional
     fun checkOut(id: Long, request: CheckOutVisitRequest): VisitEntity {
@@ -314,7 +306,7 @@ class VisitService(
         if (visit.status != VisitStatus.CHECKED_IN) {
             throw ConflictException(error = Error(code = ErrorCode.VISIT_NOT_CHECKED_IN))
         }
-        if (now.time < visit.checkedInAt!!.time + CHECK_OUT_MIN_MILLIS) {
+        if (now.time < visit.checkedInAt!!.time + policy.checkOutMinimum.toMillis()) {
             throw ConflictException(error = Error(code = ErrorCode.VISIT_OUTSIDE_WINDOW))
         }
 
@@ -383,11 +375,12 @@ class VisitService(
     }
 
     /**
-     * Expires the REQUESTED visits older than 48 h, each in its own transaction: a visit scheduled meanwhile fails on
-     * its `@Version` and is skipped. E-mails both sides after commit. Returns how many expired.
+     * Expires the REQUESTED visits older than [VisitPolicyProperties.expireAfter], each in its own transaction: a visit
+     * scheduled meanwhile fails on its `@Version` and is skipped. E-mails both sides after commit. Returns how many
+     * expired.
      */
     fun expireDue(): Int {
-        val before = Date(clock.millis() - EXPIRE_AFTER_MILLIS)
+        val before = Date(clock.millis() - policy.expireAfter.toMillis())
         val due = dao.findByStatusAndCreatedAtBefore(VisitStatus.REQUESTED, before)
         return due.count { visit ->
             update(visit) { current ->
@@ -399,16 +392,16 @@ class VisitService(
     }
 
     /**
-     * Reminds both sides of the CONFIRMED visits starting within 24 h whose reminder wasn't sent: `reminderSentAt` is set
-     * then, so a visit isn't reminded twice (nor one confirmed less than 24 h before, which was marked at confirmation).
-     * Each in its own transaction. Returns how many were reminded.
+     * Reminds both sides of the CONFIRMED visits starting within [VisitPolicyProperties.remindBefore] whose reminder
+     * wasn't sent: `reminderSentAt` is set then, so a visit isn't reminded twice (nor one confirmed within that delay,
+     * which was marked at confirmation). Each in its own transaction. Returns how many were reminded.
      */
     fun remindDue(): Int {
         val now = Date(clock.millis())
         val due = dao.findByStatusAndScheduledAtBetweenAndReminderSentAtIsNull(
             VisitStatus.CONFIRMED,
             now,
-            Date(now.time + REMIND_BEFORE_MILLIS),
+            Date(now.time + policy.remindBefore.toMillis()),
         )
         return due.count { visit ->
             update(visit) { current ->
@@ -420,11 +413,12 @@ class VisitService(
     }
 
     /**
-     * Marks NO_SHOW the CONFIRMED visits whose agent didn't check in within 4 h of the time, each in its own transaction.
-     * `noShowParty = AGENT`, so both sides are e-mailed. Returns how many were marked.
+     * Marks NO_SHOW the CONFIRMED visits whose agent didn't check in within [VisitPolicyProperties.checkInAfter] of the
+     * time, each in its own transaction. `noShowParty = AGENT`, so both sides are e-mailed. Returns how many were
+     * marked.
      */
     fun markAgentNoShows(): Int {
-        val before = Date(clock.millis() - CHECK_IN_AFTER_MILLIS)
+        val before = Date(clock.millis() - policy.checkInAfter.toMillis())
         val due = dao.findByStatusAndScheduledAtBefore(VisitStatus.CONFIRMED, before)
         return due.count { visit ->
             update(visit) { current ->
@@ -444,7 +438,7 @@ class VisitService(
     // Runs [block] in its own transaction; a visit changed meanwhile is skipped, never overwritten
     private fun update(visit: VisitEntity, block: (VisitEntity) -> VisitEntity): Boolean =
         try {
-            transactionTemplate.execute { block(visit) }
+            tx.execute { block(visit) }
             true
         } catch (ex: ObjectOptimisticLockingFailureException) {
             LOGGER.info("Visit#${visit.id} - Changed while processing, left as is")
@@ -457,10 +451,10 @@ class VisitService(
     private fun lock(id: Long): VisitEntity =
         dao.findByIdForUpdate(id) ?: throw NotFoundException(error = Error(code = ErrorCode.VISIT_NOT_FOUND))
 
-    // The visit's time, shifted by [before] (negative: before) and [after] milliseconds
-    private fun ensureInWindow(visit: VisitEntity, now: Date, before: Long, after: Long) {
+    // The visit's time, shifted by [before] (negative: before) and [after]
+    private fun ensureInWindow(visit: VisitEntity, now: Date, before: Duration, after: Duration) {
         val scheduled = visit.scheduledAt!!.time
-        if (now.time < scheduled + before || now.time > scheduled + after) {
+        if (now.time < scheduled + before.toMillis() || now.time > scheduled + after.toMillis()) {
             throw ConflictException(error = Error(code = ErrorCode.VISIT_OUTSIDE_WINDOW))
         }
     }

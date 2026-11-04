@@ -285,6 +285,15 @@ ndopify:
             duration-months: 6             # A mandate's contract is valid for 6 months from its signature
 
     visit:
+        policy: # The delays and tolerances of a visit's lifecycle
+            check-in-before: 1h          # How early the agent may check in
+            check-in-after: 4h           # How late the agent may check in, report a no-show, or be marked absent
+            no-show-delay: 15m           # The customer can't be reported absent before this delay
+            check-out-minimum: 10m       # The minimum length of a visit, before the agent may check out
+            expire-after: 48h            # A request not scheduled within this delay expires
+            remind-before: 24h           # A confirmed visit starting within this delay is reminded
+            max-code-attempts: 5         # Wrong codes after which the visit's code is locked
+            flag-distance-meters: 300    # A check-in farther than this from the listing is flagged
         expire:
             cron: "0 0 * * * ?"         # Every hour: visit requests the agent didn't schedule in 48 h
         reminder:
