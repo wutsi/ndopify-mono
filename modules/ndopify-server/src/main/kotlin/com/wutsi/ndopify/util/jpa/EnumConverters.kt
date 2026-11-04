@@ -31,6 +31,11 @@ import com.wutsi.ndopify.refdata.dto.AuthType
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.dto.StorageType
+import com.wutsi.ndopify.visit.dto.VisitInterest
+import com.wutsi.ndopify.visit.dto.VisitNoShowReason
+import com.wutsi.ndopify.visit.dto.VisitParty
+import com.wutsi.ndopify.visit.dto.VisitStatus
+import com.wutsi.ndopify.visit.dto.VisitType
 import jakarta.persistence.Converter
 
 // The enums of the entities, stored by name (see EnumConverter). Applied to every attribute of their type, so an
@@ -145,3 +150,19 @@ class PeriodicityTypeConverter : EnumConverter<PeriodicityType>(PeriodicityType:
 
 @Converter(autoApply = true)
 class StorageTypeConverter : EnumConverter<StorageType>(StorageType::class.java, StorageType.UNKNOWN)
+
+// visit. VisitParty, VisitNoShowReason and VisitInterest are optional (null when not set)
+@Converter(autoApply = true)
+class VisitInterestConverter : EnumConverter<VisitInterest>(VisitInterest::class.java, null)
+
+@Converter(autoApply = true)
+class VisitNoShowReasonConverter : EnumConverter<VisitNoShowReason>(VisitNoShowReason::class.java, null)
+
+@Converter(autoApply = true)
+class VisitPartyConverter : EnumConverter<VisitParty>(VisitParty::class.java, null)
+
+@Converter(autoApply = true)
+class VisitStatusConverter : EnumConverter<VisitStatus>(VisitStatus::class.java, VisitStatus.UNKNOWN)
+
+@Converter(autoApply = true)
+class VisitTypeConverter : EnumConverter<VisitType>(VisitType::class.java, VisitType.UNKNOWN)
