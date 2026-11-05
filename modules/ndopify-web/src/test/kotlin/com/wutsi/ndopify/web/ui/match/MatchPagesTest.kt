@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.web.ui.match
 
 import com.wutsi.ndopify.agent.dto.Agent
+import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
@@ -8,15 +9,21 @@ import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
+import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import com.wutsi.ndopify.visit.dto.VisitStatus
+import com.wutsi.ndopify.visit.dto.VisitSummary
+import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.web.service.TenantFixtures.FORMATTER
 import com.wutsi.ndopify.web.service.TenantFixtures.TENANT
+import java.time.Instant
 import java.time.LocalDate
+import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -86,13 +93,18 @@ class MatchPagesTest {
 
     private val images = listOf(ListingImage(id = 1, url = "https://cdn/1.jpg"))
 
+    private fun date(iso: String) = Date.from(Instant.parse(iso))
+
     private fun page(
         match: Match = this.match,
         mandate: Mandate = this.mandate,
         agent: Agent = this.agent,
         listing: Listing? = this.listing,
         answer: String? = null,
-    ) = MatchPages.of(match, mandate, agent, listing, images, locations, TENANT, FORMATTER, today, answer)
+        customer: Customer? = null,
+        openVisit: VisitSummary? = null,
+        visit: String? = null,
+    ) = MatchPages.of(match, mandate, agent, listing, images, locations, TENANT, FORMATTER, today, answer, customer, openVisit, visit)
 
     @Test
     fun pending() {
@@ -270,5 +282,61 @@ class MatchPagesTest {
     fun `never the agent's remarks`() {
         assertNotNull(page().listing)
         assertTrue(!page().toString().contains("Propriétaire pressé"))
+    }
+
+    @Test
+    fun `accepted - visit form`() {
+        val page = page(match = match.copy(status = MatchStatus.ACCEPTED), mandate = mandate.copy(status = MandateStatus.APPROVED),
+            customer = Customer(party = Party(firstName = "Sandrine", lastName = "Eboa"), whatsappNumber = "+237699887766"))
+
+        assertEquals(7, page.visit?.form?.days?.size)
+        assertEquals("2026-11-01", page.visit?.form?.days?.first()?.value)
+        assertEquals(25, page.visit?.form?.times?.size)
+        assertEquals("Sandrine Eboa · WhatsApp +237699887766", page.visit?.form?.contact)
+        assertEquals(true, page.visit?.form?.video)
+        assertNull(page.visit?.open)
+    }
+
+    @Test
+    fun `accepted - open visit replaces the form`() {
+        val page = page(match = match.copy(status = MatchStatus.ACCEPTED), mandate = mandate.copy(status = MandateStatus.APPROVED),
+            openVisit = VisitSummary(id = 9, status = VisitStatus.REQUESTED, type = VisitType.VIDEO, requestedAt = date("2026-11-07T09:30:00Z")))
+
+        assertEquals(9L, page.visit?.open?.id)
+        assertEquals("Visite vidéo · samedi 7 novembre 2026 à 10:30", page.visit?.open?.slot)
+        assertNull(page.visit?.form)
+    }
+
+    @Test
+    fun `accepted - mandate not approved leaves no form`() {
+        val page = page(match = match.copy(status = MatchStatus.ACCEPTED), mandate = mandate.copy(status = MandateStatus.PENDING_APPROVAL))
+        assertNull(page.visit?.form)
+    }
+
+    @Test
+    fun `unavailable listing still shows an open visit`() {
+        val page = page(match = match.copy(status = MatchStatus.ACCEPTED), listing = null,
+            openVisit = VisitSummary(id = 9, status = VisitStatus.REQUESTED, type = VisitType.ON_SITE))
+
+        assertEquals(AnswerState.UNAVAILABLE, page.state)
+        assertEquals(9L, page.visit?.open?.id)
+        assertNull(page.visit?.form)
+    }
+
+    @Test
+    fun `accepted - no whatsapp hides the video option`() {
+        val page = page(match = match.copy(status = MatchStatus.ACCEPTED), mandate = mandate.copy(status = MandateStatus.APPROVED),
+            customer = Customer(party = Party(firstName = "Sandrine"), whatsappNumber = null))
+        assertEquals(false, page.visit?.form?.video)
+        assertEquals("Sandrine", page.visit?.form?.contact)
+    }
+
+    @Test
+    fun `visit flashes`() {
+        assertEquals("Votre demande de visite est envoyée. L'agent vous confirme la date par e-mail sous 48 h.",
+            page(match = match.copy(status = MatchStatus.ACCEPTED), openVisit = VisitSummary(id = 9), visit = "requested").visitFlash)
+        assertEquals("Ce créneau n'est plus disponible. Choisissez-en un autre.", page(visit = "invalid-slot").visitFlash)
+        assertEquals("La visite n'a pas pu être demandée. Rechargez la page ou contactez votre agent.", page(visit = "conflict").visitFlash)
+        assertNull(page(visit = "requested").visitFlash) // no open visit: nothing happened
     }
 }
