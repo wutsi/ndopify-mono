@@ -12,8 +12,10 @@ import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.web.service.TenantFixtures.FORMATTER
 import com.wutsi.ndopify.web.service.TenantFixtures.TENANT
+import com.wutsi.ndopify.web.ui.visit.VisitSlots
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import org.springframework.stereotype.Controller
@@ -109,6 +111,8 @@ class MatchTemplateTest {
         listing: Listing? = this.listing,
         agent: Agent = this.agent,
         answer: String? = null,
+        visitPanel: VisitPanel? = null,
+        visitFlash: String? = null,
     ) = MatchPages.of(
         match.copy(status = status),
         mandate,
@@ -120,7 +124,7 @@ class MatchTemplateTest {
         FORMATTER,
         LocalDate.of(2026, 10, 31),
         answer,
-    )
+    ).copy(visit = visitPanel, visitFlash = visitFlash)
 
     private fun html(page: MatchPage = page()): String {
         controller.attributes = mapOf("tenant" to tenant, "page" to page)
@@ -214,6 +218,67 @@ class MatchTemplateTest {
         assertNull(doc.selectFirst("#reject"))
         assertEquals("Vous intéresse", doc.selectFirst("[data-state-badge]")?.text())
         assertEquals("C'est noté : ce logement vous intéresse.", doc.selectFirst(".proposal-flash")?.text())
+    }
+
+    @Test
+    fun `accepted - visit request popup`() {
+        val doc = render(page(MatchStatus.ACCEPTED, visitPanel = VisitPanel(open = null, form = VisitForm(
+            days = VisitSlots.days(LocalDate.of(2026, 10, 31), FORMATTER),
+            times = VisitSlots.times(),
+            contact = "Sandrine Eboa · WhatsApp +237699887766",
+            video = true,
+        ))))
+
+        assertEquals("post", doc.selectFirst("#visit form")?.attr("method"))
+        assertEquals("/match/12/visit", doc.selectFirst("#visit form")?.attr("action"))
+        assertEquals(7, doc.select("#visit input[name=visitDate]").size)
+        assertEquals("2026-11-01", doc.selectFirst("#visit input[name=visitDate]")?.attr("value"))
+        assertEquals(25, doc.select("#visit-time option[value~=.+]").size)
+        assertEquals(listOf("ON_SITE", "VIDEO"), doc.select("#visit input[name=type]").map { it.attr("value") })
+        assertEquals("Sandrine Eboa · WhatsApp +237699887766", doc.selectFirst(".visit-request__contact")?.text())
+        assertEquals("visit-note", doc.selectFirst("#visit textarea")?.attr("id"))
+        assertEquals("Demander une visite", doc.selectFirst(".answer[data-answer=ACCEPTED] .btn")?.text())
+    }
+
+    @Test
+    fun `accepted - no video without whatsapp`() {
+        val doc = render(page(MatchStatus.ACCEPTED, visitPanel = VisitPanel(
+            open = null,
+            form = VisitForm(
+                days = VisitSlots.days(LocalDate.of(2026, 10, 31), FORMATTER),
+                times = VisitSlots.times(),
+                contact = "Sandrine",
+                video = false,
+            ),
+        )))
+
+        assertEquals(listOf("ON_SITE"), doc.select("#visit input[name=type]").map { it.attr("value") })
+    }
+
+    @Test
+    fun `accepted - open visit`() {
+        val doc = render(page(MatchStatus.ACCEPTED, visitPanel = VisitPanel(
+            open = OpenVisit(9, "Sur place", "Sur place · samedi 7 novembre 2026 à 10:30", VisitStatus.REQUESTED),
+            form = null,
+        )))
+
+        assertEquals("Voir ma visite", doc.selectFirst(".answer__visit a")?.text())
+        assertEquals("/visits/9", doc.selectFirst(".answer__visit a")?.attr("href"))
+        assertEquals("Visite demandée : Sur place · samedi 7 novembre 2026 à 10:30.", doc.selectFirst(".answer__visit__slot")?.text())
+        assertEquals("/visits/9", doc.selectFirst(".cta-bar__actions a[href=/visits/9]")?.attr("href"))
+        assertNull(doc.selectFirst("#visit"))
+        assertNull(doc.selectFirst(".answer[data-answer=ACCEPTED] a[data-modal-open]"))
+    }
+
+    @Test
+    fun `unavailable - open visit keeps the link`() {
+        val doc = render(page(MatchStatus.ACCEPTED, listing = null, visitPanel = VisitPanel(
+            open = OpenVisit(9, "Sur place", "Sur place · samedi 7 novembre 2026 à 10:30", VisitStatus.REQUESTED),
+            form = null,
+        )))
+
+        assertEquals("/visits/9", doc.selectFirst("[data-answer=UNAVAILABLE] a[href=/visits/9]")?.attr("href"))
+        assertNull(doc.selectFirst("#visit"))
     }
 
     @Test

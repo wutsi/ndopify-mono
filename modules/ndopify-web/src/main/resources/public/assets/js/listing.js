@@ -105,8 +105,10 @@
   function initVisitForm(modal) {
     var form = modal.querySelector('[data-interest-form]');
     var done = modal.querySelector('[data-interest-done]');
-    var phoneInput = form.querySelector('[data-phone-name]');
-    var submit = form.querySelector('[type="submit"]');
+    var phoneInput = form && form.querySelector('[data-phone-name]');
+    var submit = form && form.querySelector('[type="submit"]');
+    // The match page reuses #visit for its request popup, which has none of the lead form's markers: leave it alone.
+    if (!form || !done || !phoneInput) return;
     var iti = null;
     var phoneBroken = false;
 
