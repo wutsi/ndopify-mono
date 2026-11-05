@@ -89,6 +89,33 @@ class NdVisitClientTest {
     }
 
     @Test
+    fun `search - mandate`() {
+        server.expect(
+            requestTo(
+                "http://localhost:8080/v1/visits?agent-id=20&mandate-id=204" +
+                    "&status=REQUESTED&status=CONFIRMED&status=CHECKED_IN&limit=20",
+            ),
+        )
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(
+                withSuccess(
+                    json(SearchVisitResponse(listOf(VisitSummary(id = 7001, status = VisitStatus.REQUESTED)))),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        assertEquals(
+            listOf(7001L),
+            client.search(
+                20,
+                listOf(VisitStatus.REQUESTED, VisitStatus.CONFIRMED, VisitStatus.CHECKED_IN),
+                mandateId = 204,
+            ).map { it.id },
+        )
+        server.verify()
+    }
+
+    @Test
     fun schedule() {
         server.expect(requestTo("http://localhost:8080/v1/visits/7001/schedule"))
             .andExpect(method(HttpMethod.POST))

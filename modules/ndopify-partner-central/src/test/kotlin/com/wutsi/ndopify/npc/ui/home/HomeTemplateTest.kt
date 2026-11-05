@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.npc.ui.home
 
 import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.anyOrNull
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
@@ -431,7 +432,7 @@ class HomeTemplateTest {
 
     @Test
     fun `visits unavailable`() {
-        doThrow(ResourceAccessException("timeout")).whenever(visitClient).search(any(), any(), any())
+        doThrow(ResourceAccessException("timeout")).whenever(visitClient).search(any(), any(), any(), anyOrNull())
 
         val page = render(get("/"))
 

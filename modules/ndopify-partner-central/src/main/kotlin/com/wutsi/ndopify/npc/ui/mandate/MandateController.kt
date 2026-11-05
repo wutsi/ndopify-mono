@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.mandate
 
+import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.contract.dto.Contract
 import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.error.dto.ErrorCode
@@ -22,6 +23,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
+import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
@@ -33,9 +35,13 @@ import com.wutsi.ndopify.npc.ui.match.MatchRules
 import com.wutsi.ndopify.npc.ui.match.MatchSectionView
 import com.wutsi.ndopify.npc.ui.match.MatchViews
 import com.wutsi.ndopify.npc.ui.profile.ProfileRules
+import com.wutsi.ndopify.npc.ui.visit.VisitCards
+import com.wutsi.ndopify.npc.ui.visit.VisitCardsView
+import com.wutsi.ndopify.npc.ui.visit.VisitRules
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.web.core.service.TenantContext
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import org.slf4j.LoggerFactory
@@ -78,6 +84,11 @@ import java.time.ZoneOffset
  * matches and their listings in one search each, both secondary (a failure is the section's "unavailable"). Their
  * actions are `MatchController`'s; the dismiss confirmation opens without JS through `GET /mandates/{id}?dismiss=`.
  *
+ * Above them, the same signed search lists the client's open visits ([VisitCards]): the requests to confirm, then the
+ * visits to come. A listing whose client has an open visit leaves *Biens correspondants* (the visit replaces its card,
+ * so it isn't shown twice) and comes back once the visit closes. Past visits aren't shown. The visits are another
+ * secondary read: failing, they leave the section's "unavailable" and hide no match.
+ *
  * Out of scope for now (and not checked by ndopify-server either): that the mandate is the signed-in agent's.
  */
 @Controller
@@ -90,6 +101,7 @@ class MandateController(
     private val assignmentClient: NdAssignmentClient,
     private val listingClient: NdListingClient,
     private val matchClient: NdMatchClient,
+    private val visitClient: NdVisitClient,
     locationClient: NdLocationClient,
     private val tenantContext: TenantContext,
     private val clock: Clock,
@@ -152,7 +164,7 @@ class MandateController(
         ProfileRules.header(agent, model)
 
         val mandate = id.toLongOrNull()?.let { load(it) } ?: return locked(model)
-        return render(mandate, end, MandateEndForm(), emptyMap(), model, dismiss)
+        return render(agent, mandate, end, MandateEndForm(), emptyMap(), model, dismiss)
     }
 
     @PostMapping("/{id}/request-approval")
@@ -179,7 +191,7 @@ class MandateController(
         if (amount == null || amount < 1) {
             ProfileRules.header(agent, model)
             val errors = mapOf("finalPrice" to "Indiquez le loyer convenu, en ${formatter().currency()} par mois.")
-            return render(mandate, END_CLOSE, form, errors, model)
+            return render(agent, mandate, END_CLOSE, form, errors, model)
         }
         val price = Money(amount, mandate.price.currency, PeriodicityType.MONTHLY)
         return act(id, CLOSED, redirect) { mandateClient.close(id, CloseMandateRequest(price)) }
@@ -206,7 +218,7 @@ class MandateController(
         ).toMap()
         if (errors.isNotEmpty()) {
             ProfileRules.header(agent, model)
-            return render(mandate, END_CANCEL, form.copy(cancellationCode = code), errors, model)
+            return render(agent, mandate, END_CANCEL, form.copy(cancellationCode = code), errors, model)
         }
         return act(id, CANCELLED, redirect) { mandateClient.cancel(id, CancelMandateRequest(code, reason)) }
     }
@@ -327,6 +339,7 @@ class MandateController(
     }
 
     private fun render(
+        agent: Agent,
         mandate: Mandate,
         end: String?,
         form: MandateEndForm,
@@ -334,13 +347,35 @@ class MandateController(
         model: Model,
         dismiss: String? = null,
     ): String {
-        val matches = if (MatchRules.matched(mandate)) matches(mandate) else null
+        val matched = MatchRules.matched(mandate)
+        val matches = if (matched) matches(mandate) else null
+        val visits = if (matched) openVisits(agent, mandate) else null
+        val visitListings = visits?.let { loadVisitListings(mandate, it) }
         val listings = matches?.let { listings(mandate, it) }
-        val locations = locations(mandate, listings?.values.orEmpty())
+        val locations = locations(mandate, listings?.values.orEmpty() + visitListings?.values.orEmpty())
         val view = view(mandate, locations)
         model.addAttribute("mandate", view)
-        if (MatchRules.matched(mandate)) {
-            val section = MatchViews.section(mandate, matches, listings, locations, today(), formatter())
+        if (matched) {
+            val formatter = formatter()
+            val cards = VisitCards.of(
+                visits,
+                visitListings,
+                emptyMap(),
+                locations,
+                clock.millis(),
+                tenantContext.getTenant(),
+                formatter,
+            )
+            model.addAttribute("visits", cards)
+            val converted = convertedMatchIds(visits, cards)
+            val section = MatchViews.section(
+                mandate,
+                matches?.filterNot { it.id in converted },
+                listings,
+                locations,
+                today(),
+                formatter,
+            )
             model.addAttribute("matchSection", section)
             model.addAttribute("dismissing", dismissing(section, dismiss))
         }
@@ -402,6 +437,33 @@ class MandateController(
         return lookup("listings of the matches of mandate ${mandate.id}") {
             listingClient.searchByIds(ids).associateBy { it.id }
         }
+    }
+
+    /** The signed search's open visits, null when they can't be read: the client may have one per match at most. */
+    private fun openVisits(agent: Agent, mandate: Mandate): List<VisitSummary>? =
+        lookup("visits of mandate ${mandate.id}") {
+            visitClient.search(agent.id, VisitRules.OPEN, mandateId = mandate.id)
+        }
+
+    /** The visits' listings by id, in one search; null when they can't be read (the cards keep their number only). */
+    private fun loadVisitListings(mandate: Mandate, visits: List<VisitSummary>): Map<Long, ListingSummary>? =
+        if (visits.isEmpty()) {
+            emptyMap()
+        } else {
+            lookup("listings of the visits of mandate ${mandate.id}") {
+                listingClient.searchByIds(visits.map { it.listingId }.distinct()).associateBy { it.id }
+            }
+        }
+
+    /**
+     * The matches whose client has an open visit shown on the page: *Visites* replaces their card in *Biens
+     * correspondants*, so a listing isn't shown twice. A visit that isn't shown (a request past its 48 h, a confirmed
+     * one past its window) doesn't hide its match.
+     */
+    private fun convertedMatchIds(visits: List<VisitSummary>?, cards: VisitCardsView): Set<Long> {
+        if (visits == null) return emptySet()
+        val shown = (cards.requested + cards.upcoming).map { it.id }.toSet()
+        return visits.asSequence().filter { it.id in shown }.mapNotNull { it.matchId }.toSet()
     }
 
     /** The flash outcome of the last action, worded after the mandate as it is now. */

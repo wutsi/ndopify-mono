@@ -39,12 +39,16 @@ class NdVisitClient(
             ?.visit
             ?: Visit()
 
-    /** The visits of [agentId] in [statuses], one `status` parameter each. */
-    fun search(agentId: Long, statuses: List<VisitStatus>, limit: Int = 20): List<VisitSummary> =
+    /**
+     * The visits of [agentId] in [statuses], one `status` parameter each; every one of the mandate [mandateId] when
+     * given.
+     */
+    fun search(agentId: Long, statuses: List<VisitStatus>, limit: Int = 20, mandateId: Long? = null): List<VisitSummary> =
         rest.get()
             .uri { uri ->
                 uri.path("/v1/visits")
                     .queryParam("agent-id", agentId)
+                mandateId?.let { uri.queryParam("mandate-id", it) }
                 statuses.forEach { uri.queryParam("status", it) }
                 uri.queryParam("limit", limit).build()
             }

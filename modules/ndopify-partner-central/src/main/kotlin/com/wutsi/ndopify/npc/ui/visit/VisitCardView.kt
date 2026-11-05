@@ -1,8 +1,8 @@
 package com.wutsi.ndopify.npc.ui.visit
 
 /**
- * A visit on the Espace agent, as its card shows it. Anti-bypass: no code, no note, no address — the listing's line
- * only, until the visit's page.
+ * A visit as a card: the Espace agent's, and a signed search's mandate page. Anti-bypass: no code, no note, no address
+ * — the listing's line only, until the visit's page.
  */
 data class VisitCardView(
     val id: Long,
@@ -18,7 +18,10 @@ data class VisitCardView(
     val nextStep: String,
 )
 
-/** The *Visites* section of the Espace agent: the requests to confirm, then the visits to come. */
+/**
+ * The *Visites* section of the Espace agent and of a signed search's mandate page: the requests to confirm, then the
+ * visits to come.
+ */
 data class VisitCardsView(
     val requested: List<VisitCardView>,
     val upcoming: List<VisitCardView>,

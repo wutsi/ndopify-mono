@@ -29,6 +29,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
+import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest
@@ -50,8 +51,12 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AKWA
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BASTOS
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BONAPRISO
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.DOUALA
+import com.wutsi.ndopify.npc.ui.visit.VisitCardsView
+import com.wutsi.ndopify.npc.ui.visit.VisitFixtures
+import com.wutsi.ndopify.npc.ui.visit.VisitRules
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -79,6 +84,7 @@ class MandateControllerTest {
     private val assignmentClient = mock<NdAssignmentClient>()
     private val listingClient = mock<NdListingClient>()
     private val matchClient = mock<NdMatchClient>()
+    private val visitClient = mock<NdVisitClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
@@ -104,6 +110,7 @@ class MandateControllerTest {
             assignmentClient,
             listingClient,
             matchClient,
+            visitClient,
             locationClient,
             tenantContext,
             clock,
@@ -488,6 +495,66 @@ class MandateControllerTest {
         assertEquals(201L, mandate(result).id)
     }
 
+    /** A signed search whose client has an open visit on [matchA], plus a proposal still awaiting an answer. */
+    private fun withVisit(vararg visits: VisitSummary) {
+        doReturn(APPROVED).whenever(mandateClient).get(201)
+        doReturn(
+            listOf(
+                matchB,
+                matchA.copy(status = MatchStatus.ACCEPTED),
+                matchA.copy(id = 9009, listingId = 3099, status = MatchStatus.DISMISSED),
+            ),
+        ).whenever(matchClient).search(any(), any(), any())
+        doReturn(listOf(listingA, listingB)).whenever(listingClient).searchByIds(any())
+        doReturn(visits.toList()).whenever(visitClient).search(AGENT.id, VisitRules.OPEN, 20, 201L)
+    }
+
+    @Test
+    fun `approved search - open visit replaces its match`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        withVisit(VisitFixtures.summary(VisitFixtures.requested().copy(mandateId = 201, matchId = 9001)))
+
+        val result = mvc.perform(get("/mandates/201")).andReturn()
+
+        val visits = model(result)["visits"] as VisitCardsView
+        assertEquals(listOf(7001L), visits.requested.map { it.id })
+        assertEquals("Sur place · Appartement 3 chambres · Bonapriso", visits.requested.single().listing)
+        assertEquals("42 h", visits.requested.single().expiresIn)
+        assertEquals("Confirmez la date avec le client.", visits.requested.single().nextStep)
+        assertEquals(listOf(9003L), section(result).matches.map { it.id })
+        assertEquals("1 en attente", section(result).proposals)
+        verify(visitClient).search(AGENT.id, VisitRules.OPEN, 20, 201L)
+    }
+
+    @Test
+    fun `approved search - visits unavailable - every match shown`() {
+        withMatches()
+        doThrow(ResourceAccessException("timeout")).whenever(visitClient).search(AGENT.id, VisitRules.OPEN, 20, 201L)
+
+        val result = mvc.perform(get("/mandates/201")).andReturn()
+
+        assertTrue((model(result)["visits"] as VisitCardsView).unavailable)
+        assertEquals(listOf(9001L, 9003L), section(result).matches.map { it.id })
+    }
+
+    @Test
+    fun `approved search - stale visit leaves its match shown`() {
+        withVisit(
+            VisitFixtures.summary(
+                VisitFixtures.requested().copy(
+                    mandateId = 201,
+                    matchId = 9001,
+                    createdAt = VisitFixtures.date("2026-10-15T10:00:00Z"),
+                ),
+            ),
+        )
+
+        val result = mvc.perform(get("/mandates/201")).andReturn()
+
+        assertTrue((model(result)["visits"] as VisitCardsView).requested.isEmpty())
+        assertEquals(listOf(9001L, 9003L), section(result).matches.map { it.id })
+    }
+
     @Test
     fun `not a signed search - no matches`() {
         doReturn(APPROVED.copy(mandateType = MandateType.LISTING)).whenever(mandateClient).get(201)
@@ -499,6 +566,18 @@ class MandateControllerTest {
         assertNull(model(landlord)["matchSection"])
         assertNull(model(assigned)["matchSection"])
         verify(matchClient, never()).search(any(), any(), any())
+    }
+
+    @Test
+    fun `not a signed search - no visits`() {
+        doReturn(APPROVED.copy(mandateType = MandateType.LISTING)).whenever(mandateClient).get(201)
+        val landlord = mvc.perform(get("/mandates/201")).andReturn()
+        doReturn(MANDATE).whenever(mandateClient).get(201)
+        val assigned = mvc.perform(get("/mandates/201")).andReturn()
+
+        assertNull(model(landlord)["visits"])
+        assertNull(model(assigned)["visits"])
+        verify(visitClient, never()).search(any(), any(), any(), any())
     }
 
     @Test

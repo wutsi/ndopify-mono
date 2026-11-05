@@ -4,6 +4,8 @@ import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.never
+import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.mandate.dto.Mandate
@@ -18,6 +20,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
+import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdviceTest
@@ -36,6 +39,9 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BONAPRISO
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.DOUALA
+import com.wutsi.ndopify.npc.ui.visit.VisitFixtures
+import com.wutsi.ndopify.npc.ui.visit.VisitRules
+import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -72,6 +78,7 @@ class MandateTemplateTest {
     private val assignmentClient = mock<NdAssignmentClient>()
     private val listingClient = mock<NdListingClient>()
     private val matchClient = mock<NdMatchClient>()
+    private val visitClient = mock<NdVisitClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
@@ -113,6 +120,7 @@ class MandateTemplateTest {
                     assignmentClient,
                     listingClient,
                     matchClient,
+                    visitClient,
                     locationClient,
                     tenantContext,
                     clock,
@@ -569,6 +577,104 @@ class MandateTemplateTest {
             listOf(MatchFixtures.LISTING_A, MatchFixtures.LISTING_B, MatchFixtures.LISTING_C)
                 .map { it.copy(cityId = DOUALA, neighborhoodId = BONAPRISO) },
         ).whenever(listingClient).searchByIds(any())
+    }
+
+    /** A signed search with an ACCEPTED match (9001) whose client has [visits], plus a proposal awaiting an answer. */
+    private fun withVisits(vararg visits: VisitSummary) {
+        withMatches(
+            MatchFixtures.MATCH_B.copy(mandateId = 201, status = MatchStatus.PROPOSED, proposedAt = proposedAt),
+            MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.ACCEPTED),
+            MatchFixtures.MATCH_C.copy(mandateId = 201, status = MatchStatus.DISMISSED),
+        )
+        doReturn(visits.toList()).whenever(visitClient).search(AGENT.id, VisitRules.OPEN, 20, 201L)
+    }
+
+    @Test
+    fun visits() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        withVisits(VisitFixtures.summary(VisitFixtures.requested().copy(mandateId = 201, matchId = 9001)))
+
+        val page = render(APPROVED)
+
+        val section = page.selectFirst("section[data-mandate-visits]")!!
+        assertEquals("Visites", section.selectFirst("#visits-title")?.text())
+        val group = section.selectFirst("[data-mandate-visit-group=requested]")!!
+        assertEquals("À confirmer", group.selectFirst(".visit-group__title")?.text())
+        val card = group.selectFirst("[data-mandate-visit]")!!
+        assertEquals("7001", card.attr("data-mandate-visit-id"))
+        assertEquals("/visits/7001", card.selectFirst("a[data-mandate-visit-link]")?.attr("href"))
+        assertEquals("Sur place · Appartement 3 chambres · Bonapriso", card.selectFirst("[data-mandate-visit-link]")?.text())
+        assertEquals("Demandée pour le sam. 7 novembre 2026 à 10:30", card.selectFirst("[data-mandate-visit-when]")?.text())
+        assertEquals("Il reste 42 h pour confirmer", card.selectFirst("[data-mandate-visit-timer]")?.text())
+        assertEquals("Confirmez la date avec le client.", card.selectFirst("[data-mandate-visit-next]")?.text())
+        assertNull(card.selectFirst("[data-mandate-visit-tag]"))
+
+        // The match the visit came from is replaced by the visit, not shown twice.
+        val matches = page.selectFirst("section[data-matches-section]")!!
+        assertEquals(listOf("9003"), matches.select("[data-match]").map { it.attr("data-match-id") })
+        assertEquals("1 en attente", matches.selectFirst("[data-match-proposals-text]")?.text())
+        // Above Biens correspondants
+        assertEquals("Biens correspondants", section.nextElementSibling()?.selectFirst("h2")?.text())
+    }
+
+    @Test
+    fun `visits - confirmed`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        withVisits(VisitFixtures.summary(VisitFixtures.confirmed().copy(mandateId = 201, matchId = 9001)))
+
+        val card = render(APPROVED).selectFirst("[data-mandate-visits] [data-mandate-visit]")!!
+
+        assertEquals("Confirmée", card.selectFirst("[data-mandate-visit-tag]")?.text())
+        assertEquals("status-tag status-tag--success", card.selectFirst("[data-mandate-visit-tag]")?.className())
+        assertEquals("sam. 7 novembre 2026 à 10:30", card.selectFirst("[data-mandate-visit-when]")?.text())
+        assertNull(card.selectFirst("[data-mandate-visit-timer]"))
+        assertEquals("Le jour J, demandez son code au client.", card.selectFirst("[data-mandate-visit-next]")?.text())
+    }
+
+    @Test
+    fun `visits unavailable`() {
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.ACCEPTED))
+        doThrow(ResourceAccessException("timeout")).whenever(visitClient).search(AGENT.id, VisitRules.OPEN, 20, 201L)
+
+        val page = render(APPROVED)
+
+        val section = page.selectFirst("section[data-mandate-visits]")!!
+        assertEquals(
+            "Les visites de ce mandat ne peuvent pas être affichées pour le moment.",
+            section.selectFirst("[data-visits-unavailable]")?.text(),
+        )
+        // Without the visits, no match is hidden.
+        assertEquals(listOf("9001"), page.select("[data-match]").map { it.attr("data-match-id") })
+    }
+
+    @Test
+    fun `visits - every match in a visit`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.ACCEPTED))
+        doReturn(listOf(VisitFixtures.summary(VisitFixtures.requested().copy(mandateId = 201, matchId = 9001))))
+            .whenever(visitClient).search(AGENT.id, VisitRules.OPEN, 20, 201L)
+
+        val matches = render(APPROVED).selectFirst("section[data-matches-section]")!!
+
+        assertNull(matches.selectFirst("[data-match]"))
+        assertNull(matches.selectFirst("[data-match-empty]"))
+        assertEquals(
+            "Les biens correspondants de ce client sont en visite : retrouvez-les dans Visites ci-dessus.",
+            matches.selectFirst("[data-match-in-visit]")?.text()?.replace('\u00a0', ' '),
+        )
+    }
+
+    @Test
+    fun `no open visits - no section`() {
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201))
+
+        assertNull(render(APPROVED).selectFirst("[data-mandate-visits]"))
+    }
+
+    @Test
+    fun `not a search - no visits`() {
+        assertNull(render(APPROVED.copy(mandateType = MandateType.LISTING)).selectFirst("[data-mandate-visits]"))
+        verify(visitClient, never()).search(any(), any(), any(), any())
     }
 
     @Test

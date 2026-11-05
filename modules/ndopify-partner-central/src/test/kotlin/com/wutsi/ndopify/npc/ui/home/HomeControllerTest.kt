@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.npc.ui.home
 
 import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.anyOrNull
 import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
@@ -82,7 +83,7 @@ class HomeControllerTest {
         doReturn(AssignmentViewsTest.NOW).whenever(clock).millis()
         doReturn(emptyList<AssignmentSummary>()).whenever(assignmentClient).pending(any())
         doReturn(emptyList<MandateSummary>()).whenever(mandateClient).active(any())
-        doReturn(emptyList<VisitSummary>()).whenever(visitClient).search(any(), any(), any())
+        doReturn(emptyList<VisitSummary>()).whenever(visitClient).search(any(), any(), any(), anyOrNull())
         doReturn(emptyList<CustomerSummary>()).whenever(customerClient).search(any())
 
         val controller = HomeController(
@@ -590,7 +591,7 @@ class HomeControllerTest {
 
     @Test
     fun `visits unavailable`() {
-        doThrow(ResourceAccessException("timeout")).whenever(visitClient).search(any(), any(), any())
+        doThrow(ResourceAccessException("timeout")).whenever(visitClient).search(any(), any(), any(), anyOrNull())
 
         val result = mvc.perform(get("/")).andReturn()
 
@@ -604,7 +605,7 @@ class HomeControllerTest {
         val result = mvc.perform(get("/")).andReturn()
 
         assertNull(model(result)["visits"])
-        verify(visitClient, never()).search(any(), any(), any())
+        verify(visitClient, never()).search(any(), any(), any(), anyOrNull())
     }
 
     @Test

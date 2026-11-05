@@ -14,10 +14,11 @@ import java.time.LocalDate
 import java.util.Date
 
 /**
- * Builds the *Visites* section of the Espace agent (see [VisitCardsView]) after the prototype's `renderVisits`: the
- * requests still within their 48 h, soonest expiry first, and the visits to come. A requested visit past its 48 h and
- * a confirmed one past its `+ 4 h` window are dropped even when ndopify-server's job hasn't moved them yet.
- * [listings] and [customers] are secondary: null or a missing entry only leaves that line out.
+ * Builds the *Visites* sections (see [VisitCardsView]) after the prototype's `renderVisits`: the Espace agent's and,
+ * filtered by mandate, a signed search's mandate page. The requests still within their 48 h, soonest expiry first,
+ * and the visits to come. A requested visit past its 48 h and a confirmed one past its `+ 4 h` window are dropped even
+ * when ndopify-server's job hasn't moved them yet. [listings] and [customers] are secondary: null or a missing entry
+ * only leaves that line out.
  */
 object VisitCards {
     private const val URGENT = 12 * 3_600_000L

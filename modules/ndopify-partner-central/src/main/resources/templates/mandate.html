@@ -16,6 +16,7 @@
     <link rel="stylesheet" th:href="@{/assets/css/join.css}">
     <link rel="stylesheet" th:href="@{/assets/css/home.css}">
     <link rel="stylesheet" th:href="@{/assets/css/listing.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/visit.css}">
     <script th:src="@{/assets/js/partner-central.js}" defer></script>
     <script th:src="@{/assets/js/mandate.js}" defer></script>
 </head>
@@ -32,6 +33,10 @@
   "end" is the close / cancel form open without JS ("close", "cancel" or null), "form" its values (MandateEndForm)
   and "errors" its errors per field. "outcomeText" / "outcomeStyle" are the last action's outcome (flash attribute
   "outcome", worded by MandateController).
+  "visits" is a signed search's open visits (VisitCardsView: the requests to confirm, then the visits to come), null
+  for any other mandate. A visit shown there replaces its match's card in Biens correspondants, so the listing isn't
+  shown twice; a visit that isn't shown (a request past its 48 h, a confirmed one past its +4 h window) leaves its
+  match in place. Past visits are never shown.
   "matchSection" is a signed search's Biens correspondants (MatchSectionView), null for any other mandate; "dismissing"
   the id of the match whose dismiss confirmation is open without JS; "matchOutcomeText" / "matchOutcomeStyle" the
   outcome of MatchController's last action (flash attribute "match").
@@ -294,6 +299,82 @@
                     </p>
                 </section>
 
+                <!--
+                    The signed search's open visits, above Biens correspondants: the request to confirm, then the
+                    visits to come. Each opens its visit page; a listing with an open visit isn't in Biens
+                    correspondants (the controller hides that match), so nothing is shown twice. Past visits aren't
+                    shown.
+                -->
+                <section class="home-section" aria-labelledby="visits-title" data-mandate-visits
+                         th:if="${visits != null and (visits.unavailable or !#lists.isEmpty(visits.requested) or !#lists.isEmpty(visits.upcoming))}">
+                    <h2 id="visits-title">Visites</h2>
+
+                    <div class="alert alert--warning" th:if="${visits.unavailable}" data-visits-unavailable>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                        <p>Les visites de ce mandat ne peuvent pas être affichées pour le moment.</p>
+                    </div>
+
+                    <div class="visit-group" th:if="${!#lists.isEmpty(visits.requested)}" data-mandate-visit-group="requested">
+                        <h3 class="visit-group__title">À confirmer</h3>
+                        <ul class="assignments visit-cards" data-mandate-visit-list>
+                            <li class="mandate-card visit-card" th:each="v : ${visits.requested}" data-mandate-visit
+                                th:attr="data-mandate-visit-id=${v.id}">
+                                <article th:attr="aria-labelledby=|mandate-visit-${v.id}-title|">
+                                    <div class="assignment__head">
+                                        <h4 th:id="|mandate-visit-${v.id}-title|" class="assignment__type">
+                                            <a class="mandate-card__link" data-mandate-visit-link
+                                               th:href="@{/visits/{id}(id=${v.id})}" th:text="${v.listing}">Sur place · Appartement 3 chambres · Bonapriso</a>
+                                        </h4>
+                                        <p th:if="${v.tag != null}" th:class="|status-tag status-tag--${v.tag.style}|"
+                                           th:text="${v.tag.label}" data-mandate-visit-tag>Confirmée</p>
+                                    </div>
+                                    <p class="visit-card__when">
+                                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                                        <span th:text="${v.whenLabel}" data-mandate-visit-when>Demandée pour le sam. 7 novembre 2026 à 10:30</span>
+                                    </p>
+                                    <p class="assignment__timer visit-card__timer" th:if="${v.expiresIn != null}"
+                                       data-mandate-visit-timer>
+                                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                        <span>Il reste <strong th:text="${v.expiresIn}">42 h</strong> pour confirmer</span>
+                                    </p>
+                                    <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong>
+                                        <span th:text="${v.nextStep}" data-mandate-visit-next>Confirmez la date avec le client.</span></p>
+                                </article>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="visit-group" th:if="${!#lists.isEmpty(visits.upcoming)}" data-mandate-visit-group="upcoming">
+                        <h3 class="visit-group__title">À venir</h3>
+                        <ul class="assignments visit-cards" data-mandate-visit-list>
+                            <li class="mandate-card visit-card" th:each="v : ${visits.upcoming}" data-mandate-visit
+                                th:attr="data-mandate-visit-id=${v.id}">
+                                <article th:attr="aria-labelledby=|mandate-visit-${v.id}-title|">
+                                    <div class="assignment__head">
+                                        <h4 th:id="|mandate-visit-${v.id}-title|" class="assignment__type">
+                                            <a class="mandate-card__link" data-mandate-visit-link
+                                               th:href="@{/visits/{id}(id=${v.id})}" th:text="${v.listing}">Sur place · Appartement 3 chambres · Bonapriso</a>
+                                        </h4>
+                                        <p th:if="${v.tag != null}" th:class="|status-tag status-tag--${v.tag.style}|"
+                                           th:text="${v.tag.label}" data-mandate-visit-tag>Confirmée</p>
+                                    </div>
+                                    <p class="visit-card__when">
+                                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                                        <span th:text="${v.whenLabel}" data-mandate-visit-when>Aujourd'hui · 10:30</span>
+                                    </p>
+                                    <p class="assignment__timer visit-card__timer" th:if="${v.expiresIn != null}"
+                                       data-mandate-visit-timer>
+                                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                        <span>Il reste <strong th:text="${v.expiresIn}">42 h</strong> pour confirmer</span>
+                                    </p>
+                                    <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong>
+                                        <span th:text="${v.nextStep}" data-mandate-visit-next>Le jour J, demandez son code au client.</span></p>
+                                </article>
+                            </li>
+                        </ul>
+                    </div>
+                </section>
+
                 <section class="home-section" aria-labelledby="matches-title" th:if="${matchSection}"
                          th:with="ms=${matchSection}" data-matches-section>
                     <div class="matches__head">
@@ -392,7 +473,15 @@
                             </li>
                         </ul>
 
-                        <p class="assignments__empty" th:if="${#lists.isEmpty(ms.matches) && ms.proposals == null}" data-match-empty>
+                        <p class="assignments__empty" th:if="${#lists.isEmpty(ms.matches) && ms.proposals == null
+                                && visits != null && (!#lists.isEmpty(visits.requested) || !#lists.isEmpty(visits.upcoming))}"
+                           data-match-in-visit>
+                            Les biens correspondants de ce client sont en visite&nbsp;: retrouvez-les dans
+                            <em>Visites</em> ci-dessus.
+                        </p>
+                        <p class="assignments__empty" th:if="${#lists.isEmpty(ms.matches) && ms.proposals == null
+                                && (visits == null || (#lists.isEmpty(visits.requested) && #lists.isEmpty(visits.upcoming)))}"
+                           data-match-empty>
                             Aucun de vos biens ne correspond à cette recherche pour le moment. Dès qu'une de vos annonces
                             publiées correspond, elle apparaît ici et vous êtes prévenu par e-mail.
                         </p>
