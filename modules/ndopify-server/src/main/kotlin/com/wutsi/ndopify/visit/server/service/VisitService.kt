@@ -480,6 +480,9 @@ class VisitService(
             if (request.matchIds.isNotEmpty()) {
                 predicates.add(root.get<Long>("matchId").`in`(request.matchIds))
             }
+            if (request.listingIds.isNotEmpty()) {
+                predicates.add(root.get<Long>("listingId").`in`(request.listingIds))
+            }
             if (request.agentIds.isNotEmpty()) {
                 predicates.add(root.get<Long>("agentId").`in`(request.agentIds))
             }

@@ -78,6 +78,13 @@ class SearchVisitEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `by listing`() {
+        assertEquals(listOf(1L, 3L), search("/v1/visits?listing-id=101").map { it.id })
+        assertEquals(listOf(2L), search("/v1/visits?listing-id=102").map { it.id })
+        assertEquals(emptyList(), search("/v1/visits?listing-id=109").map { it.id }) // Another agent's visit
+    }
+
+    @Test
     fun `limit and offset`() {
         val visits = search("/v1/visits?limit=1&offset=1")
 

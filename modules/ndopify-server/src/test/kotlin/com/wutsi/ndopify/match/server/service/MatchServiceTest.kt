@@ -24,7 +24,6 @@ import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.dao.MatchRepository
 import com.wutsi.ndopify.match.server.domain.MatchEntity
-import com.wutsi.ndopify.platform.logger.DefaultKVLogger
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchNearestLocationRequest
 import com.wutsi.ndopify.refdata.server.domain.LocationEntity
@@ -73,7 +72,6 @@ class MatchServiceTest {
         locationService,
         tenantService,
         clock,
-        DefaultKVLogger(),
         0.5,
         3.0,
         20,
