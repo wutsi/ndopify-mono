@@ -55,7 +55,7 @@ class ListingRulesTest {
         assertEquals(ListingRules.Tag("Brouillon", "info"), ListingRules.tag(ListingStatus.DRAFT))
         assertEquals(ListingRules.Tag("En vérification", "warning"), ListingRules.tag(ListingStatus.PENDING_VERIFICATION))
         assertEquals(ListingRules.Tag("En vérification", "warning"), ListingRules.tag(ListingStatus.UNDER_VERIFICATION))
-        assertEquals(ListingRules.Tag("En vérification", "warning"), ListingRules.tag(ListingStatus.VERIFIED))
+        assertEquals(ListingRules.Tag("Vérifiée", "success"), ListingRules.tag(ListingStatus.VERIFIED))
         assertEquals(ListingRules.Tag("En vérification", "warning"), ListingRules.tag(ListingStatus.PUBLISHING))
         assertEquals(ListingRules.Tag("Publiée", "success"), ListingRules.tag(ListingStatus.PUBLISHED))
         assertEquals(ListingRules.Tag("Fermée", "neutral"), ListingRules.tag(ListingStatus.RENTED))

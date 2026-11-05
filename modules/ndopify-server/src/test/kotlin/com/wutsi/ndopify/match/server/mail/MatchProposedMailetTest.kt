@@ -12,6 +12,8 @@ import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
+import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
+import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.match.dto.MatchStatus
@@ -37,7 +39,9 @@ class MatchProposedMailetTest {
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
     private val linkTokenService = mock<MatchLinkTokenService>()
-    private val mailet = MatchProposedMailet(tenantService, locationService, mailService, mailBodyResolver, linkTokenService)
+    private val imageService = mock<ListingImageService>()
+    private val mailet =
+        MatchProposedMailet(tenantService, locationService, mailService, mailBodyResolver, linkTokenService, imageService)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -79,6 +83,8 @@ class MatchProposedMailetTest {
         doReturn(LocationEntity(id = 111L, name = "Bastos")).whenever(locationService).findByIdOrNull(111L)
         doReturn("<html>proposed</html>").whenever(mailBodyResolver).resolve(any(), any())
         doReturn("xxx.yyy.zzz").whenever(linkTokenService).create(customer)
+        doReturn(ListingImageEntity(id = 7L, listingId = 101L, url = "https://cdn.ndopify.com/7.jpg"))
+            .whenever(imageService).cover(any())
     }
 
     @Test
@@ -95,6 +101,7 @@ class MatchProposedMailetTest {
                 "online" to true,
                 "listings" to listOf(
                     mapOf(
+                        "image_url" to "https://cdn.ndopify.com/7.jpg",
                         "listing_title" to "Nice apartment",
                         "price_label" to "Loyer",
                         "price" to "150 000 FCFA / mois",
@@ -162,6 +169,15 @@ class MatchProposedMailetTest {
         mailet.send(listOf(match.copy(listing = listing.copy(url = null))), customer, agent)
 
         assertEquals("https://www.ndopify.com/match/1?token=xxx.yyy.zzz", listing()["listing_url"])
+    }
+
+    @Test
+    fun `no photo - no image`() {
+        doReturn(null).whenever(imageService).cover(any())
+
+        mailet.send(listOf(match), customer, agent)
+
+        assertNull(listing()["image_url"])
     }
 
     @Test

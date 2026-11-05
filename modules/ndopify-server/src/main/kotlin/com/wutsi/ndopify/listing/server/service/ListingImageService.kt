@@ -11,6 +11,7 @@ import com.wutsi.ndopify.listing.dto.ImageStatus
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.SearchListingImageRequest
 import com.wutsi.ndopify.listing.server.dao.ListingImageRepository
+import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.platform.util.MimeUtils
@@ -45,6 +46,18 @@ class ListingImageService(
         } else {
             dao.findByListingIdAndStatusInOrderById(listingId, request.statuses)
         }
+    }
+
+    /**
+     * The photo shown for the listing outside its page (ex: in an e-mail): its hero image while VERIFIED, else its
+     * oldest VERIFIED photo; null without any.
+     */
+    fun cover(listing: ListingEntity): ListingImageEntity? {
+        val id = listing.id ?: return null
+        return listing.heroImageId
+            ?.let { dao.findByIdAndListingId(it, id) }
+            ?.takeIf { it.status == ImageStatus.VERIFIED }
+            ?: dao.findByListingIdAndStatusInOrderById(id, listOf(ImageStatus.VERIFIED)).firstOrNull()
     }
 
     /** 404 LISTING_IMAGE_NOT_FOUND for an image that isn't the listing's. */

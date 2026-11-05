@@ -1,5 +1,8 @@
 package com.wutsi.ndopify.refdata.server.service
 
+import com.google.i18n.phonenumbers.NumberParseException
+import com.google.i18n.phonenumbers.PhoneNumberUtil
+import com.google.i18n.phonenumbers.PhoneNumberUtil.PhoneNumberFormat
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
@@ -10,7 +13,7 @@ import java.util.Date
 import java.util.Locale
 
 /**
- * Formats dates and amounts with the tenant's rules: its patterns (`dateFormat`, `timeFormat`, `numberFormat`,
+ * Formats dates, amounts and phone numbers with the tenant's rules: its patterns (`dateFormat`, `timeFormat`, `numberFormat`,
  * `monetaryFormat`), its first locale (month names, separators) and its `timeZone` (dates as its users read them).
  * A blank pattern falls back to a default.
  */
@@ -43,6 +46,20 @@ class TenantFormatter(private val tenant: TenantEntity) {
         } else {
             "${number(amount, tenant.numberFormat.ifBlank { DEFAULT_NUMBER_FORMAT })} $currencyCode"
         }
+
+    /**
+     * A phone number in the international format (ex: `+237 6 99 00 00 01`); one without its country code is read as
+     * the tenant's `countryCode`. One that can't be read is shown as entered; null when blank.
+     */
+    fun phone(number: String?): String? {
+        val value = number?.trim()?.ifEmpty { null } ?: return null
+        val util = PhoneNumberUtil.getInstance()
+        return try {
+            util.format(util.parse(value, tenant.countryCode.ifBlank { null }), PhoneNumberFormat.INTERNATIONAL)
+        } catch (_: NumberParseException) {
+            value
+        }
+    }
 
     private fun format(date: Date, pattern: String): String =
         date.toInstant().atZone(zone).format(DateTimeFormatter.ofPattern(pattern, locale))

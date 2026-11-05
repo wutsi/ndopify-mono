@@ -13,6 +13,12 @@
                 <!-- Divider with class for CSS injection -->
                 <mj-divider css-class="divider"/>
 
+                <!-- The listing's photo, if any, linked to the visit's page when there is one -->
+                {{#image_url}}
+                <mj-image src="{{image_url}}" alt="{{listing_title}}" {{#visit_url}}href="{{visit_url}}"{{/visit_url}}
+                          border-radius="8px" padding="10px 0"/>
+                {{/image_url}}
+
                 <!-- Body Text -->
                 <mj-text>
                     Bonjour <strong>{{recipient_name}}</strong>,

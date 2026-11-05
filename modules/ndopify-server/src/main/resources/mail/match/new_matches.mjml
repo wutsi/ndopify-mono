@@ -25,15 +25,23 @@
                 <mj-text font-weight="bold">
                     {{customer_name}} — {{listing_type}}{{#property_type}} - {{property_type}}{{/property_type}} à {{place}}
                 </mj-text>
-                <!-- In an mj-text: MJML drops raw HTML outside of it -->
+                <!-- In an mj-text: MJML drops raw HTML outside of it. A thumbnail of each listing's photo, if any -->
                 <mj-text>
-                    <ul>
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse">
                         {{#listings}}
-                        <li>
-                            <b>{{title}}</b> — {{price}} ({{score}} %)
-                        </li>
+                        <tr>
+                            <td style="width:88px;padding:4px 8px 4px 0;vertical-align:middle">
+                                {{#image_url}}
+                                <img src="{{image_url}}" alt="{{title}}" width="80" height="60"
+                                     style="display:block;width:80px;height:60px;object-fit:cover;border-radius:6px"/>
+                                {{/image_url}}
+                            </td>
+                            <td style="padding:4px 0;vertical-align:middle">
+                                <b>{{title}}</b> — {{price}} ({{score}} %)
+                            </td>
+                        </tr>
                         {{/listings}}
-                    </ul>
+                    </table>
                     {{#more}}
                     et {{more}} autre(s) bien(s)
                     {{/more}}

@@ -47,13 +47,13 @@ class ScheduleVisitEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertTrue(customerBody.contains(visit.code!!))
         assertTrue(customerBody.contains("Rue 1.234, Bonapriso, Derri"), customerBody)
         assertTrue(customerBody.contains("la pharmacie"), customerBody)
-        assertTrue(customerBody.contains("+237699000001"))
+        assertTrue(customerBody.contains("+237 6 99 00 00 01"))
         assertTrue(customerBody.contains("https://www.ndopify.com/visits/1?token="))
 
         val agentMessage = messages.single { it.allRecipients.single().toString() == "Kim Possible <kim.possible@gmail.com>" }
         assertEquals("Ndopify: visite confirmée avec Ray Sponsible", agentMessage.subject)
         val agentBody = agentMessage.content.toString()
-        assertTrue(agentBody.contains("+237600000001"))
+        assertTrue(agentBody.contains("+237 6 00 00 00 01"))
         assertTrue(agentBody.contains("Demandez le code de visite"))
         assertTrue(agentBody.contains("https://partner.ndopify.com/visits/1"))
         assertFalse(agentBody.contains(visit.code!!), "the agent must not receive the code")

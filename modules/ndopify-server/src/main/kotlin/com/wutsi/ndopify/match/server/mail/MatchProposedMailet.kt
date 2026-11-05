@@ -2,6 +2,7 @@ package com.wutsi.ndopify.match.server.mail
 
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.mandate.server.mail.MandateMailLabels
 import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.match.server.service.MatchLinkTokenService
@@ -16,7 +17,8 @@ import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.springframework.stereotype.Service
 
 /**
- * Sends the customer of a search the listings its agent proposes, in one e-mail: for each, its title, price and a link
+ * Sends the customer of a search the listings its agent proposes, in one e-mail: for each, its photo
+ * ([ListingImageService.cover], none without a verified one), title, price and a link
  * to its proposal's page on the public portal, `{publicPortalUrl}/match/{matchId}?token={token}`, where the customer
  * accepts or rejects it (none without the tenant's `publicPortalUrl`: the customer then answers its agent). The token
  * signs the customer in to the public portal ([MatchLinkTokenService]); without one, the link has no `token`.
@@ -28,6 +30,7 @@ class MatchProposedMailet(
     private val mailService: MailService,
     private val mailBodyResolver: MailBodyResolver,
     private val linkTokenService: MatchLinkTokenService,
+    private val imageService: ListingImageService,
 ) {
     companion object {
         const val SUBJECT_ONE = "{{tenant_name}}: {{agent_name}} vous propose un bien à {{place}}"
@@ -77,6 +80,7 @@ class MatchProposedMailet(
     ): Map<String, Any?> {
         val listing = match.listing
         return mapOf(
+            "image_url" to imageService.cover(listing)?.url?.ifBlank { null },
             "listing_title" to (listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"),
             "price_label" to MandateMailLabels.priceLabel(match.mandate),
             "price" to MandateMailLabels.price(

@@ -24,6 +24,11 @@
                 </mj-text>
 
                 {{#listings}}
+                <!-- The listing's photo, linked to its proposal's page when there is one -->
+                {{#image_url}}
+                <mj-image src="{{image_url}}" alt="{{listing_title}}" {{#listing_url}}href="{{listing_url}}"{{/listing_url}}
+                          border-radius="8px" padding="10px 0"/>
+                {{/image_url}}
                 <!-- In an mj-text: MJML drops raw HTML outside of it -->
                 <mj-text>
                     <ul>

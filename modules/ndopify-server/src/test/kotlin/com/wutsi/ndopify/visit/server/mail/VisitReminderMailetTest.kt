@@ -11,6 +11,8 @@ import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
+import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
+import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.match.server.service.MatchLinkTokenService
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
@@ -33,7 +35,9 @@ class VisitReminderMailetTest {
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
     private val linkTokenService = mock<MatchLinkTokenService>()
-    private val mailet = VisitReminderMailet(tenantService, mailService, mailBodyResolver, linkTokenService)
+    private val imageService = mock<ListingImageService>()
+    private val mailet =
+        VisitReminderMailet(tenantService, mailService, mailBodyResolver, linkTokenService, imageService)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -76,6 +80,7 @@ class VisitReminderMailetTest {
 
     @BeforeTest
     fun setUp() {
+        doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(imageService).cover(any())
         doReturn(tenant).whenever(tenantService).findById(1L)
         doReturn("xxx.yyy.zzz").whenever(linkTokenService).create(customer)
         doReturn("<html>reminder</html>").whenever(mailBodyResolver).resolve(any(), any())
@@ -98,7 +103,7 @@ class VisitReminderMailetTest {
         assertEquals("https://www.ndopify.com/visits/1?token=xxx.yyy.zzz", customerContext["visit_url"])
 
         val agentContext = context(VisitReminderMailet.TEMPLATE_AGENT)
-        assertEquals("+237600000001", agentContext["customer_whatsapp"])
+        assertEquals("+237 6 00 00 00 01", agentContext["customer_whatsapp"])
         assertEquals("https://partner.ndopify.com/visits/1", agentContext["visit_url"])
     }
 

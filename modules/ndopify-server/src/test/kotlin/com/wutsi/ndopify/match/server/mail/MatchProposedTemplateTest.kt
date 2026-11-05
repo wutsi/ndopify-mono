@@ -17,6 +17,7 @@ class MatchProposedTemplateTest {
     )
 
     private val listing = mapOf(
+        "image_url" to "https://cdn.ndopify.com/7.jpg",
         "listing_title" to "Nice apartment",
         "price_label" to "Loyer",
         "price" to "150 000 FCFA / mois",
@@ -41,6 +42,16 @@ class MatchProposedTemplateTest {
         assertTrue(html.contains("https://www.ndopify.com/match/1"))
         assertTrue(html.contains("Voir le bien et répondre"))
         assertFalse(html.contains("Répondez à votre agent"))
+        assertTrue(html.contains("src=\"https://cdn.ndopify.com/7.jpg\""))
+        assertTrue(html.contains("<a href=\"https://www.ndopify.com/match/1\""))
+    }
+
+    @Test
+    fun `no photo - no image`() {
+        val html = resolver.resolve(MatchProposedMailet.TEMPLATE, context + mapOf("listings" to listOf(listing - "image_url")))
+
+        assertTrue(html.contains("Nice apartment"))
+        assertFalse(html.contains("cdn.ndopify.com/7.jpg"))
     }
 
     @Test
@@ -69,5 +80,7 @@ class MatchProposedTemplateTest {
 
         assertFalse(html.contains("Voir le bien et répondre"))
         assertTrue(html.contains("Répondez à votre agent"))
+        assertTrue(html.contains("src=\"https://cdn.ndopify.com/7.jpg\"")) // The photo, without a link
+        assertFalse(html.contains("href=\"\""))
     }
 }

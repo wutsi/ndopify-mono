@@ -127,6 +127,7 @@ object ListingRules {
 
     private val DRAFT_TAG = Tag("Brouillon", "info")
     private val SENT_TAG = Tag("En vérification", "warning")
+    private val VERIFIED_TAG = Tag("Vérifiée", "success")
     private val PUBLISHED_TAG = Tag("Publiée", "success")
     private val TO_FIX_TAG = Tag("À corriger", "warning")
 
@@ -145,6 +146,7 @@ object ListingRules {
 
     fun tag(status: ListingStatus): Tag = when {
         status == ListingStatus.DRAFT -> DRAFT_TAG
+        status == ListingStatus.VERIFIED -> VERIFIED_TAG
         sent(status) -> SENT_TAG
         status == ListingStatus.PUBLISHED -> PUBLISHED_TAG
         status in CLOSED -> CLOSED_TAG

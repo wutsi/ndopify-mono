@@ -2,10 +2,12 @@ package com.wutsi.ndopify.match.server.mail
 
 import com.github.mustachejava.DefaultMustacheFactory
 import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.argThat
 import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
@@ -14,6 +16,8 @@ import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
+import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
+import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.match.dto.MatchStatus
@@ -42,12 +46,14 @@ class MatchNotificationMailetTest {
     private val locationService = mock<LocationService>()
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
+    private val imageService = mock<ListingImageService>()
     private val mailet = MatchNotificationMailet(
         tenantService,
         customerService,
         locationService,
         mailService,
         mailBodyResolver,
+        imageService,
     )
 
     private val tenant = TenantEntity(
@@ -83,6 +89,8 @@ class MatchNotificationMailetTest {
         doReturn(customer(10L, "Ray", "Sponsible")).whenever(customerService).findByIdOrNull(10L)
         doReturn(customer(11L, "Sam", "Sung")).whenever(customerService).findByIdOrNull(11L)
         doReturn("<html>matches</html>").whenever(mailBodyResolver).resolve(any(), any())
+        doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/302.jpg"))
+            .whenever(imageService).cover(argThat { id == 302L })
     }
 
     @Test
@@ -110,7 +118,12 @@ class MatchNotificationMailetTest {
                     "place" to "Yaounde",
                     "mandate_url" to "https://pc.ndopify.com/mandates/2",
                     "listings" to listOf(
-                        mapOf("title" to "Villa Etoudi", "price" to "400 000 FCFA / mois", "score" to 91),
+                        mapOf(
+                            "image_url" to "https://cdn.ndopify.com/302.jpg",
+                            "title" to "Villa Etoudi",
+                            "price" to "400 000 FCFA / mois",
+                            "score" to 91,
+                        ),
                     ),
                     "more" to null,
                 ),
@@ -121,8 +134,8 @@ class MatchNotificationMailetTest {
                     "place" to "Bastos (Yaounde)",
                     "mandate_url" to "https://pc.ndopify.com/mandates/1",
                     "listings" to listOf(
-                        mapOf("title" to "Appartement Mvan", "price" to "240 000 FCFA / mois", "score" to 85),
-                        mapOf("title" to "Studio Bastos", "price" to "150 000 FCFA / mois", "score" to 72),
+                        mapOf("image_url" to null, "title" to "Appartement Mvan", "price" to "240 000 FCFA / mois", "score" to 85),
+                        mapOf("image_url" to null, "title" to "Studio Bastos", "price" to "150 000 FCFA / mois", "score" to 72),
                     ),
                     "more" to null,
                 ),
@@ -159,6 +172,7 @@ class MatchNotificationMailetTest {
             (mandate["listings"] as List<*>).map { listing -> (listing as Map<*, *>)["title"] },
         )
         assertEquals(2, mandate["more"])
+        verify(imageService, times(5)).cover(any()) // Only for the listings shown
     }
 
     @Test
@@ -192,7 +206,15 @@ class MatchNotificationMailetTest {
             "property_type" to "Appartement",
             "place" to "Bastos (Yaounde)",
             "mandate_url" to "https://pc.ndopify.com/mandates/1",
-            "listings" to listOf(mapOf("title" to "Studio Bastos", "price" to "150 000 FCFA / mois", "score" to 72)),
+            "listings" to listOf(
+                mapOf(
+                    "image_url" to "https://cdn.ndopify.com/301.jpg",
+                    "title" to "Studio Bastos",
+                    "price" to "150 000 FCFA / mois",
+                    "score" to 72,
+                ),
+                mapOf("title" to "Villa Etoudi", "price" to "400 000 FCFA / mois", "score" to 91),
+            ),
             "more" to 2,
         )
 
@@ -204,6 +226,9 @@ class MatchNotificationMailetTest {
         assertTrue(html.contains("Location - Appartement à Bastos (Yaounde)"))
         assertTrue(html.contains("Studio Bastos"))
         assertTrue(html.contains("150 000 FCFA / mois (72 %)"))
+        assertTrue(html.contains("src=\"https://cdn.ndopify.com/301.jpg\""))
+        assertTrue(html.contains("Villa Etoudi")) // Without photo: no image, still listed
+        assertEquals(1, Regex("<img[^>]+alt=\"(Studio Bastos|Villa Etoudi)\"").findAll(html).count())
         assertTrue(html.contains("et 2 autre(s) bien(s)"))
         assertTrue(html.contains("https://pc.ndopify.com/mandates/1"))
 

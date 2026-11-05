@@ -10,6 +10,8 @@ import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
+import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
+import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
@@ -31,7 +33,9 @@ class VisitRequestedMailetTest {
     private val tenantService = mock<TenantService>()
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
-    private val mailet = VisitRequestedMailet(tenantService, mailService, mailBodyResolver)
+    private val imageService = mock<ListingImageService>()
+    private val mailet =
+        VisitRequestedMailet(tenantService, mailService, mailBodyResolver, imageService)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -66,6 +70,7 @@ class VisitRequestedMailetTest {
 
     @BeforeTest
     fun setUp() {
+        doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(imageService).cover(any())
         doReturn(tenant).whenever(tenantService).findById(1L)
         doReturn("<html>requested</html>").whenever(mailBodyResolver).resolve(any(), any())
     }
@@ -80,8 +85,9 @@ class VisitRequestedMailetTest {
                 "tenant_name" to "Ndopify",
                 "recipient_name" to "Kim Possible",
                 "customer_name" to "Ray Sponsible",
-                "customer_whatsapp" to "+237600000001",
+                "customer_whatsapp" to "+237 6 00 00 00 01",
                 "listing_title" to "Nice apartment",
+                "image_url" to "https://cdn.ndopify.com/7.jpg",
                 "requested_date" to "01/12/2026",
                 "requested_time" to "10:00",
                 "note" to "Je viens avec ma femme",

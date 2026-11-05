@@ -6,6 +6,7 @@ import java.time.LocalDate
 import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class TenantFormatterTest {
     private val tenant = TenantEntity(
@@ -17,6 +18,7 @@ class TenantFormatterTest {
         dateFormat = "dd MMM yyyy",
         timeFormat = "HH:mm",
         timeZone = "Africa/Douala",
+        countryCode = "CM",
     )
 
     // 23:30 UTC: already the next day in Douala (UTC+1)
@@ -60,5 +62,31 @@ class TenantFormatterTest {
         assertEquals("17/10/2026", formatter.date(date))
         assertEquals("00:30", formatter.time(date))
         assertEquals("1 500 000 XAF", formatter.money(1500000, "XAF"))
+    }
+
+    @Test
+    fun `phone in the international format`() {
+        assertEquals("+237 6 99 00 00 01", TenantFormatter(tenant).phone("+237699000001"))
+    }
+
+    @Test
+    fun `phone without country code - the tenant's`() {
+        assertEquals("+237 6 99 00 00 01", TenantFormatter(tenant).phone("699000001"))
+    }
+
+    @Test
+    fun `phone of another country`() {
+        assertEquals("+1 514-555-0101", TenantFormatter(tenant).phone("+15145550101"))
+    }
+
+    @Test
+    fun `phone that can't be read - as entered`() {
+        assertEquals("abc", TenantFormatter(tenant).phone(" abc "))
+    }
+
+    @Test
+    fun `phone blank - null`() {
+        assertNull(TenantFormatter(tenant).phone(" "))
+        assertNull(TenantFormatter(tenant).phone(null))
     }
 }

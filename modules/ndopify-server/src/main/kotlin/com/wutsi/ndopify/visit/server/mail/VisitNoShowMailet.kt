@@ -3,6 +3,7 @@ package com.wutsi.ndopify.visit.server.mail
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
+import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.match.server.service.MatchLinkTokenService
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
@@ -26,6 +27,7 @@ class VisitNoShowMailet(
     private val mailService: MailService,
     private val mailBodyResolver: MailBodyResolver,
     private val linkTokenService: MatchLinkTokenService,
+    private val imageService: ListingImageService,
 ) {
     companion object {
         const val SUBJECT_CUSTOMER = "{{tenant_name}}: la visite n'a pas eu lieu"
@@ -104,12 +106,14 @@ class VisitNoShowMailet(
         agentRecipient: Boolean,
     ): Map<String, Any?> {
         val formatter = TenantFormatter(tenant)
+        val imageUrl = imageService.cover(listing)?.url?.ifBlank { null }
         return mapOf(
             "tenant_logo_url" to tenant.logoUrl,
             "tenant_name" to tenant.name,
             "recipient_name" to recipientName,
             "other_party" to otherParty,
             "listing_title" to (listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"),
+            "image_url" to imageUrl,
             "visit_date" to formatter.date(visit.scheduledAt!!),
             "visit_time" to formatter.time(visit.scheduledAt),
             "reason_label" to reason,

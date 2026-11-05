@@ -3,6 +3,7 @@ package com.wutsi.ndopify.visit.server.mail
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
+import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.match.server.service.MatchLinkTokenService
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
@@ -26,6 +27,7 @@ class VisitConfirmedMailet(
     private val mailService: MailService,
     private val mailBodyResolver: MailBodyResolver,
     private val linkTokenService: MatchLinkTokenService,
+    private val imageService: ListingImageService,
 ) {
     companion object {
         const val SUBJECT_CUSTOMER = "{{tenant_name}}: votre visite est confirmée"
@@ -37,6 +39,7 @@ class VisitConfirmedMailet(
     fun send(visit: VisitEntity, customer: CustomerEntity, agent: AgentEntity, listing: ListingEntity) {
         val tenant = tenantService.findById(visit.tenantId!!)
         val formatter = TenantFormatter(tenant)
+        val imageUrl = imageService.cover(listing)?.url?.ifBlank { null }
         val customerName = customer.party.fullName()
         val agentName = agent.party.fullName()
         val onSite = visit.type == VisitType.ON_SITE
@@ -59,8 +62,9 @@ class VisitConfirmedMailet(
                         "tenant_name" to tenant.name,
                         "recipient_name" to customerName,
                         "listing_title" to listingTitle(listing),
+                        "image_url" to imageUrl,
                         "agent_full_name" to agentName,
-                        "agent_whatsapp" to agent.whatsappNumber?.ifBlank { null },
+                        "agent_whatsapp" to formatter.phone(agent.whatsappNumber),
                         "visit_date" to formatter.date(visit.scheduledAt!!),
                         "visit_time" to formatter.time(visit.scheduledAt),
                         "on_site" to onSite,
@@ -83,8 +87,9 @@ class VisitConfirmedMailet(
                         "tenant_name" to tenant.name,
                         "recipient_name" to agentName,
                         "customer_name" to customerName,
-                        "customer_whatsapp" to customer.whatsappNumber?.ifBlank { null },
+                        "customer_whatsapp" to formatter.phone(customer.whatsappNumber),
                         "listing_title" to listingTitle(listing),
+                        "image_url" to imageUrl,
                         "visit_date" to formatter.date(visit.scheduledAt!!),
                         "visit_time" to formatter.time(visit.scheduledAt),
                         "on_site" to onSite,

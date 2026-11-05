@@ -145,7 +145,7 @@ class MandateContractGenerator(
             "tenant_name" to tenant.name,
             "tenant_logo_url" to tenant.logoUrl,
             "client_name" to customer.party.fullName(),
-            "client_phone" to customer.whatsappNumber?.ifBlank { null },
+            "client_phone" to formatter.phone(customer.whatsappNumber),
             "client_email" to customer.party.email.ifBlank { null },
             "agent_name" to agent?.party?.fullName(),
 
