@@ -5,9 +5,11 @@ import com.wutsi.ndopify.listing.dto.CreateListingResponse
 import com.wutsi.ndopify.listing.dto.GetListingResponse
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
+import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.listing.dto.SearchListingImageResponse
 import com.wutsi.ndopify.listing.dto.SearchListingResponse
+import com.wutsi.ndopify.listing.dto.SearchListingStatsResponse
 import com.wutsi.ndopify.listing.dto.UpdateListingRequest
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.core.io.ByteArrayResource
@@ -101,6 +103,21 @@ class NdListingClient(
             .body<SearchListingResponse>()
             ?.listings
             ?: emptyList()
+    }
+
+    /** How each of [listingIds] is doing: the clients it interested and its visits. One call; none without an id. */
+    fun stats(listingIds: List<Long>): Map<Long, ListingStats> {
+        if (listingIds.isEmpty()) return emptyMap()
+        return rest.get()
+            .uri { uri ->
+                listingIds.forEach { uri.queryParam("listing-id", it) }
+                uri.path("/v1/listings/stats").build()
+            }
+            .retrieve()
+            .body<SearchListingStatsResponse>()
+            ?.stats
+            ?.associateBy { it.listingId }
+            ?: emptyMap()
     }
 
     /** Sends a DRAFT listing to be checked (UNDER_VERIFICATION). */

@@ -70,4 +70,11 @@ class VisitStatsTest {
     fun `unavailable`() {
         assertNull(VisitStats.of(null, NOW))
     }
+
+    @Test
+    fun `total label`() {
+        assertEquals("Aucune visite", VisitStats(0, 0).totalLabel)
+        assertEquals("1 visite", VisitStats(1, 0).totalLabel)
+        assertEquals("3 visites", VisitStats(2, 1).totalLabel)
+    }
 }

@@ -5,10 +5,12 @@ import com.wutsi.ndopify.listing.dto.ImageStatus
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingSection
+import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.listing.dto.SearchListingImageResponse
 import com.wutsi.ndopify.listing.dto.SearchListingResponse
+import com.wutsi.ndopify.listing.dto.SearchListingStatsResponse
 import com.wutsi.ndopify.listing.dto.UpdateListingRequest
 import org.hamcrest.Matchers
 import org.junit.jupiter.api.BeforeEach
@@ -213,6 +215,24 @@ class NdListingClientTest {
             .andRespond(withSuccess())
 
         client.deleteImage(7)
+        server.verify()
+    }
+
+    @Test
+    fun stats() {
+        server.expect(requestTo("http://localhost:8080/v1/listings/stats?listing-id=501&listing-id=502"))
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(
+                withSuccess(
+                    json(SearchListingStatsResponse(listOf(ListingStats(501, 2, 1, 2)))),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val stats = client.stats(listOf(501, 502))
+
+        assertEquals(2, stats[501]?.interested)
+        assertNull(stats[502])
         server.verify()
     }
 

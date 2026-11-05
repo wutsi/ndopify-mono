@@ -44,7 +44,7 @@ class NdVisitClient(
      * given.
      */
     fun search(agentId: Long, statuses: List<VisitStatus>, limit: Int = 20, mandateId: Long? = null): List<VisitSummary> =
-        find(agentId, statuses, limit, mandateId, emptyList())
+        find(agentId, statuses, limit, mandateId, emptyList(), emptyList())
 
     /** The visits of [agentId] in [statuses] on the matches [matchIds], one `match-id` parameter each. */
     fun searchByMatches(
@@ -52,7 +52,15 @@ class NdVisitClient(
         statuses: List<VisitStatus>,
         matchIds: List<Long>,
         limit: Int = 20,
-    ): List<VisitSummary> = find(agentId, statuses, limit, null, matchIds)
+    ): List<VisitSummary> = find(agentId, statuses, limit, null, matchIds, emptyList())
+
+    /** The visits of [agentId] in [statuses] of the listings [listingIds], one `listing-id` parameter each. */
+    fun searchByListings(
+        agentId: Long,
+        statuses: List<VisitStatus>,
+        listingIds: List<Long>,
+        limit: Int = 100,
+    ): List<VisitSummary> = find(agentId, statuses, limit, null, emptyList(), listingIds)
 
     private fun find(
         agentId: Long,
@@ -60,6 +68,7 @@ class NdVisitClient(
         limit: Int,
         mandateId: Long?,
         matchIds: List<Long>,
+        listingIds: List<Long>,
     ): List<VisitSummary> =
         rest.get()
             .uri { uri ->
@@ -67,6 +76,7 @@ class NdVisitClient(
                     .queryParam("agent-id", agentId)
                 mandateId?.let { uri.queryParam("mandate-id", it) }
                 matchIds.forEach { uri.queryParam("match-id", it) }
+                listingIds.forEach { uri.queryParam("listing-id", it) }
                 statuses.forEach { uri.queryParam("status", it) }
                 uri.queryParam("limit", limit).build()
             }
