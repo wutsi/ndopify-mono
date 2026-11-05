@@ -6,6 +6,7 @@ import java.time.Instant
 data class SearchVisitRequest(
     @param:BindParam("mandate-id") val mandateIds: List<Long> = emptyList(),
     @param:BindParam("match-id") val matchIds: List<Long> = emptyList(),
+    @param:BindParam("listing-id") val listingIds: List<Long> = emptyList(),
     @param:BindParam("agent-id") val agentIds: List<Long> = emptyList(),
     @param:BindParam("customer-id") val customerIds: List<Long> = emptyList(),
     @param:BindParam("status") val statuses: List<VisitStatus> = emptyList(),
