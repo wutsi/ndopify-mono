@@ -12,11 +12,11 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.resttestclient.TestRestTemplate
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.annotation.Import
 import org.springframework.http.HttpRequest
 import org.springframework.http.client.ClientHttpRequestExecution
 import org.springframework.http.client.ClientHttpRequestInterceptor
 import org.springframework.http.client.ClientHttpResponse
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor
 import org.springframework.test.annotation.DirtiesContext
 import org.springframework.test.context.ActiveProfiles
 import java.io.File
@@ -30,6 +30,7 @@ import kotlin.test.assertEquals
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureTestRestTemplate
 @ActiveProfiles("qa")
+@Import(AsyncTaskTrackerConfiguration::class)
 abstract class BaseEndpointIntegrationTest : ClientHttpRequestInterceptor {
     companion object {
         const val DEVICE_ID = "device-test"
@@ -48,7 +49,7 @@ abstract class BaseEndpointIntegrationTest : ClientHttpRequestInterceptor {
     protected lateinit var rest: TestRestTemplate
 
     @Autowired
-    private lateinit var taskExecutor: ThreadPoolTaskExecutor
+    private lateinit var asyncTasks: AsyncTaskTracker
 
     @Autowired
     private lateinit var entityManagerFactory: EntityManagerFactory
@@ -87,9 +88,8 @@ abstract class BaseEndpointIntegrationTest : ClientHttpRequestInterceptor {
      * test's SMTP server.
      */
     protected fun awaitAsyncTasks() {
-        val pool = taskExecutor.threadPoolExecutor
         val deadline = System.currentTimeMillis() + ASYNC_TIMEOUT_MS
-        while ((pool.activeCount > 0 || pool.queue.isNotEmpty()) && System.currentTimeMillis() < deadline) {
+        while (asyncTasks.count() > 0 && System.currentTimeMillis() < deadline) {
             Thread.sleep(10)
         }
     }

@@ -1,4 +1,8 @@
 spring:
+    threads:
+        virtual:
+            enabled: true
+
     http:
         clients:
             # Boot's HttpClientSettings: the Spring-built clients, and the MTN HttpClient (MoMoConfiguration).
@@ -102,19 +106,25 @@ spring:
     task:
         execution:
             thread-name-prefix: "ndopify-async-"
+            # With virtual threads the pool settings are ignored; simple.concurrency-limit is the equivalent cap.
             pool:
                 core-size: 4
                 max-size: 16
                 queue-capacity: 100
                 keep-alive: 60s
                 allow-core-thread-timeout: true
+            simple:
+                concurrency-limit: 16
             shutdown:
                 await-termination: true
                 await-termination-period: 30s
         scheduling:
             thread-name-prefix: "ndopify-job-"
+            # With virtual threads the pool size is ignored; simple.concurrency-limit is the equivalent cap.
             pool:
                 size: 4
+            simple:
+                concurrency-limit: 4
             shutdown:
                 await-termination: true
                 await-termination-period: 30s
