@@ -251,8 +251,11 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `ContractExpiredEvent` (no listener yet). Tenant-scoped.
 - **listing** — the property a LISTING mandate offers, as checked on site by its agent (`ListingEntity`, one per
   mandate, `@Version`-ed; its photos `ListingImageEntity`; its checklist `ListingSectionEntity`; `V8_0`, `V8_1`,
-  `V8_2`). `/v1/listings`: search, get, create, update, `POST /{id}/verify`, `POST /{id}/publish`, `POST /{id}/images/upload`, `GET /{id}/images`,
-  `DELETE /images/{id}`. Search, get and the images list are public (`PublicEndpoints.TENANT`), for PUBLISHED
+  `V8_2`). `/v1/listings`: search, get, create, update, `GET /stats`, `POST /{id}/verify`, `POST /{id}/publish`, `POST /{id}/images/upload`, `GET /{id}/images`,
+  `DELETE /images/{id}`. `GET /stats?listing-id=` aggregates each requested listing's interested clients (its ACCEPTED
+  matches, any agent's) and its upcoming/completed visits in the database: one row per distinct id, in request order,
+  zeros included, no counters on `ListingEntity`; it needs a token and the agent of every listing (404
+  `LISTING_NOT_FOUND` before 403 `HTTP_ACCESS_DENIED`; 400 `HTTP_MISSING_PARAMETER` without an id). Search, get and the images list are public (`PublicEndpoints.TENANT`), for PUBLISHED
   listings only (`ListingAccessService`): another status is only for an admin or the listing's agent, a 404
   `LISTING_NOT_FOUND` for anybody else (get, images), with or without a token; a search is forced to PUBLISHED but an
   admin's, or an agent's with its own `agent-id`; the images to VERIFIED but for an admin or the listing's agent. The fields aren't trimmed. The changes (create, update, verify, publish, upload or delete a photo) are only
@@ -360,8 +363,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   address (the listing's `landmark`, `accessDirections`, position) is only in the confirmed e-mail and in the customer's
   `GET` of a confirmed `ON_SITE` visit; the code is only ever returned to the customer. Access (`VisitAccessService`): the
   customer alone requests / answers / cancels as itself, the visit's agent alone checks in, marks a no-show and checks out
-  (no admin bypass); schedule and cancel-as-agent follow `MandateAccessService`. A search is restricted to the caller's own
-  visits (`agent-id` or `customer-id` forced). `VisitJobs`: `expire` hourly moves a `REQUESTED` visit older than 48 h to
+  (no admin bypass); schedule and cancel-as-agent follow `MandateAccessService`. A search filters by `mandate-id`,
+  `match-id`, `listing-id`, `agent-id` and `customer-id` (repeatable), and is restricted to the caller's own visits
+  (`agent-id` or `customer-id` forced). `VisitJobs`: `expire` hourly moves a `REQUESTED` visit older than 48 h to
   `EXPIRED`, `reminder` every 15 min e-mails both sides 24 h ahead (once), `noShow` hourly marks the `CONFIRMED` visits
   whose agent didn't check in 4 h after the time as `NO_SHOW` (both sides e-mailed). The delays and tolerances above are
   `ndopify.visit.policy.*` (overridable); the job crons are `ndopify.visit.*`. Tenant-scoped.

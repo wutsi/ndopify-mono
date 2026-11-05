@@ -43,7 +43,8 @@
   "listingVisits" is a landlord's published listing's open visits (VisitCardsView: the requests to confirm, then the
   visits to come), null for a search or before the listing is published; a client with one leaves "listingProposals",
   so nothing is shown twice. "listingProposals" is that listing's Propositions (ProposalsView), null likewise;
-  "visitStats" is the approved panel's total visits (VisitStats: upcoming and completed), null when unreadable.
+  "visitStats" is the approved panel's total visits (VisitStats: upcoming and completed), null when unreadable
+  or when the published listing's activity line ("mandateListing.stats") already shows them.
 */-->
 <body data-page="mandate" th:attr="data-currency=${currency}">
     <a class="skip-link" href="#main">Aller au contenu</a>

@@ -5,6 +5,7 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
 import com.wutsi.ndopify.error.dto.ParameterType
 import com.wutsi.ndopify.error.server.exception.BadRequestException
+import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.listing.dto.CreateListingRequest
 import com.wutsi.ndopify.listing.dto.CreateListingResponse
 import com.wutsi.ndopify.listing.dto.GetListingResponse
@@ -36,7 +37,8 @@ import org.springframework.web.multipart.MultipartFile
 
 /**
  * The reads are public (`PublicEndpoints.TENANT`), of the PUBLISHED listings only without a token
- * ([ListingAccessService]); the writes need a token, any user's: no access check yet.
+ * ([ListingAccessService]); the stats need a token and the agent of every listing; the writes need a token, any
+ * user's: no access check yet.
  */
 @RestController
 @RequestMapping("/v1/listings")
@@ -58,10 +60,13 @@ class ListingEndpoints(
                 )
             )
         }
-        request.listingIds.distinct().forEach { id ->
-            accessService.ensureIsAgent(service.findById(id))
+        val ids = request.listingIds.distinct()
+        val listings = service.findAllByIds(ids)
+        if (listings.size != ids.size) {
+            throw NotFoundException(error = Error(code = ErrorCode.LISTING_NOT_FOUND))
         }
-        return SearchListingStatsResponse(stats = statsService.search(request.listingIds))
+        accessService.ensureAreAgent(listings)
+        return SearchListingStatsResponse(stats = statsService.search(ids))
     }
 
     @GetMapping

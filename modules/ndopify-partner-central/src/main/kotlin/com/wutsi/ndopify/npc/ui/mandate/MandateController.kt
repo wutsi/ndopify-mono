@@ -624,7 +624,7 @@ class MandateController(
      * the matches or mandates can't be had: no section, rather than another agent's client shown as the agent's or the
      * other way round. Customers failing only leave the names out.
      *
-     * The visits are read by match id (agent-scoped) and are secondary: failing, every proposal row shows and the
+     * The visits are read by listing id (agent-scoped) and are secondary: failing, every proposal row shows and the
      * *Visites* section says unavailable. A stale visit is ignored by [ListingViews.clients].
      */
     private fun listingClients(listing: Listing): ListingClientsView? {

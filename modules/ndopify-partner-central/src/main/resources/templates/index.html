@@ -33,7 +33,7 @@
   page (MandateController), null for an agent who isn't verified (no section); "mandatesUnavailable" when they
   couldn't be loaded. A landlord's signed mandate has its listing's line (m.listing: "Annonce" and its status, "À créer"
   before it exists; no number, to fit one line on a phone), none when the listings couldn't be loaded, and once
-  published how many clients it interests (m.interest). A signed search has its matches' lines (m.matches, linking to
+  published its activity line (m.stats: interested clients and visits). A signed search has its matches' lines (m.matches, linking to
   m.matchesUrl, and m.proposals, one line on a phone), none when the matches couldn't be loaded.
   "visits" are the agent's open visits (VisitCardsView: the requests to confirm, then the visits to come), null for an
   agent who isn't verified (no section); "visits.unavailable" when they couldn't be loaded, and the listings/customers

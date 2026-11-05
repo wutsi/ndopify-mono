@@ -48,6 +48,14 @@ class ListingStatsEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `another tenant's listing before another agent's`() {
+        val response = rest.getForEntity("/v1/listings/stats?listing-id=109&listing-id=901", ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
+        assertEquals(ErrorCode.LISTING_NOT_FOUND, response.body?.error?.code)
+    }
+
+    @Test
     fun `no listing id`() {
         val response = rest.getForEntity("/v1/listings/stats", ErrorResponse::class.java)
 

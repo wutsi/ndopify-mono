@@ -71,6 +71,21 @@ class ListingAccessService(
         ensureCanChange(listing.agent.id)
     }
 
+    /**
+     * Reading who several listings interest, resolving the caller's agent once. An admin, or the agent of every one of
+     * them; the caller checks they exist first (404 before 403).
+     */
+    fun ensureAreAgent(listings: Collection<ListingEntity>) {
+        val principal = callerService.getPrincipal()
+        if (callerService.isAdmin(principal)) {
+            return
+        }
+        val agentId = findAgentId(principal)
+        if (listings.any { it.agent.id == null || it.agent.id != agentId }) {
+            throw ForbiddenException(error = Error(code = ErrorCode.HTTP_ACCESS_DENIED))
+        }
+    }
+
     private fun ensureCanChange(agentId: Long?) {
         val principal = callerService.getPrincipal()
         if (callerService.isAdmin(principal)) {
