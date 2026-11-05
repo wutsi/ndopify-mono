@@ -21,11 +21,15 @@
   (data-answer in the price card or the page, data-bar-answer in the bottom bar below 1024px):
     - PENDING: "Ça m'intéresse" (POST accept) or "Pas pour moi" (the #reject popup: a reason, an optional comment;
       POST reject); below 1024px the bar's "Répondre" opens the #answer popup with both.
-    - ACCEPTED / REJECTED: the answer, no form: answers are final (no "change my mind" control, unlike the prototype).
+    - ACCEPTED: the answer, final (no "change my mind" control, unlike the prototype), plus the visit block: the
+      #visit popup ("Demander une visite": type, day, time, optional note) when the mandate is approved and no visit
+      is open, or the open visit with a "Voir ma visite" link, or a link to the agent when the mandate isn't approved.
+    - REJECTED: the answer, no form: answers are final (no "change my mind" control, unlike the prototype).
     - EXPIRED: not answered in time: no form, a link to the agent (who may propose it again).
-    - UNAVAILABLE: the listing can't be shown anymore (page.listing is null): no photo, no form, a link to the agent.
-  "Demander une visite" is left out, as on the listing page. Without JavaScript the forms post and the popups open
-  with :target; listing.js (photos, popups) and proposal.js (focus in the popups) only enhance. Never agentRemarks.
+    - UNAVAILABLE: the listing can't be shown anymore (page.listing is null): no photo, no form, a link to the agent
+      (and the open visit, still reachable, when one was requested before the listing went away).
+  Without JavaScript the forms post and the popups open with :target; listing.js (photos, popups) and proposal.js
+  (focus in the popups, the visit submit) only enhance. Never agentRemarks.
 */-->
 <body class="listing-page" data-page="match">
 <a class="skip-link" href="#main">Aller au contenu principal</a>
@@ -63,6 +67,8 @@
     <symbol id="i-chevron-left" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
     <symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
     <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4zM8 9.5h8M8 12.5h5"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 3v4m8-4v4"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><path d="M3 7h12v10H3zM15 10.5l6-3.5v10l-6-3.5"/></symbol>
 </svg>
 
 <main id="main" th:with="listing=${page.listing}">
@@ -93,12 +99,38 @@
             <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
             <p th:text="${page.flash}">C'est noté : ce logement vous intéresse.</p>
         </div>
+        <!-- The outcome of the visit request just posted -->
+        <div class="proposal-flash" role="status" th:if="${page.visitFlash}">
+            <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
+            <p th:text="${page.visitFlash}">Votre demande de visite est envoyée.</p>
+        </div>
 
         <!--/* The listing can't be shown anymore: rented, withdrawn... */-->
         <section aria-label="Votre réponse" class="answer" data-answer="UNAVAILABLE" th:if="${page.state.name() == 'UNAVAILABLE'}">
             <p class="answer__status">Ce logement n'est plus disponible.</p>
             <p>Il a été loué ou retiré. <th:block th:text="${#strings.capitalize(page.agentFirstName)}">Serge</th:block>
                 continue de chercher pour vous.</p>
+            <!--/* A visit open before the listing went away: it stays reachable */-->
+            <div class="answer__visit" th:if="${page.visit?.open}" th:with="open=${page.visit.open}">
+                <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>
+                <div class="answer__visit__body">
+                    <p class="answer__visit__slot">
+                        <th:block th:switch="${open.status.name()}">
+                            <span th:case="'REQUESTED'" th:text="|Visite demandée : ${open.slot}.|">Visite demandée : Sur place · samedi 7 novembre 2026 à 10:30.</span>
+                            <span th:case="'CONFIRMED'" th:text="|Visite confirmée : ${open.slot}.|">Visite confirmée : Sur place · samedi 7 novembre 2026 à 10:30.</span>
+                            <span th:case="*" th:text="|Visite en cours : ${open.slot}.|">Visite en cours : Sur place · samedi 7 novembre 2026 à 10:30.</span>
+                        </th:block>
+                    </p>
+                    <a class="btn btn-primary price-card__cta" th:href="@{/visits/{id}(id=${open.id})}">Voir ma visite</a>
+                    <p class="price-card__hint">
+                        <th:block th:switch="${open.status.name()}">
+                            <span th:case="'REQUESTED'">L'agent vous confirme la date par e-mail sous 48 h.</span>
+                            <span th:case="'CONFIRMED'">Votre code de visite vous a été envoyé par e-mail.</span>
+                            <span th:case="*">Visite en cours.</span>
+                        </th:block>
+                    </p>
+                </div>
+            </div>
             <a class="btn btn-secondary" rel="noopener" target="_blank" th:href="${page.agentWhatsappUrl}"
                th:if="${page.agentWhatsappUrl}">
                 <svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg>Contacter<span class="visually-hidden"
@@ -154,7 +186,38 @@
                         <p class="answer__status answer__status--success">
                             <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>Ce logement vous intéresse
                         </p>
-                        <p th:text="|Pour organiser une visite, contactez ${page.agentFirstName}.|">Pour organiser une
+
+                        <!-- Mandate approved, no visit yet: open the request popup -->
+                        <a class="btn btn-primary price-card__cta" data-modal-open href="#visit"
+                           th:if="${page.visit?.form}">
+                            <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Demander une visite
+                        </a>
+
+                        <!-- A visit is open: its slot, its page, and the status hint -->
+                        <div class="answer__visit" th:if="${page.visit?.open}" th:with="open=${page.visit.open}">
+                            <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>
+                            <div class="answer__visit__body">
+                                <p class="answer__visit__slot">
+                                    <th:block th:switch="${open.status.name()}">
+                                        <span th:case="'REQUESTED'" th:text="|Visite demandée : ${open.slot}.|">Visite demandée : Sur place · samedi 7 novembre 2026 à 10:30.</span>
+                                        <span th:case="'CONFIRMED'" th:text="|Visite confirmée : ${open.slot}.|">Visite confirmée : Sur place · samedi 7 novembre 2026 à 10:30.</span>
+                                        <span th:case="*" th:text="|Visite en cours : ${open.slot}.|">Visite en cours : Sur place · samedi 7 novembre 2026 à 10:30.</span>
+                                    </th:block>
+                                </p>
+                                <a class="btn btn-primary price-card__cta" th:href="@{/visits/{id}(id=${open.id})}">Voir ma visite</a>
+                                <p class="price-card__hint">
+                                    <th:block th:switch="${open.status.name()}">
+                                        <span th:case="'REQUESTED'">L'agent vous confirme la date par e-mail sous 48 h.</span>
+                                        <span th:case="'CONFIRMED'">Votre code de visite vous a été envoyé par e-mail.</span>
+                                        <span th:case="*">Visite en cours.</span>
+                                    </th:block>
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Mandate not approved: nothing to request, contact the agent -->
+                        <p th:if="${page.visit?.form == null and page.visit?.open == null}"
+                           th:text="|Pour organiser une visite, contactez ${page.agentFirstName}.|">Pour organiser une
                             visite, contactez Serge.</p>
                     </div>
 
@@ -183,7 +246,16 @@
         <div class="cta-bar__actions" data-bar-answer="PENDING" th:if="${page.state.name() == 'PENDING'}">
             <a class="btn btn-primary" data-modal-open href="#answer">Répondre</a>
         </div>
-        <p class="cta-bar__note" data-bar-answer="ACCEPTED" th:if="${page.state.name() == 'ACCEPTED'}">Vous intéresse</p>
+        <div class="cta-bar__actions" data-bar-answer="ACCEPTED"
+             th:if="${page.state.name() == 'ACCEPTED' and page.visit?.form != null}">
+            <a class="btn btn-primary" data-modal-open href="#visit">Demander une visite</a>
+        </div>
+        <div class="cta-bar__actions" data-bar-answer="ACCEPTED"
+             th:if="${page.state.name() == 'ACCEPTED' and page.visit?.open != null}">
+            <a class="btn btn-primary" th:href="@{/visits/{id}(id=${page.visit.open.id})}">Voir ma visite</a>
+        </div>
+        <p class="cta-bar__note" data-bar-answer="ACCEPTED"
+           th:if="${page.state.name() == 'ACCEPTED' and page.visit?.form == null and page.visit?.open == null}">Vous intéresse</p>
         <p class="cta-bar__note" data-bar-answer="REJECTED" th:if="${page.state.name() == 'REJECTED'}">Logement écarté</p>
         <p class="cta-bar__note" data-bar-answer="EXPIRED" th:if="${page.state.name() == 'EXPIRED'}">Proposition expirée</p>
     </div>
@@ -256,6 +328,73 @@
     </div>
 </div>
 </th:block>
+
+<!--/*
+  "Demander une visite" popup (match ACCEPTED, no open visit): the type (ON_SITE pre-checked, VIDEO when the customer
+  has a WhatsApp number), a day among the 7 starting tomorrow, a time from 8h00 to 20h00 on a 30-minute boundary, and
+  an optional note (≤ 500). Without JavaScript it opens with :target (#visit) and the form posts.
+*/-->
+<div aria-labelledby="visit-title" class="modal" id="visit" th:if="${page.visit?.form}">
+    <a aria-hidden="true" class="modal__backdrop" data-modal-close href="#main" tabindex="-1"></a>
+    <div class="modal__panel">
+        <header class="modal__header">
+            <div>
+                <h2 class="modal__title" id="visit-title">Demander une visite</h2>
+                <p class="modal__subtitle"><th:block th:text="${page.listing.title}">Appartement 3 chambres à Bonapriso</th:block><span
+                        class="modal__price">&nbsp;· <strong th:text="${page.listing.price}">240K FCFA / mois</strong></span></p>
+            </div>
+            <a class="modal__close" data-modal-close href="#main">
+                <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>
+                <span class="visually-hidden">Fermer</span>
+            </a>
+        </header>
+
+        <form class="modal__body interest-form" data-visit-request-form method="post"
+              th:action="@{/match/{id}/visit(id=${page.id})}" th:with="form=${page.visit.form}">
+            <div class="field visit-type">
+                <label id="visit-type-label">Type de visite</label>
+                <div aria-labelledby="visit-type-label" class="option-grid option-grid--2" role="radiogroup">
+                    <label><input checked name="type" required type="radio" value="ON_SITE">
+                        <svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>Sur place</label>
+                    <label th:if="${form.video}"><input name="type" required type="radio" value="VIDEO">
+                        <svg aria-hidden="true" class="icon"><use href="#i-video"/></svg>En vidéo</label>
+                </div>
+                <p class="visit-type__hint visit-type__hint--on-site"
+                   th:text="|${page.agentFirstName} vous fait visiter le logement sur place.|">Serge vous fait visiter le logement sur place.</p>
+                <p class="visit-type__hint visit-type__hint--video"
+                   th:text="|${page.agentFirstName} vous fait visiter le logement en direct, par appel vidéo WhatsApp.|">Serge vous fait visiter le logement en direct, par appel vidéo WhatsApp.</p>
+            </div>
+            <div class="field" th:if="${form.contact}">
+                <label>Vos coordonnées</label>
+                <p class="visit-request__contact">
+                    <svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg>
+                    <span th:text="${form.contact}">Sandrine Eboa · WhatsApp +237699887766</span>
+                </p>
+            </div>
+            <div class="field">
+                <label id="visit-date-label">Jour de la visite</label>
+                <div aria-labelledby="visit-date-label" class="interest-form__days interest-form__days--week" role="radiogroup">
+                    <label th:each="day : ${form.days}"><input name="visitDate" required type="radio" th:value="${day.value}">
+                        <span class="day__name" th:text="${day.dayName}">dim.</span>
+                        <strong th:text="${day.day}">1</strong>
+                        <span class="day__month" th:text="${day.month}">nov.</span></label>
+                </div>
+            </div>
+            <div class="field">
+                <label for="visit-time">Heure de la visite</label>
+                <select id="visit-time" name="visitTime" required>
+                    <option value="">Choisissez une heure</option>
+                    <option th:each="time : ${form.times}" th:value="${time.first}" th:text="${time.second}">8h00</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="visit-note">Un mot pour <th:block th:text="${page.agentFirstName}">Serge</th:block> <span class="field__optional">(facultatif)</span></label>
+                <textarea id="visit-note" maxlength="500" name="note" rows="2"></textarea>
+            </div>
+            <button class="btn btn-primary interest-form__submit" type="submit">Envoyer la demande</button>
+        </form>
+    </div>
+</div>
 
 <th:block th:if="${page.listing}">
 <!--

@@ -38,7 +38,10 @@ class SecurityConfiguration(
                     .permitAll()
                     // A match proposal (MatchController): the page, and the customer's answer
                     .requestMatchers(HttpMethod.GET, "/match/*").permitAll()
-                    .requestMatchers(HttpMethod.POST, "/match/*/accept", "/match/*/reject").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/match/*/accept", "/match/*/reject", "/match/*/visit").permitAll()
+                    // A visit (VisitController): the page, and the customer's cancellation
+                    .requestMatchers(HttpMethod.GET, "/visits/*").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/visits/*/cancel").permitAll()
                     .requestMatchers("/assets/**").permitAll()
                     .requestMatchers("/error").permitAll()
                     .anyRequest().denyAll() // nothing else is served

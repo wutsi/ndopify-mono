@@ -122,3 +122,36 @@ img.proposal__avatar {
 /* Secondary answers ("Pas pour moi", "Contacter"): light blue, which a white page sets apart better than an
    outline. styles.css's .btn-secondary has no hover of its own. */
 .btn-secondary:hover { background: var(--color-border-info); color: var(--color-text-default); }
+
+/* "Demander une visite" (in person only, the mandate's contact): the read-only contact line, then the 7 days starting
+   tomorrow, 4 a row on a phone and the week on one row from 640px */
+.visit-request__contact {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  margin: 0 0 var(--space-lg);
+  padding: var(--space-md) var(--space-lg);
+  border-radius: var(--space-md);
+  background: var(--surface-low);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+.visit-request__contact .icon { margin-top: 0.1em; color: var(--color-text-info); }
+/* The type: the chosen one's line only, where :has is supported */
+.visit-type__hint { margin: var(--space-sm) 0 0; font-size: 0.8125rem; line-height: 1.45; }
+@supports selector(:has(*)) {
+  .visit-type:not(:has([value="ON_SITE"]:checked)) .visit-type__hint--on-site,
+  .visit-type:not(:has([value="VIDEO"]:checked)) .visit-type__hint--video { display: none; }
+}
+.interest-form__days--week { grid-template-columns: repeat(4, 1fr); }
+@media (min-width: 640px) {
+  .interest-form__days--week { grid-template-columns: repeat(7, 1fr); }
+}
+#visit-note { min-height: 0; }
+.nowrap { white-space: nowrap; }
+
+/* Accepted, a visit open: its slot, then the link to its page */
+.answer .answer__visit { display: flex; align-items: flex-start; gap: var(--space-md); }
+.answer__visit .icon { margin-top: 0.2em; color: var(--color-text-info); }
+.answer__visit__body { flex: 1; min-width: 0; }
+.answer__visit__slot { margin: 0 0 var(--space-lg); }

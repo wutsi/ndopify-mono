@@ -1,17 +1,22 @@
 package com.wutsi.ndopify.web.ui.match
 
 import com.wutsi.ndopify.agent.dto.Agent
+import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.mandate.dto.Mandate
+import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Tenant
+import com.wutsi.ndopify.visit.dto.VisitSummary
+import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import com.wutsi.ndopify.web.ui.listing.ListingPages
+import com.wutsi.ndopify.web.ui.visit.VisitSlots
 import java.time.LocalDate
 
 /**
@@ -28,6 +33,11 @@ import java.time.LocalDate
  * line when some searched amenities are missing. The flash (`answer`: `accepted` / `rejected`, set by the answer's
  * redirect) is only shown when the match is in that state, so a hand-typed `?answer=` says nothing false. No text says
  * the agent was told of the answer: ndopify-server doesn't notify the agent yet.
+ *
+ * The visit block appears once the match is ACCEPTED: the open visit when one exists, otherwise the request form when
+ * the mandate is approved. An UNAVAILABLE match still shows its open visit when the listing went away after the
+ * customer accepted it, since the visit is still alive; it never offers the form then. The `visit` flash (`requested`,
+ * `invalid-slot`, `conflict`, set by the request's redirect) follows the same rule as the answer's.
  */
 object MatchPages {
     /** The searched amenities, by `Match.missingAmenities` field name, worded as on the listing page. */
@@ -60,12 +70,34 @@ object MatchPages {
         formatter: TenantFormatter,
         today: LocalDate,
         answer: String?,
+        customer: Customer? = null,
+        openVisit: VisitSummary? = null,
+        visit: String? = null,
     ): MatchPage {
         val state = state(match, listing)
         val listingPage = listing?.takeIf { state != AnswerState.UNAVAILABLE }
             ?.let { ListingPages.of(it, images, locations, tenant, formatter, today) }
         val firstName = agent.party.firstName.trim().ifEmpty { NO_AGENT_NAME }
         val fullName = "${agent.party.firstName} ${agent.party.lastName}".trim().ifEmpty { NO_AGENT_NAME }
+        val open = openVisit?.let { OpenVisit(it.id, typeLabel(it.type), slot(it, tenant, formatter), it.status) }
+        val panel = when {
+            state == AnswerState.ACCEPTED -> VisitPanel(
+                open,
+                if (open == null && mandate.status == MandateStatus.APPROVED) {
+                    VisitForm(
+                        days = VisitSlots.days(today, formatter),
+                        times = VisitSlots.times(),
+                        contact = contact(customer),
+                        video = customer?.whatsappNumber?.isNotBlank() == true,
+                    )
+                } else {
+                    null
+                },
+            )
+            state == AnswerState.UNAVAILABLE && match.status == MatchStatus.ACCEPTED && open != null ->
+                VisitPanel(open, null)
+            else -> null
+        }
 
         return MatchPage(
             id = match.id,
@@ -90,7 +122,44 @@ object MatchPages {
                 answer == "rejected" && state == AnswerState.REJECTED -> "C'est noté : vous avez écarté ce logement."
                 else -> null
             },
+            visit = panel,
+            visitFlash = visitFlash(visit, panel),
         )
+    }
+
+    /** "Sur place" / "Visite vidéo"; "Visite" for a type the page doesn't know. */
+    private fun typeLabel(type: VisitType): String = when (type) {
+        VisitType.ON_SITE -> "Sur place"
+        VisitType.VIDEO -> "Visite vidéo"
+        else -> "Visite"
+    }
+
+    /** The visit's booked time, or the requested one until the agent confirms a date. */
+    private fun slot(visit: VisitSummary, tenant: Tenant, formatter: TenantFormatter): String =
+        VisitSlots.label(typeLabel(visit.type), visit.scheduledAt ?: visit.requestedAt, tenant, formatter)
+
+    /** "Sandrine Eboa · WhatsApp +237699887766"; null when the customer is unknown or says neither. */
+    private fun contact(customer: Customer?): String? {
+        val name = listOfNotNull(
+            customer?.party?.firstName?.trim()?.ifEmpty { null },
+            customer?.party?.lastName?.trim()?.ifEmpty { null },
+        ).joinToString(" ")
+        return listOfNotNull(
+            name.ifEmpty { null },
+            customer?.whatsappNumber?.takeIf { it.isNotBlank() }?.let { "WhatsApp $it" },
+        ).joinToString(" · ").ifEmpty { null }
+    }
+
+    /** The outcome of a visit request, from its redirect's `visit` parameter; "requested" only with an open visit. */
+    private fun visitFlash(visit: String?, panel: VisitPanel?): String? = when (visit) {
+        "requested" -> if (panel?.open != null) {
+            "Votre demande de visite est envoyée. L'agent vous confirme la date par e-mail sous 48 h."
+        } else {
+            null
+        }
+        "invalid-slot" -> "Ce créneau n'est plus disponible. Choisissez-en un autre."
+        "conflict" -> "La visite n'a pas pu être demandée. Rechargez la page ou contactez votre agent."
+        else -> null
     }
 
     private fun state(match: Match, listing: Listing?): AnswerState = when {

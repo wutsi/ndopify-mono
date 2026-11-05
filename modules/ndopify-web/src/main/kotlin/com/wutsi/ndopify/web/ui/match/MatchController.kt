@@ -4,17 +4,22 @@ import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.match.dto.MatchRejectionReason
+import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.dto.RejectMatchRequest
 import com.wutsi.ndopify.refdata.dto.Tenant
 import com.wutsi.ndopify.web.client.ndopify.NdAgentClient
+import com.wutsi.ndopify.web.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.web.client.ndopify.NdListingClient
 import com.wutsi.ndopify.web.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.web.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.web.client.ndopify.NdMatchClient
+import com.wutsi.ndopify.web.client.ndopify.NdVisitClient
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import com.wutsi.ndopify.web.core.service.security.AccessTokenService
 import com.wutsi.ndopify.web.core.service.security.JwtAuthentication
+import com.wutsi.ndopify.web.ui.layout.PortalLink
 import jakarta.servlet.http.HttpServletRequest
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
@@ -28,7 +33,6 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.servlet.view.RedirectView
-import org.springframework.web.util.UriComponentsBuilder
 import java.time.Clock
 
 /**
@@ -62,6 +66,8 @@ class MatchController(
     private val agentClient: NdAgentClient,
     private val listingClient: NdListingClient,
     private val locationClient: NdLocationClient,
+    private val visitClient: NdVisitClient,
+    private val customerClient: NdCustomerClient,
     private val accessTokenService: AccessTokenService,
     private val clock: Clock,
 ) {
@@ -74,9 +80,6 @@ class MatchController(
         const val REASON_EXPIRED = "expired"
         const val REASON_NOT_YOURS = "not-yours"
 
-        /** Three base64url segments: all a link's token must look like to be kept (its signature is ndopify-server's to check). */
-        private val JWT_SHAPE = Regex("[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+")
-
         /** `RejectMatchRequest.reason`'s size on ndopify-server: the form allows 500, a longer post is cut. */
         private const val MAX_COMMENT = 1000
     }
@@ -86,16 +89,17 @@ class MatchController(
         @PathVariable id: Long,
         @RequestParam(name = "token", required = false) token: String?,
         @RequestParam(name = "answer", required = false) answer: String?,
+        @RequestParam(name = "visit", required = false) visit: String?,
         request: HttpServletRequest,
         model: Model,
     ): Any {
         if (!token.isNullOrBlank()) {
-            if (!JWT_SHAPE.matches(token)) {
+            if (!PortalLink.isToken(token)) {
                 // Not a token: setting it as a cookie value could even fail (`;`, space, `"`, `,`)
                 return link(REASON_EXPIRED, model)
             }
             accessTokenService.set(token)
-            return redirect(withoutToken(request))
+            return redirect(PortalLink.withoutToken(request))
         }
 
         return signedIn("GET /match/$id", model) {
@@ -103,13 +107,25 @@ class MatchController(
             val mandate = mandateClient.get(match.mandateId)
             val agent = mandate.agentId?.let { agent(it) } ?: Agent()
             val listing = publishedListing(match.listingId)
+            val openVisit = if (match.status == MatchStatus.ACCEPTED) visitClient.openForMatch(id) else null
+            val customer = if (openVisit == null && match.status == MatchStatus.ACCEPTED && mandate.status == MandateStatus.APPROVED && listing != null) {
+                try {
+                    customerClient.get(mandate.customerId)
+                } catch (ex: HttpClientErrorException.NotFound) {
+                    null
+                } catch (ex: HttpClientErrorException.Forbidden) {
+                    null
+                }
+            } else {
+                null
+            }
             val images = listing?.let { listingClient.images(it.id) } ?: emptyList<ListingImage>()
             val locations = locationClient.search(
                 (listOfNotNull(listing?.cityId, listing?.neighborhoodId, mandate.cityId) + mandate.neighborhoodIds).distinct(),
             )
             val tenant = model.getAttribute("tenant") as Tenant
             val formatter = TenantFormatter(tenant)
-            val page = MatchPages.of(match, mandate, agent, listing, images, locations, tenant, formatter, formatter.today(clock), answer)
+            val page = MatchPages.of(match, mandate, agent, listing, images, locations, tenant, formatter, formatter.today(clock), answer, customer, openVisit, visit)
             model.addAttribute("page", page)
             VIEW
         }
@@ -130,6 +146,27 @@ class MatchController(
                 reason = form.comment?.trim()?.ifEmpty { null }?.take(MAX_COMMENT),
             )
             answered(id, "rejected") { matchClient.reject(id, request) }
+        }
+
+    /**
+     * Posts the customer's visit request. An unusable form (unknown type, missing/unparseable slot) and ndopify-server's
+     * 400 (the slot is gone) both redirect to the page's `?visit=invalid-slot`; a 409 (`VISIT_ALREADY_REQUESTED`) to
+     * `?visit=conflict`. Success goes back with `?visit=requested` for the page's flash.
+     */
+    @PostMapping("/match/{id}/visit")
+    fun requestVisit(@PathVariable id: Long, @ModelAttribute form: VisitRequestForm, model: Model): Any =
+        signedIn("POST /match/$id/visit", model) {
+            val tenant = model.getAttribute("tenant") as Tenant
+            val request = form.toRequest(id, tenant)
+                ?: return@signedIn redirect("/match/$id?visit=invalid-slot")
+            try {
+                visitClient.create(request)
+                redirect("/match/$id?visit=requested")
+            } catch (ex: HttpClientErrorException.BadRequest) {
+                redirect("/match/$id?visit=invalid-slot")
+            } catch (ex: HttpClientErrorException.Conflict) {
+                redirect("/match/$id?visit=conflict")
+            }
         }
 
     /** Runs [action] for a signed-in visitor, answering ndopify-server's 401 / 403 with the `match-link` page. */
@@ -185,14 +222,5 @@ class MatchController(
     private fun link(reason: String, model: Model): String {
         model.addAttribute("reason", reason)
         return VIEW_LINK
-    }
-
-    // The request's own path and parameters, minus `token`
-    private fun withoutToken(request: HttpServletRequest): String {
-        val builder = UriComponentsBuilder.newInstance().path(request.requestURI)
-        request.parameterMap
-            .filterKeys { name -> name != "token" }
-            .forEach { (name, values) -> values.forEach { value -> builder.queryParam(name, value) } }
-        return builder.build().encode().toUriString()
     }
 }

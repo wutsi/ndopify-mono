@@ -10,20 +10,28 @@ import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.dto.Agent
+import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.mandate.dto.Mandate
+import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.match.dto.MatchRejectionReason
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.dto.RejectMatchRequest
 import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.refdata.dto.Location
+import com.wutsi.ndopify.visit.dto.CreateVisitRequest
+import com.wutsi.ndopify.visit.dto.VisitStatus
+import com.wutsi.ndopify.visit.dto.VisitSummary
+import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.web.client.ndopify.NdAgentClient
+import com.wutsi.ndopify.web.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.web.client.ndopify.NdListingClient
 import com.wutsi.ndopify.web.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.web.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.web.client.ndopify.NdMatchClient
+import com.wutsi.ndopify.web.client.ndopify.NdVisitClient
 import com.wutsi.ndopify.web.core.service.TenantContext
 import com.wutsi.ndopify.web.core.service.security.AccessTokenService
 import com.wutsi.ndopify.web.service.TenantFixtures.TENANT
@@ -52,6 +60,7 @@ import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -68,6 +77,8 @@ class MatchControllerTest {
     private val locationClient = mock<NdLocationClient> {
         on { search(any()) } doReturn listOf(Location(id = 1, name = "Douala"), Location(id = 5, name = "Bonapriso"))
     }
+    private val visitClient = mock<NdVisitClient>()
+    private val customerClient = mock<NdCustomerClient>()
     private val clock = Clock.fixed(Instant.parse("2026-10-31T10:00:00Z"), ZoneOffset.UTC)
     private val accessTokenService = mock<AccessTokenService>()
     private val context = mock<TenantContext> { on { getTenant() } doReturn TENANT }
@@ -79,7 +90,7 @@ class MatchControllerTest {
 
     private fun perform(request: RequestBuilder, tokens: AccessTokenService = accessTokenService): MvcResult =
         MockMvcBuilders.standaloneSetup(
-            MatchController(matchClient, mandateClient, agentClient, listingClient, locationClient, tokens, clock),
+            MatchController(matchClient, mandateClient, agentClient, listingClient, locationClient, visitClient, customerClient, tokens, clock),
         )
             .setControllerAdvice(TenantAdvice(context), HttpClientErrorHandler(accessTokenService))
             .setViewResolvers(InternalResourceViewResolver("/templates/", ".html"))
@@ -160,6 +171,75 @@ class MatchControllerTest {
         val result = request("/match/12?answer=accepted")
 
         assertEquals("C'est noté : ce logement vous intéresse.", page(result).flash)
+    }
+
+    @Test
+    fun `accepted - loads the open visit and the customer`() {
+        MatchFixtures.signIn()
+        doReturn(MATCH.copy(status = MatchStatus.ACCEPTED)).whenever(matchClient).get(12)
+        doReturn(Mandate(id = 7, agentId = 3, cityId = 1, status = MandateStatus.APPROVED, customerId = 42)).whenever(mandateClient).get(7)
+        doReturn(VisitSummary(id = 9, status = VisitStatus.REQUESTED, type = VisitType.ON_SITE)).whenever(visitClient).openForMatch(12)
+        doReturn(Customer(id = 42, whatsappNumber = "+237699887766")).whenever(customerClient).get(42)
+
+        val page = page(request("/match/12"))
+
+        assertEquals(9L, page.visit?.open?.id)
+        assertNull(page.visit?.form)
+        verify(customerClient, never()).get(42) // the form is hidden while a visit is open
+    }
+
+    @Test
+    fun `accepted - approved without an open visit shows the form`() {
+        MatchFixtures.signIn()
+        doReturn(MATCH.copy(status = MatchStatus.ACCEPTED)).whenever(matchClient).get(12)
+        doReturn(Mandate(id = 7, agentId = 3, cityId = 1, status = MandateStatus.APPROVED, customerId = 42)).whenever(mandateClient).get(7)
+        doReturn(Customer(id = 42, whatsappNumber = "+237699887766")).whenever(customerClient).get(42)
+
+        val page = page(request("/match/12"))
+
+        assertNotNull(page.visit?.form)
+        verify(customerClient).get(42)
+    }
+
+    @Test
+    fun `accepted - customer gone leaves the form without contact`() {
+        MatchFixtures.signIn()
+        doReturn(MATCH.copy(status = MatchStatus.ACCEPTED)).whenever(matchClient).get(12)
+        doReturn(Mandate(id = 7, agentId = 3, cityId = 1, status = MandateStatus.APPROVED, customerId = 42)).whenever(mandateClient).get(7)
+        doThrow(failure(HttpStatus.NOT_FOUND)).whenever(customerClient).get(42)
+
+        val page = page(request("/match/12"))
+
+        assertNotNull(page.visit?.form)
+        assertFalse(page.visit?.form?.video ?: true)
+        assertNull(page.visit?.form?.contact)
+    }
+
+    @Test
+    fun `rejected match does not fetch the customer`() {
+        MatchFixtures.signIn()
+        doReturn(MATCH.copy(status = MatchStatus.REJECTED)).whenever(matchClient).get(12)
+        doReturn(Mandate(id = 7, agentId = 3, cityId = 1, status = MandateStatus.APPROVED, customerId = 42)).whenever(mandateClient).get(7)
+
+        page(request("/match/12"))
+
+        verify(customerClient, never()).get(any())
+    }
+
+    @Test
+    fun `accepted - unavailable listing still shows the open visit`() {
+        MatchFixtures.signIn()
+        doReturn(MATCH.copy(status = MatchStatus.ACCEPTED)).whenever(matchClient).get(12)
+        doReturn(Mandate(id = 7, agentId = 3, cityId = 1, status = MandateStatus.APPROVED, customerId = 42)).whenever(mandateClient).get(7)
+        doThrow(failure(HttpStatus.NOT_FOUND)).whenever(listingClient).get(123)
+        doReturn(VisitSummary(id = 9, status = VisitStatus.REQUESTED, type = VisitType.ON_SITE)).whenever(visitClient).openForMatch(12)
+
+        val page = page(request("/match/12"))
+
+        assertEquals(AnswerState.UNAVAILABLE, page.state)
+        assertEquals(9L, page.visit?.open?.id)
+        assertNull(page.visit?.form)
+        verify(customerClient, never()).get(any())
     }
 
     @Test
@@ -308,6 +388,66 @@ class MatchControllerTest {
 
         assertEquals(302, result.response.status)
         assertEquals("/match/12", result.response.getHeader(HttpHeaders.LOCATION))
+    }
+
+    @Test
+    fun requestVisit() {
+        MatchFixtures.signIn()
+        doReturn(Mandate(id = 7, agentId = 3, cityId = 1, status = MandateStatus.APPROVED, customerId = 42)).whenever(mandateClient).get(7)
+        doReturn(Customer(id = 42)).whenever(customerClient).get(42)
+
+        val result = perform(post("/match/12/visit")
+            .param("type", "ON_SITE").param("visitDate", "2026-11-01").param("visitTime", "10:00").param("note", "  Fin de journée  "))
+
+        verify(visitClient).create(
+            CreateVisitRequest(
+                matchId = 12,
+                type = VisitType.ON_SITE,
+                requestedAt = Date.from(Instant.parse("2026-11-01T09:00:00Z")),
+                note = "Fin de journée",
+            ),
+        )
+        assertEquals(302, result.response.status)
+        assertEquals("/match/12?visit=requested", result.response.getHeader(HttpHeaders.LOCATION))
+    }
+
+    @Test
+    fun `request visit - stale slot`() {
+        MatchFixtures.signIn()
+        doThrow(failure(HttpStatus.BAD_REQUEST)).whenever(visitClient).create(any())
+        val result = perform(post("/match/12/visit").param("type", "ON_SITE").param("visitDate", "2026-11-01").param("visitTime", "10:00"))
+        assertEquals("/match/12?visit=invalid-slot", result.response.getHeader(HttpHeaders.LOCATION))
+    }
+
+    @Test
+    fun `request visit - conflict`() {
+        MatchFixtures.signIn()
+        doThrow(failure(HttpStatus.CONFLICT)).whenever(visitClient).create(any())
+        val result = perform(post("/match/12/visit").param("type", "ON_SITE").param("visitDate", "2026-11-01").param("visitTime", "10:00"))
+        assertEquals("/match/12?visit=conflict", result.response.getHeader(HttpHeaders.LOCATION))
+    }
+
+    @Test
+    fun `request visit - invalid input`() {
+        MatchFixtures.signIn()
+        val result = perform(post("/match/12/visit").param("type", "BUS").param("visitDate", "x").param("visitTime", "y"))
+        assertEquals("/match/12?visit=invalid-slot", result.response.getHeader(HttpHeaders.LOCATION))
+        verify(visitClient, never()).create(any())
+    }
+
+    @Test
+    fun `request visit - note cut to what ndopify-server takes`() {
+        MatchFixtures.signIn()
+        perform(post("/match/12/visit").param("type", "VIDEO").param("visitDate", "2026-11-01").param("visitTime", "10:00")
+            .param("note", "x".repeat(1200)))
+        verify(visitClient).create(CreateVisitRequest(12, VisitType.VIDEO, Date.from(Instant.parse("2026-11-01T09:00:00Z")), "x".repeat(500)))
+    }
+
+    @Test
+    fun `request visit - signed out`() {
+        val result = perform(post("/match/12/visit"))
+        assertEquals(MatchController.VIEW_LINK, result.modelAndView?.viewName)
+        verify(visitClient, never()).create(any())
     }
 
     @Test
