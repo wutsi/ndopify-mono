@@ -86,6 +86,8 @@ class ProfileTemplateTest {
                     mock(),
                     mock(),
                     mock(),
+                    mock(),
+                    mock(),
                     locationClient,
                     tenantContext,
                     clock,

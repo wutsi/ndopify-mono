@@ -1,0 +1,359 @@
+/*
+ * Ndopify Partner Central — visits: visit.html, the Visites section of index.html, a match's visit on mandate.html.
+ * Tier-2 tokens only (partner-central.css). Phone first: the agent uses it at the property.
+ */
+
+/* ---------- index.html › Visites ---------- */
+.visit-group > * + * {
+    margin-top: var(--space-3);
+}
+
+.visit-group + .visit-group {
+    margin-top: var(--space-4);
+}
+
+.visit-group__title {
+    font: 600 var(--step-body) / 1.4 var(--font-body);
+}
+
+.visit-cards {
+    margin-top: var(--space-3);
+}
+
+.visit-cards > * + * {
+    margin-top: var(--space-3);
+}
+
+.visit-card article > * + * {
+    margin-top: var(--space-2);
+}
+
+.visit-card__when,
+.visit-card__timer {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.visit-card__when {
+    font-weight: 600;
+}
+
+.visit-card__listing,
+.visit-card__timer {
+    font-size: var(--step-hint);
+}
+
+.visit-card .icon {
+    flex: none;
+}
+
+/* Under 12 h to confirm: the text colour carries it (the warning fill is too light on its own). */
+.visit-card[data-urgent] .visit-card__timer {
+    color: var(--color-warning-fg);
+}
+
+/* ---------- mandate.html › a match's visit ---------- */
+.match__visit-cta {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    margin-block: calc((1.6em - var(--target)) / 2);
+    font-weight: 600;
+}
+
+/* ---------- visit.html ---------- */
+.visit > * + * {
+    margin-top: var(--space-4);
+}
+
+.visit-intro {
+    margin-bottom: 0;
+}
+
+.visit-header {
+    display: grid;
+    gap: var(--space-3);
+    padding-bottom: var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+}
+
+.visit-listing {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+}
+
+.visit-listing .icon {
+    flex: none;
+    margin-top: 0.2em;
+}
+
+.visit-listing a {
+    font-weight: 600;
+}
+
+.visit-listing__meta {
+    font-size: var(--step-hint);
+}
+
+.visit-panel > * + * {
+    margin-top: var(--space-4);
+}
+
+.visit-panel__title {
+    font-size: var(--step-h3);
+}
+
+.visit-form__title {
+    font: 600 var(--step-h4) / 1.3 var(--font-body);
+}
+
+/* The day and time, the page's most important fact: large, never shortened. */
+.visit-when {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font: 600 var(--step-h4) / 1.35 var(--font-body);
+}
+
+.visit-when .icon,
+.visit-deadline .icon,
+.visit-address .icon,
+.visit-distance .icon,
+.visit-later .icon,
+.visit-position .icon {
+    flex: none;
+    margin-top: 0.2em;
+}
+
+.visit-deadline,
+.visit-distance,
+.visit-later {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+}
+
+.visit-deadline,
+.visit-later {
+    font-size: var(--step-hint);
+}
+
+/* The no-show line has no icon: as a flex line, its text would be laid out in columns */
+.visit-later[data-noshow-later] {
+    display: block;
+}
+
+.visit-distance {
+    color: var(--color-success-fg);
+}
+
+.visit-distance strong {
+    font-weight: 600;
+}
+
+.visit-address {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+}
+
+.visit-address > div > * + * {
+    margin-top: var(--space-1);
+}
+
+.visit-address a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+}
+
+/* The client's own words. */
+.visit-note {
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    border-left: 3px solid var(--color-border-strong);
+    background: var(--color-surface-alt);
+}
+
+.visit-note blockquote {
+    margin: 0;
+}
+
+.visit-note figcaption {
+    margin-top: var(--space-1);
+    font-size: var(--step-hint);
+}
+
+/* The panel of the next action (confirm, start, end the visit): light gray, so it stands out from the white page and
+   its white fields stand out in it */
+.visit-form {
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-alt);
+}
+
+/* Day and time: stacked on phones (each select a full-width tap target), side by side from 480px. */
+.visit-slot {
+    display: grid;
+    gap: var(--space-3);
+}
+
+@media (min-width: 480px) {
+    .visit-slot {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    }
+}
+
+/* The main button is full width on phones: thumb-sized, never missed. */
+.visit-form .form__actions .btn {
+    width: 100%;
+}
+
+@media (min-width: 640px) {
+    .visit-form .form__actions .btn {
+        width: auto;
+        min-width: 12rem;
+    }
+}
+
+/* The client's code: one field as wide as the "Démarrer" button below it, large digits, centred, easy to hit and
+   to read back at arm's length on a phone. */
+.visit-code {
+    width: 100%;
+    min-height: 4.5rem;
+    font-size: 2.5rem;
+    font-weight: 600;
+    letter-spacing: 0.6em;
+    text-align: center;
+    text-indent: 0.6em; /* balances the letter-spacing after the last digit */
+}
+
+.visit-code::placeholder {
+    color: var(--color-border);
+    letter-spacing: 0.6em;
+}
+
+/* The position, taken by itself: a status line, not a field. */
+.visit-position {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--space-1) var(--space-2);
+    font-size: var(--step-hint);
+}
+
+.visit-position [data-position-text] {
+    flex: 1 1 12rem;
+}
+
+.visit-position .link-button {
+    min-height: var(--target);
+    margin-block: calc((1.5em - var(--target)) / 2);
+    font-weight: 600;
+}
+
+.visit-position--done {
+    color: var(--color-success-fg);
+}
+
+.visit-position--weak,
+.visit-position--none {
+    color: var(--color-warning-fg);
+}
+
+/* Secondary, rarer actions (refuse, cancel, no-show): folded, a link-like summary; open, a form below it. */
+.visit-secondary summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    cursor: pointer;
+}
+
+.visit-secondary__body {
+    margin-top: var(--space-2);
+    padding: var(--space-4);
+    background: var(--color-surface-alt);
+}
+
+.visit-secondary__body .btn {
+    width: 100%;
+}
+
+@media (min-width: 640px) {
+    .visit-secondary__body .btn {
+        width: auto;
+    }
+}
+
+.visit-summary .review__value {
+    font-weight: 600;
+}
+
+.visit-summary .review__multiline {
+    font-weight: 400;
+    white-space: pre-line;
+}
+
+.visit-feedback > * + * {
+    margin-top: var(--space-3);
+}
+
+/* Same as find-property.css (not loaded here). */
+.input--textarea {
+    min-height: calc(var(--target) * 2.5);
+    border-radius: calc(var(--radius-control) / 2);
+    line-height: 1.5;
+    resize: vertical;
+}
+
+/* ---------- Visit type: on site, or a WhatsApp video call from the property ---------- */
+.visit-type {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: 600;
+}
+
+.visit-type .icon,
+.visit-card__listing .icon {
+    flex: none;
+}
+
+.visit-card__listing {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+/* The call comes first in a video visit's window: a full-width button, then the instruction. */
+.visit-call {
+    padding: var(--space-4);
+    border: 1px solid var(--color-info-border);
+    background: var(--color-info-bg);
+    color: var(--color-info-fg);
+}
+
+.visit-call > * + * {
+    margin-top: var(--space-2);
+}
+
+.visit-call__button {
+    width: 100%;
+}
+
+.visit-call__button .icon {
+    flex: none;
+}
+
+@media (min-width: 640px) {
+    .visit-call__button {
+        width: auto;
+    }
+}
