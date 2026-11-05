@@ -305,26 +305,30 @@ object ListingViews {
             visits = cards,
             proposals = ProposalsView(summary = proposalsSummary(matches, visiting), rows = rows),
             stats = VisitStats.of(visits, now),
+            interested = matches.count { it.status == MatchStatus.ACCEPTED },
         )
     }
 
-    /** The remaining proposals' counts; a match with an open visit is left out (it is in *Visites*). */
+    /** The remaining proposals' counts, led by the open visits; a match with one is left out (it is in *Visites*). */
     private fun proposalsSummary(matches: List<Match>, visiting: Set<Long>): String? =
-        MatchRules.proposals(matches.filterNot { it.id in visiting })
+        listOfNotNull(
+            visiting.takeIf { it.isNotEmpty() }?.let { plural(it.size, "visite", "visites") },
+            MatchRules.proposals(matches.filterNot { it.id in visiting }),
+        ).joinToString(" · ").ifEmpty { null }
 
     /**
      * The listing's line on the page of [mandate] (the prototype's `renderListing`); null for a mandate that has none
      * to have: a search, or a landlord's not signed yet. [listingId] is null before it's created; [listing] is also
      * null when it can't be loaded (only the link is then shown). The photos aren't loaded here: what's left names the
-     * section only. Once published, [interested] is how many clients it interests (its ACCEPTED matches, like the
-     * Espace agent's card), null when they can't be counted: no line then.
+     * section only. Once published, [stats] is its activity (like the Espace agent's card), null when it can't be had:
+     * no line then.
      */
     fun forMandate(
         mandate: Mandate,
         listingId: Long?,
         listing: Listing?,
         formatter: TenantFormatter,
-        interested: Int? = null,
+        stats: ListingStatsView? = null,
     ): MandateListingView? {
         if (!MandateRules.listed(mandate)) return null
 
@@ -371,7 +375,7 @@ object ListingViews {
                 else -> "Voir l'annonce"
             },
             primary = draft,
-            interest = interested?.takeIf { published }?.let { MatchRules.interest(it) },
+            stats = if (published) stats?.label else null,
         )
     }
 

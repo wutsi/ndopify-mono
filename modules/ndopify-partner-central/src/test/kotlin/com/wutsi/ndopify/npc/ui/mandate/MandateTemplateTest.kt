@@ -297,7 +297,25 @@ class MandateTemplateTest {
         assertEquals("Publiée le 22 oct. 2026", box.selectFirst("[data-listing-status-tag]")?.text())
         assertNull(box.selectFirst("[data-listing-text]"))
         assertNull(box.selectFirst(".mandate-panel__actions"))
-        assertEquals("Aucune personne intéressée pour l'instant", box.selectFirst("[data-listing-interest-text]")?.text())
+        assertEquals(
+            "Aucune personne intéressée pour l'instant · Aucune visite",
+            box.selectFirst("[data-listing-stats] > span > span:last-child")?.text(),
+        )
+        assertNull(page.selectFirst("[data-mandate-visit-stats]")) // no duplicate visits line
+    }
+
+    @Test
+    fun `approved - landlord with listing published - activity`() {
+        publishedListing()
+        doReturn(listOf(VisitFixtures.summary(VisitFixtures.confirmed()), VisitFixtures.summary(VisitFixtures.completed())))
+            .whenever(visitClient).searchByListings(AGENT.id, VisitRules.COUNTED, listOf(501L), 100)
+
+        val box = render(APPROVED.copy(mandateType = MandateType.LISTING)).selectFirst("[data-listing-actions]")!!
+
+        assertEquals(
+            "2 personnes intéressées · 2 visites",
+            box.selectFirst("[data-listing-stats] > span > span:last-child")?.text(),
+        )
     }
 
     private fun publishedListing() {
@@ -307,6 +325,8 @@ class MandateTemplateTest {
         doReturn(ListingViewsTest.PROPOSALS).whenever(matchClient).searchByListings(listOf(501), MatchRules.SENT)
         doReturn(ListingViewsTest.SEARCHES).whenever(mandateClient).searchByIds(listOf(207L, 204L, 305L), AGENT.id)
         doReturn(ListingViewsTest.CUSTOMERS).whenever(customerClient).search(listOf(14L, 17L))
+        doReturn(emptyList<VisitSummary>())
+            .whenever(visitClient).searchByListings(AGENT.id, VisitRules.COUNTED, listOf(501L), 100)
     }
 
     @Test
@@ -346,7 +366,7 @@ class MandateTemplateTest {
                     VisitFixtures.requested().copy(matchId = 9002, mandateId = 204, listingId = 501, customerId = 14),
                 ),
             ),
-        ).whenever(visitClient).searchByMatches(AGENT.id, VisitRules.OPEN, listOf(9001L, 9002L, 9003L, 9004L), 4)
+        ).whenever(visitClient).searchByListings(AGENT.id, VisitRules.COUNTED, listOf(501L), 100)
 
         val page = render(APPROVED.copy(mandateType = MandateType.LISTING))
 
@@ -380,7 +400,7 @@ class MandateTemplateTest {
     @Test
     fun `approved - landlord with listing published - visits unavailable`() {
         publishedListing()
-        doThrow(ResourceAccessException("down")).whenever(visitClient).searchByMatches(any(), any(), any(), any())
+        doThrow(ResourceAccessException("down")).whenever(visitClient).searchByListings(any(), any(), any(), any())
 
         val page = render(APPROVED.copy(mandateType = MandateType.LISTING))
 
@@ -425,7 +445,7 @@ class MandateTemplateTest {
 
         val box = render(APPROVED.copy(mandateType = MandateType.LISTING)).selectFirst("[data-listing-actions]")!!
 
-        assertNull(box.selectFirst("[data-listing-interest]"))
+        assertNull(box.selectFirst("[data-listing-stats]"))
     }
 
     @Test
@@ -651,7 +671,7 @@ class MandateTemplateTest {
             MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.ACCEPTED),
             MatchFixtures.MATCH_C.copy(mandateId = 201, status = MatchStatus.DISMISSED),
         )
-        doReturn(visits.toList()).whenever(visitClient).search(AGENT.id, VisitRules.OPEN, 20, 201L)
+        doReturn(visits.toList()).whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
     }
 
     @Test
@@ -680,6 +700,8 @@ class MandateTemplateTest {
         assertEquals("1 en attente", matches.selectFirst("[data-match-proposals-text]")?.text())
         // Above Biens correspondants
         assertEquals("Biens correspondants", section.nextElementSibling()?.selectFirst("h2")?.text())
+        assertNull(page.selectFirst("[data-listing-stats]"))
+        assertEquals("1 visite à venir", page.selectFirst("[data-mandate-visit-stats]")?.text())
     }
 
     @Test
@@ -699,7 +721,7 @@ class MandateTemplateTest {
     @Test
     fun `visits unavailable`() {
         withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.ACCEPTED))
-        doThrow(ResourceAccessException("timeout")).whenever(visitClient).search(AGENT.id, VisitRules.OPEN, 20, 201L)
+        doThrow(ResourceAccessException("timeout")).whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
 
         val page = render(APPROVED)
 
@@ -717,7 +739,7 @@ class MandateTemplateTest {
         doReturn(VisitFixtures.NOW).whenever(clock).millis()
         withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.ACCEPTED))
         doReturn(listOf(VisitFixtures.summary(VisitFixtures.requested().copy(mandateId = 201, matchId = 9001))))
-            .whenever(visitClient).search(AGENT.id, VisitRules.OPEN, 20, 201L)
+            .whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
 
         val matches = render(APPROVED).selectFirst("section[data-matches-section]")!!
 

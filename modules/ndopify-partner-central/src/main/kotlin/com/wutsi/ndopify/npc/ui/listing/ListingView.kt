@@ -52,6 +52,8 @@ data class ListingClientsView(
     val proposals: ProposalsView,
     /** The listing's total visits (open and completed), null when they can't be read. */
     val stats: VisitStats?,
+    /** The clients who accepted it (its ACCEPTED matches), including another agent's. */
+    val interested: Int,
 )
 
 /** A published listing's *Propositions* (`ListingViews.clients`), on its mandate's page. */
@@ -106,8 +108,8 @@ data class MandateListingView(
     val action: String?,
     /** The step's main button while there's something for the agent to do. */
     val primary: Boolean,
-    /** Published only: "2 personnes intéressées" (`MatchRules.interest`); null else, or when it can't be had. */
-    val interest: String? = null,
+    /** Published only: "2 personnes intéressées · 3 visites"; null else, or when it can't be had. */
+    val stats: String? = null,
 )
 
 /**
