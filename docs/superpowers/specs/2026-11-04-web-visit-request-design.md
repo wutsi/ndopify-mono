@@ -93,9 +93,9 @@ truth, and it breaks the no-JavaScript promise for no benefit.
   `/match/{id}/visit`; bottom bar shows "Demander une visite" when the form applies, otherwise "Voir ma visite" when a
   visit is open. Extend `proposal.js` to focus the type choice and disable submit until a day and time are chosen
   (no `preventDefault`: the form still posts).
-- **Safety with the listing page:** `listing.js`'s `initVisitForm` only runs on the listing lead form, which gets a
-  `data-lead-form` marker; the match popup's `#visit` also exists, so without the guard its submit would be hijacked.
-  This is a one-attribute change in `listing.html` plus the guard.
+- **Safety with the listing page:** `listing.js`'s `initVisitForm` returns early when `[data-interest-form]`,
+  `[data-interest-done]` or `[data-phone-name]` is absent, so it only runs on the listing's lead form; the match
+  popup's `#visit` uses `data-visit-request-form` instead, so its submit is not hijacked.
 - **Security:** permit `POST /match/*/visit`.
 
 ## Visit page (`/visits/{id}`)

@@ -52,12 +52,13 @@ Package `com.wutsi.ndopify.web`:
   the match link (cookie, 302, `visit-link.html` with `reason = expired` / `not-yours`, a bad-shaped token never set),
   then `visit.html`, the `VisitPage` that `VisitPages` builds from the visit: the listing (linked to `/match/{id}`),
   the agent, the customer's contact when readable, and one block for the visit's status — REQUESTED, CONFIRMED,
-  CHECKED_IN, COMPLETED, CANCELLED, EXPIRED, NO_SHOW. The customer's code appears from CONFIRMED onward, the exact
+  CHECKED_IN, COMPLETED, CANCELLED, EXPIRED, NO_SHOW. The customer's code is shown on a CONFIRMED visit, the exact
   address only for an ON_SITE visit (never a VIDEO one); a changed slot is called out on a CONFIRMED visit. "Annuler
   ma demande" / "Annuler la visite" (`#cancel` popup, `CancelVisitForm`, optional reason ≤ 500) posts
   `POST /visits/{id}/cancel` while REQUESTED or CONFIRMED, before the check-in; `?cancel=done|conflict` drives the
   flash. No feedback form and no check-in UI: the page only reads. A listing, agent or customer that ndopify-server no
-  longer serves is not an error: the page shows the visit without it.
+  longer serves is not an error: the listing card is omitted, a gone agent's card shows "votre agent", and a gone
+  customer just hides their contact.
 - `ui/layout/HttpClientErrorHandler` — a 403/404 from ndopify-server (ex: a listing no longer published) is answered
   with the same status (`templates/error/404.html`); a 401 (it rejected the cookie's token) clears the cookie and
   redirects to the same page (a 404 when the request had no cookie, so it can't loop).
@@ -78,8 +79,9 @@ Package `com.wutsi.ndopify.web`:
 
 Static assets in `src/main/resources/public/assets/` (`main.js`, and the listing page's `listing.js` / `listing.css`,
 copied from the prototype's `annonce.*`; the match page's `proposal.css` from `proposition.css`, now with the visit
-request and open-visit rules, and `proposal.js`, which only moves the focus into its popups and keeps the "Demander une
-visite" submit disabled until a slot is chosen: `listing.js` opens and closes them and shows the photos,
+request and open-visit rules, and `proposal.js`, which only moves the focus into its popups and visually disables the
+"Demander une visite" submit (`aria-disabled`) until a slot is chosen (the form still posts): `listing.js` opens and
+closes them and shows the photos,
 `proposition.js`'s faked answers are not ported; the visit page's `visit.css` / `visit.js`, which only moves the focus
 into `#cancel` — `listing.js` opens and closes it. `listing.js`'s lead form is guarded on the prototype's markers
 (`data-interest-form`, `data-interest-done`, `data-phone-name`): the match page reuses `#visit` for its own request
