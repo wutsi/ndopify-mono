@@ -2,7 +2,6 @@ package com.wutsi.ndopify.npc.ui.visit
 
 import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.listing.dto.Listing
-import com.wutsi.ndopify.match.dto.MatchRejectionReason
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.npc.ui.match.MatchRules
 import com.wutsi.ndopify.refdata.dto.Location
@@ -12,7 +11,6 @@ import com.wutsi.ndopify.visit.dto.Visit
 import com.wutsi.ndopify.visit.dto.VisitInterest
 import com.wutsi.ndopify.visit.dto.VisitNoShowReason
 import com.wutsi.ndopify.visit.dto.VisitParty
-import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import java.util.Date

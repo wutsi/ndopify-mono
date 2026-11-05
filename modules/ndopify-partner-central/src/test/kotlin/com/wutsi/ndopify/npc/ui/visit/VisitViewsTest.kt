@@ -2,9 +2,7 @@ package com.wutsi.ndopify.npc.ui.visit
 
 import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.listing.dto.Listing
-import com.wutsi.ndopify.match.dto.MatchRejectionReason
 import com.wutsi.ndopify.visit.dto.Visit
-import com.wutsi.ndopify.visit.dto.VisitInterest
 import com.wutsi.ndopify.visit.dto.VisitNoShowReason
 import com.wutsi.ndopify.visit.dto.VisitParty
 import com.wutsi.ndopify.visit.dto.VisitStatus

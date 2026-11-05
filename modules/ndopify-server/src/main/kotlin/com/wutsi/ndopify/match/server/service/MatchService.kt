@@ -15,7 +15,6 @@ import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.dto.SearchMatchRequest
 import com.wutsi.ndopify.match.server.dao.MatchRepository
 import com.wutsi.ndopify.match.server.domain.MatchEntity
-import com.wutsi.ndopify.platform.logger.KVLogger
 import com.wutsi.ndopify.refdata.dto.LocationType
 import com.wutsi.ndopify.refdata.dto.SearchNearestLocationRequest
 import com.wutsi.ndopify.refdata.server.service.LocationService
@@ -53,7 +52,6 @@ class MatchService(
     private val locationService: LocationService,
     private val tenantService: TenantService,
     private val clock: Clock,
-    private val logger: KVLogger,
 
     @param:Value("\${ndopify.match.min-score}") private val minScore: Double,
     @param:Value("\${ndopify.match.nearby-radius-km}") private val nearbyRadiusKm: Double,
@@ -136,14 +134,14 @@ class MatchService(
         val mandate = mandateDao.findWithNeighborhoodsById(mandateId)
             ?: throw NotFoundException(error = Error(code = ErrorCode.MANDATE_NOT_FOUND))
         if (mandate.mandateType != MandateType.SEARCH || mandate.status != MandateStatus.APPROVED) {
-            logger.add("mandate_status", mandate.status)
+            LOGGER.info(">>> Mandate#$mandateId - NO_MATCH mandate_status=${mandate.status},  mandate_type=${mandate.mandateType}")
             return 0
         }
         val agentId = mandate.agentId ?: return 0
 
         val listings = listingDao.findByAgentIdAndStatus(agentId, ListingStatus.PUBLISHED)
-        logger.add("listing_count", listings.size)
         if (listings.isEmpty()) {
+            LOGGER.info(">>> Mandate#$mandateId - NO_MATCH listing_count=${listings.size}")
             return 0
         }
 
@@ -176,7 +174,7 @@ class MatchService(
         val listing = listingDao.findById(listingId).orElse(null)
             ?: throw NotFoundException(error = Error(code = ErrorCode.LISTING_NOT_FOUND))
         if (listing.status != ListingStatus.PUBLISHED) {
-            logger.add("listing_status", listing.status)
+            LOGGER.info(">>> Listing#$listingId - NO_MATCH listing_status=${listing.status}")
             return 0
         }
 
@@ -185,8 +183,8 @@ class MatchService(
             MandateType.SEARCH,
             MandateStatus.APPROVED,
         )
-        logger.add("mandate_count", mandates.size)
         if (mandates.isEmpty()) {
+            LOGGER.info(">>> Listing#$listingId - NO_MATCH mandate_count=${mandates.size}")
             return 0
         }
 
@@ -199,17 +197,19 @@ class MatchService(
         var conflicts = 0
         pairs.forEach { (mandate, listing, distances) ->
             try {
-                if (store(mandate, listing, matcher.score(mandate, listing, distances, today))) {
+                val score = matcher.score(mandate, listing, distances, today)
+                if (store(mandate, listing, score)) {
+                    LOGGER.info(">>> Mandate#${mandate.id} Listing#${listing.id} - MATCH score=${score?.total}")
                     count++
+                } else {
+                    LOGGER.info(">>> Mandate#${mandate.id} Listing#${listing.id} - NO_MATCH Match score=${score?.total}")
                 }
-            } catch (ex: ObjectOptimisticLockingFailureException) {
+            } catch (_: ObjectOptimisticLockingFailureException) {
                 conflicts++ // The agent dismissed it meanwhile
-            } catch (ex: DataIntegrityViolationException) {
+            } catch (_: DataIntegrityViolationException) {
                 conflicts++ // Another run inserted the same pair meanwhile
             }
         }
-        logger.add("match_count", count)
-        logger.add("conflicts", conflicts)
         return count
     }
 
