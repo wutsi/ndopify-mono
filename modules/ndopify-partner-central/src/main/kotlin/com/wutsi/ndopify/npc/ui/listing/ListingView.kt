@@ -26,6 +26,8 @@ data class ListingView(
     val publishedAt: String?,
     /** The published listing's page on the public portal; null without its `url` or the tenant's portal. */
     val publicUrl: String?,
+    /** Published only: "2 personnes intéressées · 3 visites"; null else, or when its stats can't be had. */
+    val stats: String? = null,
     val rows: List<ChecklistRow>,
     /** "4 sections sur 6 vérifiées". */
     val progress: String,

@@ -6,6 +6,7 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.listing.dto.Listing
+import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
@@ -115,6 +116,7 @@ class ListingTemplateTest {
         assertEquals(listOf("DRAFT"), page.select("[data-listing-panel]").map { it.attr("data-listing-panel") })
         assertEquals("listing", page.body().attr("data-page"))
         assertNotNull(page.selectFirst("script[src=/assets/js/listing.js]"))
+        assertNull(page.selectFirst("[data-listing-stats]"))
     }
 
     @Test
@@ -190,6 +192,19 @@ class ListingTemplateTest {
         assertNull(page.selectFirst("[data-generated-title]"))
         assertNull(page.selectFirst("[data-listing-public-url]"))
         assertNull(page.selectFirst("[data-listing-send]"))
+        assertNull(page.selectFirst("[data-listing-stats]"))
+    }
+
+    @Test
+    fun `published - activity line`() {
+        doReturn(mapOf(501L to ListingStats(501, 2, 1, 2))).whenever(listingClient).stats(listOf(501L))
+
+        val page = render(COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT))
+
+        assertEquals(
+            "2 personnes intéressées · 3 visites",
+            page.selectFirst("[data-listing-stats] > span > span:last-child")?.text(),
+        )
     }
 
     @Test

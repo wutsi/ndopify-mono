@@ -6,6 +6,7 @@ import com.wutsi.ndopify.listing.dto.ImageStatus
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingSection
+import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.listing.dto.PropertyCategory
@@ -49,7 +50,8 @@ object ListingViews {
 
     /**
      * [images] is null when they couldn't be loaded: the photos' row then has no count. [publicPortalUrl] is the
-     * tenant's, the host of a published listing's `url`.
+     * tenant's, the host of a published listing's `url`. [stats] is a published listing's activity, null when it can't
+     * be had: no line then.
      */
     fun of(
         listing: Listing,
@@ -57,6 +59,7 @@ object ListingViews {
         locations: Map<Long, Location>,
         formatter: TenantFormatter,
         publicPortalUrl: String? = null,
+        stats: ListingStats? = null,
     ): ListingView {
         val editable = ListingRules.editable(listing)
         val required = ListingRules.SECTIONS.filter { ListingRules.required(listing, it) }
@@ -85,6 +88,7 @@ object ListingViews {
             rejections = rejections.map { it.reason },
             publishedAt = listing.publishedAt?.let { formatter.date(it) },
             publicUrl = if (published) publicUrl(listing, publicPortalUrl) else null,
+            stats = if (published) ListingStatsView.of(stats)?.label else null,
             rows = ListingRules.SECTIONS.map { section ->
                 ChecklistRow(
                     section = section,
