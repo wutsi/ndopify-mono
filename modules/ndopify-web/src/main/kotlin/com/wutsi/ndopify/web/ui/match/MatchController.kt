@@ -4,14 +4,18 @@ import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.match.dto.MatchRejectionReason
+import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.dto.RejectMatchRequest
 import com.wutsi.ndopify.refdata.dto.Tenant
 import com.wutsi.ndopify.web.client.ndopify.NdAgentClient
+import com.wutsi.ndopify.web.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.web.client.ndopify.NdListingClient
 import com.wutsi.ndopify.web.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.web.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.web.client.ndopify.NdMatchClient
+import com.wutsi.ndopify.web.client.ndopify.NdVisitClient
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import com.wutsi.ndopify.web.core.service.security.AccessTokenService
 import com.wutsi.ndopify.web.core.service.security.JwtAuthentication
@@ -62,6 +66,8 @@ class MatchController(
     private val agentClient: NdAgentClient,
     private val listingClient: NdListingClient,
     private val locationClient: NdLocationClient,
+    private val visitClient: NdVisitClient,
+    private val customerClient: NdCustomerClient,
     private val accessTokenService: AccessTokenService,
     private val clock: Clock,
 ) {
@@ -83,6 +89,7 @@ class MatchController(
         @PathVariable id: Long,
         @RequestParam(name = "token", required = false) token: String?,
         @RequestParam(name = "answer", required = false) answer: String?,
+        @RequestParam(name = "visit", required = false) visit: String?,
         request: HttpServletRequest,
         model: Model,
     ): Any {
@@ -100,13 +107,25 @@ class MatchController(
             val mandate = mandateClient.get(match.mandateId)
             val agent = mandate.agentId?.let { agent(it) } ?: Agent()
             val listing = publishedListing(match.listingId)
+            val openVisit = if (match.status == MatchStatus.ACCEPTED) visitClient.openForMatch(id) else null
+            val customer = if (openVisit == null && mandate.status == MandateStatus.APPROVED && listing != null) {
+                try {
+                    customerClient.get(mandate.customerId)
+                } catch (ex: HttpClientErrorException.NotFound) {
+                    null
+                } catch (ex: HttpClientErrorException.Forbidden) {
+                    null
+                }
+            } else {
+                null
+            }
             val images = listing?.let { listingClient.images(it.id) } ?: emptyList<ListingImage>()
             val locations = locationClient.search(
                 (listOfNotNull(listing?.cityId, listing?.neighborhoodId, mandate.cityId) + mandate.neighborhoodIds).distinct(),
             )
             val tenant = model.getAttribute("tenant") as Tenant
             val formatter = TenantFormatter(tenant)
-            val page = MatchPages.of(match, mandate, agent, listing, images, locations, tenant, formatter, formatter.today(clock), answer)
+            val page = MatchPages.of(match, mandate, agent, listing, images, locations, tenant, formatter, formatter.today(clock), answer, customer, openVisit, visit)
             model.addAttribute("page", page)
             VIEW
         }
@@ -127,6 +146,27 @@ class MatchController(
                 reason = form.comment?.trim()?.ifEmpty { null }?.take(MAX_COMMENT),
             )
             answered(id, "rejected") { matchClient.reject(id, request) }
+        }
+
+    /**
+     * Posts the customer's visit request. An unusable form (unknown type, missing/unparseable slot) and ndopify-server's
+     * 400 (the slot is gone) both redirect to the page's `?visit=invalid-slot`; a 409 (`VISIT_ALREADY_REQUESTED`) to
+     * `?visit=conflict`. Success goes back with `?visit=requested` for the page's flash.
+     */
+    @PostMapping("/match/{id}/visit")
+    fun requestVisit(@PathVariable id: Long, @ModelAttribute form: VisitRequestForm, model: Model): Any =
+        signedIn("POST /match/$id/visit", model) {
+            val tenant = model.getAttribute("tenant") as Tenant
+            val request = form.toRequest(id, tenant)
+                ?: return@signedIn redirect("/match/$id?visit=invalid-slot")
+            try {
+                visitClient.create(request)
+                redirect("/match/$id?visit=requested")
+            } catch (ex: HttpClientErrorException.BadRequest) {
+                redirect("/match/$id?visit=invalid-slot")
+            } catch (ex: HttpClientErrorException.Conflict) {
+                redirect("/match/$id?visit=conflict")
+            }
         }
 
     /** Runs [action] for a signed-in visitor, answering ndopify-server's 401 / 403 with the `match-link` page. */
