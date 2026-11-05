@@ -10,6 +10,7 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.contract.dto.SearchContractRequest
+import com.wutsi.ndopify.customer.dto.CustomerSummary
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
@@ -21,11 +22,13 @@ import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
+import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
+import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.ASSIGNMENT
 import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.MANDATE
@@ -35,8 +38,12 @@ import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest
 import com.wutsi.ndopify.npc.ui.mandate.MandateSummariesTest
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
+import com.wutsi.ndopify.npc.ui.visit.VisitCardsView
+import com.wutsi.ndopify.npc.ui.visit.VisitFixtures
+import com.wutsi.ndopify.npc.ui.visit.VisitRules
 import com.wutsi.ndopify.party.dto.KycCase
 import com.wutsi.ndopify.party.dto.KycStatus
+import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -63,6 +70,8 @@ class HomeControllerTest {
     private val contractClient = mock<NdContractClient>()
     private val listingClient = mock<NdListingClient>()
     private val matchClient = mock<NdMatchClient>()
+    private val visitClient = mock<NdVisitClient>()
+    private val customerClient = mock<NdCustomerClient>()
     private val clock = mock<Clock>()
     private lateinit var mvc: MockMvc
 
@@ -73,6 +82,8 @@ class HomeControllerTest {
         doReturn(AssignmentViewsTest.NOW).whenever(clock).millis()
         doReturn(emptyList<AssignmentSummary>()).whenever(assignmentClient).pending(any())
         doReturn(emptyList<MandateSummary>()).whenever(mandateClient).active(any())
+        doReturn(emptyList<VisitSummary>()).whenever(visitClient).search(any(), any(), any())
+        doReturn(emptyList<CustomerSummary>()).whenever(customerClient).search(any())
 
         val controller = HomeController(
             currentAgent,
@@ -82,6 +93,8 @@ class HomeControllerTest {
             contractClient,
             listingClient,
             matchClient,
+            visitClient,
+            customerClient,
             locationClient,
             tenantContext,
             clock,
@@ -544,6 +557,65 @@ class HomeControllerTest {
 
         assertNull(model(result)["mandates"])
         verify(mandateClient, never()).active(any())
+    }
+
+    // Visites
+
+    private fun visitCards(result: MvcResult) = model(result)["visits"] as VisitCardsView
+
+    @Test
+    fun `visits`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        doReturn(
+            listOf(
+                VisitFixtures.summary(VisitFixtures.requested()),
+                VisitFixtures.summary(VisitFixtures.confirmed()),
+            ),
+        ).whenever(visitClient).search(AGENT.id, VisitRules.OPEN)
+        doReturn(listOf(VisitFixtures.listingSummary())).whenever(listingClient).searchByIds(listOf(3012L))
+        doReturn(listOf(VisitFixtures.customerSummary())).whenever(customerClient).search(listOf(300L))
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        verify(visitClient).search(AGENT.id, VisitRules.OPEN)
+        val visits = visitCards(result)
+        assertEquals(1, visits.requested.size)
+        assertEquals(1, visits.upcoming.size)
+        assertEquals("Sandrine Eboa", visits.requested.single().customerName)
+        assertEquals("Sur place · Appartement 3 chambres · Bonapriso", visits.requested.single().listing)
+        assertEquals("Confirmez la date avec le client.", visits.requested.single().nextStep)
+        assertEquals("Confirmée", visits.upcoming.single().tag?.label)
+        assertEquals(false, visits.unavailable)
+    }
+
+    @Test
+    fun `visits unavailable`() {
+        doThrow(ResourceAccessException("timeout")).whenever(visitClient).search(any(), any(), any())
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        assertEquals(true, visitCards(result).unavailable)
+    }
+
+    @Test
+    fun `not verified - no visits`() {
+        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING_VERIFICATION))).whenever(currentAgent).get()
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        assertNull(model(result)["visits"])
+        verify(visitClient, never()).search(any(), any(), any())
+    }
+
+    @Test
+    fun `no customers`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        doReturn(listOf(VisitFixtures.summary(VisitFixtures.requested()))).whenever(visitClient).search(AGENT.id, VisitRules.OPEN)
+        doThrow(ResourceAccessException("timeout")).whenever(customerClient).search(any())
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        assertEquals("Client", visitCards(result).requested.single().customerName)
     }
 
     @Suppress("UNCHECKED_CAST")

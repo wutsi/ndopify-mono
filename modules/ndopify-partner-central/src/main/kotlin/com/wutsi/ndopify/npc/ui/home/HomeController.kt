@@ -3,6 +3,7 @@ package com.wutsi.ndopify.npc.ui.home
 import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.contract.dto.SearchContractRequest
+import com.wutsi.ndopify.customer.dto.CustomerSummary
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
@@ -11,11 +12,13 @@ import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
+import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
+import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.kyc.KycRules
@@ -26,8 +29,11 @@ import com.wutsi.ndopify.npc.ui.mandate.MandateRules
 import com.wutsi.ndopify.npc.ui.mandate.MandateSummaries
 import com.wutsi.ndopify.npc.ui.match.MatchRules
 import com.wutsi.ndopify.npc.ui.profile.ProfileRules
+import com.wutsi.ndopify.npc.ui.visit.VisitCards
+import com.wutsi.ndopify.npc.ui.visit.VisitRules
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.refdata.dto.Location
+import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.web.core.service.TenantContext
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import org.slf4j.LoggerFactory
@@ -56,6 +62,8 @@ class HomeController(
     private val contractClient: NdContractClient,
     private val listingClient: NdListingClient,
     private val matchClient: NdMatchClient,
+    private val visitClient: NdVisitClient,
+    private val customerClient: NdCustomerClient,
     locationClient: NdLocationClient,
     private val tenantContext: TenantContext,
     private val clock: Clock,
@@ -83,12 +91,17 @@ class HomeController(
         model.addAttribute("kyc", kyc(agent))
         if (agent.party.kycStatus == KycStatus.VERIFIED) {
             val now = clock.millis()
-            val formatter = TenantFormatter(tenantContext.getTenant())
+            val tenant = tenantContext.getTenant()
+            val formatter = TenantFormatter(tenant)
             val offers = offers(agent, now)
             val mandates = mandates(agent)
+            val visits = loadVisits(agent)
+            val visitListings = visits?.let { loadVisitListings(it) }
+            val visitCustomers = visits?.let { loadVisitCustomers(it) } ?: emptyMap()
             val names = names(
                 (offers.orEmpty().map { (_, mandate) -> mandate } + mandates.orEmpty().map { (mandate, _) -> mandate })
-                    .flatMap { mandate -> listOf(mandate.cityId) + mandate.neighborhoodIds },
+                    .flatMap { mandate -> listOf(mandate.cityId) + mandate.neighborhoodIds } +
+                    visitListings.orEmpty().values.flatMap { list -> listOfNotNull(list.cityId, list.neighborhoodId) },
             )
 
             val assignments = offers?.map { (assignment, mandate) -> AssignmentViews.of(assignment, mandate, names, now, formatter) }
@@ -110,6 +123,7 @@ class HomeController(
                     ?: emptyList<MandateCardView>(),
             )
             model.addAttribute("mandatesUnavailable", mandates == null)
+            model.addAttribute("visits", VisitCards.of(visits, visitListings, visitCustomers, names, now, tenant, formatter))
         }
         return VIEW
     }
@@ -205,6 +219,35 @@ class HomeController(
                 LOGGER.warn("No contracts for the mandates: ${ex.message}")
                 emptyMap()
             }
+        }
+
+    /** The visits still open, soonest first within requested and upcoming; null when they can't be had. */
+    private fun loadVisits(agent: Agent): List<VisitSummary>? =
+        try {
+            visitClient.search(agent.id, VisitRules.OPEN)
+        } catch (ex: RestClientException) {
+            LOGGER.warn("No visits for agent ${agent.id}: ${ex.message}")
+            null
+        }
+
+    /** The visits' listings by id, in one search; null when they can't be had (the cards keep their number only). */
+    private fun loadVisitListings(visits: List<VisitSummary>): Map<Long, ListingSummary>? =
+        try {
+            listingClient.searchByIds(visits.map { it.listingId }.distinct()).associateBy { it.id }
+        } catch (ex: RestClientException) {
+            LOGGER.warn("No listings for the visits of agent: ${ex.message}")
+            null
+        }
+
+    /** The visits' customers by id, in one search (none without [visits]); empty when they can't be had. */
+    private fun loadVisitCustomers(visits: List<VisitSummary>): Map<Long, CustomerSummary> =
+        try {
+            customerClient.search(visits.map { it.customerId }.distinct())
+                .mapNotNull { customer -> customer.id?.let { it to customer } }
+                .toMap()
+        } catch (ex: RestClientException) {
+            LOGGER.warn("No customers for the visits of agent: ${ex.message}")
+            emptyMap()
         }
 
     /** One lookup for every card; without the names, the cards still show (no sector). */
