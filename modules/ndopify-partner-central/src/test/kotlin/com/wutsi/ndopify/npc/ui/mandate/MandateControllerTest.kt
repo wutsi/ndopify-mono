@@ -155,16 +155,25 @@ class MandateControllerTest {
 
     @Test
     fun `approved landlord - published listing - clients interested`() {
-        doReturn(APPROVED.copy(mandateType = MandateType.LISTING)).whenever(mandateClient).get(201)
-        doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
-        doReturn(ListingViewsTest.COMPLETE.copy(status = ListingStatus.PUBLISHED)).whenever(listingClient).get(501)
-        doReturn(listOf(Match(id = 1, listingId = 501), Match(id = 2, listingId = 501)))
-            .whenever(matchClient).searchByListings(any(), any(), any())
+        publishedListing()
+        doReturn(listOf(VisitFixtures.summary(VisitFixtures.confirmed()), VisitFixtures.summary(VisitFixtures.completed())))
+            .whenever(visitClient).searchByListings(AGENT.id, VisitRules.COUNTED, listOf(501L), 100)
 
         val view = model(mvc.perform(get("/mandates/201")).andReturn())["mandateListing"] as MandateListingView
 
-        assertEquals("2 personnes intéressées", view.interest)
-        verify(matchClient).searchByListings(listOf(501L), listOf(MatchStatus.ACCEPTED), 100)
+        assertEquals("2 personnes intéressées · 2 visites", view.stats)
+        verify(visitClient).searchByListings(AGENT.id, VisitRules.COUNTED, listOf(501L), 100)
+    }
+
+    @Test
+    fun `approved landlord - published listing - visits unavailable, interest still shown`() {
+        publishedListing()
+        doThrow(ResourceAccessException("down"))
+            .whenever(visitClient).searchByListings(AGENT.id, VisitRules.COUNTED, listOf(501L), 100)
+
+        val view = model(mvc.perform(get("/mandates/201")).andReturn())["mandateListing"] as MandateListingView
+
+        assertEquals("2 personnes intéressées", view.stats)
     }
 
     private fun publishedListing() {
@@ -174,6 +183,8 @@ class MandateControllerTest {
         doReturn(ListingViewsTest.PROPOSALS).whenever(matchClient).searchByListings(listOf(501), MatchRules.SENT)
         doReturn(ListingViewsTest.SEARCHES).whenever(mandateClient).searchByIds(listOf(207L, 204L, 305L), AGENT.id)
         doReturn(ListingViewsTest.CUSTOMERS).whenever(customerClient).search(listOf(14L, 17L))
+        doReturn(emptyList<VisitSummary>())
+            .whenever(visitClient).searchByListings(AGENT.id, VisitRules.COUNTED, listOf(501L), 100)
     }
 
     private fun proposals(): ProposalsView? =
@@ -199,7 +210,7 @@ class MandateControllerTest {
                     VisitFixtures.requested().copy(matchId = 9002, mandateId = 204, listingId = 501, customerId = 14),
                 ),
             ),
-        ).whenever(visitClient).searchByMatches(AGENT.id, VisitRules.OPEN, listOf(9001L, 9002L, 9003L, 9004L), 4)
+        ).whenever(visitClient).searchByListings(AGENT.id, VisitRules.COUNTED, listOf(501L), 100)
 
         val result = mvc.perform(get("/mandates/201")).andReturn()
 
@@ -215,13 +226,13 @@ class MandateControllerTest {
         assertEquals("1 visite · 1 intéressé · 1 refusé · 1 en attente", proposals.summary)
         assertEquals(listOf("Client d'un autre agent", "Carine Ndongo"), proposals.rows.map { it.client })
         assertEquals(listOf(null, "/mandates/207#matches-title"), proposals.rows.map { it.url })
-        verify(visitClient).searchByMatches(AGENT.id, VisitRules.OPEN, listOf(9001L, 9002L, 9003L, 9004L), 4)
+        verify(visitClient).searchByListings(AGENT.id, VisitRules.COUNTED, listOf(501L), 100)
     }
 
     @Test
     fun `approved landlord - published listing - visits unavailable - every proposal shown`() {
         publishedListing()
-        doThrow(ResourceAccessException("down")).whenever(visitClient).searchByMatches(any(), any(), any(), any())
+        doThrow(ResourceAccessException("down")).whenever(visitClient).searchByListings(any(), any(), any(), any())
 
         val result = mvc.perform(get("/mandates/201")).andReturn()
 
@@ -288,7 +299,7 @@ class MandateControllerTest {
         val view = model(mvc.perform(get("/mandates/201")).andReturn())["mandateListing"] as MandateListingView
 
         assertEquals("/listings/501", view.url)
-        assertNull(view.interest)
+        assertNull(view.stats)
     }
 
     @Test
@@ -299,7 +310,7 @@ class MandateControllerTest {
 
         val view = model(mvc.perform(get("/mandates/201")).andReturn())["mandateListing"] as MandateListingView
 
-        assertNull(view.interest)
+        assertNull(view.stats)
         verify(matchClient, never()).searchByListings(any(), any(), any())
     }
 
@@ -548,7 +559,7 @@ class MandateControllerTest {
             ),
         ).whenever(matchClient).search(any(), any(), any())
         doReturn(listOf(listingA, listingB)).whenever(listingClient).searchByIds(any())
-        doReturn(visits.toList()).whenever(visitClient).search(AGENT.id, VisitRules.OPEN, 20, 201L)
+        doReturn(visits.toList()).whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
     }
 
     @Test
@@ -565,13 +576,13 @@ class MandateControllerTest {
         assertEquals("Confirmez la date avec le client.", visits.requested.single().nextStep)
         assertEquals(listOf(9003L), section(result).matches.map { it.id })
         assertEquals("1 en attente", section(result).proposals)
-        verify(visitClient).search(AGENT.id, VisitRules.OPEN, 20, 201L)
+        verify(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
     }
 
     @Test
     fun `approved search - visits unavailable - every match shown`() {
         withMatches()
-        doThrow(ResourceAccessException("timeout")).whenever(visitClient).search(AGENT.id, VisitRules.OPEN, 20, 201L)
+        doThrow(ResourceAccessException("timeout")).whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
 
         val result = mvc.perform(get("/mandates/201")).andReturn()
 

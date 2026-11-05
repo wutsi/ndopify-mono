@@ -4,6 +4,7 @@ import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.Listing
+import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
@@ -80,7 +81,19 @@ class ListingController(
         (model.getAttribute(OUTCOME) as? String)?.let { outcome(it, model) }
         val listing = id.toLongOrNull()?.let { load(it, agent, model) } ?: return locked(model)
         val images = lookup("images of listing ${listing.id}") { listingClient.images(listing.id) }
-        val view = ListingViews.of(listing, images, locations(listing), formatter(), tenantContext.getTenant().publicPortalUrl)
+        val stats = if (listing.status == ListingStatus.PUBLISHED) {
+            lookup("stats of listing ${listing.id}") { listingClient.stats(listOf(listing.id)) }?.get(listing.id)
+        } else {
+            null
+        }
+        val view = ListingViews.of(
+            listing,
+            images,
+            locations(listing),
+            formatter(),
+            tenantContext.getTenant().publicPortalUrl,
+            stats,
+        )
         model.addAttribute("listing", view)
         return VIEW
     }

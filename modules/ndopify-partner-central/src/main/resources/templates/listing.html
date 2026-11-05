@@ -107,6 +107,10 @@
                         <span th:text="${l.createdAt}">20 oct. 2026</span></p>
                     <p th:if="${l.publicUrl}"><a th:href="${l.publicUrl}" target="_blank" rel="noopener"
                                                  data-listing-public-url>Voir l'annonce en ligne</a></p>
+                    <p class="listing-stats" th:if="${l.stats}" data-listing-stats>
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                        <span><span class="visually-hidden">Activité de l'annonce : </span><span th:text="${l.stats}">2 personnes intéressées · 3 visites</span></span>
+                    </p>
                 </div>
 
                 <div th:replace="~{:: flash}"></div>

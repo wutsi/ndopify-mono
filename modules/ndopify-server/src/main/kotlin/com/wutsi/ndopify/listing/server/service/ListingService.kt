@@ -120,6 +120,9 @@ class ListingService(
             ?: throw NotFoundException(error = Error(code = ErrorCode.LISTING_NOT_FOUND))
     }
 
+    /** The listings of [ids] that exist in the tenant, in one read; a missing one is left out. */
+    fun findAllByIds(ids: Collection<Long>): List<ListingEntity> = dao.findAllById(ids).toList()
+
     /**
      * Creates the DRAFT listing of a mandate, from its property: 404 MANDATE_NOT_FOUND, 403 HTTP_ACCESS_DENIED but for
      * an admin or the mandate's agent, 409 MANDATE_NOT_ASSIGNED for a

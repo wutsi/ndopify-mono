@@ -15,7 +15,6 @@ import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.match.dto.Match
-import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
@@ -28,6 +27,7 @@ import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.npc.ui.listing.ListingClientsView
+import com.wutsi.ndopify.npc.ui.listing.ListingStatsView
 import com.wutsi.ndopify.npc.ui.listing.ListingViews
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.npc.ui.match.MatchController
@@ -394,14 +394,17 @@ class MandateController(
         model.addAttribute("currency", formatter().currency())
         val listingId = listingId(mandate)
         val listing = listingId?.let { listing(mandate, it) }
+        val clients = listing?.let { listingClients(it) }
+        val listingStats = clients?.let {
+            ListingStatsView(MatchRules.interest(it.interested), it.stats ?: visitStats)
+        }
         model.addAttribute(
             "mandateListing",
-            ListingViews.forMandate(mandate, listingId, listing, formatter(), listing?.let { interested(it) }),
+            ListingViews.forMandate(mandate, listingId, listing, formatter(), listingStats),
         )
-        val clients = listing?.let { listingClients(it) }
         model.addAttribute("listingVisits", clients?.visits)
         model.addAttribute("listingProposals", clients?.proposals)
-        model.addAttribute("visitStats", visitStats ?: clients?.stats)
+        model.addAttribute("visitStats", if (listingStats?.visits != null) null else visitStats)
         (model.getAttribute(OUTCOME) as? String)?.let { outcome -> outcome(outcome, view, model) }
         (model.getAttribute(MatchController.OUTCOME) as? String)?.let { outcome ->
             matchOutcome(outcome, model.getAttribute(MatchController.LISTING) as? Long, view, model)
@@ -615,21 +618,13 @@ class MandateController(
         return lookup("listing of mandate ${mandate.id}") { listingClient.findIdByMandate(mandate.id, agentId) }
     }
 
-    /** A PUBLISHED listing only: how many clients it interests (its ACCEPTED matches); null when it can't be had. */
-    private fun interested(listing: Listing): Int? {
-        if (listing.status != ListingStatus.PUBLISHED) return null
-        return lookup("matches of listing ${listing.id}") {
-            matchClient.searchByListings(listOf(listing.id), listOf(MatchStatus.ACCEPTED)).size
-        }
-    }
-
     /**
      * A landlord's PUBLISHED listing's clients: its open visits and its *Propositions*. Its sent matches, the agent's
      * own mandates among theirs, and those mandates' customers, one search each. Null before it's published, or when
      * the matches or mandates can't be had: no section, rather than another agent's client shown as the agent's or the
      * other way round. Customers failing only leave the names out.
      *
-     * The visits are read by match id (agent-scoped) and are secondary: failing, every proposal row shows and the
+     * The visits are read by listing id (agent-scoped) and are secondary: failing, every proposal row shows and the
      * *Visites* section says unavailable. A stale visit is ignored by [ListingViews.clients].
      */
     private fun listingClients(listing: Listing): ListingClientsView? {
@@ -649,12 +644,7 @@ class MandateController(
             emptyList()
         } else {
             lookup("visits of the proposals of listing ${listing.id}") {
-                visitClient.searchByMatches(
-                    agentId,
-                    VisitRules.COUNTED,
-                    matches.map { it.id },
-                    limit = matches.size,
-                )
+                visitClient.searchByListings(agentId, VisitRules.COUNTED, listOf(listing.id), limit = 100)
             }
         }
         val tenant = tenantContext.getTenant()

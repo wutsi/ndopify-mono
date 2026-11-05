@@ -10,6 +10,7 @@ import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
@@ -101,6 +102,24 @@ class ListingControllerTest {
         assertEquals("2 photos · 5 au moins", view.rows.first { it.url.endsWith("/photos") }.summary)
         assertEquals("SN", model(result)["initials"])
         assertNull(model(result)["locked"])
+    }
+
+    @Test
+    fun `published listing - activity line`() {
+        doReturn(COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT)).whenever(listingClient).get(501)
+        doReturn(mapOf(501L to ListingStats(501, 2, 1, 2))).whenever(listingClient).stats(listOf(501L))
+
+        val view = model(mvc.perform(get("/listings/501")).andReturn())["listing"] as ListingView
+
+        assertEquals("2 personnes intéressées · 3 visites", view.stats)
+    }
+
+    @Test
+    fun `draft listing - no activity line`() {
+        val view = model(mvc.perform(get("/listings/501")).andReturn())["listing"] as ListingView
+
+        assertNull(view.stats)
+        verify(listingClient, never()).stats(any())
     }
 
     @Test

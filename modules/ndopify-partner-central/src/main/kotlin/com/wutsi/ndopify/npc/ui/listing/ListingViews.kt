@@ -6,6 +6,7 @@ import com.wutsi.ndopify.listing.dto.ImageStatus
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingSection
+import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.listing.dto.PropertyCategory
@@ -49,7 +50,8 @@ object ListingViews {
 
     /**
      * [images] is null when they couldn't be loaded: the photos' row then has no count. [publicPortalUrl] is the
-     * tenant's, the host of a published listing's `url`.
+     * tenant's, the host of a published listing's `url`. [stats] is a published listing's activity, null when it can't
+     * be had: no line then.
      */
     fun of(
         listing: Listing,
@@ -57,6 +59,7 @@ object ListingViews {
         locations: Map<Long, Location>,
         formatter: TenantFormatter,
         publicPortalUrl: String? = null,
+        stats: ListingStats? = null,
     ): ListingView {
         val editable = ListingRules.editable(listing)
         val required = ListingRules.SECTIONS.filter { ListingRules.required(listing, it) }
@@ -85,6 +88,7 @@ object ListingViews {
             rejections = rejections.map { it.reason },
             publishedAt = listing.publishedAt?.let { formatter.date(it) },
             publicUrl = if (published) publicUrl(listing, publicPortalUrl) else null,
+            stats = if (published) ListingStatsView.of(stats)?.label else null,
             rows = ListingRules.SECTIONS.map { section ->
                 ChecklistRow(
                     section = section,
@@ -305,26 +309,30 @@ object ListingViews {
             visits = cards,
             proposals = ProposalsView(summary = proposalsSummary(matches, visiting), rows = rows),
             stats = VisitStats.of(visits, now),
+            interested = matches.count { it.status == MatchStatus.ACCEPTED },
         )
     }
 
-    /** The remaining proposals' counts; a match with an open visit is left out (it is in *Visites*). */
+    /** The remaining proposals' counts, led by the open visits; a match with one is left out (it is in *Visites*). */
     private fun proposalsSummary(matches: List<Match>, visiting: Set<Long>): String? =
-        MatchRules.proposals(matches.filterNot { it.id in visiting })
+        listOfNotNull(
+            visiting.takeIf { it.isNotEmpty() }?.let { plural(it.size, "visite", "visites") },
+            MatchRules.proposals(matches.filterNot { it.id in visiting }),
+        ).joinToString(" · ").ifEmpty { null }
 
     /**
      * The listing's line on the page of [mandate] (the prototype's `renderListing`); null for a mandate that has none
      * to have: a search, or a landlord's not signed yet. [listingId] is null before it's created; [listing] is also
      * null when it can't be loaded (only the link is then shown). The photos aren't loaded here: what's left names the
-     * section only. Once published, [interested] is how many clients it interests (its ACCEPTED matches, like the
-     * Espace agent's card), null when they can't be counted: no line then.
+     * section only. Once published, [stats] is its activity (like the Espace agent's card), null when it can't be had:
+     * no line then.
      */
     fun forMandate(
         mandate: Mandate,
         listingId: Long?,
         listing: Listing?,
         formatter: TenantFormatter,
-        interested: Int? = null,
+        stats: ListingStatsView? = null,
     ): MandateListingView? {
         if (!MandateRules.listed(mandate)) return null
 
@@ -371,7 +379,7 @@ object ListingViews {
                 else -> "Voir l'annonce"
             },
             primary = draft,
-            interest = interested?.takeIf { published }?.let { MatchRules.interest(it) },
+            stats = if (published) stats?.label else null,
         )
     }
 

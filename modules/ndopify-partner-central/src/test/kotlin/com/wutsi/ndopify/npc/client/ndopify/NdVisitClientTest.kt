@@ -224,4 +224,17 @@ class NdVisitClientTest {
     }
 
     private fun json(value: Any): String = JsonMapper.builder().build().writeValueAsString(value)
+
+    @Test
+    fun `search by listings`() {
+        server.expect(
+            requestTo(
+                "http://localhost:8080/v1/visits?agent-id=20&listing-id=501&listing-id=502" +
+                    "&status=REQUESTED&status=COMPLETED&limit=100",
+            ),
+        ).andRespond(withSuccess("""{"visits":[]}""", MediaType.APPLICATION_JSON))
+
+        assertEquals(emptyList(), client.searchByListings(20, listOf(VisitStatus.REQUESTED, VisitStatus.COMPLETED), listOf(501, 502)))
+        server.verify()
+    }
 }

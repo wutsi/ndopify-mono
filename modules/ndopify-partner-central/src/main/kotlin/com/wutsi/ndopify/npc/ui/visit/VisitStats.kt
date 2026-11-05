@@ -19,6 +19,10 @@ data class VisitStats(val upcoming: Int, val completed: Int) {
             else -> "$total visites · $upcoming à venir · $completed " + plural(completed, "terminée", "terminées")
         }
 
+    /** "Aucune visite", "1 visite", "3 visites": the total alone, for a listing's activity line. */
+    val totalLabel: String
+        get() = if (total == 0) "Aucune visite" else "$total " + plural(total, "visite", "visites")
+
     companion object {
         /**
          * [visits] are the mandate's open and completed ones; null when they can't be read (no total shown). A stale

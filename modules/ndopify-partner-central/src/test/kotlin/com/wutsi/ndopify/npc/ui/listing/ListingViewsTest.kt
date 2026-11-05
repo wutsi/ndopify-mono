@@ -9,6 +9,7 @@ import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingSection
 import com.wutsi.ndopify.listing.dto.ListingSectionStatus
 import com.wutsi.ndopify.listing.dto.ListingSectionSummary
+import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.listing.dto.PropertyCategory
@@ -586,15 +587,16 @@ class ListingViewsTest {
         )
         assertNull(view.text)
         assertNull(view.action)
-        assertNull(view.interest)
+        assertNull(view.stats)
     }
 
     @Test
     fun `mandate - published - clients interested`() {
         val listing = COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT)
+        val stats = ListingStatsView.of(ListingStats(501, 1, 0, 1))
 
-        assertEquals("1 personne intéressée", ListingViews.forMandate(approved, 501, listing, formatter, 1)?.interest)
-        assertNull(ListingViews.forMandate(approved, 501, COMPLETE, formatter, 1)?.interest)
+        assertEquals("1 personne intéressée · 1 visite", ListingViews.forMandate(approved, 501, listing, formatter, stats)?.stats)
+        assertNull(ListingViews.forMandate(approved, 501, COMPLETE, formatter, stats)?.stats)
     }
 
     @Test
@@ -667,8 +669,10 @@ class ListingViewsTest {
 
     @Test
     fun proposals() {
-        val view = clients().proposals
+        val clients = clients()
+        val view = clients.proposals
 
+        assertEquals(2, clients.interested)
         assertEquals("2 intéressés · 1 refusé · 1 en attente", view.summary)
         // Interested first, the latest answer first; the refused one only counted
         assertEquals(listOf("Client d'un autre agent", "Sandrine Eboa", "Carine Ndongo"), view.rows.map { it.client })
@@ -694,7 +698,7 @@ class ListingViewsTest {
         assertNull(card.tag)
 
         assertEquals("1 visite à venir", view.stats?.label)
-        assertEquals("1 intéressé · 1 refusé · 1 en attente", view.proposals.summary)
+        assertEquals("1 visite · 1 intéressé · 1 refusé · 1 en attente", view.proposals.summary)
         assertEquals(listOf("Client d'un autre agent", "Carine Ndongo"), view.proposals.rows.map { it.client })
         assertEquals(listOf(null, "/mandates/207#matches-title"), view.proposals.rows.map { it.url })
     }
@@ -728,7 +732,7 @@ class ListingViewsTest {
 
         assertEquals(2, view.visits.requested.size)
         assertEquals("2 visites à venir", view.stats?.label)
-        assertEquals("1 intéressé · 1 refusé", view.proposals.summary)
+        assertEquals("2 visites · 1 intéressé · 1 refusé", view.proposals.summary)
         assertEquals(listOf("Client d'un autre agent"), view.proposals.rows.map { it.client })
     }
 

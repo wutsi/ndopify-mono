@@ -4,12 +4,12 @@ import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.contract.dto.SearchContractRequest
 import com.wutsi.ndopify.customer.dto.CustomerSummary
+import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.match.dto.Match
-import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
@@ -49,7 +49,7 @@ import java.time.Clock
  * one is missing (the agent doesn't need to see its own profile on each visit), the mandates offered to it
  * ([offers], no section without any), each to accept or decline (see `AssignmentController`), and its mandates in
  * progress (*Mes mandats*, [mandates]), each opening its page (see `MandateController`), a landlord's signed one with
- * its listing's status ([listings]) and, once published, how many clients it interests ([interest]), a signed search
+ * its listing's status ([listings]) and, once published, its activity ([listingStats]), a signed search
  * with its matches' lines ([matches]). An agent who isn't verified yet gets neither, but a banner leading to the KYC page,
  * worded after its case ([kyc]).
  */
@@ -114,11 +114,11 @@ class HomeController(
 
             val listings = mandates?.let { listings(agent, it.map { (mandate, _) -> mandate }) }
             val matches = mandates?.let { matches(it.map { (mandate, _) -> mandate }) }
-            val interest = listings?.let { interest(it.values) }
+            val stats = listings?.let { listingStats(it.values) }
             model.addAttribute(
                 "mandates",
                 mandates?.map { (mandate, contract) ->
-                    MandateCards.of(mandate, contract, listings, names, now, formatter, matches, interest)
+                    MandateCards.of(mandate, contract, listings, names, now, formatter, matches, stats)
                 }
                     ?: emptyList<MandateCardView>(),
             )
@@ -194,16 +194,16 @@ class HomeController(
     }
 
     /**
-     * How many clients accepted each PUBLISHED listing (its ACCEPTED matches), by listing id, in one search (none
-     * without such a listing); null when it can't be had: the cards then show no interest line.
+     * How each PUBLISHED listing is doing (its interested clients and visits), by listing id, in one call; null when it
+     * can't be had: the cards then show no activity line.
      */
-    private fun interest(listings: Collection<ListingSummary>): Map<Long, Int>? {
+    private fun listingStats(listings: Collection<ListingSummary>): Map<Long, ListingStats>? {
         val ids = listings.filter { it.status == ListingStatus.PUBLISHED }.map { it.id }
         if (ids.isEmpty()) return emptyMap()
         return try {
-            matchClient.searchByListings(ids, listOf(MatchStatus.ACCEPTED)).groupingBy { it.listingId }.eachCount()
+            listingClient.stats(ids)
         } catch (ex: RestClientException) {
-            LOGGER.warn("No matches for the listings ${ids.joinToString()}: ${ex.message}")
+            LOGGER.warn("No stats for the listings ${ids.joinToString()}: ${ex.message}")
             null
         }
     }

@@ -150,9 +150,10 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   …" in the tenant's `dateFormat`), or "À créer" linking to the mandate; no number, so that it fits one line on a phone) and, until it's published, a next step about the listing
   (`MandateRules.listingStep`): their listings come in one `GET /v1/listings?mandate-id=&mandate-id=&agent-id=`
   (`NdListingClient.searchByMandates`, skipped without such a mandate; a failure leaves the line out and the
-  mandate's next step). A published listing's card also says how many clients it interests ("2 personnes
-  intéressées", `MatchRules.interest`): its ACCEPTED matches, in one `GET /v1/matches?listing-id=&status=ACCEPTED`
-  (`NdMatchClient.searchByListings`, skipped without a published listing; a failure leaves the line out). The
+  mandate's next step). A published listing's card also shows its activity ("2 personnes intéressées · 3 visites",
+  `ListingStatsView`): how many clients accepted it and its visits, in one
+  `GET /v1/listings/stats?listing-id=&listing-id=` (`NdListingClient.stats`, skipped without a published listing; a
+  failure leaves the line out; zeros included). The
   summaries have no `errorCodes`, so a listing sent back to fix is "Brouillon" on the
   card, "À corriger" on the mandate page. Cards are `MandateCards` → `MandateCardView`; statuses, tags, party
   wording ("le client" / "le bailleur", after `mandateType`), dates and next
@@ -187,8 +188,8 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   returned; a failure to load it leaves only the link), starting with the same `ListingLineView` as the card (its
   number a link to the listing; once PUBLISHED, that line only: no text, no button): "Créer l'annonce" posts `POST /mandates/{id}/listing`
   (`ListingController.create` → `NdListingClient` → `POST /v1/listings`, a DRAFT pre-filled from the landlord's
-  answers; on 409 `LISTING_ALREADY_EXISTS`, ex: from another tab, the existing one is opened instead), then where it stands and "Continuer / Voir l'annonce"; once published, how many clients it interests, like the card
-  (`GET /v1/matches?listing-id=&status=ACCEPTED`, a failure leaves the line out), and its *Propositions*
+  answers; on 409 `LISTING_ALREADY_EXISTS`, ex: from another tab, the existing one is opened instead), then where it stands and "Continuer / Voir l'annonce"; once published, its activity line, like the card
+  (`ListingStatsView`, from its ACCEPTED matches and its one `GET /v1/visits?listing-id=&agent-id=&status=…`; a failure leaves the line out), and its *Propositions*
   (`MandateController.listingClients`, `ListingViews.clients` → `ListingClientsView`, models `listingVisits` and
   `listingProposals`), after the progress, where a search has its *Biens correspondants*: the listing's matches sent to a client
   (`GET /v1/matches?listing-id=&status=PROPOSED|ACCEPTED|REJECTED`, `MatchRules.SENT`), the answers' line
@@ -196,9 +197,9 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `/mandates/{id}#matches-title`. A client with an open visit is in the listing's *Visites* section above (the same
   `VisitCards` as the Espace agent: the client, the visit's type, tag and date, linking to `/visits/{id}`), and leaves
   *Propositions* while it is open; the summary leads with "1 visite". The visits are read in one
-  `GET /v1/visits?match-id=&agent-id=&status=REQUESTED|CONFIRMED|CHECKED_IN` by the listing's match ids; that read
+  `GET /v1/visits?listing-id=&agent-id=&status=REQUESTED|CONFIRMED|CHECKED_IN|COMPLETED` by the listing's id; that read
   failing shows the section's "unavailable" and leaves every proposal, and a stale visit or one of another agent's is
-  ignored. **Another agent's mandate is protected**: only the agent's own mandates among the
+  ignored. The activity line replaces the WIP `visitStats` line when it is shown. **Another agent's mandate is protected**: only the agent's own mandates among the
   matches' are looked up (`NdMandateClient.searchByIds`, `id=&agent-id=`, checked again on `agentId`), and only their
   customers (`NdCustomerClient.search`); any other match is "Client d'un autre agent", never named nor linked, its
   customer never asked of ndopify-server. The matches or mandates failing leave the section out (rather than mislabel
