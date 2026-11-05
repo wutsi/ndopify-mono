@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${page} ? |Visite de ${page.customerName} — Ndopify Partner Central| : 'Visite — Ndopify Partner Central'">Visite — Ndopify Partner Central</title>
+    <meta name="description" content="Une visite d'un client de l'agent : la confirmer, la démarrer avec le code du client, la terminer.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/home.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/listing.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/visit.css}">
+    <script th:src="@{/assets/js/partner-central.js}" defer></script>
+    <script th:src="@{/assets/js/visit.js}" defer></script>
+</head>
+<!--/*
+  The page of one of the agent's visits (VisitController), opened from the Espace agent's Visites. One panel per state:
+    - REQUESTED ("À confirmer"): the customer's slot and note, the schedule form (day, time, type: POST
+      /visits/{id}/schedule) and the refuse form (optional reason: POST /visits/{id}/cancel).
+    - CONFIRMED ("Confirmée"), before the check-in window: the slot and the listing's address, the code hint, and the
+      cancel form.
+    - WINDOW ("À démarrer"), from scheduledAt - 1 h to + 4 h: the check-in form (the customer's 4-digit code and an
+      optional position: POST /visits/{id}/check-in), the no-show declaration from + 15 min (POST
+      /visits/{id}/no-show) and the cancel form. A video visit first shows the WhatsApp call to make.
+    - CHECKED_IN ("En cours"): the distance taken at the start, and the check-out form (the private report and an
+      optional position: POST /visits/{id}/check-out), active 10 min after the check-in.
+    - COMPLETED, CANCELLED, EXPIRED, NO_SHOW: what happened, no action.
+  Every action is a form that posts; the controller redirects back with "flashText" / "flashStyle" (the "visitOutcome"
+  flash attribute). "checkInLocked" hides the check-in form after VISIT_CODE_LOCKED for this agent; "locked" is the
+  locked page (another agent's visit, gone, or unreadable). The agent never receives the customer's code: the page
+  shows the listing's address, never Visit.address.
+*/-->
+<body data-page="visit" th:attr="data-currency=${currency}">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" th:href="@{/}">
+                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte" th:if="${signedIn}">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <img class="user-menu__photo" th:if="${userPhotoUrl}" th:src="${userPhotoUrl}" alt="" width="44" height="44"
+                         data-user-photo>
+                    <span aria-hidden="true" data-user-initials th:unless="${userPhotoUrl}" th:text="${initials}">NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li><a class="user-menu__item" th:href="@{/profile}">Profil</a></li>
+                    <li>
+                        <form method="post" th:action="@{/logout}" data-logout>
+                            <button class="user-menu__item" type="submit">Déconnexion</button>
+                        </form>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="back-link"><a th:href="@{/#visits-title}">← Retour à l'espace agent</a></p>
+
+            <!-- Locked: another agent's visit, gone, or unreadable. -->
+            <div class="alert alert--warning" th:if="${locked != null}" data-visit-locked>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <h1 class="alert__title">Cette visite n'est pas disponible</h1>
+                    <p th:if="${locked == 'not-yours'}">Retrouvez les visites de vos clients dans votre
+                        <a th:href="@{/#visits-title}">espace agent</a>.</p>
+                    <p th:unless="${locked == 'not-yours'}">Cette visite ne peut pas être affichée pour le moment.
+                        Réessayez dans quelques instants.</p>
+                </div>
+            </div>
+
+            <div class="visit" th:unless="${locked != null}" th:with="p=${page}" data-visit>
+                <div class="page-intro mandate-intro visit-intro">
+                    <div class="mandate-intro__head">
+                        <h1>Visite de <span th:text="${p.customerName}">Sandrine Eboa</span></h1>
+                        <p th:class="|status-tag status-tag--${p.tag.style}|" th:text="${p.tag.label}">À confirmer</p>
+                    </div>
+                    <p class="mandate__meta">Visite n° <span th:text="${p.id}">7001</span> ·
+                        <a th:href="@{|/mandates/${p.mandateId}#matches-title|}">Mandat n° <span th:text="${p.mandateId}">204</span></a></p>
+                </div>
+
+                <!-- Who and what: the customer to call, the listing to show. -->
+                <div class="visit-header">
+                    <div class="contact-card__line contact-card__phone" th:if="${p.phone != null}">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>
+                        <a th:href="|tel:${p.phone}|" data-phone-link><span class="visually-hidden">Appeler le client au </span><span
+                                th:text="${p.phone}">+237 6 99 88 77 66</span></a>
+                        <a class="btn btn--primary btn--compact" th:if="${p.phoneDigits != null}" target="_blank" rel="noopener"
+                           th:href="|https://wa.me/${p.phoneDigits}|" data-whatsapp-link><svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>WhatsApp</a>
+                    </div>
+                    <div class="visit-listing" th:if="${p.listingTitle != null}">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg>
+                        <div>
+                            <p><a th:href="@{${p.listingUrl}}" data-listing-link><span th:text="${p.listingTitle}">Appartement 3 chambres · Bonapriso</span></a></p>
+                            <p class="visit-listing__meta" th:text="${p.listingMeta}">Annonce n° 3012 · 240K FCFA / mois</p>
+                        </div>
+                    </div>
+                    <p class="visit-type">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false" data-type-icon="ON_SITE" th:if="${p.type.name() == 'ON_SITE'}"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false" data-type-icon="VIDEO" th:if="${p.type.name() == 'VIDEO'}"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m16 10 6-3v10l-6-3z"/></svg>
+                        <span th:text="${p.typeLabel}">Sur place</span>
+                    </p>
+                </div>
+
+                <!-- Outcome of the last action. -->
+                <div th:if="${flashText}" th:class="|alert alert--${flashStyle}|" role="status" tabindex="-1" data-visit-flash>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <p th:text="${flashText}">Visite confirmée.</p>
+                </div>
+
+                <!-- ===== REQUESTED: the customer's slot, to confirm or move, or the request to refuse ===== -->
+                <section class="visit-panel" aria-labelledby="requested-title" data-panel="REQUESTED"
+                         th:if="${p.panel.name() == 'REQUESTED'}">
+                    <h2 id="requested-title" class="visit-panel__title">Demande de visite</h2>
+                    <div>
+                        <p><span th:text="${p.customerFirstName}">Sandrine</span> souhaite visiter le bien
+                            <strong th:text="${p.type.name() == 'ON_SITE'} ? 'sur place' : 'en vidéo, par appel WhatsApp'">sur place</strong>, le</p>
+                        <p class="visit-when">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                            <span th:text="${p.requestedAt}">sam. 7 novembre 2026 à 10:30</span>
+                        </p>
+                    </div>
+                    <figure class="visit-note" data-note th:if="${p.note != null}">
+                        <blockquote><p th:text="${p.note}">Je viendrai avec mon mari.</p></blockquote>
+                        <figcaption>Message de <span th:text="${p.customerFirstName}">Sandrine</span></figcaption>
+                    </figure>
+                    <p class="visit-deadline">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                        <span>À confirmer avant le <strong th:text="${p.expiresAt}">mer. 4 novembre 2026 à 08:00</strong>
+                            (<span th:text="${p.expiresIn}">42 h</span>) : sans réponse sous 48 h, la demande expire.</span>
+                    </p>
+
+                    <form class="form visit-form" method="post" novalidate data-schedule-form
+                          th:action="@{/visits/{id}/schedule(id=${p.id})}"
+                          th:attr="data-customer-first-name=${p.customerFirstName}">
+                        <h3 class="visit-form__title">Confirmer la visite</h3>
+                        <p class="field__optional">Gardez le créneau et le type demandés, ou changez-les avec
+                            <span th:text="${p.customerFirstName}">Sandrine</span>.</p>
+                        <div class="visit-slot">
+                            <div class="field">
+                                <label class="field__label" for="visit-date">Jour</label>
+                                <select class="input select" id="visit-date" name="date">
+                                    <option th:each="d : ${p.days}" th:value="${d.value}" th:text="${d.label}"
+                                            th:selected="${d.value == p.selectedDay}">sam. 7 novembre 2026</option>
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label class="field__label" for="visit-time">Heure</label>
+                                <select class="input select" id="visit-time" name="time">
+                                    <option th:each="t : ${p.times}" th:value="${t.first}" th:text="${t.second}"
+                                            th:selected="${t.first == p.selectedTime}">10h30</option>
+                                </select>
+                            </div>
+                        </div>
+                        <fieldset class="choices">
+                            <legend class="choices__legend">Type de visite</legend>
+                            <div class="choices__grid choices__grid--2">
+                                <label class="choice"><input name="type" type="radio" value="ON_SITE"
+                                                             th:checked="${p.type.name() == 'ON_SITE'}"> Sur place</label>
+                                <label class="choice"><input name="type" type="radio" value="VIDEO"
+                                                             th:checked="${p.type.name() == 'VIDEO'}"> Vidéo WhatsApp</label>
+                            </div>
+                            <p class="field__optional" data-type-hint>
+                                <span th:if="${p.type.name() == 'VIDEO'}">Vous appellerez <span th:text="${p.customerFirstName}">Sandrine</span>
+                                    en vidéo sur WhatsApp, depuis le bien, à l'heure choisie.</span>
+                                <span th:unless="${p.type.name() == 'VIDEO'}">Vous retrouvez <span th:text="${p.customerFirstName}">Sandrine</span>
+                                    au bien, à l'heure choisie.</span>
+                            </p>
+                        </fieldset>
+                        <div class="hint">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                            <p>La visite est confirmée aussitôt&nbsp;: <span th:text="${p.customerFirstName}">Sandrine</span>
+                                reçoit par e-mail la date, l'adresse et son code à 4 chiffres.</p>
+                        </div>
+                        <div class="form__actions">
+                            <button type="submit" class="btn btn--primary">Confirmer</button>
+                        </div>
+                    </form>
+
+                    <details class="visit-secondary">
+                        <summary>Refuser la demande</summary>
+                        <form class="form visit-secondary__body" method="post" novalidate data-cancel-form
+                              th:action="@{/visits/{id}/cancel(id=${p.id})}">
+                            <p>Le client est prévenu par e-mail et peut demander un autre créneau.</p>
+                            <div class="field">
+                                <label class="field__label" for="refuse-reason">Raison <span class="field__optional">(facultatif, envoyée au client)</span></label>
+                                <textarea class="input input--textarea" id="refuse-reason" name="reason" rows="3" maxlength="500"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn--danger">Refuser la demande</button>
+                        </form>
+                    </details>
+                </section>
+
+                <!-- ===== CONFIRMED, before the check-in window ===== -->
+                <section class="visit-panel" aria-labelledby="confirmed-title" data-panel="CONFIRMED"
+                         th:if="${p.panel.name() == 'CONFIRMED'}">
+                    <h2 id="confirmed-title" class="visit-panel__title">Visite confirmée</h2>
+                    <p class="visit-when">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                        <span th:text="${p.scheduledAt}">sam. 7 novembre 2026 à 10:30</span>
+                    </p>
+                    <div class="visit-address" th:if="${p.address != null}">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+                        <div>
+                            <p th:text="${p.address}">Rue Njo-Njo, portail bleu, Derrière la pharmacie</p>
+                            <p th:if="${p.mapUrl != null}"><a target="_blank" rel="noopener" th:href="${p.mapUrl}" data-map-link>Voir sur la carte<span class="visually-hidden"> (s'ouvre dans un nouvel onglet)</span></a></p>
+                        </div>
+                    </div>
+                    <div class="hint">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                        <p th:if="${p.type.name() == 'ON_SITE'}"><strong>Le jour de la visite, demandez au client son code à 4 chiffres&nbsp;: c'est lui qui
+                            démarre la visite.</strong> Vous le saisirez ici, à partir du <span th:text="${p.windowFrom}">sam. 7 novembre 2026 à 09:30</span>.</p>
+                        <p th:unless="${p.type.name() == 'ON_SITE'}"><strong>À l'heure prévue, appelez le client en vidéo sur WhatsApp depuis
+                            le bien.</strong> Au début de l'appel, demandez-lui son code à 4 chiffres&nbsp;: c'est lui qui
+                            démarre la visite. Vous le saisirez ici, à partir du <span th:text="${p.windowFrom}">sam. 7 novembre 2026 à 09:30</span>.</p>
+                    </div>
+                    <details class="visit-secondary">
+                        <summary>Annuler la visite</summary>
+                        <form class="form visit-secondary__body" method="post" novalidate data-cancel-form
+                              th:action="@{/visits/{id}/cancel(id=${p.id})}">
+                            <p>Le client est prévenu par e-mail.</p>
+                            <div class="field">
+                                <label class="field__label" for="confirmed-cancel-reason">Raison <span class="field__optional">(facultatif, envoyée au client)</span></label>
+                                <textarea class="input input--textarea" id="confirmed-cancel-reason" name="reason" rows="3" maxlength="500"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn--danger">Annuler la visite</button>
+                        </form>
+                    </details>
+                </section>
+
+                <!-- ===== CONFIRMED, in the check-in window: start it with the customer's code, or the no-show ===== -->
+                <section class="visit-panel" aria-labelledby="window-title" data-panel="WINDOW"
+                         th:if="${p.panel.name() == 'WINDOW'}">
+                    <h2 id="window-title" class="visit-panel__title">Démarrer la visite</h2>
+                    <p class="visit-when">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                        <span th:text="${p.scheduledAt}">Aujourd'hui · 10:30</span>
+                    </p>
+                    <div class="visit-address" th:if="${p.address != null}">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+                        <div>
+                            <p th:text="${p.address}">Rue Njo-Njo, portail bleu, Derrière la pharmacie</p>
+                            <p th:if="${p.mapUrl != null}"><a target="_blank" rel="noopener" th:href="${p.mapUrl}" data-map-link>Voir sur la carte<span class="visually-hidden"> (s'ouvre dans un nouvel onglet)</span></a></p>
+                        </div>
+                    </div>
+
+                    <!-- A video visit: the call first, from the property, to the customer's WhatsApp. -->
+                    <div class="visit-call" th:if="${p.type.name() == 'VIDEO'}" data-for-type="VIDEO">
+                        <a class="btn btn--primary visit-call__button" th:if="${p.phoneDigits != null}" target="_blank" rel="noopener"
+                           th:href="|https://wa.me/${p.phoneDigits}|" data-whatsapp-link><svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg><span>Appeler <span th:text="${p.customerFirstName}">Sandrine</span> sur WhatsApp</span></a>
+                        <p class="field__optional">puis lancez l'appel vidéo, depuis le bien.</p>
+                        <p><strong>Au début de l'appel, demandez son code au client.</strong></p>
+                    </div>
+
+                    <form class="form visit-form" method="post" novalidate data-checkin-form th:unless="${checkInLocked}"
+                          th:action="@{/visits/{id}/check-in(id=${p.id})}">
+                        <div class="field">
+                            <label class="field__label" for="visit-code">Code du client</label>
+                            <p class="field__optional" id="code-hint">
+                                Demandez-le à <span th:text="${p.customerFirstName}">Sandrine</span>&nbsp;: il est dans son
+                                e-mail de confirmation et sur sa page de visite.</p>
+                            <input class="input input--code visit-code" id="visit-code" name="code" type="text"
+                                   inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="one-time-code" placeholder="0000" required
+                                   aria-describedby="code-hint code-error">
+                            <p class="field__error" id="code-error" hidden><span data-error-text></span></p>
+                        </div>
+                        <input type="hidden" name="latitude" data-position-input>
+                        <input type="hidden" name="longitude" data-position-input>
+                        <input type="hidden" name="accuracyMeters" data-position-input>
+                        <div class="visit-position" hidden data-position-status
+                             data-none-text="Position non disponible&nbsp;: la visite peut quand même démarrer.">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+                            <span role="status" data-position-text></span>
+                            <button type="button" class="link-button" hidden data-position-retry>Relever à nouveau</button>
+                        </div>
+                        <div class="form__actions">
+                            <button type="submit" class="btn btn--primary">Démarrer</button>
+                        </div>
+                    </form>
+
+                    <!-- 5 wrong codes: no more tries (409 VISIT_CODE_LOCKED). -->
+                    <div class="alert alert--error" th:if="${checkInLocked}" data-code-locked>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        <div>
+                            <p class="alert__title">Trop d'essais&nbsp;: contactez le support ou déclarez le client absent.</p>
+                            <p>Le code ne peut plus être saisi pour cette visite.
+                                <a th:if="${p.canNoShow}" href="#no-show" data-locked-noshow>Déclarer le client absent</a></p>
+                        </div>
+                    </div>
+
+                    <details id="no-show" class="visit-secondary" th:if="${p.canNoShow}">
+                        <summary><span th:if="${p.type.name() == 'ON_SITE'}">Le client est absent ou refuse de donner le code</span><span
+                                th:unless="${p.type.name() == 'ON_SITE'}">Le client ne répond pas ou refuse de donner le code</span></summary>
+                        <form class="form visit-secondary__body" method="post" novalidate data-noshow-form
+                              th:action="@{/visits/{id}/no-show(id=${p.id})}">
+                            <fieldset class="choices">
+                                <legend class="choices__legend">Que s'est-il passé&nbsp;?</legend>
+                                <div class="choices__grid choices__grid--2">
+                                    <label class="choice"><input name="reason" type="radio" value="CUSTOMER_ABSENT">
+                                        <span th:if="${p.type.name() == 'ON_SITE'}">Client absent</span><span
+                                                th:unless="${p.type.name() == 'ON_SITE'}">Le client ne répond pas</span></label>
+                                    <label class="choice"><input name="reason" type="radio" value="CODE_REFUSED"> Code refusé</label>
+                                </div>
+                                <p class="field__error" id="noshow-error" hidden><span data-error-text></span></p>
+                            </fieldset>
+                            <div class="alert alert--warning">
+                                <div>
+                                    <p class="alert__title">L'absence du client est enregistrée, votre position aussi</p>
+                                    <p>Faites la déclaration devant le bien.</p>
+                                </div>
+                            </div>
+                            <input type="hidden" name="latitude" data-position-input>
+                            <input type="hidden" name="longitude" data-position-input>
+                            <input type="hidden" name="accuracyMeters" data-position-input>
+                            <div class="visit-position" hidden data-position-status
+                                 data-none-text="Position non disponible&nbsp;: la déclaration est quand même enregistrée.">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+                                <span role="status" data-position-text></span>
+                                <button type="button" class="link-button" hidden data-position-retry>Relever à nouveau</button>
+                            </div>
+                            <button type="submit" class="btn btn--danger">Déclarer l'absence</button>
+                        </form>
+                    </details>
+
+                    <details class="visit-secondary">
+                        <summary>Vous ne pouvez pas venir&nbsp;?</summary>
+                        <form class="form visit-secondary__body" method="post" novalidate data-cancel-form
+                              th:action="@{/visits/{id}/cancel(id=${p.id})}">
+                            <p>Annulez la visite&nbsp;: le client est prévenu par e-mail.</p>
+                            <div class="field">
+                                <label class="field__label" for="window-cancel-reason">Raison <span class="field__optional">(facultatif, envoyée au client)</span></label>
+                                <textarea class="input input--textarea" id="window-cancel-reason" name="reason" rows="3" maxlength="500"></textarea>
+                            </div>
+                            <button type="submit" class="btn btn--danger">Annuler la visite</button>
+                        </form>
+                    </details>
+                </section>
+
+                <!-- ===== CHECKED_IN: the visit is on; end it with the agent's report ===== -->
+                <section class="visit-panel" aria-labelledby="checkedin-title" data-panel="CHECKED_IN"
+                         th:if="${p.panel.name() == 'CHECKED_IN'}">
+                    <h2 id="checkedin-title" class="visit-panel__title">Visite en cours depuis
+                        <span th:text="${p.checkedInAt}">10:05</span></h2>
+                    <p class="visit-distance" data-distance-ok th:if="${p.distanceKnown and !p.checkInFlagged}">
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <span>Vous étiez à <strong th:text="${p.distance}">820 m</strong> du bien au démarrage.</span>
+                    </p>
+                    <div class="alert alert--warning" th:if="${p.checkInFlagged}" data-distance-far>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <p class="alert__title">Vous étiez à <span th:text="${p.distance}">820 m</span> du bien au démarrage</p>
+                            <p>La visite sera vérifiée par l'équipe Ndopify. Vous pouvez la terminer normalement.</p>
+                        </div>
+                    </div>
+                    <p class="visit-distance" th:unless="${p.distanceKnown}" data-distance-none>Votre position n'a pas pu être relevée au démarrage.</p>
+
+                    <form class="form visit-form" method="post" novalidate data-checkout-form
+                          th:action="@{/visits/{id}/check-out(id=${p.id})}">
+                        <h3 class="visit-form__title">Terminer la visite</h3>
+                        <div class="field">
+                            <label class="field__label" for="visit-comment">Compte rendu de la visite</label>
+                            <p class="field__optional" id="comment-hint">Ce que le client a pensé du bien, ses questions,
+                                la suite à donner. Visible par vous et l'équipe Ndopify seulement, jamais par le client.</p>
+                            <textarea class="input input--textarea" id="visit-comment" name="comment" rows="5"
+                                      maxlength="2000" required aria-describedby="comment-hint comment-counter comment-error"></textarea>
+                            <p class="field__counter" id="comment-counter" data-counter>0 / 2000</p>
+                            <p class="field__error" id="comment-error" hidden><span data-error-text></span></p>
+                        </div>
+                        <input type="hidden" name="latitude" data-position-input>
+                        <input type="hidden" name="longitude" data-position-input>
+                        <input type="hidden" name="accuracyMeters" data-position-input>
+                        <div class="visit-position" hidden data-position-status
+                             data-none-text="Position non disponible&nbsp;: la visite peut quand même se terminer.">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+                            <span role="status" data-position-text></span>
+                            <button type="button" class="link-button" hidden data-position-retry>Relever à nouveau</button>
+                        </div>
+                        <p class="visit-later" id="checkout-wait" tabindex="-1" th:if="${!p.checkOutReady}" data-checkout-wait>
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                            <span>Vous pourrez terminer la visite à partir de <strong th:text="${p.checkOutFrom}">10:15</strong>,
+                                10 min après son démarrage.</span>
+                        </p>
+                        <div class="form__actions">
+                            <button type="submit" class="btn btn--primary" data-checkout-submit
+                                    th:attr="aria-disabled=${!p.checkOutReady} ? 'true' : null">Terminer</button>
+                        </div>
+                    </form>
+                </section>
+
+                <!-- ===== COMPLETED: what happened, and what the customer thought ===== -->
+                <section class="visit-panel" aria-labelledby="completed-title" data-panel="COMPLETED"
+                         th:if="${p.panel.name() == 'COMPLETED'}">
+                    <h2 id="completed-title" class="visit-panel__title">Visite terminée</h2>
+                    <dl class="review visit-summary">
+                        <div class="review__item"><dt class="review__term">Type</dt><dd class="review__value" th:text="${p.typeLabel}">Sur place</dd></div>
+                        <div class="review__item"><dt class="review__term">Démarrée</dt><dd class="review__value" th:text="${p.checkedInAt}">10:05</dd></div>
+                        <div class="review__item"><dt class="review__term">Terminée</dt><dd class="review__value" th:text="${p.checkedOutAt}">sam. 7 novembre 2026 à 10:35</dd></div>
+                        <div class="review__item"><dt class="review__term">Durée</dt><dd class="review__value" th:text="${p.duration}">30 min</dd></div>
+                        <div class="review__item"><dt class="review__term">Votre position au démarrage</dt><dd class="review__value" th:text="${p.startDistance}">À 820 m du bien</dd></div>
+                        <div class="review__item"><dt class="review__term">Votre compte rendu <span class="field__optional">(jamais montré au client)</span></dt><dd class="review__value review__multiline" th:text="${p.agentComment}">Client intéressé.</dd></div>
+                    </dl>
+                    <h3 class="visit-form__title">L'avis du client</h3>
+                    <p th:if="${p.feedbackTag == null}" data-feedback-none>Le client n'a pas encore répondu. Il a reçu un e-mail pour dire si le bien
+                        l'intéresse.</p>
+                    <div class="visit-feedback" th:if="${p.feedbackTag != null}" data-feedback>
+                        <p><span th:class="|status-tag status-tag--${p.feedbackTone}|" th:text="${p.feedbackTag}" data-feedback-tag>Pas intéressé</span>
+                            <span th:if="${p.feedbackReason}" th:text="${p.feedbackReason}" data-feedback-reason>trop cher</span></p>
+                        <figure class="visit-note" th:if="${p.feedbackComment != null}" data-feedback-comment>
+                            <blockquote><p th:text="${p.feedbackComment}">Un peu cher pour le quartier.</p></blockquote>
+                            <figcaption>Commentaire de <span th:text="${p.customerFirstName}">Sandrine</span></figcaption>
+                        </figure>
+                    </div>
+                </section>
+
+                <!-- ===== CANCELLED / EXPIRED / NO_SHOW: what happened ===== -->
+                <div class="alert alert--info" data-panel="CANCELLED" th:if="${p.panel.name() == 'CANCELLED'}">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <div>
+                        <h2 class="alert__title" th:text="${p.cancelledTitle}">Visite annulée</h2>
+                        <p th:text="${p.cancelledText}">Vous avez annulé la visite.</p>
+                        <p class="review__multiline" th:if="${p.cancellationReason != null}" th:text="${p.cancellationReason}" data-cancel-reason>« Indisponible. »</p>
+                        <p>Visite prévue le <span th:text="${p.plannedAt}">sam. 7 novembre 2026 à 10:30</span>.</p>
+                    </div>
+                </div>
+
+                <div class="alert alert--info" data-panel="EXPIRED" th:if="${p.panel.name() == 'EXPIRED'}">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <div>
+                        <h2 class="alert__title">Demande expirée</h2>
+                        <p th:text="${p.expiredText}">Vous n'avez pas confirmé la demande sous 48 h.</p>
+                        <p>Visite prévue le <span th:text="${p.plannedAt}">sam. 7 novembre 2026 à 10:30</span>.</p>
+                    </div>
+                </div>
+
+                <div class="alert alert--warning" data-panel="NO_SHOW" th:if="${p.panel.name() == 'NO_SHOW'}">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                    <div>
+                        <h2 class="alert__title" th:text="${p.noShowTitle}">Client absent</h2>
+                        <p th:text="${p.noShowText}">Déclaré par vous : l'absence du client est enregistrée.</p>
+                        <p>Visite prévue le <span th:text="${p.plannedAt}">sam. 7 novembre 2026 à 10:30</span>.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
