@@ -18,6 +18,12 @@ import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 import java.util.Date
 
+/** Number of matches of a listing in a given status. */
+interface ListingMatchCount {
+    val listingId: Long
+    val total: Long
+}
+
 @Repository
 interface MatchRepository : CrudRepository<MatchEntity, Long>, JpaSpecificationExecutor<MatchEntity> {
     fun findByMandateAndListing(mandate: MandateEntity, listing: ListingEntity): MatchEntity?
@@ -26,6 +32,15 @@ interface MatchRepository : CrudRepository<MatchEntity, Long>, JpaSpecificationE
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT m FROM MatchEntity m WHERE m.id = :id")
     fun findByIdForUpdate(id: Long): MatchEntity?
+
+    @Query(
+        "SELECT m.listing.id AS listingId, COUNT(m) AS total FROM MatchEntity m " +
+            "WHERE m.listing.id IN :listingIds AND m.status = :status GROUP BY m.listing.id"
+    )
+    fun countByListingIdsAndStatus(
+        listingIds: Collection<Long>,
+        status: MatchStatus,
+    ): List<ListingMatchCount>
 
     fun findByStatusAndNotifiedAtIsNullAndMandateStatusAndListingStatus(
         status: MatchStatus,

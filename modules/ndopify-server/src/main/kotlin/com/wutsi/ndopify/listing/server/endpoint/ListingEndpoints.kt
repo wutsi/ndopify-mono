@@ -1,5 +1,10 @@
 package com.wutsi.ndopify.listing.server.endpoint
 
+import com.wutsi.ndopify.error.dto.Error
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.Parameter
+import com.wutsi.ndopify.error.dto.ParameterType
+import com.wutsi.ndopify.error.server.exception.BadRequestException
 import com.wutsi.ndopify.listing.dto.CreateListingRequest
 import com.wutsi.ndopify.listing.dto.CreateListingResponse
 import com.wutsi.ndopify.listing.dto.GetListingResponse
@@ -7,12 +12,15 @@ import com.wutsi.ndopify.listing.dto.SearchListingImageRequest
 import com.wutsi.ndopify.listing.dto.SearchListingImageResponse
 import com.wutsi.ndopify.listing.dto.SearchListingRequest
 import com.wutsi.ndopify.listing.dto.SearchListingResponse
+import com.wutsi.ndopify.listing.dto.SearchListingStatsRequest
+import com.wutsi.ndopify.listing.dto.SearchListingStatsResponse
 import com.wutsi.ndopify.listing.dto.UpdateListingRequest
 import com.wutsi.ndopify.listing.server.mapper.ListingMapper
 import com.wutsi.ndopify.listing.server.service.ListingAccessService
 import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.listing.server.service.ListingSectionService
 import com.wutsi.ndopify.listing.server.service.ListingService
+import com.wutsi.ndopify.listing.server.service.ListingStatsService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.DeleteMapping
@@ -38,7 +46,24 @@ class ListingEndpoints(
     private val imageService: ListingImageService,
     private val sectionService: ListingSectionService,
     private val accessService: ListingAccessService,
+    private val statsService: ListingStatsService,
 ) {
+    @GetMapping("/stats")
+    fun stats(@ModelAttribute request: SearchListingStatsRequest): SearchListingStatsResponse {
+        if (request.listingIds.isEmpty()) {
+            throw BadRequestException(
+                error = Error(
+                    code = ErrorCode.HTTP_MISSING_PARAMETER,
+                    parameter = Parameter(name = "listing-id", type = ParameterType.PARAMETER_TYPE_QUERY),
+                )
+            )
+        }
+        request.listingIds.distinct().forEach { id ->
+            accessService.ensureIsAgent(service.findById(id))
+        }
+        return SearchListingStatsResponse(stats = statsService.search(request.listingIds))
+    }
+
     @GetMapping
     fun search(@ModelAttribute request: SearchListingRequest): SearchListingResponse {
         val restricted = accessService.restrict(request)
