@@ -151,6 +151,22 @@ class VisitRulesTest {
     }
 
     @Test
+    fun `is open`() {
+        assertTrue(VisitRules.isOpen(requested(), NOW))
+        assertFalse(VisitRules.isOpen(requested().copy(createdAt = date("2026-10-15T10:00:00Z")), NOW))
+
+        val confirmed = confirmed()
+        val at = confirmed.scheduledAt!!.time
+        assertTrue(VisitRules.isOpen(confirmed, at + 4 * hour))
+        assertFalse(VisitRules.isOpen(confirmed, at + 4 * hour + 1))
+        assertFalse(VisitRules.isOpen(confirmed.copy(scheduledAt = null), NOW))
+
+        assertTrue(VisitRules.isOpen(checkedIn(), NOW))
+        assertFalse(VisitRules.isOpen(completed(), NOW))
+        assertFalse(VisitRules.isOpen(requested().copy(status = VisitStatus.CANCELLED), NOW))
+    }
+
+    @Test
     fun `can cancel`() {
         assertTrue(VisitRules.canCancel(requested()))
         assertTrue(VisitRules.canCancel(confirmed()))

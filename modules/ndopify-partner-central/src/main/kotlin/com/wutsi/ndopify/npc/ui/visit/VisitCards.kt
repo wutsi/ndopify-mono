@@ -22,7 +22,6 @@ import java.util.Date
  */
 object VisitCards {
     private const val URGENT = 12 * 3_600_000L
-    private const val WINDOW_AFTER = 4 * 3_600_000L
 
     fun of(
         visits: List<VisitSummary>?,
@@ -39,8 +38,8 @@ object VisitCards {
 
         val today = VisitSlots.localDate(Date(now), tenant)
         val requested = visits
-            .map { it.asVisit() }
-            .filter { it.status == VisitStatus.REQUESTED && VisitRules.expiresAt(it) > now }
+            .map { VisitRules.asVisit(it) }
+            .filter { it.status == VisitStatus.REQUESTED && VisitRules.isOpen(it, now) }
             .sortedBy { VisitRules.expiresAt(it) }
             .map { visit ->
                 val expiresAt = VisitRules.expiresAt(visit)
@@ -59,10 +58,10 @@ object VisitCards {
             }
 
         val upcoming = visits
-            .filter { it.status == VisitStatus.CHECKED_IN || isUpcoming(it, now) }
+            .map { VisitRules.asVisit(it) }
+            .filter { it.status != VisitStatus.REQUESTED && VisitRules.isOpen(it, now) }
             .sortedWith(compareBy(nullsLast()) { it.scheduledAt?.time })
-            .map { summary ->
-                val visit = summary.asVisit()
+            .map { visit ->
                 VisitCardView(
                     id = visit.id,
                     customerName = name(customers[visit.customerId]),
@@ -78,10 +77,6 @@ object VisitCards {
 
         return VisitCardsView(requested, upcoming)
     }
-
-    private fun isUpcoming(visit: VisitSummary, now: Long): Boolean =
-        visit.status == VisitStatus.CONFIRMED &&
-            visit.scheduledAt?.let { it.time + WINDOW_AFTER >= now } == true
 
     private fun whenLabel(visit: Visit, today: LocalDate, tenant: Tenant, formatter: TenantFormatter): String {
         if (visit.status == VisitStatus.CHECKED_IN) {
@@ -117,31 +112,4 @@ object VisitCards {
             .firstNotNullOfOrNull { locations[it]?.name }
         return listOfNotNull(type, rooms, place?.let { "· $it" }).joinToString(" ")
     }
-
-    /** The visit rules take a [Visit]: a summary has every field they read. */
-    private fun VisitSummary.asVisit(): Visit =
-        Visit(
-            id = id,
-            matchId = matchId,
-            mandateId = mandateId,
-            listingId = listingId,
-            agentId = agentId,
-            customerId = customerId,
-            status = status,
-            type = type,
-            requestedAt = requestedAt,
-            note = note,
-            scheduledAt = scheduledAt,
-            checkedInAt = checkedInAt,
-            checkInDistanceMeters = checkInDistanceMeters,
-            checkInFlagged = checkInFlagged,
-            checkedOutAt = checkedOutAt,
-            noShowParty = noShowParty,
-            noShowReason = noShowReason,
-            cancelledBy = cancelledBy,
-            cancellationReason = cancellationReason,
-            cancelledAt = cancelledAt,
-            createdAt = createdAt,
-            version = version,
-        )
 }

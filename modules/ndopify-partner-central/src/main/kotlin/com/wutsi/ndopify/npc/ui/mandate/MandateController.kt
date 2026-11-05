@@ -78,7 +78,8 @@ import java.time.ZoneOffset
  *
  * A landlord's signed mandate also shows its listing ([ListingViews.forMandate]): "Créer l'annonce", posted to
  * `ListingController`, then where the listing stands and, once published, how many clients it interests (its ACCEPTED
- * matches, a failure leaves the line out) and its *Propositions*, the clients it was sent to ([proposals]).
+ * matches, a failure leaves the line out) and its *Propositions*, the clients it was sent to ([proposals]). A client
+ * with an open visit shows the visit instead (its tag and date, linking to the visit page).
  *
  * A signed search ([MatchRules.matched]) shows the listings matched to it, *Biens correspondants* ([MatchViews]): its
  * matches and their listings in one search each, both secondary (a failure is the section's "unavailable"). Their
@@ -617,6 +618,10 @@ class MandateController(
      * had: no section, rather than another agent's client shown as the agent's or the other way round. Customers
      * failing only leave the names out. Only the signed-in agent's mandates are looked up (and checked again on
      * `agentId`), so another agent's client is never asked of ndopify-server, let alone shown.
+     *
+     * The agent's open visits of those matches are a secondary read, by match id: a client with one shows the visit
+     * instead of the proposal (the binding's tag and date, its summary count). A failure leaves every proposal row; a
+     * stale visit is ignored by [ListingViews.proposals].
      */
     private fun proposals(listing: Listing): ProposalsView? {
         if (listing.status != ListingStatus.PUBLISHED) return null
@@ -630,7 +635,30 @@ class MandateController(
         val customers = lookup("customers of the proposals of listing ${listing.id}") {
             customerClient.search(mandates.map { it.customerId }.distinct())
         } ?: emptyList()
-        return ListingViews.proposals(matches, mandates, customers, agentId, formatter())
+        // Secondary: without them, every proposal row still shows.
+        val visits = if (matches.isEmpty()) {
+            emptyList()
+        } else {
+            lookup("visits of the proposals of listing ${listing.id}") {
+                visitClient.searchByMatches(
+                    agentId,
+                    VisitRules.OPEN,
+                    matches.map { it.id },
+                    limit = matches.size,
+                )
+            } ?: emptyList()
+        }
+        val tenant = tenantContext.getTenant()
+        return ListingViews.proposals(
+            matches,
+            mandates,
+            customers,
+            visits,
+            agentId,
+            tenant,
+            clock.millis(),
+            TenantFormatter(tenant),
+        )
     }
 
     /** Null when it can't be loaded. */

@@ -190,6 +190,38 @@ class MandateControllerTest {
     }
 
     @Test
+    fun `approved landlord - published listing - a visit replaces its proposal`() {
+        publishedListing()
+        doReturn(
+            listOf(
+                VisitFixtures.summary(
+                    VisitFixtures.requested().copy(matchId = 9002, mandateId = 204, listingId = 501, customerId = 14),
+                ),
+            ),
+        ).whenever(visitClient).searchByMatches(AGENT.id, VisitRules.OPEN, listOf(9001L, 9002L, 9003L, 9004L), 4)
+
+        val view = proposals()!!
+
+        assertEquals("1 visite · 1 intéressé · 1 refusé · 1 en attente", view.summary)
+        assertEquals("/visits/7001", view.rows[1].url)
+        assertEquals("À confirmer", view.rows[1].tag.label)
+        assertEquals("Visite demandée pour le sam. 7 novembre 2026 à 10:30", view.rows[1].sent)
+        assertTrue(view.rows[1].visit)
+        verify(visitClient).searchByMatches(AGENT.id, VisitRules.OPEN, listOf(9001L, 9002L, 9003L, 9004L), 4)
+    }
+
+    @Test
+    fun `approved landlord - published listing - visits unavailable - proposals still shown`() {
+        publishedListing()
+        doThrow(ResourceAccessException("down")).whenever(visitClient).searchByMatches(any(), any(), any(), any())
+
+        val view = proposals()!!
+
+        assertEquals("2 intéressés · 1 refusé · 1 en attente", view.summary)
+        assertTrue(view.rows.none { it.visit })
+    }
+
+    @Test
     fun `approved landlord - published listing - another agent's mandate returned anyway is protected`() {
         publishedListing()
         val other = ListingViewsTest.SEARCHES[1].copy(agentId = 999)

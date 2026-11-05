@@ -332,6 +332,41 @@ class MandateTemplateTest {
     }
 
     @Test
+    fun `approved - landlord with listing published - a visit replaces its proposal`() {
+        doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
+        doReturn(ListingViewsTest.COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = ListingViewsTest.SENT))
+            .whenever(listingClient).get(501)
+        doReturn(ListingViewsTest.PROPOSALS).whenever(matchClient).searchByListings(listOf(501), MatchRules.SENT)
+        doReturn(ListingViewsTest.SEARCHES).whenever(mandateClient).searchByIds(listOf(207L, 204L, 305L), AGENT.id)
+        doReturn(ListingViewsTest.CUSTOMERS).whenever(customerClient).search(listOf(14L, 17L))
+        doReturn(
+            listOf(
+                VisitFixtures.summary(
+                    VisitFixtures.requested().copy(matchId = 9002, mandateId = 204, listingId = 501, customerId = 14),
+                ),
+            ),
+        ).whenever(visitClient).searchByMatches(AGENT.id, VisitRules.OPEN, listOf(9001L, 9002L, 9003L, 9004L), 4)
+
+        val section = render(APPROVED.copy(mandateType = MandateType.LISTING)).selectFirst("[data-listing-proposals]")!!
+
+        assertEquals(
+            "1 visite · 1 intéressé · 1 refusé · 1 en attente",
+            section.selectFirst("[data-proposals-summary-text]")?.text(),
+        )
+        val rows = section.select("a[data-proposal-link]")
+        assertEquals(listOf("/visits/7001", "/mandates/207#matches-title"), rows.map { it.attr("href") })
+        assertEquals("true", rows[0].attr("data-proposal-visit"))
+        assertFalse(rows[1].hasAttr("data-proposal-visit"))
+        assertEquals("Sandrine Eboa", rows[0].selectFirst("[data-proposal-client]")?.text())
+        assertEquals("À confirmer", rows[0].selectFirst("[data-proposal-tag]")?.text())
+        assertEquals(
+            "Visite demandée pour le sam. 7 novembre 2026 à 10:30",
+            rows[0].selectFirst("[data-proposal-summary]")?.text(),
+        )
+        assertEquals(1, section.select("[data-proposal-protected]").size)
+    }
+
+    @Test
     fun `approved - landlord with listing published - not sent to anyone`() {
         doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
         doReturn(ListingViewsTest.COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = ListingViewsTest.SENT))

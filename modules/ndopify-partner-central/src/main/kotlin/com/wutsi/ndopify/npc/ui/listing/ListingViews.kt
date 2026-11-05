@@ -18,9 +18,14 @@ import com.wutsi.ndopify.npc.ui.mandate.Amenity
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.npc.ui.mandate.MandateRules
 import com.wutsi.ndopify.npc.ui.match.MatchRules
+import com.wutsi.ndopify.npc.ui.visit.VisitRules
+import com.wutsi.ndopify.npc.ui.visit.VisitSlots
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import com.wutsi.ndopify.refdata.dto.Tenant
+import com.wutsi.ndopify.visit.dto.Visit
+import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import java.util.Date
 import java.util.Locale
@@ -241,12 +246,19 @@ object ListingViews {
      * counted in the summary. [mandates] are the agent's own among the matches' (`NdMandateClient.searchByIds`), and
      * [customers] theirs: a match of any other mandate is another agent's, whose client is never named nor linked.
      * A client whose name can't be had is its mandate's number.
+     *
+     * [visits] are the agent's visits of those matches: an open one replaces its match's row (the visit's tag and
+     * date, linking to the visit page) and is counted "1 visite" in the summary. A stale visit isn't shown, and a
+     * visit of another agent's mandate is ignored: the proposal row stays.
      */
     fun proposals(
         matches: List<Match>,
         mandates: Collection<MandateSummary>,
         customers: Collection<CustomerSummary>,
+        visits: Collection<VisitSummary>,
         agentId: Long,
+        tenant: Tenant,
+        now: Long,
         formatter: TenantFormatter,
     ): ProposalsView {
         val own = mandates.filter { it.agentId == agentId }.associateBy { it.id }
@@ -254,25 +266,75 @@ object ListingViews {
             val name = listOf(customer.party.firstName, customer.party.lastName).filter { it.isNotBlank() }.joinToString(" ")
             customer.id?.let { id -> name.ifBlank { null }?.let { id to it } }
         }.toMap()
-        val rows = matches
-            .filter { it.status == MatchStatus.ACCEPTED || it.status == MatchStatus.PROPOSED }
+        val open = visits
+            .map { VisitRules.asVisit(it) }
+            .filter { VisitRules.isOpen(it, now) }
+            .associateBy { it.matchId }
+        val visible = matches.filter { it.status == MatchStatus.ACCEPTED || it.status == MatchStatus.PROPOSED }
+        val rows = visible
             .sortedWith(
                 compareBy<Match> { if (it.status == MatchStatus.ACCEPTED) 0 else 1 }
                     .thenByDescending { it.answeredAt ?: it.proposedAt },
             )
             .map { match ->
                 val mandate = own[match.mandateId]
-                ProposalRow(
-                    client = when (mandate) {
-                        null -> OTHER_AGENT
-                        else -> names[mandate.customerId] ?: "Mandat n° ${mandate.id}"
-                    },
-                    url = mandate?.let { "/mandates/${it.id}#matches-title" },
-                    tag = MatchRules.tag(match),
-                    sent = MatchRules.answer(match, formatter).orEmpty(),
-                )
+                val visit = open[match.id]
+                if (visit != null && mandate != null) {
+                    visitRow(visit, mandate, names, tenant, now, formatter)
+                } else {
+                    ProposalRow(
+                        client = when (mandate) {
+                            null -> OTHER_AGENT
+                            else -> names[mandate.customerId] ?: "Mandat n° ${mandate.id}"
+                        },
+                        url = mandate?.let { "/mandates/${it.id}#matches-title" },
+                        tag = MatchRules.tag(match),
+                        sent = MatchRules.answer(match, formatter).orEmpty(),
+                    )
+                }
             }
-        return ProposalsView(summary = MatchRules.proposals(matches), rows = rows)
+        val visiting = visible.filter { open[it.id] != null && own[it.mandateId] != null }.map { it.id }.toSet()
+        return ProposalsView(summary = proposalsSummary(matches, visiting), rows = rows)
+    }
+
+    private fun visitRow(
+        visit: Visit,
+        mandate: MandateSummary,
+        names: Map<Long, String>,
+        tenant: Tenant,
+        now: Long,
+        formatter: TenantFormatter,
+    ): ProposalRow {
+        val tag = VisitRules.tag(VisitRules.panel(visit, now))
+        return ProposalRow(
+            client = names[mandate.customerId] ?: "Mandat n° ${mandate.id}",
+            url = "/visits/${visit.id}",
+            tag = MandateRules.Tag(tag.label, tag.style),
+            sent = visitLine(visit, now, tenant, formatter),
+            visit = true,
+        )
+    }
+
+    private fun visitLine(visit: Visit, now: Long, tenant: Tenant, formatter: TenantFormatter): String =
+        when (VisitRules.panel(visit, now)) {
+            VisitRules.Panel.REQUESTED ->
+                "Visite demandée pour le ${VisitSlots.dateTimeLabel(visit.requestedAt, tenant, formatter)}"
+
+            VisitRules.Panel.CHECKED_IN ->
+                visit.checkedInAt?.let { "Visite en cours depuis ${formatter.time(it)}" } ?: "Visite en cours"
+
+            else -> "Visite le ${VisitSlots.dateTimeLabel(visit.scheduledAt ?: visit.requestedAt, tenant, formatter)}"
+        }
+
+    /** "1 visite · 1 intéressé · …", the matches replaced by an open visit left out of the proposals' counts. */
+    private fun proposalsSummary(matches: List<Match>, visiting: Set<Long>): String? {
+        val proposals = MatchRules.proposals(matches.filterNot { it.id in visiting })
+        val visits = when (visiting.size) {
+            0 -> null
+            1 -> "1 visite"
+            else -> "${visiting.size} visites"
+        }
+        return listOfNotNull(visits, proposals).joinToString(" · ").ifEmpty { null }
     }
 
     /**

@@ -267,7 +267,8 @@
                     A landlord's mandate with its listing published: the clients the listing was sent to, interested
                     first ("listingProposals", ProposalsView), where a search has its Biens correspondants. Each opens
                     its search's mandate page; another agent's client is neither named nor linked (its mandate is
-                    protected).
+                    protected). A client with an open visit shows the visit instead (data-proposal-visit), opening
+                    its visit page; once it closes, the proposal row is back.
                 -->
                 <section class="home-section" aria-labelledby="proposals-title" th:if="${listingProposals}"
                          th:with="p=${listingProposals}" data-listing-proposals>
@@ -279,7 +280,8 @@
                     </p>
                     <ul class="checklist" th:unless="${#lists.isEmpty(p.rows)}" data-proposals-list>
                         <li th:each="row : ${p.rows}">
-                            <a class="checklist__row" th:if="${row.url}" th:href="@{${row.url}}" data-proposal-link>
+                            <a class="checklist__row" th:if="${row.url}" th:href="@{${row.url}}" data-proposal-link
+                               th:attr="data-proposal-visit=${row.visit ? 'true' : null}">
                                 <span class="checklist__title" th:text="${row.client}" data-proposal-client>Sandrine Eboa</span>
                                 <span th:class="|status-tag status-tag--${row.tag.style}|" th:text="${row.tag.label}"
                                       data-proposal-tag>Intéressé</span>

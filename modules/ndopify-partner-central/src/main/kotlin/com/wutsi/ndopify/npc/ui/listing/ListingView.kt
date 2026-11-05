@@ -42,7 +42,10 @@ data class ListingView(
 
 /** A published listing's *Propositions* (`ListingViews.proposals`), on its mandate's page. */
 data class ProposalsView(
-    /** "2 intéressés · 1 refusé · 1 en attente" (`MatchRules.proposals`); null when it wasn't sent to anyone. */
+    /**
+     * "2 intéressés · 1 refusé · 1 en attente" (`MatchRules.proposals`), the open visits first ("1 visite", and the
+     * matches they replaced left out); null when it wasn't sent to anyone.
+     */
     val summary: String?,
     /** The clients who didn't refuse it, interested first, the latest first within each. */
     val rows: List<ProposalRow>,
@@ -50,16 +53,19 @@ data class ProposalsView(
 
 /**
  * A client the listing was sent to. Another agent's client is "Client d'un autre agent" with no [url]: that agent's
- * mandate is protected, neither its customer nor its mandate is on the page.
+ * mandate is protected, neither its customer nor its mandate is on the page. A client with an open visit shows the
+ * visit instead ([visit]): its [url] is the visit page, its tag and line the visit's.
  */
 data class ProposalRow(
     val client: String,
-    /** The search's *Biens correspondants*, where the match is handled; null for another agent's. */
+    /** The search's *Biens correspondants* (the match), or the visit page for an open visit; null for another agent's. */
     val url: String?,
-    /** "Intéressé", "En attente". */
+    /** "Intéressé", "En attente", or the visit's "À confirmer", "Confirmée"… */
     val tag: MandateRules.Tag,
-    /** "Envoyé le 28 oct. 2026", "Intéressé le 29 oct. 2026" (`MatchRules.answer`). */
+    /** "Envoyé le 28 oct. 2026", "Intéressé le 29 oct. 2026", "Visite demandée pour le…". */
     val sent: String,
+    /** True when this row is the client's open visit, not its proposal. */
+    val visit: Boolean = false,
 )
 
 /** A row of the checklist: it opens its section, to edit it while a draft, to view it once sent. */

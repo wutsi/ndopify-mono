@@ -44,11 +44,29 @@ class NdVisitClient(
      * given.
      */
     fun search(agentId: Long, statuses: List<VisitStatus>, limit: Int = 20, mandateId: Long? = null): List<VisitSummary> =
+        find(agentId, statuses, limit, mandateId, emptyList())
+
+    /** The visits of [agentId] in [statuses] on the matches [matchIds], one `match-id` parameter each. */
+    fun searchByMatches(
+        agentId: Long,
+        statuses: List<VisitStatus>,
+        matchIds: List<Long>,
+        limit: Int = 20,
+    ): List<VisitSummary> = find(agentId, statuses, limit, null, matchIds)
+
+    private fun find(
+        agentId: Long,
+        statuses: List<VisitStatus>,
+        limit: Int,
+        mandateId: Long?,
+        matchIds: List<Long>,
+    ): List<VisitSummary> =
         rest.get()
             .uri { uri ->
                 uri.path("/v1/visits")
                     .queryParam("agent-id", agentId)
                 mandateId?.let { uri.queryParam("mandate-id", it) }
+                matchIds.forEach { uri.queryParam("match-id", it) }
                 statuses.forEach { uri.queryParam("status", it) }
                 uri.queryParam("limit", limit).build()
             }

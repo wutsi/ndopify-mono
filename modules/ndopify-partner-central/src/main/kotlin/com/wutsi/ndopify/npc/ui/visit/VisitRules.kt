@@ -4,6 +4,7 @@ import com.wutsi.ndopify.match.dto.MatchRejectionReason
 import com.wutsi.ndopify.refdata.dto.Tenant
 import com.wutsi.ndopify.visit.dto.Visit
 import com.wutsi.ndopify.visit.dto.VisitStatus
+import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import java.time.LocalDate
@@ -54,6 +55,44 @@ object VisitRules {
         MatchRejectionReason.AMENITIES to "il manque des équipements",
         MatchRejectionReason.AVAILABILITY to "disponible trop tard",
         MatchRejectionReason.OTHER to "autre raison",
+    )
+
+    /**
+     * True while the visit is still to confirm, to come or under way; a request past its 48 h or a confirmed visit past
+     * its `+ 4 h` window is stale (ndopify-server's job may not have moved it yet) and isn't open.
+     */
+    fun isOpen(visit: Visit, now: Long): Boolean =
+        when (visit.status) {
+            VisitStatus.REQUESTED -> expiresAt(visit) > now
+            VisitStatus.CONFIRMED -> visit.scheduledAt?.let { it.time + CHECK_IN_AFTER >= now } == true
+            VisitStatus.CHECKED_IN -> true
+            else -> false
+        }
+
+    /** A [VisitSummary] as a [Visit]: a summary has every field the rules read. */
+    fun asVisit(summary: VisitSummary): Visit = Visit(
+        id = summary.id,
+        matchId = summary.matchId,
+        mandateId = summary.mandateId,
+        listingId = summary.listingId,
+        agentId = summary.agentId,
+        customerId = summary.customerId,
+        status = summary.status,
+        type = summary.type,
+        requestedAt = summary.requestedAt,
+        note = summary.note,
+        scheduledAt = summary.scheduledAt,
+        checkedInAt = summary.checkedInAt,
+        checkInDistanceMeters = summary.checkInDistanceMeters,
+        checkInFlagged = summary.checkInFlagged,
+        checkedOutAt = summary.checkedOutAt,
+        noShowParty = summary.noShowParty,
+        noShowReason = summary.noShowReason,
+        cancelledBy = summary.cancelledBy,
+        cancellationReason = summary.cancellationReason,
+        cancelledAt = summary.cancelledAt,
+        createdAt = summary.createdAt,
+        version = summary.version,
     )
 
     /** A CONFIRMED visit in its check-in window is [Panel.WINDOW]; every other status is its own panel. */
