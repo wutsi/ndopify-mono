@@ -13,8 +13,8 @@ data class MandateCardView(
     val facts: List<Pair<String, String>>,
     /** A landlord's signed mandate only: its listing's status; null when the listings can't be had. */
     val listing: ListingLineView?,
-    /** A published listing only: "2 personnes intéressées"; null before, or when its matches can't be had. */
-    val interest: String? = null,
+    /** A published listing only: "2 personnes intéressées · 3 visites"; null before, or when its stats can't be had. */
+    val stats: String? = null,
     val nextStep: String?,
     /** A signed search only: "3 nouveaux biens correspondants" (ACTIVE matches), linking to [matchesUrl]; null at 0. */
     val matches: String? = null,

@@ -7,6 +7,7 @@ import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.customer.dto.CustomerSummary
+import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
@@ -298,17 +299,29 @@ class HomeTemplateTest {
     }
 
     @Test
-    fun `published listing - interest line`() {
+    fun `published listing - activity line`() {
         val landlord = MandateCardsTest.MANDATE.copy(id = 203, status = MandateStatus.APPROVED, mandateType = MandateType.LISTING)
         doReturn(listOf(MandateSummariesTest.summary(landlord))).whenever(mandateClient).active(AGENT.id)
         doReturn(listOf(ListingSummary(id = 501, mandateId = 203, status = ListingStatus.PUBLISHED)))
             .whenever(listingClient).searchByMandates(any(), any())
-        doReturn(listOf(Match(id = 1, mandateId = 301, listingId = 501, status = MatchStatus.ACCEPTED)))
-            .whenever(matchClient).searchByListings(any(), any(), any())
+        doReturn(mapOf(501L to ListingStats(501, 2, 1, 2))).whenever(listingClient).stats(listOf(501L))
 
         val card = render(get("/")).selectFirst("[data-mandate-card]")!!
 
-        assertEquals("1 personne intéressée", card.selectFirst(".mandate-card__interest[data-listing-interest]")?.text())
+        assertEquals("2 personnes intéressées · 3 visites", card.selectFirst("[data-listing-stats] > span > span:last-child")?.text())
+    }
+
+    @Test
+    fun `published listing without stats - no activity line`() {
+        val landlord = MandateCardsTest.MANDATE.copy(id = 203, status = MandateStatus.APPROVED, mandateType = MandateType.LISTING)
+        doReturn(listOf(MandateSummariesTest.summary(landlord))).whenever(mandateClient).active(AGENT.id)
+        doReturn(listOf(ListingSummary(id = 501, mandateId = 203, status = ListingStatus.PUBLISHED)))
+            .whenever(listingClient).searchByMandates(any(), any())
+        doReturn(null).whenever(listingClient).stats(listOf(501L))
+
+        val card = render(get("/")).selectFirst("[data-mandate-card]")!!
+
+        assertNull(card.selectFirst("[data-listing-stats]"))
     }
 
     @Test

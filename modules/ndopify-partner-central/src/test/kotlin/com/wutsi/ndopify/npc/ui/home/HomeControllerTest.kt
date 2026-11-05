@@ -12,6 +12,7 @@ import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.contract.dto.SearchContractRequest
 import com.wutsi.ndopify.customer.dto.CustomerSummary
+import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
@@ -450,7 +451,7 @@ class HomeControllerTest {
     }
 
     @Test
-    fun `clients interested by the published listings - one search`() {
+    fun `published listings - one stats search`() {
         active(landlord to null, landlord.copy(id = 206) to null, landlord.copy(id = 207) to null)
         doReturn(
             listOf(
@@ -460,46 +461,41 @@ class HomeControllerTest {
             ),
         ).whenever(listingClient).searchByMandates(any(), any())
         doReturn(
-            listOf(
-                Match(id = 1, mandateId = 301, listingId = 501, status = MatchStatus.ACCEPTED),
-                Match(id = 2, mandateId = 302, listingId = 501, status = MatchStatus.ACCEPTED),
-            ),
-        ).whenever(matchClient).searchByListings(any(), any(), any())
+            mapOf(501L to ListingStats(501, 2, 1, 2), 502L to ListingStats(502, 0, 0, 0)),
+        ).whenever(listingClient).stats(listOf(501L, 502L))
 
         val result = mvc.perform(get("/")).andReturn()
 
-        verify(matchClient).searchByListings(listOf(501L, 502L), listOf(MatchStatus.ACCEPTED), 100)
+        verify(listingClient).stats(listOf(501L, 502L))
         val mandates = mandates(result)
-        assertEquals("2 personnes intéressées", mandates[0].interest)
-        assertNull(mandates[1].interest) // None: not highlighted
-        assertNull(mandates[2].interest)
+        assertEquals("2 personnes intéressées · 3 visites", mandates[0].stats)
+        assertEquals("Aucune personne intéressée pour l'instant · Aucune visite", mandates[1].stats)
+        assertNull(mandates[2].stats)
     }
 
     @Test
-    fun `no published listing - no interest search`() {
+    fun `no published listing - no stats search`() {
         active(landlord to null)
         doReturn(listOf(ListingSummary(id = 501, mandateId = 205, status = ListingStatus.DRAFT)))
             .whenever(listingClient).searchByMandates(any(), any())
 
         val result = mvc.perform(get("/")).andReturn()
 
-        verify(matchClient, never()).searchByListings(any(), any(), any())
-        assertNull(mandates(result).single().interest)
+        verify(listingClient, never()).stats(any())
+        assertNull(mandates(result).single().stats)
     }
 
     @Test
-    fun `interest unavailable - cards kept without the interest line`() {
+    fun `stats unavailable - cards kept without the line`() {
         active(landlord to null)
         doReturn(listOf(ListingSummary(id = 501, mandateId = 205, status = ListingStatus.PUBLISHED)))
             .whenever(listingClient).searchByMandates(any(), any())
-        doThrow(ResourceAccessException("timeout")).whenever(matchClient).searchByListings(any(), any(), any())
+        doThrow(ResourceAccessException("timeout")).whenever(listingClient).stats(any())
 
         val result = mvc.perform(get("/")).andReturn()
 
-        val card = mandates(result).single()
-        assertNull(card.interest)
-        assertEquals("/listings/501", card.listing?.url)
-        assertEquals(false, model(result)["mandatesUnavailable"])
+        assertNull(mandates(result).single().stats)
+        assertEquals("/listings/501", mandates(result).single().listing?.url)
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.contract.dto.Contract
 import com.wutsi.ndopify.contract.dto.ContractSummary
+import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.listing.dto.MovingPeriod
@@ -101,7 +102,12 @@ class MandateCardsTest {
             neighborhoodIds = listOf(BONAPRISO),
         )
 
-        val card = MandateCards.of(mandate, CONTRACT_SUMMARY, mapOf(201L to ListingSummary(id = 501, mandateId = 201, status = ListingStatus.PUBLISHED)), NAMES, NOW, FORMATTER)
+        val card = MandateCards.of(
+            mandate, CONTRACT_SUMMARY,
+            mapOf(201L to ListingSummary(id = 501, mandateId = 201, status = ListingStatus.PUBLISHED)),
+            NAMES, NOW, FORMATTER,
+            stats = mapOf(501L to ListingStats(501, 2, 0, 3)),
+        )
 
         assertEquals("Propriétaire · Maison", card.title)
         assertEquals(MandateRules.Tag("Actif", "success"), card.tag)
@@ -110,10 +116,11 @@ class MandateCardsTest {
             card.facts,
         )
         assertEquals("Trouvez un locataire avant le 28 mars 2027.", card.nextStep)
+        assertEquals("2 personnes intéressées · 3 visites", card.stats)
     }
 
     /** A landlord's signed mandate (203), with [listing] as the listings' search returns it. */
-    private fun listed(listing: ListingSummary?, interest: Map<Long, Int>? = emptyMap()): MandateCardView =
+    private fun listed(listing: ListingSummary?, stats: Map<Long, ListingStats>? = emptyMap()): MandateCardView =
         MandateCards.of(
             MANDATE.copy(id = 203, status = MandateStatus.APPROVED, mandateType = MandateType.LISTING),
             CONTRACT_SUMMARY,
@@ -121,18 +128,22 @@ class MandateCardsTest {
             NAMES,
             NOW,
             FORMATTER,
-            interest = interest,
+            stats = stats,
         )
 
     @Test
-    fun `listing published - interest`() {
+    fun `listing published - activity`() {
         val published = ListingSummary(id = 501, mandateId = 203, status = ListingStatus.PUBLISHED)
 
-        assertEquals("2 personnes intéressées", listed(published, mapOf(501L to 2)).interest)
-        assertNull(listed(published, mapOf(502L to 2)).interest) // None: not highlighted
-        assertNull(listed(published, null).interest) // Unavailable
-        assertNull(listed(published.copy(status = ListingStatus.DRAFT), mapOf(501L to 2)).interest)
-        assertNull(listed(null).interest)
+        assertEquals("2 personnes intéressées · 3 visites", listed(published, mapOf(501L to ListingStats(501, 2, 1, 2))).stats)
+        assertEquals(
+            "Aucune personne intéressée pour l'instant · Aucune visite",
+            listed(published, mapOf(501L to ListingStats(501, 0, 0, 0))).stats,
+        )
+        assertNull(listed(published, mapOf(502L to ListingStats(502, 2, 0, 0))).stats) // No row for 501
+        assertNull(listed(published, null).stats) // Unavailable
+        assertNull(listed(published.copy(status = ListingStatus.DRAFT), mapOf(501L to ListingStats(501, 2, 0, 0))).stats)
+        assertNull(listed(null).stats)
     }
 
     @Test
