@@ -15,6 +15,7 @@ import com.wutsi.ndopify.web.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import com.wutsi.ndopify.web.core.service.security.AccessTokenService
 import com.wutsi.ndopify.web.core.service.security.JwtAuthentication
+import com.wutsi.ndopify.web.ui.layout.PortalLink
 import jakarta.servlet.http.HttpServletRequest
 import org.slf4j.LoggerFactory
 import org.springframework.http.HttpStatus
@@ -28,7 +29,6 @@ import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.servlet.view.RedirectView
-import org.springframework.web.util.UriComponentsBuilder
 import java.time.Clock
 
 /**
@@ -74,9 +74,6 @@ class MatchController(
         const val REASON_EXPIRED = "expired"
         const val REASON_NOT_YOURS = "not-yours"
 
-        /** Three base64url segments: all a link's token must look like to be kept (its signature is ndopify-server's to check). */
-        private val JWT_SHAPE = Regex("[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+\\.[A-Za-z0-9_-]+")
-
         /** `RejectMatchRequest.reason`'s size on ndopify-server: the form allows 500, a longer post is cut. */
         private const val MAX_COMMENT = 1000
     }
@@ -90,12 +87,12 @@ class MatchController(
         model: Model,
     ): Any {
         if (!token.isNullOrBlank()) {
-            if (!JWT_SHAPE.matches(token)) {
+            if (!PortalLink.isToken(token)) {
                 // Not a token: setting it as a cookie value could even fail (`;`, space, `"`, `,`)
                 return link(REASON_EXPIRED, model)
             }
             accessTokenService.set(token)
-            return redirect(withoutToken(request))
+            return redirect(PortalLink.withoutToken(request))
         }
 
         return signedIn("GET /match/$id", model) {
@@ -185,14 +182,5 @@ class MatchController(
     private fun link(reason: String, model: Model): String {
         model.addAttribute("reason", reason)
         return VIEW_LINK
-    }
-
-    // The request's own path and parameters, minus `token`
-    private fun withoutToken(request: HttpServletRequest): String {
-        val builder = UriComponentsBuilder.newInstance().path(request.requestURI)
-        request.parameterMap
-            .filterKeys { name -> name != "token" }
-            .forEach { (name, values) -> values.forEach { value -> builder.queryParam(name, value) } }
-        return builder.build().encode().toUriString()
     }
 }
