@@ -189,15 +189,16 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   (`ListingController.create` → `NdListingClient` → `POST /v1/listings`, a DRAFT pre-filled from the landlord's
   answers; on 409 `LISTING_ALREADY_EXISTS`, ex: from another tab, the existing one is opened instead), then where it stands and "Continuer / Voir l'annonce"; once published, how many clients it interests, like the card
   (`GET /v1/matches?listing-id=&status=ACCEPTED`, a failure leaves the line out), and its *Propositions*
-  (`MandateController.proposals`, `ListingViews.proposals` → `ProposalsView`, model `listingProposals`), after the
-  progress, where a search has its *Biens correspondants*: the listing's matches sent to a client
+  (`MandateController.listingClients`, `ListingViews.clients` → `ListingClientsView`, models `listingVisits` and
+  `listingProposals`), after the progress, where a search has its *Biens correspondants*: the listing's matches sent to a client
   (`GET /v1/matches?listing-id=&status=PROPOSED|ACCEPTED|REJECTED`, `MatchRules.SENT`), the answers' line
   (`MatchRules.proposals`), and one row per client who didn't refuse it (interested first), linking to the search's
-  `/mandates/{id}#matches-title`. A client with an open visit shows the visit instead (the visit's tag and date,
-  linking to `/visits/{id}`; the summary leads with "1 visite"), read in one
+  `/mandates/{id}#matches-title`. A client with an open visit is in the listing's *Visites* section above (the same
+  `VisitCards` as the Espace agent: the client, the visit's type, tag and date, linking to `/visits/{id}`), and leaves
+  *Propositions* while it is open; the summary leads with "1 visite". The visits are read in one
   `GET /v1/visits?match-id=&agent-id=&status=REQUESTED|CONFIRMED|CHECKED_IN` by the listing's match ids; that read
-  failing leaves every proposal, and a stale visit or one of another agent's is ignored. **Another agent's mandate is
-  protected**: only the agent's own mandates among the
+  failing shows the section's "unavailable" and leaves every proposal, and a stale visit or one of another agent's is
+  ignored. **Another agent's mandate is protected**: only the agent's own mandates among the
   matches' are looked up (`NdMandateClient.searchByIds`, `id=&agent-id=`, checked again on `agentId`), and only their
   customers (`NdCustomerClient.search`); any other match is "Client d'un autre agent", never named nor linked, its
   customer never asked of ndopify-server. The matches or mandates failing leave the section out (rather than mislabel

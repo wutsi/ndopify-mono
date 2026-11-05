@@ -27,8 +27,8 @@ import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
+import com.wutsi.ndopify.npc.ui.listing.ListingClientsView
 import com.wutsi.ndopify.npc.ui.listing.ListingViews
-import com.wutsi.ndopify.npc.ui.listing.ProposalsView
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.npc.ui.match.MatchController
 import com.wutsi.ndopify.npc.ui.match.MatchRules
@@ -78,8 +78,8 @@ import java.time.ZoneOffset
  *
  * A landlord's signed mandate also shows its listing ([ListingViews.forMandate]): "Créer l'annonce", posted to
  * `ListingController`, then where the listing stands and, once published, how many clients it interests (its ACCEPTED
- * matches, a failure leaves the line out) and its *Propositions*, the clients it was sent to ([proposals]). A client
- * with an open visit shows the visit instead (its tag and date, linking to the visit page).
+ * matches, a failure leaves the line out), its *Propositions*, the clients it was sent to, and above them its open
+ * visits ([listingClients], [VisitCards]). A client with an open visit leaves *Propositions* until the visit closes.
  *
  * A signed search ([MatchRules.matched]) shows the listings matched to it, *Biens correspondants* ([MatchViews]): its
  * matches and their listings in one search each, both secondary (a failure is the section's "unavailable"). Their
@@ -393,7 +393,9 @@ class MandateController(
             "mandateListing",
             ListingViews.forMandate(mandate, listingId, listing, formatter(), listing?.let { interested(it) }),
         )
-        model.addAttribute("listingProposals", listing?.let { proposals(it) })
+        val clients = listing?.let { listingClients(it) }
+        model.addAttribute("listingVisits", clients?.visits)
+        model.addAttribute("listingProposals", clients?.proposals)
         (model.getAttribute(OUTCOME) as? String)?.let { outcome -> outcome(outcome, view, model) }
         (model.getAttribute(MatchController.OUTCOME) as? String)?.let { outcome ->
             matchOutcome(outcome, model.getAttribute(MatchController.LISTING) as? Long, view, model)
@@ -613,17 +615,15 @@ class MandateController(
     }
 
     /**
-     * A landlord's PUBLISHED listing's *Propositions*: its sent matches, the agent's own mandates among theirs, and
-     * those mandates' customers, one search each. Null before it's published, or when the matches or mandates can't be
-     * had: no section, rather than another agent's client shown as the agent's or the other way round. Customers
-     * failing only leave the names out. Only the signed-in agent's mandates are looked up (and checked again on
-     * `agentId`), so another agent's client is never asked of ndopify-server, let alone shown.
+     * A landlord's PUBLISHED listing's clients: its open visits and its *Propositions*. Its sent matches, the agent's
+     * own mandates among theirs, and those mandates' customers, one search each. Null before it's published, or when
+     * the matches or mandates can't be had: no section, rather than another agent's client shown as the agent's or the
+     * other way round. Customers failing only leave the names out.
      *
-     * The agent's open visits of those matches are a secondary read, by match id: a client with one shows the visit
-     * instead of the proposal (the binding's tag and date, its summary count). A failure leaves every proposal row; a
-     * stale visit is ignored by [ListingViews.proposals].
+     * The visits are read by match id (agent-scoped) and are secondary: failing, every proposal row shows and the
+     * *Visites* section says unavailable. A stale visit is ignored by [ListingViews.clients].
      */
-    private fun proposals(listing: Listing): ProposalsView? {
+    private fun listingClients(listing: Listing): ListingClientsView? {
         if (listing.status != ListingStatus.PUBLISHED) return null
         val agentId = currentAgent.get()?.id ?: return null
         val matches = lookup("proposals of listing ${listing.id}") {
@@ -646,10 +646,10 @@ class MandateController(
                     matches.map { it.id },
                     limit = matches.size,
                 )
-            } ?: emptyList()
+            }
         }
         val tenant = tenantContext.getTenant()
-        return ListingViews.proposals(
+        return ListingViews.clients(
             matches,
             mandates,
             customers,

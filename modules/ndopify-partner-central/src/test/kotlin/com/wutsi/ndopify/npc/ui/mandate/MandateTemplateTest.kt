@@ -300,14 +300,18 @@ class MandateTemplateTest {
         assertEquals("Aucune personne intéressée pour l'instant", box.selectFirst("[data-listing-interest-text]")?.text())
     }
 
-    @Test
-    fun `approved - landlord with listing published - proposals`() {
+    private fun publishedListing() {
         doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
         doReturn(ListingViewsTest.COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = ListingViewsTest.SENT))
             .whenever(listingClient).get(501)
         doReturn(ListingViewsTest.PROPOSALS).whenever(matchClient).searchByListings(listOf(501), MatchRules.SENT)
         doReturn(ListingViewsTest.SEARCHES).whenever(mandateClient).searchByIds(listOf(207L, 204L, 305L), AGENT.id)
         doReturn(ListingViewsTest.CUSTOMERS).whenever(customerClient).search(listOf(14L, 17L))
+    }
+
+    @Test
+    fun `approved - landlord with listing published - proposals`() {
+        publishedListing()
 
         val page = render(APPROVED.copy(mandateType = MandateType.LISTING))
 
@@ -327,18 +331,15 @@ class MandateTemplateTest {
         assertEquals("status-tag status-tag--success", section.selectFirst("[data-proposal-tag]")?.className())
         assertEquals("Intéressé le 29 oct. 2026", section.select("[data-proposal-summary]")[1].text())
         assertNull(section.selectFirst("[data-proposals-empty]"))
+        assertNull(page.selectFirst("[data-listing-visits]"))
         // After the progress, where a search has its Biens correspondants
         assertEquals("mandate-progress", section.previousElementSiblings().first { it.tagName() == "section" }.className())
     }
 
     @Test
-    fun `approved - landlord with listing published - a visit replaces its proposal`() {
-        doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
-        doReturn(ListingViewsTest.COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = ListingViewsTest.SENT))
-            .whenever(listingClient).get(501)
-        doReturn(ListingViewsTest.PROPOSALS).whenever(matchClient).searchByListings(listOf(501), MatchRules.SENT)
-        doReturn(ListingViewsTest.SEARCHES).whenever(mandateClient).searchByIds(listOf(207L, 204L, 305L), AGENT.id)
-        doReturn(ListingViewsTest.CUSTOMERS).whenever(customerClient).search(listOf(14L, 17L))
+    fun `approved - landlord with listing published - an open visit is above the proposals`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        publishedListing()
         doReturn(
             listOf(
                 VisitFixtures.summary(
@@ -347,23 +348,52 @@ class MandateTemplateTest {
             ),
         ).whenever(visitClient).searchByMatches(AGENT.id, VisitRules.OPEN, listOf(9001L, 9002L, 9003L, 9004L), 4)
 
-        val section = render(APPROVED.copy(mandateType = MandateType.LISTING)).selectFirst("[data-listing-proposals]")!!
+        val page = render(APPROVED.copy(mandateType = MandateType.LISTING))
 
+        val visits = page.selectFirst("section[data-listing-visits]")!!
+        assertEquals("Visites", visits.selectFirst("#visits-title")?.text())
+        val group = visits.selectFirst("[data-listing-visit-group=requested]")!!
+        assertEquals("À confirmer", group.selectFirst(".visit-group__title")?.text())
+        val card = group.selectFirst("[data-listing-visit]")!!
+        assertEquals("7001", card.attr("data-listing-visit-id"))
+        assertEquals("/visits/7001", card.selectFirst("a[data-listing-visit-link]")?.attr("href"))
+        assertEquals("Sandrine Eboa", card.selectFirst("[data-listing-visit-link]")?.text())
+        assertEquals(
+            "Sur place · Demandée pour le sam. 7 novembre 2026 à 10:30",
+            card.selectFirst("[data-listing-visit-when]")?.text(),
+        )
+        assertEquals("Il reste 42 h pour confirmer", card.selectFirst("[data-listing-visit-timer]")?.text())
+        assertEquals("Confirmez la date avec le client.", card.selectFirst("[data-listing-visit-next]")?.text())
+        assertNull(card.selectFirst("[data-listing-visit-tag]"))
+
+        val proposals = page.selectFirst("section[data-listing-proposals]")!!
         assertEquals(
             "1 visite · 1 intéressé · 1 refusé · 1 en attente",
-            section.selectFirst("[data-proposals-summary-text]")?.text(),
+            proposals.selectFirst("[data-proposals-summary-text]")?.text(),
         )
-        val rows = section.select("a[data-proposal-link]")
-        assertEquals(listOf("/visits/7001", "/mandates/207#matches-title"), rows.map { it.attr("href") })
-        assertEquals("true", rows[0].attr("data-proposal-visit"))
-        assertFalse(rows[1].hasAttr("data-proposal-visit"))
-        assertEquals("Sandrine Eboa", rows[0].selectFirst("[data-proposal-client]")?.text())
-        assertEquals("À confirmer", rows[0].selectFirst("[data-proposal-tag]")?.text())
+        assertEquals(listOf("/mandates/207#matches-title"), proposals.select("a[data-proposal-link]").map { it.attr("href") })
+        assertEquals(1, proposals.select("[data-proposal-protected]").size)
+        assertNull(proposals.selectFirst("[data-proposal-visit]"))
+        assertTrue(visits.nextElementSibling()?.hasAttr("data-listing-proposals") == true)
+    }
+
+    @Test
+    fun `approved - landlord with listing published - visits unavailable`() {
+        publishedListing()
+        doThrow(ResourceAccessException("down")).whenever(visitClient).searchByMatches(any(), any(), any(), any())
+
+        val page = render(APPROVED.copy(mandateType = MandateType.LISTING))
+
+        val visits = page.selectFirst("section[data-listing-visits]")!!
         assertEquals(
-            "Visite demandée pour le sam. 7 novembre 2026 à 10:30",
-            rows[0].selectFirst("[data-proposal-summary]")?.text(),
+            "Les visites de ce bien ne peuvent pas être affichées pour le moment.",
+            visits.selectFirst("[data-visits-unavailable]")?.text(),
         )
-        assertEquals(1, section.select("[data-proposal-protected]").size)
+        assertEquals(
+            "2 intéressés · 1 refusé · 1 en attente",
+            page.selectFirst("[data-proposals-summary-text]")?.text(),
+        )
+        assertEquals(3, page.select("[data-proposals-list] li").size)
     }
 
     @Test

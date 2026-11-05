@@ -40,6 +40,10 @@
   "matchSection" is a signed search's Biens correspondants (MatchSectionView), null for any other mandate; "dismissing"
   the id of the match whose dismiss confirmation is open without JS; "matchOutcomeText" / "matchOutcomeStyle" the
   outcome of MatchController's last action (flash attribute "match").
+  "listingVisits" is a landlord's published listing's open visits (VisitCardsView: the requests to confirm, then the
+  visits to come), null for a search or before the listing is published; a client with one leaves "listingProposals"
+  (its summary counts it "1 visite"), so nothing is shown twice. "listingProposals" is that listing's Propositions
+  (ProposalsView), null likewise.
 */-->
 <body data-page="mandate" th:attr="data-currency=${currency}">
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -264,11 +268,87 @@
                     The prototype's Retenir and "Envoyer les N biens retenus" have no server support here.
                 -->
                 <!--
+                    The landlord's published listing's open visits, above its Propositions: the clients coming to see
+                    the property, the request to confirm first. Each opens its visit page; a client with one isn't in
+                    Propositions (no listing shown twice). Past visits aren't shown.
+                -->
+                <section class="home-section" aria-labelledby="visits-title" data-listing-visits
+                         th:if="${listingVisits != null and (listingVisits.unavailable or !#lists.isEmpty(listingVisits.requested) or !#lists.isEmpty(listingVisits.upcoming))}">
+                    <h2 id="visits-title">Visites</h2>
+
+                    <div class="alert alert--warning" th:if="${listingVisits.unavailable}" data-visits-unavailable>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                        <p>Les visites de ce bien ne peuvent pas être affichées pour le moment.</p>
+                    </div>
+
+                    <div class="visit-group" th:if="${!#lists.isEmpty(listingVisits.requested)}"
+                         data-listing-visit-group="requested">
+                        <h3 class="visit-group__title">À confirmer</h3>
+                        <ul class="assignments visit-cards" data-listing-visit-list>
+                            <li class="mandate-card visit-card" th:each="v : ${listingVisits.requested}" data-listing-visit
+                                th:attr="data-listing-visit-id=${v.id}">
+                                <article th:attr="aria-labelledby=|listing-visit-${v.id}-title|">
+                                    <div class="assignment__head">
+                                        <h4 th:id="|listing-visit-${v.id}-title|" class="assignment__type">
+                                            <a class="mandate-card__link" data-listing-visit-link
+                                               th:href="@{/visits/{id}(id=${v.id})}" th:text="${v.customerName}">Sandrine Eboa</a>
+                                        </h4>
+                                        <p th:if="${v.tag != null}" th:class="|status-tag status-tag--${v.tag.style}|"
+                                           th:text="${v.tag.label}" data-listing-visit-tag>Confirmée</p>
+                                    </div>
+                                    <p class="visit-card__when">
+                                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                                        <span th:text="|${v.type} · ${v.whenLabel}|" data-listing-visit-when>Sur place · Demandée pour le sam. 7 novembre 2026 à 10:30</span>
+                                    </p>
+                                    <p class="assignment__timer visit-card__timer" th:if="${v.expiresIn != null}"
+                                       data-listing-visit-timer>
+                                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                        <span>Il reste <strong th:text="${v.expiresIn}">42 h</strong> pour confirmer</span>
+                                    </p>
+                                    <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong>
+                                        <span th:text="${v.nextStep}" data-listing-visit-next>Confirmez la date avec le client.</span></p>
+                                </article>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="visit-group" th:if="${!#lists.isEmpty(listingVisits.upcoming)}"
+                         data-listing-visit-group="upcoming">
+                        <h3 class="visit-group__title">À venir</h3>
+                        <ul class="assignments visit-cards" data-listing-visit-list>
+                            <li class="mandate-card visit-card" th:each="v : ${listingVisits.upcoming}" data-listing-visit
+                                th:attr="data-listing-visit-id=${v.id}">
+                                <article th:attr="aria-labelledby=|listing-visit-${v.id}-title|">
+                                    <div class="assignment__head">
+                                        <h4 th:id="|listing-visit-${v.id}-title|" class="assignment__type">
+                                            <a class="mandate-card__link" data-listing-visit-link
+                                               th:href="@{/visits/{id}(id=${v.id})}" th:text="${v.customerName}">Sandrine Eboa</a>
+                                        </h4>
+                                        <p th:if="${v.tag != null}" th:class="|status-tag status-tag--${v.tag.style}|"
+                                           th:text="${v.tag.label}" data-listing-visit-tag>Confirmée</p>
+                                    </div>
+                                    <p class="visit-card__when">
+                                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                                        <span th:text="|${v.type} · ${v.whenLabel}|" data-listing-visit-when>Sur place · sam. 7 novembre 2026 à 10:30</span>
+                                    </p>
+                                    <p class="assignment__timer visit-card__timer" th:if="${v.expiresIn != null}"
+                                       data-listing-visit-timer>
+                                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                        <span>Il reste <strong th:text="${v.expiresIn}">42 h</strong> pour confirmer</span>
+                                    </p>
+                                    <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong>
+                                        <span th:text="${v.nextStep}" data-listing-visit-next>Le jour J, demandez son code au client.</span></p>
+                                </article>
+                            </li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!--
                     A landlord's mandate with its listing published: the clients the listing was sent to, interested
                     first ("listingProposals", ProposalsView), where a search has its Biens correspondants. Each opens
                     its search's mandate page; another agent's client is neither named nor linked (its mandate is
-                    protected). A client with an open visit shows the visit instead (data-proposal-visit), opening
-                    its visit page; once it closes, the proposal row is back.
+                    protected). A client with an open visit is above, in Visites, not here.
                 -->
                 <section class="home-section" aria-labelledby="proposals-title" th:if="${listingProposals}"
                          th:with="p=${listingProposals}" data-listing-proposals>
@@ -280,8 +360,7 @@
                     </p>
                     <ul class="checklist" th:unless="${#lists.isEmpty(p.rows)}" data-proposals-list>
                         <li th:each="row : ${p.rows}">
-                            <a class="checklist__row" th:if="${row.url}" th:href="@{${row.url}}" data-proposal-link
-                               th:attr="data-proposal-visit=${row.visit ? 'true' : null}">
+                            <a class="checklist__row" th:if="${row.url}" th:href="@{${row.url}}" data-proposal-link>
                                 <span class="checklist__title" th:text="${row.client}" data-proposal-client>Sandrine Eboa</span>
                                 <span th:class="|status-tag status-tag--${row.tag.style}|" th:text="${row.tag.label}"
                                       data-proposal-tag>Intéressé</span>

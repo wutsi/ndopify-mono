@@ -190,7 +190,8 @@ class MandateControllerTest {
     }
 
     @Test
-    fun `approved landlord - published listing - a visit replaces its proposal`() {
+    fun `approved landlord - published listing - an open visit is above the proposals`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
         publishedListing()
         doReturn(
             listOf(
@@ -200,25 +201,34 @@ class MandateControllerTest {
             ),
         ).whenever(visitClient).searchByMatches(AGENT.id, VisitRules.OPEN, listOf(9001L, 9002L, 9003L, 9004L), 4)
 
-        val view = proposals()!!
+        val result = mvc.perform(get("/mandates/201")).andReturn()
 
-        assertEquals("1 visite · 1 intéressé · 1 refusé · 1 en attente", view.summary)
-        assertEquals("/visits/7001", view.rows[1].url)
-        assertEquals("À confirmer", view.rows[1].tag.label)
-        assertEquals("Visite demandée pour le sam. 7 novembre 2026 à 10:30", view.rows[1].sent)
-        assertTrue(view.rows[1].visit)
+        val card = (model(result)["listingVisits"] as VisitCardsView).requested.single()
+        assertEquals(7001L, card.id)
+        assertEquals("Sandrine Eboa", card.customerName)
+        assertEquals("Sur place", card.type)
+        assertEquals("Demandée pour le sam. 7 novembre 2026 à 10:30", card.whenLabel)
+        assertEquals("42 h", card.expiresIn)
+        assertEquals("Confirmez la date avec le client.", card.nextStep)
+
+        val proposals = model(result)["listingProposals"] as ProposalsView
+        assertEquals("1 visite · 1 intéressé · 1 refusé · 1 en attente", proposals.summary)
+        assertEquals(listOf("Client d'un autre agent", "Carine Ndongo"), proposals.rows.map { it.client })
+        assertEquals(listOf(null, "/mandates/207#matches-title"), proposals.rows.map { it.url })
         verify(visitClient).searchByMatches(AGENT.id, VisitRules.OPEN, listOf(9001L, 9002L, 9003L, 9004L), 4)
     }
 
     @Test
-    fun `approved landlord - published listing - visits unavailable - proposals still shown`() {
+    fun `approved landlord - published listing - visits unavailable - every proposal shown`() {
         publishedListing()
         doThrow(ResourceAccessException("down")).whenever(visitClient).searchByMatches(any(), any(), any(), any())
 
-        val view = proposals()!!
+        val result = mvc.perform(get("/mandates/201")).andReturn()
 
-        assertEquals("2 intéressés · 1 refusé · 1 en attente", view.summary)
-        assertTrue(view.rows.none { it.visit })
+        assertTrue((model(result)["listingVisits"] as VisitCardsView).unavailable)
+        val proposals = model(result)["listingProposals"] as ProposalsView
+        assertEquals("2 intéressés · 1 refusé · 1 en attente", proposals.summary)
+        assertEquals(3, proposals.rows.size)
     }
 
     @Test

@@ -35,6 +35,7 @@ class VisitCardsTest {
         val card = cards.requested.single()
         assertEquals(7001L, card.id)
         assertEquals("Sandrine Eboa", card.customerName)
+        assertEquals("Sur place", card.type)
         assertNull(card.tag)
         assertEquals("Demandée pour le sam. 7 novembre 2026 à 10:30", card.whenLabel)
         assertEquals("Sur place · Appartement 3 chambres · Bonapriso", card.listing)
@@ -112,6 +113,13 @@ class VisitCardsTest {
         assertTrue(cards.unavailable)
         assertTrue(cards.requested.isEmpty())
         assertTrue(cards.upcoming.isEmpty())
+    }
+
+    @Test
+    fun `video visit`() {
+        val card = of(listOf(summary(requested().copy(type = com.wutsi.ndopify.visit.dto.VisitType.VIDEO)))).requested.single()
+
+        assertEquals("Visite vidéo", card.type)
     }
 
     @Test

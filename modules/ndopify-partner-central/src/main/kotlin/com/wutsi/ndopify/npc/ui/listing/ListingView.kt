@@ -3,6 +3,7 @@ package com.wutsi.ndopify.npc.ui.listing
 import com.wutsi.ndopify.listing.dto.ListingSection
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.npc.ui.mandate.MandateRules
+import com.wutsi.ndopify.npc.ui.visit.VisitCardsView
 
 /**
  * A listing as its checklist page shows it (`templates/listing.html`): dates already worded in the tenant's time
@@ -40,7 +41,17 @@ data class ListingView(
     }
 }
 
-/** A published listing's *Propositions* (`ListingViews.proposals`), on its mandate's page. */
+/**
+ * A published listing's clients (`ListingViews.clients`), on its mandate's page: the open visits to the property
+ * ([visits]), above its *Propositions* ([proposals]).
+ */
+data class ListingClientsView(
+    /** The listing's open visits, the same cards as the Espace agent's; [VisitCardsView.unavailable] when they can't be read. */
+    val visits: VisitCardsView,
+    val proposals: ProposalsView,
+)
+
+/** A published listing's *Propositions* (`ListingViews.clients`), on its mandate's page. */
 data class ProposalsView(
     /**
      * "2 intéressés · 1 refusé · 1 en attente" (`MatchRules.proposals`), the open visits first ("1 visite", and the
@@ -53,19 +64,17 @@ data class ProposalsView(
 
 /**
  * A client the listing was sent to. Another agent's client is "Client d'un autre agent" with no [url]: that agent's
- * mandate is protected, neither its customer nor its mandate is on the page. A client with an open visit shows the
- * visit instead ([visit]): its [url] is the visit page, its tag and line the visit's.
+ * mandate is protected, neither its customer nor its mandate is on the page. A client with an open visit isn't in
+ * *Propositions*: it is in the listing's *Visites* section until the visit closes.
  */
 data class ProposalRow(
     val client: String,
-    /** The search's *Biens correspondants* (the match), or the visit page for an open visit; null for another agent's. */
+    /** The search's *Biens correspondants*, where the match is handled; null for another agent's. */
     val url: String?,
-    /** "Intéressé", "En attente", or the visit's "À confirmer", "Confirmée"… */
+    /** "Intéressé", "En attente". */
     val tag: MandateRules.Tag,
-    /** "Envoyé le 28 oct. 2026", "Intéressé le 29 oct. 2026", "Visite demandée pour le…". */
+    /** "Envoyé le 28 oct. 2026", "Intéressé le 29 oct. 2026". */
     val sent: String,
-    /** True when this row is the client's open visit, not its proposal. */
-    val visit: Boolean = false,
 )
 
 /** A row of the checklist: it opens its section, to edit it while a draft, to view it once sent. */

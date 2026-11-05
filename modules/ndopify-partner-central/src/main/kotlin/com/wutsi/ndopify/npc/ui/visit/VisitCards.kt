@@ -14,11 +14,11 @@ import java.time.LocalDate
 import java.util.Date
 
 /**
- * Builds the *Visites* sections (see [VisitCardsView]) after the prototype's `renderVisits`: the Espace agent's and,
- * filtered by mandate, a signed search's mandate page. The requests still within their 48 h, soonest expiry first,
- * and the visits to come. A requested visit past its 48 h and a confirmed one past its `+ 4 h` window are dropped even
- * when ndopify-server's job hasn't moved them yet. [listings] and [customers] are secondary: null or a missing entry
- * only leaves that line out.
+ * Builds the *Visites* sections (see [VisitCardsView]) after the prototype's `renderVisits`: the Espace agent's, a
+ * signed search's mandate page (by mandate) and a landlord's listing mandate page (by the listing's matches). The
+ * requests still within their 48 h, soonest expiry first, and the visits to come. A requested visit past its 48 h and
+ * a confirmed one past its `+ 4 h` window are dropped even when ndopify-server's job hasn't moved them yet. [listings]
+ * and [customers] are secondary: null or a missing entry only leaves that line out.
  */
 object VisitCards {
     private const val URGENT = 12 * 3_600_000L
@@ -47,6 +47,7 @@ object VisitCards {
                 VisitCardView(
                     id = visit.id,
                     customerName = name(customers[visit.customerId]),
+                    type = VisitRules.typeLabel(visit.type),
                     tag = null,
                     whenLabel = "Demandée pour le ${VisitSlots.dateTimeLabel(visit.requestedAt, tenant, formatter)}",
                     listing = listing(visit, listings, locations),
@@ -65,6 +66,7 @@ object VisitCards {
                 VisitCardView(
                     id = visit.id,
                     customerName = name(customers[visit.customerId]),
+                    type = VisitRules.typeLabel(visit.type),
                     tag = VisitRules.tag(VisitRules.panel(visit, now)),
                     whenLabel = whenLabel(visit, today, tenant, formatter),
                     listing = listing(visit, listings, locations),

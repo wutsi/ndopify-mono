@@ -652,8 +652,8 @@ class ListingViewsTest {
         )
     }
 
-    private fun proposalsOf(visits: Collection<VisitSummary> = emptyList()) =
-        ListingViews.proposals(
+    private fun clients(visits: List<VisitSummary>? = emptyList()) =
+        ListingViews.clients(
             PROPOSALS,
             SEARCHES,
             CUSTOMERS,
@@ -666,14 +666,13 @@ class ListingViewsTest {
 
     @Test
     fun proposals() {
-        val view = proposalsOf()
+        val view = clients().proposals
 
         assertEquals("2 intéressés · 1 refusé · 1 en attente", view.summary)
         // Interested first, the latest answer first; the refused one only counted
         assertEquals(listOf("Client d'un autre agent", "Sandrine Eboa", "Carine Ndongo"), view.rows.map { it.client })
         assertEquals(listOf(null, "/mandates/204#matches-title", "/mandates/207#matches-title"), view.rows.map { it.url })
         assertEquals(listOf("Intéressé", "Intéressé", "En attente"), view.rows.map { it.tag.label })
-        assertEquals(listOf(false, false, false), view.rows.map { it.visit })
         assertEquals(
             listOf("Intéressé le 30 oct. 2026", "Intéressé le 29 oct. 2026", "Envoyé le 31 oct. 2026"),
             view.rows.map { it.sent },
@@ -681,73 +680,90 @@ class ListingViewsTest {
     }
 
     @Test
-    fun `proposals - an open visit replaces its proposal`() {
-        val view = proposalsOf(listOf(visit()))
+    fun `clients - an open visit is a card and leaves its proposal`() {
+        val view = clients(listOf(visit()))
 
-        assertEquals("1 visite · 1 intéressé · 1 refusé · 1 en attente", view.summary)
-        assertEquals(listOf("Client d'un autre agent", "Sandrine Eboa", "Carine Ndongo"), view.rows.map { it.client })
-        assertEquals(listOf(null, "/visits/7001", "/mandates/207#matches-title"), view.rows.map { it.url })
-        assertEquals(listOf("Intéressé", "À confirmer", "En attente"), view.rows.map { it.tag.label })
-        assertEquals(listOf(false, true, false), view.rows.map { it.visit })
-        assertEquals("Visite demandée pour le sam. 7 novembre 2026 à 10:30", view.rows[1].sent)
+        val card = view.visits.requested.single()
+        assertEquals(7001L, card.id)
+        assertEquals("Sandrine Eboa", card.customerName)
+        assertEquals("Sur place", card.type)
+        assertEquals("Demandée pour le sam. 7 novembre 2026 à 10:30", card.whenLabel)
+        assertEquals("42 h", card.expiresIn)
+        assertEquals("Confirmez la date avec le client.", card.nextStep)
+        assertNull(card.tag)
+
+        assertEquals("1 visite · 1 intéressé · 1 refusé · 1 en attente", view.proposals.summary)
+        assertEquals(listOf("Client d'un autre agent", "Carine Ndongo"), view.proposals.rows.map { it.client })
+        assertEquals(listOf(null, "/mandates/207#matches-title"), view.proposals.rows.map { it.url })
     }
 
     @Test
-    fun `proposals - confirmed and checked-in visits`() {
-        val confirmed = proposalsOf(listOf(visit(status = VisitStatus.CONFIRMED)))
-        val checkedIn = proposalsOf(listOf(visit(status = VisitStatus.CHECKED_IN)))
+    fun `clients - confirmed and checked-in visits`() {
+        val confirmed = clients(listOf(visit(status = VisitStatus.CONFIRMED))).visits.upcoming.single()
+        val checkedIn = clients(listOf(visit(status = VisitStatus.CHECKED_IN))).visits.upcoming.single()
 
-        assertEquals("Confirmée", confirmed.rows[1].tag.label)
-        assertEquals("Visite le sam. 7 novembre 2026 à 10:30", confirmed.rows[1].sent)
-        assertEquals("En cours", checkedIn.rows[1].tag.label)
-        assertEquals("Visite en cours depuis 10:05", checkedIn.rows[1].sent)
+        assertEquals("Confirmée", confirmed.tag?.label)
+        assertEquals("Sur place", confirmed.type)
+        assertEquals("sam. 7 novembre 2026 à 10:30", confirmed.whenLabel)
+        assertEquals("En cours", checkedIn.tag?.label)
+        assertEquals("En cours depuis 10:05", checkedIn.whenLabel)
     }
 
     @Test
-    fun `proposals - several visits are counted`() {
-        val view = proposalsOf(listOf(visit(), visit(id = 7002, matchId = 9001, mandateId = 207)))
+    fun `clients - several visits are counted`() {
+        val view = clients(listOf(visit(), visit(id = 7002, matchId = 9001, mandateId = 207)))
 
-        assertEquals("2 visites · 1 intéressé · 1 refusé", view.summary)
-        assertEquals(listOf(null, "/visits/7001", "/visits/7002"), view.rows.map { it.url })
+        assertEquals(2, view.visits.requested.size)
+        assertEquals("2 visites · 1 intéressé · 1 refusé", view.proposals.summary)
+        assertEquals(listOf("Client d'un autre agent"), view.proposals.rows.map { it.client })
     }
 
     @Test
-    fun `proposals - a stale visit leaves its proposal`() {
-        val view = proposalsOf(listOf(visit(createdAt = VisitFixtures.date("2026-10-15T10:00:00Z"))))
+    fun `clients - a stale visit leaves its proposal`() {
+        val view = clients(listOf(visit(createdAt = VisitFixtures.date("2026-10-15T10:00:00Z"))))
 
-        assertEquals("2 intéressés · 1 refusé · 1 en attente", view.summary)
-        assertEquals("/mandates/204#matches-title", view.rows[1].url)
-        assertFalse(view.rows[1].visit)
+        assertTrue(view.visits.requested.isEmpty())
+        assertEquals("2 intéressés · 1 refusé · 1 en attente", view.proposals.summary)
+        assertEquals("/mandates/204#matches-title", view.proposals.rows[1].url)
     }
 
     @Test
-    fun `proposals - another agent's visit is ignored`() {
-        val view = proposalsOf(listOf(visit(matchId = 9003, mandateId = 305)))
+    fun `clients - another agent's visit is ignored`() {
+        val view = clients(listOf(visit(matchId = 9003, mandateId = 305)))
 
-        assertEquals("2 intéressés · 1 refusé · 1 en attente", view.summary)
-        assertNull(view.rows[0].url)
-        assertFalse(view.rows[0].visit)
+        assertTrue(view.visits.requested.isEmpty())
+        assertEquals("2 intéressés · 1 refusé · 1 en attente", view.proposals.summary)
+        assertNull(view.proposals.rows[0].url)
+    }
+
+    @Test
+    fun `clients - visits unavailable - every proposal shown`() {
+        val view = clients(null)
+
+        assertTrue(view.visits.unavailable)
+        assertEquals("2 intéressés · 1 refusé · 1 en attente", view.proposals.summary)
+        assertEquals(3, view.proposals.rows.size)
     }
 
     @Test
     fun `proposals - another agent's mandate is protected even when returned`() {
         val other = SEARCHES[0].copy(agentId = 999)
 
-        val view = ListingViews.proposals(PROPOSALS, listOf(other), CUSTOMERS, emptyList(), ProfileFixtures.AGENT.id, TENANT, VisitFixtures.NOW, formatter)
+        val view = ListingViews.clients(PROPOSALS, listOf(other), CUSTOMERS, emptyList(), ProfileFixtures.AGENT.id, TENANT, VisitFixtures.NOW, formatter).proposals
 
         assertTrue(view.rows.all { it.client == "Client d'un autre agent" && it.url == null })
     }
 
     @Test
     fun `proposals - without the customer's name, its mandate's number`() {
-        val view = ListingViews.proposals(PROPOSALS, SEARCHES, emptyList(), emptyList(), ProfileFixtures.AGENT.id, TENANT, VisitFixtures.NOW, formatter)
+        val view = ListingViews.clients(PROPOSALS, SEARCHES, emptyList(), emptyList(), ProfileFixtures.AGENT.id, TENANT, VisitFixtures.NOW, formatter).proposals
 
         assertEquals(listOf("Client d'un autre agent", "Mandat n° 204", "Mandat n° 207"), view.rows.map { it.client })
     }
 
     @Test
     fun `proposals - none sent`() {
-        val view = ListingViews.proposals(emptyList(), emptyList(), emptyList(), emptyList(), ProfileFixtures.AGENT.id, TENANT, VisitFixtures.NOW, formatter)
+        val view = ListingViews.clients(emptyList(), emptyList(), emptyList(), emptyList(), ProfileFixtures.AGENT.id, TENANT, VisitFixtures.NOW, formatter).proposals
 
         assertNull(view.summary)
         assertTrue(view.rows.isEmpty())
