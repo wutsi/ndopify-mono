@@ -54,7 +54,7 @@ Signed-in pages:
     - ***Mandats proposés*** — the mandates offered to the agent and their deadline. `POST /assignments/{id}/accept`
       or `/decline` (`ui/assignment/AssignmentController`); no customer data is shown before acceptance.
     - ***Mes mandats*** — the agent's mandates in progress (assigned, waiting for the customer's signature, approved),
-      each with its next step.
+      a signed search showing its one-line activity (`12 biens · 1 intéressé · 3 visites`).
 - **KYC wizard** (`ui/kyc/KycController`, `templates/kyc.html`) — `front` → `back` → `selfie` → `review`: each step
   uploads its photo straight to the agent's pending KYC case (sniffed with Tika, 5 Mo max), and the review submits
   it. Afterwards the page shows the case's status; a rejected case can be restarted.
@@ -72,7 +72,8 @@ Signed-in pages:
   the listing for verification once every required section is done. `POST /mandates/{id}/listing` creates it from the
   mandate. `GET|POST /listings/{id}/photos` uploads sniffed photos (5 MB, 20 max) and deletes one.
 - **Matched properties** (`ui/match/`) — an APPROVED SEARCH mandate's page lists the PUBLISHED listings ndopify-server
-  matched to it (`GET /v1/matches`), best score first, with the client's answer and a short explanation. The agent
+  matched to it (`GET /v1/matches`), best score first, with the client's answer and a short explanation; the
+  *Biens correspondants* header carries the same one-line activity as the home card. The agent
   proposes a match (`POST /mandates/{mandateId}/matches/{matchId}/propose`) or sets it aside
   (`.../dismiss`). Another agent's mandate a match belongs to is never named nor linked.
 

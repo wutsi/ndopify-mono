@@ -143,21 +143,21 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   are shared with the find-property review in `ui/mandate/MandateLabels`.
 - A VERIFIED agent's Espace agent also lists its mandates in progress (*Mes mandats*): `HomeController` reads
   `GET /v1/mandates?agent-id=&status=ASSIGNED&status=PENDING_APPROVAL&status=APPROVED` (search order, capped at 20),
-  one call for every card, then their contracts in one `GET /v1/contracts?id=&id=` (`NdContractClient.search`), for
-  the next step's date (a card shows none without it, ex: the contract search failed); the location names
-  of offers and mandates come in one lookup. A landlord's signed mandate (`MandateRules.listed`) also gets its
-  listing's line (`ListingViews.line` → `ListingLineView`: "Annonce" linking to the listing and its tag ("Publiée le
-  …" in the tenant's `dateFormat`), or "À créer" linking to the mandate; no number, so that it fits one line on a phone) and, until it's published, a next step about the listing
-  (`MandateRules.listingStep`): their listings come in one `GET /v1/listings?mandate-id=&mandate-id=&agent-id=`
-  (`NdListingClient.searchByMandates`, skipped without such a mandate; a failure leaves the line out and the
-  mandate's next step). A published listing's card also shows its activity ("2 personnes intéressées · 3 visites",
-  `ListingStatsView`): how many clients accepted it and its visits, in one
+  one call for every card, then the approved searches' activity in one
+  `GET /v1/mandates/stats?mandate-id=&mandate-id=` (`NdMandateClient.stats`, skipped without such a card; a failure
+  leaves the line out); the location names of offers and mandates come in one lookup. A landlord's signed mandate
+  (`MandateRules.listed`) also gets its listing's line (`ListingViews.line` → `ListingLineView`: "Annonce" linking to
+  the listing and its tag ("Publiée le …" in the tenant's `dateFormat`), or "À créer" linking to the mandate; no
+  number, so that it fits one line on a phone): their listings come in one
+  `GET /v1/listings?mandate-id=&mandate-id=&agent-id=` (`NdListingClient.searchByMandates`, skipped without such a
+  mandate; a failure leaves the line out). A published listing's card also shows its activity ("2 personnes
+  intéressées · 3 visites", `ListingStatsView`): how many clients accepted it and its visits, in one
   `GET /v1/listings/stats?listing-id=&listing-id=` (`NdListingClient.stats`, skipped without a published listing; a
   failure leaves the line out; zeros included). The
   summaries have no `errorCodes`, so a listing sent back to fix is "Brouillon" on the
   card, "À corriger" on the mandate page. Cards are `MandateCards` → `MandateCardView`; statuses, tags, party
-  wording ("le client" / "le bailleur", after `mandateType`), dates and next
-  steps are `ui/mandate/MandateRules`. Each card opens the mandate page, `MandateController` (`ui/mandate/`,
+  wording ("le client" / "le bailleur", after `mandateType`) and dates are `ui/mandate/MandateRules`; the card has no
+  next step. Each card opens the mandate page, `MandateController` (`ui/mandate/`,
   `templates/mandate.html`): `GET /mandates/{id}` (`MandateViews` → `MandateView`: steps, panel of the status,
   contact from `GET /v1/customers/{id}`, criteria, "accepté le" from the ACCEPTED assignment); only the mandate
   itself is required (contract, customer, offer or names failing just leave their lines out), and a status outside
@@ -265,11 +265,11 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   a double post), so is a 403 / 404 / 409; then back to `/mandates/{id}#matches-title` with the `match` flash attribute
   (`proposed`, `dismissed`, `changed`, `error`) and `matchListing`, worded by `MandateController` (it has the contact's
   e-mail). Without JS, "Écarter" opens the confirmation with `GET /mandates/{id}?dismiss={matchId}` (only an ACTIVE or EXPIRED match
-  shown on the page); `mandate.js` does it in place. *Mes mandats* cards of signed searches get the matches' lines
-  (`MandateCards`, from one `GET /v1/matches` for all of them, skipped without such a card, a failure leaves the lines
-  out): "3 nouveaux biens correspondants" linking to the section, "1 intéressé · 1 refusé · 1 en attente" (no total,
-  short enough for one line on a phone), and a next
-  step before the mandate's (a visit for an ACCEPTED one, else sending the ACTIVE ones). Not built, though the
+  shown on the page); `mandate.js` does it in place. *Mes mandats* cards of signed searches get the one-line activity
+  (`MandateCards`, `SearchStatsView`, from one `GET /v1/mandates/stats` for all of them, skipped without such a
+  card, a failure leaves the line out): "12 biens · 1 intéressé · 3 visites", zero segments left out, linking to the
+  section; the mandate page derives the same line from its loaded matches and visits (`SearchStatsView.of`), with no
+  extra call. Not built, though the
   prototype and ndopify-server have them: *Retenir* (SHORTLISTED, never shown here) and sending several at once, the
   coded rejection reasons, the distance and the missing amenities' names. The mandate page's *Visites* section lists
   the client's open visits above *Biens correspondants*, from one `GET /v1/visits?mandate-id=&agent-id=&status=…`
