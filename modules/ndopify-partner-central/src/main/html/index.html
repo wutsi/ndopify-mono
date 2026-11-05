@@ -487,11 +487,10 @@
                 Section Mandates (source doc): the agent's active mandates (Assigné, En approbation, Actif), each
                 opening its page, mandate.html?id=…. Closed mandates (Fermé) leave the list. PROTOTYPE: 201, 202 and
                 203 (and 204) are already the agent's; an offer accepted above joins them at the top, and the statuses follow
-                what is done on mandate.html (see KEYS.mandates). An active search (Locataire, Actif) also says how many
-                matches are still to handle, linking to them on mandate.html (see MATCHES / KEYS.matches): 204 has
-                some, and what became of
-                those already sent to the client (data-proposals: sent, visit asked, liked, refused, no answer yet),
-                whose answers also set the card's next step; that line is kept short enough for one line on a phone.
+                what is done on mandate.html (see KEYS.mandates). An active search (Locataire, Actif) shows its
+                one-line activity (data-search-stats): its matching pool, the clients it interested and its visits,
+                from the same numbers as GET /v1/mandates/stats; 204 has some, and the line links to its
+                Biens correspondants. There is no next step on the card any more.
                 A landlord's signed mandate (203) has its listing's line, "Annonce" and its status (no number, for the
                 same reason), and once the listing is published, its activity (data-listing-stats): the page views of
                 its public page, the clients it interested (the matches whose client answered "intéressé", with or
@@ -526,15 +525,11 @@
                                     <dd>Dans 1 à 3 mois</dd>
                                 </div>
                             </dl>
-                            <p class="mandate-card__matches" hidden data-matches>
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg>
-                                <a data-matches-link></a>
+                            <p class="search-stats mandate-card__search-stats" hidden data-search-stats>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                                <span class="visually-hidden">Activité de la recherche : </span>
+                                <a href="mandate.html?id=201#matches-title" data-search-stats-link></a>
                             </p>
-                            <p class="mandate-card__proposals" hidden data-proposals>
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M4 12 20 4l-6 16-3-7zM11 13l9-9"/></svg>
-                                <span><span class="visually-hidden">Biens proposés au client : </span><span data-proposals-text></span></span>
-                            </p>
-                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-next-step>Contactez le client, puis envoyez-lui le mandat à approuver.</span></p>
                         </article>
                     </li>
 
@@ -561,15 +556,11 @@
                                     <dd>Dans moins de 1 mois</dd>
                                 </div>
                             </dl>
-                            <p class="mandate-card__matches" hidden data-matches>
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg>
-                                <a data-matches-link></a>
+                            <p class="search-stats mandate-card__search-stats" hidden data-search-stats>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                                <span class="visually-hidden">Activité de la recherche : </span>
+                                <a href="mandate.html?id=202#matches-title" data-search-stats-link></a>
                             </p>
-                            <p class="mandate-card__proposals" hidden data-proposals>
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M4 12 20 4l-6 16-3-7zM11 13l9-9"/></svg>
-                                <span><span class="visually-hidden">Biens proposés au client : </span><span data-proposals-text></span></span>
-                            </p>
-                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-next-step>Le client a jusqu'au 22 octobre 2026 pour signer le mandat.</span></p>
                         </article>
                     </li>
 
@@ -596,14 +587,6 @@
                                     <dd>Dans moins de 1 mois</dd>
                                 </div>
                             </dl>
-                            <p class="mandate-card__matches" hidden data-matches>
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg>
-                                <a data-matches-link></a>
-                            </p>
-                            <p class="mandate-card__proposals" hidden data-proposals>
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M4 12 20 4l-6 16-3-7zM11 13l9-9"/></svg>
-                                <span><span class="visually-hidden">Biens proposés au client : </span><span data-proposals-text></span></span>
-                            </p>
                             <p class="mandate-card__listing" data-listing-line>
                                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M6 3h9l3 3v15H6z"/><path d="M9 12h6M9 16h6"/></svg>
                                 <a href="mandate.html?id=203" data-listing-number>Annonce</a>
@@ -614,7 +597,6 @@
                                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
                                 <span><span class="visually-hidden">Activité de l'annonce : </span><span data-listing-stats-text></span></span>
                             </p>
-                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-next-step>Créez l'annonce du bien, puis visitez-le pour la compléter.</span></p>
                         </article>
                     </li>
 
@@ -641,15 +623,11 @@
                                     <dd>Dans 1 à 3 mois</dd>
                                 </div>
                             </dl>
-                            <p class="mandate-card__matches" data-matches>
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg>
-                                <a href="mandate.html?id=204#matches-title" data-matches-link>2 nouveaux biens correspondants</a>
+                            <p class="search-stats mandate-card__search-stats" data-search-stats>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                                <span class="visually-hidden">Activité de la recherche : </span>
+                                <a href="mandate.html?id=204#matches-title" data-search-stats-link>6 biens · 3 intéressés · 3 visites</a>
                             </p>
-                            <p class="mandate-card__proposals" hidden data-proposals>
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M4 12 20 4l-6 16-3-7zM11 13l9-9"/></svg>
-                                <span><span class="visually-hidden">Biens proposés au client : </span><span data-proposals-text></span></span>
-                            </p>
-                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-next-step>Confirmez la visite demandée pour le sam. 7 novembre 2026 à 10h30 (annonce n° 3012).</span></p>
                         </article>
                     </li>
                 </ul>
@@ -667,13 +645,10 @@
                                 <p class="status-tag" data-status-tag></p>
                             </div>
                             <dl class="assignment__facts" data-mandate-facts></dl>
-                            <p class="mandate-card__matches" hidden data-matches>
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg>
-                                <a data-matches-link></a>
-                            </p>
-                            <p class="mandate-card__proposals" hidden data-proposals>
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M4 12 20 4l-6 16-3-7zM11 13l9-9"/></svg>
-                                <span><span class="visually-hidden">Biens proposés au client : </span><span data-proposals-text></span></span>
+                            <p class="search-stats mandate-card__search-stats" hidden data-search-stats>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                                <span class="visually-hidden">Activité de la recherche : </span>
+                                <a data-search-stats-link></a>
                             </p>
                             <!-- A landlord's signed mandate only: its listing's status (no number on the card: it fits one line). -->
                             <p class="mandate-card__listing" hidden data-listing-line>
@@ -686,7 +661,6 @@
                                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
                                 <span><span class="visually-hidden">Activité de l'annonce : </span><span data-listing-stats-text></span></span>
                             </p>
-                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-next-step></span></p>
                         </article>
                     </li>
                 </template>

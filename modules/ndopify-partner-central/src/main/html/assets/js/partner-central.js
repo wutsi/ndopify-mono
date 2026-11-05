@@ -1531,61 +1531,6 @@
         };
     }
 
-    // The card's one-line next step on index.html.
-    function nextStep(mandate, state, id) {
-        var p = partyWords(mandate);
-        if (state.status === "ASSIGNED") {
-            return "Contactez " + p.the + ", puis envoyez-lui le mandat à approuver.";
-        }
-        if (state.status === "PENDING_APPROVAL") {
-            var deadline = signatureDeadline(state);
-            if (deadline < Date.now()) return "Délai de signature dépassé : renvoyez le mandat.";
-            return p.The + " a jusqu'au " + formatShortDate(deadline) + " pour signer le mandat.";
-        }
-        if (state.status === "APPROVED") {
-            // A landlord's property is let through its listing: created, completed on site, then published
-            var listing = mandate.party === "bailleur" ? cardListingOf(id) : null;
-            if (mandate.party === "bailleur" && !listing) return "Créez l'annonce du bien, puis visitez-le pour la compléter.";
-            if (listing && listing.status === "DRAFT") {
-                return listing.rejection ? "Annonce à corriger : voyez les points signalés." : "Complétez l'annonce, puis envoyez-la pour vérification.";
-            }
-            if (listing && listing.status === "PENDING") return "Annonce en vérification : elle sera publiée sous peu.";
-            // A client's search: a visit to confirm, a listing the client likes, then new matches to send
-            if (mandate.party !== "bailleur") {
-                var matches = matchesOf(id);
-                var visits = matches.filter(function (m) {
-                    return answerOf(m) === "VISIT";
-                });
-                // A visit of visit.js (with an id): the one to confirm first, else the next one
-                var toConfirm = visits.filter(function (m) {
-                    return m.visit.id && m.visit.status === "REQUESTED";
-                })[0];
-                if (toConfirm) return "Confirmez la visite " + (toConfirm.visit.type === "VIDEO" ? "vidéo " : "") + "demandée pour le " + window.NpcVisits.formatAt(toConfirm.visit.at) + " (annonce n° " + toConfirm.listingId + ").";
-                var next = visits.filter(function (m) {
-                    return m.visit.id && m.visit.status !== "COMPLETED";
-                }).sort(function (a, b) {
-                    return a.visit.at - b.visit.at;
-                })[0];
-                if (next) return (next.visit.type === "VIDEO" ? "Visite vidéo le " : "Visite le ") + window.NpcVisits.formatAt(next.visit.at) + " (annonce n° " + next.listingId + ").";
-                var visit = visits.filter(function (m) {
-                    return !m.visit.id;
-                })[0];
-                if (visit) return "Confirmez au client la visite du " + formatShortDate(visit.visit.at) + " à " + visit.visit.time + (visit.visit.type === "VIDEO" ? ", en vidéo" : ", sur place") + " (annonce n° " + visit.listingId + ").";
-                var liked = matches.filter(function (m) {
-                    return answerOf(m) === "ACCEPTED";
-                })[0];
-                if (liked) return "L'annonce n° " + liked.listingId + " intéresse le client : proposez-lui une visite.";
-                if (countMatches(matches, "ACTIVE") || countMatches(matches, "SHORTLISTED")) {
-                    return "Envoyez au client les biens qui lui correspondent.";
-                }
-            }
-            // Signed: what's left is the property (a client) or the tenant (a landlord), within the mandate's validity
-            var find = mandate.party === "bailleur" ? "Trouvez un locataire" : "Trouvez un bien pour " + p.the;
-            return find + " avant le " + formatShortDate(addMonths(state.approvedAt, CONTRACT_MONTHS)) + ".";
-        }
-        return "";
-    }
-
     function setStatusTag(el, status) {
         var tag = STATUS_TAGS[status];
         el.textContent = tag[0];
@@ -1817,15 +1762,28 @@
         }).length;
     }
 
-    // The home card's line: "3 nouveaux biens correspondants · 1 retenu à envoyer", or "" when nothing is to do.
-    function matchesSummary(mandateId) {
+    // PROTOTYPE: GET /v1/mandates/stats?mandate-id= for an approved search: its pool, interested clients and visits.
+    // The pool is the matches in play (ACTIVE, PROPOSED, ACCEPTED, EXPIRED; a refused proposal is left out), the
+    // interested are the client's ACCEPTED answers (including a visit asked), and the visits are visit.js's open
+    // and completed ones for the mandate.
+    function searchStatsOf(mandateId) {
         var matches = matchesOf(mandateId);
-        var fresh = countMatches(matches, "ACTIVE");
-        var kept = countMatches(matches, "SHORTLISTED");
+        var properties = matches.filter(function (m) {
+            return ["ACTIVE", "PROPOSED", "ACCEPTED", "EXPIRED"].indexOf(m.status) !== -1 &&
+                answerOf(m) !== "REJECTED";
+        }).length;
+        var interested = matches.filter(function (m) {
+            return m.status === "ACCEPTED" || answerOf(m) === "ACCEPTED" || answerOf(m) === "VISIT";
+        }).length;
+        var visits = window.NpcVisits ? window.NpcVisits.countForMandate(mandateId) : 0;
         var parts = [];
-        if (fresh) parts.push(fresh + (fresh > 1 ? " nouveaux biens correspondants" : " nouveau bien correspondant"));
-        if (kept) parts.push(kept + (kept > 1 ? " retenus à envoyer" : " retenu à envoyer"));
-        return parts.join(" · ");
+        if (properties) parts.push(properties + (properties > 1 ? " biens" : " bien"));
+        if (interested) parts.push(interested + (interested > 1 ? " intéressés" : " intéressé"));
+        if (visits) parts.push(visits + (visits > 1 ? " visites" : " visite"));
+        return {
+            properties: properties,
+            label: parts.length ? parts.join(" · ") : "Aucun bien correspondant pour l'instant"
+        };
     }
 
     function matchTitle(match) {
@@ -1999,18 +1957,18 @@
                 stats.hidden = !canList(id) || !listing || listing.status !== "PUBLISHED";
                 $("[data-listing-stats-text]", stats).textContent = statsSummary(id);
             }
-            $("[data-next-step]", item).textContent = nextStep(MANDATES[id], state, id);
-            // The matches still to handle, linking straight to the mandate's list.
-            var matches = $("[data-matches]", item);
-            var summary = matchesSummary(id);
-            matches.hidden = !summary;
-            $("[data-matches-link]", matches).textContent = summary;
-            $("[data-matches-link]", matches).href = "mandate.html?id=" + encodeURIComponent(id) + "#matches-title";
-            // What became of the listings sent to the client
-            var proposals = $("[data-proposals]", item);
-            var sent = proposalsSummary(matchesOf(id));
-            proposals.hidden = !sent;
-            $("[data-proposals-text]", proposals).textContent = sent;
+            // A signed search: its pool, the client's interest and its visits, linking to Biens correspondants.
+            var searchStatsBox = $("[data-search-stats]", item);
+            if (searchStatsBox) {
+                var search = hasMatches(id);
+                searchStatsBox.hidden = !search;
+                if (search) {
+                    var summary = searchStatsOf(id);
+                    $("[data-search-stats-link]", searchStatsBox).textContent = summary.label;
+                    $("[data-search-stats-link]", searchStatsBox).href =
+                        "mandate.html?id=" + encodeURIComponent(id) + "#matches-title";
+                }
+            }
         }
 
         function card(id) {
@@ -2450,6 +2408,11 @@
             matchBox.hidden = !show;
             if (!show) return;
             var matches = matchesOf(id);
+            // The same line as the home card, above the detailed proposal line; hidden without a pool.
+            var searchStats = searchStatsOf(id);
+            var statsLine = $("[data-search-stats]", matchBox);
+            statsLine.hidden = searchStats.properties === 0;
+            $("[data-search-stats-text]", statsLine).textContent = searchStats.label;
             // Neither set aside nor refused by the client: the proposals line counts the refused ones.
             var shown = matches.filter(function (m) {
                 return m.status !== "DISMISSED" && answerOf(m) !== "REJECTED";

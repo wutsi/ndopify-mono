@@ -403,6 +403,13 @@
             return { id: v.id, status: v.status, at: timeOf(v), time: formatTime(timeOf(v)),
                 type: v.video ? "VIDEO" : "IN_PERSON", checkedOutAt: v.checkedOutAt };
         },
+        // A mandate's visits that count in its activity line: upcoming (open) and completed.
+        countForMandate: function (mandateId) {
+            return allVisits().filter(function (v) {
+                return v.mandateId === String(mandateId) &&
+                    (OPEN.indexOf(v.status) !== -1 || v.status === "COMPLETED");
+            }).length;
+        },
         formatAt: formatAt,
         formatWhen: formatWhen
     };

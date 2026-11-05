@@ -204,6 +204,12 @@ springdoc:
                 - /v1/users
                 - /v1/users/**
 
+        -   group: visit
+            display-name: Visit API
+            paths-to-match:
+                - /v1/visits
+                - /v1/visits/**
+
 management:
     endpoint:
         health:
