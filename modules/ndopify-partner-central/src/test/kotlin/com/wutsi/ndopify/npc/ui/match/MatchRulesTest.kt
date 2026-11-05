@@ -225,17 +225,6 @@ class MatchRulesTest {
     }
 
     @Test
-    fun summary() {
-        assertEquals("3 nouveaux biens correspondants", MatchRules.summary(listOf(MATCH_A, MATCH_B, MATCH_C)))
-        assertEquals(
-            "1 nouveau bien correspondant",
-            MatchRules.summary(listOf(MATCH_A, MATCH_B.copy(status = MatchStatus.PROPOSED))),
-        )
-        assertNull(MatchRules.summary(listOf(MATCH_B.copy(status = MatchStatus.PROPOSED))))
-        assertNull(MatchRules.summary(emptyList()))
-    }
-
-    @Test
     fun proposals() {
         val matches = listOf(
             MATCH_A,
@@ -267,19 +256,6 @@ class MatchRulesTest {
         assertEquals("Aucune personne intéressée pour l'instant", MatchRules.interest(0))
         assertEquals("1 personne intéressée", MatchRules.interest(1))
         assertEquals("3 personnes intéressées", MatchRules.interest(3))
-    }
-
-    @Test
-    fun nextStep() {
-        val accepted = MATCH_B.copy(listingId = 2987, status = MatchStatus.ACCEPTED)
-
-        assertEquals(
-            "L'annonce n° 2987 intéresse le client : proposez-lui une visite.",
-            MatchRules.nextStep(listOf(MATCH_A, accepted)),
-        )
-        assertEquals("Envoyez au client les biens qui lui correspondent.", MatchRules.nextStep(listOf(MATCH_A)))
-        assertNull(MatchRules.nextStep(listOf(MATCH_A.copy(status = MatchStatus.PROPOSED))))
-        assertNull(MatchRules.nextStep(emptyList()))
     }
 
     private fun date(year: Int, month: Int, day: Int): Date =

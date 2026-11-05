@@ -98,16 +98,6 @@ object MatchRules {
             furniture(match, mandate, listing),
         )
 
-    /** A card's "3 nouveaux biens correspondants" (ACTIVE ones); null without. */
-    fun summary(matches: List<Match>): String? {
-        val count = matches.count { it.status == MatchStatus.ACTIVE }
-        return when (count) {
-            0 -> null
-            1 -> "1 nouveau bien correspondant"
-            else -> "$count nouveaux biens correspondants"
-        }
-    }
-
     /**
      * A card's line of the listings sent to the client, also on the mandate page's *Biens correspondants*, short
      * enough for one line on a phone: what it answered, "1 intéressé · 1 refusé · 1 en attente · 1 sans réponse" (no
@@ -135,19 +125,6 @@ object MatchRules {
             0 -> "Aucune personne intéressée pour l'instant"
             else -> "$accepted " + plural(accepted, "personne intéressée", "personnes intéressées")
         }
-
-    /** A card's next step, before the mandate's: a visit for the best ACCEPTED one, else sending the ACTIVE ones. */
-    fun nextStep(matches: List<Match>): String? {
-        val sorted = sort(matches)
-        sorted.firstOrNull { it.status == MatchStatus.ACCEPTED }?.let {
-            return "L'annonce n° ${it.listingId} intéresse le client : proposez-lui une visite."
-        }
-        return if (sorted.any { it.status == MatchStatus.ACTIVE }) {
-            "Envoyez au client les biens qui lui correspondent."
-        } else {
-            null
-        }
-    }
 
     /** "95 %", with a no-break space. */
     fun score(match: Match): String = percent((match.score * 100).roundToInt())

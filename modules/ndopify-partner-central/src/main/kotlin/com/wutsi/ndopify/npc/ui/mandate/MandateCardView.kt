@@ -15,10 +15,6 @@ data class MandateCardView(
     val listing: ListingLineView?,
     /** A published listing only: "2 personnes intéressées · 3 visites"; null before, or when its stats can't be had. */
     val stats: String? = null,
-    val nextStep: String?,
-    /** A signed search only: "3 nouveaux biens correspondants" (ACTIVE matches), linking to [matchesUrl]; null at 0. */
-    val matches: String? = null,
-    val matchesUrl: String? = null,
-    /** A signed search only: "1 intéressé · 1 refusé · 1 en attente"; null when none was sent. */
-    val proposals: String? = null,
+    /** A signed search only: "12 biens · 1 intéressé · 3 visites"; null before or when its stats can't be had. */
+    val searchStats: SearchStatsView? = null,
 )

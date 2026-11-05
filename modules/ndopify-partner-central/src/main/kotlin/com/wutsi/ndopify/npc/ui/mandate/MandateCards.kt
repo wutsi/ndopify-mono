@@ -1,12 +1,11 @@
 package com.wutsi.ndopify.npc.ui.mandate
 
-import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
+import com.wutsi.ndopify.mandate.dto.MandateStats
 import com.wutsi.ndopify.mandate.dto.MandateType
-import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.npc.ui.listing.ListingStatsView
 import com.wutsi.ndopify.npc.ui.listing.ListingViews
 import com.wutsi.ndopify.npc.ui.match.MatchRules
@@ -18,20 +17,17 @@ object MandateCards {
     private const val FACTS = 3
 
     /**
-     * [contract] is the mandate's, null when it has none yet or it can't be loaded (no date in the next step).
      * [listings] are the agent's by mandate id, null when they can't be loaded: a landlord's signed mandate then has
-     * no listing line, and the next step is the mandate's. [matches] are the signed searches' by mandate id, null when
-     * they can't be loaded: no match lines, and the next step is the mandate's. [stats] are, by listing id, a published
-     * listing's activity, null when they can't be loaded: no activity line.
+     * no listing line. [mandateStats] are the approved searches' by mandate id, null when they can't be loaded: no
+     * activity line. [stats] are, by listing id, a published listing's activity, null when they can't be loaded: no
+     * activity line.
      */
     fun of(
         mandate: Mandate,
-        contract: ContractSummary?,
         listings: Map<Long, ListingSummary>?,
         locations: Map<Long, Location>,
-        now: Long,
         formatter: TenantFormatter,
-        matches: Map<Long, List<Match>>? = null,
+        mandateStats: Map<Long, MandateStats>? = null,
         stats: Map<Long, ListingStats>? = null,
     ): MandateCardView {
         val facts = MandateLabels.criteria(mandate, locations, formatter).take(FACTS)
@@ -40,8 +36,11 @@ object MandateCards {
         val listingStats = listing?.takeIf { it.status == ListingStatus.PUBLISHED && MandateRules.listed(mandate) }
             ?.let { stats?.get(it.id) }
             ?.let { ListingStatsView.of(it) }
-        val matched = matches?.takeIf { MatchRules.matched(mandate) }?.get(mandate.id).orEmpty()
-        val summary = MatchRules.summary(matched)
+        val searchStats = if (MatchRules.matched(mandate)) {
+            SearchStatsView.of(mandate, mandateStats?.get(mandate.id))
+        } else {
+            null
+        }
         return MandateCardView(
             id = mandate.id,
             title = MandateLabels.title(mandate),
@@ -56,12 +55,7 @@ object MandateCards {
             },
             listing = listings?.let { ListingViews.line(mandate, listing, formatter) },
             stats = listingStats?.label,
-            nextStep = MatchRules.nextStep(matched)
-                ?: listings?.takeIf { MandateRules.listed(mandate) }?.let { MandateRules.listingStep(listing) }
-                ?: MandateRules.nextStep(mandate, contract, now, formatter),
-            matches = summary,
-            matchesUrl = summary?.let { "/mandates/${mandate.id}#matches-title" },
-            proposals = MatchRules.proposals(matched),
+            searchStats = searchStats,
         )
     }
 

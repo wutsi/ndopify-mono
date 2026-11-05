@@ -11,19 +11,16 @@ import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
+import com.wutsi.ndopify.mandate.dto.MandateStats
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateSummary
 import com.wutsi.ndopify.mandate.dto.MandateType
-import com.wutsi.ndopify.match.dto.Match
-import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
-import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
-import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.assignment.AssignmentController
@@ -73,9 +70,7 @@ class HomeTemplateTest {
     private val kycClient = mock<NdKycClient>()
     private val assignmentClient = mock<NdAssignmentClient>()
     private val mandateClient = mock<NdMandateClient>()
-    private val contractClient = mock<NdContractClient>()
     private val listingClient = mock<NdListingClient>()
-    private val matchClient = mock<NdMatchClient>()
     private val visitClient = mock<NdVisitClient>()
     private val customerClient = mock<NdCustomerClient>()
     private val locationClient = mock<NdLocationClient>()
@@ -99,7 +94,6 @@ class HomeTemplateTest {
                 ),
             ),
         ).whenever(mandateClient).active(AGENT.id)
-        doReturn(listOf(MandateCardsTest.CONTRACT_2027.copy(id = "c-202"))).whenever(contractClient).search(any())
         doReturn(emptyList<VisitSummary>()).whenever(visitClient).search(AGENT.id, VisitRules.OPEN)
         doReturn(emptyList<CustomerSummary>()).whenever(customerClient).search(any())
 
@@ -123,9 +117,7 @@ class HomeTemplateTest {
                     kycClient,
                     assignmentClient,
                     mandateClient,
-                    contractClient,
                     listingClient,
-                    matchClient,
                     visitClient,
                     customerClient,
                     locationClient,
@@ -263,16 +255,7 @@ class HomeTemplateTest {
             listOf("Secteurs", "Budget", "Emménagement"),
             card.select(".assignment__facts dt").map { it.text() })
         assertEquals("Bonapriso, Akwa", card.selectFirst(".assignment__facts dd")?.text())
-        assertEquals("Prochaine étape\u00a0:", card.selectFirst(".mandate-card__next strong")?.wholeText())
-        assertEquals(
-            "Contactez le client, puis envoyez-lui le mandat à approuver.",
-            card.selectFirst(".mandate-card__next span")?.text(),
-        )
         assertEquals("status-tag status-tag--warning", cards[1].selectFirst(".status-tag")?.className())
-        assertEquals(
-            "Le client a jusqu'au 19 janv. 2027 pour signer le mandat.",
-            cards[1].selectFirst(".mandate-card__next span")?.text(),
-        )
         assertTrue(page.selectFirst("[data-mandates-empty]")!!.hasAttr("hidden"))
         assertNull(page.selectFirst("[data-mandates-unavailable]"))
     }
@@ -295,7 +278,6 @@ class HomeTemplateTest {
         assertEquals("Brouillon", line.selectFirst("[data-listing-status-tag]")?.text())
         assertEquals("/mandates/205", cards[1].selectFirst("a[data-listing-number]")?.attr("href"))
         assertEquals("À créer", cards[1].selectFirst("[data-listing-status-tag]")?.text())
-        assertEquals("Créez l'annonce du bien, puis visitez-le pour la compléter.", cards[1].selectFirst(".mandate-card__next span")?.text())
     }
 
     @Test
@@ -325,38 +307,42 @@ class HomeTemplateTest {
     }
 
     @Test
-    fun `signed search - match lines`() {
+    fun `signed search - activity line`() {
         val search = MandateCardsTest.MANDATE.copy(id = 203, status = MandateStatus.APPROVED)
         doReturn(listOf(MandateSummariesTest.summary(search))).whenever(mandateClient).active(AGENT.id)
-        doReturn(
-            listOf(
-                Match(id = 1, mandateId = 203, status = MatchStatus.ACTIVE),
-                Match(id = 2, mandateId = 203, status = MatchStatus.ACTIVE),
-                Match(id = 3, mandateId = 203, status = MatchStatus.PROPOSED),
-            ),
-        ).whenever(matchClient).search(any(), any(), any())
+        doReturn(mapOf(203L to MandateStats(203, 3, 1, 1, 2))).whenever(mandateClient).stats(any())
 
         val card = render(get("/")).selectFirst("[data-mandate-card]")!!
 
-        val link = card.selectFirst(".mandate-card__matches a[data-matches-link]")!!
+        val stats = card.selectFirst("[data-search-stats]")!!
+        val link = stats.selectFirst("[data-search-stats-link]")!!
         assertEquals("/mandates/203#matches-title", link.attr("href"))
-        assertEquals("2 nouveaux biens correspondants", link.text())
-        assertEquals(
-            "Biens proposés au client : 1 en attente",
-            card.selectFirst(".mandate-card__proposals[data-proposals]")?.text(),
-        )
-        assertEquals(
-            "Envoyez au client les biens qui lui correspondent.",
-            card.selectFirst(".mandate-card__next span")?.text(),
-        )
+        assertEquals("3 biens · 1 intéressé · 3 visites", link.text())
+        assertNull(card.selectFirst("[data-matches]"))
+        assertNull(card.selectFirst("[data-proposals]"))
+        assertNull(card.selectFirst(".mandate-card__next"))
     }
 
     @Test
-    fun `no match lines`() {
-        val page = render(get("/"))
+    fun `signed search without stats - no activity line`() {
+        val search = MandateCardsTest.MANDATE.copy(id = 203, status = MandateStatus.APPROVED)
+        doReturn(listOf(MandateSummariesTest.summary(search))).whenever(mandateClient).active(AGENT.id)
+        doReturn(null).whenever(mandateClient).stats(any())
 
-        assertNull(page.selectFirst("[data-matches]"))
-        assertNull(page.selectFirst("[data-proposals]"))
+        val card = render(get("/")).selectFirst("[data-mandate-card]")!!
+
+        assertNull(card.selectFirst("[data-search-stats]"))
+    }
+
+    @Test
+    fun `signed search without match - empty label`() {
+        val search = MandateCardsTest.MANDATE.copy(id = 203, status = MandateStatus.APPROVED)
+        doReturn(listOf(MandateSummariesTest.summary(search))).whenever(mandateClient).active(AGENT.id)
+        doReturn(mapOf(203L to MandateStats(203))).whenever(mandateClient).stats(any())
+
+        val link = render(get("/")).selectFirst("[data-mandate-card] [data-search-stats-link]")!!
+
+        assertEquals("Aucun bien correspondant pour l'instant", link.text())
     }
 
     @Test
