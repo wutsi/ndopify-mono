@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title th:text="'Votre visite | ' + (${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name})">Votre visite | Ndopify</title>
+    <!--/* A personal page (the link of the visit e-mails): never indexed nor shared, nor its address sent as Referer. */-->
+    <meta content="noindex, nofollow" name="robots">
+    <meta content="no-referrer" name="referrer">
+    <meta content="#1d7edf" name="theme-color">
+    <link rel="icon" th:href="${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
+    <link rel="apple-touch-icon" th:href="${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
+    <link rel="stylesheet" th:href="@{/assets/css/styles.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/listing.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/proposal.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/visit.css}">
+</head>
+<!--/*
+  The customer's visit, the link of the "visite" e-mail (VisitController): the listing and the agent on top, then one
+  block per status, the server renders only the current one. Two types, shown wherever the date is: ON_SITE, at the
+  property; VIDEO, a live WhatsApp video call from the agent to the customer's number. A video visit never shows the
+  exact address (the neighbourhood only). Dates and times come pre-formatted in `page`, never formatted here.
+  Without JavaScript the cancel form posts and the #cancel popup opens with :target; listing.js opens and closes the
+  popup and visit.js moves the focus into it. Only the current state's block is rendered: no feedback form on
+  COMPLETED, no check-in UI. Never agentRemarks.
+*/-->
+<body class="visit-page" data-page="visit">
+<a class="skip-link" href="#main">Aller au contenu principal</a>
+<header class="site-header">
+    <a aria-label="Ndopify — accueil" class="site-header__logo" th:href="@{/}">
+        <img alt="Ndopify" height="36" width="140"
+             th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
+             th:src="${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}">
+    </a>
+    <nav aria-label="Navigation principale" class="site-nav">
+        <button aria-controls="primary-nav-list" aria-expanded="false" class="nav-toggle"><span aria-hidden="true"
+                                                                                                class="nav-toggle__icon">☰</span>
+            Menu
+        </button>
+        <ul class="site-nav__list" id="primary-nav-list">
+            <li><a th:href="@{/}">Locataires</a></li>
+            <li><a th:href="@{/owner}">Propriétaires</a></li>
+            <li><a th:href="@{/agent}">Agents</a></li>
+        </ul>
+    </nav>
+</header>
+
+<!-- Icon sprite (decorative: every icon sits next to its text) -->
+<svg aria-hidden="true" class="visually-hidden" focusable="false" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5 10 17 19 7"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 11v5m0-8h.01"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5 2.5 20h19zM12 10v4.5m0 2.5h.01"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/></symbol>
+    <symbol id="i-video" viewBox="0 0 24 24"><path d="M3 7h12v10H3zM15 10.5l6-3.5v10l-6-3.5"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 3v4m8-4v4"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2"/></symbol>
+    <symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 5h16v11H9l-5 4zM8 9.5h8M8 12.5h5"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M8 3h8a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1zM11 18h2"/></symbol>
+    <symbol id="i-route" viewBox="0 0 24 24"><path d="M6 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM18 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM8 18h7.5a3 3 0 0 0 0-6h-7a3 3 0 0 1 0-6H16"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><path d="M8.5 15.5a4 4 0 1 1 2.8-1.2L20 23m-4-4 2-2m-4.5-.5 2-2"/></symbol>
+    <symbol id="i-id" viewBox="0 0 24 24"><path d="M3 6h18v12H3zM6.5 10h5M6.5 13.5h7M15.5 9.5h3v4h-3z"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6zM9 12l2 2 4-4"/></symbol>
+</svg>
+
+<main id="main">
+    <div class="container visit">
+
+        <div class="visit__head">
+            <h1>Votre visite</h1>
+            <!-- The state, in words -->
+            <span class="badge visit-badge" th:classappend="'visit-badge--' + ${page.statusTone}"
+                  th:text="${page.statusLabel}">Confirmée</span>
+        </div>
+
+        <!-- The outcome of the cancellation just posted -->
+        <div class="proposal-flash" role="status" th:if="${page.flash}">
+            <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
+            <p th:text="${page.flash}">Votre visite est annulée. L'agent est prévenu.</p>
+        </div>
+
+        <!-- What and with whom, whatever the state -->
+        <div class="visit-summary">
+            <a class="visit-listing" th:if="${page.listing}" th:href="${page.matchUrl}">
+                <img alt="" height="80" th:unless="${#lists.isEmpty(page.listing.photos)}"
+                     th:src="${page.listing.photos[0].src}" width="120">
+                <span class="visit-listing__text">
+                    <strong class="visit-listing__title" th:text="${page.listing.title}">Appartement 3 chambres à Bonapriso</strong>
+                    <span class="visit-listing__place" th:text="${page.listing.place}">Bonapriso, Douala</span>
+                    <span class="visit-listing__price"><strong th:text="${page.listing.price}">240K FCFA / mois</strong></span>
+                </span>
+            </a>
+            <div class="visit-agent" th:if="${page.agent}">
+                <img alt="" class="proposal__avatar" th:if="${page.agent.photoUrl}" th:src="${page.agent.photoUrl}">
+                <span aria-hidden="true" class="proposal__avatar" th:unless="${page.agent.photoUrl}"
+                      th:text="${page.agent.initials}">SN</span>
+                <div class="visit-agent__text">
+                    <p class="visit-agent__name" th:text="${page.agent.name}">Serge Ngono</p>
+                    <p class="visit-agent__role">Votre agent</p>
+                </div>
+                <a class="btn btn-secondary visit-agent__btn" th:if="${page.agent.whatsappUrl}"
+                   th:href="${page.agent.whatsappUrl}" rel="noopener" target="_blank">
+                    <svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg>WhatsApp<span
+                        class="visually-hidden" th:text="| : écrire à ${page.agent.name}|"> : écrire à Serge</span>
+                </a>
+            </div>
+        </div>
+
+        <!-- ============================================================ REQUESTED -->
+        <section aria-labelledby="requested-title" class="visit-state" data-visit-state="REQUESTED"
+                 th:if="${page.status.name() == 'REQUESTED'}">
+            <h2 id="requested-title">Votre demande est envoyée</h2>
+            <dl class="visit-facts">
+                <div>
+                    <dt>Créneau demandé</dt>
+                    <dd th:text="${page.requestedSlot}">Sur place · samedi 7 novembre 2026 à 10h30</dd>
+                </div>
+                <div th:if="${page.note}">
+                    <dt>Votre message</dt>
+                    <dd class="visit-facts__note" th:text="${page.note}">Fin de journée</dd>
+                </div>
+            </dl>
+            <p class="notice notice--info">
+                <svg aria-hidden="true" class="icon"><use href="#i-clock"/></svg>
+                <span>L'agent confirme la visite sous 48&nbsp;h, par e-mail : il peut vous proposer une autre
+                    heure.</span>
+            </p>
+            <p th:if="${page.type.name() != 'VIDEO'}">Une fois la date confirmée, vous recevez par e-mail votre code de
+                visite et l'adresse exacte.</p>
+            <p th:if="${page.type.name() == 'VIDEO'}">Une fois la date confirmée, vous recevez par e-mail votre code de
+                visite, à lire à votre agent au début de l'appel.</p>
+            <p class="visit-cancel" th:if="${page.canCancel}"><a data-modal-open href="#cancel">Annuler ma demande</a></p>
+        </section>
+
+        <!-- ============================================================ CONFIRMED -->
+        <section aria-labelledby="confirmed-title" class="visit-state" data-visit-state="CONFIRMED"
+                 th:if="${page.status.name() == 'CONFIRMED'}">
+            <h2 id="confirmed-title">Votre visite est confirmée</h2>
+
+            <div class="visit-when">
+                <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>
+                <div>
+                    <p class="visit-when__date" th:text="${page.scheduledSlot}">Sur place · samedi 7 novembre 2026 à
+                        11h00</p>
+                    <!-- Only when the agent changed the requested slot (or type) -->
+                    <p class="visit-when__changed" th:if="${page.changedSlot}"
+                       th:text="${page.changedSlot}">Vous aviez demandé le samedi 7 novembre 2026 à 10h30.</p>
+                </div>
+            </div>
+
+            <!-- Only ever shown to the customer: the agent asks for it to start the visit -->
+            <div class="visit-code" th:if="${page.code}">
+                <p class="visit-code__label" id="code-label">Votre code de visite</p>
+                <p aria-labelledby="code-label" class="visit-code__digits"><span aria-hidden="true"
+                                                                                 th:text="${page.code}">4827</span><span
+                        class="visually-hidden"
+                        th:text="${#strings.arrayJoin(#strings.arraySplit(page.code, ''), ' ')}">4 8 2 7</span></p>
+                <p class="visit-code__help" th:if="${page.type.name() != 'VIDEO'}">Donnez ce code à votre agent au début
+                    de la visite. Ne le communiquez à personne d'autre.</p>
+                <p class="visit-code__help" th:if="${page.type.name() == 'VIDEO'}">Lisez ce code à votre agent au début
+                    de l'appel vidéo. Ne le communiquez à personne d'autre.</p>
+            </div>
+
+            <div class="visit-block" data-visit-type="ON_SITE" th:if="${page.type.name() == 'ON_SITE'}">
+                <h3>Adresse</h3>
+                <address class="visit-address" th:text="${page.address}">Rue Njo-Njo, portail bleu</address>
+                <a class="btn btn-outline" th:if="${page.mapUrl}" th:href="${page.mapUrl}" rel="noopener"
+                   target="_blank">
+                    <svg aria-hidden="true" class="icon"><use href="#i-route"/></svg>Itinéraire<span
+                        class="visually-hidden"> (Google Maps, nouvel onglet)</span>
+                </a>
+            </div>
+
+            <!-- Video: never the exact address -->
+            <div class="visit-block" data-visit-type="VIDEO" th:if="${page.type.name() == 'VIDEO'}">
+                <h3>Le logement</h3>
+                <p class="visit-address__landmark"><svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>
+                    <span th:text="${page.listing?.place}">Bonapriso, Douala</span></p>
+                <p th:if="${page.videoNumber}">Votre agent vous appelle en vidéo au <span class="nowrap"
+                                                                                          th:text="${page.videoNumber}">+237699887766</span>.
+                </p>
+                <p>L'adresse exacte vous sera donnée si vous visitez sur place.</p>
+            </div>
+
+            <p class="visit-cancel" th:if="${page.canCancel}">Un empêchement&nbsp;? <a data-modal-open href="#cancel">Annuler
+                la visite</a></p>
+        </section>
+
+        <!-- ============================================================ CHECKED_IN -->
+        <section aria-labelledby="checked-in-title" class="visit-state" data-visit-state="CHECKED_IN"
+                 th:if="${page.status.name() == 'CHECKED_IN'}">
+            <h2 id="checked-in-title" th:if="${page.type.name() != 'VIDEO'}">Visite en cours</h2>
+            <h2 id="checked-in-title" th:if="${page.type.name() == 'VIDEO'}">Appel en cours</h2>
+            <div class="visit-when">
+                <svg aria-hidden="true" class="icon"><use href="#i-clock"/></svg>
+                <div>
+                    <p class="visit-when__date"
+                       th:text="|${page.type.name() == 'VIDEO' ? 'Commencé' : 'Commencée'} à ${page.checkedInAt}|">Commencée
+                        à 11h06</p>
+                    <p class="visit-when__changed" th:text="|${page.scheduledSlot}, avec votre agent.|">Sur place ·
+                        samedi 7 novembre 2026, avec votre agent.</p>
+                </div>
+            </div>
+            <p th:if="${page.type.name() != 'VIDEO'}">Prenez le temps de tout regarder : robinets, prises, compteurs,
+                fenêtres, serrures. Posez vos questions à votre agent.</p>
+            <p th:if="${page.type.name() == 'VIDEO'}">Demandez à votre agent de vous montrer chaque pièce de près :
+                robinets, prises, compteurs, fenêtres, serrures. Posez-lui vos questions.</p>
+            <p>À la fin, votre agent clôture la visite : vous recevez un e-mail pour nous dire si le logement vous
+                intéresse.</p>
+        </section>
+
+        <!-- ============================================================ COMPLETED -->
+        <section aria-labelledby="completed-title" class="visit-state" data-visit-state="COMPLETED"
+                 th:if="${page.status.name() == 'COMPLETED'}">
+            <h2 id="completed-title">Votre visite est terminée</h2>
+            <p class="visit-ended" th:text="${page.scheduledSlot}">Sur place · samedi 7 novembre 2026 à 11h00</p>
+            <p>Merci, votre visite est terminée.</p>
+        </section>
+
+        <!-- ============================================================ CANCELLED -->
+        <section aria-labelledby="cancelled-title" class="visit-state" data-visit-state="CANCELLED"
+                 th:if="${page.status.name() == 'CANCELLED'}">
+            <h2 id="cancelled-title" th:if="${page.cancelledBy?.name() == 'CUSTOMER'}">Vous avez annulé la visite</h2>
+            <h2 id="cancelled-title" th:unless="${page.cancelledBy?.name() == 'CUSTOMER'}"
+                th:text="|${page.agent?.name ?: 'Votre agent'} a annulé la visite|">L'agent a annulé la visite</h2>
+            <p class="visit-ended" th:text="${page.scheduledSlot ?: page.requestedSlot}">Sur place · samedi 7 novembre
+                2026 à 11h00</p>
+            <p class="visit-ended" th:if="${page.cancelledAt}" th:text="|Annulée le ${page.cancelledAt}.|">Annulée le
+                jeudi 5 novembre 2026 à 16h40.</p>
+            <p class="visit-facts__note"
+               th:if="${page.cancelledBy?.name() != 'CUSTOMER' and page.cancellationReason != null}"
+               th:text="|Son message : « ${page.cancellationReason} »|">Son message : « … »</p>
+            <p>Le logement vous intéresse toujours&nbsp;? Vous pouvez demander une autre visite.</p>
+            <a class="btn btn-primary" th:href="${page.matchUrl}">Demander une autre visite</a>
+        </section>
+
+        <!-- ============================================================ EXPIRED -->
+        <section aria-labelledby="expired-title" class="visit-state" data-visit-state="EXPIRED"
+                 th:if="${page.status.name() == 'EXPIRED'}">
+            <h2 id="expired-title">Cette demande a expiré</h2>
+            <p class="visit-ended" th:text="${page.requestedSlot}">Sur place · samedi 7 novembre 2026 à 10h30</p>
+            <p>Votre agent n'a pas confirmé votre demande sous 48&nbsp;h : elle a expiré.</p>
+            <p>Le logement vous intéresse toujours&nbsp;? Vous pouvez demander une autre visite.</p>
+            <a class="btn btn-primary" th:href="${page.matchUrl}">Demander une autre visite</a>
+        </section>
+
+        <!-- ============================================================ NO_SHOW -->
+        <section aria-labelledby="no-show-title" class="visit-state" data-visit-state="NO_SHOW"
+                 th:if="${page.status.name() == 'NO_SHOW'}">
+            <h2 id="no-show-title">La visite n'a pas eu lieu</h2>
+            <p class="visit-ended" th:text="${page.scheduledSlot ?: page.requestedSlot}">Sur place · samedi 7 novembre
+                2026 à 11h00</p>
+            <th:block th:if="${page.noShowParty?.name() == 'CUSTOMER'}">
+                <p th:if="${page.noShowReason?.name() == 'CODE_REFUSED'}">Vous avez refusé de donner le code.</p>
+                <p th:unless="${page.noShowReason?.name() == 'CODE_REFUSED'}">Vous n'étiez pas à la visite.</p>
+            </th:block>
+            <p th:if="${page.noShowParty?.name() == 'AGENT'}">L'agent n'est pas venu / ne vous a pas appelé.</p>
+            <p>Le logement vous intéresse toujours&nbsp;? Vous pouvez demander une autre visite.</p>
+            <a class="btn btn-primary" th:href="${page.matchUrl}">Demander une autre visite</a>
+        </section>
+
+    </div>
+</main>
+
+<!--/*
+  "Annuler" popup (REQUESTED or CONFIRMED, before the check-in): the agent is told, an optional reason (≤ 500, for the
+  agent), the confirm button. Without JavaScript it opens with :target (#cancel) and the form posts.
+*/-->
+<div aria-labelledby="cancel-title" class="modal" id="cancel" th:if="${page.canCancel}">
+    <a aria-hidden="true" class="modal__backdrop" data-modal-close href="#main" tabindex="-1"></a>
+    <div class="modal__panel">
+        <header class="modal__header">
+            <div>
+                <h2 class="modal__title" id="cancel-title">
+                    <th:block th:if="${page.status.name() == 'REQUESTED'}">Annuler votre demande&nbsp;?</th:block>
+                    <th:block th:if="${page.status.name() != 'REQUESTED'}">Annuler la visite&nbsp;?</th:block>
+                </h2>
+                <p class="modal__subtitle" th:if="${page.listing}" th:text="${page.listing.title}">Appartement 3
+                    chambres à Bonapriso</p>
+            </div>
+            <a class="modal__close" data-modal-close href="#main">
+                <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>
+                <span class="visually-hidden">Fermer</span>
+            </a>
+        </header>
+        <form class="modal__body" method="post" th:action="@{/visits/{id}/cancel(id=${page.id})}">
+            <p class="notice notice--info">
+                <svg aria-hidden="true" class="icon"><use href="#i-info"/></svg>
+                <span>L'agent est prévenu par e-mail. Vous pourrez demander une autre visite.</span>
+            </p>
+            <div class="field">
+                <label for="cancel-reason">Pourquoi&nbsp;? <span class="field__optional">(facultatif)</span></label>
+                <textarea id="cancel-reason" maxlength="500" name="reason" rows="3"></textarea>
+                <span class="hint">L'agent reçoit votre message.</span>
+            </div>
+            <button class="btn btn-danger visit-submit" type="submit">
+                <th:block th:if="${page.status.name() == 'REQUESTED'}">Annuler ma demande</th:block>
+                <th:block th:if="${page.status.name() != 'REQUESTED'}">Annuler la visite</th:block>
+            </button>
+            <p class="visit-cancel"><a data-modal-close href="#main">Garder ma visite</a></p>
+        </form>
+    </div>
+</div>
+
+<footer class="site-footer">
+    <div class="container site-footer__inner">
+        <img alt="Ndopify" height="32" width="32"
+             th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
+             th:src="${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
+        <nav aria-label="Navigation du pied de page">
+            <ul>
+                <li><a th:href="@{/}">Locataires</a></li>
+                <li><a th:href="@{/owner}">Propriétaires</a></li>
+                <li><a th:href="@{/agent}">Agents</a></li>
+            </ul>
+        </nav>
+        <small>© 2026 Ndopify. Logements vérifiés. Locations fiables.</small>
+    </div>
+</footer>
+
+<script th:src="@{/assets/js/main.js}"></script>
+<script th:src="@{/assets/js/listing.js}"></script>
+<script th:src="@{/assets/js/visit.js}"></script>
+</body>
+</html>
