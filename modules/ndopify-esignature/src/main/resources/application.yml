@@ -56,10 +56,9 @@ logging:
         org.springframework: INFO
         com.wutsi: DEBUG
         springfox: ERROR
-
     pattern:
-        console: "%d Type=%level Logger=%c Thread=%thread %m%n"
-        file: "%d Type=%level Logger=%c Thread=%thread %m%n"
+        console: "%d level=%level logger=%c{20} %m%n"
+        file: "%d level=%level logger=%c{20} %m%n"
 
 ndopify:
     server:
