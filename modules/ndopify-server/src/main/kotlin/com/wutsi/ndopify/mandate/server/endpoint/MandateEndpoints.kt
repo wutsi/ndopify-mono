@@ -1,5 +1,11 @@
 package com.wutsi.ndopify.mandate.server.endpoint
 
+import com.wutsi.ndopify.error.dto.Error
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.Parameter
+import com.wutsi.ndopify.error.dto.ParameterType
+import com.wutsi.ndopify.error.server.exception.BadRequestException
+import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
 import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
@@ -8,10 +14,13 @@ import com.wutsi.ndopify.mandate.dto.DispatchMandateResponse
 import com.wutsi.ndopify.mandate.dto.GetMandateResponse
 import com.wutsi.ndopify.mandate.dto.SearchMandateRequest
 import com.wutsi.ndopify.mandate.dto.SearchMandateResponse
+import com.wutsi.ndopify.mandate.dto.SearchMandateStatsRequest
+import com.wutsi.ndopify.mandate.dto.SearchMandateStatsResponse
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.mandate.server.mapper.MandateMapper
 import com.wutsi.ndopify.mandate.server.service.MandateAccessService
 import com.wutsi.ndopify.mandate.server.service.MandateService
+import com.wutsi.ndopify.mandate.server.service.MandateStatsService
 import com.wutsi.ndopify.platform.endpoint.OpsEndpoint
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.validation.Valid
@@ -33,6 +42,7 @@ class MandateEndpoints(
     private val service: MandateService,
     private val access: MandateAccessService,
     private val mapper: MandateMapper,
+    private val statsService: MandateStatsService,
 ) {
     @GetMapping
     fun search(@ModelAttribute request: SearchMandateRequest): SearchMandateResponse {
@@ -40,6 +50,25 @@ class MandateEndpoints(
         return SearchMandateResponse(
             mandates = service.search(restricted).map { mandate -> mapper.toMandateSummary(mandate) }
         )
+    }
+
+    @GetMapping("/stats")
+    fun stats(@ModelAttribute request: SearchMandateStatsRequest): SearchMandateStatsResponse {
+        if (request.mandateIds.isEmpty()) {
+            throw BadRequestException(
+                error = Error(
+                    code = ErrorCode.HTTP_MISSING_PARAMETER,
+                    parameter = Parameter(name = "mandate-id", type = ParameterType.PARAMETER_TYPE_QUERY),
+                )
+            )
+        }
+        val ids = request.mandateIds.distinct()
+        val mandates = service.findAllByIds(ids)
+        if (mandates.size != ids.size) {
+            throw NotFoundException(error = Error(code = ErrorCode.MANDATE_NOT_FOUND))
+        }
+        mandates.forEach { access.ensureCanRead(it) }
+        return SearchMandateStatsResponse(stats = statsService.search(ids))
     }
 
     @GetMapping("/{id}")

@@ -16,6 +16,12 @@ interface ListingVisitCount {
     val total: Long
 }
 
+/** Number of visits of a mandate that count, by kind. */
+interface MandateVisitCount {
+    val mandateId: Long
+    val total: Long
+}
+
 @Repository
 interface VisitRepository : CrudRepository<VisitEntity, Long>, JpaSpecificationExecutor<VisitEntity> {
     fun existsByMatchIdAndStatusIn(matchId: Long, statuses: Collection<VisitStatus>): Boolean
@@ -45,6 +51,32 @@ interface VisitRepository : CrudRepository<VisitEntity, Long>, JpaSpecificationE
         listingIds: Collection<Long>,
         status: VisitStatus,
     ): List<ListingVisitCount>
+
+    @Query(
+        "SELECT v.mandateId AS mandateId, COUNT(v) AS total FROM VisitEntity v " +
+            "WHERE v.mandateId IN :mandateIds AND (" +
+            "(v.status = :requested AND v.createdAt > :expireBefore) OR " +
+            "(v.status = :confirmed AND v.scheduledAt >= :checkInBefore) OR " +
+            "v.status = :checkedIn) " +
+            "GROUP BY v.mandateId"
+    )
+    fun countUpcomingByMandateIds(
+        mandateIds: Collection<Long>,
+        requested: VisitStatus,
+        confirmed: VisitStatus,
+        checkedIn: VisitStatus,
+        expireBefore: Date,
+        checkInBefore: Date,
+    ): List<MandateVisitCount>
+
+    @Query(
+        "SELECT v.mandateId AS mandateId, COUNT(v) AS total FROM VisitEntity v " +
+            "WHERE v.mandateId IN :mandateIds AND v.status = :status GROUP BY v.mandateId"
+    )
+    fun countByMandateIdsAndStatus(
+        mandateIds: Collection<Long>,
+        status: VisitStatus,
+    ): List<MandateVisitCount>
 
     // The confirmed visits that start before [before]: the agent's no-show (4h past the time)
     fun findByStatusAndScheduledAtBefore(status: VisitStatus, before: Date): List<VisitEntity>

@@ -129,6 +129,8 @@ class MandateService(
             ?: throw NotFoundException(error = Error(code = ErrorCode.MANDATE_NOT_FOUND))
     }
 
+    fun findAllByIds(ids: Collection<Long>): List<MandateEntity> = dao.findAllById(ids).toList()
+
     @Transactional
     fun create(request: CreateMandateRequest): MandateEntity {
         val customer = customerService.findOrCreate(

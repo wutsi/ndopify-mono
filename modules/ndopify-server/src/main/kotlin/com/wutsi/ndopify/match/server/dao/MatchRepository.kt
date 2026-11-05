@@ -24,6 +24,12 @@ interface ListingMatchCount {
     val total: Long
 }
 
+/** Number of matches of a mandate in the given statuses. */
+interface MandateMatchCount {
+    val mandateId: Long
+    val total: Long
+}
+
 @Repository
 interface MatchRepository : CrudRepository<MatchEntity, Long>, JpaSpecificationExecutor<MatchEntity> {
     fun findByMandateAndListing(mandate: MandateEntity, listing: ListingEntity): MatchEntity?
@@ -41,6 +47,15 @@ interface MatchRepository : CrudRepository<MatchEntity, Long>, JpaSpecificationE
         listingIds: Collection<Long>,
         status: MatchStatus,
     ): List<ListingMatchCount>
+
+    @Query(
+        "SELECT m.mandate.id AS mandateId, COUNT(m) AS total FROM MatchEntity m " +
+            "WHERE m.mandate.id IN :mandateIds AND m.status IN :statuses GROUP BY m.mandate.id"
+    )
+    fun countByMandateIdsAndStatusIn(
+        mandateIds: Collection<Long>,
+        statuses: Collection<MatchStatus>,
+    ): List<MandateMatchCount>
 
     fun findByStatusAndNotifiedAtIsNullAndMandateStatusAndListingStatus(
         status: MatchStatus,
