@@ -174,7 +174,7 @@
             <!-- Video: never the exact address -->
             <div class="visit-block" data-visit-type="VIDEO" th:if="${page.type.name() == 'VIDEO'}">
                 <h3>Le logement</h3>
-                <p class="visit-address__landmark"><svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>
+                <p class="visit-address__landmark" th:if="${page.listing?.place}"><svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>
                     <span th:text="${page.listing?.place}">Bonapriso, Douala</span></p>
                 <p th:if="${page.videoNumber}">Votre agent vous appelle en vidéo au <span class="nowrap"
                                                                                           th:text="${page.videoNumber}">+237699887766</span>.
@@ -221,7 +221,8 @@
         <section aria-labelledby="cancelled-title" class="visit-state" data-visit-state="CANCELLED"
                  th:if="${page.status.name() == 'CANCELLED'}">
             <h2 id="cancelled-title" th:if="${page.cancelledBy?.name() == 'CUSTOMER'}">Vous avez annulé la visite</h2>
-            <h2 id="cancelled-title" th:unless="${page.cancelledBy?.name() == 'CUSTOMER'}"
+            <h2 id="cancelled-title" th:if="${page.cancelledBy == null}">La visite a été annulée.</h2>
+            <h2 id="cancelled-title" th:if="${page.cancelledBy != null and page.cancelledBy?.name() != 'CUSTOMER'}"
                 th:text="|${page.agent?.name ?: 'Votre agent'} a annulé la visite|">L'agent a annulé la visite</h2>
             <p class="visit-ended" th:text="${page.scheduledSlot ?: page.requestedSlot}">Sur place · samedi 7 novembre
                 2026 à 11h00</p>

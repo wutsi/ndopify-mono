@@ -216,6 +216,17 @@ class MatchControllerTest {
     }
 
     @Test
+    fun `rejected match does not fetch the customer`() {
+        MatchFixtures.signIn()
+        doReturn(MATCH.copy(status = MatchStatus.REJECTED)).whenever(matchClient).get(12)
+        doReturn(Mandate(id = 7, agentId = 3, cityId = 1, status = MandateStatus.APPROVED, customerId = 42)).whenever(mandateClient).get(7)
+
+        page(request("/match/12"))
+
+        verify(customerClient, never()).get(any())
+    }
+
+    @Test
     fun `accepted - unavailable listing still shows the open visit`() {
         MatchFixtures.signIn()
         doReturn(MATCH.copy(status = MatchStatus.ACCEPTED)).whenever(matchClient).get(12)

@@ -199,6 +199,17 @@ class VisitControllerTest {
     }
 
     @Test
+    fun `listing gone skips the location search`() {
+        MatchFixtures.signIn()
+        doReturn(Visit(id = 9, listingId = 123, agentId = 3, customerId = 42, status = VisitStatus.CONFIRMED, type = VisitType.ON_SITE)).whenever(visitClient).get(9)
+        doThrow(failure(HttpStatus.NOT_FOUND)).whenever(listingClient).get(123)
+
+        val page = page(request("/visits/9"))
+        assertNull(page.listing)
+        verify(locationClient, never()).search(any())
+    }
+
+    @Test
     fun `listing forbidden is tolerated`() {
         MatchFixtures.signIn()
         doReturn(Visit(id = 9, listingId = 123, agentId = 3, customerId = 42, status = VisitStatus.REQUESTED, type = VisitType.ON_SITE)).whenever(visitClient).get(9)

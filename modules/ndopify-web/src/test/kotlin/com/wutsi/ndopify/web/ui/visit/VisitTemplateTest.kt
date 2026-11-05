@@ -31,6 +31,7 @@ import java.time.LocalDate
 import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -162,6 +163,25 @@ class VisitTemplateTest {
         listOf(VisitStatus.CHECKED_IN, VisitStatus.COMPLETED, VisitStatus.CANCELLED, VisitStatus.EXPIRED, VisitStatus.NO_SHOW).forEach { status ->
             assertNull(render(of(visit(status, VisitType.ON_SITE))).selectFirst("#cancel"), status.name)
         }
+    }
+
+    @Test
+    fun `confirmed video without listing shows no empty landmark`() {
+        val page = VisitPages.of(
+            visit(VisitStatus.CONFIRMED, VisitType.VIDEO),
+            null, images, locations, agent, Customer(whatsappNumber = "+237699887766"),
+            tenant, FORMATTER, LocalDate.of(2026, 10, 31), null,
+        )
+        val doc = render(page)
+        assertNull(doc.selectFirst(".visit-address__landmark"))
+        assertTrue(doc.selectFirst("[data-visit-type=VIDEO]")!!.text().contains("+237699887766"))
+    }
+
+    @Test
+    fun `cancelled without a party is neutral`() {
+        val doc = render(of(visit(VisitStatus.CANCELLED, VisitType.ON_SITE).copy(cancelledBy = null)))
+        assertTrue(doc.text().contains("La visite a été annulée."))
+        assertFalse(doc.text().contains("a annulé la visite"))
     }
 
     @Test

@@ -108,7 +108,7 @@ class MatchController(
             val agent = mandate.agentId?.let { agent(it) } ?: Agent()
             val listing = publishedListing(match.listingId)
             val openVisit = if (match.status == MatchStatus.ACCEPTED) visitClient.openForMatch(id) else null
-            val customer = if (openVisit == null && mandate.status == MandateStatus.APPROVED && listing != null) {
+            val customer = if (openVisit == null && match.status == MatchStatus.ACCEPTED && mandate.status == MandateStatus.APPROVED && listing != null) {
                 try {
                     customerClient.get(mandate.customerId)
                 } catch (ex: HttpClientErrorException.NotFound) {

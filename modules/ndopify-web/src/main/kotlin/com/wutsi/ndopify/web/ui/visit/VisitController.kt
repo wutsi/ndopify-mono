@@ -93,7 +93,8 @@ class VisitController(
             val visit = visitClient.get(id)
             val listing = publishedListing(visit.listingId)
             val images = listing?.let { listingImages(it.id) } ?: emptyList<ListingImage>()
-            val locations = locationClient.search(listOfNotNull(listing?.cityId, listing?.neighborhoodId).distinct())
+            val locationIds = listOfNotNull(listing?.cityId, listing?.neighborhoodId).distinct()
+            val locations = if (locationIds.isEmpty()) emptyList() else locationClient.search(locationIds)
             val agent = visit.agentId.takeIf { it > 0 }?.let { agent(it) }
             val customer = customer(visit.customerId)
             val tenant = model.getAttribute("tenant") as Tenant
