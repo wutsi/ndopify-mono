@@ -10,9 +10,41 @@ import org.springframework.data.repository.CrudRepository
 import org.springframework.stereotype.Repository
 import java.util.Date
 
+/** Number of visits of a listing that count, by kind. */
+interface ListingVisitCount {
+    val listingId: Long
+    val total: Long
+}
+
 @Repository
 interface VisitRepository : CrudRepository<VisitEntity, Long>, JpaSpecificationExecutor<VisitEntity> {
     fun existsByMatchIdAndStatusIn(matchId: Long, statuses: Collection<VisitStatus>): Boolean
+
+    @Query(
+        "SELECT v.listingId AS listingId, COUNT(v) AS total FROM VisitEntity v " +
+            "WHERE v.listingId IN :listingIds AND (" +
+            "(v.status = :requested AND v.createdAt > :expireBefore) OR " +
+            "(v.status = :confirmed AND v.scheduledAt >= :checkInBefore) OR " +
+            "v.status = :checkedIn) " +
+            "GROUP BY v.listingId"
+    )
+    fun countUpcomingByListingIds(
+        listingIds: Collection<Long>,
+        requested: VisitStatus,
+        confirmed: VisitStatus,
+        checkedIn: VisitStatus,
+        expireBefore: Date,
+        checkInBefore: Date,
+    ): List<ListingVisitCount>
+
+    @Query(
+        "SELECT v.listingId AS listingId, COUNT(v) AS total FROM VisitEntity v " +
+            "WHERE v.listingId IN :listingIds AND v.status = :status GROUP BY v.listingId"
+    )
+    fun countByListingIdsAndStatus(
+        listingIds: Collection<Long>,
+        status: VisitStatus,
+    ): List<ListingVisitCount>
 
     // The confirmed visits that start before [before]: the agent's no-show (4h past the time)
     fun findByStatusAndScheduledAtBefore(status: VisitStatus, before: Date): List<VisitEntity>
