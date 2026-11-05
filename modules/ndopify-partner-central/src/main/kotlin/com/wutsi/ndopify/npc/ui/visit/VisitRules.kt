@@ -23,6 +23,9 @@ object VisitRules {
     /** The visits shown on the Espace agent: every one still to confirm, to come or under way. */
     val OPEN: List<VisitStatus> = listOf(VisitStatus.REQUESTED, VisitStatus.CONFIRMED, VisitStatus.CHECKED_IN)
 
+    /** What the mandate panel's total counts: the open visits and the completed ones; cancelled, expired and no-shows are left out. */
+    val COUNTED: List<VisitStatus> = OPEN + VisitStatus.COMPLETED
+
     /** What the visit page shows: the status, except that a CONFIRMED visit in its window is [WINDOW]. */
     enum class Panel { REQUESTED, CONFIRMED, WINDOW, CHECKED_IN, COMPLETED, CANCELLED, EXPIRED, NO_SHOW, UNKNOWN }
 

@@ -20,6 +20,7 @@ import com.wutsi.ndopify.npc.ui.mandate.MandateRules
 import com.wutsi.ndopify.npc.ui.match.MatchRules
 import com.wutsi.ndopify.npc.ui.visit.VisitCards
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
+import com.wutsi.ndopify.npc.ui.visit.VisitStats
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
@@ -246,9 +247,9 @@ object ListingViews {
      * (`NdMandateClient.searchByIds`), and [customers] theirs: a match of any other mandate is another agent's, whose
      * client is never named nor linked. A client whose name can't be had is its mandate's number.
      *
-     * A client with an open visit is a card in [ListingClientsView.visits] and leaves *Propositions* (the summary
-     * counts it "1 visite"); a stale visit isn't shown, and a visit of another agent's mandate is ignored. [visits]
-     * null is the visits' "unavailable": every proposal then shows.
+     * A client with an open visit is a card in [ListingClientsView.visits] and leaves *Propositions*; a stale visit
+     * isn't shown, and a visit of another agent's mandate is ignored. [visits] null is the visits' "unavailable": every
+     * proposal then shows, and [ListingClientsView.stats] is null.
      */
     fun clients(
         matches: List<Match>,
@@ -303,19 +304,13 @@ object ListingViews {
         return ListingClientsView(
             visits = cards,
             proposals = ProposalsView(summary = proposalsSummary(matches, visiting), rows = rows),
+            stats = VisitStats.of(visits, now),
         )
     }
 
-    /** "1 visite · 1 intéressé · …", the matches replaced by an open visit left out of the proposals' counts. */
-    private fun proposalsSummary(matches: List<Match>, visiting: Set<Long>): String? {
-        val proposals = MatchRules.proposals(matches.filterNot { it.id in visiting })
-        val visits = when (visiting.size) {
-            0 -> null
-            1 -> "1 visite"
-            else -> "${visiting.size} visites"
-        }
-        return listOfNotNull(visits, proposals).joinToString(" · ").ifEmpty { null }
-    }
+    /** The remaining proposals' counts; a match with an open visit is left out (it is in *Visites*). */
+    private fun proposalsSummary(matches: List<Match>, visiting: Set<Long>): String? =
+        MatchRules.proposals(matches.filterNot { it.id in visiting })
 
     /**
      * The listing's line on the page of [mandate] (the prototype's `renderListing`); null for a mandate that has none

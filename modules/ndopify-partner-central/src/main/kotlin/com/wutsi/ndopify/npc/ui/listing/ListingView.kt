@@ -4,6 +4,7 @@ import com.wutsi.ndopify.listing.dto.ListingSection
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.npc.ui.mandate.MandateRules
 import com.wutsi.ndopify.npc.ui.visit.VisitCardsView
+import com.wutsi.ndopify.npc.ui.visit.VisitStats
 
 /**
  * A listing as its checklist page shows it (`templates/listing.html`): dates already worded in the tenant's time
@@ -49,16 +50,18 @@ data class ListingClientsView(
     /** The listing's open visits, the same cards as the Espace agent's; [VisitCardsView.unavailable] when they can't be read. */
     val visits: VisitCardsView,
     val proposals: ProposalsView,
+    /** The listing's total visits (open and completed), null when they can't be read. */
+    val stats: VisitStats?,
 )
 
 /** A published listing's *Propositions* (`ListingViews.clients`), on its mandate's page. */
 data class ProposalsView(
     /**
-     * "2 intéressés · 1 refusé · 1 en attente" (`MatchRules.proposals`), the open visits first ("1 visite", and the
-     * matches they replaced left out); null when it wasn't sent to anyone.
+     * "2 intéressés · 1 refusé · 1 en attente" (`MatchRules.proposals`); null when no client is left (none refused,
+     * or all have an open visit, shown in *Visites*).
      */
     val summary: String?,
-    /** The clients who didn't refuse it, interested first, the latest first within each. */
+    /** The clients who didn't refuse it, interested first, the latest first within each; those with an open visit are in *Visites*. */
     val rows: List<ProposalRow>,
 )
 

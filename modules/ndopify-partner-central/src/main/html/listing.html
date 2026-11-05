@@ -27,8 +27,9 @@
     The photos count once there are 5. "Envoyer pour vérification" stays inactive until every section but the
     remarks is done, and says what's left. Sent, the listing is read-only while it's checked; then it's published
     (its date in the tag, a link to its public page under the title), or sent back "À corriger" with
-    the reason and the sections to fix. Published, it also has its Propositions: the clients it was sent to and what
-    they answered.
+    the reason and the sections to fix. Published, it also shows its activity (page views, interested clients,
+    visits of the property) and, on its mandate's page, its Propositions: the clients it was sent to and what they
+    answered.
     PROTOTYPE: ?id= of a listing created from mandate.html?id=203 (or 102 once accepted and signed); any other shows
     the locked view. The listing is kept in the session (KEYS.listings). "Simuler la publication" / "Simuler un refus"
     stand for the check, which ndopify-server doesn't have yet.
@@ -77,6 +78,11 @@
                         <span data-listing-created></span></p>
                     <p hidden data-listing-public><a href="#" target="_blank" rel="noopener"
                                                      data-listing-public-url>Voir l'annonce en ligne</a></p>
+                    <!-- Published only: its activity — page views, interested clients, visits. -->
+                    <p class="listing-stats" hidden data-listing-stats>
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                        <span><span class="visually-hidden">Activité de l'annonce : </span><span data-listing-stats-text></span></span>
+                    </p>
                 </div>
 
                 <!-- Outcome of the last action (section saved, sent, published, sent back). -->

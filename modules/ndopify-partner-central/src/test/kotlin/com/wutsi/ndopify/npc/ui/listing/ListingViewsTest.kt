@@ -647,6 +647,7 @@ class ListingViewsTest {
                 mandateId = mandateId,
                 listingId = 501,
                 customerId = 14,
+                status = status,
                 createdAt = createdAt ?: base.createdAt,
             ),
         )
@@ -692,7 +693,8 @@ class ListingViewsTest {
         assertEquals("Confirmez la date avec le client.", card.nextStep)
         assertNull(card.tag)
 
-        assertEquals("1 visite · 1 intéressé · 1 refusé · 1 en attente", view.proposals.summary)
+        assertEquals("1 visite à venir", view.stats?.label)
+        assertEquals("1 intéressé · 1 refusé · 1 en attente", view.proposals.summary)
         assertEquals(listOf("Client d'un autre agent", "Carine Ndongo"), view.proposals.rows.map { it.client })
         assertEquals(listOf(null, "/mandates/207#matches-title"), view.proposals.rows.map { it.url })
     }
@@ -710,11 +712,23 @@ class ListingViewsTest {
     }
 
     @Test
+    fun `clients - a completed visit is counted and its proposal is back`() {
+        val view = clients(listOf(visit(status = VisitStatus.COMPLETED)))
+
+        assertTrue(view.visits.requested.isEmpty())
+        assertTrue(view.visits.upcoming.isEmpty())
+        assertEquals("1 visite terminée", view.stats?.label)
+        assertEquals("2 intéressés · 1 refusé · 1 en attente", view.proposals.summary)
+        assertEquals("/mandates/204#matches-title", view.proposals.rows[1].url)
+    }
+
+    @Test
     fun `clients - several visits are counted`() {
         val view = clients(listOf(visit(), visit(id = 7002, matchId = 9001, mandateId = 207)))
 
         assertEquals(2, view.visits.requested.size)
-        assertEquals("2 visites · 1 intéressé · 1 refusé", view.proposals.summary)
+        assertEquals("2 visites à venir", view.stats?.label)
+        assertEquals("1 intéressé · 1 refusé", view.proposals.summary)
         assertEquals(listOf("Client d'un autre agent"), view.proposals.rows.map { it.client })
     }
 

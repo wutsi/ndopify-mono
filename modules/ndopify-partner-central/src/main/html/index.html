@@ -493,10 +493,10 @@
                 those already sent to the client (data-proposals: sent, visit asked, liked, refused, no answer yet),
                 whose answers also set the card's next step; that line is kept short enough for one line on a phone.
                 A landlord's signed mandate (203) has its listing's line, "Annonce" and its status (no number, for the
-                same reason), and once the listing is published, how many clients it interested (data-listing-interest:
-                the matches of the listing whose client answered "intéressé", with or without a visit; see
-                LISTING_INTEREST). ?listing=published shows 203 with a published listing. ?mandates=empty shows the
-                empty state.
+                same reason), and once the listing is published, its activity (data-listing-stats): the page views of
+                its public page, the clients it interested (the matches whose client answered "intéressé", with or
+                without a visit; see LISTING_ACTIVITY), and the visits of the property. ?listing=published shows 203
+                with a published listing. ?mandates=empty shows the empty state.
             -->
             <section class="home-section" aria-labelledby="mandates-title">
                 <h2 id="mandates-title">Mes mandats</h2>
@@ -609,10 +609,10 @@
                                 <a href="mandate.html?id=203" data-listing-number>Annonce</a>
                                 <span class="status-tag status-tag--neutral" data-listing-status-tag>À créer</span>
                             </p>
-                            <!-- A published listing only: how many clients its matches interested. -->
-                            <p class="mandate-card__interest" hidden data-listing-interest>
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6.5 6.5 0 0 1 3.5 6"/></svg>
-                                <span data-listing-interest-text></span>
+                            <!-- A published listing only: its activity — page views, interested clients, visits. -->
+                            <p class="listing-stats" hidden data-listing-stats>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                                <span><span class="visually-hidden">Activité de l'annonce : </span><span data-listing-stats-text></span></span>
                             </p>
                             <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-next-step>Créez l'annonce du bien, puis visitez-le pour la compléter.</span></p>
                         </article>
@@ -681,10 +681,10 @@
                                 <a data-listing-number></a>
                                 <span class="status-tag" data-listing-status-tag></span>
                             </p>
-                            <!-- A published listing only: how many clients its matches interested. -->
-                            <p class="mandate-card__interest" hidden data-listing-interest>
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6.5 6.5 0 0 1 3.5 6"/></svg>
-                                <span data-listing-interest-text></span>
+                            <!-- A published listing only: its activity — page views, interested clients, visits. -->
+                            <p class="listing-stats" hidden data-listing-stats>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                                <span><span class="visually-hidden">Activité de l'annonce : </span><span data-listing-stats-text></span></span>
                             </p>
                             <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-next-step></span></p>
                         </article>

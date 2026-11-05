@@ -350,15 +350,16 @@
     column-gap: var(--space-1);
 }
 
-/* A published listing: how many clients it interested */
-.mandate-card__interest {
+/* A published listing: its activity — page views, interested clients, visits (the card, mandate.html's Actif panel
+   and listing.html). The three don't fit one line on a phone: it wraps, the icon staying with the first line. */
+.listing-stats {
     display: flex;
-    align-items: center;
-    gap: var(--space-2);
+    align-items: flex-start;
+    gap: var(--space-1) var(--space-2);
     font-size: var(--step-hint);
 }
 
-.mandate-card__interest .icon {
+.listing-stats .icon {
     flex: none;
 }
 

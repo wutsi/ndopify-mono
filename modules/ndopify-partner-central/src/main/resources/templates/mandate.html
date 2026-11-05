@@ -41,9 +41,9 @@
   the id of the match whose dismiss confirmation is open without JS; "matchOutcomeText" / "matchOutcomeStyle" the
   outcome of MatchController's last action (flash attribute "match").
   "listingVisits" is a landlord's published listing's open visits (VisitCardsView: the requests to confirm, then the
-  visits to come), null for a search or before the listing is published; a client with one leaves "listingProposals"
-  (its summary counts it "1 visite"), so nothing is shown twice. "listingProposals" is that listing's Propositions
-  (ProposalsView), null likewise.
+  visits to come), null for a search or before the listing is published; a client with one leaves "listingProposals",
+  so nothing is shown twice. "listingProposals" is that listing's Propositions (ProposalsView), null likewise;
+  "visitStats" is the approved panel's total visits (VisitStats: upcoming and completed), null when unreadable.
 */-->
 <body data-page="mandate" th:attr="data-currency=${currency}">
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -204,6 +204,8 @@
                     <div class="mandate-panel" th:if="${m.status.name() == 'APPROVED'}" data-panel="APPROVED">
                         <p>Signé le <span th:text="${m.approvedAt}">20 octobre 2026</span><th:block th:if="${m.validUntil}"> · valable
                             jusqu'au <strong th:text="${m.validUntil}">28 mars 2027</strong></th:block>.</p>
+                        <p class="mandate__meta" th:if="${visitStats != null}" data-mandate-visit-stats
+                           th:text="${visitStats.label}">3 visites · 1 à venir · 2 terminées</p>
                         <!--
                             A landlord's mandate only (LISTING): its listing. "Créer l'annonce" (POST /mandates/{id}/listing)
                             opens it; once created, its number (a link to it) and status, then where it stands and a button to it,
@@ -374,7 +376,14 @@
                             </div>
                         </li>
                     </ul>
-                    <p class="assignments__empty" th:if="${p.summary == null}" data-proposals-empty>
+                    <p class="assignments__empty" th:if="${p.summary == null && listingVisits != null
+                            && (!#lists.isEmpty(listingVisits.requested) || !#lists.isEmpty(listingVisits.upcoming))}"
+                       data-proposals-in-visit>
+                        Les clients intéressés sont en visite&nbsp;: retrouvez-les dans <em>Visites</em> ci-dessus.
+                    </p>
+                    <p class="assignments__empty" th:if="${p.summary == null && (listingVisits == null
+                            || (#lists.isEmpty(listingVisits.requested) && #lists.isEmpty(listingVisits.upcoming)))}"
+                       data-proposals-empty>
                         Ce bien n'a encore été envoyé à aucun client. Quand il correspond à une de vos recherches
                         signées, il apparaît dans ses <em>Biens correspondants</em>, d'où vous l'envoyez au client.
                     </p>

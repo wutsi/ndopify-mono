@@ -151,6 +151,14 @@ class VisitRulesTest {
     }
 
     @Test
+    fun `counted statuses`() {
+        assertEquals(
+            listOf(VisitStatus.REQUESTED, VisitStatus.CONFIRMED, VisitStatus.CHECKED_IN, VisitStatus.COMPLETED),
+            VisitRules.COUNTED,
+        )
+    }
+
+    @Test
     fun `is open`() {
         assertTrue(VisitRules.isOpen(requested(), NOW))
         assertFalse(VisitRules.isOpen(requested().copy(createdAt = date("2026-10-15T10:00:00Z")), NOW))

@@ -1926,13 +1926,27 @@
         });
     }
 
-    // "2 personnes intéressées", or "Aucune personne intéressée pour l'instant".
-    function interestSummary(mandateId) {
-        var n = listingProposalsOf(mandateId).filter(function (m) {
+    // PROTOTYPE: a published listing's audience, by mandate id — the page views of its public page
+    // (GET /v1/listings/views?listing-ids=) and the visits of the property (GET /v1/visits?listing-id=). 203 is the
+    // prototype's published listing (?listing=published); any other starts empty, like a listing just published.
+    var LISTING_ACTIVITY = {
+        203: { views: 128, visits: 3 }
+    };
+
+    // A published listing's line: "128 vues · 3 personnes intéressées · 3 visites". The interested are its ACCEPTED
+    // matches (the clients it interested, with or without a visit); the visits are all those of the property.
+    function statsSummary(mandateId) {
+        var activity = LISTING_ACTIVITY[String(mandateId)] || { views: 0, visits: 0 };
+        var interested = listingProposalsOf(mandateId).filter(function (m) {
             return m.answer === "ACCEPTED";
         }).length;
-        if (!n) return "Aucune personne intéressée pour l'instant";
-        return n + (n > 1 ? " personnes intéressées" : " personne intéressée");
+        return [
+            activity.views ? activity.views.toLocaleString("fr-FR") + (activity.views > 1 ? " vues" : " vue")
+                : "Aucune vue",
+            interested ? plural(interested, "personne intéressée", "personnes intéressées")
+                : "Aucune personne intéressée",
+            activity.visits ? plural(activity.visits, "visite", "visites") : "Aucune visite"
+        ].join(" · ");
     }
 
     // PROTOTYPE: ?listing=published shows 203 with a published listing, without going through listing.html.
@@ -1980,10 +1994,10 @@
                 var listing = cardListingOf(id);
                 listingLine.hidden = !canList(id);
                 if (canList(id)) fillListingLine(listingLine, id, listing, false);
-                // Published: how many clients it interested
-                var interest = $("[data-listing-interest]", item);
-                interest.hidden = !canList(id) || !listing || listing.status !== "PUBLISHED";
-                $("[data-listing-interest-text]", interest).textContent = interestSummary(id);
+                // Published: its activity (views, interested clients, visits)
+                var stats = $("[data-listing-stats]", item);
+                stats.hidden = !canList(id) || !listing || listing.status !== "PUBLISHED";
+                $("[data-listing-stats-text]", stats).textContent = statsSummary(id);
             }
             $("[data-next-step]", item).textContent = nextStep(MANDATES[id], state, id);
             // The matches still to handle, linking straight to the mandate's list.
@@ -2233,10 +2247,10 @@
             var listing = cardListingOf(id);
             var line = $("[data-listing-line]", listingBox);
             fillListingLine(line, id, listing, true);
-            // Published: how many clients it interested, like the Espace agent's card
-            var interest = $("[data-listing-interest]", listingBox);
-            interest.hidden = !listing || listing.status !== "PUBLISHED";
-            $("[data-listing-interest-text]", interest).textContent = interestSummary(id);
+            // Published: its activity (views, interested clients, visits), like the Espace agent's card
+            var stats = $("[data-listing-stats]", listingBox);
+            stats.hidden = !listing || listing.status !== "PUBLISHED";
+            $("[data-listing-stats-text]", stats).textContent = statsSummary(id);
             renderListingProposals($("[data-listing-proposals]"), id, !!listing && listing.status === "PUBLISHED");
             listingCreate.hidden = !!listing;
             listingLink.hidden = !listing;
@@ -3191,6 +3205,10 @@
             if (listing.submittedAt) $("[data-submitted-at]").textContent = formatDate(listing.submittedAt);
             // PROTOTYPE: no public portal here, the link goes nowhere
             $("[data-listing-public]").hidden = listing.status !== "PUBLISHED";
+            // Published: its activity (views, interested clients, visits)
+            var stats = $("[data-listing-stats]");
+            stats.hidden = listing.status !== "PUBLISHED";
+            $("[data-listing-stats-text]", stats).textContent = statsSummary(listing.mandateId);
 
             var done = LISTING_SECTIONS.filter(function (s) {
                 return !s.optional && sectionDone(listing, s.key);

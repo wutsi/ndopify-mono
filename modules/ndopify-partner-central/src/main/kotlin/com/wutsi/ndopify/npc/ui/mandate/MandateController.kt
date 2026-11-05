@@ -38,6 +38,7 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import com.wutsi.ndopify.npc.ui.visit.VisitCards
 import com.wutsi.ndopify.npc.ui.visit.VisitCardsView
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
+import com.wutsi.ndopify.npc.ui.visit.VisitStats
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
@@ -348,10 +349,14 @@ class MandateController(
         model: Model,
         dismiss: String? = null,
     ): String {
+        val now = clock.millis()
         val matched = MatchRules.matched(mandate)
         val matches = if (matched) matches(mandate) else null
-        val visits = if (matched) openVisits(agent, mandate) else null
-        val visitListings = visits?.let { loadVisitListings(mandate, it) }
+        val visits = if (matched) mandateVisits(agent, mandate) else null
+        val visitListings = visits
+            ?.filter { VisitRules.isOpen(VisitRules.asVisit(it), now) }
+            ?.let { loadVisitListings(mandate, it) }
+        val visitStats = if (matched) VisitStats.of(visits, now) else null
         val listings = matches?.let { listings(mandate, it) }
         val locations = locations(mandate, listings?.values.orEmpty() + visitListings?.values.orEmpty())
         val view = view(mandate, locations)
@@ -363,7 +368,7 @@ class MandateController(
                 visitListings,
                 emptyMap(),
                 locations,
-                clock.millis(),
+                now,
                 tenantContext.getTenant(),
                 formatter,
             )
@@ -396,6 +401,7 @@ class MandateController(
         val clients = listing?.let { listingClients(it) }
         model.addAttribute("listingVisits", clients?.visits)
         model.addAttribute("listingProposals", clients?.proposals)
+        model.addAttribute("visitStats", visitStats ?: clients?.stats)
         (model.getAttribute(OUTCOME) as? String)?.let { outcome -> outcome(outcome, view, model) }
         (model.getAttribute(MatchController.OUTCOME) as? String)?.let { outcome ->
             matchOutcome(outcome, model.getAttribute(MatchController.LISTING) as? Long, view, model)
@@ -442,10 +448,13 @@ class MandateController(
         }
     }
 
-    /** The signed search's open visits, null when they can't be read: the client may have one per match at most. */
-    private fun openVisits(agent: Agent, mandate: Mandate): List<VisitSummary>? =
+    /**
+     * The signed search's visits the page counts: open and completed, null when they can't be read. The client may
+     * have one open visit per match at most.
+     */
+    private fun mandateVisits(agent: Agent, mandate: Mandate): List<VisitSummary>? =
         lookup("visits of mandate ${mandate.id}") {
-            visitClient.search(agent.id, VisitRules.OPEN, mandateId = mandate.id)
+            visitClient.search(agent.id, VisitRules.COUNTED, mandateId = mandate.id)
         }
 
     /** The visits' listings by id, in one search; null when they can't be read (the cards keep their number only). */
@@ -642,7 +651,7 @@ class MandateController(
             lookup("visits of the proposals of listing ${listing.id}") {
                 visitClient.searchByMatches(
                     agentId,
-                    VisitRules.OPEN,
+                    VisitRules.COUNTED,
                     matches.map { it.id },
                     limit = matches.size,
                 )
