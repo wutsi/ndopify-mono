@@ -57,10 +57,15 @@ object VisitPages {
     ): VisitPage {
         val (statusLabel, statusTone) = STATUS[visit.status] ?: ("Visite" to "neutral")
         val typeLabel = TYPES[visit.type] ?: "Visite"
-        // The code and the exact address are only sent (and shown) from CONFIRMED, when the visit is about to happen.
-        val confirmed = visit.status == VisitStatus.CONFIRMED
-        val code = if (confirmed) visit.code?.ifBlank { null } else null
-        val address = if (confirmed && visit.type == VisitType.ON_SITE) visit.address?.ifBlank { null } else null
+        // The code is sent to the customer from CONFIRMED and kept after; the address is only for a confirmed
+        // ON_SITE visit, once scheduled, and never for a VIDEO one.
+        val fromConfirmed = visit.status != VisitStatus.REQUESTED && visit.status != VisitStatus.UNKNOWN
+        val code = if (fromConfirmed) visit.code?.ifBlank { null } else null
+        val address = if (fromConfirmed && visit.type == VisitType.ON_SITE && visit.scheduledAt != null) {
+            visit.address?.ifBlank { null }
+        } else {
+            null
+        }
         val mapUrl = if (address != null && visit.latitude != null && visit.longitude != null) {
             "https://www.google.com/maps/dir/?api=1&destination=${visit.latitude},${visit.longitude}"
         } else {

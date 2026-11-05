@@ -18,6 +18,7 @@ import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -99,6 +100,14 @@ class VisitPagesTest {
         val page = of(visit(VisitStatus.CHECKED_IN, VisitType.ON_SITE))
         assertFalse(page.canCancel)
         assertEquals("En cours", page.statusLabel)
+    }
+
+    @Test
+    fun `checked in keeps the code and address`() {
+        val page = of(visit(VisitStatus.CHECKED_IN, VisitType.ON_SITE))
+
+        assertEquals("4827", page.code)
+        assertNotNull(page.address)
     }
 
     @Test
