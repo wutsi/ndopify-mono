@@ -5,6 +5,7 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.customer.dto.CustomerSummary
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
@@ -15,11 +16,13 @@ import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
+import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
+import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.assignment.AssignmentController
 import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.ASSIGNMENT
@@ -30,10 +33,14 @@ import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest
 import com.wutsi.ndopify.npc.ui.mandate.MandateSummariesTest
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
+import com.wutsi.ndopify.npc.ui.visit.VisitFixtures
+import com.wutsi.ndopify.npc.ui.visit.VisitRules
 import com.wutsi.ndopify.party.dto.KycStatus
+import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import org.jsoup.nodes.Element
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -67,6 +74,8 @@ class HomeTemplateTest {
     private val contractClient = mock<NdContractClient>()
     private val listingClient = mock<NdListingClient>()
     private val matchClient = mock<NdMatchClient>()
+    private val visitClient = mock<NdVisitClient>()
+    private val customerClient = mock<NdCustomerClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
@@ -89,6 +98,8 @@ class HomeTemplateTest {
             ),
         ).whenever(mandateClient).active(AGENT.id)
         doReturn(listOf(MandateCardsTest.CONTRACT_2027.copy(id = "c-202"))).whenever(contractClient).search(any())
+        doReturn(emptyList<VisitSummary>()).whenever(visitClient).search(AGENT.id, VisitRules.OPEN)
+        doReturn(emptyList<CustomerSummary>()).whenever(customerClient).search(any())
 
         val engine = SpringTemplateEngine().apply {
             setTemplateResolver(
@@ -113,6 +124,8 @@ class HomeTemplateTest {
                     contractClient,
                     listingClient,
                     matchClient,
+                    visitClient,
+                    customerClient,
                     locationClient,
                     tenantContext,
                     clock
@@ -369,5 +382,92 @@ class HomeTemplateTest {
         doThrow(ResourceAccessException("no case")).whenever(kycClient).current(any())
 
         assertNull(render(get("/")).selectFirst("#mandates-title"))
+    }
+
+    // Visites
+
+    @Test
+    fun visits() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        doReturn(
+            listOf(
+                VisitFixtures.summary(VisitFixtures.requested()),
+                VisitFixtures.summary(VisitFixtures.confirmed()),
+            ),
+        ).whenever(visitClient).search(AGENT.id, VisitRules.OPEN)
+        doReturn(listOf(VisitFixtures.listingSummary())).whenever(listingClient).searchByIds(listOf(3012L))
+        doReturn(listOf(VisitFixtures.customerSummary())).whenever(customerClient).search(listOf(300L))
+
+        val page = render(get("/"))
+
+        assertEquals("Visites", page.selectFirst("#visits-title")?.text())
+        val requested = page.selectFirst("[data-visit-group=requested]")!!
+        assertEquals(1, requested.select("[data-visit-card]").size)
+        val card = requested.selectFirst("[data-visit-card]")!!
+        assertEquals("/visits/7001", card.selectFirst("[data-visit-link]")?.attr("href"))
+        assertEquals("Sandrine Eboa", card.selectFirst("[data-visit-link]")?.text())
+        assertEquals("Demandée pour le sam. 7 novembre 2026 à 10:30", card.selectFirst("[data-visit-when]")?.text())
+        assertEquals("Sur place · Appartement 3 chambres · Bonapriso", card.selectFirst("[data-visit-listing]")?.text())
+        assertEquals("42 h", card.selectFirst("[data-visit-left]")?.text())
+        assertEquals("Confirmez la date avec le client.", card.selectFirst("[data-visit-next]")?.text())
+
+        val upcoming = page.selectFirst("[data-visit-group=upcoming]")!!
+        assertEquals(1, upcoming.select("[data-visit-card]").size)
+        assertNull(upcoming.selectFirst("[data-visit-timer]"))
+    }
+
+    @Test
+    fun `no visits - empty state`() {
+        val page = render(get("/"))
+
+        val empty = page.selectFirst("[data-visits-empty]")!!
+        assertEquals(
+            "Aucune visite prévue. Quand un client demande à visiter un bien que vous lui avez envoyé, " +
+                "sa demande apparaît ici et vous êtes prévenu par e-mail.",
+            empty.text(),
+        )
+        assertNull(page.selectFirst("[data-visits-unavailable]"))
+    }
+
+    @Test
+    fun `visits unavailable`() {
+        doThrow(ResourceAccessException("timeout")).whenever(visitClient).search(any(), any(), any())
+
+        val page = render(get("/"))
+
+        assertNotNull(page.selectFirst("[data-visits-unavailable]"))
+        assertNull(page.selectFirst("[data-visits-empty]"))
+    }
+
+    @Test
+    fun `not verified - no visit section`() {
+        doReturn(AGENT.copy(party = AGENT.party.copy(kycStatus = KycStatus.PENDING_VERIFICATION))).whenever(currentAgent)
+            .get()
+        doThrow(ResourceAccessException("no case")).whenever(kycClient).current(any())
+
+        assertNull(render(get("/")).selectFirst("#visits-title"))
+    }
+
+    @Test
+    fun upcoming() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+
+        fun card(visit: com.wutsi.ndopify.visit.dto.Visit): Element {
+            doReturn(listOf(VisitFixtures.summary(visit))).whenever(visitClient).search(AGENT.id, VisitRules.OPEN)
+            return render(get("/")).selectFirst("[data-visit-group=upcoming] [data-visit-card]")!!
+        }
+
+        val confirmed = card(VisitFixtures.confirmed())
+        assertEquals("Confirmée", confirmed.selectFirst("[data-visit-tag]")?.text())
+        assertEquals("sam. 7 novembre 2026 à 10:30", confirmed.selectFirst("[data-visit-when]")?.text())
+        assertNull(confirmed.selectFirst("[data-visit-timer]"))
+
+        val window = card(VisitFixtures.window())
+        assertEquals("À démarrer", window.selectFirst("[data-visit-tag]")?.text())
+        assertEquals("Aujourd'hui · 10:30", window.selectFirst("[data-visit-when]")?.text())
+
+        val checkedIn = card(VisitFixtures.checkedIn())
+        assertEquals("En cours", checkedIn.selectFirst("[data-visit-tag]")?.text())
+        assertEquals("En cours depuis 10:05", checkedIn.selectFirst("[data-visit-when]")?.text())
     }
 }
