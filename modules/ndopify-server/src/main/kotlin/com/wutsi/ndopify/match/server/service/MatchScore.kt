@@ -12,14 +12,17 @@ data class MatchScore(
     val amenities: Double,
     val availability: Double,
     val furniture: Double,
+    val type: Double = 1.0,
     val distanceKm: Double? = null,
     val missingAmenities: List<String> = emptyList(),
 ) {
     val total: Double
-        get() = Matcher.WEIGHT_NEIGHBORHOOD * neighborhood +
-            Matcher.WEIGHT_PRICE * price +
-            Matcher.WEIGHT_ROOMS * rooms +
-            Matcher.WEIGHT_AMENITIES * amenities +
-            Matcher.WEIGHT_AVAILABILITY * availability +
-            Matcher.WEIGHT_FURNITURE * furniture
+        get() = (
+            Matcher.WEIGHT_NEIGHBORHOOD * neighborhood +
+                Matcher.WEIGHT_PRICE * price +
+                Matcher.WEIGHT_ROOMS * rooms +
+                Matcher.WEIGHT_AMENITIES * amenities +
+                Matcher.WEIGHT_AVAILABILITY * availability +
+                Matcher.WEIGHT_FURNITURE * furniture
+            ) * type
 }

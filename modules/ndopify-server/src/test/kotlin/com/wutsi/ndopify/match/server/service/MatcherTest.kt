@@ -88,6 +88,15 @@ class MatcherTest {
         availableFrom = LocalDate.of(2027, 2, 15),
     )
 
+    private val commercialSearch = search.copy(
+        propertyCategory = PropertyCategory.COMMERCIAL,
+        propertyType = PropertyType.OFFICE,
+    )
+    private val commercialListing = listingA.copy(
+        propertyCategory = PropertyCategory.COMMERCIAL,
+        propertyType = PropertyType.OFFICE,
+    )
+
     private fun score(search: MandateEntity, listing: ListingEntity): MatchScore? =
         matcher.score(search, listing, distances, TODAY)
 
@@ -105,6 +114,85 @@ class MatcherTest {
     @Test
     fun `listing A`() {
         assertScore(listOf(1.0, 1.0, 1.0, 0.67, 1.0, 1.0), 0.95, score(search, listingA))
+        assertEquals(1.0, score(search, listingA)?.type)
+    }
+
+    @Test
+    fun `commercial sibling - retail`() {
+        val result = score(commercialSearch, commercialListing.copy(propertyType = PropertyType.RETAIL))
+
+        assertNotNull(result)
+        assertEquals(0.9, result.type, DELTA)
+        assertEquals(0.855, result.total, DELTA) // 0.95 * 0.9
+    }
+
+    @Test
+    fun `commercial sibling - building`() {
+        val result = score(commercialSearch, commercialListing.copy(propertyType = PropertyType.BUILDING))
+
+        assertNotNull(result)
+        assertEquals(0.85, result.type, DELTA)
+        assertEquals(0.8075, result.total, DELTA)
+    }
+
+    @Test
+    fun `commercial sibling - industrial`() {
+        val result = score(commercialSearch, commercialListing.copy(propertyType = PropertyType.INDUSTRIAL))
+
+        assertNotNull(result)
+        assertEquals(0.8, result.type, DELTA)
+        assertEquals(0.76, result.total, DELTA)
+    }
+
+    @Test
+    fun `building matches a building of the other category`() {
+        val result = score(
+            search.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = PropertyType.BUILDING),
+            listingA.copy(propertyCategory = PropertyCategory.RESIDENTIAL, propertyType = PropertyType.BUILDING),
+        )
+
+        assertNotNull(result)
+        assertEquals(1.0, result.type, DELTA)
+        assertEquals(0.95, result.total, DELTA)
+    }
+
+    @Test
+    fun `office matches a building stored residential`() {
+        val result = score(
+            commercialSearch,
+            listingA.copy(propertyCategory = PropertyCategory.RESIDENTIAL, propertyType = PropertyType.BUILDING),
+        )
+
+        assertNotNull(result)
+        assertEquals(0.85, result.type, DELTA)
+        assertEquals(0.8075, result.total, DELTA)
+    }
+
+    @Test
+    fun `ruled out - land`() {
+        assertNull(score(commercialSearch, commercialListing.copy(propertyType = PropertyType.LAND)))
+        assertNull(score(commercialSearch.copy(propertyType = PropertyType.LAND), commercialListing))
+    }
+
+    @Test
+    fun `ruled out - commercial against residential`() {
+        assertNull(score(commercialSearch, commercialListing.copy(propertyType = PropertyType.APARTMENT)))
+    }
+
+    @Test
+    fun `no property type searched - unknown`() {
+        val result = score(
+            search.copy(propertyType = PropertyType.UNKNOWN),
+            listingA.copy(propertyType = PropertyType.HOUSE),
+        )
+
+        assertNotNull(result)
+        assertEquals(1.0, result.type, DELTA)
+    }
+
+    @Test
+    fun `ruled out - listing without property type`() {
+        assertNull(score(search, listingA.copy(propertyType = null)))
     }
 
     @Test
