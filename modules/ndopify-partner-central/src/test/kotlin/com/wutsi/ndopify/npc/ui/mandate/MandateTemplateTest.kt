@@ -809,11 +809,13 @@ class MandateTemplateTest {
         // The rent, in bold: what the agent looks at first
         assertEquals("match__rent", card.select("[data-match-facts] dd")[2].className())
         val fit = card.select("[data-match-fit] li")
-        assertEquals(6, fit.size)
+        assertEquals(7, fit.size)
         assertEquals("match__fit-item match__fit-item--full", fit[0].className())
         assertEquals("Oui : Dans le secteur recherché", fit[0].text())
-        assertEquals("match__fit-item", fit[3].className())
-        assertEquals("En partie : 2 équipements sur 3", fit[3].text())
+        assertEquals("match__fit-item match__fit-item--full", fit[3].className())
+        assertEquals("Oui : Appartement, comme demandé", fit[3].text())
+        assertEquals("match__fit-item", fit[4].className())
+        assertEquals("En partie : 2 équipements sur 3", fit[4].text())
         assertNull(card.selectFirst("[data-match-answer]"))
 
         val send = card.selectFirst("form[data-match-send-form]")!!

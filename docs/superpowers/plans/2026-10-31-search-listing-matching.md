@@ -55,8 +55,10 @@ only if `status = PUBLISHED` and `L.agent.id = S.agentId`.
 **1. Rule-outs** (`Matcher.score` returns `null`), in this order:
 
 1. `L.mandate.customerId == S.customerId` (the customer's own property)
-2. `listingType`, `propertyCategory` or `cityId` differ
-3. `S.propertyType != null` and differs from `L.propertyType`
+2. `listingType`, `propertyCategory` or `cityId` differ (the category check is skipped for a specified `BUILDING`
+   pair, which the two wizards store under different categories; with no preferred type, the category still decides)
+3. an incompatible `propertyType` — the type factor below is 0 (ex: `LAND` against non-land, a residential
+   cross-type, an unknown listed type)
 4. `currencyCode` or `pricePeriodicityType` differ (only when `S.price > 0`)
 5. `S.price > 0` and `L.price > S.price × (1 + priceTolerance)` — `priceTolerance` = 0.10
 
@@ -70,8 +72,9 @@ only if `status = PUBLISHED` and `L.agent.id = S.agentId`.
 | Amenities    | 0.15   | Requested = the amenity flags `true` on S (all the booleans but `trackInaccessibleByCar`). None requested → 1; else share of them `true` on L |
 | Availability | 0.10   | Deadline from `S.movingPeriod`: `WITHIN_1_MONTH` → today + 1 month, `WITHIN_3_MONTHS` → today + 3 months, other → none (1). `L.availableFrom` null or ≤ deadline → 1; ≤ deadline + 1 month → 0.5; else 0 |
 | Furniture    | 0.05   | 1 if `S.furnitureType` null/`UNKNOWN` or equals `L.furnitureType`; else 0                                                                |
+| Type         | ×      | 1 if `S.propertyType` null/`UNKNOWN` or equals `L.propertyType`; 0.9 `OFFICE` ↔ `RETAIL`; 0.85 `BUILDING` ↔ `OFFICE`/`RETAIL`; 0.8 `INDUSTRIAL` ↔ `OFFICE`/`RETAIL`/`BUILDING`; 0 otherwise (veto) |
 
-`score = Σ weight × partial`. Kept if `score >= minScore` (0.5). "Nearby" distances come from
+`score = (Σ weight × partial) × type`. Kept if `score >= minScore` (0.5). "Nearby" distances come from
 `LocationService.searchNearest` exactly as `MandateDispatcher.distances` does (S's neighborhoods, type
 NEIGHBORHOOD, `parentId = S.cityId`, `nearbyRadiusKm` 3, `nearbyMaxNeighborhoods` 20; S's own at 0 km). "Today" is
 the tenant's local date (`TenantEntity.timeZone`).
@@ -86,6 +89,16 @@ the tenant's local date (`TenantEntity.timeZone`).
 | B: 1002 at 1.5 km, 265 000, 4 rooms, all 3 amenities, available now        | 0.25| 0.4 | 0.7 | 1    | 1   | 1 | 0.58  |
 
 D (1001, 290 000: over budget + 10 %) and E (a HOUSE) are ruled out: `null`.
+
+A commercial search S2 (the same fields, `COMMERCIAL` / `OFFICE`) against A2 (A with `COMMERCIAL` / `OFFICE`) shows
+the type factor:
+
+| Listing          | Type  | Base | Score  |
+|------------------|-------|------|--------|
+| A2, `OFFICE`     | 1.0   | 0.95 | 0.95   |
+| A2, `RETAIL`     | 0.9   | 0.95 | 0.855  |
+| A2, `BUILDING`   | 0.85  | 0.95 | 0.8075 |
+| A2, `LAND`       | 0.0   | —    | `null` |
 
 ### Storing
 
@@ -188,10 +201,13 @@ concurrent dismiss / re-score is a 409 `MATCH_NOT_ACTIVE` (`ControllerErrorHandl
   - `listing A` → partials (1, 1, 1, 0.67, 1, 1), total 0.95
   - `listing C` → partials (1, 1, 0.3, 0.33, 0.5, 1), total 0.745
   - `listing B` → partials (0.25, 0.4, 0.7, 1, 1, 1), total 0.58
-  - `ruled out`, one test each: price 290 000; HOUSE; SALE; other city; other `propertyCategory`; other currency;
-    WEEKLY periodicity; `listing.mandate.customerId == search.customerId` → `null`
+  - `ruled out`, one test each: price 290 000; HOUSE (residential cross-type); LAND against non-land; commercial
+    against residential; unknown listing type; SALE; other city; other `propertyCategory`; other currency; WEEKLY
+    periodicity; `listing.mandate.customerId == search.customerId` → `null`
+  - commercial siblings: OFFICE/RETAIL → 0.9, OFFICE/BUILDING → 0.85, INDUSTRIAL/OFFICE → 0.8 (times the base)
+  - `BUILDING` against `BUILDING` with opposite `propertyCategory` → matches
   - `no budget` (`search.price = -1`, listing 1 000 000, other currency) → not null, price 1
-  - `no property type searched` → HOUSE not ruled out
+  - `no property type searched` (`null` or `UNKNOWN`) → HOUSE not ruled out
   - `no neighborhood searched` → neighborhood 1; `listing without neighborhood` → 0; `neighborhood not nearby` → 0
   - rooms: `"5+"` with 7 → 1; `"3"` with `null` (STUDIO) → 0; `null` searched → 1; `"3"` with 5 → 0
   - `no amenity requested` → 1; `trackInaccessibleByCar` alone requested → 1 (not an amenity)

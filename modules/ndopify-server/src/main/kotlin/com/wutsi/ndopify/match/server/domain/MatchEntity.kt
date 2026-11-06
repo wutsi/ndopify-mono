@@ -42,6 +42,7 @@ data class MatchEntity(
     val status: MatchStatus = MatchStatus.UNKNOWN,
 
     val score: Double = 0.0,
+    val typeScore: Double = 1.0,
     val neighborhoodScore: Double = 0.0,
     val priceScore: Double = 0.0,
     val roomsScore: Double = 0.0,

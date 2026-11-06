@@ -301,12 +301,15 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   for the algorithm. Depends on `mandate` and `listing`, never the reverse: `MatchEventListener` (async, after commit)
   runs `MatchService.matchMandate` on `MandateApprovedEvent` and `matchListing` on `ListingPublishedEvent`. Only an
   APPROVED SEARCH mandate with an agent is matched, against that agent's PUBLISHED listings; `Matcher` (pure, unit
-  tested case by case in `MatcherTest`) rules a pair out (the customer's own property, another type / category / city
-  / property type, currency or periodicity, over budget + `price-tolerance`) or scores it (neighbourhood, price, rooms,
-  amenities, availability, furniture); under `min-score` it isn't stored. Each score also keeps what explains it to
-  the agent (`V9_1`): `distanceKm` (to the nearest searched neighbourhood: 0 inside one, null when not nearby or none
-  searched) and `missingAmenities` (the amenities searched that the listing lacks, by DTO field name, ex:
-  `waterTank`). `ACTIVE` rows are created, re-scored or deleted; any other status (`SHORTLISTED`, `DISMISSED`,
+  tested case by case in `MatcherTest`) rules a pair out (the customer's own property, another listing type / city /
+  category — skipped only for a specified `BUILDING` pair — currency or periodicity, over budget +
+  `price-tolerance`, an incompatible property type) or scores it (neighbourhood, price, rooms, amenities, availability,
+  furniture) multiplied by a property-type factor: 1.0 exact or no preference, 0.9 `OFFICE`/`RETAIL`, 0.85
+  `BUILDING`/`OFFICE`/`RETAIL`, 0.8 `INDUSTRIAL` siblings, 0.0 veto (`LAND` against non-land, residential
+  cross-types, unknown listed type). Under `min-score` it isn't stored. Each score also keeps what explains it to
+  the agent (`V9_1`, `V10_3`): `distanceKm` (to the nearest searched neighbourhood: 0 inside one, null when not nearby
+  or none searched), `missingAmenities` (the amenities searched that the listing lacks, by DTO field name, ex:
+  `waterTank`) and `typeScore` (the property-type factor). `ACTIVE` rows are created, re-scored or deleted; any other status (`SHORTLISTED`, `DISMISSED`,
   `PROPOSED`, `ACCEPTED`, `REJECTED`, `EXPIRED`) is never touched. Each row keeps
   `listingPrice` (when last scored, or dismissed, proposed or rejected): the
   price a match was turned down at, to tell a price drop later (re-proposing after one isn't built yet). The run isn't one transaction (each save is its own, a conflict skips

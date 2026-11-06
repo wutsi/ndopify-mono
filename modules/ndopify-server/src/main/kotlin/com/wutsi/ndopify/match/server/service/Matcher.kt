@@ -2,6 +2,7 @@ package com.wutsi.ndopify.match.server.service
 
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.MovingPeriod
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import org.springframework.beans.factory.annotation.Value
@@ -10,14 +11,19 @@ import java.time.LocalDate
 
 /**
  * Rules out or scores one (search mandate, listing) pair. Pure: what the pair needs from elsewhere (distances, today)
- * is passed in. See `docs/superpowers/plans/2026-10-31-search-listing-matching.md` for the weights and the rules.
+ * is passed in. See `docs/superpowers/specs/2026-11-06-match-property-type-score-design.md` for the property type
+ * matrix, and `docs/superpowers/plans/2026-10-31-search-listing-matching.md` for the weights and the other rules.
  *
  * Ruled out (`null`), in this order:
  * 1. the listing is the search customer's own property;
- * 2. other `listingType`, `propertyCategory` or `cityId`;
- * 3. a `propertyType` searched, and another listed;
+ * 2. other `listingType`, `cityId`, or `propertyCategory` (a `BUILDING` pair is decided by its type instead);
+ * 3. an incompatible `propertyType` (`typeScore` is 0.0): `LAND` against non-land, a residential cross-type, an
+ *    unknown listed type;
  * 4. with a budget: other `currencyCode` or `pricePeriodicityType`;
  * 5. with a budget: a price over the budget + `priceTolerance`.
+ *
+ * The score is the weighted sum of its partials multiplied by `typeScore`: 1.0 for the searched type (or none),
+ * 0.8-0.9 for a commercial sibling.
  */
 @Service
 class Matcher(
@@ -31,6 +37,11 @@ class Matcher(
         const val WEIGHT_AMENITIES = 0.15
         const val WEIGHT_AVAILABILITY = 0.10
         const val WEIGHT_FURNITURE = 0.05
+
+        // Commercial types a BUILDING or an INDUSTRIAL one can stand in for
+        private val OFFICE_OR_RETAIL = setOf(PropertyType.OFFICE, PropertyType.RETAIL)
+        private val INDUSTRIAL_SIBLINGS =
+            setOf(PropertyType.OFFICE, PropertyType.RETAIL, PropertyType.BUILDING)
     }
 
     /**
@@ -43,7 +54,8 @@ class Matcher(
         distances: Map<Long, Double>,
         today: LocalDate,
     ): MatchScore? {
-        if (isRuledOut(search, listing)) {
+        val type = typeScore(search.propertyType, listing.propertyType)
+        if (isRuledOut(search, listing) || type == 0.0) {
             return null
         }
         return MatchScore(
@@ -53,6 +65,7 @@ class Matcher(
             amenities = amenities(search, listing),
             availability = availability(search, listing, today),
             furniture = furniture(search, listing),
+            type = type,
             distanceKm = distanceKm(search, listing, distances),
             missingAmenities = requested(search, listing).filterNot { (_, has) -> has }.map { (key, _) -> key },
         )
@@ -61,9 +74,8 @@ class Matcher(
     private fun isRuledOut(search: MandateEntity, listing: ListingEntity): Boolean =
         listing.mandate.customerId == search.customerId ||
             listing.listingType != search.listingType ||
-            listing.propertyCategory != search.propertyCategory ||
             listing.cityId != search.cityId ||
-            (search.propertyType != null && search.propertyType != listing.propertyType) ||
+            categoryMismatch(search, listing) ||
             (
                 search.price > 0 &&
                     (
@@ -72,6 +84,40 @@ class Matcher(
                             listing.price > search.price * (1.0 + priceTolerance)
                         )
                 )
+
+    // The type is the specific fact; the category is derived, and the two wizards map BUILDING differently. With no
+    // preferred type the category still decides, as before.
+    private fun categoryMismatch(search: MandateEntity, listing: ListingEntity): Boolean =
+        listing.propertyCategory != search.propertyCategory &&
+            (
+                search.propertyType == null || search.propertyType == PropertyType.UNKNOWN ||
+                    (search.propertyType != PropertyType.BUILDING && listing.propertyType != PropertyType.BUILDING)
+                )
+
+    // 1.0 for the searched type (or none), 0.8-0.9 for a commercial sibling, 0.0 when incompatible
+    private fun typeScore(search: PropertyType?, listing: PropertyType?): Double {
+        if (search == null || search == PropertyType.UNKNOWN) {
+            return 1.0
+        }
+        if (listing == null || listing == PropertyType.UNKNOWN) {
+            return 0.0
+        }
+        if (search == listing) {
+            return 1.0
+        }
+        if (search == PropertyType.LAND || listing == PropertyType.LAND) {
+            return 0.0
+        }
+        return when {
+            search == PropertyType.BUILDING && listing in OFFICE_OR_RETAIL -> 0.85
+            listing == PropertyType.BUILDING && search in OFFICE_OR_RETAIL -> 0.85
+            search == PropertyType.OFFICE && listing == PropertyType.RETAIL -> 0.9
+            search == PropertyType.RETAIL && listing == PropertyType.OFFICE -> 0.9
+            search == PropertyType.INDUSTRIAL && listing in INDUSTRIAL_SIBLINGS -> 0.8
+            listing == PropertyType.INDUSTRIAL && search in INDUSTRIAL_SIBLINGS -> 0.8
+            else -> 0.0
+        }
+    }
 
     // In a searched neighbourhood (or none searched): 1. Nearby: 0..0.5 by distance
     private fun neighborhood(search: MandateEntity, listing: ListingEntity, distances: Map<Long, Double>): Double {

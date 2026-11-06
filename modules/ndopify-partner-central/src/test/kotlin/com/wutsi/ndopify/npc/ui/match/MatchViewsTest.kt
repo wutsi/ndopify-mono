@@ -41,7 +41,7 @@ class MatchViewsTest {
             view.facts,
         )
         assertNull(view.answer)
-        assertEquals(6, view.fit.size)
+        assertEquals(7, view.fit.size)
         assertTrue(view.actionable)
         assertNull(section.proposals)
     }

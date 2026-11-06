@@ -22,6 +22,7 @@ class GetMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(1L, match.mandateId)
         assertEquals(MatchStatus.ACTIVE, match.status)
         assertEquals(0.9, match.score)
+        assertEquals(1.0, match.typeScore)
         assertEquals(1.0, match.neighborhoodScore)
         assertEquals(1.0, match.priceScore)
         assertEquals(0.7, match.roomsScore)
