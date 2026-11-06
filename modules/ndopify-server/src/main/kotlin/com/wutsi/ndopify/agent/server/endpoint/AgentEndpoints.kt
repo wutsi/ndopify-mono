@@ -8,6 +8,10 @@ import com.wutsi.ndopify.agent.dto.SearchAgentResponse
 import com.wutsi.ndopify.agent.dto.UpdateAgentRequest
 import com.wutsi.ndopify.agent.server.mapper.AgentMapper
 import com.wutsi.ndopify.agent.server.service.AgentService
+import com.wutsi.ndopify.error.dto.Error
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.server.exception.NotFoundException
+import com.wutsi.ndopify.security.server.service.CallerService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.validation.Valid
 import org.springframework.web.bind.annotation.GetMapping
@@ -23,12 +27,26 @@ import org.springframework.web.bind.annotation.RestController
 class AgentEndpoints(
     private val service: AgentService,
     private val mapper: AgentMapper,
+    private val callerService: CallerService,
 ) {
     @GetMapping("/{id}")
     fun get(
         @PathVariable id: Long,
     ): GetAgentResponse {
         val agent = service.findById(id)
+        return GetAgentResponse(agent = mapper.toAgent(agent))
+    }
+
+    /**
+     * The caller's own agent in the current tenant, resolved from the access token: 404 AGENT_NOT_FOUND when the
+     * caller has no party, or its party isn't an agent.
+     */
+    @GetMapping("/me")
+    fun me(): GetAgentResponse {
+        val partyId = callerService.findPartyIdOrNull(callerService.getPrincipal())
+            ?: throw NotFoundException(error = Error(code = ErrorCode.AGENT_NOT_FOUND))
+        val agent = service.findByPartyIdOrNull(partyId)
+            ?: throw NotFoundException(error = Error(code = ErrorCode.AGENT_NOT_FOUND))
         return GetAgentResponse(agent = mapper.toAgent(agent))
     }
 

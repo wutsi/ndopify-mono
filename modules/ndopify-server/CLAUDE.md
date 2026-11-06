@@ -101,7 +101,9 @@ Current domains:
 status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint or `KycJobs` verified the case. `GET /v1/kyc/cases` returns the newest case first.
   Verification runs offline (`KycJobs`), never from a UI: `POST .../verify` is an `@OpsEndpoint`, off in prod.
   Tenant-scoped (see Multi-Tenancy below).
-- **agent** — mobile-money agents (`AgentEntity`; `/v1/agents`: get, search, create, update). `WelcomeMailet` sends
+- **agent** — mobile-money agents (`AgentEntity`; `/v1/agents`: get, search, me, create, update). `GET /v1/agents/me`
+  resolves the caller's agent from its token (`CallerService`): 404 `AGENT_NOT_FOUND` when the caller has no party or
+  isn't an agent. `WelcomeMailet` sends
   a welcome e-mail on registration when the tenant has a `partnerCentralUrl`, asynchronously (see *Asynchronous
   e-mails* below). `joinedAt` is set on the agent's first VERIFIED case by `AgentKycEventListener`, a
   synchronous `@EventListener` on `KycCaseCompletedEvent` (same transaction as the KYC), so the party domain never
