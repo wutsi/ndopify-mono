@@ -2,12 +2,14 @@ package com.wutsi.ndopify.npc.ui.match
 
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ListingSummary
+import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.ui.mandate.Amenity
+import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.npc.ui.mandate.MandateRules
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import kotlin.math.roundToInt
@@ -93,6 +95,7 @@ object MatchRules {
             neighborhood(match),
             price(match, mandate, listing),
             rooms(match, mandate, listing),
+            type(match, mandate, listing),
             amenities(match, mandate),
             availability(match),
             furniture(match, mandate, listing),
@@ -159,6 +162,18 @@ object MatchRules {
             match.roomsScore >= 0.5 -> FitLine(false, "$text, une de plus que demandé")
             match.roomsScore > 0 -> FitLine(false, "$text, une de moins que demandé")
             else -> FitLine(false, "$text au lieu de $searched")
+        }
+    }
+
+    private fun type(match: Match, mandate: Mandate, listing: ListingSummary): FitLine? {
+        val searched = mandate.propertyType?.takeIf { it != PropertyType.UNKNOWN } ?: return null
+        val listed = listing.propertyType?.takeIf { it != PropertyType.UNKNOWN } ?: return null
+        val listedLabel = MandateLabels.shortPropertyType(listed) ?: return null
+        return if (match.typeScore >= FULL) {
+            FitLine(true, "$listedLabel, comme demandé")
+        } else {
+            val searchedLabel = MandateLabels.shortPropertyType(searched) ?: return null
+            FitLine(false, "$listedLabel au lieu de ${searchedLabel.lowercase()}")
         }
     }
 
