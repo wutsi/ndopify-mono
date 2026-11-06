@@ -22,6 +22,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
+import com.wutsi.ndopify.npc.config.Parallel
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.assignment.AssignmentController
 import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.ASSIGNMENT
@@ -76,6 +77,7 @@ class HomeTemplateTest {
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
+    private val parallel = Parallel()
     private lateinit var mvc: MockMvc
 
     @BeforeEach
@@ -122,7 +124,8 @@ class HomeTemplateTest {
                     customerClient,
                     locationClient,
                     tenantContext,
-                    clock
+                    clock,
+                    parallel,
                 ),
                 AssignmentController(assignmentClient),
             )
@@ -133,6 +136,7 @@ class HomeTemplateTest {
 
     @AfterEach
     fun tearDown() {
+        parallel.close()
         SecurityContextHolder.clearContext()
     }
 

@@ -25,6 +25,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
+import com.wutsi.ndopify.npc.config.Parallel
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.ASSIGNMENT
 import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.MANDATE
@@ -41,6 +42,7 @@ import com.wutsi.ndopify.party.dto.KycCase
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.web.core.service.TenantContext
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -49,6 +51,7 @@ import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.MvcResult
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
+import org.springframework.ui.ExtendedModelMap
 import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.servlet.view.InternalResourceViewResolver
 import java.time.Clock
@@ -67,7 +70,9 @@ class HomeControllerTest {
     private val visitClient = mock<NdVisitClient>()
     private val customerClient = mock<NdCustomerClient>()
     private val clock = mock<Clock>()
+    private val parallel = Parallel()
     private lateinit var mvc: MockMvc
+    private lateinit var controller: HomeController
 
     @BeforeEach
     fun setUp() {
@@ -79,7 +84,7 @@ class HomeControllerTest {
         doReturn(emptyList<VisitSummary>()).whenever(visitClient).search(any(), any(), any(), anyOrNull())
         doReturn(emptyList<CustomerSummary>()).whenever(customerClient).search(any())
 
-        val controller = HomeController(
+        controller = HomeController(
             currentAgent,
             kycClient,
             assignmentClient,
@@ -90,12 +95,16 @@ class HomeControllerTest {
             locationClient,
             tenantContext,
             clock,
+            parallel,
         )
         mvc = MockMvcBuilders.standaloneSetup(controller)
             .setControllerAdvice(HttpClientErrorHandler(mock()))
             .setViewResolvers(InternalResourceViewResolver("/templates/", ".html"))
             .build()
     }
+
+    @AfterEach
+    fun closeParallel() = parallel.close()
 
     private fun model(result: MvcResult) = result.modelAndView!!.model
 
@@ -546,4 +555,25 @@ class HomeControllerTest {
 
     @Suppress("UNCHECKED_CAST")
     private fun assignments(result: MvcResult) = model(result)["assignments"] as List<AssignmentView>
+
+    @Test
+    fun `model is written on the request thread`() {
+        val model = RequestThreadModel(Thread.currentThread())
+
+        controller.show(null, model)
+
+        assertEquals("SN", model["initials"])
+    }
+
+    private class RequestThreadModel(private val requestThread: Thread) : ExtendedModelMap() {
+        override fun addAttribute(attributeName: String, attributeValue: Any?): ExtendedModelMap {
+            check(Thread.currentThread() === requestThread) { "Model written from ${Thread.currentThread()}" }
+            return super.addAttribute(attributeName, attributeValue)
+        }
+
+        override fun addAttribute(attributeValue: Any): ExtendedModelMap {
+            check(Thread.currentThread() === requestThread) { "Model written from ${Thread.currentThread()}" }
+            return super.addAttribute(attributeValue)
+        }
+    }
 }

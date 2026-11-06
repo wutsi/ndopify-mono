@@ -11,6 +11,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.client.ndopify.NdPartyClient
+import com.wutsi.ndopify.npc.config.Parallel
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.home.HomeController
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
@@ -54,6 +55,7 @@ class ProfileTemplateTest {
     private val assignmentClient = mock<NdAssignmentClient>()
     private val mandateClient = mock<NdMandateClient>()
     private val clock = mock<Clock>()
+    private val parallel = Parallel()
     private lateinit var mvc: MockMvc
 
     @BeforeEach
@@ -89,6 +91,7 @@ class ProfileTemplateTest {
                     locationClient,
                     tenantContext,
                     clock,
+                    parallel,
                 ),
                 ProfileController(currentAgent, mock<NdAgentClient>(), mock<NdPartyClient>(), locationClient, tenantContext),
             )
@@ -99,6 +102,7 @@ class ProfileTemplateTest {
 
     @AfterEach
     fun tearDown() {
+        parallel.close()
         SecurityContextHolder.clearContext()
     }
 

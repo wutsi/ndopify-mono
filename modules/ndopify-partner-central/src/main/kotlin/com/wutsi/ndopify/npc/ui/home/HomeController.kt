@@ -15,6 +15,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
+import com.wutsi.ndopify.npc.config.Parallel
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.kyc.KycRules
@@ -61,6 +62,7 @@ class HomeController(
     locationClient: NdLocationClient,
     private val tenantContext: TenantContext,
     private val clock: Clock,
+    private val parallel: Parallel,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(HomeController::class.java)
@@ -85,21 +87,47 @@ class HomeController(
         model.addAttribute("kyc", kyc(agent))
         if (agent.party.kycStatus == KycStatus.VERIFIED) {
             val now = clock.millis()
+
+            // On the request thread, before any task: this initialises TenantContext's cache and the formatter.
             val tenant = tenantContext.getTenant()
             val formatter = TenantFormatter(tenant)
-            val offers = offers(agent, now)
-            val mandates = mandates(agent)
-            val mandateStats = mandates?.let { mandateStats(it) }
-            val visits = loadVisits(agent)
-            val visitListings = visits?.let { loadVisitListings(it) }
-            val visitCustomers = visits?.let { loadVisitCustomers(it) } ?: emptyMap()
-            val names = names(
-                (offers.orEmpty().map { (_, mandate) -> mandate } + mandates.orEmpty())
-                    .flatMap { mandate -> listOf(mandate.cityId) + mandate.neighborhoodIds } +
-                    visitListings.orEmpty().values.flatMap { list -> listOfNotNull(list.cityId, list.neighborhoodId) },
-            )
 
-            val assignments = offers?.map { (assignment, mandate) -> AssignmentViews.of(assignment, mandate, names, now, formatter) }
+            // Wave 1: the independent reads.
+            val openCall = parallel.async { openAssignments(agent, now) }
+            val mandatesCall = parallel.async { mandates(agent) }
+            val visitsCall = parallel.async { loadVisits(agent) }
+            val open = openCall.join()
+            val mandates = mandatesCall.join()
+            val visits = visitsCall.join()
+
+            // Wave 2: what the first wave unlocks.
+            val offersCall = parallel.async { offers(agent, open) }
+            val mandateStatsCall = parallel.async { mandates?.let { mandateStats(it) } }
+            val listingsCall = parallel.async { mandates?.let { listings(agent, it) } }
+            val visitListingsCall = parallel.async { visits?.let { loadVisitListings(it) } }
+            val visitCustomersCall = parallel.async { visits?.let { loadVisitCustomers(it) } ?: emptyMap() }
+            val offers = offersCall.join()
+            val mandateStats = mandateStatsCall.join()
+            val listings = listingsCall.join()
+            val visitListings = visitListingsCall.join()
+            val visitCustomers = visitCustomersCall.join()
+
+            // Wave 3: the two reads that join the rest.
+            val namesCall = parallel.async {
+                names(
+                    (offers.orEmpty().map { (_, mandate) -> mandate } + mandates.orEmpty())
+                        .flatMap { mandate -> listOf(mandate.cityId) + mandate.neighborhoodIds } +
+                        visitListings.orEmpty().values.flatMap { list -> listOfNotNull(list.cityId, list.neighborhoodId) },
+                )
+            }
+            val listingStatsCall = parallel.async { listings?.let { listingStats(it.values) } }
+            val names = namesCall.join()
+            val stats = listingStatsCall.join()
+
+            // The Model and the view stay on the request thread.
+            val assignments = offers?.map { (assignment, mandate) ->
+                AssignmentViews.of(assignment, mandate, names, now, formatter)
+            }
             model.addAttribute("assignments", assignments ?: emptyList<AssignmentView>())
             model.addAttribute("assignmentsUnavailable", assignments == null)
             // GET /?decline={id}: the decline confirmation without JS, for one of the listed offers only. A String,
@@ -107,8 +135,6 @@ class HomeController(
             val declineId = decline?.toLongOrNull()
             model.addAttribute("declining", assignments?.firstOrNull { it.id == declineId }?.id)
 
-            val listings = mandates?.let { listings(agent, it) }
-            val stats = listings?.let { listingStats(it.values) }
             model.addAttribute(
                 "mandates",
                 mandates?.map { mandate -> MandateCards.of(mandate, listings, names, formatter, mandateStats, stats) }
@@ -120,24 +146,33 @@ class HomeController(
         return VIEW
     }
 
-    /**
-     * The offers still open, newest first, with their mandates (one search for all of them); null when they can't be
-     * had. An offer whose mandate isn't returned (no longer offered since) is left out.
-     */
-    private fun offers(agent: Agent, now: Long): List<Pair<AssignmentSummary, Mandate>>? =
+    /** The agent's PENDING offers still open, newest first; null when they can't be had. */
+    private fun openAssignments(agent: Agent, now: Long): List<AssignmentSummary>? =
         try {
-            val open = assignmentClient.pending(agent.id).filter { AssignmentViews.isOpen(it, now) }
-            if (open.isEmpty()) {
-                emptyList()
-            } else {
-                val mandates = mandateClient.offered(agent.id).associateBy { it.id }
-                open.mapNotNull { assignment ->
-                    mandates[assignment.mandateId]?.let { summary -> assignment to MandateSummaries.toMandate(summary) }
-                }
-            }
+            assignmentClient.pending(agent.id).filter { AssignmentViews.isOpen(it, now) }
         } catch (ex: RestClientException) {
             LOGGER.warn("No offers for agent ${agent.id}: ${ex.message}")
             null
+        }
+
+    /**
+     * The mandates of [open] offers (one search for all of them); null when they can't be had, or when [open] is null.
+     * An offer whose mandate isn't returned (no longer offered since) is left out.
+     */
+    private fun offers(agent: Agent, open: List<AssignmentSummary>?): List<Pair<AssignmentSummary, Mandate>>? =
+        when {
+            open == null -> null
+            open.isEmpty() -> emptyList()
+            else ->
+                try {
+                    val mandates = mandateClient.offered(agent.id).associateBy { it.id }
+                    open.mapNotNull { assignment ->
+                        mandates[assignment.mandateId]?.let { summary -> assignment to MandateSummaries.toMandate(summary) }
+                    }
+                } catch (ex: RestClientException) {
+                    LOGGER.warn("No offers for agent ${agent.id}: ${ex.message}")
+                    null
+                }
         }
 
     /** The agent's mandates in progress, in the search's order; null when they can't be had. */
