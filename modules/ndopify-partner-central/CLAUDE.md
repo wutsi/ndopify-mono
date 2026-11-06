@@ -65,7 +65,8 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `AuthorizationClientHttpRequestInterceptor` doesn't forward it (ndopify-server would answer 401); everything
   except `/assets/**`, `/login/**`, `/error`, `/locations/**`, `/join/**`, `/find-property/**`, `/offer-property/**` requires authentication. `POST /logout` (a form in the account menu, never a link: a GET could be forced by another site) clears the cookie
   and session, and so does a 401 from ndopify-server or a `SignInRequiredException` (`HttpClientErrorHandler`), which
-  a page throws when `CurrentAgent` / `CurrentParty` finds nobody. Sign-in changes the session id.
+  a page throws when the caller isn't an agent (`CurrentAgent`) or has no party (`CurrentParty`). Sign-in changes the
+  session id.
   The header's account menu (`<nav class="user-menu">`) is wrapped in `th:if="${signedIn}"`, a model attribute
   that `SignedInAdvice` (`ui/layout/`) sets on every page: give any new page's menu the same guard.
 - Tenant is resolved by `TenantContext` (web-core) matching the request URL against each active tenant's
@@ -122,9 +123,10 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   KYC status: an agent who isn't `VERIFIED` gets a banner linking to `/kyc`, worded after its newest case (documents
   to send, under review, rejected), since the party's status only changes on verification. Its profile section only
   invites the agent to add its photo or biography while one is missing (`photoMissing` / `biographyMissing`), or
-  confirms a save: the agent doesn't need to see its own profile on each visit. The signed-in agent is `CurrentAgent` (`CurrentParty.id()`, the token's `partyId`, or
-  `GET /v1/users/{id}` for a token without it → `GET /v1/agents?party-id=` → `GET /v1/agents/{id}`): agent and party ids always come from the token, never from a form, since ndopify-server doesn't
-  check who updates an agent. The profile pages (`ProfileController`, `ui/profile/`) are open whatever the KYC
+  confirms a save: the agent doesn't need to see its own profile on each visit. The signed-in agent is `CurrentAgent`
+  (`GET /v1/agents/me`: the server resolves the agent from the token): agent and party ids always come from the token,
+  never from a form, since ndopify-server doesn't check who updates an agent. The profile pages (`ProfileController`,
+  `ui/profile/`) are open whatever the KYC
   status: `GET|POST /profile` (`templates/profile/edit.html`, `POST /v1/agents/{id}`; the name isn't editable, the party's e-mail is shown read-only until changing it checks ownership of both addresses) and
   `GET|POST /profile/photo` (`templates/profile/photo.html`, sniffed with Tika, 5 Mo, sent to `POST
   /v1/parties/{id}/photo`). Both go back to `/` with a `saved` flash attribute.

@@ -107,41 +107,6 @@ class NdAgentClientTest {
     }
 
     @Test
-    fun findByPartyId() {
-        server.expect(requestTo("http://localhost:8080/v1/agents?party-id=100&limit=1"))
-            .andExpect(method(HttpMethod.GET))
-            .andRespond(withSuccess("""{"agents":[{"id":20,"party":{"id":100,"firstName":"Ray","lastName":"Sponsible","email":"ray@gmail.com","kycStatus":"VERIFIED","createdAt":0,"modifiedAt":0},"createdAt":0,"modifiedAt":0}]}""", MediaType.APPLICATION_JSON))
-        server.expect(requestTo("http://localhost:8080/v1/agents/20"))
-            .andExpect(method(HttpMethod.GET))
-            .andRespond(
-                withSuccess(
-                    """{"agent":{"id":20,"party":{"id":100,"firstName":"Ray","lastName":"Sponsible","email":"ray@gmail.com","kycStatus":"VERIFIED","createdAt":0,"modifiedAt":0},"agentType":"INDEPENDANT","biography":"Bio","cityId":1,""" +
-                        """"neighborhoodIds":[1,2],"experienceLevel":"SENIOR","whatsappNumber":"+237670000001",""" +
-                        """"createdAt":0,"modifiedAt":0,"rating":3.0,"version":2}}""",
-                    MediaType.APPLICATION_JSON,
-                ),
-            )
-
-        val agent = client.findByPartyId(100)
-
-        assertEquals(20L, agent?.id)
-        assertEquals("Ray", agent?.party?.firstName)
-        assertEquals("Bio", agent?.biography)
-        assertEquals(listOf(1L, 2L), agent?.neighborhoodIds)
-        assertEquals(2L, agent?.version)
-        server.verify()
-    }
-
-    @Test
-    fun `findByPartyId - not an agent`() {
-        server.expect(requestTo("http://localhost:8080/v1/agents?party-id=100&limit=1"))
-            .andRespond(withSuccess("""{"agents":[]}""", MediaType.APPLICATION_JSON))
-
-        assertNull(client.findByPartyId(100))
-        server.verify()
-    }
-
-    @Test
     fun me() {
         server.expect(requestTo("http://localhost:8080/v1/agents/me"))
             .andExpect(method(HttpMethod.GET))

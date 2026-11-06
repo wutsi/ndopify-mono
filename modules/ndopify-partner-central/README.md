@@ -93,8 +93,9 @@ resizing, in-page camera, countdowns, in-place confirmations).
   `/login`.
   The web app's `JwtDecoder` reads the claims without checking the signature (only ndopify-server has the secret and
   checks it on each call); it is never trusted on its own.
-- **The signed-in agent** — agent and party ids always come from the token (`CurrentParty`, `CurrentAgent`), never
-  from a form. ndopify-server checks that an agent only reads and changes its own mandates and offers.
+- **The signed-in agent** — `CurrentAgent` calls `GET /v1/agents/me`, which ndopify-server resolves from the access
+  token (never from a form); null when the caller isn't an agent, which signs it out. ndopify-server checks that an
+  agent only reads and changes its own mandates and offers.
 - **Tenant resolution** — `TenantContext` loads the active tenants from ndopify-server and picks the one whose
   `partnerCentralUrl` is a prefix of the incoming request URL. Dates and amounts go through `TenantFormatter` (the
   tenant's formats, currency, locale and time zone).
