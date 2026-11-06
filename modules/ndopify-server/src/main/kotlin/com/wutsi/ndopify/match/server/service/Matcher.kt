@@ -85,11 +85,14 @@ class Matcher(
                         )
                 )
 
-    // The type is the specific fact; the category is derived, and the two wizards map BUILDING differently
+    // The type is the specific fact; the category is derived, and the two wizards map BUILDING differently. With no
+    // preferred type the category still decides, as before.
     private fun categoryMismatch(search: MandateEntity, listing: ListingEntity): Boolean =
         listing.propertyCategory != search.propertyCategory &&
-            search.propertyType != PropertyType.BUILDING &&
-            listing.propertyType != PropertyType.BUILDING
+            (
+                search.propertyType == null || search.propertyType == PropertyType.UNKNOWN ||
+                    (search.propertyType != PropertyType.BUILDING && listing.propertyType != PropertyType.BUILDING)
+                )
 
     // 1.0 for the searched type (or none), 0.8-0.9 for a commercial sibling, 0.0 when incompatible
     private fun typeScore(search: PropertyType?, listing: PropertyType?): Double {

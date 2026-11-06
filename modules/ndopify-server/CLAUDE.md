@@ -302,7 +302,7 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   runs `MatchService.matchMandate` on `MandateApprovedEvent` and `matchListing` on `ListingPublishedEvent`. Only an
   APPROVED SEARCH mandate with an agent is matched, against that agent's PUBLISHED listings; `Matcher` (pure, unit
   tested case by case in `MatcherTest`) rules a pair out (the customer's own property, another listing type / city /
-  category — the category is checked only for a `BUILDING` pair — currency or periodicity, over budget +
+  category — skipped only for a specified `BUILDING` pair — currency or periodicity, over budget +
   `price-tolerance`, an incompatible property type) or scores it (neighbourhood, price, rooms, amenities, availability,
   furniture) multiplied by a property-type factor: 1.0 exact or no preference, 0.9 `OFFICE`/`RETAIL`, 0.85
   `BUILDING`/`OFFICE`/`RETAIL`, 0.8 `INDUSTRIAL` siblings, 0.0 veto (`LAND` against non-land, residential

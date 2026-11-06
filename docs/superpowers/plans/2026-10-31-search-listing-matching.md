@@ -55,8 +55,8 @@ only if `status = PUBLISHED` and `L.agent.id = S.agentId`.
 **1. Rule-outs** (`Matcher.score` returns `null`), in this order:
 
 1. `L.mandate.customerId == S.customerId` (the customer's own property)
-2. `listingType`, `propertyCategory` or `cityId` differ (the category check is skipped for a `BUILDING` pair, which the
-   two wizards store under different categories)
+2. `listingType`, `propertyCategory` or `cityId` differ (the category check is skipped for a specified `BUILDING`
+   pair, which the two wizards store under different categories; with no preferred type, the category still decides)
 3. an incompatible `propertyType` — the type factor below is 0 (ex: `LAND` against non-land, a residential
    cross-type, an unknown listed type)
 4. `currencyCode` or `pricePeriodicityType` differ (only when `S.price > 0`)

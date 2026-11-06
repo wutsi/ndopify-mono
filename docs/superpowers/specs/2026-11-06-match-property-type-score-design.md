@@ -129,7 +129,7 @@ Notes:
 1. the listing is the search customer's own property;
 2. other `listingType`;
 3. other `cityId`;
-4. other `propertyCategory`, except for a `BUILDING` pair (see below);
+4. other `propertyCategory`, except for a specified `BUILDING` pair (see below);
 5. budget currency/periodicity and price over budget.
 
 The type veto moves out of `isRuledOut` into `score()`:
@@ -146,24 +146,25 @@ meaning and the existing `assertNull` tests stay valid.
 
 ### Category handling
 
-The `propertyCategory` check is skipped **only when the pair involves
-`BUILDING`**:
+The `propertyCategory` check is skipped **only for a specified `BUILDING`
+pair**:
 
 ```kotlin
 private fun categoryMismatch(search: MandateEntity, listing: ListingEntity): Boolean =
     listing.propertyCategory != search.propertyCategory &&
-        search.propertyType != PropertyType.BUILDING &&
-        listing.propertyType != PropertyType.BUILDING
+        (search.propertyType == null || search.propertyType == PropertyType.UNKNOWN ||
+            (search.propertyType != PropertyType.BUILDING && listing.propertyType != PropertyType.BUILDING))
 ```
 
 Reason: the two wizards disagree on `BUILDING` (search: `COMMERCIAL`,
-listing: `RESIDENTIAL`), so a `BUILDING` pair must let the type matrix decide.
-Every other pair keeps today's category veto, including an `APARTMENT`
+listing: `RESIDENTIAL`), so a specified `BUILDING` pair must let the type matrix
+decide. Every other pair keeps today's category veto, including an `APARTMENT`
 residential search against an `APARTMENT` listing stored as commercial — the
-existing `MatcherTest` case stays valid. With `BUILDING`, the matrix's explicit
-pairs decide: `BUILDING` ↔ `BUILDING` is `1.0` (the bug is fixed),
-`BUILDING` ↔ `OFFICE`/`RETAIL` is `0.85`, and `BUILDING` ↔ residential is
-`0.0`.
+existing `MatcherTest` case stays valid. When the search has no preferred type
+(`null`/`UNKNOWN`), the category still decides, exactly as before. With
+`BUILDING`, the matrix's explicit pairs decide: `BUILDING` ↔ `BUILDING` is
+`1.0` (the bug is fixed), `BUILDING` ↔ `OFFICE`/`RETAIL` is `0.85`, and
+`BUILDING` ↔ residential is `0.0`.
 
 ### Total score
 

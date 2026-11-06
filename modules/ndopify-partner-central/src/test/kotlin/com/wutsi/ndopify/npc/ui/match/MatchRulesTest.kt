@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.match
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
@@ -207,8 +208,10 @@ class MatchRulesTest {
     @Test
     fun `fit - no type in the payload`() {
         // A Match deserialized from an older server has typeScore = 1.0 by default
-        val match = Match(mandateId = MANDATE.id, listingId = LISTING_A.id)
+        val match = jacksonObjectMapper()
+            .readValue("""{"mandateId":${MANDATE.id},"listingId":${LISTING_A.id}}""", Match::class.java)
 
+        assertEquals(1.0, match.typeScore)
         assertTrue("Appartement, comme demandé" in MatchRules.fit(match, MANDATE, LISTING_A).map { it.text })
     }
 

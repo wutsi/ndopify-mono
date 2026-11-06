@@ -196,6 +196,44 @@ class MatcherTest {
     }
 
     @Test
+    fun `no property type searched - the category decides`() {
+        assertNull(
+            score(
+                search.copy(propertyType = null),
+                listingA.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = PropertyType.LAND),
+            )
+        )
+        assertNull(
+            score(
+                commercialSearch.copy(propertyType = null),
+                listingA.copy(propertyCategory = PropertyCategory.RESIDENTIAL, propertyType = PropertyType.BUILDING),
+            )
+        )
+
+        val result = score(
+            commercialSearch.copy(propertyType = null),
+            commercialListing.copy(propertyType = PropertyType.LAND),
+        )
+        assertNotNull(result)
+        assertEquals(1.0, result.type, DELTA)
+    }
+
+    @Test
+    fun `ruled out - building search against a listing without property type`() {
+        assertNull(score(search.copy(propertyType = PropertyType.BUILDING), listingA.copy(propertyType = null)))
+    }
+
+    @Test
+    fun `industrial and building are siblings in both directions`() {
+        val industrialSearch = commercialSearch.copy(propertyType = PropertyType.INDUSTRIAL)
+        val buildingListing = commercialListing.copy(propertyType = PropertyType.BUILDING)
+        val industrialListing = commercialListing.copy(propertyType = PropertyType.INDUSTRIAL)
+
+        assertEquals(0.8, score(industrialSearch, buildingListing)?.type)
+        assertEquals(0.8, score(commercialSearch.copy(propertyType = PropertyType.BUILDING), industrialListing)?.type)
+    }
+
+    @Test
     fun `listing C`() {
         assertScore(listOf(1.0, 1.0, 0.3, 0.33, 0.5, 1.0), 0.745, score(search, listingC))
     }
