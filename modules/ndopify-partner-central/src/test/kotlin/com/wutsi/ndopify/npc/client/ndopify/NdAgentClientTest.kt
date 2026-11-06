@@ -124,6 +124,7 @@ class NdAgentClientTest {
         assertEquals(20L, agent?.id)
         assertEquals("Ray", agent?.party?.firstName)
         assertEquals("Bio", agent?.biography)
+        assertEquals(listOf(1L, 2L), agent?.neighborhoodIds)
         assertEquals(2L, agent?.version)
         server.verify()
     }
@@ -138,6 +139,14 @@ class NdAgentClientTest {
             )
 
         assertNull(client.me())
+    }
+
+    @Test
+    fun `me - unauthorized`() {
+        server.expect(requestTo("http://localhost:8080/v1/agents/me"))
+            .andRespond(withStatus(HttpStatus.UNAUTHORIZED))
+
+        assertFailsWith<HttpClientErrorException.Unauthorized> { client.me() }
     }
 
     @Test

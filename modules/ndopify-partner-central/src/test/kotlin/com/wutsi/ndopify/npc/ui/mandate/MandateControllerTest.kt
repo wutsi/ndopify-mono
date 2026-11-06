@@ -6,6 +6,7 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
+import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.error.dto.Error
@@ -159,10 +160,15 @@ class MandateControllerTest {
         doReturn(listOf(VisitFixtures.summary(VisitFixtures.confirmed()), VisitFixtures.summary(VisitFixtures.completed())))
             .whenever(visitClient).searchByListings(AGENT.id, VisitRules.COUNTED, listOf(501L), 100)
 
-        val view = model(mvc.perform(get("/mandates/201")).andReturn())["mandateListing"] as MandateListingView
+        val result = mvc.perform(get("/mandates/201")).andReturn()
+        val view = model(result)["mandateListing"] as MandateListingView
 
         assertEquals("2 personnes intéressées · 2 visites", view.stats)
+        assertTrue(model(result)["listingVisits"] is VisitCardsView)
+        assertTrue(model(result)["listingProposals"] is ProposalsView)
         verify(visitClient).searchByListings(AGENT.id, VisitRules.COUNTED, listOf(501L), 100)
+        // The agent is resolved once for the whole page, not again for the listing's clients.
+        verify(currentAgent, times(1)).get()
     }
 
     @Test

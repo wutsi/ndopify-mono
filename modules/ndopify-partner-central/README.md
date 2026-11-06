@@ -142,6 +142,8 @@ mvn spring-boot:run          # starts on port 8081
 
 In deployment, the `Procfile` runs the jar with `--spring.profiles.active=$APP_PROFILE`.
 
+This release requires an ndopify-server that exposes `GET /v1/agents/me`: deploy ndopify-server before Partner Central, because an older server answers 400 for that path and every signed-in page would fail.
+
 ## Build & Test
 
 ```bash

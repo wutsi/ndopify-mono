@@ -398,7 +398,7 @@ class MandateController(
         model.addAttribute("currency", formatter().currency())
         val listingId = listingId(mandate)
         val listing = listingId?.let { listing(mandate, it) }
-        val clients = listing?.let { listingClients(it) }
+        val clients = listing?.let { listingClients(agent, it) }
         val listingStats = clients?.let {
             ListingStatsView(MatchRules.interest(it.interested), it.stats ?: visitStats)
         }
@@ -631,9 +631,9 @@ class MandateController(
      * The visits are read by listing id (agent-scoped) and are secondary: failing, every proposal row shows and the
      * *Visites* section says unavailable. A stale visit is ignored by [ListingViews.clients].
      */
-    private fun listingClients(listing: Listing): ListingClientsView? {
+    private fun listingClients(agent: Agent, listing: Listing): ListingClientsView? {
         if (listing.status != ListingStatus.PUBLISHED) return null
-        val agentId = currentAgent.get()?.id ?: return null
+        val agentId = agent.id
         val matches = lookup("proposals of listing ${listing.id}") {
             matchClient.searchByListings(listOf(listing.id), MatchRules.SENT)
         } ?: return null

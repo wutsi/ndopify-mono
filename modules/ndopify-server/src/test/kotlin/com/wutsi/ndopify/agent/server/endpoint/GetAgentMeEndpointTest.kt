@@ -26,6 +26,8 @@ class GetAgentMeEndpointTest : AbstractAgentEndpointTest() {
         assertEquals(1L, agent.id)
         assertEquals(100L, agent.party.id)
         assertEquals("Top agent in town", agent.biography)
+        assertEquals(listOf(111L, 222L), agent.neighborhoodIds.sorted())
+        assertEquals(4.5, agent.rating)
     }
 
     @Test
