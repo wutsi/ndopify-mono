@@ -47,6 +47,14 @@ class SearchStatsViewTest {
     }
 
     @Test
+    fun `label - no pool but visits`() {
+        assertEquals(
+            "Aucun bien correspondant pour l'instant",
+            SearchStatsView.of(mandate, MandateStats(201, properties = 0, interested = 0, upcomingVisits = 1, completedVisits = 1))!!.label,
+        )
+    }
+
+    @Test
     fun `stats unavailable`() {
         assertNull(SearchStatsView.of(mandate, null))
     }

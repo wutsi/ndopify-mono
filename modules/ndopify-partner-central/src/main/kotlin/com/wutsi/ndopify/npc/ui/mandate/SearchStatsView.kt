@@ -20,15 +20,15 @@ data class SearchStatsView(
     /** Upcoming + completed visits; null when they can't be read. */
     val visits: Int?,
 ) {
-    /** "12 biens · 1 intéressé · 3 visites", with zero segments left out. */
+    /** "12 biens · 1 intéressé · 3 visites", with zero segments left out; the empty state when the pool is empty. */
     val label: String
         get() {
-            val parts = listOfNotNull(
-                properties.takeIf { it > 0 }?.let { "$it " + plural(it, "bien", "biens") },
+            if (properties == 0) return EMPTY
+            return listOfNotNull(
+                "$properties " + plural(properties, "bien", "biens"),
                 interested.takeIf { it > 0 }?.let { "$it " + plural(it, "intéressé", "intéressés") },
                 visits?.takeIf { it > 0 }?.let { "$it " + plural(it, "visite", "visites") },
-            )
-            return parts.ifEmpty { listOf(EMPTY) }.joinToString(" · ")
+            ).joinToString(" · ")
         }
 
     val url: String get() = "/mandates/$mandateId#matches-title"
