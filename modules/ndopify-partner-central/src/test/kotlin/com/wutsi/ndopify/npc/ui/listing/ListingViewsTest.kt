@@ -692,9 +692,8 @@ class ListingViewsTest {
         assertEquals(7001L, card.id)
         assertEquals("Sandrine Eboa", card.customerName)
         assertEquals("Sur place", card.type)
-        assertEquals("Demandée pour le sam. 7 novembre 2026 à 10:30", card.whenLabel)
+        assertEquals("sam. 7 novembre 2026 à 10:30", card.whenLabel)
         assertEquals("42 h", card.expiresIn)
-        assertEquals("Confirmez la date avec le client.", card.nextStep)
         assertNull(card.tag)
 
         assertEquals("1 visite à venir", view.stats?.label)

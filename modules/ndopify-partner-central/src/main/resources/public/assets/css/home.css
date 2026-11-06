@@ -339,17 +339,6 @@
     text-underline-offset: 0.2em;
 }
 
-.mandate-card__next {
-    padding-top: var(--space-3);
-    border-top: 1px solid var(--color-border);
-    color: var(--color-info-fg); /* dark blue: the agent's next step stands out from the facts above */
-}
-
-/* Montserrat is loaded at 400 and 600 only: 700 would be synthesized */
-.mandate-card__next strong {
-    font-weight: 600;
-}
-
 /* A landlord's signed mandate: its listing's number and status (the card, and mandate.html's Actif panel). */
 .mandate-card__listing,
 .mandate-listing__status {
@@ -797,18 +786,41 @@ h1.alert__title {
     gap: var(--space-3);
 }
 
-/* A match: tighter than an offer, so that a phone shows two or three of them at once. */
+/* A match: tighter than an offer, so that a phone shows three or four of them at once. */
 .match {
-    padding: var(--space-3);
+    padding: var(--space-2) var(--space-3);
 }
 
 .match article > * + * {
+    margin-top: var(--space-1);
+}
+
+/* The matches read as one list, not as separate cards: a short gap between them. */
+[data-match-list] > * + * {
     margin-top: var(--space-2);
+}
+
+/* The tag stays on the title's first line; the title uses the room left, wrapping on the narrowest phones. */
+.match .assignment__head {
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.match__title {
+    min-width: 0;
+    font: 600 var(--step-body) / 1.3 var(--font-body);
 }
 
 .match__title a {
     color: inherit;
     text-underline-offset: 0.2em;
+}
+
+/* The fit stays one tap away, on a compact line: the card carries the facts and the actions. */
+.match .assignment__details summary {
+    min-height: 2rem;
+    font-size: var(--step-hint);
 }
 
 /* Score · neighbourhood · rent · availability, on one line where it fits; the terms are visually hidden. */
@@ -863,6 +875,10 @@ h1.alert__title {
 }
 
 /* Envoyer (its form laid out as contents, see .assignment__actions form) and Écarter on one row, even on a phone. */
+.match .match__actions {
+    margin-top: var(--space-2);
+}
+
 .match__actions .btn {
     padding-inline: var(--space-3);
 }

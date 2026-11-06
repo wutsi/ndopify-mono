@@ -49,12 +49,11 @@ object VisitCards {
                     customerName = name(customers[visit.customerId]),
                     type = VisitRules.typeLabel(visit.type),
                     tag = null,
-                    whenLabel = "Demandée pour le ${VisitSlots.dateTimeLabel(visit.requestedAt, tenant, formatter)}",
+                    whenLabel = VisitSlots.dateTimeLabel(visit.requestedAt, tenant, formatter),
                     listing = listing(visit, listings, locations),
                     expiresAt = expiresAt,
                     expiresIn = VisitRules.expiresIn(left),
                     urgent = left < URGENT,
-                    nextStep = VisitRules.nextStep(visit, now).orEmpty(),
                 )
             }
 
@@ -73,7 +72,6 @@ object VisitCards {
                     expiresAt = null,
                     expiresIn = null,
                     urgent = false,
-                    nextStep = VisitRules.nextStep(visit, now).orEmpty(),
                 )
             }
 

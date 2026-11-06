@@ -863,7 +863,7 @@ h1.alert__title {
 }
 
 /* Envoyer, Retenir, Écarter on one row, even on a phone: short labels, tighter padding. */
-.match__actions {
+.match .match__actions {
     margin-top: var(--space-2);
 }
 

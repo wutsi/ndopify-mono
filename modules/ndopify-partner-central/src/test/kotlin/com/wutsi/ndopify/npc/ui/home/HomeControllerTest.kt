@@ -507,7 +507,6 @@ class HomeControllerTest {
         assertEquals(1, visits.upcoming.size)
         assertEquals("Sandrine Eboa", visits.requested.single().customerName)
         assertEquals("Sur place · Appartement 3 chambres · Bonapriso", visits.requested.single().listing)
-        assertEquals("Confirmez la date avec le client.", visits.requested.single().nextStep)
         assertEquals("Confirmée", visits.upcoming.single().tag?.label)
         assertEquals(false, visits.unavailable)
     }

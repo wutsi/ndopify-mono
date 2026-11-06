@@ -37,11 +37,10 @@ class VisitCardsTest {
         assertEquals("Sandrine Eboa", card.customerName)
         assertEquals("Sur place", card.type)
         assertNull(card.tag)
-        assertEquals("Demandée pour le sam. 7 novembre 2026 à 10:30", card.whenLabel)
+        assertEquals("sam. 7 novembre 2026 à 10:30", card.whenLabel)
         assertEquals("Sur place · Appartement 3 chambres · Bonapriso", card.listing)
         assertEquals("42 h", card.expiresIn)
         assertFalse(card.urgent)
-        assertEquals("Confirmez la date avec le client.", card.nextStep)
         assertTrue(cards.upcoming.isEmpty())
         assertFalse(cards.unavailable)
     }
@@ -65,7 +64,6 @@ class VisitCardsTest {
         assertEquals("À démarrer", window.tag?.label)
         assertEquals("info", window.tag?.style)
         assertEquals("Aujourd'hui · 10:30", window.whenLabel)
-        assertEquals("Démarrez avec son code, ou déclarez son absence.", window.nextStep)
         assertNull(window.expiresAt)
         assertNull(window.expiresIn)
         assertFalse(window.urgent)
@@ -73,7 +71,6 @@ class VisitCardsTest {
         val confirmed = cards.upcoming[1]
         assertEquals("Confirmée", confirmed.tag?.label)
         assertEquals("sam. 7 novembre 2026 à 10:30", confirmed.whenLabel)
-        assertEquals("Le jour J, demandez son code au client.", confirmed.nextStep)
         assertTrue(cards.requested.isEmpty())
     }
 
@@ -83,7 +80,6 @@ class VisitCardsTest {
 
         assertEquals("En cours depuis 10:05", card.whenLabel)
         assertEquals("En cours", card.tag?.label)
-        assertEquals("Terminez la visite avec votre compte rendu.", card.nextStep)
     }
 
     @Test

@@ -218,9 +218,8 @@ class MandateControllerTest {
         assertEquals(7001L, card.id)
         assertEquals("Sandrine Eboa", card.customerName)
         assertEquals("Sur place", card.type)
-        assertEquals("Demandée pour le sam. 7 novembre 2026 à 10:30", card.whenLabel)
+        assertEquals("sam. 7 novembre 2026 à 10:30", card.whenLabel)
         assertEquals("42 h", card.expiresIn)
-        assertEquals("Confirmez la date avec le client.", card.nextStep)
 
         val proposals = model(result)["listingProposals"] as ProposalsView
         assertEquals("1 visite · 1 intéressé · 1 refusé · 1 en attente", proposals.summary)
@@ -593,7 +592,6 @@ class MandateControllerTest {
         assertEquals(listOf(7001L), visits.requested.map { it.id })
         assertEquals("Sur place · Appartement 3 chambres · Bonapriso", visits.requested.single().listing)
         assertEquals("42 h", visits.requested.single().expiresIn)
-        assertEquals("Confirmez la date avec le client.", visits.requested.single().nextStep)
         assertEquals(listOf(9003L), section(result).matches.map { it.id })
         assertEquals("1 en attente", section(result).proposals)
         verify(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)

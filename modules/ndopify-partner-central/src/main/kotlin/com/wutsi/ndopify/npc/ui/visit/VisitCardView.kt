@@ -17,7 +17,6 @@ data class VisitCardView(
     val expiresAt: Long?,
     val expiresIn: String?,
     val urgent: Boolean,
-    val nextStep: String,
 )
 
 /**

@@ -380,11 +380,11 @@ class MandateTemplateTest {
         assertEquals("/visits/7001", card.selectFirst("a[data-listing-visit-link]")?.attr("href"))
         assertEquals("Sandrine Eboa", card.selectFirst("[data-listing-visit-link]")?.text())
         assertEquals(
-            "Sur place · Demandée pour le sam. 7 novembre 2026 à 10:30",
+            "Sur place · sam. 7 novembre 2026 à 10:30",
             card.selectFirst("[data-listing-visit-when]")?.text(),
         )
         assertEquals("Il reste 42 h pour confirmer", card.selectFirst("[data-listing-visit-timer]")?.text())
-        assertEquals("Confirmez la date avec le client.", card.selectFirst("[data-listing-visit-next]")?.text())
+        assertNull(card.selectFirst("[data-listing-visit-next]"))
         assertNull(card.selectFirst("[data-listing-visit-tag]"))
 
         val proposals = page.selectFirst("section[data-listing-proposals]")!!
@@ -690,9 +690,9 @@ class MandateTemplateTest {
         assertEquals("7001", card.attr("data-mandate-visit-id"))
         assertEquals("/visits/7001", card.selectFirst("a[data-mandate-visit-link]")?.attr("href"))
         assertEquals("Sur place · Appartement 3 chambres · Bonapriso", card.selectFirst("[data-mandate-visit-link]")?.text())
-        assertEquals("Demandée pour le sam. 7 novembre 2026 à 10:30", card.selectFirst("[data-mandate-visit-when]")?.text())
+        assertEquals("sam. 7 novembre 2026 à 10:30", card.selectFirst("[data-mandate-visit-when]")?.text())
         assertEquals("Il reste 42 h pour confirmer", card.selectFirst("[data-mandate-visit-timer]")?.text())
-        assertEquals("Confirmez la date avec le client.", card.selectFirst("[data-mandate-visit-next]")?.text())
+        assertNull(card.selectFirst("[data-mandate-visit-next]"))
         assertNull(card.selectFirst("[data-mandate-visit-tag]"))
 
         // The match the visit came from is replaced by the visit, not shown twice.
@@ -717,7 +717,7 @@ class MandateTemplateTest {
         assertEquals("status-tag status-tag--success", card.selectFirst("[data-mandate-visit-tag]")?.className())
         assertEquals("sam. 7 novembre 2026 à 10:30", card.selectFirst("[data-mandate-visit-when]")?.text())
         assertNull(card.selectFirst("[data-mandate-visit-timer]"))
-        assertEquals("Le jour J, demandez son code au client.", card.selectFirst("[data-mandate-visit-next]")?.text())
+        assertNull(card.selectFirst("[data-mandate-visit-next]"))
     }
 
     @Test

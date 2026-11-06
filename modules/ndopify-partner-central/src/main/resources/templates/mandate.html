@@ -303,15 +303,13 @@
                                     </div>
                                     <p class="visit-card__when">
                                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-                                        <span th:text="|${v.type} · ${v.whenLabel}|" data-listing-visit-when>Sur place · Demandée pour le sam. 7 novembre 2026 à 10:30</span>
+                                        <span th:text="|${v.type} · ${v.whenLabel}|" data-listing-visit-when>Sur place · sam. 7 novembre 2026 à 10:30</span>
                                     </p>
                                     <p class="assignment__timer visit-card__timer" th:if="${v.expiresIn != null}"
                                        data-listing-visit-timer>
                                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                                         <span>Il reste <strong th:text="${v.expiresIn}">42 h</strong> pour confirmer</span>
                                     </p>
-                                    <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong>
-                                        <span th:text="${v.nextStep}" data-listing-visit-next>Confirmez la date avec le client.</span></p>
                                 </article>
                             </li>
                         </ul>
@@ -341,8 +339,6 @@
                                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                                         <span>Il reste <strong th:text="${v.expiresIn}">42 h</strong> pour confirmer</span>
                                     </p>
-                                    <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong>
-                                        <span th:text="${v.nextStep}" data-listing-visit-next>Le jour J, demandez son code au client.</span></p>
                                 </article>
                             </li>
                         </ul>
@@ -423,15 +419,13 @@
                                     </div>
                                     <p class="visit-card__when">
                                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-                                        <span th:text="${v.whenLabel}" data-mandate-visit-when>Demandée pour le sam. 7 novembre 2026 à 10:30</span>
+                                        <span th:text="${v.whenLabel}" data-mandate-visit-when>sam. 7 novembre 2026 à 10:30</span>
                                     </p>
                                     <p class="assignment__timer visit-card__timer" th:if="${v.expiresIn != null}"
                                        data-mandate-visit-timer>
                                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                                         <span>Il reste <strong th:text="${v.expiresIn}">42 h</strong> pour confirmer</span>
                                     </p>
-                                    <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong>
-                                        <span th:text="${v.nextStep}" data-mandate-visit-next>Confirmez la date avec le client.</span></p>
                                 </article>
                             </li>
                         </ul>
@@ -460,8 +454,6 @@
                                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                                         <span>Il reste <strong th:text="${v.expiresIn}">42 h</strong> pour confirmer</span>
                                     </p>
-                                    <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong>
-                                        <span th:text="${v.nextStep}" data-mandate-visit-next>Le jour J, demandez son code au client.</span></p>
                                 </article>
                             </li>
                         </ul>

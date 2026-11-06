@@ -21,11 +21,16 @@
 }
 
 .visit-cards > * + * {
-    margin-top: var(--space-3);
+    margin-top: var(--space-2);
+}
+
+/* Compact list items: who, when and which property, with the timer while a request is open. */
+.visit-card {
+    padding: var(--space-3);
 }
 
 .visit-card article > * + * {
-    margin-top: var(--space-2);
+    margin-top: var(--space-1);
 }
 
 .visit-card__when,

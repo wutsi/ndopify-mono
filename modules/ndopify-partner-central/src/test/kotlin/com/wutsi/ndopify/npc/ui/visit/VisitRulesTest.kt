@@ -82,54 +82,6 @@ class VisitRulesTest {
     }
 
     @Test
-    fun `next step - requested`() {
-        assertEquals("Confirmez la date avec le client.", VisitRules.nextStep(requested(), NOW))
-    }
-
-    @Test
-    fun `next step - confirmed`() {
-        assertEquals("Le jour J, demandez son code au client.", VisitRules.nextStep(confirmed(), NOW))
-        assertEquals(
-            "Appelez le client en vidéo, depuis le bien.",
-            VisitRules.nextStep(confirmed().copy(type = VisitType.VIDEO), NOW),
-        )
-    }
-
-    @Test
-    fun `next step - window`() {
-        // window() is scheduled 30 min before NOW: the no-show is open
-        assertEquals("Démarrez avec son code, ou déclarez son absence.", VisitRules.nextStep(window(), NOW))
-        assertEquals(
-            "Le client ne répond pas ? Déclarez son absence.",
-            VisitRules.nextStep(window().copy(type = VisitType.VIDEO), NOW),
-        )
-
-        // 5 min before the slot, the no-show is not open yet
-        val early = window().copy(scheduledAt = date("2026-11-05T09:55:00Z"))
-        assertEquals("Démarrez la visite avec le code du client.", VisitRules.nextStep(early, NOW))
-        assertEquals(
-            "Appelez le client, puis démarrez avec son code.",
-            VisitRules.nextStep(early.copy(type = VisitType.VIDEO), NOW),
-        )
-    }
-
-    @Test
-    fun `next step - checked in`() {
-        assertEquals("Terminez la visite avec votre compte rendu.", VisitRules.nextStep(checkedIn(), NOW))
-        assertEquals(
-            "Faites visiter le bien, puis terminez la visite.",
-            VisitRules.nextStep(checkedIn().copy(checkedInAt = date("2026-11-05T09:55:00Z")), NOW),
-        )
-    }
-
-    @Test
-    fun `next step - closed`() {
-        listOf(VisitStatus.COMPLETED, VisitStatus.CANCELLED, VisitStatus.EXPIRED, VisitStatus.NO_SHOW).forEach {
-            assertNull(VisitRules.nextStep(requested().copy(status = it), NOW))
-        }
-    }
-
-    @Test
     fun `expires`() {
         val visit = requested()
         assertEquals(date("2026-11-07T04:00:00Z").time, VisitRules.expiresAt(visit))

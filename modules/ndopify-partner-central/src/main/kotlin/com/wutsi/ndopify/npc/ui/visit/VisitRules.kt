@@ -123,35 +123,6 @@ object VisitRules {
             else -> "Visite"
         }
 
-    /** The card's next step, one short line; null once the visit is closed. */
-    fun nextStep(visit: Visit, now: Long): String? {
-        val video = visit.type == VisitType.VIDEO
-        return when (panel(visit, now)) {
-            Panel.REQUESTED -> "Confirmez la date avec le client."
-            Panel.CHECKED_IN -> {
-                val since = visit.checkedInAt?.time
-                if (since != null && now - since < CHECK_OUT_AFTER) {
-                    "Faites visiter le bien, puis terminez la visite."
-                } else {
-                    "Terminez la visite avec votre compte rendu."
-                }
-            }
-
-            Panel.WINDOW -> {
-                val late = now >= (noShowFrom(visit) ?: Long.MAX_VALUE)
-                when {
-                    video && late -> "Le client ne répond pas ? Déclarez son absence."
-                    video -> "Appelez le client, puis démarrez avec son code."
-                    late -> "Démarrez avec son code, ou déclarez son absence."
-                    else -> "Démarrez la visite avec le code du client."
-                }
-            }
-
-            Panel.CONFIRMED -> if (video) "Appelez le client en vidéo, depuis le bien." else "Le jour J, demandez son code au client."
-            else -> null
-        }
-    }
-
     /** A request expires 48 h after its creation. */
     fun expiresAt(visit: Visit): Long = visit.createdAt.time + EXPIRES_AFTER
 
