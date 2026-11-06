@@ -142,6 +142,48 @@ class NdAgentClientTest {
     }
 
     @Test
+    fun me() {
+        server.expect(requestTo("http://localhost:8080/v1/agents/me"))
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(
+                withSuccess(
+                    """{"agent":{"id":20,"party":{"id":100,"firstName":"Ray","lastName":"Sponsible","email":"ray@gmail.com","kycStatus":"VERIFIED","createdAt":0,"modifiedAt":0},"agentType":"INDEPENDANT","biography":"Bio","cityId":1,""" +
+                        """"neighborhoodIds":[1,2],"experienceLevel":"SENIOR","whatsappNumber":"+237670000001",""" +
+                        """"createdAt":0,"modifiedAt":0,"rating":3.0,"version":2}}""",
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val agent = client.me()
+
+        assertEquals(20L, agent?.id)
+        assertEquals("Ray", agent?.party?.firstName)
+        assertEquals("Bio", agent?.biography)
+        assertEquals(2L, agent?.version)
+        server.verify()
+    }
+
+    @Test
+    fun `me - not an agent`() {
+        server.expect(requestTo("http://localhost:8080/v1/agents/me"))
+            .andRespond(
+                withStatus(HttpStatus.NOT_FOUND)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body("""{"error":{"code":"${ErrorCode.AGENT_NOT_FOUND}"}}"""),
+            )
+
+        assertNull(client.me())
+    }
+
+    @Test
+    fun `me - server error`() {
+        server.expect(requestTo("http://localhost:8080/v1/agents/me"))
+            .andRespond(withStatus(HttpStatus.INTERNAL_SERVER_ERROR))
+
+        assertFailsWith<HttpServerErrorException> { client.me() }
+    }
+
+    @Test
     fun update() {
         server.expect(requestTo("http://localhost:8080/v1/agents/20"))
             .andExpect(method(HttpMethod.POST))

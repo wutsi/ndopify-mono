@@ -7,7 +7,9 @@ import com.wutsi.ndopify.agent.dto.GetAgentResponse
 import com.wutsi.ndopify.agent.dto.SearchAgentResponse
 import com.wutsi.ndopify.agent.dto.UpdateAgentRequest
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
+import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClient
 import org.springframework.web.client.body
 
@@ -37,6 +39,21 @@ class NdAgentClient(
             .retrieve()
             .body<CreateAgentResponse>()
             ?: CreateAgentResponse()
+
+    /**
+     * The signed-in agent, resolved by ndopify-server from the access token; null when the caller has no party or isn't
+     * an agent (404). Every other error propagates: only "not an agent" means "sign in again".
+     */
+    fun me(): Agent? =
+        try {
+            rest.get()
+                .uri("/v1/agents/me")
+                .retrieve()
+                .body<GetAgentResponse>()
+                ?.agent
+        } catch (ex: HttpClientErrorException) {
+            if (ex.statusCode == HttpStatus.NOT_FOUND) null else throw ex
+        }
 
     /** The agent of [partyId], with its whole profile; null when the party isn't an agent. */
     fun findByPartyId(partyId: Long): Agent? {
