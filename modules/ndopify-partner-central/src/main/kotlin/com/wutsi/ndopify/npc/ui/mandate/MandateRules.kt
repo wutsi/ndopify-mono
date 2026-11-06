@@ -1,22 +1,16 @@
 package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.contract.dto.Contract
-import com.wutsi.ndopify.contract.dto.ContractSummary
-import com.wutsi.ndopify.listing.dto.ListingStatus
-import com.wutsi.ndopify.listing.dto.ListingSummary
-import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
-import com.wutsi.ndopify.npc.ui.listing.ListingRules
-import com.wutsi.ndopify.web.core.service.TenantFormatter
 import java.time.Duration
 import java.util.Date
 
 /**
  * The life of a mandate as the agent sees it, worded as the prototype's `partner-central.js` (`STATUS_TAGS`,
- * `partyWords`, `nextStep`, `CANCELLATION_LABELS`): shared by the Espace agent's *Mes mandats* and the mandate pages.
+ * `partyWords`, `CANCELLATION_LABELS`): shared by the Espace agent's *Mes mandats* and the mandate pages.
  */
 object MandateRules {
     /** Listed in *Mes mandats*. */
@@ -28,18 +22,6 @@ object MandateRules {
     /** A landlord's signed mandate: the only one with a listing. */
     fun listed(mandate: Mandate): Boolean =
         mandate.mandateType == MandateType.LISTING && mandate.status == MandateStatus.APPROVED
-
-    /**
-     * The card's next step of a [listed] mandate while its listing isn't published (the prototype's `nextStep`);
-     * null once it is, or closed: then it's [nextStep]'s. [listing] is null before it's created. A summary has no
-     * `errorCodes`: a listing sent back to fix gets a DRAFT's step.
-     */
-    fun listingStep(listing: ListingSummary?): String? = when {
-        listing == null -> "Créez l'annonce du bien, puis visitez-le pour la compléter."
-        listing.status == ListingStatus.DRAFT -> "Complétez l'annonce, puis envoyez-la pour vérification."
-        ListingRules.sent(listing.status) -> "Annonce en vérification : elle sera publiée sous peu."
-        else -> null
-    }
 
     /** The mandate page shows these; any other status is the locked view. */
     val SHOWN: Set<MandateStatus> = ACTIVE + MandateStatus.CLOSED + MandateStatus.CANCELLED
@@ -94,35 +76,5 @@ object MandateRules {
         val requestedAt = contract?.signatureRequestedAt ?: return null
         val deadline = contract.signatureDeadline ?: return null
         return Duration.ofMillis(deadline.time - requestedAt.time).plusHours(12).toDays().toInt() // Rounded
-    }
-
-    /** The card's one-line next step; null once the mandate is no longer in progress. */
-    fun nextStep(mandate: Mandate, contract: ContractSummary?, now: Long, formatter: TenantFormatter): String? {
-        val words = words(mandate.mandateType)
-        return when (mandate.status) {
-            MandateStatus.ASSIGNED -> "Contactez ${words.the}, puis envoyez-lui le mandat à approuver."
-            MandateStatus.PENDING_APPROVAL -> {
-                val deadline = contract?.signatureDeadline
-                when {
-                    deadline == null -> "${words.theUpper} doit signer le mandat."
-                    deadline.time < now -> "Délai de signature dépassé : renvoyez le mandat."
-                    else -> "${words.theUpper} a jusqu'au ${formatter.date(deadline)} pour signer le mandat."
-                }
-            }
-            MandateStatus.APPROVED -> {
-                // Signed: what's left is the property (a search) or the tenant / buyer (a listing), within the
-                // mandate's validity
-                val find = if (mandate.mandateType != MandateType.LISTING) {
-                    "Trouvez un bien pour ${words.the}"
-                } else if (mandate.listingType == ListingType.SALE) {
-                    "Trouvez un acheteur"
-                } else {
-                    "Trouvez un locataire"
-                }
-                val before = contract?.validUntil?.let { " avant le ${formatter.date(it)}" } ?: ""
-                "$find$before."
-            }
-            else -> null
-        }
     }
 }

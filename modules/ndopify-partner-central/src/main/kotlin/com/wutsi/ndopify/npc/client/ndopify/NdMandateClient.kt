@@ -6,9 +6,11 @@ import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateResponse
 import com.wutsi.ndopify.mandate.dto.GetMandateResponse
 import com.wutsi.ndopify.mandate.dto.Mandate
+import com.wutsi.ndopify.mandate.dto.MandateStats
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateSummary
 import com.wutsi.ndopify.mandate.dto.SearchMandateResponse
+import com.wutsi.ndopify.mandate.dto.SearchMandateStatsResponse
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
@@ -91,6 +93,21 @@ class NdMandateClient(
             .body<SearchMandateResponse>()
             ?.mandates
             ?: emptyList()
+
+    /** How each of [mandateIds] is doing: its matching pool, interested clients and visits. One call; none without an id. */
+    fun stats(mandateIds: List<Long>): Map<Long, MandateStats> {
+        if (mandateIds.isEmpty()) return emptyMap()
+        return rest.get()
+            .uri { uri ->
+                mandateIds.forEach { uri.queryParam("mandate-id", it) }
+                uri.path("/v1/mandates/stats").build()
+            }
+            .retrieve()
+            .body<SearchMandateStatsResponse>()
+            ?.stats
+            ?.associateBy { it.mandateId }
+            ?: emptyMap()
+    }
 
     fun update(id: Long, request: UpdateMandateRequest) {
         rest.post().uri("/v1/mandates/{id}", id).body(request).retrieve().toBodilessEntity()

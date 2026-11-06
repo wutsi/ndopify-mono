@@ -511,6 +511,7 @@ class MandateControllerTest {
         )
         verify(listingClient).searchByIds(listOf(3041L, 3012L))
         assertNull(model(result)["dismissing"])
+        assertEquals("2 biens", (model(result)["searchStats"] as SearchStatsView).label)
     }
 
     @Test
@@ -525,6 +526,24 @@ class MandateControllerTest {
     }
 
     @Test
+    fun `approved search - search stats with visits`() {
+        doReturn(APPROVED).whenever(mandateClient).get(201)
+        doReturn(listOf(matchA.copy(status = MatchStatus.ACCEPTED), matchB))
+            .whenever(matchClient).search(any(), any(), any())
+        doReturn(listOf(listingA, listingB)).whenever(listingClient).searchByIds(any())
+        doReturn(
+            listOf(
+                VisitFixtures.summary(VisitFixtures.requested().copy(mandateId = 201, matchId = 9001)),
+                VisitFixtures.summary(VisitFixtures.completed().copy(id = 7002, mandateId = 201, matchId = 9003)),
+            ),
+        ).whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
+
+        val result = mvc.perform(get("/mandates/201")).andReturn()
+
+        assertEquals("2 biens · 1 intéressé · 2 visites", (model(result)["searchStats"] as SearchStatsView).label)
+    }
+
+    @Test
     fun `approved search - matches unavailable`() {
         doReturn(APPROVED).whenever(mandateClient).get(201)
         doThrow(ResourceAccessException("down")).whenever(matchClient).search(any(), any(), any())
@@ -534,6 +553,7 @@ class MandateControllerTest {
         assertEquals("mandate", result.modelAndView?.viewName)
         assertTrue(section(result).unavailable)
         assertEquals(201L, mandate(result).id)
+        assertNull(model(result)["searchStats"])
         verify(listingClient, never()).searchByIds(any())
     }
 
@@ -618,6 +638,8 @@ class MandateControllerTest {
 
         assertNull(model(landlord)["matchSection"])
         assertNull(model(assigned)["matchSection"])
+        assertNull(model(landlord)["searchStats"])
+        assertNull(model(assigned)["searchStats"])
         verify(matchClient, never()).search(any(), any(), any())
     }
 

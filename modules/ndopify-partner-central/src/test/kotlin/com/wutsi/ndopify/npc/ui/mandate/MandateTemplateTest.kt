@@ -45,6 +45,7 @@ import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import org.jsoup.nodes.Element
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -698,6 +699,7 @@ class MandateTemplateTest {
         val matches = page.selectFirst("section[data-matches-section]")!!
         assertEquals(listOf("9003"), matches.select("[data-match]").map { it.attr("data-match-id") })
         assertEquals("1 en attente", matches.selectFirst("[data-match-proposals-text]")?.text())
+        assertEquals("2 biens · 1 intéressé · 1 visite", searchStatsLabel(matches))
         // Above Biens correspondants
         assertEquals("Biens correspondants", section.nextElementSibling()?.selectFirst("h2")?.text())
         assertNull(page.selectFirst("[data-listing-stats]"))
@@ -834,8 +836,28 @@ class MandateTemplateTest {
             "1 bien écarté : il ne vous sera plus proposé pour ce mandat.",
             section.selectFirst("[data-match-dismissed]")?.text(),
         )
+        assertEquals("2 biens", searchStatsLabel(section))
         assertNull(section.selectFirst("[data-match-empty]"))
         assertNull(section.selectFirst("[data-match-unavailable]"))
+    }
+
+    @Test
+    fun `matches - activity line with completed visits`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        withMatches(
+            MatchFixtures.MATCH_B.copy(mandateId = 201, status = MatchStatus.PROPOSED, proposedAt = proposedAt),
+            MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.ACCEPTED),
+        )
+        doReturn(
+            listOf(
+                VisitFixtures.summary(VisitFixtures.requested().copy(mandateId = 201, matchId = 9001)),
+                VisitFixtures.summary(VisitFixtures.completed().copy(id = 7002, mandateId = 201, matchId = 9003)),
+            ),
+        ).whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
+
+        val section = render(APPROVED).selectFirst("section[data-matches-section]")!!
+
+        assertEquals("2 biens · 1 intéressé · 2 visites", searchStatsLabel(section))
     }
 
     @Test
@@ -879,6 +901,7 @@ class MandateTemplateTest {
         assertNull(section.selectFirst("[data-match-list]"))
         assertNull(section.selectFirst("[data-match-empty]"))
         assertEquals("1 refusé", section.selectFirst("[data-match-proposals-text]")?.text())
+        assertNull(section.selectFirst("[data-search-stats]"))
     }
 
     @Test
@@ -890,6 +913,7 @@ class MandateTemplateTest {
         assertTrue(section.selectFirst("[data-match-empty]")!!.text().startsWith("Aucun de vos biens ne correspond"))
         assertNull(section.selectFirst("[data-match-list]"))
         assertNull(section.selectFirst("[data-match-dismissed]"))
+        assertNull(section.selectFirst("[data-search-stats]"))
     }
 
     @Test
@@ -905,6 +929,7 @@ class MandateTemplateTest {
         )
         assertNull(section.selectFirst("[data-match-empty]"))
         assertNotNull(page.selectFirst("#contact-title"))
+        assertNull(section.selectFirst("[data-search-stats]"))
     }
 
     @Test
@@ -925,6 +950,9 @@ class MandateTemplateTest {
     fun `no matches section before signature`() {
         assertNull(render(get("/mandates/201")).selectFirst("[data-matches-section]"))
     }
+
+    private fun searchStatsLabel(section: Element): String? =
+        section.selectFirst("[data-search-stats] .visually-hidden")?.nextElementSibling()?.text()
 
     // mandate.js
 

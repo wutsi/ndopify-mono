@@ -1,23 +1,19 @@
 package com.wutsi.ndopify.npc.ui.home
 
 import com.wutsi.ndopify.agent.dto.Agent
-import com.wutsi.ndopify.contract.dto.ContractSummary
-import com.wutsi.ndopify.contract.dto.SearchContractRequest
 import com.wutsi.ndopify.customer.dto.CustomerSummary
 import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
-import com.wutsi.ndopify.match.dto.Match
+import com.wutsi.ndopify.mandate.dto.MandateStats
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
-import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
-import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.service.security.SignInRequiredException
@@ -49,8 +45,8 @@ import java.time.Clock
  * one is missing (the agent doesn't need to see its own profile on each visit), the mandates offered to it
  * ([offers], no section without any), each to accept or decline (see `AssignmentController`), and its mandates in
  * progress (*Mes mandats*, [mandates]), each opening its page (see `MandateController`), a landlord's signed one with
- * its listing's status ([listings]) and, once published, its activity ([listingStats]), a signed search
- * with its matches' lines ([matches]). An agent who isn't verified yet gets neither, but a banner leading to the KYC page,
+ * its listing's status ([listings]) and, once published, its activity ([listingStats]), a signed search with its
+ * one-line activity ([mandateStats]). An agent who isn't verified yet gets neither, but a banner leading to the KYC page,
  * worded after its case ([kyc]).
  */
 @Controller
@@ -59,9 +55,7 @@ class HomeController(
     private val kycClient: NdKycClient,
     private val assignmentClient: NdAssignmentClient,
     private val mandateClient: NdMandateClient,
-    private val contractClient: NdContractClient,
     private val listingClient: NdListingClient,
-    private val matchClient: NdMatchClient,
     private val visitClient: NdVisitClient,
     private val customerClient: NdCustomerClient,
     locationClient: NdLocationClient,
@@ -95,11 +89,12 @@ class HomeController(
             val formatter = TenantFormatter(tenant)
             val offers = offers(agent, now)
             val mandates = mandates(agent)
+            val mandateStats = mandates?.let { mandateStats(it) }
             val visits = loadVisits(agent)
             val visitListings = visits?.let { loadVisitListings(it) }
             val visitCustomers = visits?.let { loadVisitCustomers(it) } ?: emptyMap()
             val names = names(
-                (offers.orEmpty().map { (_, mandate) -> mandate } + mandates.orEmpty().map { (mandate, _) -> mandate })
+                (offers.orEmpty().map { (_, mandate) -> mandate } + mandates.orEmpty())
                     .flatMap { mandate -> listOf(mandate.cityId) + mandate.neighborhoodIds } +
                     visitListings.orEmpty().values.flatMap { list -> listOfNotNull(list.cityId, list.neighborhoodId) },
             )
@@ -112,14 +107,11 @@ class HomeController(
             val declineId = decline?.toLongOrNull()
             model.addAttribute("declining", assignments?.firstOrNull { it.id == declineId }?.id)
 
-            val listings = mandates?.let { listings(agent, it.map { (mandate, _) -> mandate }) }
-            val matches = mandates?.let { matches(it.map { (mandate, _) -> mandate }) }
+            val listings = mandates?.let { listings(agent, it) }
             val stats = listings?.let { listingStats(it.values) }
             model.addAttribute(
                 "mandates",
-                mandates?.map { (mandate, contract) ->
-                    MandateCards.of(mandate, contract, listings, names, now, formatter, matches, stats)
-                }
+                mandates?.map { mandate -> MandateCards.of(mandate, listings, names, formatter, mandateStats, stats) }
                     ?: emptyList<MandateCardView>(),
             )
             model.addAttribute("mandatesUnavailable", mandates == null)
@@ -148,20 +140,14 @@ class HomeController(
             null
         }
 
-    /**
-     * The agent's mandates in progress, in the search's order, each with its contract (for the signature deadline or
-     * the end of validity); null when they can't be had. Without their contracts, the cards still show (no date).
-     */
-    private fun mandates(agent: Agent): List<Pair<Mandate, ContractSummary?>>? {
-        val mandates = try {
+    /** The agent's mandates in progress, in the search's order; null when they can't be had. */
+    private fun mandates(agent: Agent): List<Mandate>? =
+        try {
             mandateClient.active(agent.id).map { summary -> MandateSummaries.toMandate(summary) }
         } catch (ex: RestClientException) {
             LOGGER.warn("No mandates for agent ${agent.id}: ${ex.message}")
-            return null
+            null
         }
-        val contracts = contracts(mandates.mapNotNull { mandate -> mandate.contractId }.distinct())
-        return mandates.map { mandate -> mandate to mandate.contractId?.let { contracts[it] } }
-    }
 
     /**
      * The listings of the landlords' signed mandates by mandate id, in one search (none without such a mandate); null
@@ -178,17 +164,14 @@ class HomeController(
         }
     }
 
-    /**
-     * The matches of the signed searches by mandate id, in one search (none without such a mandate); null when they
-     * can't be had: the cards then show no match lines. DISMISSED ones aren't needed: the cards don't count them.
-     */
-    private fun matches(mandates: List<Mandate>): Map<Long, List<Match>>? {
+    /** The approved searches' activity, by mandate id, in one call; null when it can't be had. */
+    private fun mandateStats(mandates: List<Mandate>): Map<Long, MandateStats>? {
         val ids = mandates.filter { MatchRules.matched(it) }.map { it.id }
         if (ids.isEmpty()) return emptyMap()
         return try {
-            matchClient.search(ids, MatchRules.COUNTED).groupBy { it.mandateId }
+            mandateClient.stats(ids)
         } catch (ex: RestClientException) {
-            LOGGER.warn("No matches for the mandates ${ids.joinToString()}: ${ex.message}")
+            LOGGER.warn("No stats for the mandates ${ids.joinToString()}: ${ex.message}")
             null
         }
     }
@@ -207,19 +190,6 @@ class HomeController(
             null
         }
     }
-
-    /** The mandates' contracts by id, in one search. */
-    private fun contracts(ids: List<String>): Map<String, ContractSummary> =
-        if (ids.isEmpty()) {
-            emptyMap()
-        } else {
-            try {
-                contractClient.search(SearchContractRequest(ids = ids, limit = ids.size)).associateBy { it.id }
-            } catch (ex: RestClientException) {
-                LOGGER.warn("No contracts for the mandates: ${ex.message}")
-                emptyMap()
-            }
-        }
 
     /** The visits still open, soonest first within requested and upcoming; null when they can't be had. */
     private fun loadVisits(agent: Agent): List<VisitSummary>? =

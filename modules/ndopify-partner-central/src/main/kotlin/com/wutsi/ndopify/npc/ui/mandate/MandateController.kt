@@ -361,6 +361,10 @@ class MandateController(
         val locations = locations(mandate, listings?.values.orEmpty() + visitListings?.values.orEmpty())
         val view = view(mandate, locations)
         model.addAttribute("mandate", view)
+        model.addAttribute(
+            "searchStats",
+            if (matched) matches?.let { SearchStatsView.of(mandate, it, visitStats) } else null,
+        )
         if (matched) {
             val formatter = formatter()
             val cards = VisitCards.of(

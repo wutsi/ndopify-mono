@@ -2,34 +2,28 @@ package com.wutsi.ndopify.npc.ui.home
 
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.anyOrNull
-import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
-import com.wutsi.ndopify.contract.dto.ContractSummary
-import com.wutsi.ndopify.contract.dto.SearchContractRequest
 import com.wutsi.ndopify.customer.dto.CustomerSummary
 import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
+import com.wutsi.ndopify.mandate.dto.MandateStats
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateSummary
 import com.wutsi.ndopify.mandate.dto.MandateType
-import com.wutsi.ndopify.match.dto.Match
-import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
-import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
-import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.ASSIGNMENT
@@ -69,9 +63,7 @@ class HomeControllerTest {
     private val tenantContext = mock<TenantContext>()
     private val assignmentClient = mock<NdAssignmentClient>()
     private val mandateClient = mock<NdMandateClient>()
-    private val contractClient = mock<NdContractClient>()
     private val listingClient = mock<NdListingClient>()
-    private val matchClient = mock<NdMatchClient>()
     private val visitClient = mock<NdVisitClient>()
     private val customerClient = mock<NdCustomerClient>()
     private val clock = mock<Clock>()
@@ -92,9 +84,7 @@ class HomeControllerTest {
             kycClient,
             assignmentClient,
             mandateClient,
-            contractClient,
             listingClient,
-            matchClient,
             visitClient,
             customerClient,
             locationClient,
@@ -322,68 +312,55 @@ class HomeControllerTest {
     private val pending = assigned.copy(id = 202, status = MandateStatus.PENDING_APPROVAL, contractId = "c-202")
     private val approved = assigned.copy(id = 203, status = MandateStatus.APPROVED, contractId = "c-203")
 
-    private fun active(vararg mandates: Pair<Mandate, ContractSummary?>) {
-        doReturn(mandates.map { (mandate, _) -> MandateSummariesTest.summary(mandate) })
-            .whenever(mandateClient).active(AGENT.id)
-        doReturn(mandates.mapNotNull { (_, contract) -> contract }).whenever(contractClient).search(any())
+    private fun active(vararg mandates: Mandate) {
+        doReturn(mandates.map { MandateSummariesTest.summary(it) }).whenever(mandateClient).active(AGENT.id)
     }
 
     @Test
     fun `mandates shown`() {
-        active(
-            approved to MandateCardsTest.CONTRACT_SUMMARY.copy(id = "c-203"),
-            assigned to null,
-            pending to MandateCardsTest.CONTRACT_2027.copy(id = "c-202"),
-        )
+        active(approved, assigned, pending)
 
         val result = mvc.perform(get("/")).andReturn()
 
-        // Neither the mandates nor their contracts are loaded one by one: the contracts in one search
+        // The mandates aren't loaded one by one
         verify(mandateClient, never()).get(any())
-        verify(contractClient, never()).get(any())
-        val request = argumentCaptor<SearchContractRequest>()
-        verify(contractClient).search(request.capture())
-        assertEquals(listOf("c-203", "c-202"), request.firstValue.ids)
-        assertEquals(2, request.firstValue.limit)
         val mandates = mandates(result)
         assertEquals(listOf(203L, 201L, 202L), mandates.map { it.id })
         assertEquals("Secteurs" to "Bonapriso, Akwa", mandates[1].facts[0])
-        assertEquals("Trouvez un bien pour le client avant le 28 mars 2027.", mandates[0].nextStep)
-        assertEquals("Le client a jusqu'au 19 janv. 2027 pour signer le mandat.", mandates[2].nextStep)
         assertEquals(false, model(result)["mandatesUnavailable"])
     }
 
     @Test
-    fun `contract without dates - card kept without the date`() {
-        active(pending to MandateCardsTest.CONTRACT_SUMMARY.copy(id = "c-202", signatureDeadline = null), approved to null)
+    fun `mandate stats - one call for the approved searches`() {
+        active(approved, landlord, assigned.copy(id = 204, status = MandateStatus.APPROVED))
+        doReturn(mapOf(203L to MandateStats(203, 2, 1, 0, 2), 204L to MandateStats(204, 0, 0, 0, 0)))
+            .whenever(mandateClient).stats(any())
 
         val result = mvc.perform(get("/")).andReturn()
 
-        val mandates = mandates(result)
-        assertEquals("Le client doit signer le mandat.", mandates[0].nextStep)
-        assertEquals("Trouvez un bien pour le client.", mandates[1].nextStep)
+        verify(mandateClient).stats(listOf(203L, 204L))
+        assertEquals("2 biens · 1 intéressé · 2 visites", mandates(result)[0].searchStats?.label)
+        assertEquals("Aucun bien correspondant pour l'instant", mandates(result)[2].searchStats?.label)
     }
 
     @Test
-    fun `contracts unavailable - cards kept without the dates`() {
-        active(pending to null, approved to null)
-        doThrow(ResourceAccessException("timeout")).whenever(contractClient).search(any())
+    fun `mandate stats unavailable - cards kept without the line`() {
+        active(approved)
+        doThrow(ResourceAccessException("timeout")).whenever(mandateClient).stats(any())
 
         val result = mvc.perform(get("/")).andReturn()
 
-        val mandates = mandates(result)
-        assertEquals("Le client doit signer le mandat.", mandates[0].nextStep)
-        assertEquals("Trouvez un bien pour le client.", mandates[1].nextStep)
+        assertNull(mandates(result).single().searchStats)
         assertEquals(false, model(result)["mandatesUnavailable"])
     }
 
     @Test
-    fun `no contract - no contract search`() {
-        active(assigned.copy(contractId = null) to null)
+    fun `no approved search - no mandate stats call`() {
+        active(assigned)
 
         mvc.perform(get("/")).andReturn()
 
-        verify(contractClient, never()).search(any())
+        verify(mandateClient, never()).stats(any())
     }
 
     @Test
@@ -401,7 +378,7 @@ class HomeControllerTest {
     fun `location names fetched once for offers and mandates`() {
         doReturn(listOf(ASSIGNMENT)).whenever(assignmentClient).pending(AGENT.id)
         offered(MANDATE)
-        active(assigned to null)
+        active(assigned)
 
         val result = mvc.perform(get("/")).andReturn()
 
@@ -414,7 +391,7 @@ class HomeControllerTest {
 
     @Test
     fun `listings of the landlords' signed mandates - one search`() {
-        active(approved to null, landlord to null, landlord.copy(id = 206) to null)
+        active(approved, landlord, landlord.copy(id = 206))
         doReturn(listOf(ListingSummary(id = 501, mandateId = 205, status = ListingStatus.DRAFT)))
             .whenever(listingClient).searchByMandates(any(), any())
 
@@ -425,12 +402,11 @@ class HomeControllerTest {
         assertNull(mandates[0].listing)
         assertEquals("/listings/501", mandates[1].listing?.url)
         assertEquals("/mandates/206", mandates[2].listing?.url)
-        assertEquals("Créez l'annonce du bien, puis visitez-le pour la compléter.", mandates[2].nextStep)
     }
 
     @Test
     fun `no landlord's signed mandate - no listing search`() {
-        active(approved to null, landlord.copy(status = MandateStatus.ASSIGNED) to null)
+        active(approved, landlord.copy(status = MandateStatus.ASSIGNED))
 
         mvc.perform(get("/")).andReturn()
 
@@ -439,20 +415,19 @@ class HomeControllerTest {
 
     @Test
     fun `listings unavailable - cards kept without the listing line`() {
-        active(landlord to null)
+        active(landlord)
         doThrow(ResourceAccessException("timeout")).whenever(listingClient).searchByMandates(any(), any())
 
         val result = mvc.perform(get("/")).andReturn()
 
         val card = mandates(result).single()
         assertNull(card.listing)
-        assertEquals("Trouvez un locataire.", card.nextStep)
         assertEquals(false, model(result)["mandatesUnavailable"])
     }
 
     @Test
     fun `published listings - one stats search`() {
-        active(landlord to null, landlord.copy(id = 206) to null, landlord.copy(id = 207) to null)
+        active(landlord, landlord.copy(id = 206), landlord.copy(id = 207))
         doReturn(
             listOf(
                 ListingSummary(id = 501, mandateId = 205, status = ListingStatus.PUBLISHED),
@@ -475,7 +450,7 @@ class HomeControllerTest {
 
     @Test
     fun `no published listing - no stats search`() {
-        active(landlord to null)
+        active(landlord)
         doReturn(listOf(ListingSummary(id = 501, mandateId = 205, status = ListingStatus.DRAFT)))
             .whenever(listingClient).searchByMandates(any(), any())
 
@@ -487,7 +462,7 @@ class HomeControllerTest {
 
     @Test
     fun `stats unavailable - cards kept without the line`() {
-        active(landlord to null)
+        active(landlord)
         doReturn(listOf(ListingSummary(id = 501, mandateId = 205, status = ListingStatus.PUBLISHED)))
             .whenever(listingClient).searchByMandates(any(), any())
         doThrow(ResourceAccessException("timeout")).whenever(listingClient).stats(any())
@@ -496,54 +471,6 @@ class HomeControllerTest {
 
         assertNull(mandates(result).single().stats)
         assertEquals("/listings/501", mandates(result).single().listing?.url)
-    }
-
-    @Test
-    fun `matches of the signed searches - one search`() {
-        val other = approved.copy(id = 204)
-        active(approved to null, other to null, assigned to null, landlord to null)
-        doReturn(
-            listOf(
-                Match(id = 1, mandateId = 203, listingId = 3012, status = MatchStatus.ACTIVE),
-                Match(id = 2, mandateId = 204, listingId = 2987, status = MatchStatus.ACCEPTED),
-            ),
-        ).whenever(matchClient).search(any(), any(), any())
-
-        val result = mvc.perform(get("/")).andReturn()
-
-        verify(matchClient).search(
-            listOf(203L, 204L),
-            listOf(MatchStatus.ACCEPTED, MatchStatus.ACTIVE, MatchStatus.PROPOSED, MatchStatus.EXPIRED, MatchStatus.REJECTED),
-            100,
-        )
-        val mandates = mandates(result)
-        assertEquals("1 nouveau bien correspondant", mandates[0].matches)
-        assertEquals("/mandates/203#matches-title", mandates[0].matchesUrl)
-        assertEquals("1 intéressé", mandates[1].proposals)
-        assertEquals("L'annonce n° 2987 intéresse le client : proposez-lui une visite.", mandates[1].nextStep)
-        assertNull(mandates[2].matches)
-    }
-
-    @Test
-    fun `no signed search - no match search`() {
-        active(assigned to null, landlord to null)
-
-        mvc.perform(get("/")).andReturn()
-
-        verify(matchClient, never()).search(any(), any(), any())
-    }
-
-    @Test
-    fun `matches unavailable - cards kept without the match lines`() {
-        active(approved to null)
-        doThrow(ResourceAccessException("timeout")).whenever(matchClient).search(any(), any(), any())
-
-        val result = mvc.perform(get("/")).andReturn()
-
-        val card = mandates(result).single()
-        assertNull(card.matches)
-        assertNull(card.proposals)
-        assertEquals(false, model(result)["mandatesUnavailable"])
     }
 
     @Test

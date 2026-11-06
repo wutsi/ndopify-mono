@@ -33,8 +33,9 @@
   page (MandateController), null for an agent who isn't verified (no section); "mandatesUnavailable" when they
   couldn't be loaded. A landlord's signed mandate has its listing's line (m.listing: "Annonce" and its status, "À créer"
   before it exists; no number, to fit one line on a phone), none when the listings couldn't be loaded, and once
-  published its activity line (m.stats: interested clients and visits). A signed search has its matches' lines (m.matches, linking to
-  m.matchesUrl, and m.proposals, one line on a phone), none when the matches couldn't be loaded.
+  published its activity line (m.stats: interested clients and visits). A signed search has its activity line
+  (m.searchStats: its matching pool, the client's interest and its visits, one line on a phone), none when the stats
+  couldn't be loaded.
   "visits" are the agent's open visits (VisitCardsView: the requests to confirm, then the visits to come), null for an
   agent who isn't verified (no section); "visits.unavailable" when they couldn't be loaded, and the listings/customers
   failing only leave their line out. Each card opens its visit page (VisitController).
@@ -355,17 +356,13 @@
                                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
                                 <span><span class="visually-hidden">Activité de l'annonce : </span><span th:text="${m.stats}">2 personnes intéressées · 3 visites</span></span>
                             </p>
-                            <p class="mandate-card__matches" th:if="${m.matches}" data-matches>
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg>
-                                <a th:href="@{${m.matchesUrl}}" th:text="${m.matches}" data-matches-link>3 nouveaux biens correspondants</a>
+                            <!-- A signed search: its current pool, the client's interest and its visits. One line, even on a phone; the
+                                 mandate page has the detail. -->
+                            <p class="search-stats mandate-card__search-stats" th:if="${m.searchStats}" data-search-stats>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                                <span class="visually-hidden">Activité de la recherche : </span>
+                                <a th:href="@{${m.searchStats.url}}" data-search-stats-link><span th:text="${m.searchStats.label}">12 biens · 1 intéressé · 3 visites</span></a>
                             </p>
-                            <p class="mandate-card__proposals" th:if="${m.proposals}" data-proposals>
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M4 12 20 4l-6 16-3-7zM11 13l9-9"/></svg>
-                                <span><span class="visually-hidden">Biens proposés au client : </span><span
-                                        th:text="${m.proposals}" data-proposals-text>1 refusé · 1 en attente</span></span>
-                            </p>
-                            <p class="mandate-card__next" th:if="${m.nextStep}"><strong>Prochaine étape&nbsp;:</strong>
-                                <span th:text="${m.nextStep}">Contactez le client, puis envoyez-lui le mandat à approuver.</span></p>
                         </article>
                     </li>
                 </ul>

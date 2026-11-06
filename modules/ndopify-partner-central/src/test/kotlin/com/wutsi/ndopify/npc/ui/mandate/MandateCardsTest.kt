@@ -1,7 +1,6 @@
 package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.contract.dto.Contract
-import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
@@ -9,10 +8,9 @@ import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.Mandate
+import com.wutsi.ndopify.mandate.dto.MandateStats
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
-import com.wutsi.ndopify.match.dto.Match
-import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import com.wutsi.ndopify.npc.ui.listing.ListingLineView
 import com.wutsi.ndopify.npc.ui.listing.ListingRules
@@ -50,27 +48,25 @@ class MandateCardsTest {
             comments = "Près d'une école",
         )
 
+        /** The mandate's contract, shared with the mandate page tests. */
         val CONTRACT = Contract(
             id = "c-201",
             signatureRequestedAt = Date.from(Instant.parse("2026-10-15T10:00:00Z")),
             signatureDeadline = Date.from(Instant.parse("2026-10-22T10:00:00Z")),
             validUntil = Date.from(Instant.parse("2027-03-28T10:00:00Z")),
         )
-
-        /** [CONTRACT], as the contract search returns it (the cards of the Espace agent). */
-        val CONTRACT_SUMMARY = ContractSummary(
-            id = CONTRACT.id,
-            signatureDeadline = CONTRACT.signatureDeadline,
-            validUntil = CONTRACT.validUntil,
-        )
-
-        /** [CONTRACT_SUMMARY], still to sign at the home tests' clock (AssignmentViewsTest.NOW, 15 January 2027). */
-        val CONTRACT_2027 = CONTRACT_SUMMARY.copy(signatureDeadline = Date.from(Instant.parse("2027-01-19T10:00:00Z")))
     }
+
+    private fun card(
+        mandate: Mandate = MANDATE,
+        listings: Map<Long, ListingSummary>? = emptyMap(),
+        mandateStats: Map<Long, MandateStats>? = null,
+        stats: Map<Long, ListingStats>? = null,
+    ) = MandateCards.of(mandate, listings, NAMES, FORMATTER, mandateStats, stats)
 
     @Test
     fun assigned() {
-        val card = MandateCards.of(MANDATE, null, emptyMap(), NAMES, NOW, FORMATTER)
+        val card = card()
 
         assertEquals(201L, card.id)
         assertEquals("Locataire · Maison", card.title)
@@ -83,15 +79,13 @@ class MandateCardsTest {
             ),
             card.facts,
         )
-        assertEquals("Contactez le client, puis envoyez-lui le mandat à approuver.", card.nextStep)
     }
 
     @Test
     fun `pending approval`() {
-        val card = MandateCards.of(MANDATE.copy(status = MandateStatus.PENDING_APPROVAL), CONTRACT_SUMMARY, emptyMap(), NAMES, NOW, FORMATTER)
+        val card = card(mandate = MANDATE.copy(status = MandateStatus.PENDING_APPROVAL))
 
         assertEquals(MandateRules.Tag("En approbation", "warning"), card.tag)
-        assertEquals("Le client a jusqu'au 22 oct. 2026 pour signer le mandat.", card.nextStep)
     }
 
     @Test
@@ -102,10 +96,9 @@ class MandateCardsTest {
             neighborhoodIds = listOf(BONAPRISO),
         )
 
-        val card = MandateCards.of(
-            mandate, CONTRACT_SUMMARY,
-            mapOf(201L to ListingSummary(id = 501, mandateId = 201, status = ListingStatus.PUBLISHED)),
-            NAMES, NOW, FORMATTER,
+        val card = card(
+            mandate = mandate,
+            listings = mapOf(201L to ListingSummary(id = 501, mandateId = 201, status = ListingStatus.PUBLISHED)),
             stats = mapOf(501L to ListingStats(501, 2, 0, 3)),
         )
 
@@ -115,19 +108,14 @@ class MandateCardsTest {
             listOf("Secteur" to "Bonapriso", "Loyer" to "250K\u00a0FCFA / mois", "Disponibilité" to "Dans 1 à 3\u00a0mois"),
             card.facts,
         )
-        assertEquals("Trouvez un locataire avant le 28 mars 2027.", card.nextStep)
         assertEquals("2 personnes intéressées · 3 visites", card.stats)
     }
 
     /** A landlord's signed mandate (203), with [listing] as the listings' search returns it. */
     private fun listed(listing: ListingSummary?, stats: Map<Long, ListingStats>? = emptyMap()): MandateCardView =
-        MandateCards.of(
-            MANDATE.copy(id = 203, status = MandateStatus.APPROVED, mandateType = MandateType.LISTING),
-            CONTRACT_SUMMARY,
-            listOfNotNull(listing).associateBy { it.mandateId },
-            NAMES,
-            NOW,
-            FORMATTER,
+        card(
+            mandate = MANDATE.copy(id = 203, status = MandateStatus.APPROVED, mandateType = MandateType.LISTING),
+            listings = listOfNotNull(listing).associateBy { it.mandateId },
             stats = stats,
         )
 
@@ -151,7 +139,6 @@ class MandateCardsTest {
         val card = listed(null)
 
         assertEquals(ListingLineView("Annonce", "/mandates/203", ListingRules.Tag("À créer", "neutral")), card.listing)
-        assertEquals("Créez l'annonce du bien, puis visitez-le pour la compléter.", card.nextStep)
     }
 
     @Test
@@ -159,7 +146,6 @@ class MandateCardsTest {
         val card = listed(ListingSummary(id = 501, mandateId = 203, status = ListingStatus.DRAFT))
 
         assertEquals(ListingLineView("Annonce", "/listings/501", ListingRules.Tag("Brouillon", "info")), card.listing)
-        assertEquals("Complétez l'annonce, puis envoyez-la pour vérification.", card.nextStep)
     }
 
     @Test
@@ -167,7 +153,6 @@ class MandateCardsTest {
         val card = listed(ListingSummary(id = 501, mandateId = 203, status = ListingStatus.UNDER_VERIFICATION))
 
         assertEquals(ListingRules.Tag("En vérification", "warning"), card.listing?.tag)
-        assertEquals("Annonce en vérification : elle sera publiée sous peu.", card.nextStep)
     }
 
     @Test
@@ -176,109 +161,67 @@ class MandateCardsTest {
         val card = listed(ListingSummary(id = 501, mandateId = 203, status = ListingStatus.PUBLISHED, publishedAt = publishedAt))
 
         assertEquals(ListingRules.Tag("Publiée le ${FORMATTER.date(publishedAt)}", "success"), card.listing?.tag)
-        assertEquals("Trouvez un locataire avant le 28 mars 2027.", card.nextStep)
     }
 
     @Test
-    fun `listings unavailable - no line, the mandate's next step`() {
-        val card = MandateCards.of(
-            MANDATE.copy(id = 203, status = MandateStatus.APPROVED, mandateType = MandateType.LISTING),
-            CONTRACT_SUMMARY,
-            null,
-            NAMES,
-            NOW,
-            FORMATTER,
-        )
+    fun `listings unavailable - no line`() {
+        val card = card(mandate = MANDATE.copy(id = 203, status = MandateStatus.APPROVED, mandateType = MandateType.LISTING), listings = null)
 
         assertNull(card.listing)
-        assertEquals("Trouvez un locataire avant le 28 mars 2027.", card.nextStep)
     }
 
     @Test
     fun `search - no listing line`() {
-        val card = MandateCards.of(MANDATE.copy(status = MandateStatus.APPROVED), CONTRACT_SUMMARY, emptyMap(), NAMES, NOW, FORMATTER)
+        val card = card(mandate = MANDATE.copy(status = MandateStatus.APPROVED))
 
         assertNull(card.listing)
-        assertEquals("Trouvez un bien pour le client avant le 28 mars 2027.", card.nextStep)
     }
 
     @Test
     fun `whole city`() {
-        val card = MandateCards.of(MANDATE.copy(neighborhoodIds = emptyList()), null, emptyMap(), NAMES, NOW, FORMATTER)
+        val card = card(mandate = MANDATE.copy(neighborhoodIds = emptyList()))
 
         assertEquals("Secteur" to "Douala", card.facts[0])
     }
 
     @Test
     fun `whole city without its name`() {
-        val card = MandateCards.of(MANDATE.copy(neighborhoodIds = emptyList()), null, emptyMap(), emptyMap(), NOW, FORMATTER)
+        val card = MandateCards.of(MANDATE.copy(neighborhoodIds = emptyList()), emptyMap(), emptyMap(), FORMATTER)
 
         assertEquals("Secteur" to "Toute la ville", card.facts[0])
     }
 
-    // Matches
-
-    private val search = MANDATE.copy(status = MandateStatus.APPROVED)
-
-    private fun match(id: Long, status: MatchStatus, listingId: Long = 3000 + id) =
-        Match(id = id, mandateId = 201, listingId = listingId, status = status, score = 0.5)
-
-    private fun card(matches: Map<Long, List<Match>>?) =
-        MandateCards.of(search, CONTRACT_SUMMARY, emptyMap(), NAMES, NOW, FORMATTER, matches)
+    // Search stats
 
     @Test
-    fun `new matches`() {
-        val card = card(mapOf(201L to (1L..3L).map { match(it, MatchStatus.ACTIVE) }))
-
-        assertEquals("3 nouveaux biens correspondants", card.matches)
-        assertEquals("/mandates/201#matches-title", card.matchesUrl)
-        assertNull(card.proposals)
-        assertEquals("Envoyez au client les biens qui lui correspondent.", card.nextStep)
-    }
-
-    @Test
-    fun `matches sent`() {
+    fun `search stats`() {
+        val approved = MANDATE.copy(status = MandateStatus.APPROVED)
         val card = card(
-            mapOf(
-                201L to listOf(
-                    match(1, MatchStatus.PROPOSED),
-                    match(2, MatchStatus.ACCEPTED, listingId = 2987),
-                    match(3, MatchStatus.REJECTED),
-                    match(4, MatchStatus.ACTIVE),
-                ),
-            ),
+            mandate = approved,
+            mandateStats = mapOf(201L to MandateStats(201, properties = 3, interested = 1, upcomingVisits = 1, completedVisits = 2)),
         )
 
-        assertEquals("1 nouveau bien correspondant", card.matches)
-        assertEquals("1 intéressé · 1 refusé · 1 en attente", card.proposals)
-        assertEquals("L'annonce n° 2987 intéresse le client : proposez-lui une visite.", card.nextStep)
+        assertEquals("3 biens · 1 intéressé · 3 visites", card.searchStats?.label)
+        assertEquals("/mandates/201#matches-title", card.searchStats?.url)
     }
 
     @Test
-    fun `matches all sent`() {
-        val card = card(mapOf(201L to listOf(match(1, MatchStatus.PROPOSED))))
-
-        assertNull(card.matches)
-        assertNull(card.matchesUrl)
-        assertEquals("1 en attente", card.proposals)
-        assertEquals("Trouvez un bien pour le client avant le 28 mars 2027.", card.nextStep)
+    fun `search stats - unavailable`() {
+        assertNull(card(MANDATE.copy(status = MandateStatus.APPROVED), mandateStats = null).searchStats)
     }
 
     @Test
-    fun `no match`() {
-        val card = card(emptyMap())
+    fun `search stats - no match`() {
+        val card = card(
+            mandate = MANDATE.copy(status = MandateStatus.APPROVED),
+            mandateStats = mapOf(201L to MandateStats(201)),
+        )
 
-        assertNull(card.matches)
-        assertNull(card.proposals)
-        assertEquals("Trouvez un bien pour le client avant le 28 mars 2027.", card.nextStep)
+        assertEquals("Aucun bien correspondant pour l'instant", card.searchStats?.label)
     }
 
     @Test
-    fun `matches unavailable`() {
-        val card = card(null)
-
-        assertNull(card.matches)
-        assertNull(card.proposals)
-        assertEquals("Trouvez un bien pour le client avant le 28 mars 2027.", card.nextStep)
+    fun `not an approved search - no stats`() {
+        assertNull(card(MANDATE, mandateStats = mapOf(201L to MandateStats(201, 3, 1, 0, 0))).searchStats)
     }
 }

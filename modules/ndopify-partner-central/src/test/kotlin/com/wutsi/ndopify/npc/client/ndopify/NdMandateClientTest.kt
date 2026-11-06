@@ -9,10 +9,12 @@ import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.GetMandateResponse
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
+import com.wutsi.ndopify.mandate.dto.MandateStats
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateSummary
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.dto.SearchMandateResponse
+import com.wutsi.ndopify.mandate.dto.SearchMandateStatsResponse
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
@@ -32,6 +34,7 @@ import org.springframework.web.client.RestClient
 import tools.jackson.databind.json.JsonMapper
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class NdMandateClientTest {
     private lateinit var server: MockRestServiceServer
@@ -168,6 +171,39 @@ class NdMandateClientTest {
     @Test
     fun `searchByIds - none`() {
         assertEquals(emptyList(), client.searchByIds(emptyList(), 20))
+        server.verify()
+    }
+
+    @Test
+    fun stats() {
+        server.expect(requestTo("http://localhost:8080/v1/mandates/stats?mandate-id=201&mandate-id=203"))
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(
+                withSuccess(
+                    json(
+                        SearchMandateStatsResponse(
+                            stats = listOf(
+                                MandateStats(201, properties = 3, interested = 1, upcomingVisits = 2, completedVisits = 1),
+                                MandateStats(203, properties = 0, interested = 0, upcomingVisits = 0, completedVisits = 0),
+                            ),
+                        ),
+                    ),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val stats = client.stats(listOf(201, 203))
+
+        assertEquals(3, stats[201]?.properties)
+        assertEquals(1, stats[201]?.interested)
+        assertEquals(0, stats[203]?.properties)
+        assertEquals(setOf(201L, 203L), stats.keys)
+        server.verify()
+    }
+
+    @Test
+    fun `stats - no id`() {
+        assertTrue(client.stats(emptyList()).isEmpty())
         server.verify()
     }
 
