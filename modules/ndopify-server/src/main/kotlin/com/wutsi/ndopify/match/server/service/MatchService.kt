@@ -235,6 +235,7 @@ class MatchService(
         dao.save(
             match.copy(
                 score = score.total,
+                typeScore = score.type,
                 neighborhoodScore = score.neighborhood,
                 priceScore = score.price,
                 roomsScore = score.rooms,

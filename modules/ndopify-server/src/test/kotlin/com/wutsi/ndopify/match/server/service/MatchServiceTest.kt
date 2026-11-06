@@ -135,6 +135,19 @@ class MatchServiceTest {
     }
 
     @Test
+    fun `matchMandate persists the type score`() {
+        doReturn(listOf(listing1)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
+        doReturn(score(1.0).copy(type = 0.85))
+            .whenever(matcher).score(eq(search), eq(listing1), any(), eq(today))
+
+        service.matchMandate(MANDATE_ID)
+
+        val captor = argumentCaptor<MatchEntity>()
+        verify(matchDao).save(captor.capture())
+        assertEquals(0.85, captor.firstValue.typeScore, 0.000001)
+    }
+
+    @Test
     fun `matchAll matches each open search, skipping one failing`() {
         doReturn(listOf(99L, MANDATE_ID)).whenever(mandateDao)
             .findIdsWithAgent(MandateType.SEARCH, MandateStatus.APPROVED)

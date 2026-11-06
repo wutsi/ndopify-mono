@@ -13,6 +13,7 @@ class MatchMapper {
             listingId = entity.listing.id ?: -1,
             status = entity.status,
             score = entity.score,
+            typeScore = entity.typeScore,
             neighborhoodScore = entity.neighborhoodScore,
             priceScore = entity.priceScore,
             roomsScore = entity.roomsScore,
