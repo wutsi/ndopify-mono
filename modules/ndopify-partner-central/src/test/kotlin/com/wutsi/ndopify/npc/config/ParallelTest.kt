@@ -1,6 +1,11 @@
 package com.wutsi.ndopify.npc.config
 
+import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.common.dto.HttpHeader
 import com.wutsi.ndopify.web.core.client.AuthorizationClientHttpRequestInterceptor
+import com.wutsi.ndopify.web.core.client.TenantIdClientHttpRequestInterceptor
+import com.wutsi.ndopify.web.core.service.TenantContext
 import jakarta.servlet.http.Cookie
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Test
@@ -24,6 +29,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class ParallelTest {
@@ -62,6 +68,34 @@ class ParallelTest {
         try {
             server.expect(requestTo("http://localhost:8080/v1/agents/me"))
                 .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer token-123"))
+                .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON))
+
+            parallel.async { rest.get().uri("/v1/agents/me").retrieve().body<String>() }.join()
+
+            server.verify()
+        } finally {
+            RequestContextHolder.resetRequestAttributes()
+        }
+    }
+
+    @Test
+    fun `sends the current tenant`() {
+        val tenantContext = mock<TenantContext>()
+        val request = MockHttpServletRequest()
+        RequestContextHolder.setRequestAttributes(ServletRequestAttributes(request))
+        try {
+            whenever(tenantContext.getTenantId()).thenAnswer {
+                val bound = RequestContextHolder.getRequestAttributes() as ServletRequestAttributes
+                assertSame(request, bound.request)
+                42L
+            }
+            val builder = RestClient.builder().baseUrl("http://localhost:8080")
+            val server = MockRestServiceServer.bindTo(builder).build()
+            val rest = builder
+                .requestInterceptor(TenantIdClientHttpRequestInterceptor(tenantContext))
+                .build()
+            server.expect(requestTo("http://localhost:8080/v1/agents/me"))
+                .andExpect(header(HttpHeader.TENANT_ID, "42"))
                 .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON))
 
             parallel.async { rest.get().uri("/v1/agents/me").retrieve().body<String>() }.join()
