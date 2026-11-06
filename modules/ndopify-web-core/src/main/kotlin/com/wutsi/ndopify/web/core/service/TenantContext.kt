@@ -18,25 +18,20 @@ class TenantContext(
         private val LOGGER = LoggerFactory.getLogger(TenantContext::class.java)
     }
 
-    private lateinit var tenants: List<Tenant>
+    private val tenants: List<Tenant> by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        LOGGER.info(">>> Loading tenants from server")
+        api.search().tenants.also { tenants -> LOGGER.info(">>> ${tenants.size} tenants loaded") }
+    }
 
     fun getTenantId(): Long = getTenant().id
 
     fun getTenant(): Tenant {
         val requestUrl = request.requestURL.toString()
-        val tenants = all()
         return tenants.firstOrNull { tenant ->
             portal.url(tenant)?.let { url -> requestUrl.startsWith(url) } ?: false
         }
             ?: throw IllegalStateException("No tenant found for URL: $requestUrl")
     }
 
-    fun all(): List<Tenant> {
-        if (!::tenants.isInitialized) {
-            LOGGER.info(">>> Loading tenants from server")
-            tenants = api.search().tenants
-            LOGGER.info(">>> ${tenants.size} tenants loaded")
-        }
-        return tenants
-    }
+    fun all(): List<Tenant> = tenants
 }

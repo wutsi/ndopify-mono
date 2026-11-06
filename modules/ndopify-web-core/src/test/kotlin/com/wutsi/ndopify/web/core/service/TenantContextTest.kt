@@ -4,13 +4,19 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
+import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.refdata.dto.SearchTenantResponse
 import com.wutsi.ndopify.refdata.dto.Tenant
 import com.wutsi.ndopify.web.core.client.ndopify.NdTenantClient
 import org.junit.jupiter.api.Test
 import org.springframework.mock.web.MockHttpServletRequest
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.concurrent.thread
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class TenantContextTest {
     private val tenants = listOf(
@@ -101,6 +107,32 @@ class TenantContextTest {
         context.getTenantId()
 
         verify(api, times(1)).search()
+    }
+
+    @Test
+    fun `tenants are loaded once under concurrent calls`() {
+        val calls = AtomicInteger()
+        val api = mock<NdTenantClient>()
+        whenever(api.search()).thenAnswer {
+            calls.incrementAndGet()
+            Thread.sleep(200)
+            SearchTenantResponse(tenants = tenants)
+        }
+        val context = TenantContext(api, request("http", "localhost", 8082, "/"), TenantPortal.PUBLIC_PORTAL)
+        val start = CountDownLatch(1)
+        val done = CountDownLatch(8)
+
+        repeat(8) {
+            thread {
+                start.await()
+                context.all()
+                done.countDown()
+            }
+        }
+        start.countDown()
+
+        assertTrue(done.await(5, TimeUnit.SECONDS))
+        assertEquals(1, calls.get())
     }
 
     private fun request(scheme: String, host: String, port: Int, uri: String) =
