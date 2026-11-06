@@ -308,12 +308,11 @@
                 with the time left (a request not confirmed within 48 h expires; under 12 h left, the timer is in the
                 warning colour). Then "À venir": the others by date, so today's come first ("Aujourd'hui · 10h30", the
                 tag "À démarrer" once the check-in window is open, "En cours" once started), then the whole date with
-                the year. Each card says the type before the listing ("Sur place", "Visite vidéo": a WhatsApp video call
-                from the property), and ends with its next step (one short line: confirm the date; on the day, ask the client's
-                code, or call by video from the property; start with the code, or declare the absence once the client is
-                15 min late; end with the report). A group without visits isn't shown; without any, the section says so. Done, cancelled, expired
-                and missed visits leave the list (their page stays, from the mandate). PROTOTYPE: visit.js's VISITS
-                (dates relative to the page load), as changed on visit.html; ?visits=empty shows the empty state.
+                the year. Each compact card says the type before the listing ("Sur place", "Visite vidéo": a WhatsApp
+                video call from the property); the visit's page carries what to do next. A group without visits isn't
+                shown; without any, the section says so. Done, cancelled, expired and missed visits leave the list
+                (their page stays, from the mandate). PROTOTYPE: visit.js's VISITS (dates relative to the page load),
+                as changed on visit.html; ?visits=empty shows the empty state.
             -->
             <section class="home-section" aria-labelledby="visits-title" data-visits-section>
                 <h2 id="visits-title">Visites</h2>
@@ -331,14 +330,13 @@
                             </div>
                             <p class="visit-card__when">
                                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-                                <span data-visit-when>Demandée pour le mer. 4 novembre 2026 à 16h00</span>
+                                <span data-visit-when>mer. 4 novembre 2026 à 16h00</span>
                             </p>
                             <p class="visit-card__listing" data-visit-listing>Sur place · Appartement 3 chambres · Bonanjo</p>
                             <p class="assignment__timer visit-card__timer" data-visit-timer>
                                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                                 <span>Il reste <strong data-visit-left>8 h</strong> pour confirmer</span>
                             </p>
-                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-visit-next>Confirmez la date avec le client.</span></p>
                         </article>
                     </li>
                     <li class="mandate-card visit-card" data-visit-card data-visit-id="7001">
@@ -351,14 +349,13 @@
                             </div>
                             <p class="visit-card__when">
                                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-                                <span data-visit-when>Demandée pour le sam. 7 novembre 2026 à 10h30</span>
+                                <span data-visit-when>sam. 7 novembre 2026 à 10h30</span>
                             </p>
                             <p class="visit-card__listing" data-visit-listing>Sur place · Appartement 3 chambres · Bonapriso</p>
                             <p class="assignment__timer visit-card__timer" data-visit-timer>
                                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                                 <span>Il reste <strong data-visit-left>42 h</strong> pour confirmer</span>
                             </p>
-                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-visit-next>Confirmez la date avec le client.</span></p>
                         </article>
                     </li>
                     </ul>
@@ -381,7 +378,6 @@
                             </p>
                             <p class="visit-card__listing" data-visit-listing>Sur place · Appartement 3 chambres · Bonapriso</p>
                             <p class="assignment__timer visit-card__timer" hidden data-visit-timer></p>
-                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-visit-next>Terminez la visite avec votre compte rendu.</span></p>
                         </article>
                     </li>
                     <li class="mandate-card visit-card" data-visit-card data-visit-id="7007">
@@ -398,7 +394,6 @@
                             </p>
                             <p class="visit-card__listing" data-visit-listing>Sur place · Appartement 3 chambres · Bonanjo</p>
                             <p class="assignment__timer visit-card__timer" hidden data-visit-timer></p>
-                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-visit-next>Démarrez avec son code, ou déclarez son absence.</span></p>
                         </article>
                     </li>
                     <li class="mandate-card visit-card" data-visit-card data-visit-id="7005">
@@ -415,7 +410,6 @@
                             </p>
                             <p class="visit-card__listing" data-visit-listing>Sur place · Appartement 2 chambres · Bonapriso</p>
                             <p class="assignment__timer visit-card__timer" hidden data-visit-timer></p>
-                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-visit-next>Le jour J, demandez son code au client.</span></p>
                         </article>
                     </li>
                     <li class="mandate-card visit-card" data-visit-card data-visit-id="7004">
@@ -432,7 +426,6 @@
                             </p>
                             <p class="visit-card__listing" data-visit-listing>Sur place · Appartement 3 chambres · Bonapriso</p>
                             <p class="assignment__timer visit-card__timer" hidden data-visit-timer></p>
-                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-visit-next>Le jour J, demandez son code au client.</span></p>
                         </article>
                     </li>
                     <li class="mandate-card visit-card" data-visit-card data-visit-id="7003">
@@ -449,7 +442,6 @@
                             </p>
                             <p class="visit-card__listing" data-visit-listing>Sur place · Appartement 3 chambres · Bonapriso</p>
                             <p class="assignment__timer visit-card__timer" hidden data-visit-timer></p>
-                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-visit-next>Le jour J, demandez son code au client.</span></p>
                         </article>
                     </li>
                     </ul>
@@ -477,7 +469,6 @@
                                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                                 <span>Il reste <strong data-visit-left></strong> pour confirmer</span>
                             </p>
-                            <p class="mandate-card__next"><strong>Prochaine étape&nbsp;:</strong> <span data-visit-next></span></p>
                         </article>
                     </li>
                 </template>

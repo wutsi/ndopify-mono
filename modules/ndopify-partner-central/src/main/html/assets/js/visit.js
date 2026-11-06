@@ -364,26 +364,6 @@
         NO_SHOW: ["Absence", "warning"]
     };
 
-    // The card's next step on the Espace agent, one short line (it fits a phone), after the mandate cards' wording.
-    function nextStepOf(v, now) {
-        if (v.status === "REQUESTED") return "Confirmez la date avec le client.";
-        if (v.status === "CHECKED_IN") {
-            return now - v.checkedInAt < MIN_DURATION
-                ? "Faites visiter le bien, puis terminez la visite."
-                : "Terminez la visite avec votre compte rendu.";
-        }
-        if (inWindow(v, now)) {
-            var late = now >= v.scheduledAt + NO_SHOW_FROM;
-            if (v.video) {
-                return late ? "Le client ne répond pas ? Déclarez son absence."
-                    : "Appelez le client, puis démarrez avec son code.";
-            }
-            return late ? "Démarrez avec son code, ou déclarez son absence."
-                : "Démarrez la visite avec le code du client.";
-        }
-        return v.video ? "Appelez le client en vidéo, depuis le bien." : "Le jour J, demandez son code au client.";
-    }
-
     function setTag(el, panel) {
         el.textContent = TAGS[panel][0];
         el.className = "status-tag status-tag--" + TAGS[panel][1];
@@ -452,7 +432,7 @@
             var timer = $("[data-visit-timer]", item);
             if (v.status === "REQUESTED") {
                 tag.hidden = true;
-                $("[data-visit-when]", item).textContent = "Demandée pour le " + formatAt(v.requestedAt);
+                $("[data-visit-when]", item).textContent = formatAt(v.requestedAt);
                 var left = expiresAt(v) - now;
                 $("[data-visit-left]", item).textContent = formatLeft(left);
                 if (left < 12 * HOUR) item.setAttribute("data-urgent", "");
@@ -466,7 +446,6 @@
             var listing = $("[data-visit-listing]", item);
             listing.innerHTML = TYPE_ICONS[v.type] + "<span></span>";
             $("span", listing).textContent = TYPE_LABELS[v.type] + " · " + v.listing.title + " · " + v.listing.neighbourhood;
-            $("[data-visit-next]", item).textContent = nextStepOf(v, now);
             return item;
         }
 
