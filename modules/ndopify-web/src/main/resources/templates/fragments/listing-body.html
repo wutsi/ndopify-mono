@@ -89,7 +89,6 @@
             <caption class="visually-hidden">Conditions de location du logement</caption>
             <tbody>
             <tr th:each="term : ${listing.terms}"><th scope="row" th:text="${term.first}">Loyer</th><td th:text="${term.second}">175K FCFA / mois</td></tr>
-            <tr><th scope="row">Commission Ndopify</th><td>1 mois de loyer, payable à la signature du bail</td></tr>
             </tbody>
         </table>
         <p class="terms-note">Aucun paiement en espèces : les visites se règlent avec le Pass Visite par

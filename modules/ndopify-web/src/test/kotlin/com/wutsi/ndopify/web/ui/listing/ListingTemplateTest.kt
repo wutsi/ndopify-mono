@@ -125,6 +125,7 @@ class ListingTemplateTest {
         assertEquals(listOf("Lumineux.", "Calme."), doc.select("#description-heading ~ p").map { it.text() })
         assertEquals("Forage", doc.selectFirst(".check-list li")?.text())
         assertEquals("Caution", doc.select(".terms-table th")[1].text())
+        assertTrue(doc.select(".terms-table th").none { it.text() == "Commission Ndopify" })
         assertNotNull(doc.selectFirst(".audit-note"))
         assertEquals("https://cdn.ndopify.cm/logo.png", doc.selectFirst("header img")?.attr("src"))
         val ld = doc.selectFirst("script[type=application/ld+json]")!!.data()
