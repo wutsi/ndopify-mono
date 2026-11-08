@@ -170,4 +170,69 @@ class VisitCardsTest {
         assertEquals("Visite en cours", card.kindLabel)
         assertEquals("depuis 10:05", card.whenText)
     }
+
+    @Test
+    fun `requested card carries its inline confirmation slots`() {
+        val card = of(listOf(summary(requested()))).requested.single()
+
+        assertEquals(7, card.days.size)
+        assertEquals(25, card.times.size)
+        assertEquals("2026-11-07", card.selectedDay)
+        assertEquals("10:30", card.selectedTime)
+        assertTrue(card.requestedSlotValid)
+    }
+
+    @Test
+    fun `requested slot outside the window falls back to the first slot`() {
+        val card = of(listOf(summary(requested().copy(requestedAt = date("2026-11-20T09:30:00Z"))))).requested.single()
+
+        assertFalse(card.requestedSlotValid)
+        assertEquals("2026-11-06", card.selectedDay)
+        assertEquals("10:30", card.selectedTime)
+    }
+
+    @Test
+    fun `upcoming visits are grouped by day`() {
+        val cards = of(
+            listOf(
+                summary(confirmed().copy(id = 7002, scheduledAt = date("2026-11-05T12:00:00Z"))),
+                summary(confirmed().copy(id = 7003, scheduledAt = date("2026-11-06T12:00:00Z"))),
+                summary(confirmed().copy(id = 7004, scheduledAt = date("2026-11-09T12:00:00Z"))),
+            ),
+        )
+
+        assertEquals(listOf("Aujourd'hui", "Demain", "lun. 9 novembre"), cards.upcomingGroups.map { it.label })
+    }
+
+    @Test
+    fun `upcoming visits are capped at four, the rest folded`() {
+        val visits = (1..6).map { day ->
+            summary(
+                confirmed().copy(
+                    id = 7000L + day,
+                    scheduledAt = date("2026-11-${(5 + day).toString().padStart(2, '0')}T12:00:00Z"),
+                ),
+            )
+        }
+
+        val cards = of(visits)
+
+        assertEquals(6, cards.upcoming.size)
+        assertEquals(4, cards.upcomingPreviewGroups.sumOf { it.visits.size })
+        assertEquals(2, cards.upcomingMoreCount)
+        assertEquals(2, cards.upcomingMoreGroups.sumOf { it.visits.size })
+    }
+
+    @Test
+    fun `checked-in visits are separated from the upcoming ones`() {
+        val cards = of(
+            listOf(
+                summary(checkedIn().copy(id = 7002)),
+                summary(confirmed().copy(id = 7003)),
+            ),
+        )
+
+        assertEquals(7002L, cards.ongoing.single().id)
+        assertEquals(listOf(7002L, 7003L), cards.upcoming.map { it.id })
+    }
 }

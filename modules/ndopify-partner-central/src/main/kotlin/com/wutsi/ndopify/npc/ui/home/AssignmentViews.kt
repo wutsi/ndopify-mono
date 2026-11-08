@@ -12,6 +12,7 @@ import com.wutsi.ndopify.web.core.service.TenantFormatter
 /** Builds the offers' cards of the Espace agent (see [AssignmentView]), worded as the prototype's index.html. */
 object AssignmentViews {
     private const val MINUTE = 60_000L
+    private const val URGENT = 15 * MINUTE
 
     /** Still open: PENDING and before its deadline (ndopify-server's expire job may not have run yet). */
     fun isOpen(assignment: AssignmentSummary, now: Long): Boolean =
@@ -33,6 +34,7 @@ object AssignmentViews {
             moving = MandateLabels.MOVE_IN_LABELS[mandate.movingPeriod],
             expiresAt = assignment.expiresAt.time,
             remaining = remaining(assignment.expiresAt.time - now),
+            urgent = assignment.expiresAt.time - now < URGENT,
             details = details(mandate, owner),
         )
     }

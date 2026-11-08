@@ -210,6 +210,40 @@ class HomeControllerTest {
     }
 
     @Test
+    fun `offers are sorted by expiry`() {
+        val later = ASSIGNMENT.copy(id = 8, mandateId = 102, expiresAt = Date(AssignmentViewsTest.NOW + 52 * 60_000L))
+        val sooner = ASSIGNMENT.copy(id = 9, mandateId = 103, expiresAt = Date(AssignmentViewsTest.NOW + 9 * 60_000L))
+        doReturn(listOf(later, sooner)).whenever(assignmentClient).pending(AGENT.id)
+        offered(MANDATE, MANDATE.copy(id = 102), MANDATE.copy(id = 103))
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        assertEquals(listOf(9L, 8L), assignments(result).map { it.id })
+    }
+
+    @Test
+    fun `triage header counts`() {
+        doReturn(listOf(ASSIGNMENT.copy(expiresAt = Date(VisitFixtures.NOW + 9 * 60_000L))))
+            .whenever(assignmentClient).pending(AGENT.id)
+        offered(MANDATE)
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        doReturn(
+            listOf(
+                VisitFixtures.summary(VisitFixtures.requested()),
+                VisitFixtures.summary(VisitFixtures.window()),
+            ),
+        ).whenever(visitClient).search(AGENT.id, VisitRules.OPEN)
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        assertEquals(1, model(result)["offerCount"])
+        assertEquals(1, model(result)["urgentOfferCount"])
+        assertEquals(1, model(result)["requestedCount"])
+        assertEquals(1, model(result)["todayCount"])
+        assertEquals("jeudi 5 novembre", model(result)["todayLabel"])
+    }
+
+    @Test
     fun `no offer`() {
         val result = mvc.perform(get("/")).andReturn()
 

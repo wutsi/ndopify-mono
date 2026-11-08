@@ -19,6 +19,8 @@ data class AssignmentView(
     val expiresAt: Long,
     /** The time left when the page was rendered: what the page shows without JS. */
     val remaining: String,
+    /** True under 15 minutes left: the page can treat the card as urgent before home.js runs. */
+    val urgent: Boolean,
     /** The "Voir les détails" rows: term → value. */
     val details: List<Pair<String, String>>,
 )

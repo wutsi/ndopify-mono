@@ -133,14 +133,18 @@ class VisitController(
     fun schedule(@PathVariable id: String, @ModelAttribute form: VisitScheduleForm, redirect: RedirectAttributes): String {
         val agent = currentAgent.get() ?: throw SignInRequiredException()
         val visitId = id.toLongOrNull() ?: return "redirect:/"
-        val visit = current(agent, visitId, redirect) { it.status == VisitStatus.REQUESTED } ?: return back(visitId)
+        // The home page's inline confirmation comes back to the queue, not to the visit page.
+        val returnUrl = if (form.from == "home") "redirect:/#visits-title" else null
+        val visit = current(agent, visitId, redirect) { it.status == VisitStatus.REQUESTED }
+            ?: return returnUrl ?: back(visitId)
 
         val request = form.toRequest(tenantContext.getTenant(), visit.type)
-            ?: return flashed(visitId, INVALID_SLOT, redirect)
+            ?: return flashed(visitId, INVALID_SLOT, redirect, returnUrl)
         return perform(
             visitId,
             redirect,
             CONFIRMED,
+            returnUrl = returnUrl,
             map = { ex ->
                 when (errorCode(ex)) {
                     "VISIT_INVALID_SLOT" -> INVALID_SLOT
@@ -306,6 +310,7 @@ class VisitController(
         id: Long,
         redirect: RedirectAttributes,
         outcome: String,
+        returnUrl: String? = null,
         map: (HttpClientErrorException) -> String = { changed(it) },
         call: () -> Unit,
     ): String {
@@ -321,7 +326,7 @@ class VisitController(
                 FAILED
             }
         redirect.addFlashAttribute(OUTCOME, result)
-        return back(id)
+        return returnUrl ?: back(id)
     }
 
     private fun changed(ex: HttpClientErrorException): String =
@@ -334,9 +339,14 @@ class VisitController(
             null
         }
 
-    private fun flashed(id: Long, outcome: String, redirect: RedirectAttributes): String {
+    private fun flashed(
+        id: Long,
+        outcome: String,
+        redirect: RedirectAttributes,
+        returnUrl: String? = null,
+    ): String {
         redirect.addFlashAttribute(OUTCOME, outcome)
-        return back(id)
+        return returnUrl ?: back(id)
     }
 
     private fun back(id: Long): String = "redirect:/visits/$id"

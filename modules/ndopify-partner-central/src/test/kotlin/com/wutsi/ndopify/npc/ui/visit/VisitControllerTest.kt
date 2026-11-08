@@ -218,6 +218,18 @@ class VisitControllerTest {
     }
 
     @Test
+    fun `schedule from the home queue comes back to the queue`() {
+        val result = mvc.perform(
+            post("/visits/7001/schedule")
+                .param("date", "2026-11-07").param("time", "10:30").param("type", "ON_SITE")
+                .param("from", "home"),
+        ).andReturn()
+
+        assertEquals("/#visits-title", result.response.redirectedUrl)
+        assertEquals(VisitController.CONFIRMED, outcome(result))
+    }
+
+    @Test
     fun `schedule - stale slot`() {
         val result = mvc.perform(
             post("/visits/7001/schedule").param("date", "x").param("time", "10:30").param("type", "ON_SITE"),

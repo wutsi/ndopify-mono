@@ -142,7 +142,10 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `error`); ndopify-server checks the caller is the offer's agent. Without any offer (nor an outcome or "unavailable"
   to show) the section isn't rendered at all. Without JS, "Refuser" opens the confirmation via
   `GET /?decline={id}`; `public/assets/js/home.js` does it in place and counts the deadline down. The mandate labels
-  are shared with the find-property review in `ui/mandate/MandateLabels`.
+  are shared with the find-property review in `ui/mandate/MandateLabels`. The page opens with the triage header
+  (`todayLabel`, `offerCount`, `urgentOfferCount`, `requestedCount`, `todayCount`): the visible *Espace agent* title,
+  the agent's day and links to the sections. Offers are sorted by `expiresAt`; `AssignmentView.urgent` marks the
+  under-15-minute ones, and only the first Accept is a primary button.
 - A VERIFIED agent's Espace agent also lists its mandates in progress (*Mes mandats*): `HomeController` reads
   `GET /v1/mandates?agent-id=&status=ASSIGNED&status=PENDING_APPROVAL&status=APPROVED` (search order, capped at 20),
   one call for every card, then the approved searches' activity in one
@@ -283,7 +286,12 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `VisitRules.OPEN`), their listings in one `GET /v1/listings?id=` and their customers in one `GET /v1/customers?id=`,
   into `VisitCards` → `VisitCardsView`: requested by expiry (soonest first, a request past its 48 h dropped) and
   upcoming by scheduled time (a confirmed visit past its `+ 4 h` window dropped). The search failing is the section's
-  "unavailable"; a missing listing or customer only leaves its line out. `GET /visits/{id}` (`VisitController`,
+  "unavailable"; a missing listing or customer only leaves its line out. The home page confirms a requested visit
+  inline: `VisitCardView` carries the slot lists and the requested slot, `POST /visits/{id}/schedule` with
+  `VisitScheduleForm.from=home` comes back to `/#visits-title` with the `visitOutcome` flash, and
+  `templates/fragments/visit-card.html` renders the one-tap form (or the slot picker when the requested slot is
+  outside the list). The upcoming visits are grouped by day and capped at four
+  (`VisitCardsView.ongoing/upcomingGroups/upcomingPreviewGroups/upcomingMoreGroups`); the rest is folded. `GET /visits/{id}` (`VisitController`,
   `templates/visit.html`, `VisitViews` → `VisitPage`, `VisitRules`, `VisitSlots`) is the prototype's page: one panel per
   status (REQUESTED, CONFIRMED, WINDOW in the check-in window, CHECKED_IN, COMPLETED, CANCELLED, EXPIRED, NO_SHOW) and
   its forms: schedule (`POST /visits/{id}/schedule`), refuse / cancel (`/cancel`), check-in with the customer's code and

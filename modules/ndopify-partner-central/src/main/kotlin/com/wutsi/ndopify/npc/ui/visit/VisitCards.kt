@@ -23,6 +23,7 @@ import java.util.Date
  */
 object VisitCards {
     private const val URGENT = 12 * 3_600_000L
+    private const val PREVIEW = 4
 
     fun of(
         visits: List<VisitSummary>?,
@@ -38,6 +39,8 @@ object VisitCards {
         }
 
         val today = VisitSlots.localDate(Date(now), tenant)
+        val days = VisitSlots.days(today, formatter)
+        val times = VisitSlots.times()
         val requested = visits
             .map { VisitRules.asVisit(it) }
             .filter { it.status == VisitStatus.REQUESTED && VisitRules.isOpen(it, now) }
@@ -46,6 +49,10 @@ object VisitCards {
                 val expiresAt = VisitRules.expiresAt(visit)
                 val left = expiresAt - now
                 val label = VisitSlots.dateTimeLabel(visit.requestedAt, tenant, formatter)
+                val requestedDay = VisitSlots.localDate(visit.requestedAt, tenant).toString()
+                val requestedTime = VisitSlots.localTime(visit.requestedAt, tenant).toString()
+                val dayValid = days.any { it.value == requestedDay }
+                val timeValid = times.any { it.first == requestedTime }
                 VisitCardView(
                     id = visit.id,
                     matchId = visit.matchId,
@@ -62,6 +69,11 @@ object VisitCards {
                     expiresAt = expiresAt,
                     expiresIn = VisitRules.expiresIn(left),
                     urgent = left < URGENT,
+                    days = days,
+                    times = times,
+                    selectedDay = if (dayValid) requestedDay else days.first().value,
+                    selectedTime = if (timeValid) requestedTime else times.first().first,
+                    requestedSlotValid = dayValid && timeValid,
                 )
             }
 
@@ -90,7 +102,66 @@ object VisitCards {
                 )
             }
 
-        return VisitCardsView(requested, upcoming)
+        val ongoing = upcoming.filter { it.status == VisitStatus.CHECKED_IN }
+        val groups = group(upcoming.filter { it.status != VisitStatus.CHECKED_IN }, today, tenant, formatter)
+        val (preview, more) = split(groups, PREVIEW)
+
+        return VisitCardsView(
+            requested = requested,
+            upcoming = upcoming,
+            ongoing = ongoing,
+            upcomingGroups = groups,
+            upcomingPreviewGroups = preview,
+            upcomingMoreGroups = more,
+            upcomingMoreCount = more.sumOf { it.visits.size },
+        )
+    }
+
+    /** Groups consecutive upcoming visits by day, in the order they were sorted. */
+    private fun group(
+        cards: List<VisitCardView>,
+        today: LocalDate,
+        tenant: Tenant,
+        formatter: TenantFormatter,
+    ): List<VisitGroupView> =
+        cards.groupBy { dayLabel(it, today, tenant, formatter) }
+            .map { (label, visits) -> VisitGroupView(label, visits) }
+
+    private fun dayLabel(card: VisitCardView, today: LocalDate, tenant: Tenant, formatter: TenantFormatter): String {
+        val at = card.at ?: return "Plus tard"
+        val date = VisitSlots.localDate(Date(at), tenant)
+        return when (date) {
+            today -> "Aujourd'hui"
+            today.plusDays(1) -> "Demain"
+            else -> formatter.date(date, "EEE d MMMM")
+        }
+    }
+
+    /** The first [limit] cards, and the rest, without splitting a group when it fits. */
+    private fun split(
+        groups: List<VisitGroupView>,
+        limit: Int,
+    ): Pair<List<VisitGroupView>, List<VisitGroupView>> {
+        val preview = mutableListOf<VisitGroupView>()
+        val more = mutableListOf<VisitGroupView>()
+        var shown = 0
+        groups.forEach { group ->
+            when {
+                shown >= limit -> more += group
+                shown + group.visits.size <= limit -> {
+                    preview += group
+                    shown += group.visits.size
+                }
+
+                else -> {
+                    val take = limit - shown
+                    preview += group.copy(visits = group.visits.take(take))
+                    more += group.copy(visits = group.visits.drop(take))
+                    shown = limit
+                }
+            }
+        }
+        return preview to more
     }
 
     /** The state itself, since a card with a visit hides its header tag (the prototype's `visitKind`). */
