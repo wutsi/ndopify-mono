@@ -116,6 +116,7 @@ object MatchPages {
             } else {
                 emptyList()
             },
+            criteria = if (listingPage != null) criteria(match, mandate) else emptyList(),
             listing = listingPage,
             flash = when {
                 answer == "accepted" && state == AnswerState.ACCEPTED -> "C'est noté : ce logement vous intéresse."
@@ -218,6 +219,14 @@ object MatchPages {
             },
         ).map { FitReason(it) } + listOfNotNull(amenities(match, mandate))
     }
+
+    /** The amenities the customer searched for, each matched or missing, worded as on the listing page. */
+    private fun criteria(match: Match, mandate: Mandate): List<AmenityMatch> =
+        AMENITIES
+            .filter { (_, _, wanted) -> wanted(mandate) }
+            .map { (field, label, _) ->
+                AmenityMatch(label.replaceFirstChar { it.uppercase() }, field !in match.missingAmenities)
+            }
 
     /** "Réservoir d'eau, clôturé et sécurisé, mais sans groupe électrogène"; null when none is missing. */
     private fun amenities(match: Match, mandate: Mandate): FitReason? {

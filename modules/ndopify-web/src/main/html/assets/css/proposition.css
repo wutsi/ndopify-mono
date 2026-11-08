@@ -53,6 +53,30 @@
 }
 .proposal__fit .proposal__fit--partial .icon { color: var(--color-text-warning); }
 
+/* "Vos critères": the amenities the client searched for, matched or missing */
+.proposal__criteria { margin-top: var(--space-lg); }
+.proposal__criteria-title {
+  margin: 0 0 var(--space-sm);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-text-info);
+}
+.criteria-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm) var(--space-lg);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.875rem;
+}
+.criteria-list__item { display: inline-flex; align-items: center; gap: var(--space-sm); }
+.criteria-list .icon { flex: none; color: var(--color-text-success); }
+.criteria-list__item.is-missing .icon { color: var(--color-text-warning); }
+.criteria-list__absent { color: var(--color-text-warning); font-size: 0.8125rem; }
+
 /* The outcome of the last answer */
 .proposal-flash {
   display: flex;

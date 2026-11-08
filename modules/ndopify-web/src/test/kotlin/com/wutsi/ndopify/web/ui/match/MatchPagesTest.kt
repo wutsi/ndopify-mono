@@ -146,6 +146,23 @@ class MatchPagesTest {
     }
 
     @Test
+    fun `criteria list the searched amenities, matched or missing`() {
+        assertEquals(
+            listOf(
+                AmenityMatch("Réservoir d'eau", true),
+                AmenityMatch("Groupe électrogène", false),
+                AmenityMatch("Clôturé et sécurisé", true),
+            ),
+            page().criteria,
+        )
+    }
+
+    @Test
+    fun `criteria are empty when the listing is gone`() {
+        assertTrue(page(listing = null).criteria.isEmpty())
+    }
+
+    @Test
     fun `why this listing - only the criteria fully met and searched`() {
         val reasons = page(
             match = match.copy(distanceKm = 1.2, priceScore = 0.8, roomsScore = 0.7, missingAmenities = emptyList()),

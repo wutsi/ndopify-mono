@@ -110,6 +110,7 @@ class MatchTemplateTest {
         status: MatchStatus = MatchStatus.PROPOSED,
         listing: Listing? = this.listing,
         agent: Agent = this.agent,
+        mandate: Mandate = this.mandate,
         answer: String? = null,
         visitPanel: VisitPanel? = null,
         visitFlash: String? = null,
@@ -155,6 +156,21 @@ class MatchTemplateTest {
         assertEquals("noindex, nofollow", doc.selectFirst("meta[name=robots]")?.attr("content"))
         assertEquals("no-referrer", doc.selectFirst("meta[name=referrer]")?.attr("content"))
         assertEquals("https://cdn.ndopify.cm/logo.png", doc.selectFirst("header img")?.attr("src"))
+    }
+
+    @Test
+    fun `your criteria separate matched and missing amenities`() {
+        val doc = render(page(mandate = mandate.copy(waterTank = true, securedFenced = true)))
+
+        assertEquals("Vos critères", doc.selectFirst(".proposal__criteria-title")?.text())
+        val items = doc.select(".proposal__criteria .criteria-list li")
+        assertEquals(
+            listOf("Réservoir d'eau, présent", "Groupe électrogène absent", "Clôturé et sécurisé, présent"),
+            items.map { it.text() },
+        )
+        assertEquals("#i-check", items[0].selectFirst("use")?.attr("href"))
+        assertEquals("#i-close", items[1].selectFirst("use")?.attr("href"))
+        assertEquals("#i-check", items[2].selectFirst("use")?.attr("href"))
     }
 
     @Test
@@ -240,7 +256,8 @@ class MatchTemplateTest {
         )
 
         assertEquals("C'est noté : ce logement vous intéresse.", doc.selectFirst(".proposal-flash")?.text())
-        val next = doc.selectFirst("[data-next-step]")!!
+        val next = doc.selectFirst(".proposal [data-next-step]")
+        assertNotNull(next)
         assertEquals("#visit", next.selectFirst("a[data-modal-open]")?.attr("href"))
         assertEquals("Demander une visite", next.selectFirst("a[data-modal-open]")?.text())
     }

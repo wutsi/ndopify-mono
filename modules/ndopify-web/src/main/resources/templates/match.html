@@ -84,6 +84,21 @@
                     <p class="proposal__subtitle" th:text="${page.searchSummary}">Pour votre recherche : appartement 3 chambres à Bonapriso, jusqu'à 250K FCFA / mois.</p>
                 </div>
             </div>
+
+            <!-- What the customer searched for: matched amenities and the missing ones, side by side. -->
+            <div class="proposal__criteria" th:if="${not #lists.isEmpty(page.criteria)}">
+                <h3 class="proposal__criteria-title">Vos critères</h3>
+                <ul class="criteria-list">
+                    <li class="criteria-list__item" th:each="criterion : ${page.criteria}"
+                        th:classappend="${criterion.matched} ? 'is-matched' : 'is-missing'">
+                        <svg aria-hidden="true" class="icon">
+                            <use th:href="${criterion.matched} ? '#i-check' : '#i-close'"/>
+                        </svg>
+                        <span th:text="${criterion.label}">Réservoir d'eau</span><span class="visually-hidden" th:if="${criterion.matched}">, présent</span><span class="criteria-list__absent" th:unless="${criterion.matched}"> absent</span>
+                    </li>
+                </ul>
+            </div>
+
             <!-- Folded by default: the listing comes first, the reasons are a tap away. -->
             <details class="proposal__why" th:unless="${#lists.isEmpty(page.reasons)}">
                 <summary>Pourquoi ce logement&nbsp;?<svg aria-hidden="true" class="icon proposal__chevron"><use href="#i-chevron-right"/></svg></summary>
@@ -92,6 +107,23 @@
                             aria-hidden="true" class="icon"><use th:href="${reason.partial} ? '#i-info' : '#i-check'"/></svg>[[${reason.text}]]</li>
                 </ul>
             </details>
+
+            <!-- The next step once the customer is interested: request a visit, or open the one already asked for. -->
+            <div class="proposal-next" data-next-step
+                 th:if="${page.state.name() == 'ACCEPTED' and (page.visit?.form != null or page.visit?.open != null or page.agentWhatsappUrl != null)}">
+                <a class="btn btn-primary" data-modal-open href="#visit" th:if="${page.visit?.form != null}">
+                    <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Demander une visite
+                </a>
+                <a class="btn btn-primary" th:if="${page.visit?.open != null}"
+                   th:href="@{/visits/{id}(id=${page.visit.open.id})}">
+                    <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Voir ma visite
+                </a>
+                <a class="btn btn-secondary" rel="noopener" target="_blank" th:href="${page.agentWhatsappUrl}"
+                   th:if="${page.visit?.form == null and page.visit?.open == null and page.agentWhatsappUrl != null}">
+                    <svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg>Contacter<span class="visually-hidden"
+                        th:text="| ${page.agentFirstName} sur WhatsApp|"> Serge sur WhatsApp</span>
+                </a>
+            </div>
         </section>
 
         <!-- The outcome of the answer just posted -->
@@ -103,23 +135,6 @@
         <div class="proposal-flash" role="status" th:if="${page.visitFlash}">
             <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
             <p th:text="${page.visitFlash}">Votre demande de visite est envoyée.</p>
-        </div>
-
-        <!-- The next step once the customer is interested: request a visit, or open the one already asked for. -->
-        <div class="proposal-next" data-next-step
-             th:if="${page.state.name() == 'ACCEPTED' and (page.visit?.form != null or page.visit?.open != null or page.agentWhatsappUrl != null)}">
-            <a class="btn btn-primary" data-modal-open href="#visit" th:if="${page.visit?.form != null}">
-                <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Demander une visite
-            </a>
-            <a class="btn btn-primary" th:if="${page.visit?.open != null}"
-               th:href="@{/visits/{id}(id=${page.visit.open.id})}">
-                <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Voir ma visite
-            </a>
-            <a class="btn btn-secondary" rel="noopener" target="_blank" th:href="${page.agentWhatsappUrl}"
-               th:if="${page.visit?.form == null and page.visit?.open == null and page.agentWhatsappUrl != null}">
-                <svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg>Contacter<span class="visually-hidden"
-                    th:text="| ${page.agentFirstName} sur WhatsApp|"> Serge sur WhatsApp</span>
-            </a>
         </div>
 
         <!--/* The listing can't be shown anymore: rented, withdrawn... */-->

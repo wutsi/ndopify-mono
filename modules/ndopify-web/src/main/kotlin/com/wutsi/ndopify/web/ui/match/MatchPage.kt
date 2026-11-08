@@ -28,6 +28,8 @@ data class MatchPage(
     val agentWhatsappUrl: String?,
     /** "Pourquoi ce logement ?". */
     val reasons: List<FitReason>,
+    /** "Vos critères": the amenities the customer searched for, each matched or missing. */
+    val criteria: List<AmenityMatch>,
     val listing: ListingPage?,
     /** The outcome of the answer just posted, null otherwise. */
     val flash: String?,
@@ -39,6 +41,9 @@ data class MatchPage(
 
 /** A line of "Pourquoi ce logement ?": [partial] for a criterion only partly met (some amenities missing). */
 data class FitReason(val text: String, val partial: Boolean = false)
+
+/** A searched amenity and whether the listing has it: "Vos critères". */
+data class AmenityMatch(val label: String, val matched: Boolean)
 
 /**
  * The visit block of a match page: [open] once a visit exists (no [form] then), or [form] to request one. When the
