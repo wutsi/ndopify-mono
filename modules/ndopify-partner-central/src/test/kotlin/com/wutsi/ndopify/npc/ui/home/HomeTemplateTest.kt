@@ -553,6 +553,13 @@ class HomeTemplateTest {
         val details = card.selectFirst("details.visit-card__change")!!
         assertFalse(details.hasAttr("open"))
         assertEquals("Changer le créneau", details.selectFirst("summary")?.text()?.trim())
+        assertNull(card.selectFirst("label.field__label"))
+        val date = details.selectFirst("select[name=date]")!!
+        val time = details.selectFirst("select[name=time]")!!
+        assertEquals("Jour", date.attr("aria-label"))
+        assertEquals("Heure", time.attr("aria-label"))
+        assertEquals("input select", date.className())
+        assertEquals("input select", time.className())
         assertTrue(page.selectFirst(".home-intro__counts")!!.text().contains("1 visite à confirmer"))
     }
 

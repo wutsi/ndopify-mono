@@ -76,20 +76,14 @@
                         <input type="hidden" name="from" value="home">
                         <input type="hidden" name="type" th:value="${v.video ? 'VIDEO' : 'ON_SITE'}">
                         <div class="visit-slot">
-                            <div class="field">
-                                <label class="field__label" th:attr="for=|visit-date-${v.id}|">Jour</label>
-                                <select class="input select" th:id="|visit-date-${v.id}|" name="date">
-                                    <option th:each="d : ${v.days}" th:value="${d.value}" th:text="${d.label}"
-                                            th:selected="${d.value == v.selectedDay}">sam. 8 novembre 2026</option>
-                                </select>
-                            </div>
-                            <div class="field">
-                                <label class="field__label" th:attr="for=|visit-time-${v.id}|">Heure</label>
-                                <select class="input select" th:id="|visit-time-${v.id}|" name="time">
-                                    <option th:each="t : ${v.times}" th:value="${t.first}" th:text="${t.second}"
-                                            th:selected="${t.first == v.selectedTime}">10h30</option>
-                                </select>
-                            </div>
+                            <select class="input select" th:id="|visit-date-${v.id}|" name="date" aria-label="Jour">
+                                <option th:each="d : ${v.days}" th:value="${d.value}" th:text="${d.label}"
+                                        th:selected="${d.value == v.selectedDay}">sam. 8 novembre 2026</option>
+                            </select>
+                            <select class="input select" th:id="|visit-time-${v.id}|" name="time" aria-label="Heure">
+                                <option th:each="t : ${v.times}" th:value="${t.first}" th:text="${t.second}"
+                                        th:selected="${t.first == v.selectedTime}">10h30</option>
+                            </select>
                         </div>
                         <button type="submit" class="btn btn--secondary" data-confirm-slot>Confirmer ce créneau</button>
                     </form>
