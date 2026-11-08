@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/*
+  The visit inside a card of Biens correspondants or of Propositions et visites (the prototype's `fillVisit`): the
+  card that led to the visit carries its state, so the card's header tag is hidden. A requested visit keeps the timer
+  and "Confirmer la visite"; a confirmed, started or completed one says when and opens the visit.
+  v: VisitCardView; label: the card's name, for the link's screen-reader wording.
+*/-->
+<div th:fragment="detail(v, label)" class="visit-detail"
+     th:attr="data-state=${v.status.name().toLowerCase()},data-urgent=${v.urgent} ? '' : null">
+    <p class="visit-detail__when">
+        <span class="visit-detail__icon" aria-hidden="true" th:if="${!v.video}">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
+        </span>
+        <span class="visit-detail__icon" aria-hidden="true" th:if="${v.video}">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m16 10 6-3v10l-6-3z"/></svg>
+        </span>
+        <span><strong data-visit-kind th:text="${v.kindLabel}">Visite demandée</strong> ·
+            <span data-visit-when th:text="${v.whenText}">pour le sam. 7 novembre 2026 à 10:30</span></span>
+    </p>
+    <p class="visit-detail__timer" th:if="${v.expiresIn != null}" data-visit-timer>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        <span>Il reste <strong th:text="${v.expiresIn}">42 h</strong> pour confirmer</span>
+    </p>
+    <a class="btn btn--primary btn--compact visit-detail__cta" th:if="${v.status.name() == 'REQUESTED'}"
+       th:href="@{/visits/{id}(id=${v.id})}"
+       th:attr="aria-label=|Confirmer la visite — ${label} — ${v.whenLabel}|" data-visit-link>Confirmer la visite</a>
+    <a class="btn btn--outline btn--compact visit-detail__cta" th:unless="${v.status.name() == 'REQUESTED'}"
+       th:href="@{/visits/{id}(id=${v.id})}"
+       th:attr="aria-label=|Voir la visite — ${label} — ${v.whenLabel}|" data-visit-link>Voir la visite</a>
+</div>
+</body>
+</html>

@@ -58,15 +58,42 @@
     color: var(--color-warning-fg);
 }
 
-/* ---------- mandate.html › a match's visit ---------- */
-.match__visit-cta {
-    position: relative;
-    z-index: 1;
-    display: inline-flex;
+/* ---------- mandate.html › the visit inside a card (Biens correspondants, Propositions et visites) ---------- */
+.visit-detail {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-alt);
+}
+
+.visit-detail__when {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+}
+
+.visit-detail__icon {
+    display: flex;
+    flex: none;
+    margin-top: 0.15em;
+}
+
+.visit-detail__timer {
+    display: flex;
     align-items: center;
-    min-height: var(--target);
-    margin-block: calc((1.6em - var(--target)) / 2);
-    font-weight: 600;
+    gap: var(--space-2);
+    font-size: var(--step-hint);
+}
+
+/* Under 12 h to confirm: the text colour carries it (the warning fill is too light on its own). */
+.visit-detail[data-urgent] .visit-detail__timer {
+    color: var(--color-warning-fg);
+}
+
+.visit-detail__cta {
+    align-self: flex-start;
 }
 
 /* ---------- visit.html ---------- */
