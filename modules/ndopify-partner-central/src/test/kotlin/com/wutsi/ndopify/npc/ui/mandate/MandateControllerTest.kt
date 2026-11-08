@@ -203,7 +203,7 @@ class MandateControllerTest {
 
         val view = proposals()!!
 
-        assertEquals("2 intéressés · 1 refusé · 1 en attente", view.summary)
+        assertEquals("1 refusé", view.outcomes)
         assertEquals(listOf("Client d'un autre agent", "Sandrine Eboa", "Carine Ndongo"), view.rows.map { it.client })
     }
 
@@ -229,7 +229,7 @@ class MandateControllerTest {
         assertEquals("42 h", card.expiresIn)
 
         val proposals = model(result)["listingProposals"] as ProposalsView
-        assertEquals("1 visite · 1 intéressé · 1 refusé · 1 en attente", proposals.summary)
+        assertEquals("1 refusé", proposals.outcomes)
         assertEquals(listOf("Client d'un autre agent", "Carine Ndongo"), proposals.rows.map { it.client })
         assertEquals(listOf(null, "/mandates/207#matches-title"), proposals.rows.map { it.url })
         verify(visitClient).searchByListings(AGENT.id, VisitRules.COUNTED, listOf(501L), 100)
@@ -244,7 +244,7 @@ class MandateControllerTest {
 
         assertTrue((model(result)["listingVisits"] as VisitCardsView).unavailable)
         val proposals = model(result)["listingProposals"] as ProposalsView
-        assertEquals("2 intéressés · 1 refusé · 1 en attente", proposals.summary)
+        assertEquals("1 refusé", proposals.outcomes)
         assertEquals(3, proposals.rows.size)
     }
 

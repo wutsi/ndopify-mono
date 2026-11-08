@@ -407,7 +407,6 @@ class MandateController(
             "mandateListing",
             ListingViews.forMandate(mandate, listingId, listing, formatter(), listingStats),
         )
-        model.addAttribute("listingVisits", clients?.visits)
         model.addAttribute("listingProposals", clients?.proposals)
         model.addAttribute("visitStats", if (listingStats?.visits != null) null else visitStats)
         (model.getAttribute(OUTCOME) as? String)?.let { outcome -> outcome(outcome, view, model) }

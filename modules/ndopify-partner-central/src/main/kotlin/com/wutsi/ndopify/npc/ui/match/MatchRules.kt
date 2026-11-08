@@ -109,27 +109,6 @@ object MatchRules {
         ).joinToString(" · ").ifEmpty { null }
     }
 
-    /**
-     * A card's line of the listings sent to the client, short enough for one line on a phone: what it answered, "1
-     * intéressé · 1 refusé · 1 en attente · 1 sans réponse" (no total: the counts add up to it); null when none was
-     * sent. Kept until the listing's proposals carry their own groups (Task 4).
-     */
-    fun proposals(matches: List<Match>): String? {
-        if (matches.none { it.status in SENT }) {
-            return null
-        }
-        val accepted = matches.count { it.status == MatchStatus.ACCEPTED }
-        val rejected = matches.count { it.status == MatchStatus.REJECTED }
-        val pending = matches.count { it.status == MatchStatus.PROPOSED }
-        val expired = matches.count { it.status == MatchStatus.EXPIRED }
-        return listOfNotNull(
-            accepted.takeIf { it > 0 }?.let { "$it " + plural(it, "intéressé", "intéressés") },
-            rejected.takeIf { it > 0 }?.let { "$it " + plural(it, "refusé", "refusés") },
-            pending.takeIf { it > 0 }?.let { "$it en attente" },
-            expired.takeIf { it > 0 }?.let { "$it sans réponse" },
-        ).joinToString(" · ")
-    }
-
     /** A published listing's card: "2 personnes intéressées", the clients who [accepted] it, or "Aucune …". */
     fun interest(accepted: Int): String =
         when (accepted) {
