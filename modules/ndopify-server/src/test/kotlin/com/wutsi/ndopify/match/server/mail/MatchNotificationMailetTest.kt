@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.match.server.mail
 
 import com.github.mustachejava.DefaultMustacheFactory
+import com.github.mustachejava.resolver.ClasspathResolver
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.argThat
 import com.nhaarman.mockitokotlin2.argumentCaptor
@@ -197,7 +198,7 @@ class MatchNotificationMailetTest {
     fun template() {
         val resolver = MailBodyResolver(
             renderer = MjmlRenderer.create(),
-            mustache = DefaultMustacheFactory(),
+            mustache = DefaultMustacheFactory(ClasspathResolver()),
             filters = listOf(MailFilterNull()),
         )
         val mandate = mapOf(

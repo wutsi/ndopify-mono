@@ -548,6 +548,7 @@ class VisitService(
         completedMailet.send(
             visit = visit,
             customer = customerService.findById(visit.customerId),
+            agent = agentService.findById(visit.agentId),
             listing = listingService.findById(visit.listingId),
         )
     }

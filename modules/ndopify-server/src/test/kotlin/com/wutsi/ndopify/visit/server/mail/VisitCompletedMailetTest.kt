@@ -7,6 +7,7 @@ import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
@@ -50,6 +51,11 @@ class VisitCompletedMailetTest {
         id = 10L,
         party = PartyEntity(id = 100L, firstName = "Ray", lastName = "Sponsible", email = "ray.sponsible@gmail.com"),
     )
+    private val agent = AgentEntity(
+        id = 20L,
+        party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible", email = "kim.possible@gmail.com"),
+        whatsappNumber = "+237699000001",
+    )
     private val listing = ListingEntity(id = 101L, title = "Nice apartment")
     private val visit = VisitEntity(
         id = 1L,
@@ -73,7 +79,7 @@ class VisitCompletedMailetTest {
 
     @Test
     fun send() {
-        mailet.send(visit, customer, listing)
+        mailet.send(visit, customer, agent, listing)
 
         assertEquals(
             mapOf(
@@ -85,6 +91,10 @@ class VisitCompletedMailetTest {
                 "visit_date" to "02/12/2026",
                 "visit_time" to "10:00",
                 "visit_url" to "https://www.ndopify.com/visits/1?token=xxx.yyy.zzz",
+                "agent_full_name" to "Kim Possible",
+                "agent_photo_url" to null,
+                "agent_whatsapp" to "+237 6 99 00 00 01",
+                "agent_whatsapp_url" to "https://wa.me/237699000001",
             ),
             context(),
         )
@@ -93,13 +103,14 @@ class VisitCompletedMailetTest {
         assertEquals("ray.sponsible@gmail.com", email.firstValue.recipient.email)
         assertEquals("Ndopify: votre visite est terminée", email.firstValue.subject)
         assertEquals("<html>completed</html>", email.firstValue.body)
+        assertEquals("Kim Possible", email.firstValue.sender?.displayName)
     }
 
     @Test
     fun `no public portal - no link`() {
         doReturn(tenant.copy(publicPortalUrl = null)).whenever(tenantService).findById(1L)
 
-        mailet.send(visit, customer, listing)
+        mailet.send(visit, customer, agent, listing)
 
         assertNull(context()["visit_url"])
     }

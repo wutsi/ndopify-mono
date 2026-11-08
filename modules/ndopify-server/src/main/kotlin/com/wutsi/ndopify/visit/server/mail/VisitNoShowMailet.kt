@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.visit.server.mail
 
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
+import com.wutsi.ndopify.agent.server.mail.AgentMailContext
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
@@ -52,6 +53,7 @@ class VisitNoShowMailet(
         }
         mailService.send(
             Email(
+                sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = customer.party.email, displayName = customerName),
                 subject = SUBJECT_CUSTOMER.replace("{{tenant_name}}", tenant.name),
                 body = mailBodyResolver.resolve(
@@ -65,7 +67,7 @@ class VisitNoShowMailet(
                         reason = reason,
                         visitUrl = customerUrl,
                         agentRecipient = false,
-                    ),
+                    ) + AgentMailContext.of(agent, TenantFormatter(tenant)),
                 ),
             ),
         )

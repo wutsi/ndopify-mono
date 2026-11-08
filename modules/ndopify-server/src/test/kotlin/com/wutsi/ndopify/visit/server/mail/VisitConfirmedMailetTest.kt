@@ -97,9 +97,11 @@ class VisitConfirmedMailetTest {
         assertEquals("Ndopify: votre visite est confirmée", customerEmail.subject)
         assertEquals("<html>confirmed</html>", customerEmail.body)
 
+        assertEquals("Kim Possible", customerEmail.sender?.displayName)
         val agentEmail = email("kim.possible@gmail.com")
         assertEquals("Kim Possible", agentEmail.recipient.displayName)
         assertEquals("Ndopify: visite confirmée avec Ray Sponsible", agentEmail.subject)
+        assertNull(agentEmail.sender)
 
         assertEquals(
             mapOf(
@@ -110,6 +112,8 @@ class VisitConfirmedMailetTest {
                 "image_url" to "https://cdn.ndopify.com/7.jpg",
                 "agent_full_name" to "Kim Possible",
                 "agent_whatsapp" to "+237 6 99 00 00 01",
+                "agent_photo_url" to null,
+                "agent_whatsapp_url" to "https://wa.me/237699000001",
                 "visit_date" to "02/12/2026",
                 "visit_time" to "10:00",
                 "on_site" to true,

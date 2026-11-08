@@ -1,5 +1,7 @@
 package com.wutsi.ndopify.visit.server.mail
 
+import com.wutsi.ndopify.agent.server.domain.AgentEntity
+import com.wutsi.ndopify.agent.server.mail.AgentMailContext
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
@@ -27,7 +29,7 @@ class VisitCompletedMailet(
         const val TEMPLATE = "/mail/visit/completed.mjml"
     }
 
-    fun send(visit: VisitEntity, customer: CustomerEntity, listing: ListingEntity) {
+    fun send(visit: VisitEntity, customer: CustomerEntity, agent: AgentEntity, listing: ListingEntity) {
         val tenant = tenantService.findById(visit.tenantId!!)
         val formatter = TenantFormatter(tenant)
         val imageUrl = imageService.cover(listing)?.url?.ifBlank { null }
@@ -39,6 +41,7 @@ class VisitCompletedMailet(
         }
         mailService.send(
             Email(
+                sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = customer.party.email, displayName = customerName),
                 subject = SUBJECT.replace("{{tenant_name}}", tenant.name),
                 body = mailBodyResolver.resolve(
@@ -52,7 +55,7 @@ class VisitCompletedMailet(
                         "visit_date" to formatter.date(visit.scheduledAt!!),
                         "visit_time" to formatter.time(visit.scheduledAt),
                         "visit_url" to visitUrl,
-                    ),
+                    ) + AgentMailContext.of(agent, formatter),
                 ),
             ),
         )

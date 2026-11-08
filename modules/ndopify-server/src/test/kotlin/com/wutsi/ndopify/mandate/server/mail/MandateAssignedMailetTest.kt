@@ -84,6 +84,8 @@ class MandateAssignedMailetTest {
                 "agent_full_name" to "Kim Possible",
                 "agent_photo_url" to "https://cdn.ndopify.com/agents/200.jpg",
                 "agent_presentation" to "Agent immobilier à Yaoundé",
+                "agent_whatsapp" to "+237 6 70 00 00 20",
+                "agent_whatsapp_url" to "https://wa.me/237670000020",
             ),
             context.firstValue,
         )
@@ -94,6 +96,7 @@ class MandateAssignedMailetTest {
         assertEquals("Ray Sponsible", email.firstValue.recipient.displayName)
         assertEquals("Ndopify: Un agent a été assigné à votre mandat à Bastos, Mvan (Yaounde)", email.firstValue.subject)
         assertEquals("<html>assigned</html>", email.firstValue.body)
+        assertEquals("Kim Possible", email.firstValue.sender?.displayName)
     }
 
     @Test

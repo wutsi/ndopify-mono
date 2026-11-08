@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.mandate.server.mail
 
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
+import com.wutsi.ndopify.agent.server.mail.AgentMailContext
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
@@ -9,6 +10,7 @@ import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.Receipient
 import com.wutsi.ndopify.refdata.server.service.LocationService
+import com.wutsi.ndopify.refdata.server.service.TenantFormatter
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.springframework.stereotype.Service
 
@@ -31,8 +33,10 @@ class MandateAssignedMailet(
         val party = customer.party
         val fullName = party.fullName()
         val city = locationService.findByIdOrNull(mandate.cityId)?.name ?: ""
+        val formatter = TenantFormatter(tenant)
         mailService.send(
             Email(
+                sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = party.email, displayName = fullName),
                 subject = SUBJECT.replace("{{tenant_name}}", tenant.name)
                     .replace("{{place}}", MandateMailLabels.place(mandate, city, locationService)),
@@ -45,7 +49,7 @@ class MandateAssignedMailet(
                         "agent_full_name" to agent.party.fullName(),
                         "agent_photo_url" to agent.party.photoUrl?.ifBlank { null },
                         "agent_presentation" to agent.biography?.ifBlank { null },
-                    )
+                    ) + AgentMailContext.of(agent, formatter)
                 )
             )
         )

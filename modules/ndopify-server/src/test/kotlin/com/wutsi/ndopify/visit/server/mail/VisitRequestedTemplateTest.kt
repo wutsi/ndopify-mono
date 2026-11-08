@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.visit.server.mail
 
 import com.github.mustachejava.DefaultMustacheFactory
+import com.github.mustachejava.resolver.ClasspathResolver
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.filter.MailFilterNull
 import dev.jcputney.mjml.MjmlRenderer
@@ -12,7 +13,7 @@ import kotlin.test.assertTrue
 class VisitRequestedTemplateTest {
     private val resolver = MailBodyResolver(
         renderer = MjmlRenderer.create(),
-        mustache = DefaultMustacheFactory(),
+        mustache = DefaultMustacheFactory(ClasspathResolver()),
         filters = listOf(MailFilterNull()),
     )
 

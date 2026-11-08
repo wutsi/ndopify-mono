@@ -7,9 +7,11 @@ import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.contract.dto.ContractType
 import com.wutsi.ndopify.contract.server.domain.ContractEntity
 import com.wutsi.ndopify.contract.server.domain.ContractPartyEntity
+import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
@@ -53,6 +55,26 @@ class ContractSignatureMailetTest {
     fun setUp() {
         doReturn(tenant).whenever(tenantService).findById(1L)
         doReturn("<html>sign</html>").whenever(mailBodyResolver).resolve(any(), any())
+    }
+
+    @Test
+    fun `the agent signs the e-mail`() {
+        val agent = AgentEntity(
+            id = 20L,
+            party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible", email = "kim.possible@gmail.com"),
+            whatsappNumber = "+237699000001",
+        )
+
+        mailet.send(contract, party, agent)
+
+        val context = argumentCaptor<Map<String, Any?>>()
+        verify(mailBodyResolver).resolve(eq("/mail/contract/signature_request.mjml"), context.capture())
+        assertEquals("Kim Possible", context.firstValue["agent_full_name"])
+        assertEquals("https://wa.me/237699000001", context.firstValue["agent_whatsapp_url"])
+
+        val email = argumentCaptor<Email>()
+        verify(mailService).send(email.capture())
+        assertEquals("Kim Possible", email.firstValue.sender?.displayName)
     }
 
     @Test

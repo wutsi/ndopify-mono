@@ -86,6 +86,8 @@ class VisitExpiredMailetTest {
         verify(mailService, times(2)).send(captor.capture())
         assertEquals("Ndopify: votre demande de visite a expiré", captor.allValues[0].subject)
         assertEquals("Ndopify: demande de visite expirée avec Ray Sponsible", captor.allValues[1].subject)
+        assertEquals("Kim Possible", captor.allValues[0].sender?.displayName)
+        assertEquals(null, captor.allValues[1].sender)
 
         val customerContext = context("Ray Sponsible")
         assertEquals("02/12/2026", customerContext["requested_date"])

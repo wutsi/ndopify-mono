@@ -90,6 +90,7 @@ class VisitCancelledMailetTest {
         verify(mailService, times(1)).send(email.capture())
         assertEquals("kim.possible@gmail.com", email.firstValue.recipient.email)
         assertEquals("Ndopify: la visite a été annulée", email.firstValue.subject)
+        assertNull(email.firstValue.sender)
         assertEquals(
             mapOf(
                 "tenant_logo_url" to "https://cdn.ndopify.com/logo.png",
@@ -115,6 +116,7 @@ class VisitCancelledMailetTest {
         val email = argumentCaptor<Email>()
         verify(mailService, times(1)).send(email.capture())
         assertEquals("ray.sponsible@gmail.com", email.firstValue.recipient.email)
+        assertEquals("Kim Possible", email.firstValue.sender?.displayName)
         assertEquals("Votre agent a annulé la visite.", context()["cancelled_by_label"])
         assertEquals("https://www.ndopify.com/visits/1?token=xxx.yyy.zzz", context()["visit_url"])
     }

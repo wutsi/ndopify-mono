@@ -7,7 +7,10 @@ import jakarta.mail.internet.MimeMessage
 import jakarta.mail.internet.MimeMultipart
 import org.springframework.mail.javamail.JavaMailSender
 
-class MailService(private val mail: JavaMailSender) {
+class MailService(
+    private val mail: JavaMailSender,
+    private val from: String = "no-reply@wutsi.com",
+) {
     fun send(email: Email) {
         val msg = createMessage(email)
         mail.send(msg)
@@ -17,6 +20,12 @@ class MailService(private val mail: JavaMailSender) {
         val msg = mail.createMimeMessage()
 
         // Headers
+        message.sender?.let { sender ->
+            // An agent's name in the display name, on the platform's authenticated address: a foreign address in
+            // From would break SPF / DKIM / DMARC and be read as spoofing. No Reply-To on purpose: replies go nowhere.
+            val address = sender.email.ifBlank { from }
+            msg.setFrom(Receipient(email = address, displayName = sender.displayName).toInternetAddress())
+        }
         msg.addRecipients(
             Message.RecipientType.TO,
             arrayOf(message.recipient.toInternetAddress())

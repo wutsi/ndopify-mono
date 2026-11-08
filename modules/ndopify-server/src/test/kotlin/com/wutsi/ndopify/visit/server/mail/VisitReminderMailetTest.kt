@@ -29,6 +29,7 @@ import java.util.Date
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 
 class VisitReminderMailetTest {
     private val tenantService = mock<TenantService>()
@@ -92,8 +93,10 @@ class VisitReminderMailetTest {
 
         val customerEmail = email("ray.sponsible@gmail.com")
         assertEquals("Ndopify: rappel de votre visite", customerEmail.subject)
+        assertEquals("Kim Possible", customerEmail.sender?.displayName)
         val agentEmail = email("kim.possible@gmail.com")
         assertEquals("Ndopify: rappel de la visite avec Ray Sponsible", agentEmail.subject)
+        assertNull(agentEmail.sender)
 
         val customerContext = context(VisitReminderMailet.TEMPLATE_CUSTOMER)
         assertEquals("02/12/2026", customerContext["visit_date"])

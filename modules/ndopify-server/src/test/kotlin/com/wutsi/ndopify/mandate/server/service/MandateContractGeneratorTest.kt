@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.mandate.server.service
 
 import com.github.mustachejava.DefaultMustacheFactory
+import com.github.mustachejava.resolver.ClasspathResolver
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
@@ -44,7 +45,7 @@ class MandateContractGeneratorTest {
         customerService,
         agentService,
         locationService,
-        MailBodyResolver(MjmlRenderer.create(), DefaultMustacheFactory(), listOf(MailFilterNull())),
+        MailBodyResolver(MjmlRenderer.create(), DefaultMustacheFactory(ClasspathResolver()), listOf(MailFilterNull())),
     )
 
     private val mandate = MandateEntity(

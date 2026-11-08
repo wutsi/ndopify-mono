@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.contract.server.service
 
 import com.github.mustachejava.DefaultMustacheFactory
+import com.github.mustachejava.resolver.ClasspathResolver
 import com.sun.net.httpserver.HttpServer
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.filter.MailFilterNull
@@ -16,7 +17,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class SignedContractRendererTest {
-    private val renderer = SignedContractRenderer(DefaultMustacheFactory())
+    private val renderer = SignedContractRenderer(DefaultMustacheFactory(ClasspathResolver()))
 
     private val qrCode = renderer.qrCode("https://sign.ndopify.com/verify/c-1/" + "a".repeat(64))
 
@@ -130,7 +131,7 @@ class SignedContractRendererTest {
     fun `renders the mandate contract template`() {
         val html = MailBodyResolver(
             renderer = MjmlRenderer.create(),
-            mustache = DefaultMustacheFactory(),
+            mustache = DefaultMustacheFactory(ClasspathResolver()),
             filters = listOf(MailFilterNull()),
         ).resolve(
             "/mandate/contract/search.mjml",

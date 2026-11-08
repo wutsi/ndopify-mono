@@ -93,6 +93,7 @@ class VisitNoShowMailetTest {
         verify(mailService, times(1)).send(email.capture())
         assertEquals("ray.sponsible@gmail.com", email.firstValue.recipient.email)
         assertEquals("Ndopify: la visite n'a pas eu lieu", email.firstValue.subject)
+        assertEquals("Kim Possible", email.firstValue.sender?.displayName)
 
         assertEquals(
             mapOf(
@@ -107,6 +108,10 @@ class VisitNoShowMailetTest {
                 "reason_label" to "Le client ne s'est pas présenté.",
                 "agent_recipient" to false,
                 "visit_url" to "https://www.ndopify.com/visits/1?token=xxx.yyy.zzz",
+                "agent_full_name" to "Kim Possible",
+                "agent_photo_url" to null,
+                "agent_whatsapp" to null,
+                "agent_whatsapp_url" to null,
             ),
             contexts().single(),
         )
@@ -127,6 +132,11 @@ class VisitNoShowMailetTest {
             setOf("ray.sponsible@gmail.com", "kim.possible@gmail.com"),
             captor.allValues.map { it.recipient.email }.toSet(),
         )
+        assertEquals(
+            "Kim Possible",
+            captor.allValues.single { it.recipient.email == "ray.sponsible@gmail.com" }.sender?.displayName,
+        )
+        assertNull(captor.allValues.single { it.recipient.email == "kim.possible@gmail.com" }.sender)
         val contexts = contexts()
         assertEquals("L'agent ne s'est pas présenté.", contexts[0]["reason_label"])
         assertEquals("L'agent ne s'est pas présenté.", contexts[1]["reason_label"])

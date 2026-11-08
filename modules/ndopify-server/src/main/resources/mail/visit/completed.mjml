@@ -50,5 +50,6 @@
                 </mj-text>
             </mj-column>
         </mj-section>
+        {{> mail/fragments/agent-footer.mjml}}
     </mj-body>
 </mjml>

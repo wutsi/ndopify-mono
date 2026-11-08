@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.contract.server.service
 
+import com.wutsi.ndopify.agent.server.service.AgentService
 import com.wutsi.ndopify.contract.dto.ContractPartyRole
 import com.wutsi.ndopify.contract.dto.ContractStatus
 import com.wutsi.ndopify.contract.dto.ContractType
@@ -22,6 +23,7 @@ import com.wutsi.ndopify.error.dto.ParameterType
 import com.wutsi.ndopify.error.server.exception.BadRequestException
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
+import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.server.service.TenantService
@@ -46,6 +48,8 @@ import java.util.Date
 class ContractService(
     private val dao: ContractRepository,
     private val partyDao: ContractPartyRepository,
+    private val mandateDao: MandateRepository,
+    private val agentService: AgentService,
     private val partyService: PartyService,
     private val signerService: ContractSignerService,
     private val tenantService: TenantService,
@@ -231,11 +235,13 @@ class ContractService(
             return 0 // Signed or cancelled in the meantime: nothing to sign anymore
         }
 
+        // A mandate's contract also carries its agent, for the customer e-mail's signature; a lease has none
+        val agent = mandateDao.findByContractId(id)?.agentId?.let { agentService.findByIdOrNull(it) }
         return partyDao.findByContract(contract)
             .filter { party -> party.signatureRequired && !party.signed }
             .count { party ->
                 try {
-                    signatureMailet.send(contract, party)
+                    signatureMailet.send(contract, party, agent)
                     true
                 } catch (ex: Exception) {
                     LOGGER.warn("Contract#$id - Unable to send the signature request to party#${party.id}", ex)

@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.visit.server.mail
 
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
+import com.wutsi.ndopify.agent.server.mail.AgentMailContext
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
@@ -52,6 +53,7 @@ class VisitConfirmedMailet(
 
         mailService.send(
             Email(
+                sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = customer.party.email, displayName = customerName),
                 subject = SUBJECT_CUSTOMER.replace("{{tenant_name}}", tenant.name),
                 body = mailBodyResolver.resolve(
@@ -70,7 +72,7 @@ class VisitConfirmedMailet(
                         "address" to address,
                         "code" to visit.code,
                         "visit_url" to customerUrl,
-                    ),
+                    ) + AgentMailContext.of(agent, formatter),
                 ),
             ),
         )

@@ -7,8 +7,10 @@ data class Receipient(
     val displayName: String? = null,
 ) {
     fun toInternetAddress(): InternetAddress {
-        return if (displayName != null) {
-            InternetAddress(email, displayName)
+        // A header value can't carry a line break: that's how a display name would inject a second header
+        val name = displayName?.replace(Regex("[\\r\\n]+"), " ")
+        return if (name != null) {
+            InternetAddress(email, name)
         } else {
             InternetAddress(email)
         }

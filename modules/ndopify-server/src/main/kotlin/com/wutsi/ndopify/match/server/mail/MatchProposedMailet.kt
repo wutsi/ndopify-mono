@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.match.server.mail
 
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
+import com.wutsi.ndopify.agent.server.mail.AgentMailContext
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.mandate.server.mail.MandateMailLabels
@@ -51,6 +52,7 @@ class MatchProposedMailet(
         val token = tenant.publicPortalUrl?.let { linkTokenService.create(customer) } // One for all the links
         mailService.send(
             Email(
+                sender = AgentMailContext.from(agent),
                 recipient = Receipient(email = party.email, displayName = fullName),
                 subject = subject.replace("{{tenant_name}}", tenant.name)
                     .replace("{{agent_name}}", agentName)
@@ -66,7 +68,7 @@ class MatchProposedMailet(
                         "count" to matches.size.takeIf { it > 1 },
                         "online" to tenant.publicPortalUrl?.let { true },
                         "listings" to matches.map { match -> listing(match, tenant, formatter, token) },
-                    ),
+                    ) + AgentMailContext.of(agent, formatter),
                 ),
             ),
         )

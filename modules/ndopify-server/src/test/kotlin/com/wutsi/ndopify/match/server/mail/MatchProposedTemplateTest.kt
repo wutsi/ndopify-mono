@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.match.server.mail
 
 import com.github.mustachejava.DefaultMustacheFactory
+import com.github.mustachejava.resolver.ClasspathResolver
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.filter.MailFilterNull
 import dev.jcputney.mjml.MjmlRenderer
@@ -12,7 +13,7 @@ import kotlin.test.assertTrue
 class MatchProposedTemplateTest {
     private val resolver = MailBodyResolver(
         renderer = MjmlRenderer.create(),
-        mustache = DefaultMustacheFactory(),
+        mustache = DefaultMustacheFactory(ClasspathResolver()),
         filters = listOf(MailFilterNull()),
     )
 
@@ -27,6 +28,9 @@ class MatchProposedTemplateTest {
         "tenant_name" to "Ndopify",
         "recipient_name" to "Ray Sponsible",
         "agent_full_name" to "Kim Possible",
+        "agent_photo_url" to "https://cdn.ndopify.com/agent.jpg",
+        "agent_whatsapp" to "+237 6 99 00 00 01",
+        "agent_whatsapp_url" to "https://wa.me/237699000001",
         "online" to true,
         "listings" to listOf(listing),
     )
@@ -44,6 +48,10 @@ class MatchProposedTemplateTest {
         assertFalse(html.contains("Répondez à votre agent"))
         assertTrue(html.contains("src=\"https://cdn.ndopify.com/7.jpg\""))
         assertTrue(html.contains("<a href=\"https://www.ndopify.com/match/1\""))
+        // The shared signature footer: the agent on one side, the tenant logo on the other
+        assertTrue(html.contains("Votre agent"))
+        assertTrue(html.contains("https://wa.me/237699000001"))
+        assertTrue(html.contains("src=\"https://cdn.ndopify.com/agent.jpg\""))
     }
 
     @Test

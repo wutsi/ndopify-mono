@@ -97,6 +97,9 @@ class MatchProposedMailetTest {
                 "tenant_name" to "Ndopify",
                 "recipient_name" to "Ray Sponsible",
                 "agent_full_name" to "Kim Possible",
+                "agent_photo_url" to null,
+                "agent_whatsapp" to null,
+                "agent_whatsapp_url" to null,
                 "count" to null,
                 "online" to true,
                 "listings" to listOf(
@@ -118,6 +121,8 @@ class MatchProposedMailetTest {
         assertEquals("Ray Sponsible", email.firstValue.recipient.displayName)
         assertEquals("Ndopify: Kim Possible vous propose un bien à Bastos (Yaounde)", email.firstValue.subject)
         assertEquals("<html>proposed</html>", email.firstValue.body)
+        assertEquals("Kim Possible", email.firstValue.sender?.displayName)
+        assertEquals("", email.firstValue.sender?.email)
     }
 
     @Test

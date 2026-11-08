@@ -70,6 +70,7 @@
                     </mj-text>
                 </mj-column>
             </mj-section>
+            {{> mail/fragments/agent-footer.mjml}}
         </mj-wrapper>
     </mj-body>
 </mjml>

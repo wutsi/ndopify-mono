@@ -1,0 +1,21 @@
+{{#agent_full_name}}
+<!-- The agent's signature: the customer's contact on one side, the tenant's mark on the other. -->
+<mj-section padding="0 24px 16px 24px">
+    <mj-column width="68%" vertical-align="middle">
+        {{#agent_photo_url}}
+        <mj-image align="left" width="56px" height="56px" border-radius="28px" padding="0 0 8px 0"
+                  src="{{agent_photo_url}}" alt="Photo de {{agent_full_name}}"/>
+        {{/agent_photo_url}}
+        <mj-text font-weight="bold" font-size="16px" padding="0">{{agent_full_name}}</mj-text>
+        <mj-text padding="4px 0 0 0">
+            Votre agent{{#agent_whatsapp_url}} ·
+            <a href="{{agent_whatsapp_url}}">WhatsApp {{agent_whatsapp}}</a>{{/agent_whatsapp_url}}
+        </mj-text>
+    </mj-column>
+    <mj-column width="32%" vertical-align="middle">
+        {{#tenant_logo_url}}
+        <mj-image align="right" width="96px" src="{{tenant_logo_url}}" alt="{{tenant_name}}"/>
+        {{/tenant_logo_url}}
+    </mj-column>
+</mj-section>
+{{/agent_full_name}}

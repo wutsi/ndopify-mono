@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.visit.server.mail
 
 import com.github.mustachejava.DefaultMustacheFactory
+import com.github.mustachejava.resolver.ClasspathResolver
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.filter.MailFilterNull
 import dev.jcputney.mjml.MjmlRenderer
@@ -12,7 +13,7 @@ import kotlin.test.assertTrue
 class VisitConfirmedTemplateTest {
     private val resolver = MailBodyResolver(
         renderer = MjmlRenderer.create(),
-        mustache = DefaultMustacheFactory(),
+        mustache = DefaultMustacheFactory(ClasspathResolver()),
         filters = listOf(MailFilterNull()),
     )
 
@@ -21,7 +22,9 @@ class VisitConfirmedTemplateTest {
         "recipient_name" to "Ray Sponsible",
         "listing_title" to "Nice apartment",
         "agent_full_name" to "Kim Possible",
+        "agent_photo_url" to "https://cdn.ndopify.com/agent.jpg",
         "agent_whatsapp" to "+237699000001",
+        "agent_whatsapp_url" to "https://wa.me/237699000001",
         "customer_name" to "Ray Sponsible",
         "customer_whatsapp" to "+237600000001",
         "visit_date" to "02/12/2026",
@@ -48,6 +51,8 @@ class VisitConfirmedTemplateTest {
         assertTrue(html.contains("Rue 1.234"))
         assertTrue(html.contains("1234"))
         assertTrue(html.contains("https://www.ndopify.com/visits/1?token=xxx.yyy.zzz"))
+        assertTrue(html.contains("https://wa.me/237699000001"))
+        assertTrue(html.contains("src=\"https://cdn.ndopify.com/agent.jpg\""))
         assertFalse(html.contains("vous appellera en vid"))
     }
 
@@ -74,6 +79,8 @@ class VisitConfirmedTemplateTest {
         assertTrue(html.contains("Demandez le code de visite"))
         assertTrue(html.contains("https://partner.ndopify.com/visits/1"))
         assertFalse(html.contains("1234"))
+        // No agent signature footer on the agent's own copy
+        assertFalse(html.contains("https://wa.me/237699000001"))
     }
 
     @Test

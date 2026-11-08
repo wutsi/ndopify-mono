@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.visit.server.mail
 
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
+import com.wutsi.ndopify.agent.server.mail.AgentMailContext
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
@@ -51,6 +52,7 @@ class VisitCancelledMailet(
         }
         mailService.send(
             Email(
+                sender = if (byCustomer) null else AgentMailContext.from(agent),
                 recipient = Receipient(email = recipientParty.email, displayName = recipientName),
                 subject = SUBJECT.replace("{{tenant_name}}", tenant.name),
                 body = mailBodyResolver.resolve(
@@ -64,7 +66,7 @@ class VisitCancelledMailet(
                         listing = listing,
                         cancelledByLabel = if (byCustomer) LABEL_BY_CUSTOMER else LABEL_BY_AGENT,
                         visitUrl = visitUrl,
-                    ),
+                    ) + if (byCustomer) emptyMap() else AgentMailContext.of(agent, formatter),
                 ),
             ),
         )

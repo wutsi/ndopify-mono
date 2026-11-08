@@ -1,5 +1,7 @@
 package com.wutsi.ndopify.contract.server.mail
 
+import com.wutsi.ndopify.agent.server.domain.AgentEntity
+import com.wutsi.ndopify.agent.server.mail.AgentMailContext
 import com.wutsi.ndopify.contract.dto.ContractType
 import com.wutsi.ndopify.contract.server.domain.ContractEntity
 import com.wutsi.ndopify.contract.server.domain.ContractPartyEntity
@@ -28,10 +30,11 @@ class ContractSignatureMailet(
         )
     }
 
-    fun send(contract: ContractEntity, contractParty: ContractPartyEntity) {
+    fun send(contract: ContractEntity, contractParty: ContractPartyEntity, agent: AgentEntity? = null) {
         val tenant = tenantService.findById(contract.tenantId!!)
         mailService.send(
             Email(
+                sender = agent?.let { AgentMailContext.from(it) },
                 recipient = Receipient(email = contractParty.legalEmail, displayName = contractParty.legalName),
                 subject = SUBJECT
                     .replace("{{tenant_name}}", tenant.name)
@@ -48,7 +51,7 @@ class ContractSignatureMailet(
                         "deadline" to contract.signatureDeadline?.let { TenantFormatter(tenant).date(it) },
                         // Shows the contract and signs it: the e-mail never links the document itself
                         "sign_url" to tenant.eSignaturePortalUrl?.let { url -> "$url/sign/${contractParty.id}" },
-                    )
+                    ) + (agent?.let { AgentMailContext.of(it, TenantFormatter(tenant)) } ?: emptyMap())
                 )
             )
         )

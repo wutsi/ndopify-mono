@@ -14,6 +14,7 @@ import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
@@ -66,12 +67,43 @@ class MailServiceTest {
             "${message.recipient.displayName} <${message.recipient.email}>",
             messages[0].getRecipients(RecipientType.TO)[0].toString()
         )
+        assertEquals(
+            "${message.sender?.displayName} <${message.sender?.email}>",
+            messages[0].from[0].toString(),
+        )
 
         val headers = messages[0].allHeaders
             .toList()
             .associate { header -> header.name to header.value }
         assertEquals(message.language, headers["Content-Language"])
         assertEquals(true, headers["Content-Type"]?.startsWith(message.mimeType))
+    }
+
+    @Test
+    fun `sender without address uses the configured from`() {
+        service.send(message.copy(sender = message.sender?.copy(email = "")))
+
+        val messages = smtp.receivedMessages
+        assertEquals("Tenant1 <no-reply@wutsi.com>", messages[0].from[0].toString())
+    }
+
+    @Test
+    fun `sender without displayName`() {
+        service.send(message.copy(sender = message.sender?.copy(displayName = null)))
+
+        val messages = smtp.receivedMessages
+        assertEquals("no-reply@tenant1.com", messages[0].from[0].toString())
+    }
+
+    @Test
+    fun `display name cannot inject a header`() {
+        val address = Receipient(
+            email = "no-reply@tenant1.com",
+            displayName = "Tenant1\r\nBcc: evil@example.com",
+        ).toInternetAddress()
+
+        assertFalse(address.personal.contains("\r"))
+        assertFalse(address.personal.contains("\n"))
     }
 
     @Test
