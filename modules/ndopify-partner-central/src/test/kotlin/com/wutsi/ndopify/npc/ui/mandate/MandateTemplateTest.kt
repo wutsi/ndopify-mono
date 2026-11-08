@@ -146,6 +146,13 @@ class MandateTemplateTest {
     }
 
     @Test
+    fun `template comment markers are not rendered`() {
+        val content = mvc.perform(get("/mandates/201")).andReturn().response.contentAsString
+
+        assertFalse(content.contains("*/-->"))
+    }
+
+    @Test
     fun `pending approval`() {
         val page = render(get("/mandates/201"))
 
