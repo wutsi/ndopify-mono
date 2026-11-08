@@ -93,7 +93,12 @@ object VisitCards {
         return VisitCardsView(requested, upcoming)
     }
 
-    /** The state itself, since a card with a visit hides its header tag (the prototype's `visitKind`). */
+    /**
+     * The state itself, since a card with a visit hides its header tag (the prototype's `visitKind`).
+     *
+     * COMPLETED never reaches these cards in this pass: [of] only returns open visits, so its *Visité* wording is kept
+     * for the follow-up *Visités* group. Do not add completed visits to the cards here.
+     */
     private fun visitKind(status: VisitStatus, video: Boolean): String =
         when (status) {
             VisitStatus.REQUESTED -> if (video) "Visite vidéo demandée" else "Visite demandée"

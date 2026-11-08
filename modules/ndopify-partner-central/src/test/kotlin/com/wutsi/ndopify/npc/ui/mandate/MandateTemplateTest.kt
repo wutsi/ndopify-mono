@@ -741,6 +741,21 @@ class MandateTemplateTest {
     }
 
     @Test
+    fun `matches and visits both unavailable - only the matches warning`() {
+        doThrow(ResourceAccessException("down")).whenever(matchClient).search(any(), any(), any())
+        doThrow(ResourceAccessException("timeout")).whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
+
+        val page = render(APPROVED)
+        val section = page.selectFirst("section[data-matches-section]")!!
+
+        assertEquals(
+            "Les biens correspondants ne peuvent pas être affichés pour le moment.",
+            section.selectFirst("[data-match-unavailable]")?.text(),
+        )
+        assertNull(section.selectFirst("[data-visits-unavailable]"))
+    }
+
+    @Test
     fun `no requested visit - no pending callout`() {
         withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201))
 

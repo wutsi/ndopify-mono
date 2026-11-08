@@ -831,8 +831,9 @@ h1.alert__title {
     margin-top: var(--space-1);
 }
 
-/* The matches read as one list, not as separate cards: a short gap between them. */
-[data-match-list] > * + * {
+/* The matches and proposals read as one list, not as separate cards: a short gap between groups. */
+[data-match-list] > * + *,
+[data-proposals-list] > * + * {
     margin-top: var(--space-2);
 }
 
