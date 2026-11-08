@@ -249,8 +249,93 @@ class MatcherTest {
     }
 
     @Test
-    fun `ruled out - other property type`() {
-        assertNull(score(search, listingA.copy(propertyType = PropertyType.HOUSE)))
+    fun `housing sibling - house for an apartment`() {
+        val result = score(search, listingA.copy(propertyType = PropertyType.HOUSE))
+
+        assertNotNull(result)
+        assertEquals(0.8, result.type, DELTA)
+        assertEquals(0.76, result.total, DELTA) // 0.95 * 0.8
+    }
+
+    @Test
+    fun `housing sibling - one more room`() {
+        val result = score(search, listingA.copy(propertyType = PropertyType.HOUSE, rooms = 4))
+
+        assertNotNull(result)
+        assertEquals(0.7, result.rooms, DELTA)
+        assertEquals(0.724, result.total, DELTA) // 0.905 * 0.8
+    }
+
+    @Test
+    fun `ruled out - housing sibling with other rooms`() {
+        val house = listingA.copy(propertyType = PropertyType.HOUSE)
+
+        assertNull(score(search, house.copy(rooms = 2)))
+        assertNull(score(search, house.copy(rooms = 5)))
+        assertNull(score(search, house.copy(rooms = null)))
+    }
+
+    @Test
+    fun `housing sibling - no rooms searched`() {
+        val result = score(search.copy(rooms = null), listingA.copy(propertyType = PropertyType.VILLA, rooms = 6))
+
+        assertNotNull(result)
+        assertEquals(0.8, result.type, DELTA)
+        assertEquals(0.76, result.total, DELTA)
+    }
+
+    @Test
+    fun `exact type with other rooms is kept`() {
+        assertNotNull(score(search, listingA.copy(rooms = 5)))
+    }
+
+    @Test
+    fun `housing sibling - apartment for a studio`() {
+        val studioSearch = search.copy(propertyType = PropertyType.STUDIO, rooms = null)
+
+        assertEquals(0.9, score(studioSearch, listingA)?.type)
+    }
+
+    @Test
+    fun `housing sibling - studio without rooms for a 1 room apartment`() {
+        val result = score(
+            search.copy(rooms = "1"),
+            listingA.copy(propertyType = PropertyType.STUDIO, rooms = null),
+        )
+
+        assertNotNull(result)
+        assertEquals(1.0, result.rooms, DELTA)
+        assertEquals(0.9, result.type, DELTA)
+    }
+
+    @Test
+    fun `housing siblings`() {
+        val noRooms = search.copy(rooms = null)
+        fun type(searched: PropertyType, listed: PropertyType): Double? =
+            score(noRooms.copy(propertyType = searched), listingA.copy(propertyType = listed))?.type
+
+        assertEquals(0.9, type(PropertyType.HOUSE, PropertyType.VILLA))
+        assertEquals(0.9, type(PropertyType.VILLA, PropertyType.HOUSE))
+        assertEquals(0.85, type(PropertyType.APARTMENT, PropertyType.DUPLEX))
+        assertEquals(0.85, type(PropertyType.DUPLEX, PropertyType.HOUSE))
+        assertEquals(0.85, type(PropertyType.VILLA, PropertyType.DUPLEX))
+        assertEquals(0.8, type(PropertyType.VILLA, PropertyType.APARTMENT))
+        assertEquals(0.8, type(PropertyType.ROOM, PropertyType.STUDIO))
+        assertEquals(0.8, type(PropertyType.STUDIO, PropertyType.ROOM))
+    }
+
+    @Test
+    fun `ruled out - room against other housing`() {
+        val noRooms = search.copy(rooms = null)
+
+        assertNull(score(noRooms.copy(propertyType = PropertyType.ROOM), listingA))
+        assertNull(score(noRooms, listingA.copy(propertyType = PropertyType.ROOM)))
+        assertNull(score(noRooms.copy(propertyType = PropertyType.STUDIO), listingA.copy(propertyType = PropertyType.HOUSE)))
+    }
+
+    @Test
+    fun `ruled out - housing against building`() {
+        assertNull(score(search, listingA.copy(propertyType = PropertyType.BUILDING)))
     }
 
     @Test

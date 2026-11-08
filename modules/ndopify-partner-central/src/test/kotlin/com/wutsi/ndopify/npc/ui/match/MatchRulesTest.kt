@@ -206,6 +206,29 @@ class MatchRulesTest {
     }
 
     @Test
+    fun `fit - housing sibling elides before a vowel`() {
+        val listing = LISTING_A.copy(propertyType = PropertyType.HOUSE)
+
+        val fit = MatchRules.fit(MATCH_A.copy(typeScore = 0.8), MANDATE, listing).map { it.text }
+
+        assertTrue("Maison au lieu d'appartement" in fit)
+    }
+
+    @Test
+    fun `fit - sibling of an entrepot elides`() {
+        val mandate = MANDATE.copy(
+            propertyCategory = PropertyCategory.COMMERCIAL,
+            propertyType = PropertyType.INDUSTRIAL,
+            rooms = null,
+        )
+        val listing = LISTING_A.copy(propertyCategory = PropertyCategory.COMMERCIAL, propertyType = PropertyType.OFFICE)
+
+        val fit = MatchRules.fit(MATCH_A.copy(typeScore = 0.8), mandate, listing).map { it.text }
+
+        assertTrue("Bureau au lieu d'entrepôt" in fit)
+    }
+
+    @Test
     fun `fit - no type in the payload`() {
         // A Match deserialized from an older server has typeScore = 1.0 by default
         val match = jacksonObjectMapper()
