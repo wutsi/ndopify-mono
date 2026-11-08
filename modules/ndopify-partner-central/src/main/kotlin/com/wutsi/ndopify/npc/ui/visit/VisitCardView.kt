@@ -36,8 +36,8 @@ data class VisitCardView(
 )
 
 /**
- * The *Visites* section of the Espace agent, a signed search's mandate page and a landlord's listing mandate page: the
- * requests to confirm, then the visits to come.
+ * The *Visites* section of the Espace agent: the requests to confirm, then the visits to come. The mandate pages use
+ * the same cards attached to their match or proposal card instead.
  */
 data class VisitCardsView(
     val requested: List<VisitCardView>,
