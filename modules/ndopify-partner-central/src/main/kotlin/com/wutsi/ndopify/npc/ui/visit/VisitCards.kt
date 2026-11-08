@@ -9,6 +9,7 @@ import com.wutsi.ndopify.refdata.dto.Tenant
 import com.wutsi.ndopify.visit.dto.Visit
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitSummary
+import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import java.time.LocalDate
 import java.util.Date
@@ -44,12 +45,19 @@ object VisitCards {
             .map { visit ->
                 val expiresAt = VisitRules.expiresAt(visit)
                 val left = expiresAt - now
+                val label = VisitSlots.dateTimeLabel(visit.requestedAt, tenant, formatter)
                 VisitCardView(
                     id = visit.id,
+                    matchId = visit.matchId,
                     customerName = name(customers[visit.customerId]),
                     type = VisitRules.typeLabel(visit.type),
+                    video = visit.type == VisitType.VIDEO,
+                    status = visit.status,
+                    kindLabel = visitKind(visit.status, visit.type == VisitType.VIDEO),
+                    whenText = whenText(visit, label, formatter),
                     tag = null,
-                    whenLabel = VisitSlots.dateTimeLabel(visit.requestedAt, tenant, formatter),
+                    whenLabel = label,
+                    at = VisitRules.timeOf(visit),
                     listing = listing(visit, listings, locations),
                     expiresAt = expiresAt,
                     expiresIn = VisitRules.expiresIn(left),
@@ -62,12 +70,19 @@ object VisitCards {
             .filter { it.status != VisitStatus.REQUESTED && VisitRules.isOpen(it, now) }
             .sortedWith(compareBy(nullsLast()) { it.scheduledAt?.time })
             .map { visit ->
+                val label = whenLabel(visit, today, tenant, formatter)
                 VisitCardView(
                     id = visit.id,
+                    matchId = visit.matchId,
                     customerName = name(customers[visit.customerId]),
                     type = VisitRules.typeLabel(visit.type),
+                    video = visit.type == VisitType.VIDEO,
+                    status = visit.status,
+                    kindLabel = visitKind(visit.status, visit.type == VisitType.VIDEO),
+                    whenText = whenText(visit, label, formatter),
                     tag = VisitRules.tag(VisitRules.panel(visit, now)),
-                    whenLabel = whenLabel(visit, today, tenant, formatter),
+                    whenLabel = label,
+                    at = VisitRules.timeOf(visit),
                     listing = listing(visit, listings, locations),
                     expiresAt = null,
                     expiresIn = null,
@@ -77,6 +92,23 @@ object VisitCards {
 
         return VisitCardsView(requested, upcoming)
     }
+
+    /** The state itself, since a card with a visit hides its header tag (the prototype's `visitKind`). */
+    private fun visitKind(status: VisitStatus, video: Boolean): String =
+        when (status) {
+            VisitStatus.REQUESTED -> if (video) "Visite vidéo demandée" else "Visite demandée"
+            VisitStatus.CONFIRMED -> if (video) "Visite vidéo confirmée" else "Visite confirmée"
+            VisitStatus.CHECKED_IN -> if (video) "Visite vidéo en cours" else "Visite en cours"
+            VisitStatus.COMPLETED -> if (video) "Visité en vidéo" else "Visité"
+            else -> if (video) "Visite vidéo" else "Visite"
+        }
+
+    private fun whenText(visit: Visit, whenLabel: String, formatter: TenantFormatter): String =
+        when (visit.status) {
+            VisitStatus.REQUESTED -> "pour le $whenLabel"
+            VisitStatus.CHECKED_IN -> visit.checkedInAt?.let { "depuis ${formatter.time(it)}" } ?: "en cours"
+            else -> "le $whenLabel"
+        }
 
     private fun whenLabel(visit: Visit, today: LocalDate, tenant: Tenant, formatter: TenantFormatter): String {
         if (visit.status == VisitStatus.CHECKED_IN) {

@@ -126,6 +126,9 @@ object VisitRules {
     /** A request expires 48 h after its creation. */
     fun expiresAt(visit: Visit): Long = visit.createdAt.time + EXPIRES_AFTER
 
+    /** The instant the visit is for: its scheduled slot, else when it was asked; null without either. */
+    fun timeOf(visit: Visit): Long? = (visit.scheduledAt ?: visit.requestedAt)?.time
+
     /** "42 h", or the minutes left under an hour ("45 min", "1 min" at zero). */
     fun expiresIn(left: Long): String {
         val hours = Math.floorDiv(left, HOUR)

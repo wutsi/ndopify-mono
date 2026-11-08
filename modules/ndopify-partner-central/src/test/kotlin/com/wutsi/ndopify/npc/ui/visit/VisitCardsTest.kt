@@ -13,7 +13,9 @@ import com.wutsi.ndopify.npc.ui.visit.VisitFixtures.listingSummary
 import com.wutsi.ndopify.npc.ui.visit.VisitFixtures.requested
 import com.wutsi.ndopify.npc.ui.visit.VisitFixtures.summary
 import com.wutsi.ndopify.npc.ui.visit.VisitFixtures.window
+import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitSummary
+import com.wutsi.ndopify.visit.dto.VisitType
 import org.junit.jupiter.api.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -130,5 +132,42 @@ class VisitCardsTest {
         val card = of(listOf(summary(requested())), customers = emptyMap()).requested.single()
 
         assertEquals("Client", card.customerName)
+    }
+
+    @Test
+    fun `requested card carries its match, state and block wording`() {
+        val card = of(listOf(summary(requested()))).requested.single()
+
+        assertEquals(9001L, card.matchId)
+        assertEquals(VisitStatus.REQUESTED, card.status)
+        assertFalse(card.video)
+        assertEquals("Visite demandée", card.kindLabel)
+        assertEquals("pour le sam. 7 novembre 2026 à 10:30", card.whenText)
+        assertEquals(requested().requestedAt!!.time, card.at)
+    }
+
+    @Test
+    fun `video request names the video state`() {
+        val card = of(listOf(summary(requested().copy(type = VisitType.VIDEO)))).requested.single()
+
+        assertTrue(card.video)
+        assertEquals("Visite vidéo demandée", card.kindLabel)
+    }
+
+    @Test
+    fun `confirmed card says when the visit is`() {
+        val card = of(listOf(summary(confirmed()))).upcoming.single()
+
+        assertEquals(VisitStatus.CONFIRMED, card.status)
+        assertEquals("Visite confirmée", card.kindLabel)
+        assertEquals("le sam. 7 novembre 2026 à 10:30", card.whenText)
+    }
+
+    @Test
+    fun `checked in card says since when`() {
+        val card = of(listOf(summary(checkedIn()))).upcoming.single()
+
+        assertEquals("Visite en cours", card.kindLabel)
+        assertEquals("depuis 10:05", card.whenText)
     }
 }
