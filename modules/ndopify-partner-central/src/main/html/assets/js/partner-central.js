@@ -1782,6 +1782,7 @@
         if (visits) parts.push(visits + (visits > 1 ? " visites" : " visite"));
         return {
             properties: properties,
+            visits: visits,
             label: parts.length ? parts.join(" · ") : "Aucun bien correspondant pour l'instant"
         };
     }
@@ -2408,10 +2409,10 @@
             matchBox.hidden = !show;
             if (!show) return;
             var matches = matchesOf(id);
-            // The same line as the home card, above the detailed proposal line; hidden without a pool.
+            // The same line as the home card, in the approved panel; hidden without a pool nor a visit.
             var searchStats = searchStatsOf(id);
-            var statsLine = $("[data-search-stats]", matchBox);
-            statsLine.hidden = searchStats.properties === 0;
+            var statsLine = $('[data-panel="APPROVED"] [data-search-stats]');
+            statsLine.hidden = searchStats.properties === 0 && searchStats.visits === 0;
             $("[data-search-stats-text]", statsLine).textContent = searchStats.label;
             // Neither set aside nor refused by the client: the proposals line counts the refused ones.
             var shown = matches.filter(function (m) {

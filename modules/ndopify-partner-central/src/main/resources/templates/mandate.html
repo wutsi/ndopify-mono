@@ -42,11 +42,9 @@
   outcome of MatchController's last action (flash attribute "match").
   "listingVisits" is a landlord's published listing's open visits (VisitCardsView: the requests to confirm, then the
   visits to come), null for a search or before the listing is published; a client with one leaves "listingProposals",
-  so nothing is shown twice. "listingProposals" is that listing's Propositions (ProposalsView), null likewise;
-  "visitStats" is the approved panel's total visits (VisitStats: upcoming and completed), null when unreadable
-  or when the published listing's activity line ("mandateListing.stats") already shows them.
-  "searchStats" is a signed search's one-line activity (SearchStatsView), null for any other mandate or when the
-  matches can't be read.
+  so nothing is shown twice. "listingProposals" is that listing's Propositions (ProposalsView), null likewise.
+  "searchStats" is a signed search's one-line activity in the approved panel (SearchStatsView: its pool, the
+  client's interest and its visits), null for any other mandate or when the matches can't be read.
 */-->
 <body data-page="mandate" th:attr="data-currency=${currency}">
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -207,8 +205,11 @@
                     <div class="mandate-panel" th:if="${m.status.name() == 'APPROVED'}" data-panel="APPROVED">
                         <p>Signé le <span th:text="${m.approvedAt}">20 octobre 2026</span><th:block th:if="${m.validUntil}"> · valable
                             jusqu'au <strong th:text="${m.validUntil}">28 mars 2027</strong></th:block>.</p>
-                        <p class="mandate__meta" th:if="${visitStats != null}" data-mandate-visit-stats
-                           th:text="${visitStats.label}">3 visites · 1 à venir · 2 terminées</p>
+                        <!-- A signed search: its pool, the client's interest and its visits, like the Espace agent's card. -->
+                        <p class="search-stats" th:if="${searchStats != null and searchStats.shown}" data-search-stats>
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                            <span><span class="visually-hidden">Activité de la recherche : </span><span th:text="${searchStats.label}">12 biens · 1 intéressé · 3 visites</span></span>
+                        </p>
                         <!--
                             A landlord's mandate only (LISTING): its listing. "Créer l'annonce" (POST /mandates/{id}/listing)
                             opens it; once created, its number (a link to it) and status, then where it stands and a button to it,
@@ -464,10 +465,6 @@
                          th:with="ms=${matchSection}" data-matches-section>
                     <div class="matches__head">
                         <h2 id="matches-title">Biens correspondants</h2>
-                        <p class="search-stats" th:if="${searchStats != null and searchStats.properties > 0}" data-search-stats>
-                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
-                            <span><span class="visually-hidden">Activité de la recherche : </span><span th:text="${searchStats.label}">12 biens · 1 intéressé · 3 visites</span></span>
-                        </p>
                     </div>
                     <!-- Like the Espace agent's card: what the client answered, the refused ones included. -->
                     <p class="mandate-card__proposals" th:if="${ms.proposals}" data-match-proposals>

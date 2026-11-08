@@ -20,12 +20,15 @@ data class SearchStatsView(
     /** Upcoming + completed visits; null when they can't be read. */
     val visits: Int?,
 ) {
-    /** "12 biens · 1 intéressé · 3 visites", with zero segments left out; the empty state when the pool is empty. */
+    /** Whether the mandate page shows the line: a pool or a visit to count. */
+    val shown: Boolean get() = properties > 0 || (visits ?: 0) > 0
+
+    /** "12 biens · 1 intéressé · 3 visites", with zero segments left out; the empty state when there's nothing. */
     val label: String
         get() {
-            if (properties == 0) return EMPTY
+            if (!shown) return EMPTY
             return listOfNotNull(
-                "$properties " + plural(properties, "bien", "biens"),
+                properties.takeIf { it > 0 }?.let { "$it " + plural(it, "bien", "biens") },
                 interested.takeIf { it > 0 }?.let { "$it " + plural(it, "intéressé", "intéressés") },
                 visits?.takeIf { it > 0 }?.let { "$it " + plural(it, "visite", "visites") },
             ).joinToString(" · ")

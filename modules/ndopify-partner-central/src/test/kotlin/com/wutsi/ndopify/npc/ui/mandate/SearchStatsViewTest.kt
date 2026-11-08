@@ -6,7 +6,9 @@ import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class SearchStatsViewTest {
     private val mandate = Mandate(
@@ -40,18 +42,16 @@ class SearchStatsViewTest {
 
     @Test
     fun `label - empty`() {
-        assertEquals(
-            "Aucun bien correspondant pour l'instant",
-            SearchStatsView.of(mandate, MandateStats(201))!!.label,
-        )
+        val stats = SearchStatsView.of(mandate, MandateStats(201))!!
+        assertEquals("Aucun bien correspondant pour l'instant", stats.label)
+        assertFalse(stats.shown)
     }
 
     @Test
     fun `label - no pool but visits`() {
-        assertEquals(
-            "Aucun bien correspondant pour l'instant",
-            SearchStatsView.of(mandate, MandateStats(201, properties = 0, interested = 0, upcomingVisits = 1, completedVisits = 1))!!.label,
-        )
+        val stats = SearchStatsView.of(mandate, MandateStats(201, properties = 0, interested = 0, upcomingVisits = 1, completedVisits = 1))!!
+        assertEquals("2 visites", stats.label)
+        assertTrue(stats.shown)
     }
 
     @Test

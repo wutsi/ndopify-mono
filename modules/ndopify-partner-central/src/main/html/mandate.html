@@ -200,6 +200,11 @@
 
                     <div class="mandate-panel" hidden data-panel="APPROVED">
                         <p>Signé le <span data-approved-at></span> · valable jusqu'au <strong data-valid-until></strong>.</p>
+                        <!-- A signed search: its pool, the client's interest and its visits, like the Espace agent's card. -->
+                        <p class="search-stats" hidden data-search-stats>
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                            <span><span class="visually-hidden">Activité de la recherche : </span><span data-search-stats-text></span></span>
+                        </p>
                         <!--
                             A landlord's mandate only (LISTING): its listing. "Créer l'annonce" (POST /v1/listings) opens
                             listing.html; once created, its number (a link to it) and status, the line says where it stands and the button
@@ -284,10 +289,6 @@
                 <section class="home-section" aria-labelledby="matches-title" hidden data-matches-section>
                     <div class="matches__head">
                         <h2 id="matches-title">Biens correspondants</h2>
-                        <p class="search-stats" hidden data-search-stats>
-                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
-                            <span><span class="visually-hidden">Activité de la recherche : </span><span data-search-stats-text></span></span>
-                        </p>
                         <button type="button" class="btn btn--primary" hidden data-match-send-kept></button>
                     </div>
                     <!-- Like the Espace agent's card: what the client answered, "1 visite · 1 refusé · 1 en attente". -->

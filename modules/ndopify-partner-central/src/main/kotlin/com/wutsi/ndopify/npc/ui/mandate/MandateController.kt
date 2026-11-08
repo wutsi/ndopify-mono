@@ -408,7 +408,6 @@ class MandateController(
         )
         model.addAttribute("listingVisits", clients?.visits)
         model.addAttribute("listingProposals", clients?.proposals)
-        model.addAttribute("visitStats", if (listingStats?.visits != null) null else visitStats)
         (model.getAttribute(OUTCOME) as? String)?.let { outcome -> outcome(outcome, view, model) }
         (model.getAttribute(MatchController.OUTCOME) as? String)?.let { outcome ->
             matchOutcome(outcome, model.getAttribute(MatchController.LISTING) as? Long, view, model)

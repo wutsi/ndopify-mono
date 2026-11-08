@@ -703,7 +703,8 @@ class MandateTemplateTest {
         // Above Biens correspondants
         assertEquals("Biens correspondants", section.nextElementSibling()?.selectFirst("h2")?.text())
         assertNull(page.selectFirst("[data-listing-stats]"))
-        assertEquals("1 visite à venir", page.selectFirst("[data-mandate-visit-stats]")?.text())
+        assertNull(matches.selectFirst("[data-search-stats]")) // in the approved panel, not above the matches
+        assertNull(page.selectFirst("[data-mandate-visit-stats]")) // the visits are on the activity line
     }
 
     @Test
@@ -863,6 +864,19 @@ class MandateTemplateTest {
     }
 
     @Test
+    fun `matches - activity line with visits but no pool`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.REJECTED))
+        doReturn(
+            listOf(VisitFixtures.summary(VisitFixtures.completed().copy(id = 7002, mandateId = 201, matchId = 9003))),
+        ).whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
+
+        val section = render(APPROVED).selectFirst("section[data-matches-section]")!!
+
+        assertEquals("1 visite", searchStatsLabel(section))
+    }
+
+    @Test
     fun `matches - dismiss confirmation open`() {
         withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201))
 
@@ -903,7 +917,7 @@ class MandateTemplateTest {
         assertNull(section.selectFirst("[data-match-list]"))
         assertNull(section.selectFirst("[data-match-empty]"))
         assertEquals("1 refusé", section.selectFirst("[data-match-proposals-text]")?.text())
-        assertNull(section.selectFirst("[data-search-stats]"))
+        assertNull(section.ownerDocument()!!.selectFirst("[data-search-stats]"))
     }
 
     @Test
@@ -915,7 +929,7 @@ class MandateTemplateTest {
         assertTrue(section.selectFirst("[data-match-empty]")!!.text().startsWith("Aucun de vos biens ne correspond"))
         assertNull(section.selectFirst("[data-match-list]"))
         assertNull(section.selectFirst("[data-match-dismissed]"))
-        assertNull(section.selectFirst("[data-search-stats]"))
+        assertNull(section.ownerDocument()!!.selectFirst("[data-search-stats]"))
     }
 
     @Test
@@ -931,7 +945,7 @@ class MandateTemplateTest {
         )
         assertNull(section.selectFirst("[data-match-empty]"))
         assertNotNull(page.selectFirst("#contact-title"))
-        assertNull(section.selectFirst("[data-search-stats]"))
+        assertNull(section.ownerDocument()!!.selectFirst("[data-search-stats]"))
     }
 
     @Test
@@ -953,8 +967,10 @@ class MandateTemplateTest {
         assertNull(render(get("/mandates/201")).selectFirst("[data-matches-section]"))
     }
 
-    private fun searchStatsLabel(section: Element): String? =
-        section.selectFirst("[data-search-stats] .visually-hidden")?.nextElementSibling()?.text()
+    /** The activity line, in the approved panel of [element]'s page. */
+    private fun searchStatsLabel(element: Element): String? =
+        element.ownerDocument()!!.selectFirst("[data-panel=APPROVED] [data-search-stats] .visually-hidden")
+            ?.nextElementSibling()?.text()
 
     // mandate.js
 
