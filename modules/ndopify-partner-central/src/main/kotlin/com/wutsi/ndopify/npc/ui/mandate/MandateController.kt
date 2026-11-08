@@ -35,8 +35,10 @@ import com.wutsi.ndopify.npc.ui.match.MatchRules
 import com.wutsi.ndopify.npc.ui.match.MatchSectionView
 import com.wutsi.ndopify.npc.ui.match.MatchViews
 import com.wutsi.ndopify.npc.ui.profile.ProfileRules
+import com.wutsi.ndopify.npc.ui.visit.PendingVisit
+import com.wutsi.ndopify.npc.ui.visit.PendingVisitCandidate
+import com.wutsi.ndopify.npc.ui.visit.PendingVisitView
 import com.wutsi.ndopify.npc.ui.visit.VisitCards
-import com.wutsi.ndopify.npc.ui.visit.VisitCardsView
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
 import com.wutsi.ndopify.npc.ui.visit.VisitStats
 import com.wutsi.ndopify.refdata.dto.Location
@@ -79,17 +81,16 @@ import java.time.ZoneOffset
  *
  * A landlord's signed mandate also shows its listing ([ListingViews.forMandate]): "Créer l'annonce", posted to
  * `ListingController`, then where the listing stands and, once published, how many clients it interests (its ACCEPTED
- * matches, a failure leaves the line out), its *Propositions*, the clients it was sent to, and above them its open
- * visits ([listingClients], [VisitCards]). A client with an open visit leaves *Propositions* until the visit closes.
+ * matches, a failure leaves the line out), and its *Propositions et visites* ([listingClients]): one card per client,
+ * grouped by what the agent does next, the visit they asked for inside that card. The refused clients are only counted
+ * by the section's outcomes line. Another agent's client is neither named nor linked.
  *
  * A signed search ([MatchRules.matched]) shows the listings matched to it, *Biens correspondants* ([MatchViews]): its
  * matches and their listings in one search each, both secondary (a failure is the section's "unavailable"). Their
  * actions are `MatchController`'s; the dismiss confirmation opens without JS through `GET /mandates/{id}?dismiss=`.
- *
- * Above them, the same signed search lists the client's open visits ([VisitCards]): the requests to confirm, then the
- * visits to come. A listing whose client has an open visit leaves *Biens correspondants* (the visit replaces its card,
- * so it isn't shown twice) and comes back once the visit closes. Past visits aren't shown. The visits are another
- * secondary read: failing, they leave the section's "unavailable" and hide no match.
+ * Each match's client may have asked for a visit: it sits in that match's card and orders the groups, and the one
+ * visit to confirm is repeated at the top of the approved panel ([PendingVisit]). The visits are another secondary
+ * read: failing, they leave the section's "visits unavailable" and hide no match. Past visits aren't shown.
  *
  * Out of scope for now (and not checked by ndopify-server either): that the mandate is the signed-in agent's.
  */
@@ -365,6 +366,7 @@ class MandateController(
             "searchStats",
             if (matched) matches?.let { SearchStatsView.of(mandate, it, visitStats) } else null,
         )
+        var pendingVisit: PendingVisitView? = null
         if (matched) {
             val formatter = formatter()
             val cards = VisitCards.of(
@@ -376,19 +378,20 @@ class MandateController(
                 tenantContext.getTenant(),
                 formatter,
             )
-            model.addAttribute("visits", cards)
-            val converted = convertedMatchIds(visits, cards)
-            val section = MatchViews.section(
-                mandate,
-                matches?.filterNot { it.id in converted },
-                listings,
-                emptyMap(),
-                locations,
-                today(),
-                formatter,
-            )
+            val byMatch = (cards.requested + cards.upcoming)
+                .mapNotNull { visit -> visit.matchId?.let { it to visit } }
+                .toMap()
+            val section = MatchViews.section(mandate, matches, listings, byMatch, locations, today(), formatter)
+                .copy(visitsUnavailable = cards.unavailable)
             model.addAttribute("matchSection", section)
             model.addAttribute("dismissing", dismissing(section, dismiss))
+            pendingVisit = PendingVisit.of(
+                section.matches.mapNotNull { match ->
+                    match.visit?.let {
+                        PendingVisitCandidate(it, "${match.title} · annonce n° ${match.listingId}", "match-${match.id}")
+                    }
+                },
+            )
         }
         model.addAttribute(
             "end",
@@ -408,6 +411,14 @@ class MandateController(
             ListingViews.forMandate(mandate, listingId, listing, formatter(), listingStats),
         )
         model.addAttribute("listingProposals", clients?.proposals)
+        pendingVisit = clients?.proposals?.let { proposals ->
+            PendingVisit.of(
+                proposals.rows.mapNotNull { row ->
+                    row.visit?.let { PendingVisitCandidate(it, row.client, "proposal-${row.matchId}") }
+                },
+            )
+        } ?: pendingVisit
+        model.addAttribute("pendingVisit", pendingVisit)
         model.addAttribute("visitStats", if (listingStats?.visits != null) null else visitStats)
         (model.getAttribute(OUTCOME) as? String)?.let { outcome -> outcome(outcome, view, model) }
         (model.getAttribute(MatchController.OUTCOME) as? String)?.let { outcome ->
@@ -473,17 +484,6 @@ class MandateController(
                 listingClient.searchByIds(visits.map { it.listingId }.distinct()).associateBy { it.id }
             }
         }
-
-    /**
-     * The matches whose client has an open visit shown on the page: *Visites* replaces their card in *Biens
-     * correspondants*, so a listing isn't shown twice. A visit that isn't shown (a request past its 48 h, a confirmed
-     * one past its window) doesn't hide its match.
-     */
-    private fun convertedMatchIds(visits: List<VisitSummary>?, cards: VisitCardsView): Set<Long> {
-        if (visits == null) return emptySet()
-        val shown = (cards.requested + cards.upcoming).map { it.id }.toSet()
-        return visits.asSequence().filter { it.id in shown }.mapNotNull { it.matchId }.toSet()
-    }
 
     /** The flash outcome of the last action, worded after the mandate as it is now. */
     private fun outcome(outcome: String, view: MandateView, model: Model) {
@@ -623,13 +623,14 @@ class MandateController(
     }
 
     /**
-     * A landlord's PUBLISHED listing's clients: its open visits and its *Propositions*. Its sent matches, the agent's
-     * own mandates among theirs, and those mandates' customers, one search each. Null before it's published, or when
-     * the matches or mandates can't be had: no section, rather than another agent's client shown as the agent's or the
+     * A landlord's PUBLISHED listing's clients: its *Propositions et visites*. Its sent matches, the agent's own
+     * mandates among theirs, and those mandates' customers, one search each. Null before it's published, or when the
+     * matches or mandates can't be had: no section, rather than another agent's client shown as the agent's or the
      * other way round. Customers failing only leave the names out.
      *
-     * The visits are read by listing id (agent-scoped) and are secondary: failing, every proposal row shows and the
-     * *Visites* section says unavailable. A stale visit is ignored by [ListingViews.clients].
+     * The visits are read by listing id (agent-scoped) and are secondary: failing, every proposal row still shows,
+     * without its visit block, and the section says the visits are unavailable. A stale visit is ignored by
+     * [ListingViews.clients].
      */
     private fun listingClients(agent: Agent, listing: Listing): ListingClientsView? {
         if (listing.status != ListingStatus.PUBLISHED) return null
