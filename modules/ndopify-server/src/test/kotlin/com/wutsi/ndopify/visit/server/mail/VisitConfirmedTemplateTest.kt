@@ -30,6 +30,8 @@ class VisitConfirmedTemplateTest {
         "visit_date" to "02/12/2026",
         "visit_time" to "10:00",
         "on_site" to true,
+        "place" to "Bonapriso, Douala",
+        "landmark" to "près de la boulangerie Zepol",
         "address" to "Rue 1.234, Bonapriso, Derrière la pharmacie",
         "code" to "1234",
         "visit_url" to "https://www.ndopify.com/visits/1?token=xxx.yyy.zzz",
@@ -48,7 +50,11 @@ class VisitConfirmedTemplateTest {
         assertTrue(html.contains("Nice apartment"))
         assertTrue(html.contains("02/12/2026"))
         assertTrue(html.contains("10:00"))
-        assertTrue(html.contains("Rue 1.234"))
+        assertTrue(html.contains("Bonapriso, Douala"))
+        assertTrue(html.contains("près de la boulangerie Zepol"))
+        assertTrue(html.contains("L'adresse exacte et l'itinéraire vous seront communiqués"))
+        assertFalse(html.contains("Rue 1.234"))
+        assertFalse(html.contains("<b>Adresse</b>"))
         assertTrue(html.contains("1234"))
         assertTrue(html.contains("https://www.ndopify.com/visits/1?token=xxx.yyy.zzz"))
         assertTrue(html.contains("https://wa.me/237699000001"))
@@ -66,8 +72,10 @@ class VisitConfirmedTemplateTest {
         assertTrue(html.contains("vous appellera en vid"))
         assertTrue(html.contains("sur WhatsApp"))
         assertTrue(html.contains("+237699000001"))
+        assertTrue(html.contains("près de la boulangerie Zepol"))
         assertTrue(html.contains("1234"))
         assertFalse(html.contains("Rue 1.234"))
+        assertFalse(html.contains("L'adresse exacte et l'itinéraire"))
     }
 
     @Test

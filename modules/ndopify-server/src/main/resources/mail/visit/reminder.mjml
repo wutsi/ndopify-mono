@@ -27,17 +27,22 @@
                     Petit rappel&#160;: votre visite du bien <strong>{{listing_title}}</strong> a lieu
                     <strong>demain, {{visit_date}} à {{visit_time}}</strong>.
                 </mj-text>
+                {{#place}}
+                <mj-text>
+                    Localisation&#160;: <strong>{{place}}</strong>{{#landmark}} — {{landmark}}{{/landmark}}
+                </mj-text>
+                {{/place}}
 
                 {{#on_site}}
-                <mj-text>
-                    <b>Adresse</b>&#160;: {{address}}
-                </mj-text>
                 <mj-text>
                     <strong>{{agent_full_name}}</strong>, votre agent, vous attend sur place. Vous pouvez le joindre
                     sur WhatsApp au <strong>{{agent_whatsapp}}</strong>.
                 </mj-text>
                 <mj-text>
                     Votre code de visite est <strong>{{code}}</strong>. Présentez-le à votre agent à votre arrivée.
+                </mj-text>
+                <mj-text>
+                    L'adresse exacte et l'itinéraire vous seront communiqués par votre agent avant la visite.
                 </mj-text>
                 {{/on_site}}
                 {{^on_site}}

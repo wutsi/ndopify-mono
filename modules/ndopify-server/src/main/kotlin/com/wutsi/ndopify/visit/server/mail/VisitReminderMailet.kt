@@ -10,16 +10,21 @@ import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.Receipient
+import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantFormatter
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
 import org.springframework.stereotype.Service
 
-/** The 24 h reminder, to both sides, as the confirmation: type, date, address or WhatsApp call, and the code. */
+/**
+ * The 24 h reminder, to both sides, as the confirmation: type, date, the property's city and neighbourhood (never its
+ * exact address, which can be forwarded), the WhatsApp call and the code.
+ */
 @Service
 class VisitReminderMailet(
     private val tenantService: TenantService,
+    private val locationService: LocationService,
     private val mailService: MailService,
     private val mailBodyResolver: MailBodyResolver,
     private val linkTokenService: MatchLinkTokenService,
@@ -39,7 +44,8 @@ class VisitReminderMailet(
         val customerName = customer.party.fullName()
         val agentName = agent.party.fullName()
         val onSite = visit.type == VisitType.ON_SITE
-        val address = address(listing).takeIf { onSite }
+        val place = placeOf(listing)
+        val landmark = landmarkOf(listing)
         val token = tenant.publicPortalUrl?.let { linkTokenService.create(customer) }
         val customerUrl = tenant.publicPortalUrl?.removeSuffix("/")?.let { base ->
             val url = "$base/visits/${visit.id}"
@@ -59,13 +65,14 @@ class VisitReminderMailet(
                         "tenant_name" to tenant.name,
                         "recipient_name" to customerName,
                         "listing_title" to listingTitle(listing),
+                        "place" to place,
+                        "landmark" to landmark,
                         "image_url" to imageUrl,
                         "agent_full_name" to agentName,
                         "agent_whatsapp" to formatter.phone(agent.whatsappNumber),
                         "visit_date" to formatter.date(visit.scheduledAt!!),
                         "visit_time" to formatter.time(visit.scheduledAt),
                         "on_site" to onSite,
-                        "address" to address,
                         "code" to visit.code,
                         "visit_url" to customerUrl,
                     ) + AgentMailContext.of(agent, formatter),
@@ -100,9 +107,14 @@ class VisitReminderMailet(
     private fun listingTitle(listing: ListingEntity): String =
         listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"
 
-    private fun address(listing: ListingEntity): String? =
+    /** "Bonapriso, Douala": the neighbourhood and the city, never the exact address. */
+    private fun placeOf(listing: ListingEntity): String? =
         listOfNotNull(
-            listing.landmark?.trim()?.ifEmpty { null },
-            listing.accessDirections?.trim()?.ifEmpty { null },
-        ).joinToString(", ").ifEmpty { null }
+            listing.neighborhoodId?.let { locationService.findByIdOrNull(it)?.name?.ifBlank { null } },
+            locationService.findByIdOrNull(listing.cityId)?.name?.ifBlank { null },
+        ).joinToString(", ").ifBlank { null }
+
+    /** "près de la boulangerie Zepol": the nearby reference, as the public listing page shows it. */
+    private fun landmarkOf(listing: ListingEntity): String? =
+        listing.landmark?.trim()?.ifBlank { null }?.let { "près de $it" }
 }

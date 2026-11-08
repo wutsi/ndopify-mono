@@ -52,8 +52,9 @@ Package `com.wutsi.ndopify.web`:
   the match link (cookie, 302, `visit-link.html` with `reason = expired` / `not-yours`, a bad-shaped token never set),
   then `visit.html`, the `VisitPage` that `VisitPages` builds from the visit: the listing (linked to `/match/{id}`),
   the agent, the customer's contact when readable, and one block for the visit's status — REQUESTED, CONFIRMED,
-  CHECKED_IN, COMPLETED, CANCELLED, EXPIRED, NO_SHOW. The customer's code is shown on a CONFIRMED visit, the exact
-  address only for an ON_SITE visit (never a VIDEO one); a changed slot is called out on a CONFIRMED visit. "Annuler
+  CHECKED_IN, COMPLETED, CANCELLED, EXPIRED, NO_SHOW. The customer's code is shown on a CONFIRMED visit; the exact
+  address and map never are, only the city, neighbourhood and landmark; a changed slot is called out on a CONFIRMED
+  visit. "Annuler
   ma demande" / "Annuler la visite" (`#cancel` popup, `CancelVisitForm`, optional reason ≤ 500) posts
   `POST /visits/{id}/cancel` while REQUESTED or CONFIRMED, before the check-in; `?cancel=done|conflict` drives the
   flash. No feedback form and no check-in UI: the page only reads. A listing, agent or customer that ndopify-server no

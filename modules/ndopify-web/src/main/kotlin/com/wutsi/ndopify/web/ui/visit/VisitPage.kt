@@ -29,8 +29,6 @@ data class VisitPage(
     val note: String?,
     /** The 4-digit code the customer gives the agent to start the visit: only ever to the customer, never invented. */
     val code: String?,
-    val address: String?,
-    val mapUrl: String?,
     /** The customer's WhatsApp number for a VIDEO visit. */
     val videoNumber: String?,
     val checkedInAt: String?,

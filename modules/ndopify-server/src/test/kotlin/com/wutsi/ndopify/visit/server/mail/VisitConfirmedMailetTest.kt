@@ -19,7 +19,9 @@ import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
+import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
+import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
@@ -30,17 +32,19 @@ import java.util.Date
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class VisitConfirmedMailetTest {
     private val tenantService = mock<TenantService>()
+    private val locationService = mock<LocationService>()
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
     private val linkTokenService = mock<MatchLinkTokenService>()
     private val imageService = mock<ListingImageService>()
     private val mailet =
-        VisitConfirmedMailet(tenantService, mailService, mailBodyResolver, linkTokenService, imageService)
+        VisitConfirmedMailet(tenantService, locationService, mailService, mailBodyResolver, linkTokenService, imageService)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -64,6 +68,8 @@ class VisitConfirmedMailetTest {
     private val listing = ListingEntity(
         id = 101L,
         title = "Nice apartment",
+        cityId = 2370201L,
+        neighborhoodId = 1001L,
         landmark = "Rue 1.234, Bonapriso",
         accessDirections = "Derrière la pharmacie",
     )
@@ -84,12 +90,14 @@ class VisitConfirmedMailetTest {
     fun setUp() {
         doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(imageService).cover(any())
         doReturn(tenant).whenever(tenantService).findById(1L)
+        doReturn(LocationEntity(id = 2370201L, name = "Yaounde")).whenever(locationService).findByIdOrNull(2370201L)
+        doReturn(LocationEntity(id = 1001L, name = "Bastos")).whenever(locationService).findByIdOrNull(1001L)
         doReturn("<html>confirmed</html>").whenever(mailBodyResolver).resolve(any(), any())
         doReturn("xxx.yyy.zzz").whenever(linkTokenService).create(customer)
     }
 
     @Test
-    fun `the customer gets the code and the address, the agent neither`() {
+    fun `the customer gets the code, never the address, the agent neither`() {
         mailet.send(visit, customer, agent, listing)
 
         val customerEmail = email("ray.sponsible@gmail.com")
@@ -109,6 +117,8 @@ class VisitConfirmedMailetTest {
                 "tenant_name" to "Ndopify",
                 "recipient_name" to "Ray Sponsible",
                 "listing_title" to "Nice apartment",
+                "place" to "Bastos, Yaounde",
+                "landmark" to "près de Rue 1.234, Bonapriso",
                 "image_url" to "https://cdn.ndopify.com/7.jpg",
                 "agent_full_name" to "Kim Possible",
                 "agent_whatsapp" to "+237 6 99 00 00 01",
@@ -117,7 +127,6 @@ class VisitConfirmedMailetTest {
                 "visit_date" to "02/12/2026",
                 "visit_time" to "10:00",
                 "on_site" to true,
-                "address" to "Rue 1.234, Bonapriso, Derrière la pharmacie",
                 "code" to "1234",
                 "visit_url" to "https://www.ndopify.com/visits/1?token=xxx.yyy.zzz",
             ),
@@ -142,12 +151,12 @@ class VisitConfirmedMailetTest {
     }
 
     @Test
-    fun `a VIDEO visit has no address`() {
+    fun `a VIDEO visit has no address in the e-mail`() {
         mailet.send(visit.copy(type = VisitType.VIDEO), customer, agent, listing)
 
         val context = customerContext()
         assertEquals(false, context["on_site"])
-        assertNull(context["address"])
+        assertFalse(context.containsKey("address"))
         assertTrue((context["agent_whatsapp"] as String).isNotBlank())
     }
 

@@ -18,8 +18,9 @@
 <!--/*
   The customer's visit, the link of the "visite" e-mail (VisitController): the listing and the agent on top, then one
   block per status, the server renders only the current one. Two types, shown wherever the date is: ON_SITE, at the
-  property; VIDEO, a live WhatsApp video call from the agent to the customer's number. A video visit never shows the
-  exact address (the neighbourhood only). Dates and times come pre-formatted in `page`, never formatted here.
+  property; VIDEO, a live WhatsApp video call from the agent to the customer's number. Neither type shows the exact
+  address, only the city, neighbourhood and landmark. Dates and times come pre-formatted in `page`, never formatted
+  here.
   Without JavaScript the cancel form posts and the #cancel popup opens with :target; listing.js opens and closes the
   popup and visit.js moves the focus into it. Only the current state's block is rendered: no feedback form on
   COMPLETED, no check-in UI. Never agentRemarks.
@@ -126,7 +127,7 @@
                     heure.</span>
             </p>
             <p th:if="${page.type.name() != 'VIDEO'}">Une fois la date confirmée, vous recevez par e-mail votre code de
-                visite et l'adresse exacte.</p>
+                visite et la localisation du bien.</p>
             <p th:if="${page.type.name() == 'VIDEO'}">Une fois la date confirmée, vous recevez par e-mail votre code de
                 visite, à lire à votre agent au début de l'appel.</p>
             <p class="visit-cancel" th:if="${page.canCancel}"><a data-modal-open href="#cancel">Annuler ma demande</a></p>
@@ -161,25 +162,28 @@
                     de l'appel vidéo. Ne le communiquez à personne d'autre.</p>
             </div>
 
-            <div class="visit-block" data-visit-type="ON_SITE" th:if="${page.type.name() == 'ON_SITE'}">
-                <h3>Adresse</h3>
-                <address class="visit-address" th:text="${page.address}">Rue Njo-Njo, portail bleu</address>
-                <a class="btn btn-outline" th:if="${page.mapUrl}" th:href="${page.mapUrl}" rel="noopener"
-                   target="_blank">
-                    <svg aria-hidden="true" class="icon"><use href="#i-route"/></svg>Itinéraire<span
-                        class="visually-hidden"> (Google Maps, nouvel onglet)</span>
-                </a>
+            <!-- Never the exact address, only the city, neighbourhood and landmark -->
+            <div class="visit-block" data-visit-type="ON_SITE"
+                 th:if="${page.type.name() == 'ON_SITE' and (page.listing?.place ?: '') != ''}">
+                <h3>Localisation</h3>
+                <p class="visit-address__landmark"><svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>
+                    <span th:text="${page.listing?.place}">Bonapriso, Douala</span><span
+                            th:if="${page.listing?.landmark}" th:text="' — ' + ${page.listing.landmark}"> — près de
+                        la boulangerie</span></p>
+                <p>L'adresse exacte et l'itinéraire vous seront communiqués par votre agent avant la visite.</p>
             </div>
 
-            <!-- Video: never the exact address -->
+            <!-- Video: never the exact address either -->
             <div class="visit-block" data-visit-type="VIDEO" th:if="${page.type.name() == 'VIDEO'}">
                 <h3>Le logement</h3>
                 <p class="visit-address__landmark" th:if="${page.listing?.place}"><svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>
-                    <span th:text="${page.listing?.place}">Bonapriso, Douala</span></p>
+                    <span th:text="${page.listing?.place}">Bonapriso, Douala</span><span
+                            th:if="${page.listing?.landmark}" th:text="' — ' + ${page.listing.landmark}"> — près de
+                        la boulangerie</span></p>
                 <p th:if="${page.videoNumber}">Votre agent vous appelle en vidéo au <span class="nowrap"
                                                                                           th:text="${page.videoNumber}">+237699887766</span>.
                 </p>
-                <p>L'adresse exacte vous sera donnée si vous visitez sur place.</p>
+                <p>L'adresse exacte vous sera communiquée par votre agent.</p>
             </div>
 
             <p class="visit-cancel" th:if="${page.canCancel}">Un empêchement&nbsp;? <a data-modal-open href="#cancel">Annuler

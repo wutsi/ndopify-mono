@@ -18,7 +18,6 @@ import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -64,7 +63,6 @@ class VisitPagesTest {
         assertEquals("Fin de journée", page.note)
         assertTrue(page.canCancel)
         assertNull(page.code)
-        assertNull(page.address)
     }
 
     @Test
@@ -73,17 +71,13 @@ class VisitPagesTest {
 
         assertEquals("Confirmée", page.statusLabel)
         assertEquals("4827", page.code)
-        assertEquals("Rue Njo-Njo, portail bleu", page.address)
-        assertEquals("https://www.google.com/maps/dir/?api=1&destination=4.0247,9.6943", page.mapUrl)
         assertTrue(page.canCancel)
     }
 
     @Test
-    fun `confirmed video has the number, never the address`() {
+    fun `confirmed video has the number`() {
         val page = of(visit(VisitStatus.CONFIRMED, VisitType.VIDEO), customer = Customer(whatsappNumber = "+237699887766"))
 
-        assertNull(page.address)
-        assertNull(page.mapUrl)
         assertEquals("+237699887766", page.videoNumber)
     }
 
@@ -103,11 +97,10 @@ class VisitPagesTest {
     }
 
     @Test
-    fun `checked in keeps the code and address`() {
+    fun `checked in keeps the code`() {
         val page = of(visit(VisitStatus.CHECKED_IN, VisitType.ON_SITE))
 
         assertEquals("4827", page.code)
-        assertNotNull(page.address)
     }
 
     @Test

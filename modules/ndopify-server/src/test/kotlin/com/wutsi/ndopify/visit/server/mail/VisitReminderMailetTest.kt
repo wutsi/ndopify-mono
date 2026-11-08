@@ -18,7 +18,9 @@ import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
+import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
+import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
@@ -29,16 +31,18 @@ import java.util.Date
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 
 class VisitReminderMailetTest {
     private val tenantService = mock<TenantService>()
+    private val locationService = mock<LocationService>()
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
     private val linkTokenService = mock<MatchLinkTokenService>()
     private val imageService = mock<ListingImageService>()
     private val mailet =
-        VisitReminderMailet(tenantService, mailService, mailBodyResolver, linkTokenService, imageService)
+        VisitReminderMailet(tenantService, locationService, mailService, mailBodyResolver, linkTokenService, imageService)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -62,6 +66,8 @@ class VisitReminderMailetTest {
     private val listing = ListingEntity(
         id = 101L,
         title = "Nice apartment",
+        cityId = 2370201L,
+        neighborhoodId = 1001L,
         landmark = "Rue 1.234",
         accessDirections = "Derrière la pharmacie",
     )
@@ -83,6 +89,8 @@ class VisitReminderMailetTest {
     fun setUp() {
         doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(imageService).cover(any())
         doReturn(tenant).whenever(tenantService).findById(1L)
+        doReturn(LocationEntity(id = 2370201L, name = "Yaounde")).whenever(locationService).findByIdOrNull(2370201L)
+        doReturn(LocationEntity(id = 1001L, name = "Bastos")).whenever(locationService).findByIdOrNull(1001L)
         doReturn("xxx.yyy.zzz").whenever(linkTokenService).create(customer)
         doReturn("<html>reminder</html>").whenever(mailBodyResolver).resolve(any(), any())
     }
@@ -102,7 +110,9 @@ class VisitReminderMailetTest {
         assertEquals("02/12/2026", customerContext["visit_date"])
         assertEquals("10:00", customerContext["visit_time"])
         assertEquals("1234", customerContext["code"])
-        assertEquals("Rue 1.234, Derrière la pharmacie", customerContext["address"])
+        assertEquals("Bastos, Yaounde", customerContext["place"])
+        assertEquals("près de Rue 1.234", customerContext["landmark"])
+        assertFalse(customerContext.containsKey("address"))
         assertEquals("https://www.ndopify.com/visits/1?token=xxx.yyy.zzz", customerContext["visit_url"])
 
         val agentContext = context(VisitReminderMailet.TEMPLATE_AGENT)
@@ -111,12 +121,12 @@ class VisitReminderMailetTest {
     }
 
     @Test
-    fun `VIDEO reminder has no address`() {
+    fun `a VIDEO reminder has no address in the e-mail`() {
         mailet.send(visit.copy(type = VisitType.VIDEO, code = "5678"), customer, agent, listing)
 
         val context = context(VisitReminderMailet.TEMPLATE_CUSTOMER)
         assertEquals(false, context["on_site"])
-        assertEquals(null, context["address"])
+        assertFalse(context.containsKey("address"))
     }
 
     @Test

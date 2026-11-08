@@ -86,6 +86,7 @@ class VisitTemplateTest {
         currencyCode = "XAF",
         pricePeriodicityType = PeriodicityType.MONTHLY,
         title = "Appartement 3 chambres à Bonapriso",
+        landmark = "la boulangerie Zepol",
     )
     private val images = listOf(ListingImage(id = 1, url = "https://cdn/1.jpg", title = "Photo 1"))
     private val locations = listOf(Location(id = 1, name = "Douala"), Location(id = 5, name = "Bonapriso"))
@@ -141,11 +142,13 @@ class VisitTemplateTest {
     fun `confirmed on site`() {
         val doc = render(of(visit(VisitStatus.CONFIRMED, VisitType.ON_SITE)))
         assertEquals("4827", doc.selectFirst(".visit-code__digits span")?.text())
-        assertEquals("Rue Njo-Njo, portail bleu", doc.selectFirst(".visit-address")?.text())
-        assertEquals(
-            "https://www.google.com/maps/dir/?api=1&destination=4.0247,9.6943",
-            doc.selectFirst("a[href^=https://www.google.com/maps]")?.attr("href"),
+        assertEquals("Bonapriso, Douala", doc.selectFirst(".visit-address__landmark span")?.text())
+        assertTrue(doc.selectFirst(".visit-address__landmark")!!.text().contains("près de la boulangerie Zepol"))
+        assertTrue(
+            doc.text().contains("L'adresse exacte et l'itinéraire vous seront communiqués par votre agent avant la visite."),
         )
+        assertNull(doc.selectFirst(".visit-address"))
+        assertNull(doc.selectFirst("a[href^=https://www.google.com/maps]"))
         assertNotNull(doc.selectFirst("#cancel"))
     }
 
@@ -154,6 +157,9 @@ class VisitTemplateTest {
         val doc = render(
             of(visit(VisitStatus.CONFIRMED, VisitType.VIDEO), customer = Customer(whatsappNumber = "+237699887766")),
         )
+        assertEquals("Bonapriso, Douala", doc.selectFirst(".visit-address__landmark span")?.text())
+        assertTrue(doc.selectFirst(".visit-address__landmark")!!.text().contains("près de la boulangerie Zepol"))
+        assertFalse(doc.text().contains("et l'itinéraire"))
         assertNull(doc.selectFirst(".visit-address"))
         assertTrue(doc.selectFirst("[data-visit-type=VIDEO]")!!.text().contains("+237699887766"))
     }

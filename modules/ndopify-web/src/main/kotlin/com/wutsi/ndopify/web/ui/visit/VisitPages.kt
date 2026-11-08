@@ -19,10 +19,11 @@ import java.time.ZoneId
  * Builds the [VisitPage] of a visit from ndopify-server's DTOs; the listing's part is [ListingPages]'s, so never its
  * `agentRemarks`.
  *
- * The exact address (and its map link) is only ever shown for an ON_SITE visit, never for a VIDEO one, even if the
- * server sent one. The code comes only from the server, to its customer, and is never invented here. The changed-slot
- * line appears only for a CONFIRMED visit whose scheduled time differs from the requested one. A visit can be cancelled
- * while REQUESTED or CONFIRMED only.
+ * The exact address and its map are never shown, even when the server sends them: only the listing's city,
+ * neighbourhood and landmark, for both visit types. The code comes only from the server, to its customer, and is never
+ * invented
+ * here. The changed-slot line appears only for a CONFIRMED visit whose scheduled time differs from the requested one.
+ * A visit can be cancelled while REQUESTED or CONFIRMED only.
  */
 object VisitPages {
     private const val NO_AGENT_NAME = "votre agent"
@@ -57,20 +58,10 @@ object VisitPages {
     ): VisitPage {
         val (statusLabel, statusTone) = STATUS[visit.status] ?: ("Visite" to "neutral")
         val typeLabel = TYPES[visit.type] ?: "Visite"
-        // The code is sent to the customer from CONFIRMED and kept after; the address is only for a confirmed
-        // ON_SITE visit, once scheduled, and never for a VIDEO one.
+        // The code is sent to the customer from CONFIRMED and kept after. The exact address and its map never reach
+        // the page: the listing's city, neighbourhood and landmark do.
         val fromConfirmed = visit.status != VisitStatus.REQUESTED && visit.status != VisitStatus.UNKNOWN
         val code = if (fromConfirmed) visit.code?.ifBlank { null } else null
-        val address = if (fromConfirmed && visit.type == VisitType.ON_SITE && visit.scheduledAt != null) {
-            visit.address?.ifBlank { null }
-        } else {
-            null
-        }
-        val mapUrl = if (address != null && visit.latitude != null && visit.longitude != null) {
-            "https://www.google.com/maps/dir/?api=1&destination=${visit.latitude},${visit.longitude}"
-        } else {
-            null
-        }
 
         return VisitPage(
             id = visit.id,
@@ -84,8 +75,6 @@ object VisitPages {
             changedSlot = changedSlot(visit, tenant, formatter),
             note = visit.note?.ifBlank { null },
             code = code,
-            address = address,
-            mapUrl = mapUrl,
             videoNumber = customer?.whatsappNumber?.ifBlank { null },
             checkedInAt = visit.checkedInAt?.let { formatter.time(it) },
             cancelledAt = visit.cancelledAt?.let { "${formatter.date(it)} à ${formatter.time(it)}" },
