@@ -35,6 +35,7 @@ import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest
 import com.wutsi.ndopify.npc.ui.listing.MandateListingView
+import com.wutsi.ndopify.npc.ui.listing.ProposalGroup
 import com.wutsi.ndopify.npc.ui.listing.ProposalsView
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.CONTRACT
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.MANDATE
@@ -44,6 +45,7 @@ import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.APPROVED
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.CUSTOMER
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.PENDING
 import com.wutsi.ndopify.npc.ui.match.MatchFixtures
+import com.wutsi.ndopify.npc.ui.match.MatchGroup
 import com.wutsi.ndopify.npc.ui.match.MatchRules
 import com.wutsi.ndopify.npc.ui.match.MatchSectionView
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
@@ -52,11 +54,12 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AKWA
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BASTOS
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BONAPRISO
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.DOUALA
-import com.wutsi.ndopify.npc.ui.visit.VisitCardsView
+import com.wutsi.ndopify.npc.ui.visit.PendingVisitView
 import com.wutsi.ndopify.npc.ui.visit.VisitFixtures
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.junit.jupiter.api.BeforeEach
@@ -164,8 +167,8 @@ class MandateControllerTest {
         val view = model(result)["mandateListing"] as MandateListingView
 
         assertEquals("2 personnes intéressées · 2 visites", view.stats)
-        assertTrue(model(result)["listingVisits"] is VisitCardsView)
         assertTrue(model(result)["listingProposals"] is ProposalsView)
+        assertNull(model(result)["pendingVisit"])
         verify(visitClient).searchByListings(AGENT.id, VisitRules.COUNTED, listOf(501L), 100)
         // The agent is resolved once for the whole page, not again for the listing's clients.
         verify(currentAgent, times(1)).get()
@@ -202,12 +205,12 @@ class MandateControllerTest {
 
         val view = proposals()!!
 
-        assertEquals("2 intéressés · 1 refusé · 1 en attente", view.summary)
+        assertEquals("1 refusé", view.outcomes)
         assertEquals(listOf("Client d'un autre agent", "Sandrine Eboa", "Carine Ndongo"), view.rows.map { it.client })
     }
 
     @Test
-    fun `approved landlord - published listing - an open visit is above the proposals`() {
+    fun `approved landlord - published listing - open visit stays in its proposal card`() {
         doReturn(VisitFixtures.NOW).whenever(clock).millis()
         publishedListing()
         doReturn(
@@ -219,18 +222,12 @@ class MandateControllerTest {
         ).whenever(visitClient).searchByListings(AGENT.id, VisitRules.COUNTED, listOf(501L), 100)
 
         val result = mvc.perform(get("/mandates/201")).andReturn()
-
-        val card = (model(result)["listingVisits"] as VisitCardsView).requested.single()
-        assertEquals(7001L, card.id)
-        assertEquals("Sandrine Eboa", card.customerName)
-        assertEquals("Sur place", card.type)
-        assertEquals("sam. 7 novembre 2026 à 10:30", card.whenLabel)
-        assertEquals("42 h", card.expiresIn)
-
         val proposals = model(result)["listingProposals"] as ProposalsView
-        assertEquals("1 visite · 1 intéressé · 1 refusé · 1 en attente", proposals.summary)
-        assertEquals(listOf("Client d'un autre agent", "Carine Ndongo"), proposals.rows.map { it.client })
-        assertEquals(listOf(null, "/mandates/207#matches-title"), proposals.rows.map { it.url })
+
+        assertEquals("Sandrine Eboa", proposals.rows.first().client)
+        assertEquals(ProposalGroup.REQUESTED, proposals.rows.first().group)
+        assertEquals(VisitStatus.REQUESTED, proposals.rows.first().visit?.status)
+        assertEquals("#proposal-9002", (model(result)["pendingVisit"] as PendingVisitView).url)
         verify(visitClient).searchByListings(AGENT.id, VisitRules.COUNTED, listOf(501L), 100)
     }
 
@@ -240,11 +237,13 @@ class MandateControllerTest {
         doThrow(ResourceAccessException("down")).whenever(visitClient).searchByListings(any(), any(), any(), any())
 
         val result = mvc.perform(get("/mandates/201")).andReturn()
-
-        assertTrue((model(result)["listingVisits"] as VisitCardsView).unavailable)
         val proposals = model(result)["listingProposals"] as ProposalsView
-        assertEquals("2 intéressés · 1 refusé · 1 en attente", proposals.summary)
+
+        assertTrue(proposals.visitsUnavailable)
+        assertEquals("1 refusé", proposals.outcomes)
         assertEquals(3, proposals.rows.size)
+        assertTrue(proposals.rows.all { it.visit == null })
+        assertNull(model(result)["pendingVisit"])
     }
 
     @Test
@@ -588,30 +587,31 @@ class MandateControllerTest {
     }
 
     @Test
-    fun `approved search - open visit replaces its match`() {
+    fun `approved search - open visit stays in its match card`() {
         doReturn(VisitFixtures.NOW).whenever(clock).millis()
         withVisit(VisitFixtures.summary(VisitFixtures.requested().copy(mandateId = 201, matchId = 9001)))
 
         val result = mvc.perform(get("/mandates/201")).andReturn()
+        val section = section(result)
 
-        val visits = model(result)["visits"] as VisitCardsView
-        assertEquals(listOf(7001L), visits.requested.map { it.id })
-        assertEquals("Sur place · Appartement 3 chambres · Bonapriso", visits.requested.single().listing)
-        assertEquals("42 h", visits.requested.single().expiresIn)
-        assertEquals(listOf(9003L), section(result).matches.map { it.id })
-        assertEquals("1 en attente", section(result).proposals)
+        assertEquals(listOf(9001L, 9003L), section.matches.map { it.id })
+        assertEquals(VisitStatus.REQUESTED, section.matches[0].visit?.status)
+        assertEquals(MatchGroup.REQUESTED, section.matches[0].group)
+        assertTrue(section.hasPendingVisit)
+        assertEquals("#match-9001", (model(result)["pendingVisit"] as PendingVisitView).url)
         verify(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
     }
 
     @Test
-    fun `approved search - visits unavailable - every match shown`() {
+    fun `approved search - visits unavailable keeps every match`() {
         withMatches()
         doThrow(ResourceAccessException("timeout")).whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
 
         val result = mvc.perform(get("/mandates/201")).andReturn()
 
-        assertTrue((model(result)["visits"] as VisitCardsView).unavailable)
+        assertTrue(section(result).visitsUnavailable)
         assertEquals(listOf(9001L, 9003L), section(result).matches.map { it.id })
+        assertNull(model(result)["pendingVisit"])
     }
 
     @Test
@@ -628,8 +628,9 @@ class MandateControllerTest {
 
         val result = mvc.perform(get("/mandates/201")).andReturn()
 
-        assertTrue((model(result)["visits"] as VisitCardsView).requested.isEmpty())
         assertEquals(listOf(9001L, 9003L), section(result).matches.map { it.id })
+        assertNull(section(result).matches[0].visit)
+        assertNull(model(result)["pendingVisit"])
     }
 
     @Test
@@ -648,14 +649,14 @@ class MandateControllerTest {
     }
 
     @Test
-    fun `not a signed search - no visits`() {
+    fun `not a signed search - no pending visit`() {
         doReturn(APPROVED.copy(mandateType = MandateType.LISTING)).whenever(mandateClient).get(201)
         val landlord = mvc.perform(get("/mandates/201")).andReturn()
         doReturn(MANDATE).whenever(mandateClient).get(201)
         val assigned = mvc.perform(get("/mandates/201")).andReturn()
 
-        assertNull(model(landlord)["visits"])
-        assertNull(model(assigned)["visits"])
+        assertNull(model(landlord)["pendingVisit"])
+        assertNull(model(assigned)["pendingVisit"])
         verify(visitClient, never()).search(any(), any(), any(), any())
     }
 

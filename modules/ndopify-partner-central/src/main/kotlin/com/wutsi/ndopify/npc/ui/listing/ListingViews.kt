@@ -19,13 +19,14 @@ import com.wutsi.ndopify.npc.ui.mandate.Amenity
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.npc.ui.mandate.MandateRules
 import com.wutsi.ndopify.npc.ui.match.MatchRules
+import com.wutsi.ndopify.npc.ui.visit.VisitCardView
 import com.wutsi.ndopify.npc.ui.visit.VisitCards
-import com.wutsi.ndopify.npc.ui.visit.VisitRules
 import com.wutsi.ndopify.npc.ui.visit.VisitStats
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.dto.Tenant
+import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import java.util.Date
@@ -246,14 +247,14 @@ object ListingViews {
     }
 
     /**
-     * A published listing's clients: its open visits ([ListingClientsView.visits], the same cards as the Espace
-     * agent's) and its *Propositions*. [matches] are its sent matches, [mandates] the agent's own among the matches'
-     * (`NdMandateClient.searchByIds`), and [customers] theirs: a match of any other mandate is another agent's, whose
-     * client is never named nor linked. A client whose name can't be had is its mandate's number.
+     * A published listing's clients: its *Propositions et visites*, one card per client who didn't refuse it, the
+     * visit they asked for inside that card, grouped by what the agent does next. [matches] are its sent matches,
+     * [mandates] the agent's own among the matches' (`NdMandateClient.searchByIds`), and [customers] theirs: a match of
+     * any other mandate is another agent's, whose client is never named nor linked. A client whose name can't be had is
+     * its mandate's number.
      *
-     * A client with an open visit is a card in [ListingClientsView.visits] and leaves *Propositions*; a stale visit
-     * isn't shown, and a visit of another agent's mandate is ignored. [visits] null is the visits' "unavailable": every
-     * proposal then shows, and [ListingClientsView.stats] is null.
+     * A stale visit isn't shown, and a visit of another agent's mandate is ignored. [visits] null is the visits'
+     * "unavailable": every proposal still shows, without its visit block, and [ListingClientsView.stats] is null.
      */
     fun clients(
         matches: List<Match>,
@@ -271,12 +272,6 @@ object ListingViews {
             customer.id?.let { id -> name.ifBlank { null }?.let { id to it } }
         }.toMap()
         val owned = visits?.filter { own[it.mandateId] != null }
-        val visiting = owned
-            .orEmpty()
-            .map { VisitRules.asVisit(it) }
-            .filter { VisitRules.isOpen(it, now) }
-            .map { it.matchId }
-            .toSet()
         val cards = VisitCards.of(
             owned,
             null,
@@ -286,39 +281,79 @@ object ListingViews {
             tenant,
             formatter,
         )
+        val byMatch = (cards.requested + cards.upcoming)
+            .mapNotNull { visit -> visit.matchId?.let { it to visit } }
+            .toMap()
         val visible = matches.filter { it.status == MatchStatus.ACCEPTED || it.status == MatchStatus.PROPOSED }
         val rows = visible
-            .filterNot { it.id in visiting }
             .sortedWith(
-                compareBy<Match> { if (it.status == MatchStatus.ACCEPTED) 0 else 1 }
-                    .thenByDescending { it.answeredAt ?: it.proposedAt },
+                compareBy<Match> { group(it, byMatch[it.id]).ordinal }
+                    .thenComparator { a, b -> compare(a, b, byMatch) },
             )
             .map { match ->
                 val mandate = own[match.mandateId]
+                val visit = byMatch[match.id]
                 ProposalRow(
+                    matchId = match.id,
                     client = when (mandate) {
                         null -> OTHER_AGENT
                         else -> names[mandate.customerId] ?: "Mandat n° ${mandate.id}"
                     },
                     url = mandate?.let { "/mandates/${it.id}#matches-title" },
                     tag = MatchRules.tag(match),
-                    sent = MatchRules.answer(match, formatter).orEmpty(),
+                    sent = if (visit != null) {
+                        match.proposedAt?.let { "Envoyé le ${formatter.date(it)}" }.orEmpty()
+                    } else {
+                        MatchRules.answer(match, formatter).orEmpty()
+                    },
+                    visit = visit,
+                    group = group(match, visit),
                 )
             }
         return ListingClientsView(
-            visits = cards,
-            proposals = ProposalsView(summary = proposalsSummary(matches, visiting), rows = rows),
+            proposals = ProposalsView(
+                rows = rows,
+                outcomes = MatchRules.outcomes(matches),
+                visitsUnavailable = cards.unavailable,
+            ),
             stats = VisitStats.of(visits, now),
             interested = matches.count { it.status == MatchStatus.ACCEPTED },
         )
     }
 
-    /** The remaining proposals' counts, led by the open visits; a match with one is left out (it is in *Visites*). */
-    private fun proposalsSummary(matches: List<Match>, visiting: Set<Long>): String? =
-        listOfNotNull(
-            visiting.takeIf { it.isNotEmpty() }?.let { plural(it.size, "visite", "visites") },
-            MatchRules.proposals(matches.filterNot { it.id in visiting }),
-        ).joinToString(" · ").ifEmpty { null }
+    private fun group(match: Match, visit: VisitCardView?): ProposalGroup =
+        when {
+            visit?.status == VisitStatus.REQUESTED -> ProposalGroup.REQUESTED
+            visit != null && visit.status in setOf(VisitStatus.CONFIRMED, VisitStatus.CHECKED_IN) -> ProposalGroup.UPCOMING
+            match.status == MatchStatus.ACCEPTED -> ProposalGroup.INTERESTED
+            else -> ProposalGroup.WAITING
+        }
+
+    /** Requested visits soonest expiry first, upcoming visits soonest first, the rest latest answer first. */
+    private fun compare(a: Match, b: Match, visits: Map<Long, VisitCardView>): Int =
+        when (group(a, visits[a.id])) {
+            ProposalGroup.REQUESTED -> compareNullable(visits[a.id]?.expiresAt, visits[b.id]?.expiresAt)
+            ProposalGroup.UPCOMING -> compareNullable(visits[a.id]?.at, visits[b.id]?.at)
+            else -> compareDescending(a.answeredAt?.time ?: a.proposedAt?.time, b.answeredAt?.time ?: b.proposedAt?.time)
+        }
+
+    /** Nulls last. */
+    private fun compareNullable(a: Long?, b: Long?): Int =
+        when {
+            a == null && b == null -> 0
+            a == null -> 1
+            b == null -> -1
+            else -> a.compareTo(b)
+        }
+
+    /** Latest first, nulls last. */
+    private fun compareDescending(a: Long?, b: Long?): Int =
+        when {
+            a == null && b == null -> 0
+            a == null -> 1
+            b == null -> -1
+            else -> b.compareTo(a)
+        }
 
     /**
      * The listing's line on the page of [mandate] (the prototype's `renderListing`); null for a mandate that has none

@@ -1645,13 +1645,71 @@
         VISIT: ["Visite demandée", "warning"],
         REJECTED: ["Refusé", "neutral"]
     };
-    // A match's visit (visit.js), by its status: what the agent does next.
-    var VISIT_TAGS = {
-        REQUESTED: ["Visite demandée", "warning"],
-        CONFIRMED: ["Visite confirmée", "success"],
-        CHECKED_IN: ["Visite en cours", "info"],
-        COMPLETED: ["Visité", "success"]
-    };
+    // The visit inside a mandate card (Biens correspondants, Propositions et visites): the same block in both, so a
+    // card carries the visit it led to instead of the page showing a separate Visites section. The block carries the
+    // state itself now, since the card's header tag is hidden when a visit exists; a requested visit keeps the timer
+    // and "Confirmer la visite", a confirmed one says when and opens the visit.
+    function visitKind(status, video) {
+        if (status === "REQUESTED") return video ? "Visite vidéo demandée" : "Visite demandée";
+        if (status === "CONFIRMED") return video ? "Visite vidéo confirmée" : "Visite confirmée";
+        if (status === "CHECKED_IN") return video ? "Visite vidéo en cours" : "Visite en cours";
+        return video ? "Visité en vidéo" : "Visité";
+    }
+
+    function fillVisit(box, visit, label) {
+        if (!box) return;
+        if (!visit) {
+            box.hidden = true;
+            return;
+        }
+        box.hidden = false;
+        var status = visit.status || "REQUESTED";
+        box.setAttribute("data-state", status.toLowerCase());
+        if (status === "REQUESTED" && visit.expiresAt) box.setAttribute("data-expires-at", visit.expiresAt);
+        else box.removeAttribute("data-expires-at");
+        var video = visit.type === "VIDEO";
+        var icon = $("[data-visit-icon]", box);
+        if (icon) icon.innerHTML = VISIT_ICONS[video ? "VIDEO" : "IN_PERSON"];
+        $("[data-visit-kind]", box).textContent = visitKind(status, video);
+        var when = $("[data-visit-when]", box);
+        var at = visit.at;
+        if (status === "REQUESTED") {
+            when.textContent = "pour le " + window.NpcVisits.formatAt(at);
+        } else if (status === "CHECKED_IN") {
+            when.textContent = visit.checkedInAt ? "depuis le " + window.NpcVisits.formatAt(visit.checkedInAt) : "en cours";
+        } else if (status === "COMPLETED") {
+            when.textContent = "le " + window.NpcVisits.formatAt(visit.checkedOutAt || at);
+        } else {
+            when.textContent = "le " + window.NpcVisits.formatAt(at);
+        }
+        var timer = $("[data-visit-timer]", box);
+        if (status === "REQUESTED" && visit.expiresAt) {
+            var left = Math.max(0, visit.expiresAt - Date.now());
+            timer.hidden = false;
+            $("[data-visit-left]", box).textContent = window.NpcVisits.formatLeft(left);
+            if (left < 12 * 60 * 60 * 1000) box.setAttribute("data-urgent", "");
+            else box.removeAttribute("data-urgent");
+        } else {
+            timer.hidden = true;
+            box.removeAttribute("data-urgent");
+        }
+        var link = $("[data-visit-link]", box);
+        if (visit.id) {
+            link.hidden = false;
+            link.href = "visit.html?id=" + encodeURIComponent(visit.id);
+            var text = status === "REQUESTED" ? "Confirmer la visite" : "Voir la visite";
+            link.textContent = text;
+            link.className = "btn " + (status === "REQUESTED" ? "btn--primary" : "btn--outline") +
+                " btn--compact visit-detail__cta";
+            var parts = [text];
+            if (label) parts.push(label);
+            if (status !== "CHECKED_IN") parts.push(window.NpcVisits.formatAt(at));
+            link.setAttribute("aria-label", parts.join(" — "));
+        } else {
+            link.hidden = true;
+        }
+    }
+
     // proposition.html's "Pas pour moi" reasons.
     var REJECTION_LABELS = {
         PRICE: "trop cher",
@@ -1716,10 +1774,18 @@
             state[key] = typeof value === "number" ? Date.now() + value * DAY_MS : value;
         });
         if (initial.visit) {
-            state.visit = { at: Date.now() + initial.visit.in * DAY_MS, time: initial.visit.time,
-                type: initial.visit.type };
+            state.visit = { at: atTime(Date.now() + initial.visit.in * DAY_MS, initial.visit.time),
+                time: initial.visit.time, type: initial.visit.type };
         }
         return state;
+    }
+
+    // A fixture's day plus its "10h30" / "10:30": the timestamp the cards read, in the tenant's time.
+    function atTime(dayMs, time) {
+        var d = new Date(dayMs);
+        var p = time.split(/[h:]/);
+        d.setHours(Number(p[0]), Number(p[1]), 0, 0);
+        return d.getTime();
     }
 
     // ACCEPTED, VISIT (accepted, with a visit asked) or REJECTED; null while the client hasn't answered.
@@ -1735,31 +1801,36 @@
         return day + " à " + visit.time + (visit.type === "VIDEO" ? ", en vidéo" : ", sur place");
     }
 
-    // The home card's proposals line, short enough for one line on a phone: what the client answered, "1 visite ·
-    // 1 refusé · 1 en attente · 1 sans réponse" (no total: the counts add up to it), or "". The mandate page has the
-    // details.
-    function proposalsSummary(matches) {
-        var sent = matches.filter(function (m) {
-            return m.status === "PROPOSED" || m.status === "EXPIRED";
-        });
-        if (!sent.length) return "";
-        var counts = { VISIT: 0, ACCEPTED: 0, REJECTED: 0, NONE: 0, EXPIRED: 0 };
-        sent.forEach(function (m) {
-            counts[m.status === "EXPIRED" ? "EXPIRED" : answerOf(m) || "NONE"]++;
-        });
-        var parts = [];
-        if (counts.VISIT) parts.push(counts.VISIT + (counts.VISIT > 1 ? " visites" : " visite"));
-        if (counts.ACCEPTED) parts.push(counts.ACCEPTED + (counts.ACCEPTED > 1 ? " intéressés" : " intéressé"));
-        if (counts.REJECTED) parts.push(counts.REJECTED + (counts.REJECTED > 1 ? " refusés" : " refusé"));
-        if (counts.NONE) parts.push(counts.NONE + " en attente");
-        if (counts.EXPIRED) parts.push(counts.EXPIRED + " sans réponse");
-        return parts.join(" · ");
-    }
-
     function countMatches(matches, status) {
         return matches.filter(function (m) {
             return m.status === status;
         }).length;
+    }
+
+    // Append the cards under a visible group label, in the order the caller sorted them.
+    function appendGrouped(list, items, groupOf, labels, itemOf) {
+        var counts = {};
+        items.forEach(function (item) {
+            var key = groupOf(item);
+            counts[key] = (counts[key] || 0) + 1;
+        });
+        var last = null;
+        items.forEach(function (item, index) {
+            var key = groupOf(item);
+            if (key !== last) {
+                var group = document.createElement("li");
+                group.className = "assignments__group";
+                group.setAttribute("role", "presentation");
+                group.setAttribute("data-card-group", key);
+                var title = document.createElement("p");
+                title.className = "assignments__group-title";
+                title.textContent = labels[key] + " (" + counts[key] + ")";
+                group.appendChild(title);
+                list.appendChild(group);
+                last = key;
+            }
+            list.appendChild(itemOf(item, index));
+        });
     }
 
     // PROTOTYPE: GET /v1/mandates/stats?mandate-id= for an approved search: its pool, interested clients and visits.
@@ -1805,8 +1876,10 @@
     var LISTING_PROPOSALS = {
         203: [
             { mandateId: "204", client: "Sandrine Eboa", sentAt: -3, answer: "ACCEPTED", answeredAt: -2,
-                visit: { in: 2, time: "10h00", type: "IN_PERSON" } },
-            { mandateId: "207", client: "Hervé Mbarga", sentAt: -4, answer: "ACCEPTED", answeredAt: -4 },
+                visit: { id: "7301", in: 2, time: "10h00", type: "IN_PERSON", status: "REQUESTED",
+                    expiresInHours: 8 } },
+            { mandateId: "207", client: "Hervé Mbarga", sentAt: -4, answer: "ACCEPTED", answeredAt: -4,
+                visit: { id: "7302", in: 1, time: "09h30", type: "IN_PERSON", status: "CONFIRMED" } },
             { otherAgent: true, sentAt: -2, answer: "ACCEPTED", answeredAt: -1 },
             { mandateId: "208", client: "Carine Ndongo", sentAt: -1 },
             { otherAgent: true, sentAt: -5 },
@@ -1823,6 +1896,15 @@
             match.otherAgent = !!p.otherAgent;
             match.mandateId = p.mandateId;
             match.client = p.client;
+            // The visit asked on the public portal, with the status it reached on visit.html. Its 48 h window is
+            // relative to now in this prototype.
+            if (match.visit) {
+                match.visit.status = p.visit.status || "REQUESTED";
+                match.visit.id = p.visit.id;
+                match.visit.expiresAt = match.visit.status === "REQUESTED"
+                    ? Date.now() + (p.visit.expiresInHours || 42) * 60 * 60 * 1000
+                    : null;
+            }
             return match;
         });
     }
@@ -1840,49 +1922,97 @@
         box.hidden = !published;
         if (box.hidden) return;
         var matches = listingProposalsOf(mandateId);
-        var summary = proposalsSummary(matches);
-        $("[data-proposals-summary]", box).hidden = !summary;
-        $("[data-proposals-summary-text]", box).textContent = summary;
         $("[data-proposals-empty]", box).hidden = matches.length > 0;
 
-        var RANKS = { VISIT: 0, ACCEPTED: 1, NONE: 2 };
-
+        // The requests to confirm first (soonest expiry first), then the visits to come (soonest first), then
+        // interested, then waiting; the latest answer first within each.
         function rank(m) {
-            return RANKS[answerOf(m) || "NONE"];
+            var answer = answerOf(m);
+            if (answer === "VISIT") return (m.visit.status || "REQUESTED") === "REQUESTED" ? 0 : 1;
+            return answer === "ACCEPTED" ? 2 : 3;
         }
+
+        function sortKey(m) {
+            var answer = answerOf(m);
+            if (answer === "VISIT") {
+                return (m.visit.status || "REQUESTED") === "REQUESTED"
+                    ? (m.visit.expiresAt || m.visit.at)
+                    : m.visit.at;
+            }
+            return -(m.answeredAt || m.sentAt);
+        }
+
+        function groupOf(m) {
+            var answer = answerOf(m);
+            if (answer === "VISIT") return (m.visit.status || "REQUESTED") === "REQUESTED" ? "requested" : "upcoming";
+            return answer === "ACCEPTED" ? "interested" : "waiting";
+        }
+
+        var GROUP_LABELS = {
+            requested: "À confirmer",
+            upcoming: "Visites à venir",
+            interested: "Intéressés",
+            waiting: "En attente"
+        };
         var shown = matches.filter(function (m) {
             return answerOf(m) !== "REJECTED";
         }).sort(function (a, b) {
-            return rank(a) - rank(b) || (b.answeredAt || b.sentAt) - (a.answeredAt || a.sentAt);
+            return rank(a) - rank(b) || sortKey(a) - sortKey(b);
         });
         var list = $("[data-proposals-list]", box);
         var template = $("[data-proposals-template]", box);
         list.textContent = "";
         list.hidden = shown.length === 0;
-        shown.forEach(function (m) {
+        appendGrouped(list, shown, groupOf, GROUP_LABELS, function (m, index) {
             var item = template.content.firstElementChild.cloneNode(true);
             var answer = answerOf(m) || "NONE";
+            var visit = answer === "VISIT" ? m.visit : null;
+            var key = visit && visit.id ? visit.id : (m.mandateId || "other-" + index);
+            item.id = "proposal-" + key;
+            var title = $(".assignment__type", item);
+            var titleId = item.id + "-title";
+            title.id = titleId;
+            $("article", item).setAttribute("aria-labelledby", titleId);
             var row = $("[data-proposal-link]", item);
             if (m.otherAgent) {
                 // Another agent's client: no name, no link to a mandate the agent can't open
-                var plain = document.createElement("div");
-                plain.className = row.className;
-                while (row.firstChild) plain.appendChild(row.firstChild);
+                var plain = document.createElement("span");
+                plain.textContent = "Client d'un autre agent";
                 row.replaceWith(plain);
             } else {
                 row.href = "mandate.html?id=" + encodeURIComponent(m.mandateId) + "#matches-title";
+                $("[data-proposal-client]", item).textContent = m.client;
             }
-            $("[data-proposal-client]", item).textContent = m.otherAgent ? "Client d'un autre agent" : m.client;
             var tag = $("[data-proposal-tag]", item);
-            tag.textContent = PROPOSAL_TAGS[answer][0];
-            tag.className = "status-tag status-tag--" + PROPOSAL_TAGS[answer][1];
-            // Short enough for one line on a phone: the visit asked, else when it was sent
-            $("[data-proposal-summary]", item).textContent = answer === "VISIT"
-                ? "Visite le " + formatShortDate(m.visit.at) + " à " + m.visit.time +
-                    (m.visit.type === "VIDEO" ? ", en vidéo" : ", sur place")
-                : "Envoyé le " + formatShortDate(m.sentAt);
-            list.appendChild(item);
+            if (visit) {
+                // The visit block carries the state: no second tag on the header.
+                tag.hidden = true;
+            } else {
+                tag.hidden = false;
+                var t = PROPOSAL_TAGS[answer] || PROPOSAL_TAGS.NONE;
+                tag.textContent = t[0];
+                tag.className = "status-tag status-tag--" + t[1];
+            }
+            var summary = "Envoyé le " + formatShortDate(m.sentAt);
+            if (m.answeredAt && answer !== "VISIT") {
+                summary += " · intéressé le " + formatShortDate(m.answeredAt);
+            }
+            $("[data-proposal-summary]", item).textContent = summary;
+            fillVisit($("[data-proposal-visit]", item), visit, m.otherAgent ? "Client d'un autre agent" : m.client);
+            return item;
         });
+
+        // The outcomes line keeps only what the cards hide: refused and expired.
+        var refused = matches.filter(function (m) {
+            return answerOf(m) === "REJECTED";
+        }).length;
+        var expired = countMatches(matches, "EXPIRED");
+        var outcomes = [];
+        if (refused) outcomes.push(refused + (refused > 1 ? " refusés" : " refusé"));
+        if (expired) outcomes.push(expired + " sans réponse");
+        var line = $("[data-proposal-outcomes]", box);
+        line.hidden = outcomes.length === 0;
+        line.textContent = outcomes.join(" · ");
     }
 
     // PROTOTYPE: a published listing's audience, by mandate id — the page views of its public page
@@ -2129,6 +2259,52 @@
             });
         }
 
+        // The approved panel's activity line: the signed search's pool, interest and visits.
+        function renderMandateStats() {
+            var stats = searchStatsOf(id);
+            var line = $("[data-mandate-search-stats]");
+            line.hidden = !hasMatches(id) || stats.properties === 0;
+            $("[data-mandate-search-stats-text]", line).textContent = stats.label;
+        }
+
+        // The one urgent visit, above the mandate's activity: a link down to its card.
+        function renderPendingVisit() {
+            var line = $("[data-mandate-pending-visit]");
+            var blocks = $all(".visit-detail[data-state=requested]");
+            if (!blocks.length) {
+                line.hidden = true;
+                return;
+            }
+            blocks.sort(function (a, b) {
+                return Number(a.getAttribute("data-expires-at") || 0) - Number(b.getAttribute("data-expires-at") || 0);
+            });
+            var first = blocks[0];
+            var card = first.closest("[data-proposal], [data-match]");
+            if (!card || !card.id) {
+                line.hidden = true;
+                return;
+            }
+            var name = "";
+            var client = $("[data-proposal-client]", card);
+            var title = $("[data-match-title]", card);
+            if (client) {
+                name = client.textContent;
+            } else if (title) {
+                name = title.textContent;
+                var ref = $("[data-match-ref]", card);
+                if (ref) name += " · annonce n° " + ref.textContent;
+            }
+            var left = $("[data-visit-left]", first);
+            var leftText = left ? left.textContent : "";
+            var count = blocks.length;
+            var text = count === 1 ? "1 visite à confirmer" : count + " visites à confirmer · la plus urgente";
+            if (leftText) text += count === 1 ? " · " + leftText : " dans " + leftText;
+            if (count === 1 && name) text += " — " + name;
+            $("[data-mandate-pending-visit-text]", line).textContent = text;
+            line.setAttribute("href", "#" + card.id);
+            line.hidden = false;
+        }
+
         function render() {
             var state = stateOf(id);
             var closed = state.status === "CLOSED" || state.status === "CANCELLED";
@@ -2188,6 +2364,8 @@
 
             renderListing();
             renderMatches();
+            renderMandateStats();
+            renderPendingVisit();
 
             $("[data-close]").hidden = closed;
             // Before its approval a mandate can't be closed with a lease (409 MANDATE_NOT_APPROVED): only cancelled.
@@ -2258,6 +2436,8 @@
         var matchTemplate = $("[data-match-template]");
         var matchFlash = $("[data-match-flash]", matchBox);
         var sendKept = $("[data-match-send-kept]", matchBox);
+        // One pending visit is the page's primary: the routine sends step back while it waits.
+        var pendingVisitCount = 0;
 
         function showMatchFlash(text) {
             $("[data-match-flash-text]", matchFlash).textContent = text;
@@ -2285,19 +2465,26 @@
         function matchItem(match) {
             var item = matchTemplate.content.firstElementChild.cloneNode(true);
             var titleId = "match-" + match.id + "-title";
+            item.id = "match-" + match.id;
             item.setAttribute("data-match-id", match.id);
             $("article", item).setAttribute("aria-labelledby", titleId);
             var title = $("[data-match-title]", item);
             title.id = titleId;
             title.textContent = matchTitle(match);
             var tag = $("[data-match-tag]", item);
-            var t = MATCH_TAGS[match.status];
             var answer = answerOf(match);
-            if (answer) t = ANSWER_TAGS[answer];
-            if (answer === "VISIT" && match.visit.id) t = VISIT_TAGS[match.visit.status];
-            tag.textContent = match.status === "PROPOSED" && !answer ? "En attente" : t[0];
-            tag.className = "status-tag status-tag--" + t[1];
-            // Sent: one line, the visit asked first, since it's what the agent acts on
+            if (answer === "VISIT") {
+                // The visit block carries the state: no second tag on the header.
+                tag.hidden = true;
+            } else {
+                tag.hidden = false;
+                var t = MATCH_TAGS[match.status];
+                if (answer) t = ANSWER_TAGS[answer];
+                tag.textContent = match.status === "PROPOSED" && !answer ? "En attente" : t[0];
+                tag.className = "status-tag status-tag--" + t[1];
+            }
+            // Sent: one line of provenance; a visit the client asked for fills its own block below, since that's
+            // what the agent acts on. The card stays in place while the visit is open.
             var answerLine = $("[data-match-answer]", item);
             answerLine.hidden = match.status !== "PROPOSED" && match.status !== "EXPIRED";
             if (match.status === "EXPIRED") {
@@ -2305,41 +2492,15 @@
             }
             if (match.status === "PROPOSED") {
                 var sentText = "Envoyé le " + formatShortDate(match.sentAt);
-                answerLine.textContent = answer === "ACCEPTED" ? sentText + " · intéressé le " + formatShortDate(match.answeredAt)
+                answerLine.textContent = answer === "ACCEPTED" && match.answeredAt
+                    ? sentText + " · intéressé le " + formatShortDate(match.answeredAt)
                     : sentText;
-                // A visit of visit.js: asked ("Visite vidéo demandée pour le … — Confirmer") or confirmed ("Visite le
-                // …"), its type as the icon and in the words, linking to visit.html
-                if (answer === "VISIT" && match.visit.id) {
-                    var isVideo = match.visit.type === "VIDEO";
-                    var kind = isVideo ? "Visite vidéo" : "Visite";
-                    answerLine.innerHTML = VISIT_ICONS[isVideo ? "VIDEO" : "IN_PERSON"] + "<span></span>";
-                    var visitText = $("span", answerLine);
-                    var visitLink = document.createElement("a");
-                    visitLink.href = "visit.html?id=" + encodeURIComponent(match.visit.id);
-                    var at = window.NpcVisits.formatAt(match.visit.at);
-                    if (match.visit.status === "REQUESTED") {
-                        visitText.appendChild(document.createElement("strong")).textContent = kind + " demandée pour le " + at;
-                        visitText.appendChild(document.createTextNode(" — "));
-                        visitLink.textContent = "Confirmer";
-                        visitLink.className = "match__visit-cta";
-                        visitText.appendChild(visitLink);
-                    } else {
-                        visitLink.textContent = match.visit.status === "CHECKED_IN" ? kind + " en cours"
-                            : match.visit.status === "COMPLETED" ? (isVideo ? "Visité en vidéo le " : "Visité le ") + at
-                                : kind + " le " + at;
-                        visitText.appendChild(document.createElement("strong")).appendChild(visitLink);
-                    }
-                } else if (answer === "VISIT") {
-                    // A visit: its kind as an icon (words for screen readers), then its day and time
-                    var video = match.visit.type === "VIDEO";
-                    answerLine.innerHTML = VISIT_ICONS[video ? "VIDEO" : "IN_PERSON"] +
-                        '<span><span class="visually-hidden">' + (video ? "Visite en vidéo, " : "Visite sur place, ") +
-                        "</span><strong></strong></span>";
-                    $("strong", answerLine).textContent = "Le " + formatShortDate(match.visit.at) + " à " + match.visit.time;
-                    $("strong", answerLine).parentNode.appendChild(document.createTextNode(" · " + sentText));
-                }
-                answerLine.classList.toggle("match__answer--visit", answer === "VISIT");
             }
+            fillVisit(
+                $("[data-match-visit]", item),
+                answer === "VISIT" ? match.visit : null,
+                matchTitle(match) + " · annonce n° " + match.listingId,
+            );
             $("[data-match-ref]", item).textContent = match.listingId;
             $("[data-match-link]", item).href = "listing.html?id=" + encodeURIComponent(match.listingId);
             // One line: the terms are for screen readers only, the values say it all.
@@ -2371,6 +2532,7 @@
             keep.hidden = match.status !== "ACTIVE";
 
             var send = $("[data-match-send]", item);
+            send.className = "btn " + (pendingVisitCount > 0 ? "btn--secondary" : "btn--primary");
             send.addEventListener("click", function () {
                 if (!isActive(send)) return;
                 // PROTOTYPE: simulates POST /v1/matches/{id}/propose: the client gets the listing's link by e-mail.
@@ -2409,41 +2571,71 @@
             matchBox.hidden = !show;
             if (!show) return;
             var matches = matchesOf(id);
-            // The same line as the home card, in the approved panel; hidden without a pool nor a visit.
-            var searchStats = searchStatsOf(id);
-            var statsLine = $('[data-panel="APPROVED"] [data-search-stats]');
-            statsLine.hidden = searchStats.properties === 0 && searchStats.visits === 0;
-            $("[data-search-stats-text]", statsLine).textContent = searchStats.label;
-            // Neither set aside nor refused by the client: the proposals line counts the refused ones.
+            // Neither set aside nor refused by the client.
             var shown = matches.filter(function (m) {
                 return m.status !== "DISMISSED" && answerOf(m) !== "REJECTED";
             });
-            // A visit to confirm and a listing the client likes come first, then new, kept, those still
-            // waiting for an answer, and those expired unanswered; best score first within each.
+            // Requests to confirm first (soonest expiry), then visits to come (soonest first), then interested,
+            // new, kept, waiting and expired; best score first within each.
             function rank(m) {
                 var answer = answerOf(m);
-                if (answer === "VISIT") return 0;
-                if (answer === "ACCEPTED") return 1;
-                return { ACTIVE: 2, SHORTLISTED: 3, PROPOSED: 4, EXPIRED: 5 }[m.status];
+                if (answer === "VISIT") return (m.visit.status || "REQUESTED") === "REQUESTED" ? 0 : 1;
+                if (answer === "ACCEPTED") return 2;
+                return { ACTIVE: 3, SHORTLISTED: 4, PROPOSED: 5, EXPIRED: 6 }[m.status];
             }
+
+            function sortKey(m) {
+                var answer = answerOf(m);
+                if (answer !== "VISIT") return -m.score;
+                var visit = m.visit || {};
+                return (visit.status || "REQUESTED") === "REQUESTED"
+                    ? (visit.expiresAt || 0)
+                    : (visit.at || 0);
+            }
+
+            function groupOf(m) {
+                var answer = answerOf(m);
+                if (answer === "VISIT") return (m.visit.status || "REQUESTED") === "REQUESTED" ? "requested" : "upcoming";
+                if (answer === "ACCEPTED") return "interested";
+                return { ACTIVE: "new", SHORTLISTED: "kept", PROPOSED: "waiting", EXPIRED: "expired" }[m.status] || "new";
+            }
+
+            var GROUP_LABELS = {
+                requested: "À confirmer",
+                upcoming: "Visites à venir",
+                interested: "Intéressés",
+                new: "Nouveaux",
+                kept: "Retenus",
+                waiting: "Envoyés, en attente",
+                expired: "Sans réponse"
+            };
             shown.sort(function (a, b) {
-                return rank(a) - rank(b) || b.score - a.score;
+                return rank(a) - rank(b) || sortKey(a) - sortKey(b);
             });
+            pendingVisitCount = shown.filter(function (m) {
+                return answerOf(m) === "VISIT" && (m.visit.status || "REQUESTED") === "REQUESTED";
+            }).length;
             matchList.textContent = "";
-            shown.forEach(function (match) {
-                matchList.appendChild(matchItem(match));
-            });
+            appendGrouped(matchList, shown, groupOf, GROUP_LABELS, matchItem);
             matchList.hidden = shown.length === 0;
-            // None at all: those refused are still a match, the proposals line says so.
+            // None at all: those refused are still a match.
             $("[data-match-empty]", matchBox).hidden = shown.length > 0 || countMatches(matches, "PROPOSED") > 0;
 
-            var proposals = proposalsSummary(matches);
-            var proposalsLine = $("[data-match-proposals]", matchBox);
-            proposalsLine.hidden = !proposals;
-            $("[data-match-proposals-text]", proposalsLine).textContent = proposals;
+            // What the cards hide or only tag individually, in one small line: refused and unanswered.
+            var refused = matches.filter(function (m) {
+                return answerOf(m) === "REJECTED";
+            }).length;
+            var expired = countMatches(matches, "EXPIRED");
+            var outcomes = [];
+            if (refused) outcomes.push(refused + (refused > 1 ? " refusés" : " refusé"));
+            if (expired) outcomes.push(expired + " sans réponse");
+            var outcomeLine = $("[data-match-outcomes]", matchBox);
+            outcomeLine.hidden = outcomes.length === 0;
+            outcomeLine.textContent = outcomes.join(" · ");
 
             var kept = countMatches(matches, "SHORTLISTED");
             sendKept.hidden = kept < 2;
+            sendKept.className = "btn " + (pendingVisitCount > 0 ? "btn--secondary" : "btn--primary");
             sendKept.textContent = "Envoyer les " + kept + " biens retenus";
 
             var dismissed = countMatches(matches, "DISMISSED");

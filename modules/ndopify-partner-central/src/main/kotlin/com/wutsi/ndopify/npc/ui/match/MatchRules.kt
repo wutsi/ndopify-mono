@@ -16,8 +16,8 @@ import kotlin.math.roundToInt
 
 /**
  * The wording of the listings ndopify-server matched to a signed search (`Matcher`'s partial scores as "Pourquoi ce
- * bien ?", tags, the client's answer, the card summaries), after the prototype's `renderMatches`. A match the client
- * refused isn't shown: only [proposals] counts it.
+ * bien ?", tags, the client's answer, the section's outcomes line), after the prototype's `renderMatches`. A match the client
+ * refused isn't shown: only [outcomes] counts it.
  *
  * Not rendered, though the prototype has them: *Retenir* (SHORTLISTED) and sending several at once, the client's
  * visit request and coded rejection reasons, the distance of a nearby neighbourhood and the names of the missing
@@ -34,13 +34,13 @@ object MatchRules {
     /** What can be sent to the client or set aside: never sent, or sent and not answered in time. */
     val ACTIONABLE: Set<MatchStatus> = setOf(MatchStatus.ACTIVE, MatchStatus.EXPIRED)
 
-    /** What [proposals] counts (the *Mes mandats* cards search it): [ORDER] and REJECTED. */
+    /** What [outcomes] counts (the *Mes mandats* cards search it): [ORDER] and REJECTED. */
     val COUNTED: List<MatchStatus> = ORDER + MatchStatus.REJECTED
 
     /** What the mandate page searches: [COUNTED] and DISMISSED, to count them. */
     val SEARCHED: List<MatchStatus> = COUNTED + MatchStatus.DISMISSED
 
-    /** Sent to the client, answered or not: what [proposals] counts, and a published listing's *Propositions*. */
+    /** Sent to the client, answered or not: a published listing's *Propositions*. */
     val SENT: List<MatchStatus> =
         listOf(MatchStatus.PROPOSED, MatchStatus.ACCEPTED, MatchStatus.REJECTED, MatchStatus.EXPIRED)
 
@@ -63,11 +63,6 @@ object MatchRules {
     /** Only a signed search has matches: the matcher runs once the customer signs. */
     fun matched(mandate: Mandate): Boolean =
         mandate.mandateType == MandateType.SEARCH && mandate.status == MandateStatus.APPROVED
-
-    /** The matches in [ORDER], best score first within each status; the others left out. */
-    fun sort(matches: List<Match>): List<Match> =
-        matches.filter { it.status in ORDER }
-            .sortedWith(compareBy<Match> { ORDER.indexOf(it.status) }.thenByDescending { it.score })
 
     fun tag(match: Match): MandateRules.Tag = TAGS[match.status] ?: TAGS.getValue(MatchStatus.PROPOSED)
 
@@ -102,24 +97,16 @@ object MatchRules {
         )
 
     /**
-     * A card's line of the listings sent to the client, also on the mandate page's *Biens correspondants*, short
-     * enough for one line on a phone: what it answered, "1 intéressé · 1 refusé · 1 en attente · 1 sans réponse" (no
-     * total: the counts add up to it); null when none was sent.
+     * The section's small line of what its cards hide: the refused ones and the unanswered ones, "1 refusé · 1 sans
+     * réponse" (no total); null when there is neither.
      */
-    fun proposals(matches: List<Match>): String? {
-        if (matches.none { it.status in SENT }) {
-            return null
-        }
-        val accepted = matches.count { it.status == MatchStatus.ACCEPTED }
+    fun outcomes(matches: List<Match>): String? {
         val rejected = matches.count { it.status == MatchStatus.REJECTED }
-        val pending = matches.count { it.status == MatchStatus.PROPOSED }
         val expired = matches.count { it.status == MatchStatus.EXPIRED }
         return listOfNotNull(
-            accepted.takeIf { it > 0 }?.let { "$it " + plural(it, "intéressé", "intéressés") },
             rejected.takeIf { it > 0 }?.let { "$it " + plural(it, "refusé", "refusés") },
-            pending.takeIf { it > 0 }?.let { "$it en attente" },
             expired.takeIf { it > 0 }?.let { "$it sans réponse" },
-        ).joinToString(" · ")
+        ).joinToString(" · ").ifEmpty { null }
     }
 
     /** A published listing's card: "2 personnes intéressées", the clients who [accepted] it, or "Aucune …". */

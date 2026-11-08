@@ -3,7 +3,7 @@ package com.wutsi.ndopify.npc.ui.listing
 import com.wutsi.ndopify.listing.dto.ListingSection
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.npc.ui.mandate.MandateRules
-import com.wutsi.ndopify.npc.ui.visit.VisitCardsView
+import com.wutsi.ndopify.npc.ui.visit.VisitCardView
 import com.wutsi.ndopify.npc.ui.visit.VisitStats
 
 /**
@@ -45,12 +45,10 @@ data class ListingView(
 }
 
 /**
- * A published listing's clients (`ListingViews.clients`), on its mandate's page: the open visits to the property
- * ([visits]), above its *Propositions* ([proposals]).
+ * A published listing's clients (`ListingViews.clients`), on its mandate's page: its *Propositions et visites*.
  */
 data class ListingClientsView(
-    /** The listing's open visits, the same cards as the Espace agent's; [VisitCardsView.unavailable] when they can't be read. */
-    val visits: VisitCardsView,
+    /** The listing's clients, the visits to confirm first; [ProposalsView.visitsUnavailable] when they can't be read. */
     val proposals: ProposalsView,
     /** The listing's total visits (open and completed), null when they can't be read. */
     val stats: VisitStats?,
@@ -58,30 +56,36 @@ data class ListingClientsView(
     val interested: Int,
 )
 
-/** A published listing's *Propositions* (`ListingViews.clients`), on its mandate's page. */
+/** A published listing's *Propositions et visites* (`ListingViews.clients`), on its mandate's page. */
 data class ProposalsView(
-    /**
-     * "2 intéressés · 1 refusé · 1 en attente" (`MatchRules.proposals`); null when no client is left (none refused,
-     * or all have an open visit, shown in *Visites*).
-     */
-    val summary: String?,
-    /** The clients who didn't refuse it, interested first, the latest first within each; those with an open visit are in *Visites*. */
+    /** One card per client who didn't refuse it, grouped by what the agent does next (the refused ones are only counted). */
     val rows: List<ProposalRow>,
-)
+    /** "1 refusé · 1 sans réponse" (`MatchRules.outcomes`); null when there is neither. */
+    val outcomes: String? = null,
+    /** The visits couldn't be read: every card stays, without its visit block. */
+    val visitsUnavailable: Boolean = false,
+) {
+    val groups: List<ProposalGroupView>
+        get() = rows.groupBy { it.group }.map { ProposalGroupView(it.key.label, it.value) }
+}
 
 /**
- * A client the listing was sent to. Another agent's client is "Client d'un autre agent" with no [url]: that agent's
- * mandate is protected, neither its customer nor its mandate is on the page. A client with an open visit isn't in
- * *Propositions*: it is in the listing's *Visites* section until the visit closes.
+ * A client the listing was sent to. Another agent's client is "Client d'un autre agent" with no [url] and no [visit]:
+ * that agent's mandate is protected, neither its customer nor its mandate is on the page. A visit the client asked for
+ * sits in the same card, as [visit].
  */
 data class ProposalRow(
+    val matchId: Long,
     val client: String,
     /** The search's *Biens correspondants*, where the match is handled; null for another agent's. */
     val url: String?,
     /** "Intéressé", "En attente". */
     val tag: MandateRules.Tag,
-    /** "Envoyé le 28 oct. 2026", "Intéressé le 29 oct. 2026". */
+    /** "Envoyé le 28 oct. 2026" / "Intéressé le 29 oct. 2026"; for a visit card, the sent date only. */
     val sent: String,
+    /** The visit the client asked for, inside the card that led to it; null without one. */
+    val visit: VisitCardView? = null,
+    val group: ProposalGroup = ProposalGroup.WAITING,
 )
 
 /** A row of the checklist: it opens its section, to edit it while a draft, to view it once sent. */

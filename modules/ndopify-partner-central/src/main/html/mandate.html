@@ -42,18 +42,28 @@
         (Envoyer: the listing's link by e-mail), kept to send later (Retenir), or set aside (Écarter, after
         a confirmation: never proposed again for this mandate). Two kept or more: "Envoyer les N biens retenus".
         A sent one shows the client's answer on the public portal (ndopify-web's proposition.html): interested,
-        a visit asked (an icon for on site or by video, then day and time), or none yet ("En attente"); first those the agent must act
-        on. One the client refused isn't shown: the section's one-liner, like the Espace agent's card, counts it
-        ("1 visite · 1 intéressé · 1 refusé · 1 en attente · 1 sans réponse"). One the client didn't answer within 7 days
-        is "Expirée" ("Envoyé le …, sans réponse"), last: it can be sent again (Envoyer) or set aside (Écarter).
-        The visit an ACCEPTED match's client asked for (GET /v1/visits?mandate-id=, in person only) is the card's line,
-        linking to visit.html?id=, its type as the icon and in the words ("Visite vidéo …" for a video one): "Visite
-        demandée pour le sam. 7 novembre 2026 à 10h30 — Confirmer" (tag "Visite demandée") while REQUESTED, "Visite le …" once confirmed by the agent (tag "Visite confirmée"), "Visite en
-        cours" once started, "Visité le …" once done (tag "Visité"); a cancelled, expired or missed
-        one leaves the match "Intéressé" (the client may ask again). PROTOTYPE: visit.js's visits 7001 (match 9001), 7004 (match
-        9004) and 7019 (match 9006, in video), as changed on visit.html.
+        a visit asked (an icon for on site or by video, then day and time), or none yet ("En attente"). The cards are
+        grouped by what the agent must do: "À confirmer", "Visites à venir", "Intéressés", "Nouveaux", "Envoyés,
+        en attente", "Sans réponse". One the client refused isn't shown; the section's small outcomes line counts it
+        and the unanswered ("1 refusé · 1 sans réponse"). The search's activity ("6 biens · 3 intéressés · 3 visites")
+        is in the approved panel, where the agent follows the mandate, not in the section.
+        The one urgent visit is repeated at the top of the approved panel ("1 visite à confirmer · 8 h — Sandrine
+        Eboa"), a link down to its card; while a visit is pending, Envoyer is secondary and only the visit CTAs are
+        primary.
+        The visit the client asked for sits inside the card it belongs to, rather than in a separate Visites section:
+        GET /v1/visits?mandate-id= (in person only) gives the visit of an ACCEPTED match, shown in that match's card,
+        linking to visit.html?id=, its type as the icon and in the words ("Visite vidéo" for a video one). The block
+        carries the state itself, with the header tag hidden: "Visite demandée · pour le …" with the timer and
+        "Confirmer la visite" while REQUESTED, "Visite confirmée · le …" with "Voir la visite" once the agent
+        confirmed, "Visite en cours" once started, "Visité · le …" once done. The meta line keeps only "Envoyé le …".
+        A cancelled, expired or missed visit leaves the match "Intéressé" (the client may ask again). The card stays
+        in place throughout.
+        PROTOTYPE: visit.js's visits 7001 (match 9001), 7004 (match 9004) and 7019 (match 9006, in video), as changed
+        on visit.html.
       - A landlord's published listing (Actif, LISTING) says how many clients it interested, like the Espace
-        agent's card ("2 personnes intéressées"); ?id=203&listing=published shows it.
+        agent's card ("2 personnes intéressées"); ?id=203&listing=published shows it. Its Propositions are one card
+        per client, grouped requests/upcoming/interested/waiting, the visit they asked for inside it; the small
+        outcomes line counts the refused clients, so the page has no separate Visites section.
     PROTOTYPE: ?id=201, 202, 203 or 204 (an active search with matches; 201 gets its own once signed), or 101, 102 and 103 once accepted on index.html; any other mandate shows the
     locked view. The statuses are kept in the session (KEYS.mandates), and "Simuler la signature" stands for the
     client signing the contract.
@@ -125,7 +135,7 @@
                         <div class="contact-card__line contact-card__phone">
                             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>
                             <a data-contact="whatsapp"><span class="visually-hidden">Appeler le </span><span data-contact-number></span></a>
-                            <a class="btn btn--primary btn--compact" target="_blank" rel="noopener" data-contact-whatsapp><svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>WhatsApp</a>
+                            <a class="btn btn--secondary btn--compact" target="_blank" rel="noopener" data-contact-whatsapp><svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>WhatsApp</a>
                         </div>
                         <p class="contact-card__line">
                             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>
@@ -200,10 +210,16 @@
 
                     <div class="mandate-panel" hidden data-panel="APPROVED">
                         <p>Signé le <span data-approved-at></span> · valable jusqu'au <strong data-valid-until></strong>.</p>
-                        <!-- A signed search: its pool, the client's interest and its visits, like the Espace agent's card. -->
-                        <p class="search-stats" hidden data-search-stats>
+                        <!-- The urgent visit, above the mandate's activity: one tap goes to its card. -->
+                        <a class="mandate-pending" hidden data-mandate-pending-visit>
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                            <span data-mandate-pending-visit-text></span>
+                            <svg class="icon mandate-pending__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
+                        </a>
+                        <!-- The mandate's activity, where the agent follows the mandate: its pool, interest and visits. -->
+                        <p class="search-stats" hidden data-mandate-search-stats>
                             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
-                            <span><span class="visually-hidden">Activité de la recherche : </span><span data-search-stats-text></span></span>
+                            <span><span class="visually-hidden">Activité de la recherche : </span><span data-mandate-search-stats-text></span></span>
                         </p>
                         <!--
                             A landlord's mandate only (LISTING): its listing. "Créer l'annonce" (POST /v1/listings) opens
@@ -258,30 +274,43 @@
 
                 <!--
                     A landlord's mandate, its listing published: the clients the listing was sent to
-                    (GET /v1/matches?listing-id=), where a search has its Biens correspondants. What they answered on one line, like the mandate page's Biens
-                    correspondants; then one row per client who didn't refuse it, a visit asked first, then
-                    interested, then waiting, opening the search's mandate page, where the match is handled. A refused
-                    one isn't listed: the line counts it. A client of another agent's search is "Client d'un autre
-                    agent", not a link: that agent's mandate is protected, neither its client nor its mandate shown.
+                    (GET /v1/matches?listing-id=), where a search has its Biens correspondants. One card per client
+                    who didn't refuse it, opening the search's mandate page where the match is handled; a client who
+                    asked for a visit has its details and action in the same card, the requests to confirm first,
+                    then the visits to come, then interested, then waiting. A refused one isn't listed. A client of
+                    another agent's search is "Client d'un autre agent", not a link: that agent's mandate is
+                    protected, neither its client nor its mandate shown.
                 -->
                 <section class="home-section" aria-labelledby="proposals-title" hidden data-listing-proposals>
-                    <h2 id="proposals-title">Propositions</h2>
-                    <p class="mandate-card__proposals" hidden data-proposals-summary>
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M4 12 20 4l-6 16-3-7zM11 13l9-9"/></svg>
-                        <span><span class="visually-hidden">Réponses des clients : </span><span data-proposals-summary-text></span></span>
-                    </p>
-                    <ul class="checklist" data-proposals-list></ul>
+                    <h2 id="proposals-title">Propositions et visites</h2>
+                    <p>Les visites à confirmer d'abord.</p>
+                    <ul class="assignments" data-proposals-list></ul>
+                    <p class="match__outcomes" hidden data-proposal-outcomes></p>
                     <p class="assignments__empty" hidden data-proposals-empty>
                         Ce bien n'a encore été envoyé à aucun client. Quand il correspond à une de vos recherches
                         signées, il apparaît dans ses <em>Biens correspondants</em>, d'où vous l'envoyez au client.
                     </p>
                     <template data-proposals-template>
-                        <li>
-                            <a class="checklist__row" data-proposal-link>
-                                <span class="checklist__title" data-proposal-client></span>
-                                <span class="status-tag" data-proposal-tag></span>
-                                <span class="checklist__summary" data-proposal-summary></span>
-                            </a>
+                        <li class="assignment proposal-card" data-proposal>
+                            <article>
+                                <div class="assignment__head">
+                                    <h3 class="assignment__type"><a data-proposal-link><span
+                                            data-proposal-client></span></a></h3>
+                                    <p class="status-tag" data-proposal-tag></p>
+                                </div>
+                                <div class="visit-detail" data-proposal-visit hidden>
+                                    <p class="visit-detail__when">
+                                        <span class="visit-detail__icon" data-visit-icon aria-hidden="true"></span>
+                                        <span><strong data-visit-kind></strong> · <span data-visit-when></span></span>
+                                    </p>
+                                    <p class="visit-detail__timer" data-visit-timer hidden>
+                                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                        <span>Il reste <strong data-visit-left></strong> pour confirmer</span>
+                                    </p>
+                                    <a class="btn btn--primary btn--compact visit-detail__cta" data-visit-link></a>
+                                </div>
+                                <p class="proposal-card__meta" data-proposal-summary></p>
+                            </article>
                         </li>
                     </template>
                 </section>
@@ -291,13 +320,7 @@
                         <h2 id="matches-title">Biens correspondants</h2>
                         <button type="button" class="btn btn--primary" hidden data-match-send-kept></button>
                     </div>
-                    <!-- Like the Espace agent's card: what the client answered, "1 visite · 1 refusé · 1 en attente". -->
-                    <p class="mandate-card__proposals" hidden data-match-proposals>
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M4 12 20 4l-6 16-3-7zM11 13l9-9"/></svg>
-                        <span><span class="visually-hidden">Biens proposés au client : </span><span data-match-proposals-text></span></span>
-                    </p>
-                    <p>Les biens de vos annonces publiées qui correspondent à la recherche du client. Envoyez-les-lui,
-                        retenez-les pour plus tard ou écartez-les.</p>
+                    <p>Les biens de vos annonces publiées qui correspondent à la recherche du client.</p>
 
                     <div class="alert alert--success" role="status" hidden data-match-flash>
                         <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -305,6 +328,7 @@
                     </div>
 
                     <ul class="assignments" data-match-list></ul>
+                    <p class="match__outcomes" hidden data-match-outcomes></p>
 
                     <p class="assignments__empty" hidden data-match-empty>
                         Aucun de vos biens ne correspond à cette recherche pour le moment. Dès qu'une de vos annonces
@@ -315,7 +339,8 @@
                     <!--
                         Compact, for phones: the title opens the listing (new tab), then one line of facts (score,
                         neighbourhood, rent in thousands, "150K", availability) and, once sent, one line of what became
-                        of it. A refused one isn't shown: the line above counts it.
+                        of it. A visit the client asked for fills the same card (type, day, timer, action) and stays
+                        there; a refused one isn't shown: the outcomes line below counts it.
                     -->
                     <template data-match-template>
                         <li class="assignment match" data-match>
@@ -329,6 +354,17 @@
                                 </div>
                                 <dl class="match__facts" data-match-facts></dl>
                                 <p class="match__answer" hidden data-match-answer></p>
+                                <div class="visit-detail" data-match-visit hidden>
+                                    <p class="visit-detail__when">
+                                        <span class="visit-detail__icon" data-visit-icon aria-hidden="true"></span>
+                                        <span><strong data-visit-kind></strong> · <span data-visit-when></span></span>
+                                    </p>
+                                    <p class="visit-detail__timer" data-visit-timer hidden>
+                                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                        <span>Il reste <strong data-visit-left></strong> pour confirmer</span>
+                                    </p>
+                                    <a class="btn btn--primary btn--compact visit-detail__cta" data-visit-link></a>
+                                </div>
                                 <details class="assignment__details">
                                     <summary>Pourquoi ce bien&nbsp;?</summary>
                                     <div class="assignment__details-body">
