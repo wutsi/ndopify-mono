@@ -38,6 +38,24 @@
     var badge = document.querySelector('[data-state-badge]');
     badge.hidden = !BADGES[state];
     badge.textContent = BADGES[state] || '';
+
+    // The next step, at the top: request a visit once interested, or open it afterwards
+    var next = document.querySelector('[data-next-step]');
+    if (next) {
+      var action = next.querySelector('[data-next-step-action]');
+      var label = next.querySelector('[data-next-step-label]');
+      var visitLink = document.querySelector('[data-answer="VISIT_REQUESTED"] a');
+      next.hidden = state !== 'ACCEPTED' && state !== 'VISIT_REQUESTED';
+      if (state === 'ACCEPTED') {
+        action.setAttribute('data-modal-open', '');
+        action.setAttribute('href', '#visit');
+        label.textContent = 'Demander une visite';
+      } else if (state === 'VISIT_REQUESTED') {
+        action.removeAttribute('data-modal-open');
+        action.setAttribute('href', visitLink ? visitLink.getAttribute('href') : 'visite.html?state=requested');
+        label.textContent = 'Voir ma visite';
+      }
+    }
   }
 
   function flash(text) {

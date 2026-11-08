@@ -218,6 +218,69 @@ class MatchTemplateTest {
         assertNull(doc.selectFirst("#reject"))
         assertEquals("Vous intéresse", doc.selectFirst("[data-state-badge]")?.text())
         assertEquals("C'est noté : ce logement vous intéresse.", doc.selectFirst(".proposal-flash")?.text())
+        assertEquals("Contacter Serge sur WhatsApp", doc.selectFirst("[data-next-step] a")?.text())
+    }
+
+    @Test
+    fun `accepted - next step asks for a visit`() {
+        val doc = render(
+            page(
+                MatchStatus.ACCEPTED,
+                answer = "accepted",
+                visitPanel = VisitPanel(
+                    open = null,
+                    form = VisitForm(
+                        days = VisitSlots.days(LocalDate.of(2026, 10, 31), FORMATTER),
+                        times = VisitSlots.times(),
+                        contact = "Sandrine",
+                        video = false,
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals("C'est noté : ce logement vous intéresse.", doc.selectFirst(".proposal-flash")?.text())
+        val next = doc.selectFirst("[data-next-step]")!!
+        assertEquals("#visit", next.selectFirst("a[data-modal-open]")?.attr("href"))
+        assertEquals("Demander une visite", next.selectFirst("a[data-modal-open]")?.text())
+    }
+
+    @Test
+    fun `accepted - next step persists without the flash`() {
+        val doc = render(
+            page(
+                MatchStatus.ACCEPTED,
+                visitPanel = VisitPanel(
+                    open = null,
+                    form = VisitForm(
+                        days = VisitSlots.days(LocalDate.of(2026, 10, 31), FORMATTER),
+                        times = VisitSlots.times(),
+                        contact = "Sandrine",
+                        video = false,
+                    ),
+                ),
+            ),
+        )
+
+        assertNull(doc.selectFirst(".proposal-flash"))
+        assertEquals("#visit", doc.selectFirst("[data-next-step] a[data-modal-open]")?.attr("href"))
+    }
+
+    @Test
+    fun `accepted - next step opens the visit`() {
+        val doc = render(
+            page(
+                MatchStatus.ACCEPTED,
+                visitPanel = VisitPanel(
+                    open = OpenVisit(9, "Sur place", "Sur place · samedi 7 novembre 2026 à 10:30", VisitStatus.REQUESTED),
+                    form = null,
+                ),
+            ),
+        )
+
+        val next = doc.selectFirst("[data-next-step]")!!
+        assertEquals("/visits/9", next.selectFirst("a")?.attr("href"))
+        assertEquals("Voir ma visite", next.selectFirst("a")?.text())
     }
 
     @Test

@@ -69,6 +69,15 @@
 .proposal-flash p { margin: 0; }
 .proposal-flash .icon { margin-top: 0.2em; flex: none; }
 
+/* The next step once the client is interested: request a visit, or open it */
+.proposal-next {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-bottom: var(--space-xl);
+}
+.proposal-next[hidden] { display: none; }
+
 .badge--state { background: var(--color-bg-secondary); color: var(--color-text-default); border-color: var(--color-border-default); }
 .badge--state[hidden] { display: none; }
 
