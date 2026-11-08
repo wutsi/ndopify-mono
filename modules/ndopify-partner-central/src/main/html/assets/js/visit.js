@@ -533,7 +533,11 @@
             // PROTOTYPE: simulates POST /v1/visits/{id}/schedule: CONFIRMED, the client is e-mailed the date, the
             // address and the code.
             saveVisit(v.id, { status: "CONFIRMED", scheduledAt: slot, scheduledOn: Date.now() });
-            showVisitOutcome("Visite confirmée", "Le client a reçu la date, l'adresse et son code.");
+            showVisitOutcome(
+                "Visite confirmée",
+                "Rendez-vous avec " + v.client.name + " le " + formatAt(slot) +
+                    ". Le client a reçu la date, l'adresse et son code."
+            );
             renderHomeVisits(section);
             if (window.NpcHome) window.NpcHome.updateIntro();
         }
