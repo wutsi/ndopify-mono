@@ -85,27 +85,26 @@
                 </div>
             </div>
 
-            <!-- What the customer searched for: matched amenities and the missing ones, side by side. -->
-            <div class="proposal__criteria" th:if="${not #lists.isEmpty(page.criteria)}">
-                <h3 class="proposal__criteria-title">Vos critères</h3>
-                <ul class="criteria-list">
-                    <li class="criteria-list__item" th:each="criterion : ${page.criteria}"
-                        th:classappend="${criterion.matched} ? 'is-matched' : 'is-missing'">
-                        <svg aria-hidden="true" class="icon">
-                            <use th:href="${criterion.matched} ? '#i-check' : '#i-close'"/>
-                        </svg>
-                        <span th:text="${criterion.label}">Réservoir d'eau</span><span class="visually-hidden" th:if="${criterion.matched}">, présent</span><span class="criteria-list__absent" th:unless="${criterion.matched}"> absent</span>
-                    </li>
-                </ul>
-            </div>
-
             <!-- Folded by default: the listing comes first, the reasons are a tap away. -->
-            <details class="proposal__why" th:unless="${#lists.isEmpty(page.reasons)}">
+            <details class="proposal__why" th:unless="${#lists.isEmpty(page.reasons) and #lists.isEmpty(page.criteria)}">
                 <summary>Pourquoi ce logement&nbsp;?<svg aria-hidden="true" class="icon proposal__chevron"><use href="#i-chevron-right"/></svg></summary>
                 <ul class="check-list proposal__fit">
-                    <li th:each="reason : ${page.reasons}" th:classappend="${reason.partial} ? 'proposal__fit--partial'"><svg
-                            aria-hidden="true" class="icon"><use th:href="${reason.partial} ? '#i-info' : '#i-check'"/></svg>[[${reason.text}]]</li>
+                    <li th:each="reason : ${page.reasons}"><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>[[${reason.text}]]</li>
                 </ul>
+
+                <!-- The amenities the customer searched for, matched or missing -->
+                <div class="proposal__amenities" th:if="${not #lists.isEmpty(page.criteria)}">
+                    <h4 class="proposal__amenities-title">Équipements recherchés</h4>
+                    <ul class="criteria-list">
+                        <li class="criteria-list__item" th:each="criterion : ${page.criteria}"
+                            th:classappend="${criterion.matched} ? 'is-matched' : 'is-missing'">
+                            <svg aria-hidden="true" class="icon">
+                                <use th:href="${criterion.matched} ? '#i-check' : '#i-close'"/>
+                            </svg>
+                            <span th:text="${criterion.label}">Réservoir d'eau</span><span class="visually-hidden" th:if="${criterion.matched}">, présent</span><span class="criteria-list__absent" th:unless="${criterion.matched}"> absent</span>
+                        </li>
+                    </ul>
+                </div>
             </details>
 
             <!-- The next step once the customer is interested: request a visit, or open the one already asked for. -->

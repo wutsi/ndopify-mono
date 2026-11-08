@@ -148,10 +148,9 @@ class MatchTemplateTest {
         )
         assertEquals("SN", doc.selectFirst(".proposal__avatar")?.text())
         assertEquals(
-            listOf("À Bonapriso, le quartier que vous cherchez", "240K FCFA / mois, dans votre budget", "Sans groupe électrogène"),
+            listOf("À Bonapriso, le quartier que vous cherchez", "240K FCFA / mois, dans votre budget"),
             doc.select(".proposal__fit li").map { it.text() },
         )
-        assertNotNull(doc.selectFirst(".proposal__fit li.proposal__fit--partial"))
         assertEquals("Serge vous propose ce logement | Ndopify Cameroun", doc.title())
         assertEquals("noindex, nofollow", doc.selectFirst("meta[name=robots]")?.attr("content"))
         assertEquals("no-referrer", doc.selectFirst("meta[name=referrer]")?.attr("content"))
@@ -159,11 +158,11 @@ class MatchTemplateTest {
     }
 
     @Test
-    fun `your criteria separate matched and missing amenities`() {
+    fun `amenities in the why section separate matched and missing`() {
         val doc = render(page(mandate = mandate.copy(waterTank = true, securedFenced = true)))
 
-        assertEquals("Vos critères", doc.selectFirst(".proposal__criteria-title")?.text())
-        val items = doc.select(".proposal__criteria .criteria-list li")
+        assertEquals("Équipements recherchés", doc.selectFirst(".proposal__amenities-title")?.text())
+        val items = doc.select(".proposal__why .criteria-list li")
         assertEquals(
             listOf("Réservoir d'eau, présent", "Groupe électrogène absent", "Clôturé et sécurisé, présent"),
             items.map { it.text() },
@@ -171,6 +170,7 @@ class MatchTemplateTest {
         assertEquals("#i-check", items[0].selectFirst("use")?.attr("href"))
         assertEquals("#i-close", items[1].selectFirst("use")?.attr("href"))
         assertEquals("#i-check", items[2].selectFirst("use")?.attr("href"))
+        assertNull(doc.selectFirst(".proposal__criteria"))
     }
 
     @Test

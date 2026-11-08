@@ -56,11 +56,9 @@ img.proposal__avatar {
 @media (max-width: 479px) {
   .proposal__why { margin-left: 0; }
 }
-.proposal__fit .proposal__fit--partial .icon { color: var(--color-text-warning); }
-
-/* "Vos critères": the amenities the customer searched for, matched or missing */
-.proposal__criteria { margin-top: var(--space-lg); }
-.proposal__criteria-title {
+/* "Pourquoi ce logement ?": the searched amenities, matched or missing */
+.proposal__amenities { margin-top: var(--space-md); }
+.proposal__amenities-title {
   margin: 0 0 var(--space-sm);
   font-size: 0.8125rem;
   font-weight: 600;
@@ -69,9 +67,9 @@ img.proposal__avatar {
   color: var(--color-text-info);
 }
 .criteria-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-sm) var(--space-lg);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-sm) var(--space-xl);
   margin: 0;
   padding: 0;
   list-style: none;

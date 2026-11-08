@@ -39,8 +39,8 @@ data class MatchPage(
     val visitFlash: String?,
 )
 
-/** A line of "Pourquoi ce logement ?": [partial] for a criterion only partly met (some amenities missing). */
-data class FitReason(val text: String, val partial: Boolean = false)
+/** A line of "Pourquoi ce logement ?". */
+data class FitReason(val text: String)
 
 /** A searched amenity and whether the listing has it: "Vos critères". */
 data class AmenityMatch(val label: String, val matched: Boolean)

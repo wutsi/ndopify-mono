@@ -138,11 +138,9 @@ class MatchPagesTest {
                 "3 chambres, comme demandé",
                 "Non meublé, comme demandé",
                 "Disponible le 01 déc. 2026, avant votre emménagement",
-                "Réservoir d'eau, clôturé et sécurisé, mais sans groupe électrogène",
             ),
             reasons.map { it.text },
         )
-        assertEquals(listOf(false, false, false, false, false, true), reasons.map { it.partial })
     }
 
     @Test
@@ -181,16 +179,6 @@ class MatchPagesTest {
         ).reasons
 
         assertTrue(reasons.isEmpty())
-    }
-
-    @Test
-    fun `missing amenities only`() {
-        val reasons = page(
-            mandate = mandate.copy(securedFenced = false, waterTank = false, waterWell = true),
-            match = match.copy(missingAmenities = listOf("generatorSet", "waterWell")),
-        ).reasons
-
-        assertEquals("Sans forage ni groupe électrogène", reasons.last().text)
     }
 
     @Test

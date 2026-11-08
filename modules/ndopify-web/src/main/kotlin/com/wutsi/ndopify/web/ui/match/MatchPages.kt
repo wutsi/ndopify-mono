@@ -29,8 +29,8 @@ import java.time.LocalDate
  * ndopify-server doesn't show the customer, → UNAVAILABLE).
  *
  * "Pourquoi ce logement ?" only says what is true and was searched: one line per criterion fully met (score 1.0) that
- * the mandate sets (the neighbourhood when the listing is inside a searched one, `distanceKm == 0`), and one partial
- * line when some searched amenities are missing. The flash (`answer`: `accepted` / `rejected`, set by the answer's
+ * the mandate sets (the neighbourhood when the listing is inside a searched one, `distanceKm == 0`), and the searched
+ * amenities, matched or missing. The flash (`answer`: `accepted` / `rejected`, set by the answer's
  * redirect) is only shown when the match is in that state, so a hand-typed `?answer=` says nothing false. No text says
  * the agent was told of the answer: ndopify-server doesn't notify the agent yet.
  *
@@ -217,7 +217,7 @@ object MatchPages {
             } else {
                 null
             },
-        ).map { FitReason(it) } + listOfNotNull(amenities(match, mandate))
+        ).map { FitReason(it) }
     }
 
     /** The amenities the customer searched for, each matched or missing, worded as on the listing page. */
@@ -227,22 +227,6 @@ object MatchPages {
             .map { (field, label, _) ->
                 AmenityMatch(label.replaceFirstChar { it.uppercase() }, field !in match.missingAmenities)
             }
-
-    /** "Réservoir d'eau, clôturé et sécurisé, mais sans groupe électrogène"; null when none is missing. */
-    private fun amenities(match: Match, mandate: Mandate): FitReason? {
-        val searched = AMENITIES.filter { (field, _, wanted) -> wanted(mandate) || field in match.missingAmenities }
-        val (missing, present) = searched.partition { (field) -> field in match.missingAmenities }
-        if (missing.isEmpty()) {
-            return null
-        }
-        val without = join(missing.map { it.second }, " ni ")
-        val text = if (present.isEmpty()) {
-            "Sans $without"
-        } else {
-            present.joinToString(", ") { it.second }.replaceFirstChar { it.uppercase() } + ", mais sans $without"
-        }
-        return FitReason(text, partial = true)
-    }
 
     /** "a", "a ou b", "a, b ou c". */
     private fun join(items: List<String>, last: String): String =

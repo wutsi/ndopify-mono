@@ -96,25 +96,6 @@
                 </div>
             </div>
 
-            <!-- What the client searched for: matched amenities and the missing ones, side by side. -->
-            <div class="proposal__criteria">
-                <h3 class="proposal__criteria-title">Vos critères</h3>
-                <ul class="criteria-list">
-                    <li class="criteria-list__item is-matched">
-                        <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
-                        <span>Réservoir d'eau</span><span class="visually-hidden">, présent</span>
-                    </li>
-                    <li class="criteria-list__item is-missing">
-                        <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>
-                        <span>Groupe électrogène</span><span class="criteria-list__absent"> absent</span>
-                    </li>
-                    <li class="criteria-list__item is-matched">
-                        <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
-                        <span>Clôturé et sécurisé</span><span class="visually-hidden">, présent</span>
-                    </li>
-                </ul>
-            </div>
-
             <!-- Folded by default: the listing comes first, the reasons are a tap away. -->
             <details class="proposal__why">
                 <summary>Pourquoi ce logement&nbsp;?<svg aria-hidden="true" class="icon proposal__chevron"><use href="#i-chevron-right"/></svg></summary>
@@ -124,8 +105,26 @@
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>3 chambres, comme demandé</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>Non meublé, comme demandé</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-check"/></svg><span>Disponible le 1<sup>er</sup> décembre 2026, avant votre emménagement</span></li>
-                    <li class="proposal__fit--partial"><svg aria-hidden="true" class="icon"><use href="#i-info"/></svg>Clôturé et avec citerne, mais sans groupe électrogène</li>
                 </ul>
+
+                <!-- The amenities the client searched for, matched or missing -->
+                <div class="proposal__amenities">
+                    <h4 class="proposal__amenities-title">Équipements recherchés</h4>
+                    <ul class="criteria-list">
+                        <li class="criteria-list__item is-matched">
+                            <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
+                            <span>Réservoir d'eau</span><span class="visually-hidden">, présent</span>
+                        </li>
+                        <li class="criteria-list__item is-missing">
+                            <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>
+                            <span>Groupe électrogène</span><span class="criteria-list__absent"> absent</span>
+                        </li>
+                        <li class="criteria-list__item is-matched">
+                            <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
+                            <span>Clôturé et sécurisé</span><span class="visually-hidden">, présent</span>
+                        </li>
+                    </ul>
+                </div>
             </details>
         </section>
 
