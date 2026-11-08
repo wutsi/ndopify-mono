@@ -118,6 +118,33 @@
     margin-top: var(--space-4);
 }
 
+/* The list's visible sort: a label before each group, tight to its cards and away from the previous group. */
+.assignments__group {
+    margin-top: var(--space-4);
+}
+
+.assignments > .assignments__group:first-child {
+    margin-top: 0;
+}
+
+.assignments__group + .assignment,
+[data-match-list] > .assignments__group + .assignment {
+    margin-top: var(--space-2);
+}
+
+[data-match-list] > .assignments__group {
+    margin-top: var(--space-4);
+}
+
+[data-match-list] > .assignments__group:first-child {
+    margin-top: 0;
+}
+
+.assignments__group-title {
+    font-size: var(--step-hint);
+    font-weight: 600;
+}
+
 .assignment {
     padding: var(--space-4);
     border: 1px solid var(--color-border);
@@ -589,6 +616,32 @@ h1.alert__title {
     margin-top: var(--space-3);
 }
 
+/* The one urgent visit, at the top of the panel: a link down to its card. */
+.mandate-pending {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-warning-border);
+    background: var(--color-warning-bg);
+    color: var(--color-warning-fg);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.mandate-pending:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
+.mandate-pending .icon {
+    flex: none;
+}
+
+.mandate-pending__arrow {
+    margin-left: auto;
+}
+
 .mandate-panel__title {
     font: 600 var(--step-h4) / 1.3 var(--font-body);
 }
@@ -800,14 +853,20 @@ h1.alert__title {
     font: 600 var(--step-body) / 1.3 var(--font-body);
 }
 
-.match__title a {
+/* The card title is the one link on the row: a 44px hit area without changing its line rhythm. */
+.match__title a,
+.proposal-card .assignment__type a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    margin-block: calc((1.3em - var(--target)) / 2);
     color: inherit;
     text-underline-offset: 0.2em;
 }
 
 /* The fit stays one tap away, on a compact line: the card carries the facts and the actions. */
 .match .assignment__details summary {
-    min-height: 2rem;
+    min-height: var(--target);
     font-size: var(--step-hint);
 }
 
@@ -877,41 +936,11 @@ h1.alert__title {
     }
 }
 
-.matches__dismissed {
+.matches__dismissed,
+.match__outcomes {
     font-size: var(--step-hint);
-}
-
-/* The listings already sent to the client, and what it answered */
-.mandate-card__proposals {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-    font-size: var(--step-hint);
-}
-
-.mandate-card__proposals .icon {
-    flex: none;
-}
-
-/* One line, even on a phone: the wording is short, and the mandate page has the details. */
-.mandate-card__proposals > span {
-    min-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
 }
 
 .match__answer {
     font-size: var(--step-hint);
-}
-
-/* A visit asked: its kind (on site, video) as an icon before the day */
-.match__answer--visit {
-    display: flex;
-    align-items: center;
-    gap: var(--space-2);
-}
-
-.match__answer--visit .icon {
-    flex: none;
 }

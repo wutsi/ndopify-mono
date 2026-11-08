@@ -162,6 +162,10 @@
     // PROTOTYPE: the agent's published listings (those of MATCHES in partner-central.js), with the exact address
     // and position the agent took on site (listing/position.html).
     var LISTINGS = {
+        // The landlord's published listing of mandate 203 (mandate.html?id=203&listing=published), for its cards'
+        // visits only.
+        501: { title: "Appartement 3 chambres", neighbourhood: "Bonapriso", price: 245000,
+            address: "Rue Koloko, après la pharmacie du rond-point, portail vert", lat: 4.03182, lng: 9.69671 },
         3012: { title: "Appartement 3 chambres", neighbourhood: "Bonapriso", price: 240000,
             address: "Rue Koloko, après la pharmacie du rond-point, portail vert", lat: 4.03182, lng: 9.69671 },
         2987: { title: "Appartement 3 chambres", neighbourhood: "Bonapriso", price: 245000,
@@ -274,7 +278,15 @@
         // The client didn't answer the video call
         7024: { mandateId: "227", listingId: "2987", type: "VIDEO", status: "NO_SHOW", createdAt: NOW - 4 * DAY,
             scheduledAt: at(-1, "11:00"), noShowParty: "CUSTOMER", noShowReason: "CUSTOMER_ABSENT",
-            noShowAt: at(-1, "11:20"), noShowDistanceMeters: 18 }
+            noShowAt: at(-1, "11:20"), noShowDistanceMeters: 18 },
+
+        // PROTOTYPE: the landlord's published listing's two visits (mandate 203, listing 501), reached from the
+        // visit blocks of its Propositions et visites cards. Hidden from the Espace agent and from a search's
+        // activity line: their card data lives in LISTING_PROPOSALS (partner-central.js).
+        7301: { mandateId: "204", listingId: "501", status: "REQUESTED", createdAt: NOW - 40 * HOUR,
+            requestedAt: at(2, "10:00"), hidden: true },
+        7302: { mandateId: "207", listingId: "501", status: "CONFIRMED", createdAt: NOW - 2 * DAY,
+            requestedAt: at(1, "09:30"), scheduledAt: at(1, "09:30"), hidden: true }
     };
 
     // MatchRejectionReason, as proposition.html words them.
@@ -332,7 +344,9 @@
     }
 
     function allVisits() {
-        return Object.keys(VISITS).map(visitOf);
+        return Object.keys(VISITS).map(visitOf).filter(function (v) {
+            return !v.hidden;
+        });
     }
 
     function expiresAt(v) {
@@ -381,7 +395,8 @@
             var v = visitOf(id);
             if (OPEN.indexOf(v.status) === -1 && v.status !== "COMPLETED") return null;
             return { id: v.id, status: v.status, at: timeOf(v), time: formatTime(timeOf(v)),
-                type: v.video ? "VIDEO" : "IN_PERSON", checkedOutAt: v.checkedOutAt };
+                type: v.video ? "VIDEO" : "IN_PERSON", checkedInAt: v.checkedInAt,
+                checkedOutAt: v.checkedOutAt, expiresAt: v.status === "REQUESTED" ? expiresAt(v) : null };
         },
         // A mandate's visits that count in its activity line: upcoming (open) and completed.
         countForMandate: function (mandateId) {
@@ -391,7 +406,8 @@
             }).length;
         },
         formatAt: formatAt,
-        formatWhen: formatWhen
+        formatWhen: formatWhen,
+        formatLeft: formatLeft
     };
 
     /* ---------- index.html › Visites ---------- */
