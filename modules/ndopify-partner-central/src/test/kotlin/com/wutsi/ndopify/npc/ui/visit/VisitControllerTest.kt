@@ -199,6 +199,21 @@ class VisitControllerTest {
     }
 
     @Test
+    fun `video flash keeps the video hint`() {
+        doReturn(confirmed().copy(type = VisitType.VIDEO)).whenever(visitClient).get(7001)
+
+        val result = mvc.perform(get("/visits/7001").flashAttr(VisitController.OUTCOME, VisitController.CONFIRMED))
+            .andReturn()
+
+        assertEquals(
+            "Visite confirmée pour Sandrine Eboa le sam. 7 novembre 2026 à 10:30 : " +
+                "le client a reçu par e-mail la date, l'adresse et son code. " +
+                "À l'heure prévue, appelez le client en vidéo sur WhatsApp depuis le bien.",
+            model(result)[VisitController.FLASH_TEXT],
+        )
+    }
+
+    @Test
     fun `code locked flash`() {
         val result = mvc.perform(get("/visits/7001").flashAttr(VisitController.OUTCOME, VisitController.CODE_LOCKED)).andReturn()
 
@@ -258,6 +273,7 @@ class VisitControllerTest {
         ).andReturn()
 
         assertEquals(VisitController.CHANGED, outcome(result))
+        assertNull(result.flashMap[VisitController.OUTCOME_TEXT])
         verify(visitClient, never()).schedule(any(), any())
     }
 
@@ -270,6 +286,25 @@ class VisitControllerTest {
         ).andReturn()
 
         assertEquals(VisitController.INVALID_SLOT, outcome(result))
+        assertNull(result.flashMap[VisitController.OUTCOME_TEXT])
+    }
+
+    @Test
+    fun `schedule - unreadable customer still confirms with le client`() {
+        doThrow(HttpClientErrorException(HttpStatus.NOT_FOUND)).whenever(customerClient).get(300)
+
+        val result = mvc.perform(
+            post("/visits/7001/schedule")
+                .param("date", "2026-11-07").param("time", "10:30").param("type", "ON_SITE")
+                .param("from", "home"),
+        ).andReturn()
+
+        assertEquals(VisitController.CONFIRMED, outcome(result))
+        assertEquals(
+            "Rendez-vous avec le client le sam. 7 novembre 2026 à 10:30. " +
+                "Le client a reçu la date, l'adresse et son code.",
+            result.flashMap[VisitController.OUTCOME_TEXT],
+        )
     }
 
     @Test
