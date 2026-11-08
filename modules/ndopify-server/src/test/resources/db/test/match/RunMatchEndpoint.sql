@@ -41,14 +41,14 @@ INSERT INTO T_MANDATE(
     (12, 1, 11, 20, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '4', 265000, 'MONTHLY', 'XAF', false, false, false, null),
     (13, 1, 11, 20, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 200000, 'MONTHLY', 'XAF', false, false, false, null),
     (14, 1, 11, 20, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '3', 290000, 'MONTHLY', 'XAF', false, false, false, null),
-    (15, 1, 11, 20, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'HOUSE', '3', 240000, 'MONTHLY', 'XAF', false, false, false, null),
+    (15, 1, 11, 20, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'HOUSE', '5', 240000, 'MONTHLY', 'XAF', false, false, false, null),
     (16, 1, 11, 30, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '3', 240000, 'MONTHLY', 'XAF', false, false, false, null),
     (17, 1, 10, 20, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '3', 240000, 'MONTHLY', 'XAF', false, false, false, null);
 
 INSERT INTO T_MANDATE_NEIGHBORHOOD(mandate_id, neighborhood_id) VALUES
     (1, 1001);
 
--- A: 101   B: 102   C: 103   D: 104 (over budget + 10%)   E: 105 (a house)   106: agent 30's   107: the customer's own
+-- A: 101   B: 102   C: 103   D: 104 (over budget + 10%)   E: 105 (a 5-room house: a housing sibling, 2 rooms over the 3 searched)   106: agent 30's   107: the customer's own
 INSERT INTO T_LISTING(
     id, tenant_id, mandate_id, agent_id, property_category, listing_type, status, city_id, neighborhood_id,
     property_type, rooms, price, currency_code, price_periodicity_type,
@@ -58,6 +58,6 @@ INSERT INTO T_LISTING(
     (102, 1, 12, 20, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1002, 'APARTMENT', 4, 265000, 'XAF', 'MONTHLY', true, true, true, null, 'B'),
     (103, 1, 13, 20, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'APARTMENT', 2, 200000, 'XAF', 'MONTHLY', false, true, false, DATE_ADD(DATE_ADD(CURDATE(), INTERVAL 3 MONTH), INTERVAL 15 DAY), 'C'),
     (104, 1, 14, 20, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'APARTMENT', 3, 290000, 'XAF', 'MONTHLY', true, true, true, null, 'D'),
-    (105, 1, 15, 20, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'HOUSE', 3, 240000, 'XAF', 'MONTHLY', true, true, true, null, 'E'),
+    (105, 1, 15, 20, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'HOUSE', 5, 240000, 'XAF', 'MONTHLY', true, true, true, null, 'E'),
     (106, 1, 16, 30, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'APARTMENT', 3, 240000, 'XAF', 'MONTHLY', true, true, true, null, 'Agent 30'),
     (107, 1, 17, 20, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'APARTMENT', 3, 240000, 'XAF', 'MONTHLY', true, true, true, null, 'Own');

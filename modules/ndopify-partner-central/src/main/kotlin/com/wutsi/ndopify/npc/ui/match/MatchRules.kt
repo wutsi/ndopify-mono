@@ -160,9 +160,13 @@ object MatchRules {
             FitLine(true, "$listedLabel, comme demandé")
         } else {
             val searchedLabel = MandateLabels.shortPropertyType(searched) ?: return null
-            FitLine(false, "$listedLabel au lieu de ${searchedLabel.lowercase()}")
+            FitLine(false, "$listedLabel ${insteadOf(searchedLabel.lowercase())}")
         }
     }
+
+    // "au lieu de bureau", elided before a vowel: "au lieu d'appartement"
+    private fun insteadOf(word: String): String =
+        if (word.firstOrNull()?.let { it in "aàâeéèêiîoôuûy" } == true) "au lieu d'$word" else "au lieu de $word"
 
     private fun amenities(match: Match, mandate: Mandate): FitLine? {
         // As ndopify-server's Matcher counts them: a track only reachable on foot isn't an amenity

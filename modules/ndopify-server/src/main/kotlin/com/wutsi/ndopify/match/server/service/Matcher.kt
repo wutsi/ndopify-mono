@@ -17,13 +17,16 @@ import java.time.LocalDate
  * Ruled out (`null`), in this order:
  * 1. the listing is the search customer's own property;
  * 2. other `listingType`, `cityId`, or `propertyCategory` (a `BUILDING` pair is decided by its type instead);
- * 3. an incompatible `propertyType` (`typeScore` is 0.0): `LAND` against non-land, a residential cross-type, an
- *    unknown listed type;
- * 4. with a budget: other `currencyCode` or `pricePeriodicityType`;
- * 5. with a budget: a price over the budget + `priceTolerance`.
+ * 3. an incompatible `propertyType` (`typeScore` is 0.0): `LAND` against non-land, residential against commercial,
+ *    `ROOM` against a housing type other than `STUDIO`, an unknown listed type;
+ * 4. a housing sibling (ex: a `HOUSE` for an `APARTMENT` search) whose rooms are not the searched count or one more
+ *    (`rooms` partial under [MIN_SIBLING_ROOMS]); a search without a rooms count keeps every sibling;
+ * 5. with a budget: other `currencyCode` or `pricePeriodicityType`;
+ * 6. with a budget: a price over the budget + `priceTolerance`.
  *
  * The score is the weighted sum of its partials multiplied by `typeScore`: 1.0 for the searched type (or none),
- * 0.8-0.9 for a commercial sibling.
+ * 0.8-0.9 for a commercial or housing sibling. See also
+ * `docs/superpowers/specs/2026-11-08-match-residential-siblings-design.md`.
  */
 @Service
 class Matcher(
@@ -38,10 +41,25 @@ class Matcher(
         const val WEIGHT_AVAILABILITY = 0.10
         const val WEIGHT_FURNITURE = 0.05
 
+        // A housing sibling is kept only with the searched rooms count or one more
+        const val MIN_SIBLING_ROOMS = 0.7
+
         // Commercial types a BUILDING or an INDUSTRIAL one can stand in for
         private val OFFICE_OR_RETAIL = setOf(PropertyType.OFFICE, PropertyType.RETAIL)
         private val INDUSTRIAL_SIBLINGS =
             setOf(PropertyType.OFFICE, PropertyType.RETAIL, PropertyType.BUILDING)
+
+        private val HOUSING = setOf(
+            PropertyType.ROOM,
+            PropertyType.STUDIO,
+            PropertyType.APARTMENT,
+            PropertyType.HOUSE,
+            PropertyType.VILLA,
+            PropertyType.DUPLEX,
+        )
+
+        // Asked without a rooms count by the wizards: a single room
+        private val SINGLE_ROOM = setOf(PropertyType.ROOM, PropertyType.STUDIO)
     }
 
     /**
@@ -55,13 +73,17 @@ class Matcher(
         today: LocalDate,
     ): MatchScore? {
         val type = typeScore(search.propertyType, listing.propertyType)
-        if (isRuledOut(search, listing) || type == 0.0) {
+        if (type == 0.0 || isRuledOut(search, listing)) {
+            return null
+        }
+        val rooms = rooms(search, listing)
+        if (type < 1.0 && listing.propertyType in HOUSING && rooms < MIN_SIBLING_ROOMS) {
             return null
         }
         return MatchScore(
             neighborhood = neighborhood(search, listing, distances),
             price = price(search, listing),
-            rooms = rooms(search, listing),
+            rooms = rooms,
             amenities = amenities(search, listing),
             availability = availability(search, listing, today),
             furniture = furniture(search, listing),
@@ -94,7 +116,7 @@ class Matcher(
                     (search.propertyType != PropertyType.BUILDING && listing.propertyType != PropertyType.BUILDING)
                 )
 
-    // 1.0 for the searched type (or none), 0.8-0.9 for a commercial sibling, 0.0 when incompatible
+    // 1.0 for the searched type (or none), 0.8-0.9 for a commercial or housing sibling, 0.0 when incompatible
     private fun typeScore(search: PropertyType?, listing: PropertyType?): Double {
         if (search == null || search == PropertyType.UNKNOWN) {
             return 1.0
@@ -115,9 +137,20 @@ class Matcher(
             search == PropertyType.RETAIL && listing == PropertyType.OFFICE -> 0.9
             search == PropertyType.INDUSTRIAL && listing in INDUSTRIAL_SIBLINGS -> 0.8
             listing == PropertyType.INDUSTRIAL && search in INDUSTRIAL_SIBLINGS -> 0.8
+            pair(search, listing, PropertyType.STUDIO, PropertyType.APARTMENT) -> 0.9
+            pair(search, listing, PropertyType.HOUSE, PropertyType.VILLA) -> 0.9
+            pair(search, listing, PropertyType.DUPLEX, PropertyType.APARTMENT) -> 0.85
+            pair(search, listing, PropertyType.DUPLEX, PropertyType.HOUSE) -> 0.85
+            pair(search, listing, PropertyType.DUPLEX, PropertyType.VILLA) -> 0.85
+            pair(search, listing, PropertyType.APARTMENT, PropertyType.HOUSE) -> 0.8
+            pair(search, listing, PropertyType.APARTMENT, PropertyType.VILLA) -> 0.8
+            pair(search, listing, PropertyType.ROOM, PropertyType.STUDIO) -> 0.8
             else -> 0.0
         }
     }
+
+    private fun pair(search: PropertyType, listing: PropertyType, a: PropertyType, b: PropertyType): Boolean =
+        (search == a && listing == b) || (search == b && listing == a)
 
     // In a searched neighbourhood (or none searched): 1. Nearby: 0..0.5 by distance
     private fun neighborhood(search: MandateEntity, listing: ListingEntity, distances: Map<Long, Double>): Double {
@@ -137,12 +170,12 @@ class Matcher(
         return (1.0 - over / (search.price * priceTolerance)).coerceIn(0.0, 1.0)
     }
 
-    // "3": exactly 3 → 1, 4 → 0.7, 2 → 0.3. "5+": 5 or more → 1, 4 → 0.3
+    // "3": exactly 3 → 1, 4 → 0.7, 2 → 0.3. "5+": 5 or more → 1, 4 → 0.3. A ROOM or STUDIO without rooms: 1
     private fun rooms(search: MandateEntity, listing: ListingEntity): Double {
         val value = search.rooms?.trim()?.ifEmpty { null } ?: return 1.0
         val orMore = value.endsWith("+")
         val wanted = value.removeSuffix("+").trim().toIntOrNull() ?: return 1.0
-        val rooms = listing.rooms ?: return 0.0
+        val rooms = listing.rooms ?: (if (listing.propertyType in SINGLE_ROOM) 1 else return 0.0)
         return when {
             rooms == wanted || (orMore && rooms > wanted) -> 1.0
             rooms == wanted + 1 -> 0.7
