@@ -1197,8 +1197,10 @@
         $("[data-home-count-value]", item).textContent = count;
         $("[data-home-count-label]", item).textContent = count > 1 ? many : one;
         var tag = $("[data-home-urgent]", item);
-        tag.hidden = urgent === 0;
-        tag.textContent = urgent > 0 ? "· " + urgent + " expire bientôt" : "";
+        if (tag) {
+            tag.hidden = urgent === 0;
+            tag.textContent = urgent > 0 ? "· " + urgent + " expire bientôt" : "";
+        }
     }
 
     window.NpcHome = { updateIntro: updateHomeIntro };

@@ -13,10 +13,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
     <link rel="stylesheet" href="assets/css/partner-central.css">
-    <link rel="stylesheet" href="assets/css/home.css">
-    <link rel="stylesheet" href="assets/css/visit.css">
-    <script src="assets/js/partner-central.js" defer></script>
-    <script src="assets/js/visit.js" defer></script>
+    <!-- ?v=2 on the prototype assets: bump it when they change, so Safari's file:// cache reloads them. -->
+    <link rel="stylesheet" href="assets/css/home.css?v=2">
+    <link rel="stylesheet" href="assets/css/visit.css?v=2">
+    <script src="assets/js/partner-central.js?v=2" defer></script>
+    <script src="assets/js/visit.js?v=2" defer></script>
 </head>
 <body data-page="agent-home">
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -290,14 +291,15 @@
                 Section Visits (source doc): the visits of the agent's clients (GET /v1/visits?agent-id=&status=REQUESTED&
                 status=CONFIRMED&status=CHECKED_IN, soonest first), each card opening
                 visit.html?id=…. First "À confirmer": the requests to schedule (REQUESTED), the soonest to expire first,
-                with the time left (a request not confirmed within 48 h expires; under 12 h left, the timer is in the
-                warning colour). Then "À venir": the others by date, so today's come first ("Aujourd'hui · 10h30", the
-                tag "À démarrer" once the check-in window is open, "En cours" once started), then the whole date with
-                the year. Each compact card says the type before the listing ("Sur place", "Visite vidéo": a WhatsApp
-                video call from the property); the visit's page carries what to do next. A group without visits isn't
-                shown; without any, the section says so. Done, cancelled, expired and missed visits leave the list
-                (their page stays, from the mandate). PROTOTYPE: visit.js's VISITS (dates relative to the page load),
-                as changed on visit.html; ?visits=empty shows the empty state.
+                each with its inline confirmation (the client's slot when it is offered, a day/time chooser otherwise)
+                and the time left (a request not confirmed within 48 h expires; under 12 h left, the timer is in the
+                warning colour). Then "En cours", then the visits to come grouped by day (Aujourd'hui, Demain, then the
+                whole date), the next four and the rest folded behind "Voir les N autres visites". Each compact card
+                says the type before the listing ("Sur place", "Visite vidéo": a WhatsApp video call from the
+                property); the visit's page carries what to do next. A group without visits isn't shown; without any,
+                the section says so. Done, cancelled, expired and missed visits leave the list (their page stays, from
+                the mandate). PROTOTYPE: visit.js's VISITS (dates relative to the page load), as changed on visit.html;
+                ?visits=empty shows the empty state.
             -->
             <section class="home-section" aria-labelledby="visits-title" data-visits-section>
                 <h2 id="visits-title">Visites</h2>
@@ -365,7 +367,6 @@
                     <summary data-visit-more-label></summary>
                     <div data-visit-more-groups></div>
                 </details>
-                </div>
 
                 <p class="assignments__empty" hidden data-visits-empty>
                     Aucune visite prévue. Quand un client demande à visiter un bien que vous lui avez envoyé, sa
