@@ -143,6 +143,18 @@ object VisitViews {
         )
     }
 
+    /** The customer's full name for the flash wording, or "le client" when it can't be read. */
+    fun who(customer: Customer?): String {
+        val first = customer?.party?.firstName?.trim().orEmpty()
+        val last = customer?.party?.lastName?.trim().orEmpty()
+        return listOf(first, last).filter { it.isNotEmpty() }.joinToString(" ").ifEmpty { "le client" }
+    }
+
+    /** The home queue's confirmation, after a successful schedule: who, when, and what the client received. */
+    fun confirmation(at: Date, customer: Customer?, tenant: Tenant, formatter: TenantFormatter): String =
+        "Rendez-vous avec ${who(customer)} le ${VisitSlots.dateTimeLabel(at, tenant, formatter)}. " +
+            "Le client a reçu la date, l'adresse et son code."
+
     /** The listing's "type rooms" and its neighbourhood, else its city; null without a listing. */
     private fun title(listing: Listing?, locations: Map<Long, Location>): String? {
         if (listing == null) return null

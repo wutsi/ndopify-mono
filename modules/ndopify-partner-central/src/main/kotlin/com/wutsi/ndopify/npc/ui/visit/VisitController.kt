@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.npc.ui.visit
 
 import com.wutsi.ndopify.agent.dto.Agent
+import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
@@ -61,6 +62,7 @@ class VisitController(
         const val LOCKED_UNAVAILABLE = "unavailable"
 
         const val OUTCOME = "visitOutcome"
+        const val OUTCOME_TEXT = "visitOutcomeText"
         const val FLASH_TEXT = "flashText"
         const val FLASH_STYLE = "flashStyle"
         const val CHECK_IN_LOCKED = "checkInLocked"
@@ -124,7 +126,7 @@ class VisitController(
             VisitViews.of(visit, customer, listing, locations, clock.millis(), tenant, formatter),
         )
         model.addAttribute(CHECK_IN_LOCKED, session.getAttribute(SESSION_CODE_LOCKED + visitId) == true)
-        (model.getAttribute(OUTCOME) as? String)?.let { flash(it, visit, tenant, formatter, model) }
+        (model.getAttribute(OUTCOME) as? String)?.let { flash(it, visit, customer, tenant, formatter, model) }
         model.addAttribute("currency", formatter.currency())
         return VIEW
     }
@@ -140,11 +142,17 @@ class VisitController(
 
         val request = form.toRequest(tenantContext.getTenant(), visit.type)
             ?: return flashed(visitId, INVALID_SLOT, redirect, returnUrl)
+        val tenant = tenantContext.getTenant()
+        val customer = lookup("customer ${visit.customerId} of visit $visitId") {
+            customerClient.get(visit.customerId)
+        }
+        val confirmation = VisitViews.confirmation(request.scheduledAt, customer, tenant, TenantFormatter(tenant))
         return perform(
             visitId,
             redirect,
             CONFIRMED,
             returnUrl = returnUrl,
+            flash = mapOf(OUTCOME_TEXT to confirmation),
             map = { ex ->
                 when (errorCode(ex)) {
                     "VISIT_INVALID_SLOT" -> INVALID_SLOT
@@ -239,11 +247,19 @@ class VisitController(
     }
 
     /** The outcome's wording after the visit as it is now. */
-    private fun flash(outcome: String, visit: Visit, tenant: Tenant, formatter: TenantFormatter, model: Model) {
+    private fun flash(
+        outcome: String,
+        visit: Visit,
+        customer: Customer?,
+        tenant: Tenant,
+        formatter: TenantFormatter,
+        model: Model,
+    ) {
         val at = visit.scheduledAt?.let { VisitSlots.dateTimeLabel(it, tenant, formatter) }.orEmpty()
         val text = when (outcome) {
             CONFIRMED ->
-                "Visite confirmée pour le $at : le client a reçu par e-mail la date, l'adresse et son code." +
+                "Visite confirmée pour ${VisitViews.who(customer)} le $at : " +
+                    "le client a reçu par e-mail la date, l'adresse et son code." +
                     if (visit.type == VisitType.VIDEO) {
                         " À l'heure prévue, appelez le client en vidéo sur WhatsApp depuis le bien."
                     } else {
@@ -311,12 +327,14 @@ class VisitController(
         redirect: RedirectAttributes,
         outcome: String,
         returnUrl: String? = null,
+        flash: Map<String, Any> = emptyMap(),
         map: (HttpClientErrorException) -> String = { changed(it) },
         call: () -> Unit,
     ): String {
         val result =
             try {
                 call()
+                flash.forEach { (name, value) -> redirect.addFlashAttribute(name, value) }
                 outcome
             } catch (ex: HttpClientErrorException) {
                 LOGGER.warn("Visit $id not $outcome: ${ex.statusCode}")

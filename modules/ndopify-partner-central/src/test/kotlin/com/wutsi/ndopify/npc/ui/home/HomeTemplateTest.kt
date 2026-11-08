@@ -620,9 +620,25 @@ class HomeTemplateTest {
 
     @Test
     fun `visit confirmation flash`() {
-        val page = render(get("/").flashAttr(VisitController.OUTCOME, VisitController.CONFIRMED))
+        val text = "Rendez-vous avec Sandrine Eboa le sam. 7 novembre 2026 à 10:30. " +
+            "Le client a reçu la date, l'adresse et son code."
+        val page = render(
+            get("/").flashAttr(VisitController.OUTCOME, VisitController.CONFIRMED)
+                .flashAttr(VisitController.OUTCOME_TEXT, text),
+        )
 
         assertEquals("Visite confirmée", page.selectFirst("[data-visit-outcome] .alert__title")?.text())
+        assertEquals(text, page.selectFirst("[data-visit-outcome] p:not(.alert__title)")?.text())
+    }
+
+    @Test
+    fun `visit confirmation flash without text`() {
+        val page = render(get("/").flashAttr(VisitController.OUTCOME, VisitController.CONFIRMED))
+
+        assertEquals(
+            "Le client a reçu la date, l'adresse et son code.",
+            page.selectFirst("[data-visit-outcome] p:not(.alert__title)")?.text(),
+        )
     }
 
     @Test

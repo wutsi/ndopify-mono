@@ -190,7 +190,11 @@ class VisitControllerTest {
 
         val result = mvc.perform(get("/visits/7001").flashAttr(VisitController.OUTCOME, VisitController.CONFIRMED)).andReturn()
 
-        assertTrue((model(result)[VisitController.FLASH_TEXT] as String).startsWith("Visite confirmée pour le "))
+        assertEquals(
+            "Visite confirmée pour Sandrine Eboa le sam. 7 novembre 2026 à 10:30 : " +
+                "le client a reçu par e-mail la date, l'adresse et son code.",
+            model(result)[VisitController.FLASH_TEXT],
+        )
         assertEquals("success", model(result)[VisitController.FLASH_STYLE])
     }
 
@@ -227,6 +231,11 @@ class VisitControllerTest {
 
         assertEquals("/#visits-title", result.response.redirectedUrl)
         assertEquals(VisitController.CONFIRMED, outcome(result))
+        assertEquals(
+            "Rendez-vous avec Sandrine Eboa le sam. 7 novembre 2026 à 10:30. " +
+                "Le client a reçu la date, l'adresse et son code.",
+            result.flashMap[VisitController.OUTCOME_TEXT],
+        )
     }
 
     @Test
@@ -236,6 +245,7 @@ class VisitControllerTest {
         ).andReturn()
 
         assertEquals(VisitController.INVALID_SLOT, outcome(result))
+        assertNull(result.flashMap[VisitController.OUTCOME_TEXT])
         verify(visitClient, never()).schedule(any(), any())
     }
 
