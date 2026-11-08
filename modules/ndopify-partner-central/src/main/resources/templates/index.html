@@ -68,7 +68,36 @@
     </header>
     <main id="main" class="page">
         <div class="column column--wide">
-            <h1 class="visually-hidden">Espace agent</h1>
+            <header class="home-intro">
+                <h1 class="home-intro__title">Espace agent</h1>
+                <p class="home-intro__date" th:if="${todayLabel != null}" th:text="${todayLabel}">mardi 10 novembre</p>
+                <ul class="home-intro__counts"
+                    th:if="${offerCount > 0 or requestedCount > 0 or todayCount > 0}">
+                    <li th:if="${offerCount > 0}">
+                        <a th:href="@{/#assignments-title}">
+                            <strong th:text="${offerCount}">3</strong>
+                            <span th:if="${offerCount > 1}">mandats à traiter</span>
+                            <span th:unless="${offerCount > 1}">mandat à traiter</span>
+                            <span class="home-intro__urgent" th:if="${urgentOfferCount > 0}"
+                                  th:text="|· ${urgentOfferCount} expire bientôt|">· 1 expire bientôt</span>
+                        </a>
+                    </li>
+                    <li th:if="${requestedCount > 0}">
+                        <a th:href="@{/#visits-title}">
+                            <strong th:text="${requestedCount}">2</strong>
+                            <span th:if="${requestedCount > 1}">visites à confirmer</span>
+                            <span th:unless="${requestedCount > 1}">visite à confirmer</span>
+                        </a>
+                    </li>
+                    <li th:if="${todayCount > 0}">
+                        <a th:href="@{/#visits-title}">
+                            <strong th:text="${todayCount}">5</strong>
+                            <span th:if="${todayCount > 1}">visites aujourd'hui</span>
+                            <span th:unless="${todayCount > 1}">visite aujourd'hui</span>
+                        </a>
+                    </li>
+                </ul>
+            </header>
 
             <div class="alert alert--warning" th:if="${kyc == 'todo'}" data-kyc-banner="todo">
                 <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
@@ -95,37 +124,11 @@
                 </div>
             </div>
 
-            <section class="home-section" aria-labelledby="profile-title" th:if="${photoMissing or biographyMissing or saved != null}"
-                     data-profile>
-                <h2 id="profile-title" class="visually-hidden">Mon profil</h2>
-                <div class="alert alert--success" role="status" th:if="${saved}" data-profile-saved>
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    <p th:text="${saved == 'photo'} ? 'Votre photo de profil a été enregistrée.' : 'Votre profil a été enregistré.'">
-                        Votre profil a été enregistré.</p>
-                </div>
-                <div class="hint" th:if="${photoMissing or biographyMissing}" data-profile-incomplete>
-                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                         aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-                    <div>
-                        <p><strong>Complétez votre profil.</strong> Les clients voient votre photo et votre biographie
-                            lorsque vous acceptez leur mandat : un profil complet inspire confiance.</p>
-                        <ul class="profile__todo">
-                            <li th:if="${photoMissing}" data-profile-todo="photo">
-                                <a th:href="@{/profile/photo}">Ajouter une photo professionnelle</a>
-                            </li>
-                            <li th:if="${biographyMissing}" data-profile-todo="bio">
-                                <a th:href="@{/profile}">Rédiger votre biographie</a>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </section>
-
             <section class="home-section" aria-labelledby="assignments-title" data-assignments-section
                      th:if="${assignments != null and (!#lists.isEmpty(assignments) or assignmentsUnavailable or assignment != null)}">
                 <h2 id="assignments-title">Mandats proposés</h2>
-                <p th:unless="${#lists.isEmpty(assignments)}">Chaque mandat vous est proposé en exclusivité. Acceptez-le
-                    ou refusez-le avant la fin du délai : passé ce délai, il est proposé à un autre agent.</p>
+                <p th:unless="${#lists.isEmpty(assignments)}">Mandat exclusif : acceptez ou refusez avant la fin du
+                    délai.</p>
                 <p class="visually-hidden" role="status" data-assignments-status></p>
 
                 <th:block th:switch="${assignment}">
@@ -134,6 +137,7 @@
                         <div>
                             <p class="alert__title">Mandat accepté</p>
                             <p>Le client est prévenu et reçoit vos coordonnées : il va vous contacter.</p>
+                            <p><a class="alert__link" th:href="@{/#mandates-title}">Voir mes mandats</a></p>
                         </div>
                     </div>
                     <div class="alert alert--info" role="status" th:case="'declined'" data-assignment-outcome>
@@ -165,8 +169,8 @@
                 </div>
 
                 <ul class="assignments" data-assignments th:unless="${#lists.isEmpty(assignments)}">
-                    <li class="assignment" th:each="a : ${assignments}" th:id="|assignment-${a.id}|" data-assignment
-                        th:attr="data-assignment-id=${a.id},data-expires-at=${a.expiresAt}"
+                    <li class="assignment" th:each="a, iter : ${assignments}" th:id="|assignment-${a.id}|" data-assignment
+                        th:attr="data-assignment-id=${a.id},data-expires-at=${a.expiresAt},data-urgent=${a.urgent ? 'true' : null}"
                         th:with="confirming=${declining == a.id}">
                         <article th:attr="aria-labelledby=|assignment-${a.id}-title|">
                             <div class="assignment__head">
@@ -214,7 +218,9 @@
 
                             <div class="assignment__actions" data-actions th:attr="hidden=${confirming} ? 'hidden' : null">
                                 <form method="post" th:action="@{/assignments/{id}/accept(id=${a.id})}" data-accept-form>
-                                    <button type="submit" class="btn btn--primary" data-accept>Accepter</button>
+                                    <button type="submit"
+                                            th:class="|btn ${iter.index == 0 ? 'btn--primary' : 'btn--secondary'}|"
+                                            data-accept>Accepter</button>
                                 </form>
                                 <a class="btn btn--outline" data-decline
                                    th:href="@{|/?decline=${a.id}#assignment-${a.id}|}">Refuser</a>
@@ -246,67 +252,83 @@
                     <p>Vos visites ne peuvent pas être affichées pour le moment. Réessayez dans quelques instants.</p>
                 </div>
 
+                <th:block th:switch="${visitOutcome}">
+                    <div class="alert alert--success" role="status" th:case="'confirmed'" data-visit-outcome>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <div>
+                            <p class="alert__title">Visite confirmée</p>
+                            <p th:if="${visitOutcomeText}" th:text="${visitOutcomeText}">Rendez-vous avec Sandrine Eboa le sam. 7 novembre 2026 à 10:30. Le client a reçu la date, l'adresse et son code.</p>
+                            <p th:unless="${visitOutcomeText}">Le client a reçu la date, l'adresse et son code.</p>
+                        </div>
+                    </div>
+                    <div class="alert alert--warning" role="status" th:case="'invalid-slot'" data-visit-outcome>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <p class="alert__title">Créneau indisponible</p>
+                            <p>Ce créneau n'est plus disponible. Choisissez-en un autre.</p>
+                        </div>
+                    </div>
+                    <div class="alert alert--warning" role="status" th:case="'changed'" data-visit-outcome>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <p class="alert__title">Cette visite a changé</p>
+                            <p>Vérifiez son état avant de recommencer.</p>
+                        </div>
+                    </div>
+                    <div class="alert alert--warning" role="status" th:case="'whatsapp-missing'" data-visit-outcome>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <p class="alert__title">Visite vidéo impossible</p>
+                            <p>Le client n'a pas de numéro WhatsApp : choisissez une visite sur place.</p>
+                        </div>
+                    </div>
+                    <div class="alert alert--error" role="alert" th:case="'error'" data-visit-outcome>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        <div>
+                            <p class="alert__title">Action impossible pour le moment</p>
+                            <p>Réessayez dans quelques instants.</p>
+                        </div>
+                    </div>
+                </th:block>
+
                 <div class="visit-group" th:if="${!#lists.isEmpty(visits.requested)}" data-visit-group="requested">
                     <h3 class="visit-group__title">À confirmer</h3>
                     <ul class="assignments visit-cards" data-visit-list>
-                        <li class="mandate-card visit-card" th:each="v : ${visits.requested}" data-visit-card
-                            th:attr="data-visit-id=${v.id},data-visit-expires-at=${v.expiresAt},data-urgent=${v.urgent ? '' : null}">
-                            <article th:attr="aria-labelledby=|visit-${v.id}-title|">
-                                <div class="assignment__head">
-                                    <h4 th:id="|visit-${v.id}-title|" class="assignment__type">
-                                        <a class="mandate-card__link" data-visit-link th:href="@{/visits/{id}(id=${v.id})}"
-                                           th:text="${v.customerName}">Sandrine Eboa</a>
-                                    </h4>
-                                    <p th:if="${v.tag != null}" th:class="|status-tag status-tag--${v.tag.style}|"
-                                       th:text="${v.tag.label}" data-visit-tag>Confirmée</p>
-                                </div>
-                                <p class="visit-card__when">
-                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-                                    <span data-visit-when th:text="${v.whenLabel}">sam. 7 novembre 2026 à 10:30</span>
-                                </p>
-                                <p class="visit-card__listing">
-                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg>
-                                    <span data-visit-listing th:text="${v.listing}">Sur place · Appartement 3 chambres · Bonapriso</span>
-                                </p>
-                                <p class="assignment__timer visit-card__timer" th:if="${v.expiresIn != null}" data-visit-timer>
-                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                                    <span>Il reste <strong data-visit-left th:text="${v.expiresIn}">42 h</strong> pour confirmer</span>
-                                </p>
-                            </article>
-                        </li>
+                        <th:block th:each="v : ${visits.requested}">
+                            <li th:replace="~{fragments/visit-card :: requestedVisitCard(${v})}"></li>
+                        </th:block>
                     </ul>
                 </div>
 
-                <div class="visit-group" th:if="${!#lists.isEmpty(visits.upcoming)}" data-visit-group="upcoming">
-                    <h3 class="visit-group__title">À venir</h3>
+                <div class="visit-group" th:if="${!#lists.isEmpty(visits.ongoing)}" data-visit-group="ongoing">
+                    <h3 class="visit-group__title">En cours</h3>
                     <ul class="assignments visit-cards" data-visit-list>
-                        <li class="mandate-card visit-card" th:each="v : ${visits.upcoming}" data-visit-card
-                            th:attr="data-visit-id=${v.id},data-visit-expires-at=${v.expiresAt}">
-                            <article th:attr="aria-labelledby=|visit-${v.id}-title|">
-                                <div class="assignment__head">
-                                    <h4 th:id="|visit-${v.id}-title|" class="assignment__type">
-                                        <a class="mandate-card__link" data-visit-link th:href="@{/visits/{id}(id=${v.id})}"
-                                           th:text="${v.customerName}">Sandrine Eboa</a>
-                                    </h4>
-                                    <p th:if="${v.tag != null}" th:class="|status-tag status-tag--${v.tag.style}|"
-                                       th:text="${v.tag.label}" data-visit-tag>Confirmée</p>
-                                </div>
-                                <p class="visit-card__when">
-                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-                                    <span data-visit-when th:text="${v.whenLabel}">Aujourd'hui · 10:30</span>
-                                </p>
-                                <p class="visit-card__listing">
-                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg>
-                                    <span data-visit-listing th:text="${v.listing}">Sur place · Appartement 3 chambres · Bonapriso</span>
-                                </p>
-                                <p class="assignment__timer visit-card__timer" th:if="${v.expiresIn != null}" data-visit-timer>
-                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-                                    <span>Il reste <strong data-visit-left th:text="${v.expiresIn}">42 h</strong> pour confirmer</span>
-                                </p>
-                            </article>
-                        </li>
+                        <th:block th:each="v : ${visits.ongoing}">
+                            <li th:replace="~{fragments/visit-card :: visitCard(${v})}"></li>
+                        </th:block>
                     </ul>
                 </div>
+
+                <div class="visit-group" th:each="group : ${visits.upcomingPreviewGroups}" data-visit-group="upcoming">
+                    <h3 class="visit-group__title" th:text="${group.label}">Aujourd'hui</h3>
+                    <ul class="assignments visit-cards" data-visit-list>
+                        <th:block th:each="v : ${group.visits}">
+                            <li th:replace="~{fragments/visit-card :: visitCard(${v})}"></li>
+                        </th:block>
+                    </ul>
+                </div>
+
+                <details class="visit-more" th:if="${visits.upcomingMoreCount > 0}" data-visit-more>
+                    <summary th:text="|Voir les ${visits.upcomingMoreCount} autres visites|">Voir les autres visites</summary>
+                    <div class="visit-group" th:each="group : ${visits.upcomingMoreGroups}" data-visit-group="upcoming">
+                        <h3 class="visit-group__title" th:text="${group.label}">Plus tard</h3>
+                        <ul class="assignments visit-cards" data-visit-list>
+                            <th:block th:each="v : ${group.visits}">
+                                <li th:replace="~{fragments/visit-card :: visitCard(${v})}"></li>
+                            </th:block>
+                        </ul>
+                    </div>
+                </details>
 
                 <p class="assignments__empty" data-visits-empty
                    th:if="${#lists.isEmpty(visits.requested) and #lists.isEmpty(visits.upcoming) and !visits.unavailable}">
@@ -316,7 +338,7 @@
             <section class="home-section" aria-labelledby="mandates-title" th:if="${mandates != null}"
                      data-mandates-section>
                 <h2 id="mandates-title">Mes mandats</h2>
-                <p>Les mandats que vous suivez, de leur approbation par le client jusqu'à leur fermeture.</p>
+                <p>Vos mandats, de l'approbation à la fermeture.</p>
 
                 <div class="alert alert--warning" th:if="${mandatesUnavailable}" data-mandates-unavailable>
                     <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
@@ -367,6 +389,32 @@
                    th:attr="hidden=${#lists.isEmpty(mandates) and !mandatesUnavailable} ? null : 'hidden'">
                     Vous n'avez aucun mandat en cours. Acceptez un mandat proposé pour le retrouver ici.
                 </p>
+            </section>
+
+            <section class="home-section" aria-labelledby="profile-title" th:if="${photoMissing or biographyMissing or saved != null}"
+                     data-profile>
+                <h2 id="profile-title" class="visually-hidden">Mon profil</h2>
+                <div class="alert alert--success" role="status" th:if="${saved}" data-profile-saved>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <p th:text="${saved == 'photo'} ? 'Votre photo de profil a été enregistrée.' : 'Votre profil a été enregistré.'">
+                        Votre profil a été enregistré.</p>
+                </div>
+                <div class="hint" th:if="${photoMissing or biographyMissing}" data-profile-incomplete>
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                    <div>
+                        <p><strong>Complétez votre profil.</strong> Les clients voient votre photo et votre biographie
+                            lorsque vous acceptez leur mandat : un profil complet inspire confiance.</p>
+                        <ul class="profile__todo">
+                            <li th:if="${photoMissing}" data-profile-todo="photo">
+                                <a th:href="@{/profile/photo}">Ajouter une photo professionnelle</a>
+                            </li>
+                            <li th:if="${biographyMissing}" data-profile-todo="bio">
+                                <a th:href="@{/profile}">Rédiger votre biographie</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </section>
         </div>
     </main>

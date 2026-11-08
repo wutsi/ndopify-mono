@@ -36,6 +36,82 @@
     margin-top: var(--space-3);
 }
 
+/* ---------- Triage header (agent home) ---------- */
+.home-intro {
+    margin-bottom: var(--space-4);
+}
+
+.home-intro__title {
+    font-size: var(--step-h1);
+}
+
+.home-intro__date {
+    margin-top: var(--space-1);
+    font-size: var(--step-hint);
+    font-weight: 600;
+}
+
+/* The day's work, one tap from its section: counts first, then the sections. */
+.home-intro__counts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    margin: var(--space-3) 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.home-intro__counts a {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1);
+    min-height: var(--target);
+    padding: 0 var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    background: var(--color-bg-subtle);
+    color: inherit;
+    font-size: var(--step-hint);
+    text-decoration: none;
+}
+
+.home-intro__counts a:hover {
+    border-color: var(--color-fg);
+}
+
+.home-intro__counts strong {
+    font-size: var(--step-body);
+}
+
+.home-intro__urgent {
+    color: var(--color-warning-fg);
+    font-weight: 600;
+}
+
+/* The sections are labels, not the page's title: one clear scale below the queue header. */
+[data-page="agent-home"] .home-section > h2 {
+    font-size: var(--step-h3);
+}
+
+/* The deadline is the loudest datum in an actionable card. */
+[data-page="agent-home"] .assignment__timer {
+    font-weight: 600;
+}
+
+[data-page="agent-home"] .assignment[data-urgent] .assignment__timer {
+    font-weight: 700;
+}
+
+/* Two facts beside each other on a phone: the first (the sector) keeps its own line. */
+.assignment__facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.assignment__facts > div:first-child {
+    grid-column: 1 / -1;
+}
+
 /* ---------- KYC banner (agents not verified yet) ---------- */
 [data-kyc-banner] {
     margin-bottom: var(--space-4);
@@ -115,6 +191,9 @@
 }
 
 .profile__todo a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
     color: inherit;
     font-weight: 600;
 }
@@ -195,6 +274,10 @@
         grid-template-columns: minmax(0, 1fr) auto auto;
         column-gap: var(--space-4);
     }
+
+    .assignment__facts > div:first-child {
+        grid-column: auto;
+    }
 }
 
 .assignment__details summary {
@@ -258,6 +341,77 @@
     padding: var(--space-4);
     background: var(--color-surface-alt);
     text-align: center;
+}
+
+/* ---------- Visits: inline confirmation and folded list ---------- */
+
+/* Above the card's title link, which covers the whole card. */
+.visit-card__actions {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+
+.visit-card__confirm,
+.visit-card__change-form {
+    margin: 0;
+}
+
+/* A small breath between the day/time selects and the form's CTA. */
+.visit-card__change-form > * + * {
+    margin-top: var(--space-2);
+}
+
+.visit-card__confirm .btn,
+.visit-card__change-form .btn {
+    width: 100%;
+}
+
+.visit-card__confirm-hint {
+    margin-top: var(--space-1);
+    font-size: var(--step-hint);
+}
+
+.visit-card__change summary,
+.visit-more > summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    cursor: pointer;
+}
+
+.visit-card__change[open] summary {
+    margin-bottom: var(--space-2);
+}
+
+.visit-card__change .visit-slot {
+    margin-top: var(--space-2);
+}
+
+.visit-more {
+    margin-top: var(--space-4);
+}
+
+.visit-more > summary {
+    color: inherit;
+}
+
+.visit-more > .visit-group {
+    margin-top: var(--space-4);
+}
+
+[data-page="agent-home"] .visit-group__title {
+    font-size: var(--step-h4);
+    font-weight: 600;
+}
+
+[data-visit-outcome] {
+    margin-bottom: var(--space-3);
 }
 
 /* Link under the "Mandat accepté" message, to the unlocked mandate. */

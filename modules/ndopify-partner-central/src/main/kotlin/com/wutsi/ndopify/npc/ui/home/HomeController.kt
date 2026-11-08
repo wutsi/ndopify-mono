@@ -28,6 +28,7 @@ import com.wutsi.ndopify.npc.ui.match.MatchRules
 import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import com.wutsi.ndopify.npc.ui.visit.VisitCards
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
+import com.wutsi.ndopify.npc.ui.visit.VisitSlots
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.visit.dto.VisitSummary
@@ -40,6 +41,7 @@ import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.client.RestClientException
 import java.time.Clock
+import java.util.Date
 
 /**
  * The Espace agent (`index.html`), where every agent lands: an invitation to add the photo or the biography while
@@ -85,6 +87,11 @@ class HomeController(
         model.addAttribute("photoMissing", agent.party.photoUrl.isNullOrBlank())
         model.addAttribute("biographyMissing", agent.biography.isNullOrBlank())
         model.addAttribute("kyc", kyc(agent))
+        // The triage header has no counts until the sections are loaded (or for an agent who isn't verified).
+        model.addAttribute("offerCount", 0)
+        model.addAttribute("urgentOfferCount", 0)
+        model.addAttribute("requestedCount", 0)
+        model.addAttribute("todayCount", 0)
         if (agent.party.kycStatus == KycStatus.VERIFIED) {
             val now = clock.millis()
 
@@ -141,15 +148,31 @@ class HomeController(
                     ?: emptyList<MandateCardView>(),
             )
             model.addAttribute("mandatesUnavailable", mandates == null)
-            model.addAttribute("visits", VisitCards.of(visits, visitListings, visitCustomers, names, now, tenant, formatter))
+            val visitsView = VisitCards.of(visits, visitListings, visitCustomers, names, now, tenant, formatter)
+            model.addAttribute("visits", visitsView)
+
+            // The triage header: the agent's day and what is waiting, so the first screen answers "what now?".
+            val today = VisitSlots.localDate(Date(now), tenant)
+            model.addAttribute("todayLabel", formatter.date(today, "EEEE d MMMM"))
+            model.addAttribute("offerCount", assignments?.size ?: 0)
+            model.addAttribute("urgentOfferCount", assignments?.count { it.urgent } ?: 0)
+            model.addAttribute("requestedCount", visitsView.requested.size)
+            model.addAttribute(
+                "todayCount",
+                visitsView.upcoming.count { card ->
+                    card.at?.let { VisitSlots.localDate(Date(it), tenant) == today } == true
+                },
+            )
         }
         return VIEW
     }
 
-    /** The agent's PENDING offers still open, newest first; null when they can't be had. */
+    /** The agent's PENDING offers still open, soonest expiry first; null when they can't be had. */
     private fun openAssignments(agent: Agent, now: Long): List<AssignmentSummary>? =
         try {
-            assignmentClient.pending(agent.id).filter { AssignmentViews.isOpen(it, now) }
+            assignmentClient.pending(agent.id)
+                .filter { AssignmentViews.isOpen(it, now) }
+                .sortedBy { it.expiresAt.time }
         } catch (ex: RestClientException) {
             LOGGER.warn("No offers for agent ${agent.id}: ${ex.message}")
             null

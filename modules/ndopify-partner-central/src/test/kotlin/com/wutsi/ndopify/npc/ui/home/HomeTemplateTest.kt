@@ -33,6 +33,7 @@ import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest
 import com.wutsi.ndopify.npc.ui.mandate.MandateSummariesTest
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
+import com.wutsi.ndopify.npc.ui.visit.VisitController
 import com.wutsi.ndopify.npc.ui.visit.VisitFixtures
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
 import com.wutsi.ndopify.party.dto.KycStatus
@@ -56,6 +57,7 @@ import org.thymeleaf.spring6.SpringTemplateEngine
 import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
 import java.time.Clock
+import java.util.Date
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
@@ -170,6 +172,62 @@ class HomeTemplateTest {
         assertNotNull(page.selectFirst("[data-assignments-section] > p:not(.visually-hidden)"))
         assertNull(page.selectFirst("[data-assignments-unavailable]"))
         assertNull(page.selectFirst("[data-assignment-outcome]"))
+    }
+
+    @Test
+    fun `triage header shows the day and the work waiting`() {
+        val page = render(get("/"))
+
+        assertEquals("Espace agent", page.selectFirst("h1.home-intro__title")?.text())
+        assertNotNull(page.selectFirst(".home-intro__date"))
+        val counts = page.selectFirst(".home-intro__counts")!!.text()
+        assertTrue(counts.contains("1 mandat à traiter"))
+    }
+
+    @Test
+    fun `urgent offer is marked and counted`() {
+        doReturn(listOf(ASSIGNMENT.copy(expiresAt = Date(AssignmentViewsTest.NOW + 9 * 60_000L))))
+            .whenever(assignmentClient).pending(AGENT.id)
+
+        val page = render(get("/"))
+
+        assertTrue(page.selectFirst("[data-assignment]")!!.hasAttr("data-urgent"))
+        assertTrue(page.selectFirst(".home-intro__counts")!!.text().contains("1 expire bientôt"))
+    }
+
+    @Test
+    fun `offers are ordered by expiry`() {
+        val later = ASSIGNMENT.copy(id = 8, mandateId = 102, expiresAt = Date(AssignmentViewsTest.NOW + 52 * 60_000L))
+        val sooner = ASSIGNMENT.copy(id = 9, mandateId = 103, expiresAt = Date(AssignmentViewsTest.NOW + 9 * 60_000L))
+        doReturn(listOf(later, sooner)).whenever(assignmentClient).pending(AGENT.id)
+        doReturn(
+            listOf(
+                MandateSummariesTest.summary(MANDATE),
+                MandateSummariesTest.summary(MANDATE.copy(id = 102)),
+                MandateSummariesTest.summary(MANDATE.copy(id = 103)),
+            ),
+        ).whenever(mandateClient).offered(AGENT.id)
+
+        val page = render(get("/"))
+
+        assertEquals(listOf("9", "8"), page.select("[data-assignment]").map { it.attr("data-assignment-id") })
+    }
+
+    @Test
+    fun `only the first accept is a primary button`() {
+        val later = ASSIGNMENT.copy(id = 8, mandateId = 102, expiresAt = Date(AssignmentViewsTest.NOW + 52 * 60_000L))
+        doReturn(listOf(ASSIGNMENT, later)).whenever(assignmentClient).pending(AGENT.id)
+        doReturn(
+            listOf(
+                MandateSummariesTest.summary(MANDATE),
+                MandateSummariesTest.summary(MANDATE.copy(id = 102)),
+            ),
+        ).whenever(mandateClient).offered(AGENT.id)
+
+        val buttons = render(get("/")).select("[data-accept]")
+
+        assertEquals("btn btn--primary", buttons[0].className())
+        assertEquals("btn btn--secondary", buttons[1].className())
     }
 
     @Test
@@ -458,7 +516,7 @@ class HomeTemplateTest {
 
         fun card(visit: com.wutsi.ndopify.visit.dto.Visit): Element {
             doReturn(listOf(VisitFixtures.summary(visit))).whenever(visitClient).search(AGENT.id, VisitRules.OPEN)
-            return render(get("/")).selectFirst("[data-visit-group=upcoming] [data-visit-card]")!!
+            return render(get("/")).selectFirst("[data-visit-card]")!!
         }
 
         val confirmed = card(VisitFixtures.confirmed())
@@ -473,5 +531,123 @@ class HomeTemplateTest {
         val checkedIn = card(VisitFixtures.checkedIn())
         assertEquals("En cours", checkedIn.selectFirst("[data-visit-tag]")?.text())
         assertEquals("En cours depuis 10:05", checkedIn.selectFirst("[data-visit-when]")?.text())
+    }
+
+    @Test
+    fun `requested visit can be confirmed from the queue`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        doReturn(listOf(VisitFixtures.summary(VisitFixtures.requested())))
+            .whenever(visitClient).search(AGENT.id, VisitRules.OPEN)
+
+        val page = render(get("/"))
+        val card = page.selectFirst("[data-visit-group=requested] [data-visit-card]")!!
+
+        val form = card.selectFirst("[data-home-confirm]")!!
+        assertEquals("/visits/7001/schedule", form.attr("action"))
+        assertEquals("2026-11-07", form.selectFirst("input[name=date]")?.attr("value"))
+        assertEquals("10:30", form.selectFirst("input[name=time]")?.attr("value"))
+        assertEquals("ON_SITE", form.selectFirst("input[name=type]")?.attr("value"))
+        assertEquals("home", form.selectFirst("input[name=from]")?.attr("value"))
+        assertEquals("Confirmer le créneau demandé", form.selectFirst("button")?.text()?.trim())
+
+        val details = card.selectFirst("details.visit-card__change")!!
+        assertFalse(details.hasAttr("open"))
+        assertEquals("Changer le créneau", details.selectFirst("summary")?.text()?.trim())
+        assertNull(card.selectFirst("label.field__label"))
+        val date = details.selectFirst("select[name=date]")!!
+        val time = details.selectFirst("select[name=time]")!!
+        assertEquals("Jour", date.attr("aria-label"))
+        assertEquals("Heure", time.attr("aria-label"))
+        assertEquals("input select", date.className())
+        assertEquals("input select", time.className())
+        assertTrue(page.selectFirst(".home-intro__counts")!!.text().contains("1 visite à confirmer"))
+    }
+
+    @Test
+    fun `requested slot outside the window opens the picker`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        doReturn(
+            listOf(
+                VisitFixtures.summary(
+                    VisitFixtures.requested().copy(requestedAt = VisitFixtures.date("2026-11-20T09:30:00Z")),
+                ),
+            ),
+        ).whenever(visitClient).search(AGENT.id, VisitRules.OPEN)
+
+        val card = render(get("/")).selectFirst("[data-visit-group=requested] [data-visit-card]")!!
+
+        assertNull(card.selectFirst("[data-home-confirm]"))
+        val details = card.selectFirst("details.visit-card__change")!!
+        assertTrue(details.hasAttr("open"))
+        assertEquals("Choisir un créneau", details.selectFirst("summary")?.text()?.trim())
+    }
+
+    @Test
+    fun `upcoming visits are grouped and folded`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        val visits = (1..6).map { day ->
+            VisitFixtures.summary(
+                VisitFixtures.confirmed().copy(
+                    id = 7000L + day,
+                    scheduledAt = VisitFixtures.date("2026-11-${(5 + day).toString().padStart(2, '0')}T12:00:00Z"),
+                ),
+            )
+        }
+        doReturn(visits).whenever(visitClient).search(AGENT.id, VisitRules.OPEN)
+
+        val page = render(get("/"))
+
+        assertEquals(
+            4,
+            page.select("[data-visits-section] > .visit-group[data-visit-group=upcoming] [data-visit-card]").size,
+        )
+        val more = page.selectFirst("[data-visit-more]")!!
+        assertEquals("Voir les 2 autres visites", more.selectFirst("summary")?.text()?.trim())
+        assertEquals(2, more.select("[data-visit-card]").size)
+    }
+
+    @Test
+    fun `checked-in visits have their own group`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        doReturn(listOf(VisitFixtures.summary(VisitFixtures.checkedIn())))
+            .whenever(visitClient).search(AGENT.id, VisitRules.OPEN)
+
+        val page = render(get("/"))
+
+        assertEquals(1, page.select("[data-visit-group=ongoing] [data-visit-card]").size)
+        assertNull(page.selectFirst("[data-visit-group=upcoming]"))
+    }
+
+    @Test
+    fun `visit confirmation flash`() {
+        val text = "Rendez-vous avec Sandrine Eboa le sam. 7 novembre 2026 à 10:30. " +
+            "Le client a reçu la date, l'adresse et son code."
+        val page = render(
+            get("/").flashAttr(VisitController.OUTCOME, VisitController.CONFIRMED)
+                .flashAttr(VisitController.OUTCOME_TEXT, text),
+        )
+
+        assertEquals("Visite confirmée", page.selectFirst("[data-visit-outcome] .alert__title")?.text())
+        assertEquals(text, page.selectFirst("[data-visit-outcome] p:not(.alert__title)")?.text())
+    }
+
+    @Test
+    fun `visit confirmation flash without text`() {
+        val page = render(get("/").flashAttr(VisitController.OUTCOME, VisitController.CONFIRMED))
+
+        assertEquals(
+            "Le client a reçu la date, l'adresse et son code.",
+            page.selectFirst("[data-visit-outcome] p:not(.alert__title)")?.text(),
+        )
+    }
+
+    @Test
+    fun `profile nudge follows the queue`() {
+        doReturn(AGENT.copy(party = AGENT.party.copy(photoUrl = null), biography = null))
+            .whenever(currentAgent).get()
+
+        val sections = render(get("/")).select(".home-section")
+
+        assertTrue(sections.last()!!.hasAttr("data-profile"))
     }
 }

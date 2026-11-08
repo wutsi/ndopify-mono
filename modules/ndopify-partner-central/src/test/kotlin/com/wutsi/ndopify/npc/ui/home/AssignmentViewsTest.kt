@@ -75,6 +75,21 @@ class AssignmentViewsTest {
         assertEquals("Dans moins d'1\u00a0mois", view.moving)
         assertEquals(NOW + 52 * MINUTE, view.expiresAt)
         assertEquals("52 min", view.remaining)
+        assertFalse(view.urgent)
+    }
+
+    @Test
+    fun `urgent under 15 minutes`() {
+        val soon = AssignmentViews.of(
+            ASSIGNMENT.copy(expiresAt = Date(NOW + 14 * MINUTE)),
+            MANDATE,
+            NAMES,
+            NOW,
+            FORMATTER,
+        )
+
+        assertTrue(soon.urgent)
+        assertFalse(AssignmentViews.of(ASSIGNMENT, MANDATE, NAMES, NOW, FORMATTER).urgent)
     }
 
     @Test

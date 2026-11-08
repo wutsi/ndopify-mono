@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!-- The Espace agent's visit cards, shared by the ongoing, day-grouped and folded lists. -->
+<th:block th:fragment="visitCard(v)">
+    <li class="mandate-card visit-card" data-visit-card
+        th:attr="data-visit-id=${v.id},data-visit-expires-at=${v.expiresAt},data-urgent=${v.urgent ? 'true' : null}">
+        <article th:attr="aria-labelledby=|visit-${v.id}-title|">
+            <div class="assignment__head">
+                <h4 th:id="|visit-${v.id}-title|" class="assignment__type">
+                    <a class="mandate-card__link" data-visit-link th:href="@{/visits/{id}(id=${v.id})}"
+                       th:text="${v.customerName}">Sandrine Eboa</a>
+                </h4>
+                <p th:if="${v.tag != null}" th:class="|status-tag status-tag--${v.tag.style}|"
+                   th:text="${v.tag.label}" data-visit-tag>Confirmée</p>
+            </div>
+            <p class="visit-card__when">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                <span data-visit-when th:text="${v.whenLabel}">Aujourd'hui · 10:30</span>
+            </p>
+            <p class="visit-card__listing">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg>
+                <span data-visit-listing th:text="${v.listing}">Sur place · Appartement 3 chambres · Bonapriso</span>
+            </p>
+            <p class="assignment__timer visit-card__timer" th:if="${v.expiresIn != null}" data-visit-timer>
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                <span>Il reste <strong data-visit-left th:text="${v.expiresIn}">42 h</strong> pour confirmer</span>
+            </p>
+        </article>
+    </li>
+</th:block>
+
+<th:block th:fragment="requestedVisitCard(v)">
+    <li class="mandate-card visit-card" data-visit-card
+        th:attr="data-visit-id=${v.id},data-visit-expires-at=${v.expiresAt},data-urgent=${v.urgent ? 'true' : null}">
+        <article th:attr="aria-labelledby=|visit-${v.id}-title|">
+            <div class="assignment__head">
+                <h4 th:id="|visit-${v.id}-title|" class="assignment__type">
+                    <a class="mandate-card__link" data-visit-link th:href="@{/visits/{id}(id=${v.id})}"
+                       th:text="${v.customerName}">Sandrine Eboa</a>
+                </h4>
+                <p th:if="${v.tag != null}" th:class="|status-tag status-tag--${v.tag.style}|"
+                   th:text="${v.tag.label}" data-visit-tag>Confirmée</p>
+            </div>
+            <p class="visit-card__when">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                <span data-visit-when th:text="${v.whenLabel}">sam. 7 novembre 2026 à 10:30</span>
+            </p>
+            <p class="visit-card__listing">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg>
+                <span data-visit-listing th:text="${v.listing}">Sur place · Appartement 3 chambres · Bonapriso</span>
+            </p>
+            <p class="assignment__timer visit-card__timer" th:if="${v.expiresIn != null}" data-visit-timer>
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                <span>Il reste <strong data-visit-left th:text="${v.expiresIn}">42 h</strong> pour confirmer</span>
+            </p>
+
+            <div class="visit-card__actions" data-visit-actions>
+                <form th:if="${v.requestedSlotValid}" method="post" class="visit-card__confirm"
+                      th:action="@{/visits/{id}/schedule(id=${v.id})}" data-home-confirm>
+                    <input type="hidden" name="date" th:value="${v.selectedDay}">
+                    <input type="hidden" name="time" th:value="${v.selectedTime}">
+                    <input type="hidden" name="type" th:value="${v.video ? 'VIDEO' : 'ON_SITE'}">
+                    <input type="hidden" name="from" value="home">
+                    <button type="submit" class="btn btn--primary btn--block" data-confirm-visit>
+                        Confirmer le créneau demandé
+                    </button>
+                    <p class="visit-card__confirm-hint">Le client reçoit la date, l'adresse et son code.</p>
+                </form>
+
+                <details class="visit-card__change" th:attr="open=${!v.requestedSlotValid} ? '' : null">
+                    <summary th:text="${v.requestedSlotValid ? 'Changer le créneau' : 'Choisir un créneau'}">
+                        Changer le créneau</summary>
+                    <form method="post" class="visit-card__change-form"
+                          th:action="@{/visits/{id}/schedule(id=${v.id})}">
+                        <input type="hidden" name="from" value="home">
+                        <input type="hidden" name="type" th:value="${v.video ? 'VIDEO' : 'ON_SITE'}">
+                        <div class="visit-slot">
+                            <select class="input select" th:id="|visit-date-${v.id}|" name="date" aria-label="Jour">
+                                <option th:each="d : ${v.days}" th:value="${d.value}" th:text="${d.label}"
+                                        th:selected="${d.value == v.selectedDay}">sam. 8 novembre 2026</option>
+                            </select>
+                            <select class="input select" th:id="|visit-time-${v.id}|" name="time" aria-label="Heure">
+                                <option th:each="t : ${v.times}" th:value="${t.first}" th:text="${t.second}"
+                                        th:selected="${t.first == v.selectedTime}">10h30</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn--secondary" data-confirm-slot>Confirmer ce créneau</button>
+                    </form>
+                </details>
+            </div>
+        </article>
+    </li>
+</th:block>
+</body>
+</html>

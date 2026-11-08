@@ -33,7 +33,17 @@ data class VisitCardView(
     val expiresAt: Long?,
     val expiresIn: String?,
     val urgent: Boolean,
+    /** The slot lists of a requested visit, for the home page's inline confirmation. */
+    val days: List<VisitDay> = emptyList(),
+    val times: List<Pair<String, String>> = emptyList(),
+    val selectedDay: String? = null,
+    val selectedTime: String? = null,
+    /** True when the customer's requested date and time are both in the allowed slot lists. */
+    val requestedSlotValid: Boolean = false,
 )
+
+/** A day of the upcoming visits ("Aujourd'hui", "Demain", "sam. 8 novembre"). */
+data class VisitGroupView(val label: String, val visits: List<VisitCardView>)
 
 /**
  * The *Visites* section of the Espace agent: the requests to confirm, then the visits to come. The mandate pages use
@@ -43,4 +53,13 @@ data class VisitCardsView(
     val requested: List<VisitCardView>,
     val upcoming: List<VisitCardView>,
     val unavailable: Boolean = false,
+    /** The checked-in visits, shown before the upcoming ones. */
+    val ongoing: List<VisitCardView> = emptyList(),
+    /** Every upcoming visit, grouped by day. */
+    val upcomingGroups: List<VisitGroupView> = emptyList(),
+    /** The first four upcoming visits, to keep the home page short. */
+    val upcomingPreviewGroups: List<VisitGroupView> = emptyList(),
+    /** The rest, behind "Voir les N autres visites". */
+    val upcomingMoreGroups: List<VisitGroupView> = emptyList(),
+    val upcomingMoreCount: Int = 0,
 )

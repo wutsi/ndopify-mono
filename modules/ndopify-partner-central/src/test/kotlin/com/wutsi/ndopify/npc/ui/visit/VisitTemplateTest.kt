@@ -272,10 +272,12 @@ class VisitTemplateTest {
 
     @Test
     fun flash() {
+        doReturn(confirmed()).whenever(visitClient).get(7001)
+
         val page = render(get("/visits/7001").flashAttr(VisitController.OUTCOME, VisitController.CONFIRMED))
 
         val alert = page.selectFirst(".alert--success")!!
-        assertTrue(alert.text().startsWith("Visite confirmée pour le "))
+        assertTrue(alert.text().startsWith("Visite confirmée pour Sandrine Eboa le sam. 7 novembre 2026 à 10:30 :"))
     }
 
     @Test

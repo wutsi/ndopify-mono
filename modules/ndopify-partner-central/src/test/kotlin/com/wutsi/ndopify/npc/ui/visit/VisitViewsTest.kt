@@ -261,4 +261,30 @@ class VisitViewsTest {
 
         assertEquals("dim. 8 novembre 2026 à 00:30", page.requestedAt)
     }
+
+    @Test
+    fun `confirmation names the client and the slot`() {
+        assertEquals(
+            "Rendez-vous avec Sandrine Eboa le sam. 7 novembre 2026 à 10:30. " +
+                "Le client a reçu la date, l'adresse et son code.",
+            VisitViews.confirmation(
+                VisitFixtures.date("2026-11-07T09:30:00Z"),
+                VisitFixtures.CUSTOMER,
+                VisitFixtures.TENANT,
+                VisitFixtures.FORMATTER,
+            ),
+        )
+    }
+
+    @Test
+    fun `confirmation without the customer says le client`() {
+        assertTrue(
+            VisitViews.confirmation(
+                VisitFixtures.date("2026-11-07T09:30:00Z"),
+                null,
+                VisitFixtures.TENANT,
+                VisitFixtures.FORMATTER,
+            ).startsWith("Rendez-vous avec le client le sam. 7 novembre 2026 à 10:30."),
+        )
+    }
 }

@@ -12,7 +12,13 @@ import java.time.LocalDate
 import java.time.LocalTime
 
 /** The schedule form: a day and a time from the lists, and a type. A hand-edited value that can't be parsed is null. */
-data class VisitScheduleForm(val date: String? = null, val time: String? = null, val type: String? = null) {
+data class VisitScheduleForm(
+    val date: String? = null,
+    val time: String? = null,
+    val type: String? = null,
+    /** "home" when the form was posted from the Espace agent's inline confirmation. */
+    val from: String? = null,
+) {
     fun toRequest(tenant: Tenant, fallback: VisitType): ScheduleVisitRequest? {
         val date = date?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return null
         val time = time?.let { runCatching { LocalTime.parse(it) }.getOrNull() } ?: return null
