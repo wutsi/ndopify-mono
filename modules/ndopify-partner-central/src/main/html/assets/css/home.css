@@ -1038,6 +1038,11 @@ h1.alert__title {
     margin: 0;
 }
 
+/* A small breath between the day/time selects and the form's CTA. */
+.visit-card__change-form > * + * {
+    margin-top: var(--space-2);
+}
+
 .visit-card__confirm .btn,
 .visit-card__change-form .btn {
     width: 100%;
