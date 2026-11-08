@@ -44,6 +44,7 @@ import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.APPROVED
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.CUSTOMER
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.PENDING
 import com.wutsi.ndopify.npc.ui.match.MatchFixtures
+import com.wutsi.ndopify.npc.ui.match.MatchGroup
 import com.wutsi.ndopify.npc.ui.match.MatchRules
 import com.wutsi.ndopify.npc.ui.match.MatchSectionView
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
@@ -599,7 +600,7 @@ class MandateControllerTest {
         assertEquals("Sur place · Appartement 3 chambres · Bonapriso", visits.requested.single().listing)
         assertEquals("42 h", visits.requested.single().expiresIn)
         assertEquals(listOf(9003L), section(result).matches.map { it.id })
-        assertEquals("1 en attente", section(result).proposals)
+        assertEquals(MatchGroup.WAITING, section(result).matches.single().group)
         verify(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
     }
 

@@ -382,6 +382,7 @@ class MandateController(
                 mandate,
                 matches?.filterNot { it.id in converted },
                 listings,
+                emptyMap(),
                 locations,
                 today(),
                 formatter,

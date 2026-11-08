@@ -242,44 +242,42 @@ class MatchRulesTest {
     }
 
     @Test
-    fun sort() {
-        val proposed = MATCH_C.copy(id = 9004, status = MatchStatus.PROPOSED, score = 0.99)
-        val rejected = MATCH_C.copy(id = 9005, status = MatchStatus.REJECTED, score = 0.99)
-        val accepted = MATCH_C.copy(id = 9006, status = MatchStatus.ACCEPTED, score = 0.1)
-        val dismissed = MATCH_C.copy(id = 9007, status = MatchStatus.DISMISSED)
-        val expired = MATCH_C.copy(id = 9008, status = MatchStatus.EXPIRED, score = 0.99)
-
-        val sorted = MatchRules.sort(listOf(rejected, expired, MATCH_B, proposed, dismissed, MATCH_A, accepted))
-
-        // The refused one isn't shown; the expired ones last
-        assertEquals(listOf(9006L, 9001L, 9003L, 9004L, 9008L), sorted.map { it.id })
+    fun `outcomes - none`() {
+        assertNull(MatchRules.outcomes(emptyList()))
+        assertNull(MatchRules.outcomes(listOf(MATCH_A, MATCH_B.copy(status = MatchStatus.PROPOSED))))
     }
 
     @Test
-    fun proposals() {
+    fun `outcomes - refused only`() {
+        assertEquals("1 refusé", MatchRules.outcomes(listOf(MATCH_A.copy(status = MatchStatus.REJECTED))))
+        assertEquals(
+            "2 refusés",
+            MatchRules.outcomes(
+                listOf(MatchStatus.REJECTED, MatchStatus.REJECTED).map { MATCH_A.copy(status = it) },
+            ),
+        )
+    }
+
+    @Test
+    fun `outcomes - expired only`() {
+        assertEquals("1 sans réponse", MatchRules.outcomes(listOf(MATCH_A.copy(status = MatchStatus.EXPIRED))))
+        assertEquals(
+            "2 sans réponse",
+            MatchRules.outcomes(
+                listOf(MatchStatus.EXPIRED, MatchStatus.EXPIRED).map { MATCH_A.copy(status = it) },
+            ),
+        )
+    }
+
+    @Test
+    fun `outcomes - refused and expired`() {
         val matches = listOf(
-            MATCH_A,
-            MATCH_A.copy(id = 1, status = MatchStatus.PROPOSED),
-            MATCH_A.copy(id = 2, status = MatchStatus.ACCEPTED),
-            MATCH_A.copy(id = 3, status = MatchStatus.REJECTED),
+            MATCH_A.copy(status = MatchStatus.REJECTED),
+            MATCH_B.copy(status = MatchStatus.EXPIRED),
+            MATCH_C,
         )
 
-        assertEquals("1 intéressé · 1 refusé · 1 en attente", MatchRules.proposals(matches))
-        assertEquals(
-            "2 intéressés · 2 refusés",
-            MatchRules.proposals(
-                listOf(MatchStatus.ACCEPTED, MatchStatus.ACCEPTED, MatchStatus.REJECTED, MatchStatus.REJECTED)
-                    .map { MATCH_A.copy(status = it) },
-            ),
-        )
-        assertEquals("1 en attente", MatchRules.proposals(listOf(MATCH_A.copy(status = MatchStatus.PROPOSED))))
-        assertEquals(
-            "1 refusé · 2 sans réponse",
-            MatchRules.proposals(
-                listOf(MatchStatus.EXPIRED, MatchStatus.REJECTED, MatchStatus.EXPIRED).map { MATCH_A.copy(status = it) },
-            ),
-        )
-        assertNull(MatchRules.proposals(listOf(MATCH_A)))
+        assertEquals("1 refusé · 1 sans réponse", MatchRules.outcomes(matches))
     }
 
     @Test
