@@ -1028,6 +1028,16 @@
         // No offer: no section at all.
         function syncEmpty() {
             section.hidden = $all("[data-assignment]", list).length === 0;
+            syncPrimary();
+            updateHomeIntro();
+        }
+
+        // Only the first open offer is a primary accept: the rest are secondary.
+        function syncPrimary() {
+            pending().forEach(function (item, index) {
+                var accept = $("[data-accept]", item);
+                if (accept) accept.className = "btn " + (index === 0 ? "btn--primary" : "btn--secondary");
+            });
         }
 
         // Replaces the card's actions (and the details' timer) by an outcome message, with an optional link.
@@ -1080,6 +1090,14 @@
                 { href: "mandate.html?id=" + id, text: "Voir le mandat et contacter le client" });
         }
 
+        // The offer that expires first leads; the others follow. Moving the nodes keeps the fixtures' markup readable.
+        $all("[data-assignment]", list).slice().sort(function (a, b) {
+            return (parseFloat(a.getAttribute("data-expires-in")) || 0) -
+                (parseFloat(b.getAttribute("data-expires-in")) || 0);
+        }).forEach(function (item) {
+            list.appendChild(item);
+        });
+
         $all("[data-assignment]", list).forEach(function (item) {
             var minutes = parseFloat(item.getAttribute("data-expires-in")) || 0;
             item.expiresAt = Date.now() + minutes * 60 * 1000;
@@ -1103,6 +1121,7 @@
                     saveState(id, { status: "ASSIGNED", acceptedAt: Date.now() });
                     if (mandates) mandates.add(id);
                     closeAccepted(item);
+                    syncPrimary();
                     announce(status, "Mandat accepté. Les coordonnées du client sont débloquées.");
                     $("h3", item).setAttribute("tabindex", "-1");
                     $("h3", item).focus();
@@ -1142,6 +1161,8 @@
                 });
                 if (left < URGENT_MS) item.setAttribute("data-urgent", "");
             });
+            syncPrimary();
+            updateHomeIntro();
         }
 
         syncEmpty();
@@ -1149,9 +1170,43 @@
         window.setInterval(tick, 1000);
     }
 
+    // The triage header: the day, and what is waiting, so the first screen answers "what now?".
+    function updateHomeIntro() {
+        var date = $("[data-home-date]");
+        if (!date) return;
+        date.textContent = new Intl.DateTimeFormat("fr-FR", {
+            weekday: "long", day: "numeric", month: "long"
+        }).format(new Date());
+        var list = $("[data-assignments]");
+        var offers = list ? $all("[data-assignment]:not([data-closed])", list) : [];
+        var urgent = offers.filter(function (item) {
+            return item.hasAttribute("data-urgent");
+        }).length;
+        var visits = window.NpcVisits && window.NpcVisits.homeCounts
+            ? window.NpcVisits.homeCounts() : { requested: 0, today: 0 };
+        setHomeCount("offers", offers.length, "mandat à traiter", "mandats à traiter", urgent);
+        setHomeCount("requested", visits.requested, "visite à confirmer", "visites à confirmer", 0);
+        setHomeCount("today", visits.today, "visite aujourd'hui", "visites aujourd'hui", 0);
+        $("[data-home-counts]").hidden = offers.length + visits.requested + visits.today === 0;
+    }
+
+    function setHomeCount(name, count, one, many, urgent) {
+        var item = $('[data-home-count="' + name + '"]');
+        if (!item) return;
+        item.hidden = count === 0;
+        $("[data-home-count-value]", item).textContent = count;
+        $("[data-home-count-label]", item).textContent = count > 1 ? many : one;
+        var tag = $("[data-home-urgent]", item);
+        tag.hidden = urgent === 0;
+        tag.textContent = urgent > 0 ? "· " + urgent + " expire bientôt" : "";
+    }
+
+    window.NpcHome = { updateIntro: updateHomeIntro };
+
     function initAgentHome() {
         initProfile();
         initAssignments(initMandates());
+        updateHomeIntro();
     }
 
     /* ---------- The agent's mandates (index.html › Mes mandats, mandate.html) ---------- */

@@ -187,9 +187,9 @@
         7001: { matchId: "9001", mandateId: "204", listingId: "3012", status: "REQUESTED", createdAt: NOW - 6 * HOUR,
             requestedAt: at(5, "10:30"),
             note: "Je viendrai avec mon mari. Le matin nous arrange, mais nous pouvons nous adapter." },
-        // À confirmer, expiring in 8 h
+        // À confirmer, expiring in 8 h (its requested time is off the allowed half-hour slots)
         7002: { mandateId: "208", listingId: "3002", status: "REQUESTED", createdAt: NOW - 40 * HOUR,
-            requestedAt: at(2, "16:00") },
+            requestedAt: at(2, "16:10") },
         // Confirmed 2 h ago at another time than the client asked
         7003: { mandateId: "207", listingId: "3010", status: "CONFIRMED", createdAt: NOW - 26 * HOUR,
             requestedAt: at(3, "09:00"), scheduledAt: at(3, "09:30"), scheduledOn: NOW - 2 * HOUR,
@@ -405,6 +405,25 @@
                     (OPEN.indexOf(v.status) !== -1 || v.status === "COMPLETED");
             }).length;
         },
+        // The home header's counts: the visits waiting for an answer, and those of the day.
+        homeCounts: function () {
+            if (new URLSearchParams(window.location.search).get("visits") === "empty") {
+                return { requested: 0, today: 0 };
+            }
+            var now = Date.now();
+            var open = allVisits().filter(function (v) {
+                return OPEN.indexOf(v.status) !== -1;
+            });
+            return {
+                requested: open.filter(function (v) {
+                    return v.status === "REQUESTED" && expiresAt(v) > now;
+                }).length,
+                today: open.filter(function (v) {
+                    return v.status === "CHECKED_IN" ||
+                        (v.status === "CONFIRMED" && sameDay(v.scheduledAt, now));
+                }).length
+            };
+        },
         formatAt: formatAt,
         formatWhen: formatWhen,
         formatLeft: formatLeft
@@ -412,11 +431,86 @@
 
     /* ---------- index.html › Visites ---------- */
 
-    // À confirmer (the soonest to expire first), then the visits to come (soonest first, so today's lead): each card
-    // opens visit.html?id=. PROTOTYPE: ?visits=empty shows an agent without visits.
+    // The home page's allowed slots: the 7 days starting tomorrow, 08:00-20:00 every 30 min (as visit.html offers).
+    function homeDays() {
+        var days = [];
+        for (var i = 1; i <= SLOT_DAYS; i++) {
+            var day = at(i, "00:00");
+            days.push({ value: homeDay(day), label: formatDay(day) });
+        }
+        return days;
+    }
+
+    function homeTimes() {
+        var times = [];
+        for (var m = FIRST_SLOT; m <= LAST_SLOT; m += SLOT_MINUTES) {
+            times.push({ value: two(Math.floor(m / 60)) + ":" + two(m % 60) });
+        }
+        return times;
+    }
+
+    function homeDay(ms) {
+        var d = new Date(ms);
+        return d.getFullYear() + "-" + two(d.getMonth() + 1) + "-" + two(d.getDate());
+    }
+
+    function homeTime(ms) {
+        var d = new Date(ms);
+        return two(d.getHours()) + ":" + two(d.getMinutes());
+    }
+
+    // True when the client's requested date and time are both in the allowed lists.
+    function homeSlotValid(ms) {
+        var day = homeDay(ms);
+        var time = homeTime(ms);
+        return homeDays().some(function (d) {
+            return d.value === day;
+        }) && homeTimes().some(function (t) {
+            return t.value === time;
+        });
+    }
+
+    // Fills a card's day/time selects, preselecting [selectedAt], or the first slot when it isn't allowed.
+    function fillHomeSlots(form, selectedAt) {
+        var daySelect = form.elements.date;
+        var timeSelect = form.elements.time;
+        daySelect.textContent = "";
+        homeDays().forEach(function (d) {
+            daySelect.appendChild(new Option(d.label, d.value));
+        });
+        timeSelect.textContent = "";
+        homeTimes().forEach(function (t) {
+            timeSelect.appendChild(new Option(t.value.replace(":", "h"), t.value));
+        });
+        daySelect.value = homeDay(selectedAt);
+        if (!daySelect.value) daySelect.selectedIndex = 0;
+        timeSelect.value = homeTime(selectedAt);
+        if (!timeSelect.value) timeSelect.selectedIndex = 0;
+    }
+
+    function homeSlotOf(form) {
+        var p = form.elements.date.value.split("-");
+        var t = form.elements.time.value.split(":");
+        return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]), Number(t[0]), Number(t[1])).getTime();
+    }
+
+    function showVisitOutcome(title, text) {
+        var box = document.querySelector("[data-visit-outcome]");
+        if (!box) return;
+        document.querySelector("[data-visit-outcome-title]").textContent = title;
+        document.querySelector("[data-visit-outcome-text]").textContent = text;
+        box.hidden = false;
+    }
+
     function initHomeVisits() {
         var section = document.querySelector("[data-visits-section]");
         if (!section) return;
+        renderHomeVisits(section);
+    }
+
+    // À confirmer (the soonest to expire first), then the visits to come (soonest first, so today's lead): each card
+    // opens visit.html?id=; a requested one confirms inline. PROTOTYPE: ?visits=empty shows an agent without visits.
+    function renderHomeVisits(section) {
         var $ = npc().$;
         var template = $("[data-visit-card-template]", section);
         var now = Date.now();
@@ -435,6 +529,15 @@
             return a.scheduledAt - b.scheduledAt;
         });
 
+        function confirmVisit(v, slot) {
+            // PROTOTYPE: simulates POST /v1/visits/{id}/schedule: CONFIRMED, the client is e-mailed the date, the
+            // address and the code.
+            saveVisit(v.id, { status: "CONFIRMED", scheduledAt: slot, scheduledOn: Date.now() });
+            showVisitOutcome("Visite confirmée", "Le client a reçu la date, l'adresse et son code.");
+            renderHomeVisits(section);
+            if (window.NpcHome) window.NpcHome.updateIntro();
+        }
+
         function card(v) {
             var item = template.content.firstElementChild.cloneNode(true);
             var titleId = "visit-" + v.id + "-title";
@@ -452,6 +555,25 @@
                 var left = expiresAt(v) - now;
                 $("[data-visit-left]", item).textContent = formatLeft(left);
                 if (left < 12 * HOUR) item.setAttribute("data-urgent", "");
+                // The inline confirmation: the client's slot when it is offered, the chooser otherwise.
+                var actions = $("[data-visit-actions]", item);
+                var valid = homeSlotValid(v.requestedAt);
+                var change = $("[data-visit-change]", item);
+                var changeForm = $("[data-home-change]", item);
+                actions.hidden = false;
+                $("[data-home-confirm]", item).hidden = !valid;
+                change.open = !valid;
+                $("[data-visit-change-label]", item).textContent = valid ? "Changer le créneau" : "Choisir un créneau";
+                fillHomeSlots(changeForm, valid ? v.requestedAt : at(1, "08:00"));
+                $("[data-home-confirm]", item).addEventListener("submit", function (event) {
+                    event.preventDefault();
+                    confirmVisit(v, v.requestedAt);
+                });
+                changeForm.addEventListener("submit", function (event) {
+                    event.preventDefault();
+                    var slot = homeSlotOf(changeForm);
+                    if (!isNaN(slot)) confirmVisit(v, slot);
+                });
             } else {
                 setTag(tag, v.status === "CHECKED_IN" ? "CHECKED_IN" : panelOf(v, now));
                 timer.hidden = true;
@@ -475,9 +597,100 @@
             group.hidden = visits.length === 0;
         }
 
+        // Consecutive upcoming visits under their day, in the order they were sorted.
+        function groupByDay(visits) {
+            var groups = [];
+            var label = null;
+            visits.forEach(function (v) {
+                var next = dayLabel(v.scheduledAt);
+                if (next !== label) {
+                    groups.push({ label: next, visits: [] });
+                    label = next;
+                }
+                groups[groups.length - 1].visits.push(v);
+            });
+            return groups;
+        }
+
+        function dayLabel(ms) {
+            var today = Date.now();
+            if (sameDay(ms, today)) return "Aujourd'hui";
+            if (sameDay(ms, today + 24 * HOUR)) return "Demain";
+            return new Intl.DateTimeFormat("fr-FR", {
+                weekday: "short", day: "numeric", month: "long"
+            }).format(new Date(ms));
+        }
+
+        // The first [limit] visits, then the rest, without losing a card when a group crosses the fold.
+        function splitPreview(groups, limit) {
+            var preview = [];
+            var more = [];
+            var shown = 0;
+            groups.forEach(function (group) {
+                if (shown >= limit) {
+                    more.push(group);
+                } else if (shown + group.visits.length <= limit) {
+                    preview.push(group);
+                    shown += group.visits.length;
+                } else {
+                    var take = limit - shown;
+                    preview.push({ label: group.label, visits: group.visits.slice(0, take) });
+                    more.push({ label: group.label, visits: group.visits.slice(take) });
+                    shown = limit;
+                }
+            });
+            return {
+                preview: preview,
+                more: more,
+                moreCount: more.reduce(function (count, group) {
+                    return count + group.visits.length;
+                }, 0)
+            };
+        }
+
+        function fillGroup(container, group) {
+            var box = document.createElement("div");
+            box.className = "visit-group";
+            box.setAttribute("data-visit-group", "upcoming");
+            var title = document.createElement("h3");
+            title.className = "visit-group__title";
+            title.textContent = group.label;
+            var list = document.createElement("ul");
+            list.className = "assignments visit-cards";
+            group.visits.forEach(function (v) {
+                list.appendChild(card(v));
+            });
+            box.appendChild(title);
+            box.appendChild(list);
+            container.appendChild(box);
+        }
+
         fill("requested", requested);
-        fill("upcoming", upcoming);
+        fill("ongoing", upcoming.filter(function (v) {
+            return v.status === "CHECKED_IN";
+        }));
+
+        // "En cours" first, then the next four upcoming visits; the rest fold away.
+        var later = upcoming.filter(function (v) {
+            return v.status !== "CHECKED_IN";
+        });
+        var split = splitPreview(groupByDay(later), 4);
+        var groups = $("[data-visit-groups]", section);
+        groups.textContent = "";
+        split.preview.forEach(function (group) {
+            fillGroup(groups, group);
+        });
+        groups.hidden = split.preview.length === 0;
+        var more = $("[data-visit-more]", section);
+        var moreGroups = $("[data-visit-more-groups]", section);
+        moreGroups.textContent = "";
+        split.more.forEach(function (group) {
+            fillGroup(moreGroups, group);
+        });
+        more.hidden = split.moreCount === 0;
+        $("[data-visit-more-label]", section).textContent = "Voir les " + split.moreCount + " autres visites";
         $("[data-visits-empty]", section).hidden = requested.length + upcoming.length > 0;
+        if (window.NpcHome) window.NpcHome.updateIntro();
     }
 
     /* ---------- visit.html ---------- */

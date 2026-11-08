@@ -41,39 +41,25 @@
     </header>
     <main id="main" class="page">
         <div class="column column--wide">
-            <h1 class="visually-hidden">Espace agent</h1>
-
-            <!--
-                Section Profile (source doc): the agent doesn't need to see its own profile on each visit, so the
-                section only invites it to complete the profile while the photo or the biography is missing (and
-                confirms a save, back from a profile page); a complete profile shows nothing. PROTOTYPE: follows the
-                profile saved by profile/edit.html and profile/photo.html; until then, ?profile=complete or
-                ?profile=empty shows the other states (the default is a profile without photo).
-            -->
-            <section class="home-section" aria-labelledby="profile-title" data-profile>
-                <h2 id="profile-title" class="visually-hidden">Mon profil</h2>
-                <div class="alert alert--success" role="status" hidden data-profile-saved>
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    <p data-profile-saved-text></p>
-                </div>
-
-                <div class="hint" data-profile-incomplete>
-                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                         aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
-                    <div>
-                        <p><strong>Complétez votre profil.</strong> Les clients voient votre photo et votre biographie
-                            lorsque vous acceptez leur mandat : un profil complet inspire confiance.</p>
-                        <ul class="profile__todo">
-                            <li data-profile-todo="photo">
-                                <a href="profile/photo.html">Ajouter une photo professionnelle</a>
-                            </li>
-                            <li data-profile-todo="bio" hidden>
-                                <a href="profile/edit.html">Rédiger votre biographie</a>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </section>
+            <header class="home-intro">
+                <h1 class="home-intro__title">Espace agent</h1>
+                <p class="home-intro__date" data-home-date></p>
+                <ul class="home-intro__counts" data-home-counts hidden>
+                    <li data-home-count="offers" hidden>
+                        <a href="#assignments-title"><strong data-home-count-value></strong>
+                            <span data-home-count-label></span>
+                            <span class="home-intro__urgent" data-home-urgent hidden></span></a>
+                    </li>
+                    <li data-home-count="requested" hidden>
+                        <a href="#visits-title"><strong data-home-count-value></strong>
+                            <span data-home-count-label></span></a>
+                    </li>
+                    <li data-home-count="today" hidden>
+                        <a href="#visits-title"><strong data-home-count-value></strong>
+                            <span data-home-count-label></span></a>
+                    </li>
+                </ul>
+            </header>
 
             <!--
                 Section Assignments (source doc): the active mandates offered to the agent, each to accept or
@@ -86,8 +72,7 @@
             <p class="visually-hidden" role="status" data-assignments-status></p>
             <section class="home-section" aria-labelledby="assignments-title" data-assignments-section>
                 <h2 id="assignments-title">Mandats proposés</h2>
-                <p>Chaque mandat vous est proposé en exclusivité. Acceptez-le ou refusez-le avant la fin du délai :
-                    passé ce délai, il est proposé à un autre agent.</p>
+                <p>Mandat exclusif : acceptez ou refusez avant la fin du délai.</p>
 
                 <ul class="assignments" data-assignments>
                     <li class="assignment" data-assignment data-mandate-id="101" data-expires-in="52">
@@ -317,6 +302,14 @@
             <section class="home-section" aria-labelledby="visits-title" data-visits-section>
                 <h2 id="visits-title">Visites</h2>
 
+                <div class="alert alert--success" role="status" hidden data-visit-outcome>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <div>
+                        <p class="alert__title" data-visit-outcome-title></p>
+                        <p data-visit-outcome-text></p>
+                    </div>
+                </div>
+
                 <div class="visit-group" data-visit-group="requested">
                     <h3 class="visit-group__title">À confirmer</h3>
                     <ul class="assignments visit-cards" data-visit-list>
@@ -361,90 +354,17 @@
                     </ul>
                 </div>
 
-                <div class="visit-group" data-visit-group="upcoming">
-                    <h3 class="visit-group__title">À venir</h3>
-                    <ul class="assignments visit-cards" data-visit-list>
-                    <li class="mandate-card visit-card" data-visit-card data-visit-id="7008">
-                        <article aria-labelledby="visit-7008-title">
-                            <div class="assignment__head">
-                                <h4 id="visit-7008-title" class="assignment__type">
-                                    <a class="mandate-card__link" href="visit.html?id=7008" data-visit-link>Grace Nkeng</a>
-                                </h4>
-                                <p class="status-tag status-tag--info" data-visit-tag>En cours</p>
-                            </div>
-                            <p class="visit-card__when">
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-                                <span data-visit-when>En cours depuis 10h05</span>
-                            </p>
-                            <p class="visit-card__listing" data-visit-listing>Sur place · Appartement 3 chambres · Bonapriso</p>
-                            <p class="assignment__timer visit-card__timer" hidden data-visit-timer></p>
-                        </article>
-                    </li>
-                    <li class="mandate-card visit-card" data-visit-card data-visit-id="7007">
-                        <article aria-labelledby="visit-7007-title">
-                            <div class="assignment__head">
-                                <h4 id="visit-7007-title" class="assignment__type">
-                                    <a class="mandate-card__link" href="visit.html?id=7007" data-visit-link>Paul Atangana</a>
-                                </h4>
-                                <p class="status-tag status-tag--info" data-visit-tag>À démarrer</p>
-                            </div>
-                            <p class="visit-card__when">
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-                                <span data-visit-when>Aujourd'hui · 10h00</span>
-                            </p>
-                            <p class="visit-card__listing" data-visit-listing>Sur place · Appartement 3 chambres · Bonanjo</p>
-                            <p class="assignment__timer visit-card__timer" hidden data-visit-timer></p>
-                        </article>
-                    </li>
-                    <li class="mandate-card visit-card" data-visit-card data-visit-id="7005">
-                        <article aria-labelledby="visit-7005-title">
-                            <div class="assignment__head">
-                                <h4 id="visit-7005-title" class="assignment__type">
-                                    <a class="mandate-card__link" href="visit.html?id=7005" data-visit-link>Rodrigue Essomba</a>
-                                </h4>
-                                <p class="status-tag status-tag--success" data-visit-tag>Confirmée</p>
-                            </div>
-                            <p class="visit-card__when">
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-                                <span data-visit-when>Aujourd'hui · 13h30</span>
-                            </p>
-                            <p class="visit-card__listing" data-visit-listing>Sur place · Appartement 2 chambres · Bonapriso</p>
-                            <p class="assignment__timer visit-card__timer" hidden data-visit-timer></p>
-                        </article>
-                    </li>
-                    <li class="mandate-card visit-card" data-visit-card data-visit-id="7004">
-                        <article aria-labelledby="visit-7004-title">
-                            <div class="assignment__head">
-                                <h4 id="visit-7004-title" class="assignment__type">
-                                    <a class="mandate-card__link" href="visit.html?id=7004" data-visit-link>Sandrine Eboa</a>
-                                </h4>
-                                <p class="status-tag status-tag--success" data-visit-tag>Confirmée</p>
-                            </div>
-                            <p class="visit-card__when">
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-                                <span data-visit-when>mer. 4 novembre 2026 à 10h00</span>
-                            </p>
-                            <p class="visit-card__listing" data-visit-listing>Sur place · Appartement 3 chambres · Bonapriso</p>
-                            <p class="assignment__timer visit-card__timer" hidden data-visit-timer></p>
-                        </article>
-                    </li>
-                    <li class="mandate-card visit-card" data-visit-card data-visit-id="7003">
-                        <article aria-labelledby="visit-7003-title">
-                            <div class="assignment__head">
-                                <h4 id="visit-7003-title" class="assignment__type">
-                                    <a class="mandate-card__link" href="visit.html?id=7003" data-visit-link>Hervé Mbarga</a>
-                                </h4>
-                                <p class="status-tag status-tag--success" data-visit-tag>Confirmée</p>
-                            </div>
-                            <p class="visit-card__when">
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-                                <span data-visit-when>jeu. 5 novembre 2026 à 09h30</span>
-                            </p>
-                            <p class="visit-card__listing" data-visit-listing>Sur place · Appartement 3 chambres · Bonapriso</p>
-                            <p class="assignment__timer visit-card__timer" hidden data-visit-timer></p>
-                        </article>
-                    </li>
-                    </ul>
+                <div class="visit-group" data-visit-group="ongoing" hidden>
+                    <h3 class="visit-group__title">En cours</h3>
+                    <ul class="assignments visit-cards" data-visit-list></ul>
+                </div>
+
+                <div data-visit-groups></div>
+
+                <details class="visit-more" data-visit-more hidden>
+                    <summary data-visit-more-label></summary>
+                    <div data-visit-more-groups></div>
+                </details>
                 </div>
 
                 <p class="assignments__empty" hidden data-visits-empty>
@@ -469,6 +389,28 @@
                                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                                 <span>Il reste <strong data-visit-left></strong> pour confirmer</span>
                             </p>
+                            <div class="visit-card__actions" data-visit-actions hidden>
+                                <form class="visit-card__confirm" data-home-confirm>
+                                    <button type="submit" class="btn btn--primary btn--block" data-confirm-visit>Confirmer le créneau demandé</button>
+                                    <p class="visit-card__confirm-hint">Le client reçoit la date, l'adresse et son code.</p>
+                                </form>
+                                <details class="visit-card__change" data-visit-change>
+                                    <summary data-visit-change-label>Changer le créneau</summary>
+                                    <form class="visit-card__change-form" data-home-change>
+                                        <div class="visit-slot">
+                                            <div class="field">
+                                                <label class="field__label">Jour</label>
+                                                <select class="input select" name="date"></select>
+                                            </div>
+                                            <div class="field">
+                                                <label class="field__label">Heure</label>
+                                                <select class="input select" name="time"></select>
+                                            </div>
+                                        </div>
+                                        <button type="submit" class="btn btn--secondary">Confirmer ce créneau</button>
+                                    </form>
+                                </details>
+                            </div>
                         </article>
                     </li>
                 </template>
@@ -655,6 +597,39 @@
                         </article>
                     </li>
                 </template>
+            </section>
+
+            <!--
+                Section Profile (source doc): the agent doesn't need to see its own profile on each visit, so the
+                section only invites it to complete the profile while the photo or the biography is missing (and
+                confirms a save, back from a profile page); a complete profile shows nothing. PROTOTYPE: follows the
+                profile saved by profile/edit.html and profile/photo.html; until then, ?profile=complete or
+                ?profile=empty shows the other states (the default is a profile without photo). Below the queue: the
+                agent first sees what to do, then what is missing on its profile.
+            -->
+            <section class="home-section" aria-labelledby="profile-title" data-profile>
+                <h2 id="profile-title" class="visually-hidden">Mon profil</h2>
+                <div class="alert alert--success" role="status" hidden data-profile-saved>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <p data-profile-saved-text></p>
+                </div>
+
+                <div class="hint" data-profile-incomplete>
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                         aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+                    <div>
+                        <p><strong>Complétez votre profil.</strong> Les clients voient votre photo et votre biographie
+                            lorsque vous acceptez leur mandat : un profil complet inspire confiance.</p>
+                        <ul class="profile__todo">
+                            <li data-profile-todo="photo">
+                                <a href="profile/photo.html">Ajouter une photo professionnelle</a>
+                            </li>
+                            <li data-profile-todo="bio" hidden>
+                                <a href="profile/edit.html">Rédiger votre biographie</a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </section>
         </div>
     </main>
