@@ -337,28 +337,32 @@ class MandateTemplateTest {
         val page = render(APPROVED.copy(mandateType = MandateType.LISTING))
 
         val section = page.selectFirst("[data-listing-proposals]")!!
-        assertEquals("Propositions", section.selectFirst("h2")?.text())
-        assertEquals("2 intéressés · 1 refusé · 1 en attente", section.selectFirst("[data-proposals-summary-text]")?.text())
+        assertEquals("Propositions et visites", section.selectFirst("h2")?.text())
+        assertEquals("Les visites à confirmer d'abord.", section.selectFirst("p")?.text())
         assertEquals(
             listOf("Client d'un autre agent", "Sandrine Eboa", "Carine Ndongo"),
             section.select("[data-proposal-client]").map { it.text() },
         )
         // Another agent's client: not a link
-        assertEquals("div", section.selectFirst("[data-proposal-protected]")?.tagName())
+        assertEquals("span", section.selectFirst("[data-proposal-protected]")?.tagName())
         assertEquals(
             listOf("/mandates/204#matches-title", "/mandates/207#matches-title"),
             section.select("a[data-proposal-link]").map { it.attr("href") },
         )
         assertEquals("status-tag status-tag--success", section.selectFirst("[data-proposal-tag]")?.className())
         assertEquals("Intéressé le 29 oct. 2026", section.select("[data-proposal-summary]")[1].text())
+        assertEquals(listOf("Intéressés (2)", "En attente (1)"), section.select(".assignments__group-title").map { it.text() })
+        assertTrue(section.select(".assignments__group-title").all { it.text().contains("(") })
         assertNull(section.selectFirst("[data-proposals-empty]"))
+        assertNull(section.selectFirst("[data-visits-unavailable]"))
         assertNull(page.selectFirst("[data-listing-visits]"))
+        assertNull(page.selectFirst("[data-proposals-in-visit]"))
         // After the progress, where a search has its Biens correspondants
         assertEquals("mandate-progress", section.previousElementSiblings().first { it.tagName() == "section" }.className())
     }
 
     @Test
-    fun `approved - landlord with listing published - an open visit is above the proposals`() {
+    fun `approved - landlord with listing published - an open visit stays in its card`() {
         doReturn(VisitFixtures.NOW).whenever(clock).millis()
         publishedListing()
         doReturn(
@@ -371,31 +375,22 @@ class MandateTemplateTest {
 
         val page = render(APPROVED.copy(mandateType = MandateType.LISTING))
 
-        val visits = page.selectFirst("section[data-listing-visits]")!!
-        assertEquals("Visites", visits.selectFirst("#visits-title")?.text())
-        val group = visits.selectFirst("[data-listing-visit-group=requested]")!!
-        assertEquals("À confirmer", group.selectFirst(".visit-group__title")?.text())
-        val card = group.selectFirst("[data-listing-visit]")!!
-        assertEquals("7001", card.attr("data-listing-visit-id"))
-        assertEquals("/visits/7001", card.selectFirst("a[data-listing-visit-link]")?.attr("href"))
-        assertEquals("Sandrine Eboa", card.selectFirst("[data-listing-visit-link]")?.text())
-        assertEquals(
-            "Sur place · sam. 7 novembre 2026 à 10:30",
-            card.selectFirst("[data-listing-visit-when]")?.text(),
-        )
-        assertEquals("Il reste 42 h pour confirmer", card.selectFirst("[data-listing-visit-timer]")?.text())
-        assertNull(card.selectFirst("[data-listing-visit-next]"))
-        assertNull(card.selectFirst("[data-listing-visit-tag]"))
+        val card = page.selectFirst("[data-proposal][id^=proposal-]")!!
+        assertEquals("proposal-9002", card.id())
+        assertNull(card.selectFirst("[data-proposal-tag]"))
+        assertEquals("Visite demandée", card.selectFirst("[data-visit-kind]")?.text())
+        assertEquals("pour le sam. 7 novembre 2026 à 10:30", card.selectFirst("[data-visit-when]")?.text())
+        assertEquals("Il reste 42 h pour confirmer", card.selectFirst("[data-visit-timer]")?.text())
+        assertEquals("Confirmer la visite", card.selectFirst("[data-visit-link]")?.text())
+        assertEquals("/visits/7001", card.selectFirst("[data-visit-link]")?.attr("href"))
+        assertEquals("Envoyé le 28 oct. 2026", card.selectFirst("[data-proposal-summary]")?.text())
+        assertEquals("1 refusé", page.selectFirst("[data-proposal-outcomes]")?.text())
+        assertNull(page.selectFirst("section[data-listing-visits]"))
+        assertNull(page.selectFirst("[data-proposals-in-visit]"))
 
-        val proposals = page.selectFirst("section[data-listing-proposals]")!!
-        assertEquals(
-            "1 visite · 1 intéressé · 1 refusé · 1 en attente",
-            proposals.selectFirst("[data-proposals-summary-text]")?.text(),
-        )
-        assertEquals(listOf("/mandates/207#matches-title"), proposals.select("a[data-proposal-link]").map { it.attr("href") })
-        assertEquals(1, proposals.select("[data-proposal-protected]").size)
-        assertNull(proposals.selectFirst("[data-proposal-visit]"))
-        assertTrue(visits.nextElementSibling()?.hasAttr("data-listing-proposals") == true)
+        val pending = page.selectFirst("[data-mandate-pending-visit]")!!
+        assertEquals("1 visite à confirmer · 42 h — Sandrine Eboa", pending.text())
+        assertEquals("#proposal-9002", pending.attr("href"))
     }
 
     @Test
@@ -405,16 +400,13 @@ class MandateTemplateTest {
 
         val page = render(APPROVED.copy(mandateType = MandateType.LISTING))
 
-        val visits = page.selectFirst("section[data-listing-visits]")!!
+        val section = page.selectFirst("[data-listing-proposals]")!!
         assertEquals(
             "Les visites de ce bien ne peuvent pas être affichées pour le moment.",
-            visits.selectFirst("[data-visits-unavailable]")?.text(),
-        )
-        assertEquals(
-            "2 intéressés · 1 refusé · 1 en attente",
-            page.selectFirst("[data-proposals-summary-text]")?.text(),
+            section.selectFirst("[data-visits-unavailable]")?.text(),
         )
         assertEquals(3, page.select("[data-proposals-list] li").size)
+        assertNull(page.selectFirst("[data-mandate-pending-visit]"))
     }
 
     @Test
@@ -427,7 +419,6 @@ class MandateTemplateTest {
         val section = render(APPROVED.copy(mandateType = MandateType.LISTING)).selectFirst("[data-listing-proposals]")!!
 
         assertNotNull(section.selectFirst("[data-proposals-empty]"))
-        assertNull(section.selectFirst("[data-proposals-summary]"))
         assertNull(section.selectFirst("[data-proposals-list]"))
     }
 
@@ -500,6 +491,7 @@ class MandateTemplateTest {
         assertEquals("tel:+237699123456", card.selectFirst("a[data-contact=whatsapp]")?.attr("href"))
         assertEquals("+237 6 99 12 34 56", card.selectFirst("[data-contact-number]")?.text())
         assertEquals("https://wa.me/237699123456", card.selectFirst("a[data-contact-whatsapp]")?.attr("href"))
+        assertEquals("btn btn--secondary btn--compact", card.selectFirst("a[data-contact-whatsapp]")?.className())
         assertEquals("mailto:ray@gmail.com", card.selectFirst("a[data-contact=email]")?.attr("href"))
     }
 
@@ -665,45 +657,52 @@ class MandateTemplateTest {
         ).whenever(listingClient).searchByIds(any())
     }
 
-    /** A signed search with an ACCEPTED match (9001) whose client has [visits], plus a proposal awaiting an answer. */
+    /**
+     * A signed search with a requested visit on its ACCEPTED match (9001), a proposal awaiting an answer (9003), and
+     * one refused and one unanswered match (to fill the outcomes line).
+     */
     private fun withVisits(vararg visits: VisitSummary) {
         withMatches(
             MatchFixtures.MATCH_B.copy(mandateId = 201, status = MatchStatus.PROPOSED, proposedAt = proposedAt),
-            MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.ACCEPTED),
-            MatchFixtures.MATCH_C.copy(mandateId = 201, status = MatchStatus.DISMISSED),
+            MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.ACCEPTED, proposedAt = proposedAt),
+            MatchFixtures.MATCH_C.copy(mandateId = 201, status = MatchStatus.REJECTED),
+            MatchFixtures.MATCH_C.copy(id = 9005, mandateId = 201, status = MatchStatus.EXPIRED, proposedAt = proposedAt),
+            MatchFixtures.MATCH_C.copy(id = 9006, mandateId = 201, status = MatchStatus.DISMISSED),
         )
         doReturn(visits.toList()).whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
     }
 
     @Test
-    fun visits() {
+    fun `visits - a requested visit stays in its match card`() {
         doReturn(VisitFixtures.NOW).whenever(clock).millis()
         withVisits(VisitFixtures.summary(VisitFixtures.requested().copy(mandateId = 201, matchId = 9001)))
 
         val page = render(APPROVED)
 
-        val section = page.selectFirst("section[data-mandate-visits]")!!
-        assertEquals("Visites", section.selectFirst("#visits-title")?.text())
-        val group = section.selectFirst("[data-mandate-visit-group=requested]")!!
-        assertEquals("À confirmer", group.selectFirst(".visit-group__title")?.text())
-        val card = group.selectFirst("[data-mandate-visit]")!!
-        assertEquals("7001", card.attr("data-mandate-visit-id"))
-        assertEquals("/visits/7001", card.selectFirst("a[data-mandate-visit-link]")?.attr("href"))
-        assertEquals("Sur place · Appartement 3 chambres · Bonapriso", card.selectFirst("[data-mandate-visit-link]")?.text())
-        assertEquals("sam. 7 novembre 2026 à 10:30", card.selectFirst("[data-mandate-visit-when]")?.text())
-        assertEquals("Il reste 42 h pour confirmer", card.selectFirst("[data-mandate-visit-timer]")?.text())
-        assertNull(card.selectFirst("[data-mandate-visit-next]"))
-        assertNull(card.selectFirst("[data-mandate-visit-tag]"))
+        val card = page.selectFirst("[data-match-id=9001]")!!
+        assertNull(card.selectFirst("[data-match-tag]"))
+        assertEquals("Visite demandée", card.selectFirst("[data-visit-kind]")?.text())
+        assertEquals("pour le sam. 7 novembre 2026 à 10:30", card.selectFirst("[data-visit-when]")?.text())
+        assertEquals("Il reste 42 h pour confirmer", card.selectFirst("[data-visit-timer]")?.text())
+        assertEquals("Confirmer la visite", card.selectFirst("[data-visit-link]")?.text())
+        assertEquals("/visits/7001", card.selectFirst("[data-visit-link]")?.attr("href"))
+        assertEquals("Envoyé le 28 oct. 2026", card.selectFirst("[data-match-answer]")?.text())
 
-        // The match the visit came from is replaced by the visit, not shown twice.
-        val matches = page.selectFirst("section[data-matches-section]")!!
-        assertEquals(listOf("9003"), matches.select("[data-match]").map { it.attr("data-match-id") })
-        assertEquals("1 en attente", matches.selectFirst("[data-match-proposals-text]")?.text())
-        assertEquals("2 biens · 1 intéressé · 1 visite", searchStatsLabel(matches))
-        // Above Biens correspondants
-        assertEquals("Biens correspondants", section.nextElementSibling()?.selectFirst("h2")?.text())
-        assertNull(page.selectFirst("[data-listing-stats]"))
-        assertEquals("1 visite à venir", page.selectFirst("[data-mandate-visit-stats]")?.text())
+        // The only actionable card's send button is secondary while a visit waits for an answer.
+        val send = page.selectFirst("[data-matches-section] [data-match-send]")!!
+        assertEquals("btn btn--secondary", send.className())
+
+        val pending = page.selectFirst("[data-mandate-pending-visit]")!!
+        assertEquals("1 visite à confirmer · 42 h — Appartement · 3 chambres · annonce n° 3012", pending.text())
+        assertEquals("#match-9001", pending.attr("href"))
+
+        assertEquals("À confirmer (1)", page.selectFirst("[data-matches-section] .assignments__group-title")?.text())
+        assertTrue(page.select("[data-matches-section] .assignments__group-title").all { it.text().contains("(") })
+        assertEquals("1 refusé · 1 sans réponse", page.selectFirst("[data-match-outcomes]")?.text())
+        assertNull(page.selectFirst("section[data-mandate-visits]"))
+        assertNull(page.selectFirst("[data-match-in-visit]"))
+        assertNull(page.selectFirst("[data-listing-visits]"))
+        assertTrue(page.selectFirst("[data-contact-whatsapp]")!!.hasClass("btn--secondary"))
     }
 
     @Test
@@ -711,13 +710,15 @@ class MandateTemplateTest {
         doReturn(VisitFixtures.NOW).whenever(clock).millis()
         withVisits(VisitFixtures.summary(VisitFixtures.confirmed().copy(mandateId = 201, matchId = 9001)))
 
-        val card = render(APPROVED).selectFirst("[data-mandate-visits] [data-mandate-visit]")!!
+        val page = render(APPROVED)
 
-        assertEquals("Confirmée", card.selectFirst("[data-mandate-visit-tag]")?.text())
-        assertEquals("status-tag status-tag--success", card.selectFirst("[data-mandate-visit-tag]")?.className())
-        assertEquals("sam. 7 novembre 2026 à 10:30", card.selectFirst("[data-mandate-visit-when]")?.text())
-        assertNull(card.selectFirst("[data-mandate-visit-timer]"))
-        assertNull(card.selectFirst("[data-mandate-visit-next]"))
+        val card = page.selectFirst("[data-match-id=9001]")!!
+        assertEquals("Visite confirmée", card.selectFirst("[data-visit-kind]")?.text())
+        assertEquals("le sam. 7 novembre 2026 à 10:30", card.selectFirst("[data-visit-when]")?.text())
+        assertNull(card.selectFirst("[data-visit-timer]"))
+        assertEquals("Voir la visite", card.selectFirst("[data-visit-link]")?.text())
+        assertEquals("Visites à venir (1)", page.selectFirst("[data-matches-section] .assignments__group-title")?.text())
+        assertNull(page.selectFirst("[data-mandate-pending-visit]"))
     }
 
     @Test
@@ -727,42 +728,34 @@ class MandateTemplateTest {
 
         val page = render(APPROVED)
 
-        val section = page.selectFirst("section[data-mandate-visits]")!!
+        val section = page.selectFirst("section[data-matches-section]")!!
         assertEquals(
             "Les visites de ce mandat ne peuvent pas être affichées pour le moment.",
             section.selectFirst("[data-visits-unavailable]")?.text(),
         )
-        // Without the visits, no match is hidden.
+        // Without the visits, no match block is shown and no pending callout points at one.
         assertEquals(listOf("9001"), page.select("[data-match]").map { it.attr("data-match-id") })
+        assertNull(page.selectFirst("[data-visit-kind]"))
+        assertNull(page.selectFirst("[data-mandate-pending-visit]"))
     }
 
     @Test
-    fun `visits - every match in a visit`() {
-        doReturn(VisitFixtures.NOW).whenever(clock).millis()
-        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.ACCEPTED))
-        doReturn(listOf(VisitFixtures.summary(VisitFixtures.requested().copy(mandateId = 201, matchId = 9001))))
-            .whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
-
-        val matches = render(APPROVED).selectFirst("section[data-matches-section]")!!
-
-        assertNull(matches.selectFirst("[data-match]"))
-        assertNull(matches.selectFirst("[data-match-empty]"))
-        assertEquals(
-            "Les biens correspondants de ce client sont en visite : retrouvez-les dans Visites ci-dessus.",
-            matches.selectFirst("[data-match-in-visit]")?.text()?.replace('\u00a0', ' '),
-        )
-    }
-
-    @Test
-    fun `no open visits - no section`() {
+    fun `no requested visit - no pending callout`() {
         withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201))
 
-        assertNull(render(APPROVED).selectFirst("[data-mandate-visits]"))
+        val page = render(APPROVED)
+
+        assertNull(page.selectFirst("[data-mandate-pending-visit]"))
+        assertNull(page.selectFirst("[data-match-id=9001] [data-visit-kind]"))
+        assertNull(page.selectFirst("section[data-mandate-visits]"))
     }
 
     @Test
-    fun `not a search - no visits`() {
-        assertNull(render(APPROVED.copy(mandateType = MandateType.LISTING)).selectFirst("[data-mandate-visits]"))
+    fun `not a search - no pending visit`() {
+        val page = render(APPROVED.copy(mandateType = MandateType.LISTING))
+
+        assertNull(page.selectFirst("[data-mandate-pending-visit]"))
+        assertNull(page.selectFirst("section[data-mandate-visits]"))
         verify(visitClient, never()).search(any(), any(), any(), any())
     }
 
@@ -822,6 +815,7 @@ class MandateTemplateTest {
         assertEquals("/mandates/201/matches/9001/propose", send.attr("action"))
         assertEquals("post", send.attr("method"))
         assertEquals("Envoyer au client", send.selectFirst("button")?.text())
+        assertEquals("btn btn--primary", send.selectFirst("button")?.className())
         assertEquals("au client", send.selectFirst("button .visually-hidden")?.text())
         assertEquals("/mandates/201?dismiss=9001#match-9001-title", card.selectFirst("a[data-match-dismiss]")?.attr("href"))
         assertFalse(card.selectFirst("[data-match-actions]")!!.hasAttr("hidden"))
@@ -830,7 +824,6 @@ class MandateTemplateTest {
         val proposed = cards[1]
         assertEquals("En attente", proposed.selectFirst("[data-match-tag]")?.text())
         assertEquals("Envoyé le 28 oct. 2026", proposed.selectFirst("[data-match-answer]")?.text())
-        assertEquals("1 en attente", section.selectFirst("[data-match-proposals-text]")?.text())
         assertNull(proposed.selectFirst("[data-match-actions]"))
         assertNull(proposed.selectFirst("[data-match-confirm]"))
 
@@ -838,7 +831,7 @@ class MandateTemplateTest {
             "1 bien écarté : il ne vous sera plus proposé pour ce mandat.",
             section.selectFirst("[data-match-dismissed]")?.text(),
         )
-        assertEquals("2 biens", searchStatsLabel(section))
+        assertEquals("2 biens", searchStatsLabel(page))
         assertNull(section.selectFirst("[data-match-empty]"))
         assertNull(section.selectFirst("[data-match-unavailable]"))
     }
@@ -857,9 +850,9 @@ class MandateTemplateTest {
             ),
         ).whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
 
-        val section = render(APPROVED).selectFirst("section[data-matches-section]")!!
+        val page = render(APPROVED)
 
-        assertEquals("2 biens · 1 intéressé · 2 visites", searchStatsLabel(section))
+        assertEquals("2 biens · 1 intéressé · 2 visites", searchStatsLabel(page))
     }
 
     @Test
@@ -898,24 +891,26 @@ class MandateTemplateTest {
     fun `matches - only refused ones`() {
         withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.REJECTED))
 
-        val section = render(APPROVED).selectFirst("[data-matches-section]")!!
+        val page = render(APPROVED)
+        val section = page.selectFirst("[data-matches-section]")!!
 
         assertNull(section.selectFirst("[data-match-list]"))
         assertNull(section.selectFirst("[data-match-empty]"))
-        assertEquals("1 refusé", section.selectFirst("[data-match-proposals-text]")?.text())
-        assertNull(section.selectFirst("[data-search-stats]"))
+        assertEquals("1 refusé", section.selectFirst("[data-match-outcomes]")?.text())
+        assertNull(page.selectFirst("[data-search-stats]"))
     }
 
     @Test
     fun `matches - empty`() {
         withMatches()
 
-        val section = render(APPROVED).selectFirst("[data-matches-section]")!!
+        val page = render(APPROVED)
+        val section = page.selectFirst("[data-matches-section]")!!
 
         assertTrue(section.selectFirst("[data-match-empty]")!!.text().startsWith("Aucun de vos biens ne correspond"))
         assertNull(section.selectFirst("[data-match-list]"))
         assertNull(section.selectFirst("[data-match-dismissed]"))
-        assertNull(section.selectFirst("[data-search-stats]"))
+        assertNull(page.selectFirst("[data-search-stats]"))
     }
 
     @Test
@@ -931,7 +926,7 @@ class MandateTemplateTest {
         )
         assertNull(section.selectFirst("[data-match-empty]"))
         assertNotNull(page.selectFirst("#contact-title"))
-        assertNull(section.selectFirst("[data-search-stats]"))
+        assertNull(page.selectFirst("[data-search-stats]"))
     }
 
     @Test
@@ -953,8 +948,8 @@ class MandateTemplateTest {
         assertNull(render(get("/mandates/201")).selectFirst("[data-matches-section]"))
     }
 
-    private fun searchStatsLabel(section: Element): String? =
-        section.selectFirst("[data-search-stats] .visually-hidden")?.nextElementSibling()?.text()
+    private fun searchStatsLabel(page: Element): String? =
+        page.selectFirst("[data-panel=APPROVED] [data-search-stats] .visually-hidden")?.nextElementSibling()?.text()
 
     // mandate.js
 
