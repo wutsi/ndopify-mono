@@ -1,8 +1,8 @@
 /*
  * Ndopify Partner Central — another agent's profile (static prototype): agent.html.
  * Loaded after partner-central.js (which only initialises the account menu here).
- * PROTOTYPE: the fixtures stand in for GET /v1/agents/{id}; ?id= picks one, ?back= points the back link at the
- * listing the agent came from. Server calls are simulated.
+ * PROTOTYPE: the fixtures stand in for GET /v1/agents/{id} and the agent's published listings; ?id= picks one,
+ * ?back= points the back link at the listing the agent came from. Server calls are simulated.
  */
 (function () {
     "use strict";
@@ -16,13 +16,29 @@
             joinedAt: "2023-03-14", whatsappNumber: "+237699123456",
             biography: "Démarcheur à Douala, je connais Bonapriso, Akwa et Bonanjo rue par rue. " +
                 "J'accompagne les familles et les jeunes actifs de la recherche à la signature du bail, " +
-                "avec des biens vérifiés et des visites organisées."
+                "avec des biens vérifiés et des visites organisées.",
+            // PROTOTYPE: PUBLISHED only, newest first — what GET /v1/listings?agent-id={id} returns for another agent.
+            listings: [
+                {
+                    id: 5001, title: "Appartement 2 chambres à Bonapriso", place: "Bonapriso, Douala",
+                    facts: "2 chambres · 80 m² · Meublé", amount: "250K FCFA", period: "/ mois"
+                },
+                {
+                    id: 5002, title: "Studio meublé à Akwa", place: "Akwa, Douala",
+                    facts: "1 chambre · 30 m² · Meublé", amount: "120K FCFA", period: "/ mois"
+                },
+                {
+                    id: 5003, title: "Maison 3 chambres à Bonanjo", place: "Bonanjo, Douala",
+                    facts: "3 chambres · 150 m² · Non meublé", amount: "400K FCFA", period: "/ mois"
+                }
+            ]
         },
         "1002": {
             firstName: "Paul", lastName: "Etame", verified: true,
             agentType: "REAL_ESTATE_AGENT", city: "Yaoundé",
             neighborhoods: ["Bastos", "Biyem-Assi"],
-            joinedAt: "2024-09-02", whatsappNumber: null, biography: ""
+            joinedAt: "2024-09-02", whatsappNumber: null, biography: "",
+            listings: []
         }
     };
 
@@ -32,6 +48,11 @@
     };
 
     var SINCE_FORMAT = new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric" });
+
+    // PROTOTYPE: no listing photos here; the real card uses the listing's hero image.
+    var HOUSE_ICON = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"' +
+        ' aria-hidden="true" focusable="false"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/>' +
+        '<path d="M10 20v-6h4v6"/></svg>';
 
     function $(selector) {
         return document.querySelector(selector);
@@ -123,6 +144,66 @@
         });
     }
 
+    // PROTOTYPE: no public portal here, the link is a stub (same as partner-central.js's share link).
+    function publicUrlOf(listing) {
+        return "https://ndopify.com/listing/" + encodeURIComponent(listing.id);
+    }
+
+    function listingLine(className, value) {
+        var line = document.createElement("span");
+        line.className = className;
+        line.textContent = value;
+        return line;
+    }
+
+    function listingItem(listing) {
+        var item = document.createElement("li");
+        var link = document.createElement("a");
+        link.className = "agent-listing";
+        link.href = publicUrlOf(listing);
+        link.target = "_blank";
+        link.rel = "noopener";
+
+        var photo = document.createElement("span");
+        photo.className = "agent-listing__photo";
+        photo.setAttribute("aria-hidden", "true");
+        photo.innerHTML = HOUSE_ICON;
+
+        var text = document.createElement("span");
+        text.className = "agent-listing__text";
+        var title = document.createElement("strong");
+        title.className = "agent-listing__title";
+        title.textContent = listing.title;
+        text.appendChild(title);
+        text.appendChild(listingLine("agent-listing__place", listing.place));
+        text.appendChild(listingLine("agent-listing__facts", listing.facts));
+
+        var price = document.createElement("span");
+        price.className = "agent-listing__price";
+        var amount = document.createElement("strong");
+        amount.textContent = listing.amount;
+        price.appendChild(amount);
+        price.appendChild(document.createTextNode(" " + (listing.period || "")));
+        text.appendChild(price);
+
+        link.appendChild(photo);
+        link.appendChild(text);
+        item.appendChild(link);
+        return item;
+    }
+
+    function renderListings(agent) {
+        var section = $("[data-agent-listings]");
+        var list = $("[data-agent-listings-list]");
+        if (!section || !list) return;
+        var listings = agent.listings || [];
+        section.hidden = listings.length === 0;
+        list.textContent = "";
+        listings.forEach(function (listing) {
+            list.appendChild(listingItem(listing));
+        });
+    }
+
     function renderAbout(agent) {
         var biography = (agent.biography || "").trim();
         setText("[data-agent-bio]", biography);
@@ -145,6 +226,7 @@
         renderIdentity(agent);
         renderPhoto(agent);
         renderSectors(agent);
+        renderListings(agent);
         renderAbout(agent);
         renderContact(agent);
     }

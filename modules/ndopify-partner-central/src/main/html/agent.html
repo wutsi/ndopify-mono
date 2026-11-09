@@ -94,6 +94,63 @@
                     </p>
                 </section>
 
+                <!--
+                    Her current published listings, newest first. The real page reads
+                    GET /v1/listings?agent-id={id} (ndopify-server restricts another agent to PUBLISHED) and links
+                    each card to {tenant.publicPortalUrl}{listing.url}. PROTOTYPE: three fixtures, a placeholder
+                    photo and a stub URL; the section is hidden when the agent has none.
+                -->
+                <section class="section" aria-labelledby="listings-title" data-agent-listings>
+                    <h2 id="listings-title">Ses annonces</h2>
+                    <ul class="agent-listings" data-agent-listings-list>
+                        <li>
+                            <a class="agent-listing" href="https://ndopify.com/listing/5001" target="_blank"
+                               rel="noopener">
+                                <span class="agent-listing__photo" aria-hidden="true">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                         stroke-width="2" focusable="false"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
+                                </span>
+                                <span class="agent-listing__text">
+                                    <strong class="agent-listing__title">Appartement 2 chambres à Bonapriso</strong>
+                                    <span class="agent-listing__place">Bonapriso, Douala</span>
+                                    <span class="agent-listing__facts">2 chambres · 80 m² · Meublé</span>
+                                    <span class="agent-listing__price"><strong>250K FCFA</strong> / mois</span>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="agent-listing" href="https://ndopify.com/listing/5002" target="_blank"
+                               rel="noopener">
+                                <span class="agent-listing__photo" aria-hidden="true">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                         stroke-width="2" focusable="false"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
+                                </span>
+                                <span class="agent-listing__text">
+                                    <strong class="agent-listing__title">Studio meublé à Akwa</strong>
+                                    <span class="agent-listing__place">Akwa, Douala</span>
+                                    <span class="agent-listing__facts">1 chambre · 30 m² · Meublé</span>
+                                    <span class="agent-listing__price"><strong>120K FCFA</strong> / mois</span>
+                                </span>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="agent-listing" href="https://ndopify.com/listing/5003" target="_blank"
+                               rel="noopener">
+                                <span class="agent-listing__photo" aria-hidden="true">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                         stroke-width="2" focusable="false"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
+                                </span>
+                                <span class="agent-listing__text">
+                                    <strong class="agent-listing__title">Maison 3 chambres à Bonanjo</strong>
+                                    <span class="agent-listing__place">Bonanjo, Douala</span>
+                                    <span class="agent-listing__facts">3 chambres · 150 m² · Non meublé</span>
+                                    <span class="agent-listing__price"><strong>400K FCFA</strong> / mois</span>
+                                </span>
+                            </a>
+                        </li>
+                    </ul>
+                </section>
+
                 <section class="section" aria-labelledby="about-title" data-agent-about>
                     <h2 id="about-title">À propos</h2>
                     <p data-agent-bio>Démarcheur à Douala, je connais Bonapriso, Akwa et Bonanjo rue par rue.
