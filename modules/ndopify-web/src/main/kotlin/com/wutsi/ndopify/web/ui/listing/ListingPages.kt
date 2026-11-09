@@ -3,6 +3,7 @@ package com.wutsi.ndopify.web.ui.listing
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
+import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.refdata.dto.Location
@@ -98,6 +99,8 @@ object ListingPages {
         val city = locations.find { it.id == listing.cityId }?.name
         val neighborhood = listing.neighborhoodId?.let { id -> locations.find { it.id == id }?.name }
         val title = listing.title?.ifBlank { null } ?: fallbackTitle(listing, neighborhood ?: city)
+        val closedNotice = closedNotice(listing, formatter)
+        val closed = closedNotice != null
         val priceAmount = formatter.compactMoney(listing.price, listing.currencyCode)
         val pricePeriod = PERIODS[listing.pricePeriodicityType]
         val price = listOfNotNull(priceAmount, pricePeriod).joinToString(" ")
@@ -106,9 +109,13 @@ object ListingPages {
         return ListingPage(
             id = listing.id,
             title = title,
-            metaDescription = listing.summary?.ifBlank { null } ?: title,
+            metaDescription = closedNotice?.let { "$it $title" } ?: (listing.summary?.ifBlank { null } ?: title),
             canonicalUrl = canonicalUrl(tenant, listing),
-            typeBadge = if (listing.listingType == ListingType.SALE) "À vendre" else "À louer",
+            typeBadge = when (listing.status) {
+                ListingStatus.SOLD -> "Vendu"
+                ListingStatus.RENTED -> "Loué"
+                else -> if (listing.listingType == ListingType.SALE) "À vendre" else "À louer"
+            },
             place = listOfNotNull(neighborhood, city).joinToString(", "),
             landmark = listing.landmark?.ifBlank { null }?.let { "près de $it" },
             verifiedAt = listing.verifiedAt?.let { formatter.date(it) },
@@ -125,19 +132,27 @@ object ListingPages {
             price = price,
             priceAmount = priceAmount,
             pricePeriod = pricePeriod,
-            terms = listOfNotNull(
-                "Loyer" to price,
-                listing.securityDeposit?.let { "Caution" to months(it, listing, formatter) },
-                listing.advanceRent?.let { "Avance sur loyer" to months(it, listing, formatter) },
-                listing.leaseTerm?.let { "Durée du bail" to "$it mois" },
-                listing.noticePeriod?.let { "Préavis" to "$it mois" },
-                "Disponible" to (available?.let { "À partir du $it" } ?: "Immédiatement"),
-            ),
-            asideTerms = listOfNotNull(
-                listing.securityDeposit?.let { "Caution : $it mois" },
-                listing.advanceRent?.let { "Avance : $it mois" },
-                available?.let { "Disponible le $it" } ?: "Disponible immédiatement",
-            ),
+            terms = if (closed) {
+                emptyList()
+            } else {
+                listOfNotNull(
+                    "Loyer" to price,
+                    listing.securityDeposit?.let { "Caution" to months(it, listing, formatter) },
+                    listing.advanceRent?.let { "Avance sur loyer" to months(it, listing, formatter) },
+                    listing.leaseTerm?.let { "Durée du bail" to "$it mois" },
+                    listing.noticePeriod?.let { "Préavis" to "$it mois" },
+                    "Disponible" to (available?.let { "À partir du $it" } ?: "Immédiatement"),
+                )
+            },
+            asideTerms = if (closed) {
+                emptyList()
+            } else {
+                listOfNotNull(
+                    listing.securityDeposit?.let { "Caution : $it mois" },
+                    listing.advanceRent?.let { "Avance : $it mois" },
+                    available?.let { "Disponible le $it" } ?: "Disponible immédiatement",
+                )
+            },
             schemaType = SCHEMA_TYPES[listing.propertyType] ?: "Accommodation",
             area = listing.area,
             rooms = listing.rooms,
@@ -158,7 +173,18 @@ object ListingPages {
                 .takeWhile { !it.isAfter(LAST_VISIT_TIME) }
                 .map { time -> time.toString() to "%dh%02d".format(time.hour, time.minute) }
                 .toList(),
+            closedNotice = closedNotice,
         )
+    }
+
+    private fun closedNotice(listing: Listing, formatter: TenantFormatter): String? {
+        val label = when (listing.status) {
+            ListingStatus.SOLD -> "vendu"
+            ListingStatus.RENTED -> "loué"
+            else -> return null
+        }
+        val date = listing.closedAt?.let { formatter.date(it) }
+        return "Ce bien a été $label" + (date?.let { " le $it" } ?: "") + "."
     }
 
     private fun fallbackTitle(listing: Listing, place: String?): String {

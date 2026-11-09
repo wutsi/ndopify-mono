@@ -133,6 +133,51 @@ class ListingPagesTest {
     }
 
     @Test
+    fun `sold listing`() {
+        val page = page(
+            listing.copy(
+                status = ListingStatus.SOLD,
+                listingType = ListingType.SALE,
+                closedAt = Date.from(LocalDate.of(2026, 10, 12).atStartOfDay(ZoneId.of("Africa/Douala")).toInstant()),
+            ),
+        )
+
+        assertEquals("Vendu", page.typeBadge)
+        assertEquals("Ce bien a été vendu le 12 oct. 2026.", page.closedNotice)
+        assertEquals(
+            "Ce bien a été vendu le 12 oct. 2026. Appartement meublé 2 chambres à Bonapriso",
+            page.metaDescription,
+        )
+        assertEquals(emptyList(), page.terms)
+        assertEquals(emptyList(), page.asideTerms)
+    }
+
+    @Test
+    fun `rented listing`() {
+        val page = page(
+            listing.copy(
+                status = ListingStatus.RENTED,
+                closedAt = Date.from(LocalDate.of(2026, 10, 12).atStartOfDay(ZoneId.of("Africa/Douala")).toInstant()),
+            ),
+        )
+
+        assertEquals("Loué", page.typeBadge)
+        assertEquals("Ce bien a été loué le 12 oct. 2026.", page.closedNotice)
+    }
+
+    @Test
+    fun `closed listing without a closing date`() {
+        val page = page(listing.copy(status = ListingStatus.SOLD, closedAt = null))
+
+        assertEquals("Ce bien a été vendu.", page.closedNotice)
+    }
+
+    @Test
+    fun `published listing has no closed notice`() {
+        assertNull(page().closedNotice)
+    }
+
+    @Test
     fun amenities() {
         assertEquals(
             listOf(

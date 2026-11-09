@@ -35,6 +35,8 @@ data class ListingPage(
     val countryCode: String,
     val visitDays: List<VisitDay>,
     val visitTimes: List<Pair<String, String>>,
+    /** "Vendu" / "Loué" notice for a closed listing; null while it is on the market. */
+    val closedNotice: String? = null,
 )
 
 data class Photo(val src: String, val alt: String)
