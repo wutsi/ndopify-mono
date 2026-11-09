@@ -3,6 +3,11 @@
  * Loaded after partner-central.css; uses its tier-2 tokens only.
  */
 
+/* The "Agent introuvable" panel: the same alert title rule as home.css, which this page doesn't load. */
+h1.alert__title {
+    font: 600 var(--step-h4) / 1.3 var(--font-body);
+}
+
 .agent-back {
     margin-bottom: var(--space-3);
 }

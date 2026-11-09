@@ -165,7 +165,7 @@
         initBackLink();
 
         var id = new URLSearchParams(window.location.search).get("id") || "1001";
-        var agent = AGENTS[id];
+        var agent = Object.prototype.hasOwnProperty.call(AGENTS, id) ? AGENTS[id] : null;
         if (!agent) {
             page.hidden = true;
             show("[data-agent-missing]", true);
