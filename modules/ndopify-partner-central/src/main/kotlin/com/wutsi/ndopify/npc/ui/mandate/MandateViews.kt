@@ -100,7 +100,9 @@ object MandateViews {
             age = mandate.age?.let { if (it > 1) "$it jours" else "$it jour" },
             cancellation = if (status == MandateStatus.CANCELLED) MandateRules.cancellation(mandate.cancellationCode) else null,
             cancellationReason = mandate.cancellationReason?.trim()?.ifEmpty { null },
+            listingId = dealLine.listingId,
             listingLabel = dealLine.listingLabel,
+            counterpartId = dealLine.counterpartId,
             counterpartLabel = dealLine.counterpartLabel,
             clientLabel = dealLine.clientLabel,
             outside = dealLine.outside,
@@ -114,28 +116,34 @@ object MandateViews {
         )
     }
 
-    /** The deal line's four labels, null for any status but CLOSED (and for a pre-feature closing, no deal at all). */
+    /** The deal line's labels and targets, all null for any status but CLOSED (and for a pre-feature closing, no deal). */
     private data class DealLine(
+        val listingId: Long?,
         val listingLabel: String?,
+        val counterpartId: Long?,
         val counterpartLabel: String?,
         val clientLabel: String?,
         val outside: String?,
     )
 
     private fun dealLine(mandate: Mandate, deal: MandateDeal?): DealLine {
-        if (mandate.status != MandateStatus.CLOSED) return DealLine(null, null, null, null)
+        if (mandate.status != MandateStatus.CLOSED) return DealLine(null, null, null, null, null, null)
         val owner = mandate.mandateType == MandateType.LISTING
         if (mandate.dealOutside) {
             return DealLine(
+                listingId = deal?.listingId,
                 listingLabel = deal?.listingId?.let { "Annonce n° $it" },
+                counterpartId = null,
                 counterpartLabel = null,
                 clientLabel = null,
                 outside = if (owner) "Client hors de vos recherches" else "Bien hors de vos annonces",
             )
         }
-        if (deal == null || mandate.dealMatchId == null) return DealLine(null, null, null, null)
+        if (deal == null || mandate.dealMatchId == null) return DealLine(null, null, null, null, null, null)
         return DealLine(
+            listingId = deal.listingId,
             listingLabel = deal.listingId?.let { "Annonce n° $it" },
+            counterpartId = deal.counterpartId,
             counterpartLabel = deal.counterpartId?.let { "Fermé avec le mandat n° $it" },
             clientLabel = if (owner) deal.customer?.let { "Client : ${partyName(it)}" } else null,
             outside = null,

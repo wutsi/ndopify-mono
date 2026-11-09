@@ -480,7 +480,9 @@ class MandateTemplateTest {
 
         val panel = page.selectFirst("[data-panel=CLOSED]")!!
         assertEquals("Annonce n° 501", panel.selectFirst("[data-closed-deal-listing]")?.text())
+        assertEquals("/listings/501", panel.selectFirst("[data-closed-deal-listing] a")?.attr("href"))
         assertEquals("Fermé avec le mandat n° 203", panel.selectFirst("[data-closed-deal-counterpart]")?.text())
+        assertEquals("/mandates/203", panel.selectFirst("[data-closed-deal-counterpart] a")?.attr("href"))
         assertNull(panel.selectFirst("[data-closed-deal-client]"))
         assertNull(panel.selectFirst("[data-closed-deal-outside]"))
     }
@@ -494,6 +496,7 @@ class MandateTemplateTest {
 
         val panel = page.selectFirst("[data-panel=CLOSED]")!!
         assertEquals("Annonce n° 501", panel.selectFirst("[data-closed-deal-listing]")?.text())
+        assertEquals("/listings/501", panel.selectFirst("[data-closed-deal-listing] a")?.attr("href"))
         assertEquals("Client hors de vos recherches", panel.selectFirst("[data-closed-deal-outside]")?.text())
         assertNull(panel.selectFirst("[data-closed-deal-counterpart]"))
         assertNull(panel.selectFirst("[data-closed-deal-client]"))

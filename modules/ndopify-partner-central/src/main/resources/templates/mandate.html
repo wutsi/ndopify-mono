@@ -265,8 +265,12 @@
                             <!-- What the closing recorded: the listing, the counterpart mandate and the client, or the
                                  "outside" note — each only when it was recorded (a pre-feature closing has none). -->
                             <p th:if="${m.outside}" data-closed-deal data-closed-deal-outside th:text="${m.outside}">Bien hors de vos annonces</p>
-                            <p th:if="${m.listingLabel}" data-closed-deal data-closed-deal-listing th:text="${m.listingLabel}">Annonce n° 501</p>
-                            <p th:if="${m.counterpartLabel}" data-closed-deal data-closed-deal-counterpart th:text="${m.counterpartLabel}">Fermé avec le mandat n° 203</p>
+                            <p th:if="${m.listingLabel}" data-closed-deal data-closed-deal-listing>
+                                <a th:if="${m.listingId != null}" th:href="@{/listings/{id}(id=${m.listingId})}" th:text="${m.listingLabel}">Annonce n° 501</a><span th:unless="${m.listingId != null}" th:text="${m.listingLabel}">Annonce n° 501</span>
+                            </p>
+                            <p th:if="${m.counterpartLabel}" data-closed-deal data-closed-deal-counterpart>
+                                <a th:if="${m.counterpartId != null}" th:href="@{/mandates/{id}(id=${m.counterpartId})}" th:text="${m.counterpartLabel}">Fermé avec le mandat n° 203</a><span th:unless="${m.counterpartId != null}" th:text="${m.counterpartLabel}">Fermé avec le mandat n° 203</span>
+                            </p>
                             <p th:if="${m.clientLabel}" data-closed-deal data-closed-deal-client th:text="${m.clientLabel}">Client : Sandrine Eboa</p>
                         </div>
                     </div>

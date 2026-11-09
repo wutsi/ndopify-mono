@@ -31,7 +31,9 @@ data class MandateView(
     val cancellation: String?,
     val cancellationReason: String?,
     /** The deal line of a CLOSED mandate: the listing, the counterpart mandate and the client, or the "outside" note. */
+    val listingId: Long?,
     val listingLabel: String?,
+    val counterpartId: Long?,
     val counterpartLabel: String?,
     val clientLabel: String?,
     val outside: String?,

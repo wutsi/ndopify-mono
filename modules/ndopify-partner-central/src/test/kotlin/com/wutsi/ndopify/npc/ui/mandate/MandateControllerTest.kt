@@ -472,7 +472,9 @@ class MandateControllerTest {
 
         val view = mandate(mvc.perform(get("/mandates/201")).andReturn())
 
+        assertEquals(501L, view.listingId)
         assertEquals("Annonce n° 501", view.listingLabel)
+        assertEquals(203L, view.counterpartId)
         assertEquals("Fermé avec le mandat n° 203", view.counterpartLabel)
         assertNull(view.clientLabel)
         assertNull(view.outside)
@@ -487,7 +489,9 @@ class MandateControllerTest {
 
         val view = mandate(mvc.perform(get("/mandates/201")).andReturn())
 
+        assertNull(view.listingId)
         assertNull(view.listingLabel)
+        assertNull(view.counterpartId)
         assertNull(view.counterpartLabel)
         assertNull(view.clientLabel)
         assertNull(view.outside)
@@ -501,7 +505,9 @@ class MandateControllerTest {
 
         val view = mandate(mvc.perform(get("/mandates/201")).andReturn())
 
+        assertEquals(501L, view.listingId)
         assertEquals("Annonce n° 501", view.listingLabel)
+        assertNull(view.counterpartId)
         assertNull(view.counterpartLabel)
     }
 
@@ -515,7 +521,9 @@ class MandateControllerTest {
 
         val view = mandate(mvc.perform(get("/mandates/201")).andReturn())
 
+        assertEquals(501L, view.listingId)
         assertEquals("Annonce n° 501", view.listingLabel)
+        assertEquals(204L, view.counterpartId)
         assertEquals("Fermé avec le mandat n° 204", view.counterpartLabel)
         assertEquals("Client : Sandrine Eboa", view.clientLabel)
         assertNull(view.outside)
@@ -532,7 +540,9 @@ class MandateControllerTest {
 
         val view = mandate(mvc.perform(get("/mandates/201")).andReturn())
 
+        assertEquals(501L, view.listingId)
         assertEquals("Annonce n° 501", view.listingLabel)
+        assertNull(view.counterpartId)
         assertNull(view.counterpartLabel)
         assertNull(view.clientLabel)
         assertEquals("Client hors de vos recherches", view.outside)
@@ -545,6 +555,7 @@ class MandateControllerTest {
 
         val view = mandate(mvc.perform(get("/mandates/201")).andReturn())
 
+        assertNull(view.listingId)
         assertNull(view.listingLabel)
         assertEquals("Bien hors de vos annonces", view.outside)
     }
