@@ -137,6 +137,31 @@ object MandateCloseViews {
         )
     }
 
+    /** A search's candidate whose listing is no longer PUBLISHED (closed meanwhile): the full listing, same labels. */
+    fun candidate(
+        match: Match,
+        listing: Listing,
+        locations: Map<Long, Location>,
+        formatter: TenantFormatter,
+    ): CloseCandidateView {
+        val type = MandateLabels.shortPropertyType(listing.propertyType) ?: "Bien"
+        return CloseCandidateView(
+            matchId = match.id,
+            title = listOfNotNull(type, listing.rooms?.let { MatchRules.rooms(it) }).joinToString(" · "),
+            reference = "annonce n° ${listing.id}",
+            neighbourhood = listing.neighborhoodId?.let { locations[it]?.name }
+                ?: locations[listing.cityId]?.name
+                ?: "—",
+            rent = MandateLabels.price(
+                Money(listing.price, listing.currencyCode, listing.pricePeriodicityType),
+                formatter,
+                compact = true,
+            ),
+            priceAmount = listing.price.takeIf { it > 0 },
+            interestLabel = interestLabel(match, formatter),
+        )
+    }
+
     /** A listing's candidate: the client it was rented to, named by its search's customer (its number without one). */
     fun candidate(
         match: Match,

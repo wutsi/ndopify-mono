@@ -4,9 +4,11 @@ import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
@@ -94,6 +96,14 @@ class MandateCloseControllerTest {
     private fun withCandidate() {
         doReturn(listOf(matchA)).whenever(matchClient).search(listOf(201L), listOf(MatchStatus.ACCEPTED))
         doReturn(listOf(listingA)).whenever(listingClient).searchByIds(listOf(3012L))
+    }
+
+    /** The reverse-order close: the match survives but its listing is no longer PUBLISHED (RENTED). */
+    private fun withReverseOrderListing() {
+        doReturn(listOf(matchA)).whenever(matchClient).search(listOf(201L), listOf(MatchStatus.ACCEPTED))
+        doReturn(emptyList<ListingSummary>()).whenever(listingClient).searchByIds(listOf(3012L))
+        doReturn(ListingViewsTest.LISTING.copy(id = 3012, status = ListingStatus.RENTED, price = 240000))
+            .whenever(listingClient).get(3012)
     }
 
     private fun outcome(result: MvcResult) = result.flashMap[MandateController.OUTCOME]
@@ -263,6 +273,44 @@ class MandateCloseControllerTest {
         assertEquals("150000", (model(result)["form"] as PriceForm).finalPrice)
     }
 
+    @Test
+    fun `counterpart is skipped for a listing mandate with no listing`() {
+        doReturn(APPROVED.copy(mandateType = MandateType.LISTING)).whenever(mandateClient).get(201)
+        doReturn(null).whenever(listingClient).findIdByMandate(201, AGENT.id)
+
+        assertEquals(
+            "redirect:/mandates/201/close?step=price",
+            mvc.perform(get("/mandates/201/close?step=counterpart")).andReturn().modelAndView?.viewName,
+        )
+
+        val price = mvc.perform(get("/mandates/201/close?step=price")).andReturn()
+        assertEquals("250000", (model(price)["form"] as PriceForm).finalPrice)
+
+        mvc.perform(
+            post("/mandates/201/close/confirm")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(outside = true, priceAmount = 250000)),
+        ).andReturn()
+        verify(mandateClient).close(201, CloseMandateRequest(Money(250000, "XAF", PeriodicityType.MONTHLY)))
+    }
+
+    @Test
+    fun `counterpart is skipped for a listing mandate whose listing is not published`() {
+        doReturn(APPROVED.copy(mandateType = MandateType.LISTING)).whenever(mandateClient).get(201)
+        doReturn(501L).whenever(listingClient).findIdByMandate(201, AGENT.id)
+        doReturn(ListingViewsTest.LISTING.copy(status = ListingStatus.DRAFT)).whenever(listingClient).get(501)
+
+        assertEquals(
+            "redirect:/mandates/201/close?step=price",
+            mvc.perform(get("/mandates/201/close?step=counterpart")).andReturn().modelAndView?.viewName,
+        )
+
+        mvc.perform(
+            post("/mandates/201/close/confirm")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(outside = true, priceAmount = 250000)),
+        ).andReturn()
+        verify(mandateClient).close(201, CloseMandateRequest(Money(250000, "XAF", PeriodicityType.MONTHLY)))
+    }
+
     // Confirm step
 
     @Test
@@ -327,6 +375,59 @@ class MandateCloseControllerTest {
         assertTrue(view(result).candidatesUnavailable)
         assertTrue(result.flashMap.isEmpty())
         assertEquals(9001L, draft(result)?.matchId)
+    }
+
+    // Reverse-order close: the listing side closed first, its listing is no longer PUBLISHED (RENTED/SOLD).
+
+    @Test
+    fun `counterpart - a search candidate whose listing is no longer published is still offered`() {
+        withReverseOrderListing()
+
+        val result = mvc.perform(get("/mandates/201/close?step=counterpart")).andReturn()
+
+        assertEquals("mandate/close", result.modelAndView?.viewName)
+        assertEquals(listOf(9001L), view(result).candidates.map { it.matchId })
+
+        val post = mvc.perform(
+            post("/mandates/201/close/counterpart").param("counterpart", "9001")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose()),
+        ).andReturn()
+        assertEquals("redirect:/mandates/201/close?step=price", post.modelAndView?.viewName)
+        assertEquals(9001L, draft(post)?.matchId)
+    }
+
+    @Test
+    fun `confirm - the reverse-order candidate closes the match`() {
+        withReverseOrderListing()
+
+        val confirm = mvc.perform(
+            get("/mandates/201/close?step=confirm")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(matchId = 9001, priceAmount = 240000)),
+        ).andReturn()
+        assertEquals("mandate/close", confirm.modelAndView?.viewName)
+        assertEquals("confirm", view(confirm).step)
+
+        val post = mvc.perform(
+            post("/mandates/201/close/confirm")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(matchId = 9001, priceAmount = 240000)),
+        ).andReturn()
+        assertEquals("redirect:/mandates/201", post.modelAndView?.viewName)
+        assertEquals("closed", outcome(post))
+        verify(matchClient).close(9001, CloseMatchRequest(Money(240000, "XAF", PeriodicityType.MONTHLY)))
+        verify(mandateClient, never()).close(any(), any())
+    }
+
+    @Test
+    fun `counterpart - a search candidate whose listing cannot be read shows the unavailable state`() {
+        doReturn(listOf(matchA)).whenever(matchClient).search(listOf(201L), listOf(MatchStatus.ACCEPTED))
+        doReturn(emptyList<ListingSummary>()).whenever(listingClient).searchByIds(listOf(3012L))
+        doThrow(ResourceAccessException("down")).whenever(listingClient).get(3012)
+
+        val result = mvc.perform(get("/mandates/201/close?step=counterpart")).andReturn()
+
+        assertEquals("mandate/close", result.modelAndView?.viewName)
+        assertTrue(view(result).candidatesUnavailable)
+        assertTrue(view(result).candidates.isEmpty())
     }
 
     @Test

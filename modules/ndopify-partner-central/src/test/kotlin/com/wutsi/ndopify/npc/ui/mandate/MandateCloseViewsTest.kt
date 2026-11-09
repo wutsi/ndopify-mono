@@ -9,6 +9,7 @@ import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.MANDATE
 import com.wutsi.ndopify.npc.ui.match.MatchFixtures
+import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.party.dto.Party
 import java.time.Instant
 import java.util.Date
@@ -47,6 +48,20 @@ class MandateCloseViewsTest {
             MatchFixtures.LOCATIONS,
             FORMATTER,
         )
+
+        assertEquals(9001L, view.matchId)
+        assertEquals("Appartement · 3 chambres", view.title)
+        assertEquals("annonce n° 3012", view.reference)
+        assertEquals("Bonapriso", view.neighbourhood)
+        assertEquals("240K\u00a0FCFA / mois", view.rent)
+        assertEquals(240000L, view.priceAmount)
+        assertEquals("Intéressé le 29 oct. 2026", view.interestLabel)
+    }
+
+    @Test
+    fun `a search's candidate - a full listing renders the same labels`() {
+        val listing = ListingViewsTest.LISTING.copy(id = 3012, rooms = 3, price = 240000)
+        val view = MandateCloseViews.candidate(listingMatch, listing, ProfileFixtures.LOCATIONS.associateBy { it.id }, FORMATTER)
 
         assertEquals(9001L, view.matchId)
         assertEquals("Appartement · 3 chambres", view.title)

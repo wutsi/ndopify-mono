@@ -7,6 +7,7 @@ import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
@@ -327,24 +328,51 @@ class MandateCloseController(
             }
         }
         return try {
-            val listings = dealCandidates.listings(mandate.id, listOf(MatchStatus.ACCEPTED))
-                .filter { it.listing != null }
-            val names = locations(listings.mapNotNull { it.listing })
-            Candidates(
-                listings.map { MandateCloseViews.candidate(it.match, it.listing!!, names, formatter) },
-                false,
-            )
+            val matches = dealCandidates.listings(mandate.id, listOf(MatchStatus.ACCEPTED))
+            // searchByIds returns PUBLISHED listings only: a listing closed meanwhile (RENTED/SOLD) is resolved by id,
+            // best effort, so the reverse-order close (listing side first) still offers the candidate.
+            val resolved = matches.map { candidate ->
+                candidate.match to (candidate.listing
+                    ?: lookup("listing ${candidate.match.listingId} of the match") {
+                        listingClient.get(candidate.match.listingId)
+                    })
+            }
+            val names = locations(resolved.flatMap { (_, listing) -> listingIds(listing) })
+            val views = resolved.mapNotNull { (match, listing) -> listing?.let { candidateView(match, it, names, formatter) } }
+            // The match read worked but no listing could be resolved: show "cannot be displayed", never an empty list.
+            if (views.isEmpty() && matches.isNotEmpty()) {
+                Candidates(emptyList(), true)
+            } else {
+                Candidates(views, false)
+            }
         } catch (ex: RestClientException) {
             LOGGER.warn("No candidates of mandate ${mandate.id}: ${ex.message}")
             Candidates(emptyList(), true)
         }
     }
 
-    /** The neighbourhood names of the search's candidates, best effort: without them the row shows the city's. */
-    private fun locations(listings: List<ListingSummary>): Map<Long, Location> =
-        lookup("location names of the candidates") {
-            sector.locations(listings.flatMap { listOfNotNull(it.cityId, it.neighborhoodId) })
-        } ?: emptyMap()
+    /** The city and neighbourhood ids of a resolved listing ([ListingSummary] or [Listing]), for the names lookup. */
+    private fun listingIds(listing: Any?): List<Long> = when (listing) {
+        is ListingSummary -> listOfNotNull(listing.cityId.takeIf { it > 0 }, listing.neighborhoodId)
+        is Listing -> listOfNotNull(listing.cityId.takeIf { it > 0 }, listing.neighborhoodId)
+        else -> emptyList()
+    }
+
+    /** A search's candidate from a resolved listing: a PUBLISHED [ListingSummary], or a full [Listing] read by id. */
+    private fun candidateView(
+        match: Match,
+        listing: Any,
+        names: Map<Long, Location>,
+        formatter: TenantFormatter,
+    ): CloseCandidateView = when (listing) {
+        is ListingSummary -> MandateCloseViews.candidate(match, listing, names, formatter)
+        is Listing -> MandateCloseViews.candidate(match, listing, names, formatter)
+        else -> error("unexpected listing type")
+    }
+
+    /** The location names of the search's candidates, best effort: without them the row shows the city's. */
+    private fun locations(ids: List<Long>): Map<Long, Location> =
+        lookup("location names of the candidates") { sector.locations(ids) } ?: emptyMap()
 
     /** The city and neighbourhood of the landlord's listing, for the recap's "Bien". */
     private fun locations(listing: Listing): Map<Long, Location> =
