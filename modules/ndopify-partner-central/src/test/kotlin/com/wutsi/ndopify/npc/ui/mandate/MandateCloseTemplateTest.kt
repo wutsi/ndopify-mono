@@ -281,6 +281,22 @@ class MandateCloseTemplateTest {
     }
 
     @Test
+    fun `confirm - a stored match whose candidates cannot be read`() {
+        doThrow(ResourceAccessException("down")).whenever(matchClient).search(listOf(201L), listOf(MatchStatus.ACCEPTED))
+        doReturn(MandateViewsTest.CUSTOMER).whenever(customerClient).get(555)
+
+        val page = render(
+            get("/mandates/201/close?step=confirm")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(matchId = 9001, priceAmount = 240000)),
+        )
+
+        assertEquals(
+            "À la confirmation : le mandat n° 201 est fermé, l'annonce est retirée du marché et le mandat du bailleur est fermé. Cette action est définitive.",
+            text(page.selectFirst("[data-recap-note]")),
+        )
+    }
+
+    @Test
     fun `counterpart error - the message and aria-invalid`() {
         withListings()
 

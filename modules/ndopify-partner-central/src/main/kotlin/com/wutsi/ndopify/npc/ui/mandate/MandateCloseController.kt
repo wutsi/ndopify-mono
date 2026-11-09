@@ -265,6 +265,7 @@ class MandateCloseController(
         val locations = read.listing?.let { locations(it) } ?: emptyMap()
         return MandateCloseViews.recap(
             mandate,
+            draft.matchId,
             selected,
             draft.outside,
             read.listing,

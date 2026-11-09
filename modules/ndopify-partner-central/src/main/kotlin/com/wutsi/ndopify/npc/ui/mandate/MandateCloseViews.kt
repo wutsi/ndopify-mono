@@ -158,13 +158,16 @@ object MandateCloseViews {
     )
 
     /**
-     * The confirm step's recap: the deal's two sides, the agreed rent and what closing does. [selected] is the chosen
-     * counterpart (null for an outside deal, or when the candidates can't be read); [listing] the landlord's own
-     * listing ([owner]); [customer] the search's customer. Both are secondary: a missing one leaves its line on a
-     * fallback, never a failure.
+     * The confirm step's recap: the deal's two sides, the agreed rent and what closing does. [matchId] is the stored
+     * counterpart match (null for an outside deal, or when the counterpart step was skipped): it drives the note,
+     * which states exactly what will be closed. [selected] is that match resolved for the labels (null when the
+     * candidates can't be read, even though [matchId] stays set); [listing] the landlord's own listing ([owner]);
+     * [customer] the search's customer. Both are secondary: a missing one leaves its line on a fallback, never a
+     * failure.
      */
     fun recap(
         mandate: Mandate,
+        matchId: Long?,
         selected: CloseCandidateView?,
         outside: Boolean,
         listing: Listing?,
@@ -178,7 +181,7 @@ object MandateCloseViews {
             property = propertyLabel(owner, selected, outside, listing, locations),
             client = clientLabel(owner, selected, outside, customer),
             rent = formatter.money(amount) + " / mois",
-            note = note(owner, selected, mandate.id),
+            note = note(owner, matchId != null, mandate.id),
         )
     }
 
@@ -222,13 +225,13 @@ object MandateCloseViews {
         party?.let { listOf(it.firstName, it.lastName).filter { name -> name.isNotBlank() }.joinToString(" ") }
             ?.ifBlank { null }
 
-    /** What closing does, keyed on whether a counterpart was chosen: both sides of the deal, or this mandate alone. */
-    private fun note(owner: Boolean, selected: CloseCandidateView?, id: Long): String = when {
-        owner && selected != null ->
+    /** What closing does, keyed on whether a counterpart match is stored: both sides of the deal, or this mandate alone. */
+    private fun note(owner: Boolean, hasMatch: Boolean, id: Long): String = when {
+        owner && hasMatch ->
             "À la confirmation : le mandat n° $id est fermé, l'annonce est retirée du marché et la recherche du client est fermée. Cette action est définitive."
         owner ->
             "À la confirmation : le mandat n° $id est fermé et l'annonce est retirée du marché. Cette action est définitive."
-        selected != null ->
+        hasMatch ->
             "À la confirmation : le mandat n° $id est fermé, l'annonce est retirée du marché et le mandat du bailleur est fermé. Cette action est définitive."
         else ->
             "À la confirmation : le mandat n° $id est fermé. Aucune annonce n'est retirée du marché. Cette action est définitive."

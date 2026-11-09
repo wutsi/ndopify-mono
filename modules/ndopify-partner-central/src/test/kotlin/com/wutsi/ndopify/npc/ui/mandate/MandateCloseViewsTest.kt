@@ -167,7 +167,8 @@ class MandateCloseViewsTest {
 
         val recap = MandateCloseViews.recap(
             MANDATE,
-            selected,
+            matchId = 9001,
+            selected = selected,
             outside = false,
             listing = null,
             customer = Party(firstName = "Ray", lastName = "Sponsible"),
@@ -191,6 +192,7 @@ class MandateCloseViewsTest {
 
         val recap = MandateCloseViews.recap(
             MANDATE.copy(mandateType = MandateType.LISTING),
+            matchId = null,
             selected = null,
             outside = true,
             listing = listing,
@@ -213,6 +215,7 @@ class MandateCloseViewsTest {
     fun `recap - a search without candidates closes only the mandate`() {
         val recap = MandateCloseViews.recap(
             MANDATE,
+            matchId = null,
             selected = null,
             outside = false,
             listing = null,
@@ -227,6 +230,28 @@ class MandateCloseViewsTest {
         assertEquals("240\u00a0000\u00a0FCFA / mois", recap.rent)
         assertEquals(
             "À la confirmation : le mandat n° 201 est fermé. Aucune annonce n'est retirée du marché. Cette action est définitive.",
+            recap.note,
+        )
+    }
+
+    @Test
+    fun `recap - a stored match whose candidates cannot be read still closes both sides`() {
+        val recap = MandateCloseViews.recap(
+            MANDATE,
+            matchId = 9001,
+            selected = null,
+            outside = false,
+            listing = null,
+            customer = Party(firstName = "Ray", lastName = "Sponsible"),
+            locations = emptyMap(),
+            amount = 240000,
+            formatter = FORMATTER,
+        )
+
+        assertEquals("Un bien", recap.property)
+        assertEquals("Ray Sponsible", recap.client)
+        assertEquals(
+            "À la confirmation : le mandat n° 201 est fermé, l'annonce est retirée du marché et le mandat du bailleur est fermé. Cette action est définitive.",
             recap.note,
         )
     }
