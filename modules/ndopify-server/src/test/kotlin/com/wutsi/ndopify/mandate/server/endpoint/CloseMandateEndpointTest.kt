@@ -60,6 +60,7 @@ class CloseMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         )
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
         assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
+        assertEquals("finalPrice", response.body?.error?.parameter?.name)
     }
 
     @Test
