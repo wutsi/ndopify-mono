@@ -75,6 +75,8 @@ class GetMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(LocalDate.of(2026, 11, 3), mandate.availableFrom)
         assertEquals(ContactPeriodType.entries[1], mandate.preferredContactPeriod)
         assertEquals("Close to the market", mandate.comments)
+        assertNull(mandate.dealMatchId)
+        assertFalse(mandate.dealOutside)
     }
 
     @Test

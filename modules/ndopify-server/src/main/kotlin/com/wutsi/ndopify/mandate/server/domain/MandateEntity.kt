@@ -104,6 +104,8 @@ data class MandateEntity(
 
     val age: Int? = null, // Age in days - age on the market from Approval to Closing.
     val finalPrice: Long? = null,
+    val dealMatchId: Long? = null,
+    val dealOutside: Boolean = false,
     val cancellationCode: MandateCancellationCode? = null,
     val cancellationReason: String? = null,
 
