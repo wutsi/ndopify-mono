@@ -21,13 +21,7 @@
     gap: var(--space-3);
 }
 
-/* Light blue, like a hint: the info tokens. */
-.listing-share {
-    background: var(--color-info-bg);
-    color: var(--color-info-fg);
-    border-color: var(--color-info-border);
-}
-
+/* The share button borrows the mandate page's WhatsApp button style (btn--secondary btn--compact). */
 .listing-share[hidden] {
     display: none;
 }
