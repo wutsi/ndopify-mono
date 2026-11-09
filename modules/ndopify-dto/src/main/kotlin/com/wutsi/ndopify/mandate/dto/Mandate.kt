@@ -67,6 +67,8 @@ data class Mandate(
 
     val age: Int? = null, // Age in days - age on the market from Approval to Closing.
     val finalPrice: Long? = null,
+    val dealMatchId: Long? = null, // The ACCEPTED match this mandate was closed on, when a deal was recorded
+    val dealOutside: Boolean = false, // Closed with no match (a property/client outside the agent's parties)
     val cancellationCode: MandateCancellationCode? = null,
     val cancellationReason: String? = null,
 
