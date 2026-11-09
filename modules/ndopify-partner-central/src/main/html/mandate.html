@@ -18,7 +18,7 @@
     <link rel="stylesheet" href="assets/css/home.css">
     <link rel="stylesheet" href="assets/css/listing.css">
     <link rel="stylesheet" href="assets/css/visit.css">
-    <script src="assets/js/partner-central.js" defer></script>
+    <script src="assets/js/partner-central.js?v=20261109b" defer></script>
     <script src="assets/js/visit.js" defer></script>
 </head>
 <!--
@@ -33,8 +33,14 @@
         Not available once approved. Edited while En approbation, the panel asks to send it again.
       - Créer l'annonce (Actif, a landlord's LISTING mandate only): creates its listing, to complete during the
         visit of the property (listing.html); the step's main button until the listing is sent.
-      - Fermer (Actif: lease signed, with the agreed rent) and Annuler (any step: no lease, with a reason, danger
-        style): two buttons at the bottom of the page, since they're rare and final.
+      - Fermer (Actif: lease signed) and Annuler (any step: no lease, with a reason, danger style): two buttons at
+        the bottom of the page, since they're rare and final. Fermer opens its own page (mandate/close.html), a
+        wizard: 1) the deal's other side, interested matches only (ACCEPTED) — for a landlord's listing, the client
+        it was rented to (its Propositions), for a search, the listing it ended on (its Biens correspondants) — or
+        "loué à un autre client" / "un bien hors de vos annonces"; 2) the agreed rent, pre-filled
+        with the property's, 3) a confirmation of what will change. Confirming closes the deal's second mandate too:
+        the client's search, or the landlord's LISTING mandate when the listing is the agent's own. The closed panel
+        says so.
       - Biens correspondants (Actif, a client's SEARCH mandate only): the listings of the agent's inventory that the
         matcher found for the search (GET /v1/matches?mandate-id=), best score first, as compact cards for phones:
         its title opens the listing's page (listing.html?id=) in a new tab, then one line of facts (score,
@@ -66,7 +72,9 @@
         outcomes line counts the refused clients, so the page has no separate Visites section.
     PROTOTYPE: ?id=201, 202, 203 or 204 (an active search with matches; 201 gets its own once signed), or 101, 102 and 103 once accepted on index.html; any other mandate shows the
     locked view. The statuses are kept in the session (KEYS.mandates), and "Simuler la signature" stands for the
-    client signing the contract.
+    client signing the contract. The closing wizard has its own page: mandate/close.html?id=203&amp;listing=published
+    (a landlord's published listing and its clients), or ?id=204 (a search and its interested listings — match 9008
+    is listing 501, so closing on it also closes mandate 203).
 -->
 <body data-page="mandate">
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -258,6 +266,8 @@
                             <p class="alert__title">Bail signé</p>
                             <p>Mandat fermé le <span data-closed-at></span>, au loyer de
                                 <strong data-final-price></strong>, <span data-age></span> après son approbation.</p>
+                            <!-- What the closing recorded: the client and the withdrawn listing, both optional. -->
+                            <p hidden data-closed-deal></p>
                         </div>
                     </div>
 
@@ -407,35 +417,30 @@
 
                 <!--
                     The mandate's end, on every step but Fermé / Annulé, at the bottom of the page since it's rare and
-                    final. Fermer (lease signed, with the agreed rent: POST /v1/mandates/{id}/close) only once approved,
-                    the server refusing it before (409 MANDATE_NOT_APPROVED). Annuler (no lease, with a reason: POST
-                    /v1/mandates/{id}/cancel) on any step, in the danger style. Each button opens the form in its mode.
+                    final. Fermer (lease signed) only once approved, the server refusing it before (409
+                    MANDATE_NOT_APPROVED); Annuler (no lease, with a reason) on any step, in the danger style.
+
+                    Fermer has its own page (`mandate/close.html`, /mandates/{id}/close), a wizard in three steps:
+                    1) the client, for a landlord's published listing (its Propositions; "loué à un autre client" is
+                    always offered), 2) the agreed rent, pre-filled with the mandate's, 3) a confirmation of what will
+                    change. Confirming closes the mandate, takes its listing off the market (RENTED, SOLD for a sale),
+                    and closes the selected client's search. Annuler (no lease) has no wizard: it stays here, one form
+                    with its reason.
                 -->
                 <section class="home-section mandate-close" aria-label="Fin du mandat" hidden data-close>
                     <div class="mandate-panel__actions mandate-close__buttons" data-close-buttons>
-                        <button type="button" class="btn btn--outline" aria-expanded="false" aria-controls="close-form"
-                                data-close-open="close">Fermer le mandat</button>
-                        <button type="button" class="btn btn--danger" aria-expanded="false" aria-controls="close-form"
+                        <a class="btn btn--outline" href="mandate/close.html" data-close-link>Fermer le mandat</a>
+                        <button type="button" class="btn btn--danger" aria-expanded="false" aria-controls="cancel-form"
                                 data-close-open="cancel">Annuler le mandat</button>
                     </div>
 
-                    <form id="close-form" class="form mandate-close__form" novalidate hidden data-close-form>
-                        <h2 class="mandate-panel__title" data-close-title></h2>
-                        <p data-for-mode="close">Le bail est signé&nbsp;? Indiquez le loyer convenu pour fermer le
-                            mandat.</p>
-                        <p data-for-mode="cancel">Le mandat s'arrête sans bail. Cette action est définitive.</p>
+                    <!-- Annuler: no wizard, one form with its reason (POST /v1/mandates/{id}/cancel). -->
+                    <form id="cancel-form" class="form mandate-close__form" method="post" novalidate hidden
+                          data-close-form="cancel">
+                        <h2 class="mandate-panel__title">Annuler le mandat</h2>
+                        <p>Le mandat s'arrête sans bail. Cette action est définitive.</p>
 
-                        <div class="field" data-for-mode="close">
-                            <label class="field__label" for="finalPrice">Loyer convenu</label>
-                            <div class="input-unit">
-                                <input class="input" id="finalPrice" name="finalPrice" type="text" inputmode="numeric"
-                                       autocomplete="off" aria-describedby="finalPrice-error">
-                                <span aria-hidden="true" class="input-unit__suffix">FCFA / mois</span>
-                            </div>
-                            <p class="field__error" id="finalPrice-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
-                        </div>
-
-                        <fieldset class="choices" aria-describedby="cancellationCode-error" data-for-mode="cancel">
+                        <fieldset class="choices" aria-describedby="cancellationCode-error">
                             <legend class="choices__legend">Pour quelle raison&nbsp;?</legend>
                             <div class="choices__grid">
                                 <label class="choice"><input name="cancellationCode" type="radio" value="FOUND_INDEPENDENTLY">
@@ -454,15 +459,15 @@
                             <p class="field__error" id="cancellationCode-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
                         </fieldset>
 
-                        <div class="field" data-for-mode="cancel">
+                        <div class="field">
                             <label class="field__label" for="cancellationReason">Précisions <span class="field__optional">(facultatif)</span></label>
                             <textarea class="input input--textarea" id="cancellationReason" name="cancellationReason"
                                       rows="3" maxlength="500"></textarea>
                         </div>
 
                         <div class="mandate-panel__actions">
-                            <button type="submit" class="btn" data-close-submit></button>
-                            <button type="button" class="btn btn--outline" data-close-back>Retour</button>
+                            <button type="submit" class="btn btn--danger" data-cancel-submit>Confirmer l'annulation</button>
+                            <button type="button" class="btn btn--outline" data-cancel-back>Retour</button>
                         </div>
                     </form>
                 </section>

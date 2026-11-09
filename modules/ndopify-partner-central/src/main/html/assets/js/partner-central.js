@@ -39,7 +39,9 @@
         // The agent's decisions on the matches of its search mandates, by mandate then match (see matchStatesOf).
         matches: "npc.matches",
         // The visits' changes made on visit.html, by id (see visit.js)
-        visits: "npc.visits"
+        visits: "npc.visits",
+        // The draft of each mandate being closed on mandate/close.html, by mandate id (see initMandateClose).
+        close: "npc.mandate.close"
     };
 
     /* ---------- Storage (fails soft: private mode, quota) ---------- */
@@ -1657,6 +1659,16 @@
                     [true, "3 chambres, comme demandé"], [false, "1 équipement sur 3 : Citerne"],
                     [true, "Disponible avant la date d'emménagement"], [true, "Non meublé, comme demandé"]]
             },
+            // The landlord's listing of mandate 203 (see cardListingOf): liked despite its price, so that closing
+            // this search on it also closes the landlord's mandate, the deal's other side.
+            {
+                id: "9008", listingId: "501", propertyType: "APARTMENT", rooms: 3, neighbourhood: "Bonapriso",
+                price: 300000, availableIn: 0, score: 0.72,
+                initial: { status: "PROPOSED", sentAt: -2, answer: "ACCEPTED", answeredAt: -1 },
+                fit: [[true, "Dans le secteur recherché"], [false, "20 % au-dessus du budget"],
+                    [true, "3 chambres, comme demandé"], [true, "Les 3 équipements demandés"],
+                    [true, "Disponible dès maintenant"], [true, "Non meublé, comme demandé"]]
+            },
             // Sent 9 days ago, never answered: expired by the server after 7 days (MatchJobs.expire), to send again.
             {
                 id: "9007", listingId: "3010", propertyType: "APARTMENT", rooms: 3, neighbourhood: "Bonapriso",
@@ -2411,6 +2423,24 @@
                 var days = Math.max(0, Math.floor((state.closedAt - state.approvedAt) / DAY_MS));
                 fill("[data-final-price]", state.finalPrice.toLocaleString("fr-FR") + " FCFA / mois");
                 fill("[data-age]", days + (days > 1 ? " jours" : " jour"));
+                // What the closing recorded: the client (a landlord's listing) and the withdrawn listing.
+                var deal = $("[data-closed-deal]");
+                var parts = [];
+                if (state.closedClientName) {
+                    parts.push("Client : " + state.closedClientName +
+                        (state.closedClientMandate ? " (sa recherche est fermée)" : ""));
+                }
+                if (state.closedListingId) {
+                    // The landlord's page says it was taken off the market; the client's, which property it was
+                    parts.push(mandate.party === "bailleur"
+                        ? "Annonce n° " + state.closedListingId + " retirée du marché"
+                        : "Bien : annonce n° " + state.closedListingId);
+                }
+                if (state.closedByMandate) {
+                    parts.push("Fermé avec le mandat n° " + state.closedByMandate);
+                }
+                deal.textContent = parts.join(" · ");
+                deal.hidden = parts.length === 0;
             }
             if (state.status === "CANCELLED") {
                 fill("[data-cancellation-label]", CANCELLATION_LABELS[state.cancellationCode]);
@@ -2426,7 +2456,7 @@
 
             $("[data-close]").hidden = closed;
             // Before its approval a mandate can't be closed with a lease (409 MANDATE_NOT_APPROVED): only cancelled.
-            $('[data-close-open="close"]').hidden = state.status !== "APPROVED";
+            $("[data-close-link]").hidden = state.status !== "APPROVED";
         }
 
         // The listing of an approved LISTING mandate: "Créer l'annonce", then its status and a link to it.
@@ -2437,7 +2467,11 @@
         function renderListing() {
             var show = canList(id);
             listingBox.hidden = !show;
-            if (!show) return;
+            if (!show) {
+                // Closed or cancelled: its Propositions go with the listing
+                $("[data-listing-proposals]").hidden = true;
+                return;
+            }
             var listing = cardListingOf(id);
             var line = $("[data-listing-line]", listingBox);
             fillListingLine(line, id, listing, true);
@@ -2752,65 +2786,44 @@
             showFlash(p.The + " a signé le mandat : il est maintenant actif.");
         });
 
-        /* Fermer (close, lease signed) and Annuler (cancel): one form, in the mode of the button that opened it. */
-        var CLOSE_MODES = {
-            close: { title: "Fermer le mandat", submit: "Confirmer la fermeture", style: "btn--primary" },
-            cancel: { title: "Annuler le mandat", submit: "Confirmer l'annulation", style: "btn--danger" }
-        };
+        /* Fermer has its own page (mandate/close.html): a link, not a form here. Annuler stays, one form. */
         var closeBox = $("[data-close]");
         var buttons = $("[data-close-buttons]", closeBox);
-        var form = $("[data-close-form]", closeBox);
-        var submit = $("[data-close-submit]", form);
-        var price = $("#finalPrice", form);
-        var priceError = $("#finalPrice-error", form);
-        var codes = $all('[name="cancellationCode"]', form);
-        var codeError = $("#cancellationCode-error", form);
-        var mode = null;
+        var cancelForm = $('[data-close-form="cancel"]', closeBox);
+        var cancelSubmit = $("[data-cancel-submit]", cancelForm);
+        var cancelBack = $("[data-cancel-back]", cancelForm);
+        var codes = $all('[name="cancellationCode"]', cancelForm);
+        var codeError = $("#cancellationCode-error", cancelForm);
         var opener = null;
 
-        function clearErrors() {
-            setFieldError(price, priceError, null);
-            setFieldError(codes[0], codeError, null);
-        }
+        // The prototype's ?listing=published (a published listing without going through listing.html) goes along.
+        (function () {
+            var params = new URLSearchParams(window.location.search);
+            params.set("id", id);
+            $("[data-close-link]").href = "mandate/close.html?" + params.toString();
+        })();
 
-        function openForm(button) {
-            opener = button;
-            mode = button.getAttribute("data-close-open");
-            var m = CLOSE_MODES[mode];
-            $("[data-close-title]", form).textContent = m.title;
-            submit.textContent = m.submit;
-            submit.className = "btn " + m.style;
-            $all("[data-for-mode]", form).forEach(function (el) {
-                el.hidden = el.getAttribute("data-for-mode") !== mode;
-            });
-            buttons.hidden = true;
-            button.setAttribute("aria-expanded", "true");
-            form.hidden = false;
-            $("[data-for-mode]:not([hidden]) input", form).focus();
-        }
-
-        function closeForm(returnFocus) {
-            form.hidden = true;
-            form.reset();
-            clearErrors();
+        function closeEnd(returnFocus) {
+            cancelForm.hidden = true;
+            cancelForm.reset();
             buttons.hidden = false;
             if (opener) opener.setAttribute("aria-expanded", "false");
             if (returnFocus && opener) opener.focus();
-            mode = null;
         }
 
         $all("[data-close-open]", buttons).forEach(function (button) {
             button.addEventListener("click", function () {
-                openForm(button);
+                opener = button;
+                buttons.hidden = true;
+                button.setAttribute("aria-expanded", "true");
+                setFieldError(codes[0], codeError, null);
+                cancelForm.hidden = false;
+                codes[0].focus();
             });
         });
 
-        $("[data-close-back]", form).addEventListener("click", function () {
-            closeForm(true);
-        });
-
-        price.addEventListener("input", function () {
-            setFieldError(price, priceError, null);
+        cancelBack.addEventListener("click", function () {
+            closeEnd(true);
         });
 
         codes.forEach(function (radio) {
@@ -2819,42 +2832,30 @@
             });
         });
 
-        form.addEventListener("submit", function (event) {
+        cancelForm.addEventListener("submit", function (event) {
             event.preventDefault();
-            if (!isActive(submit)) return;
-            var cancel = mode === "cancel";
-            var changes = { status: cancel ? "CANCELLED" : "CLOSED", closedAt: Date.now() };
-
-            if (cancel) {
-                var code = $('[name="cancellationCode"]:checked', form);
-                if (!code) {
-                    setFieldError(codes[0], codeError, "Choisissez la raison de l'annulation.");
-                    codes[0].focus();
-                    return;
-                }
-                changes.cancellationCode = code.value;
-                changes.cancellationReason = $("#cancellationReason", form).value.trim();
-            } else {
-                var digits = price.value.replace(/[\s.]/g, "");
-                var amount = parseInt(digits, 10);
-                if (!/^\d+$/.test(digits) || !(amount > 0)) {
-                    setFieldError(price, priceError, "Indiquez le loyer convenu, en FCFA par mois.");
-                    price.focus();
-                    return;
-                }
-                changes.finalPrice = amount;
+            if (!isActive(cancelSubmit)) return;
+            var code = $('[name="cancellationCode"]:checked', cancelForm);
+            if (!code) {
+                setFieldError(codes[0], codeError, "Choisissez la raison de l'annulation.");
+                codes[0].focus();
+                return;
             }
 
-            // PROTOTYPE: simulates POST /v1/mandates/{id}/close (finalPrice) or /cancel (cancellationCode, reason).
-            setActive(submit, false);
-            submit.textContent = cancel ? "Annulation…" : "Fermeture…";
+            // PROTOTYPE: simulates POST /v1/mandates/{id}/cancel (cancellationCode, reason).
+            setActive(cancelSubmit, false);
+            cancelSubmit.textContent = "Annulation…";
             window.setTimeout(function () {
-                setActive(submit, true);
-                closeForm(false);
-                update(changes);
-                showFlash(cancel
-                    ? "Mandat annulé. Il ne figure plus dans vos mandats en cours."
-                    : "Mandat fermé : félicitations pour ce bail !");
+                setActive(cancelSubmit, true);
+                cancelSubmit.textContent = "Confirmer l'annulation";
+                closeEnd(false);
+                update({
+                    status: "CANCELLED",
+                    closedAt: Date.now(),
+                    cancellationCode: code.value,
+                    cancellationReason: $("#cancellationReason", cancelForm).value.trim()
+                });
+                showFlash("Mandat annulé. Il ne figure plus dans vos mandats en cours.");
             }, 600);
         });
 
@@ -2867,6 +2868,20 @@
                 ? "Mandat modifié. Renvoyez-le pour que " + p.the + " signe la nouvelle version."
                 : "Mandat modifié.");
             params.delete("saved");
+            window.history.replaceState(null, "", window.location.pathname + "?" + params.toString());
+        }
+
+        // Back from mandate/close.html: its wizard closed this mandate (and the deal's other mandate).
+        if (params.get("closed")) {
+            var closedState = stateOf(id);
+            var closedText = "Mandat fermé : félicitations pour ce bail !";
+            if (closedState.closedClientName && closedState.closedClientMandate) {
+                closedText += " La recherche de " + closedState.closedClientName + " est fermée aussi.";
+            } else if (closedState.closedByMandate) {
+                closedText += " Le mandat du bailleur n° " + closedState.closedByMandate + " est fermé aussi.";
+            }
+            showFlash(closedText);
+            params.delete("closed");
             window.history.replaceState(null, "", window.location.pathname + "?" + params.toString());
         }
     }
@@ -3984,6 +3999,467 @@
         });
     }
 
+    /* ---------- mandate/close.html — close a mandate (counterpart, rent, confirmation) ---------- */
+
+    function closeDrafts() {
+        try {
+            return JSON.parse(store.get(KEYS.close)) || {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function closeDraft(mandateId) {
+        return closeDrafts()[mandateId] || {};
+    }
+
+    function saveCloseDraft(mandateId, draft) {
+        var all = closeDrafts();
+        all[mandateId] = draft;
+        store.set(KEYS.close, JSON.stringify(all));
+    }
+
+    function clearCloseDraft(mandateId) {
+        var all = closeDrafts();
+        delete all[mandateId];
+        store.set(KEYS.close, JSON.stringify(all));
+    }
+
+    // Only a match the client answered interested is evidence of the deal (a visit request is an accepted match too).
+    function interestedMatch(m) {
+        var answer = answerOf(m);
+        return m.status === "ACCEPTED" || answer === "ACCEPTED" || answer === "VISIT";
+    }
+
+    // The clients a landlord's rental may have been made with: the interested ones among the listing's Propositions.
+    // Another agent's client can't be named nor its mandate closed.
+    function closeClients(mandateId) {
+        if (MANDATES[mandateId].party !== "bailleur") return [];
+        var listing = cardListingOf(mandateId);
+        if (!listing || listing.status !== "PUBLISHED") return [];
+        return listingProposalsOf(mandateId).filter(function (m) {
+            return !m.otherAgent && interestedMatch(m);
+        });
+    }
+
+    // The listings a search may have ended on: the interested matches only.
+    function closeListings(mandateId) {
+        if (MANDATES[mandateId].party === "bailleur") return [];
+        return matchesOf(mandateId).filter(interestedMatch);
+    }
+
+    // The client's interest, as the closing lists word it: "Intéressé le 29 oct. · visite le 5 nov.".
+    function interestLabel(m) {
+        if (!interestedMatch(m)) return "En attente de réponse";
+        var text = "Intéressé" + (m.answeredAt ? " le " + formatShortDate(m.answeredAt) : "");
+        if (answerOf(m) === "VISIT" && m.visit && m.visit.at) text += " · visite le " + formatShortDate(m.visit.at);
+        return text;
+    }
+
+    // One client, as a choice: "Sandrine Eboa / Intéressé le 29 oct. · visite le 5 nov.".
+    function closeClientOption(m, index) {
+        var label = document.createElement("label");
+        label.className = "choice";
+        var input = document.createElement("input");
+        input.type = "radio";
+        input.name = "closeCounterpart";
+        input.value = m.mandateId ? String(m.mandateId) : "client-" + index;
+        label.appendChild(input);
+
+        var text = document.createElement("span");
+        text.textContent = m.client;
+        var meta = document.createElement("span");
+        meta.className = "close-client__meta";
+        meta.textContent = interestLabel(m);
+        text.appendChild(meta);
+        label.appendChild(text);
+        return label;
+    }
+
+    // One listing, as a choice: "Appartement · 3 chambres, Bonapriso — annonce n° 3012 / 240K FCFA / mois · Intéressé…".
+    function closeListingOption(m) {
+        var label = document.createElement("label");
+        label.className = "choice";
+        var input = document.createElement("input");
+        input.type = "radio";
+        input.name = "closeCounterpart";
+        input.value = String(m.listingId);
+        label.appendChild(input);
+
+        var text = document.createElement("span");
+        text.textContent = matchTitle(m) + ", " + m.neighbourhood + " — annonce n° " + m.listingId;
+        var meta = document.createElement("span");
+        meta.className = "close-client__meta";
+        meta.textContent = formatRent(m.price) + " · " + interestLabel(m);
+        text.appendChild(meta);
+        label.appendChild(text);
+        return label;
+    }
+
+    // A client whose search the prototype knows (204): its mandate is closed with this one.
+    function ownSearchOf(client) {
+        return client && client.mandateId && MANDATES[client.mandateId] && ownsMandate(client.mandateId)
+            ? client.mandateId : null;
+    }
+
+    // The mandate of the listing, when the prototype models it: only 501 (mandate 203) has one; the other fixture
+    // listings of the matches don't. Served, every listing has its mandate: close it only when it's the agent's.
+    function listingMandateOf(listingId) {
+        if (String(listingId) === "501") return "203";
+        var all = listings();
+        var key = Object.keys(all).filter(function (k) {
+            return String(all[k].id) === String(listingId);
+        })[0];
+        return key ? all[key].mandateId : null;
+    }
+
+    function listingById(listingId) {
+        var all = listings();
+        var key = Object.keys(all).filter(function (k) {
+            return String(all[k].id) === String(listingId);
+        })[0];
+        return key ? all[key] : null;
+    }
+
+    // "Appartement · 3 chambres, Bonapriso · annonce n° 501", without the listing when there's none.
+    function closeDealLabel(mandateId) {
+        var f = fieldsOf(mandateId);
+        var rooms = countOf(f.rooms);
+        var label = (PROPERTY_TYPE_LABELS[f.propertyType] || "Bien") +
+            (rooms ? " · " + plural(rooms, "chambre", "chambres") : "");
+        if (f.neighbourhoods[0]) label += ", " + f.neighbourhoods[0];
+        var listing = cardListingOf(mandateId);
+        return listing ? label + " · annonce n° " + listing.id : label;
+    }
+
+    function initMandateClose() {
+        var query = new URLSearchParams(window.location.search);
+        var id = query.get("id");
+        $all("[data-back-link]").forEach(function (a) {
+            a.href = "../mandate.html?id=" + encodeURIComponent(id || "");
+        });
+
+        if (!ownsMandate(id)) {
+            $("[data-close-locked]").hidden = false;
+            return;
+        }
+        var initial = stateOf(id);
+        if (initial.status !== "APPROVED") {
+            $("[data-close-locked-title]").textContent = initial.status === "CLOSED" ||
+                initial.status === "CANCELLED"
+                ? "Ce mandat n'est plus actif" : "Ce mandat ne peut pas encore être fermé";
+            $("[data-close-locked-text]").textContent = initial.status === "CLOSED" ||
+                initial.status === "CANCELLED"
+                ? "Il ne figure plus dans vos mandats en cours." : "Un mandat se ferme une fois approuvé par le client.";
+            $("[data-close-locked]").hidden = false;
+            return;
+        }
+
+        var mandate = MANDATES[id];
+        var owner = mandate.party === "bailleur";
+        var form = $("[data-close-form]");
+        var next = $("[data-close-next]", form);
+        var back = $("[data-close-back]", form);
+        var stepsBox = $("[data-close-steps]", form);
+        var counterpartBox = $("[data-close-counterparts]", form);
+        var counterpartError = $("#counterpart-error", form);
+        var price = $("#finalPrice", form);
+        var priceError = $("#finalPrice-error", form);
+
+        // Step 1 is the deal's other side: the client of a listing, the listing of a search.
+        var counterpartStep = owner ? "client" : "listing";
+        $('[data-close-step="counterpart"]', form).setAttribute("data-close-step", counterpartStep);
+        $("[data-counterpart-legend]", form).textContent = owner
+            ? "Avec quel client le bien a-t-il été loué ?"
+            : "Sur quel bien la recherche s'est-elle conclue ?";
+        $("[data-counterpart-hint]", form).textContent = owner
+            ? "Les clients qui ont répondu intéressés. Il peut aussi avoir été loué autrement."
+            : "Les biens qui ont intéressé le client. Il peut aussi avoir trouvé ailleurs.";
+        $all("[data-none]", form).forEach(function (el) {
+            el.hidden = el.getAttribute("data-none") !== (owner ? "client" : "listing");
+        });
+
+        var candidates = owner ? closeClients(id) : closeListings(id);
+        var steps = (candidates.length ? [counterpartStep] : []).concat(["price", "confirm"]);
+        var draft = closeDraft(id);
+        // The landlord's listing, only for a listing mandate (a search has none of its own).
+        var listing = owner ? cardListingOf(id) : null;
+        var STEP_LABELS = { client: "Client", listing: "Bien", price: "Loyer", confirm: "Confirmation" };
+
+        document.title = "Fermer le mandat " + id + " — Ndopify Partner Central";
+        $("[data-close-title]").textContent = titleOf(id);
+        $("[data-close-number]").textContent = id;
+
+        function chosenClient() {
+            if (draft.client === undefined || draft.client === "none") return null;
+            return candidates.filter(function (m) {
+                return String(m.mandateId) === draft.client;
+            })[0] || null;
+        }
+
+        function chosenMatch() {
+            if (draft.listing === undefined || draft.listing === "none") return null;
+            return candidates.filter(function (m) {
+                return String(m.listingId) === draft.listing;
+            })[0] || null;
+        }
+
+        function counterpartChosen() {
+            if (owner) {
+                return draft.client === "none" || candidates.some(function (m) {
+                    return String(m.mandateId) === draft.client;
+                });
+            }
+            return draft.listing === "none" || candidates.some(function (m) {
+                return String(m.listingId) === draft.listing;
+            });
+        }
+
+        // The steps are answered in order: a step beyond the first missing one isn't shown (a server redirect).
+        function stepComplete(name) {
+            if (name === counterpartStep) return counterpartChosen();
+            if (name === "price") return typeof draft.price === "number" && draft.price > 0;
+            return true;
+        }
+
+        var firstIncomplete = steps.findIndex(function (name) {
+            return !stepComplete(name);
+        });
+        if (firstIncomplete === -1) firstIncomplete = steps.length - 1;
+        var requested = steps.indexOf(query.get("step"));
+        var step = requested === -1 ? 0 : Math.min(requested, firstIncomplete);
+
+        // The prototype's ?listing=published survives the steps, like the served session keeps the draft.
+        function stepUrl(name) {
+            var params = new URLSearchParams(window.location.search);
+            params.set("id", id);
+            params.set("step", name);
+            return "close.html?" + params.toString();
+        }
+
+        function goTo(name) {
+            window.location.href = stepUrl(name);
+        }
+
+        function renderCounterparts() {
+            counterpartBox.textContent = "";
+            candidates.forEach(function (m, index) {
+                var label = owner ? closeClientOption(m, index) : closeListingOption(m);
+                var input = $("input", label);
+                input.checked = owner ? draft.client === input.value : draft.listing === input.value;
+                counterpartBox.appendChild(label);
+            });
+            var none = $('[data-none="' + (owner ? "client" : "listing") + '"] input', form);
+            none.checked = (owner ? draft.client : draft.listing) === "none";
+        }
+
+        // The rent step starts at the property's price; for an outside property, the search's budget.
+        function defaultPrice() {
+            if (owner) return fieldsOf(id).price;
+            var match = chosenMatch();
+            return match ? match.price : fieldsOf(id).price;
+        }
+
+        function fillRecap() {
+            var client = owner ? chosenClient() : null;
+            var searchId = owner ? ownSearchOf(client) : null;
+            var match = owner ? null : chosenMatch();
+            var counterpart = match ? listingMandateOf(match.listingId) : null;
+
+            $("[data-recap-listing]", form).textContent = owner
+                ? closeDealLabel(id)
+                : (match ? matchTitle(match) + ", " + match.neighbourhood + " · annonce n° " + match.listingId
+                    : "Un bien hors de vos annonces");
+            $("[data-recap-client]", form).textContent = owner
+                ? (client ? client.client + (searchId ? " — sa recherche sera aussi fermée" : "")
+                    : "Aucun client de vos recherches")
+                : mandate.contact.name;
+            $("[data-recap-price]", form).textContent =
+                draft.price.toLocaleString("fr-FR") + " FCFA / mois";
+
+            // What confirming does: this mandate, the listing, the deal's other mandate when the agent owns it.
+            var note;
+            if (owner) {
+                var actions = ["le mandat n° " + id + " est fermé"];
+                if (listing) actions.push("l'annonce n° " + listing.id + " est retirée du marché");
+                if (client && searchId) actions.push("la recherche de " + client.client + " est fermée");
+                note = "À la confirmation : " + actions.join(", ") + ".";
+            } else if (match) {
+                note = "À la confirmation : le mandat n° " + id + " est fermé, l'annonce n° " + match.listingId +
+                    " est retirée du marché" + (counterpart
+                        ? " et le mandat du bailleur n° " + counterpart + " est fermé"
+                        : " et le mandat du bailleur est fermé") + ".";
+            } else {
+                note = "À la confirmation : le mandat n° " + id + " est fermé. Le bien n'étant pas de vos annonces, " +
+                    "aucune annonce n'est retirée du marché.";
+            }
+            $("[data-recap-note]", form).textContent = note + " Cette action est définitive.";
+        }
+
+        function render() {
+            var current = steps[step];
+            $all("[data-close-step]", form).forEach(function (el) {
+                el.hidden = el.getAttribute("data-close-step") !== current;
+            });
+
+            stepsBox.textContent = "";
+            steps.forEach(function (name, i) {
+                var li = document.createElement("li");
+                li.className = "close-steps__item";
+                li.setAttribute("data-done", i < step ? "true" : "false");
+                if (i === step) li.setAttribute("aria-current", "step");
+                var mark = document.createElement("span");
+                mark.className = "close-steps__mark";
+                mark.textContent = i < step ? "✓" : String(i + 1);
+                li.appendChild(mark);
+                var label = document.createElement("span");
+                label.textContent = STEP_LABELS[name];
+                li.appendChild(label);
+                stepsBox.appendChild(li);
+            });
+
+            back.textContent = step === 0 ? "Retour au mandat" : "Précédent";
+            next.textContent = current === "confirm" ? "Confirmer la fermeture" : "Continuer";
+            if (current === counterpartStep) renderCounterparts();
+            if (current === "price") {
+                price.value = (typeof draft.price === "number" ? draft.price : defaultPrice())
+                    .toLocaleString("fr-FR");
+            }
+            if (current === "confirm") fillRecap();
+
+            var first = $("input", $('[data-close-step="' + current + '"]', form));
+            (first || next).focus();
+        }
+
+        // A client's search, closed with the landlord's mandate (one deal = one match).
+        function closeSearchMandate(mandateId, amount, listingId) {
+            if (!mandateId || !MANDATES[mandateId] || !ownsMandate(mandateId)) return;
+            var state = stateOf(mandateId);
+            if (state.status === "CLOSED" || state.status === "CANCELLED") return;
+            state.status = "CLOSED";
+            state.closedAt = Date.now();
+            state.finalPrice = amount;
+            state.closedByMandate = id;
+            if (listingId) state.closedListingId = listingId;
+            saveState(mandateId, state);
+        }
+
+        // The landlord's mandate, closed with the search: only when the listing is the agent's own.
+        function closeListingMandate(mandateId, amount, listingId, clientName, searchId) {
+            if (!mandateId || !MANDATES[mandateId] || !ownsMandate(mandateId)) return;
+            var state = stateOf(mandateId);
+            if (state.status === "CLOSED" || state.status === "CANCELLED") return;
+            state.status = "CLOSED";
+            state.closedAt = Date.now();
+            state.finalPrice = amount;
+            state.closedClientName = clientName;
+            state.closedClientMandate = searchId;
+            state.closedListingId = listingId;
+            saveState(mandateId, state);
+        }
+
+        function confirmClose() {
+            var client = owner ? chosenClient() : null;
+            var searchId = owner ? ownSearchOf(client) : null;
+            var match = owner ? null : chosenMatch();
+            var counterpart = match ? listingMandateOf(match.listingId) : null;
+
+            var changes = { status: "CLOSED", closedAt: Date.now(), finalPrice: draft.price };
+            if (owner) {
+                if (listing) changes.closedListingId = listing.id;
+                changes.closedClientName = client ? client.client : null;
+                changes.closedClientMandate = searchId;
+            } else if (match) {
+                changes.closedListingId = match.listingId;
+                if (counterpart) changes.closedByMandate = counterpart;
+            }
+
+            setActive(next, false);
+            next.textContent = "Fermeture…";
+            window.setTimeout(function () {
+                // PROTOTYPE: ListingService.onMandateClosed → RENTED (SOLD for a sale)
+                var saved = owner ? listingOf(id) : (match ? listingById(match.listingId) : null);
+                if (saved) {
+                    saved.status = "RENTED";
+                    saved.closedAt = Date.now();
+                    saveListing(saved);
+                }
+                if (owner) {
+                    closeSearchMandate(searchId, draft.price, listing ? listing.id : null);
+                } else if (match && counterpart) {
+                    closeListingMandate(counterpart, draft.price, match.listingId, mandate.contact.name, id);
+                }
+
+                var state = stateOf(id);
+                Object.keys(changes).forEach(function (key) {
+                    state[key] = changes[key];
+                });
+                saveState(id, state);
+                clearCloseDraft(id);
+                window.location.href = "../mandate.html?id=" + encodeURIComponent(id) + "&closed=1";
+            }, 600);
+        }
+
+        // No preselection: the agent answers, "none" (another client / an outside property) included.
+        form.addEventListener("change", function (event) {
+            if (event.target.name === "closeCounterpart") {
+                setFieldError($('[name="closeCounterpart"]', form), counterpartError, null);
+            }
+        });
+
+        price.addEventListener("input", function () {
+            setFieldError(price, priceError, null);
+        });
+
+        back.addEventListener("click", function () {
+            if (step === 0) {
+                clearCloseDraft(id);
+                window.location.href = "../mandate.html?id=" + encodeURIComponent(id);
+                return;
+            }
+            goTo(steps[step - 1]);
+        });
+
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            if (!isActive(next)) return;
+            var current = steps[step];
+
+            if (current === counterpartStep) {
+                var input = $('[name="closeCounterpart"]:checked', form);
+                if (!input) {
+                    setFieldError($('[name="closeCounterpart"]', form), counterpartError,
+                        owner ? "Choisissez le client, ou « loué à un autre client »."
+                            : "Choisissez le bien, ou « un bien hors de vos annonces ».");
+                    $('[name="closeCounterpart"]', form).focus();
+                    return;
+                }
+                if (owner) draft.client = input.value;
+                else draft.listing = input.value;
+                saveCloseDraft(id, draft);
+                goTo("price");
+                return;
+            }
+            if (current === "price") {
+                var digits = price.value.replace(/[\s.]/g, "");
+                var amount = parseInt(digits, 10);
+                if (!/^\d+$/.test(digits) || !(amount > 0)) {
+                    setFieldError(price, priceError, "Indiquez le loyer convenu, en FCFA par mois.");
+                    price.focus();
+                    return;
+                }
+                draft.price = amount;
+                saveCloseDraft(id, draft);
+                goTo("confirm");
+                return;
+            }
+            confirmClose();
+        });
+
+        render();
+        $("[data-close-page]").hidden = false;
+    }
+
     // For the pages' own scripts (visit.js): the helpers they share with this file.
     window.NPC = {
         store: store,
@@ -4003,6 +4479,7 @@
         "agent-home": initAgentHome,
         mandate: initMandate,
         "mandate-edit": initMandateEdit,
+        "mandate-close": initMandateClose,
         listing: initListing,
         "listing-section": initListingSection
     };

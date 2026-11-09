@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Fermer le mandat — Ndopify Partner Central</title>
+    <meta name="description" content="Fermer un mandat : le client, le loyer convenu, puis la confirmation.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="../assets/images/icon.png">
+    <link rel="apple-touch-icon" href="../assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="../assets/css/partner-central.css">
+    <link rel="stylesheet" href="../assets/css/rejoindre.css">
+    <link rel="stylesheet" href="../assets/css/find-property.css">
+    <link rel="stylesheet" href="../assets/css/home.css">
+    <script src="../assets/js/partner-central.js?v=20261109b" defer></script>
+</head>
+<!--
+    Closing a mandate (source doc: "Fermer: une fois le bail signé"), its own page rather than a form at the bottom of
+    mandate.html, reached from the mandate page's "Fermer le mandat" while the mandate is Actif (APPROVED). Three
+    steps, one at a time, each shown by ?step= (GET /mandates/{id}/close?step=):
+
+      1. counterpart — the deal's other side, interested matches only (ACCEPTED, a visit included): for a landlord's
+         published listing, the client it was rented to, from its Propositions (never another agent's client), or
+         "loué à un autre client"; for a search, the listing it ended on, from its Biens correspondants, or "un bien
+         hors de vos annonces". POST .../close/client (or .../close/listing) keeps the answer in the session.
+      2. price — the agreed rent, pre-filled with the property's rent (the search's budget for an outside property).
+         POST .../close/price.
+      3. confirm — what will change. One deal = one match, so one action ends both mandates: the selected client's
+         search for a listing, and — only when that listing is the agent's own — the landlord's LISTING mandate, with
+         the listing off the market (RENTED, SOLD for a sale). Another agent's listing is left to that agent. POST
+         .../close/confirm is the final action, then back to the mandate page with its "closed" outcome.
+
+    The page never trusts the URL: a step is only shown once the previous ones are answered; otherwise it redirects
+    to the first missing one. Back on step 1 returns to the mandate page; Précédent keeps the answers. Annuler (no
+    lease) isn't part of this page: it stays on the mandate page with its reason.
+
+    PROTOTYPE: ?id=203&listing=published&step=client|price|confirm shows a landlord's published listing and its
+    clients; ?id=204&step=listing|price|confirm shows a search and its interested listings (match 9008 is the
+    landlord's listing 501, so closing on it also closes mandate 203). The draft (counterpart, rent) is kept in the
+    session (KEYS.close), like the served wizard's session.
+-->
+<body data-page="mandate-close">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" href="../index.html">
+                <img src="../assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <span aria-hidden="true" data-user-initials>NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li class="user-menu__email" data-user-email></li>
+                    <li><a class="user-menu__item" href="../profile/edit.html">Profil</a></li>
+                    <li><a class="user-menu__item" href="../login.html" data-logout>Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="back-link"><a href="../mandate.html" data-back-link>← Retour au mandat</a></p>
+
+            <!-- Locked: not the agent's mandate, or not (no longer) one that can be closed. -->
+            <div class="alert alert--warning" hidden data-close-locked>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <h1 class="alert__title" data-close-locked-title>Ce mandat n'est pas disponible</h1>
+                    <p data-close-locked-text>Un mandat se ferme une fois approuvé par le client.</p>
+                </div>
+            </div>
+
+            <div hidden data-close-page>
+                <div class="page-intro">
+                    <h1>Fermer le mandat</h1>
+                    <p class="mandate__meta"><span data-close-title></span> · mandat n° <span data-close-number></span></p>
+                </div>
+
+                <form class="form mandate-close__form" novalidate data-close-form>
+                    <!-- 1 Client (une annonce publiée) — 2 Loyer — 3 Confirmation: one step shown at a time. -->
+                    <ol class="close-steps" aria-label="Étapes de la fermeture" data-close-steps></ol>
+
+                    <!-- The counterpart: the client, for a landlord's listing; the listing, for a search. -->
+                    <fieldset class="choices close-step" hidden data-close-step="counterpart"
+                              aria-describedby="counterpart-error">
+                        <legend class="choices__legend" data-counterpart-legend>Avec quel client le bien a-t-il été
+                            loué&nbsp;?</legend>
+                        <p class="close-hint" data-counterpart-hint></p>
+                        <div class="choices__grid" data-close-counterparts></div>
+                        <!-- "None": rented to someone else, or a property outside the agent's listings. -->
+                        <label class="choice close-client-none" data-none="client">
+                            <input name="closeCounterpart" type="radio" value="none">
+                            <span>Loué à un autre client
+                                <span class="close-client__meta">Sans passer par une de vos recherches</span></span>
+                        </label>
+                        <label class="choice close-client-none" data-none="listing">
+                            <input name="closeCounterpart" type="radio" value="none">
+                            <span>Un bien hors de vos annonces
+                                <span class="close-client__meta">Trouvé ailleurs, ou par un autre agent</span></span>
+                        </label>
+                        <p class="field__error" id="counterpart-error" hidden>
+                            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                            <span data-error-text></span></p>
+                    </fieldset>
+
+                    <div class="field close-step" hidden data-close-step="price">
+                        <p class="close-hint">Le bail est signé&nbsp;? Confirmez le loyer convenu.</p>
+                        <label class="field__label" for="finalPrice">Loyer convenu</label>
+                        <div class="input-unit">
+                            <input class="input" id="finalPrice" name="finalPrice" type="text" inputmode="numeric"
+                                   autocomplete="off" aria-describedby="finalPrice-error">
+                            <span aria-hidden="true" class="input-unit__suffix">FCFA / mois</span>
+                        </div>
+                        <p class="field__error" id="finalPrice-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                    </div>
+
+                    <div class="close-step" hidden data-close-step="confirm">
+                        <p class="close-hint">Vérifiez avant de fermer&nbsp;:</p>
+                        <dl class="review close-recap">
+                            <div class="review__item">
+                                <dt class="review__term">Bien</dt>
+                                <dd class="review__value" data-recap-listing></dd>
+                            </div>
+                            <div class="review__item">
+                                <dt class="review__term">Client</dt>
+                                <dd class="review__value" data-recap-client></dd>
+                            </div>
+                            <div class="review__item">
+                                <dt class="review__term">Loyer convenu</dt>
+                                <dd class="review__value" data-recap-price></dd>
+                            </div>
+                        </dl>
+                        <p class="close-hint" data-recap-note></p>
+                    </div>
+
+                    <div class="form__actions">
+                        <button type="button" class="btn btn--outline" data-close-back>Précédent</button>
+                        <button type="submit" class="btn btn--primary" data-close-next>Continuer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
