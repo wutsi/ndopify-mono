@@ -204,7 +204,29 @@ class MandateCloseViewsTest {
         assertEquals("Un client hors de vos recherches", recap.client)
         assertEquals("150\u00a0000\u00a0FCFA / mois", recap.rent)
         assertEquals(
-            "À la confirmation : le mandat n° 201 est fermé. Cette action est définitive.",
+            "À la confirmation : le mandat n° 201 est fermé et l'annonce est retirée du marché. Cette action est définitive.",
+            recap.note,
+        )
+    }
+
+    @Test
+    fun `recap - a search without candidates closes only the mandate`() {
+        val recap = MandateCloseViews.recap(
+            MANDATE,
+            selected = null,
+            outside = false,
+            listing = null,
+            customer = Party(firstName = "Ray", lastName = "Sponsible"),
+            locations = emptyMap(),
+            amount = 240000,
+            formatter = FORMATTER,
+        )
+
+        assertEquals("Un bien", recap.property)
+        assertEquals("Ray Sponsible", recap.client)
+        assertEquals("240\u00a0000\u00a0FCFA / mois", recap.rent)
+        assertEquals(
+            "À la confirmation : le mandat n° 201 est fermé. Aucune annonce n'est retirée du marché. Cette action est définitive.",
             recap.note,
         )
     }

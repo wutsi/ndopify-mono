@@ -257,7 +257,25 @@ class MandateCloseTemplateTest {
         assertEquals("Ray Sponsible", text(page.selectFirst("[data-recap-client]")))
         assertEquals("240 000 FCFA / mois", text(page.selectFirst("[data-recap-rent]")))
         assertEquals(
-            "À la confirmation : le mandat n° 201 est fermé. Le bien n'étant pas de vos annonces, aucune annonce n'est retirée du marché. Cette action est définitive.",
+            "À la confirmation : le mandat n° 201 est fermé. Aucune annonce n'est retirée du marché. Cette action est définitive.",
+            text(page.selectFirst("[data-recap-note]")),
+        )
+    }
+
+    @Test
+    fun `confirm - no candidates closes only the search`() {
+        doReturn(emptyList<Match>()).whenever(matchClient).search(listOf(201L), listOf(MatchStatus.ACCEPTED))
+        doReturn(MandateViewsTest.CUSTOMER).whenever(customerClient).get(555)
+
+        val page = render(
+            get("/mandates/201/close?step=confirm")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(priceAmount = 240000)),
+        )
+
+        assertEquals("Un bien", text(page.selectFirst("[data-recap-property]")))
+        assertEquals("Ray Sponsible", text(page.selectFirst("[data-recap-client]")))
+        assertEquals(
+            "À la confirmation : le mandat n° 201 est fermé. Aucune annonce n'est retirée du marché. Cette action est définitive.",
             text(page.selectFirst("[data-recap-note]")),
         )
     }

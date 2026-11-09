@@ -178,7 +178,7 @@ object MandateCloseViews {
             property = propertyLabel(owner, selected, outside, listing, locations),
             client = clientLabel(owner, selected, outside, customer),
             rent = formatter.money(amount) + " / mois",
-            note = note(owner, outside, mandate.id),
+            note = note(owner, selected, mandate.id),
         )
     }
 
@@ -222,15 +222,15 @@ object MandateCloseViews {
         party?.let { listOf(it.firstName, it.lastName).filter { name -> name.isNotBlank() }.joinToString(" ") }
             ?.ifBlank { null }
 
-    /** What closing does: both sides of the deal on a match, the mandate alone on an outside closure. */
-    private fun note(owner: Boolean, outside: Boolean, id: Long): String = when {
-        owner && outside ->
-            "À la confirmation : le mandat n° $id est fermé. Cette action est définitive."
-        owner ->
+    /** What closing does, keyed on whether a counterpart was chosen: both sides of the deal, or this mandate alone. */
+    private fun note(owner: Boolean, selected: CloseCandidateView?, id: Long): String = when {
+        owner && selected != null ->
             "À la confirmation : le mandat n° $id est fermé, l'annonce est retirée du marché et la recherche du client est fermée. Cette action est définitive."
-        outside ->
-            "À la confirmation : le mandat n° $id est fermé. Le bien n'étant pas de vos annonces, aucune annonce n'est retirée du marché. Cette action est définitive."
-        else ->
+        owner ->
+            "À la confirmation : le mandat n° $id est fermé et l'annonce est retirée du marché. Cette action est définitive."
+        selected != null ->
             "À la confirmation : le mandat n° $id est fermé, l'annonce est retirée du marché et le mandat du bailleur est fermé. Cette action est définitive."
+        else ->
+            "À la confirmation : le mandat n° $id est fermé. Aucune annonce n'est retirée du marché. Cette action est définitive."
     }
 }
