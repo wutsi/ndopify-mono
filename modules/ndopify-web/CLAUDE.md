@@ -22,7 +22,9 @@ Package `com.wutsi.ndopify.web`:
 - `ui/listing/` — a listing's public page at its `Listing.url` (`/<city>/<neighborhood>/listing/<id>/<slug>`,
   `listing.html` from `annonce.html`): `ListingController` (another path to the same id → 301 to the url),
   `ListingPages` builds the `ListingPage` view (every text formatted, never `agentRemarks`); its body (head, gallery,
-  content sections) is `templates/fragments/listing-body.html`, shared with `match.html`. The "Demander une visite"
+  content sections) is `templates/fragments/listing-body.html`, shared with `match.html`. A SOLD or RENTED listing keeps
+  its public page, marked "Vendu"/"Loué": its price card and bottom bar show its last published listing price, never a
+  closing price, and its conditions are left out. The "Demander une visite"
   and "Poser une question" buttons are left out for now (the bottom bar on mobile only shows the price); their popup
   and drawer are still in the page, the prototype's: `listing.js` fakes their answers, no handler posts them yet.
   ndopify-server supports visits (request, schedule, check-in/out, feedback), but this page doesn't post one yet.

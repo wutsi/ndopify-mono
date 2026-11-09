@@ -26,6 +26,7 @@ import java.time.ZoneId
 import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -151,10 +152,10 @@ class ListingTemplateTest {
         assertEquals("Loué", doc.selectFirst(".listing__badges .badge")?.text())
         assertTrue(doc.selectFirst(".listing__badges .badge")!!.hasClass("badge--warning"))
         assertEquals("Ce bien a été loué le 12 oct. 2026.", doc.selectFirst("[data-closed-notice]")?.text())
-        assertTrue(doc.body().hasClass("listing-page--closed"))
-        assertTrue(doc.selectFirst(".listing__layout")!!.hasClass("listing__layout--closed"))
-        assertNull(doc.selectFirst(".price-card"))
-        assertNull(doc.selectFirst(".cta-bar"))
+        assertFalse(doc.body().hasClass("listing-page--closed"))
+        assertFalse(doc.selectFirst(".listing__layout")!!.hasClass("listing__layout--closed"))
+        assertEquals("175K FCFA / mois", doc.selectFirst(".price-card__price")?.text())
+        assertEquals("175K FCFA / mois", doc.selectFirst(".cta-bar__price")?.text())
         assertNull(doc.selectFirst(".terms-table"))
         assertNull(doc.selectFirst(".modal__price"))
     }
@@ -165,6 +166,7 @@ class ListingTemplateTest {
 
         assertEquals("Vendu", doc.selectFirst(".listing__badges .badge")?.text())
         assertEquals("Ce bien a été vendu.", doc.selectFirst("[data-closed-notice]")?.text())
+        assertEquals("175K FCFA / mois", doc.selectFirst(".price-card__price")?.text())
     }
 
     @Test
