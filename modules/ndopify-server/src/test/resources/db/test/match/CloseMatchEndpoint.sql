@@ -50,6 +50,14 @@ INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name) VALUES
     (201, 1, 'other.agent@gmail.com', 'Other', 'Agent');
 INSERT INTO T_AGENT(id, tenant_id, party_id, city_id) VALUES (21, 1, 201, 2370201);
 
+-- User 13, a member of the tenant but not an agent, for the access-denied test
+INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name) VALUES
+    (400, 1, 'jane.doe@gmail.com', 'Jane', 'Doe');
+INSERT INTO T_USER(id, email, deleted, created_at) VALUES
+    (13, 'jane.doe@gmail.com', false, '2024-06-10 00:00:00');
+INSERT INTO T_MEMBERSHIP(id, tenant_id, user_id, party_id, deleted) VALUES
+    (13, 1, 13, 400, false);
+
 -- 8: another agent's LISTING mandate, 80 its published listing
 INSERT INTO T_MANDATE(id, tenant_id, customer_id, agent_id, status, mandate_type, listing_type,
                       city_id, property_type, price, currency_code, created_at, modified_at, approved_at)
