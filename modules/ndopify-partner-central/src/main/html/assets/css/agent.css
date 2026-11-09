@@ -127,3 +127,10 @@
 [data-agent-bio] {
     overflow-wrap: anywhere;
 }
+
+/* The type and the city wrap on the narrowest phones: the separator would start a line. */
+@media (max-width: 360px) {
+    .agent-hero__dot {
+        display: none;
+    }
+}
