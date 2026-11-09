@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Profil de l'agent — Ndopify Partner Central</title>
+    <meta name="description" content="Profil d'un agent du réseau Ndopify.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="assets/images/icon.png">
+    <link rel="apple-touch-icon" href="assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="assets/css/partner-central.css?v=3">
+    <link rel="stylesheet" href="assets/css/agent.css?v=1">
+    <script src="assets/js/partner-central.js?v=2" defer></script>
+</head>
+<body data-page="agent">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" href="index.html">
+                <img src="assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <span aria-hidden="true" data-user-initials>NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li class="user-menu__email" data-user-email></li>
+                    <li><a class="user-menu__item" href="profile/edit.html">Profil</a></li>
+                    <li><a class="user-menu__item" href="login.html" data-logout>Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="agent-back"><a href="index.html" data-back-link>← Retour à l'espace agent</a></p>
+
+            <!-- Shown by agent.js for an unknown id. -->
+            <div class="alert alert--warning" hidden data-agent-missing>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <h1 class="alert__title">Agent introuvable</h1>
+                    <p>Ce profil n'existe pas ou n'est plus disponible.</p>
+                    <p><a href="index.html">Retour à l'espace agent</a></p>
+                </div>
+            </div>
+
+            <!--
+                Another agent's profile, opened from that agent's listing once co-brokerage ships. This prototype
+                shows one complete fixture; agent.js switches it for ?id= states. No rating and no experience yet.
+            -->
+            <article data-agent>
+                <header class="agent-hero">
+                    <div class="agent-hero__avatar" aria-hidden="true" data-agent-photo>
+                        <img hidden data-agent-photo-image alt="">
+                        <span class="agent-hero__initials" data-agent-initials>CM</span>
+                    </div>
+                    <div class="agent-hero__heading">
+                        <h1 class="agent-hero__name" data-agent-name>Clarisse Mbarga</h1>
+                        <span class="agent-badge" data-agent-verified>
+                            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            Vérifié
+                        </span>
+                    </div>
+                    <p class="agent-hero__meta">
+                        <span data-agent-type>Indépendant</span>
+                        <span data-agent-place> · <span data-agent-city>Douala</span></span>
+                    </p>
+                    <p class="agent-hero__since" data-agent-since>Membre depuis mars 2023</p>
+                    <a class="btn btn--primary agent-hero__contact" href="https://wa.me/237699123456" target="_blank"
+                       rel="noopener" data-agent-whatsapp>
+                        <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+                        Contacter sur WhatsApp
+                    </a>
+                </header>
+
+                <section class="section" aria-labelledby="sectors-title" data-agent-sectors>
+                    <h2 id="sectors-title">Ses secteurs</h2>
+                    <p class="agent-sectors">
+                        <span class="agent-sectors__city" data-agent-sectors-city>Douala</span>
+                        <span class="agent-sectors__chips" data-agent-neighborhoods>
+                            <span class="agent-sectors__chip">Bonapriso</span>
+                            <span class="agent-sectors__chip">Akwa</span>
+                            <span class="agent-sectors__chip">Bonanjo</span>
+                        </span>
+                    </p>
+                </section>
+
+                <section class="section" aria-labelledby="about-title" data-agent-about>
+                    <h2 id="about-title">À propos</h2>
+                    <p data-agent-bio>Démarcheur à Douala, je connais Bonapriso, Akwa et Bonanjo rue par rue.
+                        J'accompagne les familles et les jeunes actifs de la recherche à la signature du bail,
+                        avec des biens vérifiés et des visites organisées.</p>
+                </section>
+            </article>
+        </div>
+    </main>
+</body>
+</html>
