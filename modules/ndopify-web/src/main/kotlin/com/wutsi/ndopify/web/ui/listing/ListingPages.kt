@@ -99,8 +99,9 @@ object ListingPages {
         val city = locations.find { it.id == listing.cityId }?.name
         val neighborhood = listing.neighborhoodId?.let { id -> locations.find { it.id == id }?.name }
         val title = listing.title?.ifBlank { null } ?: fallbackTitle(listing, neighborhood ?: city)
-        val closedNotice = closedNotice(listing, formatter)
-        val closed = closedNotice != null
+        val closedBadge = closedBadge(listing, formatter)
+        val closed = closedBadge != null
+        val closedNotice = closedBadge?.let { "Ce bien a été ${it.replaceFirstChar(Char::lowercase)}." }
         val priceAmount = formatter.compactMoney(listing.price, listing.currencyCode)
         val pricePeriod = PERIODS[listing.pricePeriodicityType]
         val price = listOfNotNull(priceAmount, pricePeriod).joinToString(" ")
@@ -111,11 +112,7 @@ object ListingPages {
             title = title,
             metaDescription = closedNotice?.let { "$it $title" } ?: (listing.summary?.ifBlank { null } ?: title),
             canonicalUrl = canonicalUrl(tenant, listing),
-            typeBadge = when (listing.status) {
-                ListingStatus.SOLD -> "Vendu"
-                ListingStatus.RENTED -> "Loué"
-                else -> if (listing.listingType == ListingType.SALE) "À vendre" else "À louer"
-            },
+            typeBadge = closedBadge ?: if (listing.listingType == ListingType.SALE) "À vendre" else "À louer",
             place = listOfNotNull(neighborhood, city).joinToString(", "),
             landmark = listing.landmark?.ifBlank { null }?.let { "près de $it" },
             verifiedAt = listing.verifiedAt?.let { formatter.date(it) },
@@ -177,14 +174,15 @@ object ListingPages {
         )
     }
 
-    private fun closedNotice(listing: Listing, formatter: TenantFormatter): String? {
+    /** "Vendu le 12 oct. 2026" / "Loué" for a closed listing; null while it is on the market. */
+    private fun closedBadge(listing: Listing, formatter: TenantFormatter): String? {
         val label = when (listing.status) {
-            ListingStatus.SOLD -> "vendu"
-            ListingStatus.RENTED -> "loué"
+            ListingStatus.SOLD -> "Vendu"
+            ListingStatus.RENTED -> "Loué"
             else -> return null
         }
         val date = listing.closedAt?.let { formatter.date(it) }
-        return "Ce bien a été $label" + (date?.let { " le $it" } ?: "") + "."
+        return label + (date?.let { " le $it" } ?: "")
     }
 
     private fun fallbackTitle(listing: Listing, place: String?): String {

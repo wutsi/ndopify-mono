@@ -142,7 +142,7 @@ class ListingPagesTest {
             ),
         )
 
-        assertEquals("Vendu", page.typeBadge)
+        assertEquals("Vendu le 12 oct. 2026", page.typeBadge)
         assertEquals("Ce bien a été vendu le 12 oct. 2026.", page.closedNotice)
         assertEquals(
             "Ce bien a été vendu le 12 oct. 2026. Appartement meublé 2 chambres à Bonapriso",
@@ -161,7 +161,7 @@ class ListingPagesTest {
             ),
         )
 
-        assertEquals("Loué", page.typeBadge)
+        assertEquals("Loué le 12 oct. 2026", page.typeBadge)
         assertEquals("Ce bien a été loué le 12 oct. 2026.", page.closedNotice)
     }
 
@@ -169,6 +169,7 @@ class ListingPagesTest {
     fun `closed listing without a closing date`() {
         val page = page(listing.copy(status = ListingStatus.SOLD, closedAt = null))
 
+        assertEquals("Vendu", page.typeBadge)
         assertEquals("Ce bien a été vendu.", page.closedNotice)
     }
 

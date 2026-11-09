@@ -45,16 +45,6 @@
 }
 .listing__location { display: flex; align-items: center; gap: var(--space-md); margin: 0; }
 .listing__share[hidden] { display: none; }
-.listing__closed {
-  display: inline-flex;
-  margin: var(--space-lg) 0 0;
-  padding: var(--space-md) var(--space-lg);
-  border: 1px solid var(--color-border-warning);
-  border-radius: var(--radius-full);
-  background: var(--color-bg-warning);
-  color: var(--color-text-warning);
-  font-weight: 600;
-}
 
 .badge {
   display: inline-flex;

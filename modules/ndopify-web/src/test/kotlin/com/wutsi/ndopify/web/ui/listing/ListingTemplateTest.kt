@@ -149,9 +149,9 @@ class ListingTemplateTest {
             ),
         )
 
-        assertEquals("Loué", doc.selectFirst(".listing__badges .badge")?.text())
+        assertEquals("Loué le 12 oct. 2026", doc.selectFirst(".listing__badges .badge")?.text())
         assertTrue(doc.selectFirst(".listing__badges .badge")!!.hasClass("badge--warning"))
-        assertEquals("Ce bien a été loué le 12 oct. 2026.", doc.selectFirst("[data-closed-notice]")?.text())
+        assertNull(doc.selectFirst("[data-closed-notice]"))
         assertFalse(doc.body().hasClass("listing-page--closed"))
         assertFalse(doc.selectFirst(".listing__layout")!!.hasClass("listing__layout--closed"))
         assertEquals("175K FCFA / mois", doc.selectFirst(".price-card__price")?.text())
@@ -165,7 +165,7 @@ class ListingTemplateTest {
         val doc = render(page(listing = listing.copy(status = ListingStatus.SOLD, closedAt = null)))
 
         assertEquals("Vendu", doc.selectFirst(".listing__badges .badge")?.text())
-        assertEquals("Ce bien a été vendu.", doc.selectFirst("[data-closed-notice]")?.text())
+        assertNull(doc.selectFirst("[data-closed-notice]"))
         assertEquals("175K FCFA / mois", doc.selectFirst(".price-card__price")?.text())
     }
 

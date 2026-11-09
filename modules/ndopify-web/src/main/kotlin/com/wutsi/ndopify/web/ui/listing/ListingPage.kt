@@ -35,7 +35,7 @@ data class ListingPage(
     val countryCode: String,
     val visitDays: List<VisitDay>,
     val visitTimes: List<Pair<String, String>>,
-    /** "Vendu" / "Loué" notice for a closed listing; null while it is on the market. */
+    /** "Ce bien a été loué le …" for a closed listing's meta description (and the closed-state flag); null while on the market. */
     val closedNotice: String? = null,
 )
 

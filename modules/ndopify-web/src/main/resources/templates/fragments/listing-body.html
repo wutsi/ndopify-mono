@@ -29,9 +29,6 @@
         <svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>
         <th:block th:text="${listing.place}">Bonapriso, Douala</th:block><th:block th:if="${listing.landmark}" th:text="' · ' + ${listing.landmark}"> · près de la boulangerie Zepol</th:block>
     </p>
-    <p class="listing__closed" data-closed-notice th:if="${listing.closedNotice}" th:text="${listing.closedNotice}">
-        Ce bien a été vendu.
-    </p>
 </div>
 
 <!--/* Gallery: the hero and the 4 next photos; the viewer (#listing-photos) has them all. */-->
