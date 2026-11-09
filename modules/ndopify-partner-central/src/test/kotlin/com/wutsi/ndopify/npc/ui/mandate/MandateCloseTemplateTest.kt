@@ -144,6 +144,18 @@ class MandateCloseTemplateTest {
     private fun text(element: Element?): String? = element?.text()?.replace('\u00a0', ' ')
 
     @Test
+    fun `the page loads the closing script`() {
+        withClients()
+
+        val page = render("/mandates/201/close")
+
+        assertEquals(
+            listOf("/assets/js/partner-central.js", "/assets/js/mandate.js"),
+            page.select("script[src]").map { it.attr("src") },
+        )
+    }
+
+    @Test
     fun `listing mandate - the clients and the outside option`() {
         withClients()
 

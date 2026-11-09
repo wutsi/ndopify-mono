@@ -1,7 +1,8 @@
 /*
- * Ndopify Partner Central — the mandate page (templates/mandate.html) and its edit page (templates/mandate/edit.html).
- * Both work without this file: the forms post to MandateController, "Annuler" opens its form through ?end=cancel, and
- * the edit page shows every follow-up question. This script only enhances them:
+ * Ndopify Partner Central — the mandate page (templates/mandate.html), its edit page (templates/mandate/edit.html) and
+ * the closing wizard (templates/mandate/close.html). All work without this file: the forms post to their controllers,
+ * "Annuler" opens its form through ?end=cancel, the closing page parses "240 000" or "240000", and the edit page shows
+ * every follow-up question. This script only enhances them:
  * - mandate page: "Annuler le mandat" opens its form in place, "Retour" closes it; the form is checked before posting,
  *   with the server's messages; a button that posted is disabled ("Envoi…", "Annulation…"), so a double click doesn't
  *   post twice; the outcome of the last action gets the focus;
@@ -9,7 +10,8 @@
  *   JS), "Envoyer au client" and "Confirmer" can't post twice;
  * - edit page: the types of the chosen category only, the follow-up questions of the type only, each folded group's
  *   summary kept up to date, the neighbourhoods a slim-select over the mandate's city (GET /locations, at most 3),
- *   amounts formatted as typed.
+ *   amounts formatted as typed;
+ * - closing page: the agreed rent formatted as typed, the same way.
  * Ported from the prototype (src/main/html/assets/js/partner-central.js: initMandate, initMandateEdit).
  */
 (function () {
@@ -20,6 +22,8 @@
     var PAGE_SIZE = 50;
     var MAX_PAGES = 10;
     var SUMMARY_LENGTH = 40;
+    // FindPropertyRules.MAX_AMOUNT_DIGITS: the server's bound on an amount, applied as it is typed.
+    var MAX_AMOUNT_DIGITS = 12;
 
     // FindPropertyRules: the follow-up questions of each type.
     var WITHOUT_ROOMS = ["STUDIO", "ROOM"];
@@ -64,6 +68,32 @@
 
     function formatNumber(amount) {
         return amount.toLocaleString("fr-FR");
+    }
+
+    function digitsOf(value) {
+        return String(value || "").replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+    }
+
+    // "240000" → "240 000": the digits grouped by thousands, capped like the server's amount.
+    function formatAmount(value) {
+        var digits = digitsOf(value).slice(0, MAX_AMOUNT_DIGITS);
+        return digits ? formatNumber(Number(digits)) : "";
+    }
+
+    // Regroups an amount's digits by thousands while typing, keeping the caret after the same digit.
+    function bindAmount(input) {
+        if (!input) return;
+        input.value = formatAmount(input.value);
+        input.addEventListener("input", function () {
+            var caretDigits = digitsOf(input.value.slice(0, input.selectionStart)).length;
+            var formatted = formatAmount(input.value);
+            var pos = 0;
+            for (var seen = 0; pos < formatted.length && seen < caretDigits; pos++) {
+                if (/\d/.test(formatted.charAt(pos))) seen++;
+            }
+            input.value = formatted;
+            input.setSelectionRange(pos, pos);
+        });
     }
 
     // The tenant's currency ("FCFA"), from the page's body (data-currency).
@@ -452,9 +482,17 @@
         return { names: chosen };
     }
 
+    /* ---------- mandate/close.html ---------- */
+
+    // The agreed rent, the one field that takes an amount: "240000" and "240 000" both become "240 000".
+    function initMandateClose() {
+        bindAmount($("#finalPrice"));
+    }
+
     document.addEventListener("DOMContentLoaded", function () {
         var page = document.body.getAttribute("data-page");
         if (page === "mandate") initMandate();
         if (page === "mandate-edit") initMandateEdit();
+        if (page === "mandate-close") initMandateClose();
     });
 })();
