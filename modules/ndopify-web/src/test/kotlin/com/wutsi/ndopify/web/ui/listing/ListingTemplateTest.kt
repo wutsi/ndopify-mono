@@ -151,6 +151,8 @@ class ListingTemplateTest {
         assertEquals("Loué", doc.selectFirst(".listing__badges .badge")?.text())
         assertTrue(doc.selectFirst(".listing__badges .badge")!!.hasClass("badge--warning"))
         assertEquals("Ce bien a été loué le 12 oct. 2026.", doc.selectFirst("[data-closed-notice]")?.text())
+        assertTrue(doc.body().hasClass("listing-page--closed"))
+        assertTrue(doc.selectFirst(".listing__layout")!!.hasClass("listing__layout--closed"))
         assertNull(doc.selectFirst(".price-card"))
         assertNull(doc.selectFirst(".cta-bar"))
         assertNull(doc.selectFirst(".terms-table"))

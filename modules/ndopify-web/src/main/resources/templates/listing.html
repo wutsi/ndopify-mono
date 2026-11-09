@@ -43,7 +43,7 @@
   below are still the prototype's (listing.js fakes the confirmation and the replies, nothing on the server handles
   their forms) and no button opens them; only a #visit / #ask link would.
 */-->
-<body class="listing-page">
+<body class="listing-page" th:classappend="${page.closedNotice != null} ? ' listing-page--closed'">
 <a class="skip-link" href="#main">Aller au contenu principal</a>
 <header class="site-header">
     <a aria-label="Ndopify — accueil" class="site-header__logo" th:href="@{/}">
@@ -93,7 +93,7 @@
 
         <section th:replace="~{fragments/listing-body :: gallery(${page})}"></section>
 
-        <div class="listing__layout">
+        <div class="listing__layout" th:classappend="${page.closedNotice != null} ? ' listing__layout--closed'">
             <div class="listing__content">
 
                 <th:block th:replace="~{fragments/listing-body :: content(${page}, null)}"></th:block>

@@ -19,6 +19,8 @@
 @media (min-width: 1024px) {
   .listing-page { padding-bottom: 0; }
 }
+/* The bottom bar is left out of a closed listing */
+.listing-page--closed { padding-bottom: 0; }
 
 .listing { padding-block: var(--space-xl) var(--space-section); }
 
@@ -107,6 +109,10 @@
 .listing__layout { display: grid; gap: var(--space-section); }
 @media (min-width: 1024px) {
   .listing__layout { grid-template-columns: minmax(0, 1fr) 22rem; gap: 4rem; align-items: start; }
+}
+/* No price card to reserve a column for on a closed listing */
+@media (min-width: 1024px) {
+  .listing__layout--closed { grid-template-columns: minmax(0, 1fr); }
 }
 .listing__aside { display: none; }
 @media (min-width: 1024px) {
