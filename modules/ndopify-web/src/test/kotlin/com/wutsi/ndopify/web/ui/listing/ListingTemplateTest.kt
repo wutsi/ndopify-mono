@@ -3,6 +3,7 @@ package com.wutsi.ndopify.web.ui.listing
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
+import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.refdata.dto.Location
@@ -21,6 +22,7 @@ import org.thymeleaf.spring6.SpringTemplateEngine
 import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
 import java.time.LocalDate
+import java.time.ZoneId
 import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -133,6 +135,36 @@ class ListingTemplateTest {
         assertTrue(ld.contains("\"numberOfRooms\": 2"))
         assertTrue(ld.replace(" ", "").contains("\"floorSize\":{\"@type\":\"QuantitativeValue\",\"value\":95,\"unitCode\":\"MTK\"}"), ld)
         assertTrue(ld.contains("\"geo\": null"), ld)
+    }
+
+    @Test
+    fun `closed listing`() {
+        val doc = render(
+            page(
+                listing = listing.copy(
+                    status = ListingStatus.RENTED,
+                    closedAt = Date.from(LocalDate.of(2026, 10, 12).atStartOfDay(ZoneId.of("Africa/Douala")).toInstant()),
+                ),
+            ),
+        )
+
+        assertEquals("Loué", doc.selectFirst(".listing__badges .badge")?.text())
+        assertTrue(doc.selectFirst(".listing__badges .badge")!!.hasClass("badge--warning"))
+        assertEquals("Ce bien a été loué le 12 oct. 2026.", doc.selectFirst("[data-closed-notice]")?.text())
+        assertTrue(doc.body().hasClass("listing-page--closed"))
+        assertTrue(doc.selectFirst(".listing__layout")!!.hasClass("listing__layout--closed"))
+        assertNull(doc.selectFirst(".price-card"))
+        assertNull(doc.selectFirst(".cta-bar"))
+        assertNull(doc.selectFirst(".terms-table"))
+        assertNull(doc.selectFirst(".modal__price"))
+    }
+
+    @Test
+    fun `closed listing without a closing date`() {
+        val doc = render(page(listing = listing.copy(status = ListingStatus.SOLD, closedAt = null)))
+
+        assertEquals("Vendu", doc.selectFirst(".listing__badges .badge")?.text())
+        assertEquals("Ce bien a été vendu.", doc.selectFirst("[data-closed-notice]")?.text())
     }
 
     @Test

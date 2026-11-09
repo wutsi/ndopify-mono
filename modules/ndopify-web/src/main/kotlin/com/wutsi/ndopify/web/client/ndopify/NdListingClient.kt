@@ -11,8 +11,8 @@ import org.springframework.web.client.body
 
 /**
  * Client for the ndopify-server listing endpoints (`/v1/listings`). Listings are tenant-scoped (`X-Tenant-ID`, see
- * `RestConfiguration`). Without a token, ndopify-server only returns a PUBLISHED listing and its VERIFIED images: any
- * other is a 404 ([org.springframework.web.client.HttpClientErrorException.NotFound]).
+ * `RestConfiguration`). Without a token, ndopify-server only returns a PUBLISHED, SOLD or RENTED listing and its
+ * VERIFIED images: any other is a 404 ([org.springframework.web.client.HttpClientErrorException.NotFound]).
  */
 @Service
 class NdListingClient(

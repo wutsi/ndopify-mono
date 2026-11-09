@@ -2,7 +2,7 @@
 
 The public marketing site (port 8082, French UI): a Spring Boot + Thymeleaf app with no database, deployed to Heroku
 (`Procfile`, `ndopify-web-main.yml`). It reads from ndopify-server, without a token: `GET /v1/tenants` to find the
-tenant, and a PUBLISHED listing's `/v1/listings/{id}`, its `/images` and its `/v1/locations`; its calls to action link
+tenant, and a PUBLISHED, SOLD or RENTED listing's `/v1/listings/{id}`, its `/images` and its `/v1/locations`; its calls to action link
 to Partner Central's public wizards. Its infrastructure (`TenantContext`, `TenantFormatter`, the logging and
 `X-Tenant-ID` interceptors, `NdTenantClient`) comes from `ndopify-web-core` (package `com.wutsi.ndopify.web.core`),
 minus everything about sign-in, except one: a `public-portal` token (`?token=`, see `MatchController` and

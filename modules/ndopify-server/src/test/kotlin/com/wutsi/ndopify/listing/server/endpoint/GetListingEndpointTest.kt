@@ -11,6 +11,7 @@ import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.listing.dto.SearchListingImageResponse
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.http.HttpStatus
@@ -128,6 +129,36 @@ class GetListingEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals(ErrorCode.LISTING_NOT_FOUND, response.body?.error?.code)
+    }
+
+    @Test
+    fun `public - sold`() {
+        anonymousUser = true
+
+        val response = rest.getForEntity("/v1/listings/103", GetListingResponse::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(ListingStatus.SOLD, response.body!!.listing.status)
+    }
+
+    @Test
+    fun `public - rented`() {
+        anonymousUser = true
+
+        val response = rest.getForEntity("/v1/listings/104", GetListingResponse::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(ListingStatus.RENTED, response.body!!.listing.status)
+    }
+
+    @Test
+    fun `public - sold images, verified only`() {
+        anonymousUser = true
+
+        val response = rest.getForEntity("/v1/listings/103/images", SearchListingImageResponse::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(listOf(1030L), response.body!!.images.map { it.id })
     }
 
     @Test

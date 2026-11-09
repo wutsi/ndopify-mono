@@ -13,7 +13,8 @@
 <div class="listing__head" th:fragment="head(listing, share, state)">
     <div class="listing__topline">
         <p class="listing__badges">
-            <span class="badge badge--info" th:text="${listing.typeBadge}">À louer</span>
+            <span class="badge" th:classappend="${listing.closedNotice} ? 'badge--warning' : 'badge--info'"
+                  th:text="${listing.typeBadge}">À louer</span>
             <span class="badge badge--success" th:if="${listing.verifiedAt}">
                 <svg aria-hidden="true" class="icon"><use href="#i-shield"/></svg>Logement audité
             </span>
@@ -27,6 +28,9 @@
     <p class="listing__location">
         <svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>
         <th:block th:text="${listing.place}">Bonapriso, Douala</th:block><th:block th:if="${listing.landmark}" th:text="' · ' + ${listing.landmark}"> · près de la boulangerie Zepol</th:block>
+    </p>
+    <p class="listing__closed" data-closed-notice th:if="${listing.closedNotice}" th:text="${listing.closedNotice}">
+        Ce bien a été vendu.
     </p>
 </div>
 
@@ -83,7 +87,7 @@
         </div>
     </section>
 
-    <section aria-labelledby="terms-heading" class="listing__section">
+    <section aria-labelledby="terms-heading" class="listing__section" th:unless="${#lists.isEmpty(listing.terms)}">
         <h2 id="terms-heading">Conditions de location</h2>
         <table class="terms-table">
             <caption class="visually-hidden">Conditions de location du logement</caption>

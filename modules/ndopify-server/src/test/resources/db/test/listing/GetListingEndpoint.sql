@@ -31,7 +31,9 @@ INSERT INTO T_MANDATE(
     (1, 1, 10, 20, 'RESIDENTIAL', 'APPROVED', 'LISTING', 'RENTAL', 2370201, 150000, 'MONTHLY', 'XAF'),
     (2, 1, 10, 20, 'RESIDENTIAL', 'APPROVED', 'LISTING', 'RENTAL', 2370201, 300000, 'MONTHLY', 'XAF'),
     (3, 1, 10, 20, 'RESIDENTIAL', 'APPROVED', 'LISTING', 'SALE', 2220957, 80000000, 'NONE', 'XAF'),
-    (9, 2, 90, 90, 'RESIDENTIAL', 'APPROVED', 'LISTING', 'RENTAL', 2370201, 100000, 'MONTHLY', 'XAF');
+    (9, 2, 90, 90, 'RESIDENTIAL', 'APPROVED', 'LISTING', 'RENTAL', 2370201, 100000, 'MONTHLY', 'XAF'),
+    (4, 1, 10, 20, 'RESIDENTIAL', 'CLOSED', 'LISTING', 'SALE', 2220957, 80000000, 'NONE', 'XAF'),
+    (5, 1, 10, 20, 'RESIDENTIAL', 'CLOSED', 'LISTING', 'RENTAL', 2370201, 150000, 'MONTHLY', 'XAF');
 
 -- 100: published apartment in Bastos   101: draft house in Mvan   102: published, for sale in Douala   900: other tenant
 INSERT INTO T_LISTING(
@@ -85,6 +87,26 @@ INSERT INTO T_LISTING(
      false, false, false,
      100000, 'XAF', 'MONTHLY', null, null, null, null,
      null, null, null, null, null,
+     '2026-10-01 10:00:00', '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
+    (103, 1, 0, 4, 20, 'RESIDENTIAL', 'SALE', 'SOLD', 2220957, null,
+     null, null, null, null,
+     'APARTMENT', null, 3, 1, 1, 1, null, 120, null, null,
+     false, false, false, false,
+     false, false, false, false,
+     false, false, false,
+     false, false, false,
+     80000000, 'XAF', 'NONE', null, null, null, null,
+     '2027-03-01', null, null, null, null,
+     '2026-10-01 10:00:00', '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
+    (104, 1, 0, 5, 20, 'RESIDENTIAL', 'RENTAL', 'RENTED', 2370201, 111,
+     null, null, null, null,
+     'APARTMENT', null, 2, 1, 1, 1, null, 70, null, null,
+     false, false, false, false,
+     false, false, false, false,
+     false, false, false,
+     false, false, false,
+     150000, 'XAF', 'MONTHLY', null, null, null, null,
+     null, null, null, null, null,
      '2026-10-01 10:00:00', '2026-10-01 10:00:00', '2026-10-01 10:00:00');
 
 -- 100: location and terms verified, 5 photos (none rejected), so photos verified too   101: 5 photos, one rejected
@@ -102,4 +124,6 @@ INSERT INTO T_LISTING_IMAGE(id, tenant_id, listing_id, path, url, status) VALUES
     (1011, 1, 101, 'listings/101/images/2.png', 'https://localhost/listings/101/images/2.png', 'VERIFIED'),
     (1012, 1, 101, 'listings/101/images/3.png', 'https://localhost/listings/101/images/3.png', 'REJECTED'),
     (1013, 1, 101, 'listings/101/images/4.png', 'https://localhost/listings/101/images/4.png', 'VERIFIED'),
-    (1014, 1, 101, 'listings/101/images/5.png', 'https://localhost/listings/101/images/5.png', 'VERIFIED');
+    (1014, 1, 101, 'listings/101/images/5.png', 'https://localhost/listings/101/images/5.png', 'VERIFIED'),
+    (1030, 1, 103, 'listings/103/images/1.png', 'https://localhost/listings/103/images/1.png', 'VERIFIED'),
+    (1031, 1, 103, 'listings/103/images/2.png', 'https://localhost/listings/103/images/2.png', 'PENDING_VERIFICATION');

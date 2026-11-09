@@ -16,8 +16,8 @@ import java.time.Clock
 /**
  * A listing's public page, at its `url` (`/<city>/<neighborhood>/listing/<id>/<slug>`, see ndopify-server's
  * `ListingPublisherService`). Any other path to the same id (an old slug, a hand-typed link) is redirected there for
- * good (301), so the page has one address. ndopify-server only returns a PUBLISHED listing without a token: any other
- * is a 404 ([com.wutsi.ndopify.web.ui.layout.HttpClientErrorHandler]).
+ * good (301), so the page has one address. ndopify-server returns a PUBLISHED, SOLD or RENTED listing without a token:
+ * any other is a 404 ([com.wutsi.ndopify.web.ui.layout.HttpClientErrorHandler]).
  *
  * The "Demander une visite" and "Poser une question" calls to action are left out for now. Their popup and drawer,
  * still in the page, are the prototype's: `listing.js` fakes their answers, and nothing here handles their forms.
