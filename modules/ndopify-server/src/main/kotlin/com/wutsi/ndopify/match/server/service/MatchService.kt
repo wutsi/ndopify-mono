@@ -145,14 +145,6 @@ class MatchService(
         if (match.status != MatchStatus.ACCEPTED) {
             throw ConflictException(Error(ErrorCode.MATCH_NOT_ACCEPTED))
         }
-        if (request.finalPrice.amount < 1) {
-            throw BadRequestException(
-                Error(
-                    code = ErrorCode.HTTP_INVALID_PARAMETER,
-                    parameter = Parameter(name = "finalPrice", type = ParameterType.PARAMETER_TYPE_PAYLOAD),
-                ),
-            )
-        }
 
         val search = match.mandate
         val listingMandate = match.listing.mandate
@@ -161,6 +153,14 @@ class MatchService(
             listingMandate.status != MandateStatus.CANCELLED
         if (closeListing && match.listing.status != ListingStatus.PUBLISHED) {
             throw ConflictException(Error(ErrorCode.LISTING_NOT_PUBLISHED))
+        }
+        if (request.finalPrice.amount < 1) {
+            throw BadRequestException(
+                Error(
+                    code = ErrorCode.HTTP_INVALID_PARAMETER,
+                    parameter = Parameter(name = "finalPrice", type = ParameterType.PARAMETER_TYPE_PAYLOAD),
+                ),
+            )
         }
         return mandateService.closeDeal(
             searchMandateId = search.id!!,

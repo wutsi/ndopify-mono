@@ -1,6 +1,8 @@
 package com.wutsi.ndopify.match.server.endpoint
 
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.match.dto.CloseMatchRequest
@@ -54,5 +56,19 @@ class CloseMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         rest.postForEntity("/v1/matches/100/close", request, Any::class.java)
         assertEquals(MandateStatus.CLOSED, mandateDao.findById(1L).get().status)
         assertEquals(MandateStatus.CLOSED, mandateDao.findById(6L).get().status)
+    }
+
+    @Test
+    fun `the listing status is checked before the price`() {
+        // Match 103's listing 70 is only DRAFT, so the listing side would be closed: 409 LISTING_NOT_PUBLISHED,
+        // not the 400 of the invalid price, when both are wrong.
+        val response = rest.postForEntity(
+            "/v1/matches/103/close",
+            CloseMatchRequest(finalPrice = Money(amount = 0, currency = "XAF")),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.LISTING_NOT_PUBLISHED, response.body?.error?.code)
     }
 }
