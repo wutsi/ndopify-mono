@@ -125,6 +125,7 @@ class MandateTemplateTest {
                     locationClient,
                     tenantContext,
                     clock,
+                    MandateDealCandidates(matchClient, mandateClient, customerClient, listingClient),
                 ),
             )
             .setControllerAdvice(SignedInAdvice())

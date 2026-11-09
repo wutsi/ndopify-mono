@@ -118,6 +118,7 @@ class MandateControllerTest {
             locationClient,
             tenantContext,
             clock,
+            MandateDealCandidates(matchClient, mandateClient, customerClient, listingClient),
         )
         mvc = MockMvcBuilders.standaloneSetup(controller)
             .setControllerAdvice(HttpClientErrorHandler(mock()))

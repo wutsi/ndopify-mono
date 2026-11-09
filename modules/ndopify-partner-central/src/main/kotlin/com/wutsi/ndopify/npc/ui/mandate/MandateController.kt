@@ -108,6 +108,7 @@ class MandateController(
     locationClient: NdLocationClient,
     private val tenantContext: TenantContext,
     private val clock: Clock,
+    private val dealCandidates: MandateDealCandidates,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(MandateController::class.java)
@@ -623,9 +624,9 @@ class MandateController(
 
     /**
      * A landlord's PUBLISHED listing's clients: its *Propositions et visites*. Its sent matches, the agent's own
-     * mandates among theirs, and those mandates' customers, one search each. Null before it's published, or when the
-     * matches or mandates can't be had: no section, rather than another agent's client shown as the agent's or the
-     * other way round. Customers failing only leave the names out.
+     * mandates among theirs, and those mandates' customers, in one read ([MandateDealCandidates.clients]). Null before
+     * it's published, or when the matches or mandates can't be had: no section, rather than another agent's client
+     * shown as the agent's or the other way round. Customers failing only leave the names out.
      *
      * The visits are read by listing id (agent-scoped) and are secondary: failing, every proposal row still shows,
      * without its visit block, and the section says the visits are unavailable. A stale visit is ignored by
@@ -634,17 +635,11 @@ class MandateController(
     private fun listingClients(agent: Agent, listing: Listing): ListingClientsView? {
         if (listing.status != ListingStatus.PUBLISHED) return null
         val agentId = agent.id
-        val matches = lookup("proposals of listing ${listing.id}") {
-            matchClient.searchByListings(listOf(listing.id), MatchRules.SENT)
+        val candidates = lookup("proposals of listing ${listing.id}") {
+            dealCandidates.clients(listing.id, MatchRules.SENT, agentId)
         } ?: return null
-        val mandates = lookup("mandates of the proposals of listing ${listing.id}") {
-            mandateClient.searchByIds(matches.map { it.mandateId }.distinct(), agentId)
-        }?.filter { it.agentId == agentId } ?: return null
-        val customers = lookup("customers of the proposals of listing ${listing.id}") {
-            customerClient.search(mandates.map { it.customerId }.distinct())
-        } ?: emptyList()
         // Secondary: without them, every proposal row still shows.
-        val visits = if (matches.isEmpty()) {
+        val visits = if (candidates.isEmpty()) {
             emptyList()
         } else {
             lookup("visits of the proposals of listing ${listing.id}") {
@@ -653,9 +648,9 @@ class MandateController(
         }
         val tenant = tenantContext.getTenant()
         return ListingViews.clients(
-            matches,
-            mandates,
-            customers,
+            candidates.map { it.match },
+            candidates.mapNotNull { it.mandate },
+            candidates.mapNotNull { it.customer },
             visits,
             agentId,
             tenant,

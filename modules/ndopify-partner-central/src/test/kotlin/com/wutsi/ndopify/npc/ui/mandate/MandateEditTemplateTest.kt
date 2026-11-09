@@ -104,6 +104,7 @@ class MandateEditTemplateTest {
                     locationClient,
                     tenantContext,
                     clock,
+                    MandateDealCandidates(mock(), mandateClient, customerClient, listingClient),
                 ),
             )
             .setControllerAdvice(SignedInAdvice())
