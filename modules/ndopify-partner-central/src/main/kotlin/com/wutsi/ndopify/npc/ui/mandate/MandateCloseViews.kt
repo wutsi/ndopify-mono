@@ -22,6 +22,8 @@ data class CloseCandidateView(
     val neighbourhood: String?,
     /** "240K FCFA / mois" for a listing; null for a client. */
     val rent: String?,
+    /** The raw listing price amount, for the price step's pre-fill; null when the listing's price is unknown. */
+    val priceAmount: Long?,
     /** "Intéressé le 29 oct. 2026", null before the client answered (never shown). */
     val interestLabel: String?,
 )
@@ -113,6 +115,7 @@ object MandateCloseViews {
                 formatter,
                 compact = true,
             ),
+            priceAmount = listing.price.takeIf { it > 0 },
             interestLabel = interestLabel(match, formatter),
         )
     }
@@ -122,6 +125,7 @@ object MandateCloseViews {
         match: Match,
         mandate: MandateSummary,
         customer: CustomerSummary?,
+        listingPrice: Long?,
         formatter: TenantFormatter,
     ): CloseCandidateView = CloseCandidateView(
         matchId = match.id,
@@ -132,6 +136,7 @@ object MandateCloseViews {
         reference = null,
         neighbourhood = null,
         rent = null,
+        priceAmount = listingPrice,
         interestLabel = interestLabel(match, formatter),
     )
 }

@@ -53,6 +53,7 @@ class MandateCloseViewsTest {
         assertEquals("annonce n° 3012", view.reference)
         assertEquals("Bonapriso", view.neighbourhood)
         assertEquals("240K\u00a0FCFA / mois", view.rent)
+        assertEquals(240000L, view.priceAmount)
         assertEquals("Intéressé le 29 oct. 2026", view.interestLabel)
     }
 
@@ -62,6 +63,7 @@ class MandateCloseViewsTest {
             clientMatch,
             ListingViewsTest.SEARCHES[0],
             ListingViewsTest.CUSTOMERS[0],
+            listingPrice = 150000,
             FORMATTER,
         )
 
@@ -70,12 +72,13 @@ class MandateCloseViewsTest {
         assertNull(view.reference)
         assertNull(view.neighbourhood)
         assertNull(view.rent)
+        assertEquals(150000L, view.priceAmount)
         assertEquals("Intéressé le 29 oct. 2026", view.interestLabel)
     }
 
     @Test
     fun `a listing's candidate - without the customer's name, its mandate's number`() {
-        val view = MandateCloseViews.candidate(clientMatch, ListingViewsTest.SEARCHES[0], null, FORMATTER)
+        val view = MandateCloseViews.candidate(clientMatch, ListingViewsTest.SEARCHES[0], null, 150000, FORMATTER)
 
         assertEquals("Mandat n° 204", view.title)
         assertEquals("Intéressé le 29 oct. 2026", view.interestLabel)
@@ -153,7 +156,7 @@ class MandateCloseViewsTest {
     @Test
     fun `a customer with a blank name falls back to the mandate's number`() {
         val blank = CustomerSummary(id = 14, party = Party(firstName = "", lastName = " "))
-        val view = MandateCloseViews.candidate(clientMatch, ListingViewsTest.SEARCHES[0], blank, FORMATTER)
+        val view = MandateCloseViews.candidate(clientMatch, ListingViewsTest.SEARCHES[0], blank, null, FORMATTER)
 
         assertEquals("Mandat n° 204", view.title)
     }

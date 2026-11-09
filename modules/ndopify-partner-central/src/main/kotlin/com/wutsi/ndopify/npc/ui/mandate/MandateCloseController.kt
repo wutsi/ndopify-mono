@@ -128,7 +128,7 @@ class MandateCloseController(
         if (shown != requested) {
             return redirectStep(mandate.id, steps[shown].name)
         }
-        return render(mandate, read, steps, steps[shown].name, formFor(steps[shown].name, draft), emptyMap(), model)
+        return render(mandate, read, steps, steps[shown].name, formFor(steps[shown].name, draft, mandate, read), emptyMap(), model)
     }
 
     @PostMapping("/counterpart")
@@ -238,7 +238,7 @@ class MandateCloseController(
     }
 
     /** The current draft as the step's form, so the page re-fills the agent's answers. */
-    private fun formFor(step: String, draft: PendingMandateClose): Any =
+    private fun formFor(step: String, draft: PendingMandateClose, mandate: Mandate, read: Candidates): Any =
         if (step == PendingMandateClose.STEP_COUNTERPART) {
             CounterpartForm(
                 counterpart = when {
@@ -248,8 +248,20 @@ class MandateCloseController(
                 },
             )
         } else {
-            PriceForm(finalPrice = draft.priceAmount?.toString())
+            PriceForm(finalPrice = prefill(draft, mandate, read.candidates)?.toString())
         }
+
+    /**
+     * The price step's initial value: the agent's stored price first, else the selected match's listing price, else the
+     * mandate's own price (an outside deal, or a counterpart step that was skipped). Null when none is known.
+     */
+    private fun prefill(
+        draft: PendingMandateClose,
+        mandate: Mandate,
+        candidates: List<CloseCandidateView>,
+    ): Long? = draft.priceAmount
+        ?: draft.matchId?.let { id -> candidates.firstOrNull { it.matchId == id }?.priceAmount }
+        ?: mandate.price.amount.takeIf { it > 0 }
 
     private fun candidates(mandate: Mandate, agent: Agent, formatter: TenantFormatter): Candidates {
         if (mandate.mandateType == MandateType.LISTING) {
@@ -264,7 +276,11 @@ class MandateCloseController(
             return try {
                 val clients = dealCandidates.clients(listingId, listOf(MatchStatus.ACCEPTED), agent.id)
                     .filter { it.mandate != null }
-                Candidates(clients.map { MandateCloseViews.candidate(it.match, it.mandate!!, it.customer, formatter) }, false)
+                val price = listing?.price?.takeIf { it > 0 }
+                Candidates(
+                    clients.map { MandateCloseViews.candidate(it.match, it.mandate!!, it.customer, price, formatter) },
+                    false,
+                )
             } catch (ex: RestClientException) {
                 LOGGER.warn("No candidates of listing $listingId: ${ex.message}")
                 Candidates(emptyList(), true)

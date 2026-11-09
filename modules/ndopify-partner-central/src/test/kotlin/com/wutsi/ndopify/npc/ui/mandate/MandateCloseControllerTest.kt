@@ -6,8 +6,10 @@ import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.match.dto.CloseMatchRequest
 import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.dto.MatchStatus
@@ -18,6 +20,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
+import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.APPROVED
 import com.wutsi.ndopify.npc.ui.match.MatchFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
@@ -202,6 +205,60 @@ class MandateCloseControllerTest {
         assertEquals("redirect:/mandates/201/close?step=confirm", result.modelAndView?.viewName)
         assertEquals(true, draft(result)?.outside)
         assertEquals(240000L, draft(result)?.priceAmount)
+    }
+
+    @Test
+    fun `price - prefilled from the selected listing`() {
+        withCandidate()
+
+        val result = mvc.perform(
+            get("/mandates/201/close?step=price")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(matchId = 9001)),
+        ).andReturn()
+
+        assertEquals("240000", (model(result)["form"] as PriceForm).finalPrice)
+    }
+
+    @Test
+    fun `price - prefilled from the mandate when outside`() {
+        withCandidate()
+
+        val result = mvc.perform(
+            get("/mandates/201/close?step=price")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(outside = true)),
+        ).andReturn()
+
+        assertEquals("250000", (model(result)["form"] as PriceForm).finalPrice)
+    }
+
+    @Test
+    fun `price - a stored amount wins over the pre-fill`() {
+        withCandidate()
+
+        val result = mvc.perform(
+            get("/mandates/201/close?step=price")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(matchId = 9001, priceAmount = 123456)),
+        ).andReturn()
+
+        assertEquals("123456", (model(result)["form"] as PriceForm).finalPrice)
+    }
+
+    @Test
+    fun `price - prefilled for a listing mandate from its own listing`() {
+        doReturn(APPROVED.copy(mandateType = MandateType.LISTING)).whenever(mandateClient).get(201)
+        doReturn(501L).whenever(listingClient).findIdByMandate(201, AGENT.id)
+        doReturn(ListingViewsTest.LISTING.copy(status = ListingStatus.PUBLISHED)).whenever(listingClient).get(501)
+        doReturn(listOf(ListingViewsTest.PROPOSALS[1]))
+            .whenever(matchClient).searchByListings(listOf(501L), listOf(MatchStatus.ACCEPTED))
+        doReturn(ListingViewsTest.SEARCHES.take(1)).whenever(mandateClient).searchByIds(listOf(204L), AGENT.id)
+        doReturn(ListingViewsTest.CUSTOMERS.take(1)).whenever(customerClient).search(listOf(14L))
+
+        val result = mvc.perform(
+            get("/mandates/201/close?step=price")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(matchId = 9002)),
+        ).andReturn()
+
+        assertEquals("150000", (model(result)["form"] as PriceForm).finalPrice)
     }
 
     // Confirm step
