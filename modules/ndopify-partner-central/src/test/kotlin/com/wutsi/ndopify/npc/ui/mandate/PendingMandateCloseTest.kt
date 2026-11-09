@@ -47,4 +47,12 @@ class PendingMandateCloseTest {
         assertEquals(STEP_CONFIRM, draft.firstIncompleteStep(true))
         assertEquals(STEP_CONFIRM, draft.firstIncompleteStep(false))
     }
+
+    @Test
+    fun `a step without an answer, the confirm one included, is never complete`() {
+        val draft = PendingMandateClose(outside = true, priceAmount = 240000)
+
+        assertFalse(draft.isComplete(STEP_CONFIRM, true))
+        assertFalse(draft.isComplete("unknown", true))
+    }
 }

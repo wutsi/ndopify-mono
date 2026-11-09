@@ -147,6 +147,30 @@ class MandateCloseControllerTest {
     }
 
     @Test
+    fun `a step beyond the first incomplete one sends back to it`() {
+        withCandidate()
+
+        val result = mvc.perform(get("/mandates/201/close?step=confirm")).andReturn()
+
+        assertEquals("redirect:/mandates/201/close?step=counterpart", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun `counterpart - an unreadable client list shows the step, not an empty one`() {
+        doReturn(APPROVED.copy(mandateType = MandateType.LISTING)).whenever(mandateClient).get(201)
+        doReturn(501L).whenever(listingClient).findIdByMandate(201, AGENT.id)
+        doReturn(ListingViewsTest.LISTING.copy(status = ListingStatus.PUBLISHED)).whenever(listingClient).get(501)
+        doThrow(ResourceAccessException("down"))
+            .whenever(matchClient).searchByListings(listOf(501L), listOf(MatchStatus.ACCEPTED))
+
+        val result = mvc.perform(get("/mandates/201/close?step=counterpart")).andReturn()
+
+        assertEquals("mandate/close", result.modelAndView?.viewName)
+        assertEquals("counterpart", view(result).step)
+        assertTrue(view(result).candidatesUnavailable)
+    }
+
+    @Test
     fun `no candidates - the price step is shown first`() {
         doReturn(emptyList<Match>()).whenever(matchClient).search(listOf(201L), listOf(MatchStatus.ACCEPTED))
 

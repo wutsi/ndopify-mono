@@ -108,6 +108,22 @@ class MandateCloseViewsTest {
     }
 
     @Test
+    fun `a search's candidate - an unknown location shows a dash`() {
+        val listing = MatchFixtures.LISTING_A.copy(neighborhoodId = null, cityId = 999)
+        val view = MandateCloseViews.candidate(listingMatch, listing, MatchFixtures.LOCATIONS, FORMATTER)
+
+        assertEquals("—", view.neighbourhood)
+    }
+
+    @Test
+    fun `a full listing - an unknown location shows a dash`() {
+        val listing = ListingViewsTest.LISTING.copy(id = 3012, neighborhoodId = null, cityId = 999)
+        val view = MandateCloseViews.candidate(listingMatch, listing, emptyMap(), FORMATTER)
+
+        assertEquals("—", view.neighbourhood)
+    }
+
+    @Test
     fun `interest label without an answer`() {
         assertNull(MandateCloseViews.interestLabel(listingMatch.copy(answeredAt = null), FORMATTER))
     }
@@ -269,5 +285,43 @@ class MandateCloseViewsTest {
             "À la confirmation : le mandat n° 201 est fermé, l'annonce est retirée du marché et le mandat du bailleur est fermé. Cette action est définitive.",
             recap.note,
         )
+    }
+
+    @Test
+    fun `recap - a landlord's listing without a resolved client nor location falls back`() {
+        val listing = ListingViewsTest.COMPLETE.copy(neighborhoodId = null, cityId = 999)
+
+        val recap = MandateCloseViews.recap(
+            MANDATE.copy(mandateType = MandateType.LISTING),
+            matchId = 9002,
+            selected = null,
+            outside = false,
+            listing = listing,
+            customer = null,
+            locations = emptyMap(),
+            amount = 150000,
+            formatter = FORMATTER,
+        )
+
+        assertEquals("Appartement · 2 chambres, — — annonce n° 501", recap.property)
+        assertEquals("Un client", recap.client)
+    }
+
+    @Test
+    fun `a page view without a recap has none`() {
+        val view = MandateCloseView(
+            mandateId = 201,
+            title = "Locataire",
+            owner = false,
+            candidates = emptyList(),
+            candidatesUnavailable = false,
+            step = "price",
+            stepNumber = 1,
+            stepCount = 2,
+            steps = MandateCloseViews.steps(false, false),
+            currency = "FCFA",
+        )
+
+        assertNull(view.recap)
     }
 }
