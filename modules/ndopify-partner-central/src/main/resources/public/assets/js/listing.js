@@ -102,7 +102,36 @@
     }
 
     /* ---------- The checklist ---------- */
+    // The public page's URL: the system share sheet where there is one, the clipboard otherwise.
+    function initShare() {
+        var button = $("[data-listing-share]");
+        if (!button) return;
+        var url = button.getAttribute("data-share-url");
+        var title = button.getAttribute("data-share-title") || document.title;
+        var label = $("[data-share-label]", button);
+        var status = $("[data-share-status]");
+        var canShare = typeof navigator.share === "function";
+        var canCopy = !!(navigator.clipboard && navigator.clipboard.writeText);
+        if (!url || (!canShare && !canCopy)) return;
+        button.hidden = false;
+        button.addEventListener("click", function () {
+            if (canShare) {
+                navigator.share({ title: title, url: url }).catch(function () { /* dismissed */ });
+                return;
+            }
+            navigator.clipboard.writeText(url).then(function () {
+                label.textContent = "Lien copié";
+                if (status) status.textContent = "Lien copié.";
+                window.setTimeout(function () {
+                    label.textContent = "Partager";
+                    if (status) status.textContent = "";
+                }, 2000);
+            }).catch(function () { /* nothing */ });
+        });
+    }
+
     function initListing() {
+        initShare();
         focusFlash("[data-listing-flash]");
         var form = $("[data-listing-send-form]");
         if (!form) return;

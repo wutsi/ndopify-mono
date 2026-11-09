@@ -24,6 +24,19 @@
     background: var(--color-surface-alt);
 }
 
+/* The public page's link and its share button, once the listing is published or closed. */
+.listing-public {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+/* The share button borrows the mandate page's WhatsApp button style (btn--secondary btn--compact). */
+.listing-share[hidden] {
+    display: none;
+}
+
 /* ---------- The checklist (listing.html) ---------- */
 .checklist {
     margin: 0;
