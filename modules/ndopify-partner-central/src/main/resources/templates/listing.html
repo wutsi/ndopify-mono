@@ -107,8 +107,16 @@
                         <span th:text="${l.createdAt}">20 oct. 2026</span></p>
                     <img class="listing-hero" th:if="${l.heroImageUrl}" th:src="${l.heroImageUrl}" th:alt="${l.title}"
                          width="960" height="540" loading="lazy" data-listing-hero>
-                    <p th:if="${l.publicUrl}"><a th:href="${l.publicUrl}" target="_blank" rel="noopener"
-                                                 data-listing-public-url>Voir l'annonce en ligne</a></p>
+                    <p class="listing-public" th:if="${l.publicUrl}" data-listing-public>
+                        <a th:href="${l.publicUrl}" target="_blank" rel="noopener" data-listing-public-url>Voir l'annonce en ligne</a>
+                        <button type="button" class="btn btn--secondary btn--compact listing-share" data-listing-share hidden
+                                th:attr="data-share-url=${l.publicUrl},data-share-title=${l.title}">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 15V4m0 0L8 8m4-4 4 4M5 13v6h14v-6"/></svg>
+                            <span data-share-label>Partager</span>
+                        </button>
+                        <span class="visually-hidden" role="status" data-share-status></span>
+                    </p>
                     <p class="listing-stats" th:if="${l.stats}" data-listing-stats>
                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
                         <span><span class="visually-hidden">Activité de l'annonce : </span><span th:text="${l.stats}">2 personnes intéressées · 3 visites</span></span>

@@ -191,6 +191,7 @@ class ListingTemplateTest {
         assertEquals("Publiée le 22 oct. 2026", page.selectFirst("[data-listing-tag]")?.text())
         assertNull(page.selectFirst("[data-generated-title]"))
         assertNull(page.selectFirst("[data-listing-public-url]"))
+        assertNull(page.selectFirst("[data-listing-share]"))
         assertNull(page.selectFirst("[data-listing-send]"))
         assertNull(page.selectFirst("[data-listing-stats]"))
     }
@@ -250,6 +251,26 @@ class ListingTemplateTest {
     }
 
     @Test
+    fun `published - share button`() {
+        doReturn(TENANT.copy(publicPortalUrl = "https://ndopify.com")).whenever(tenantContext).getTenant()
+
+        val page = render(
+            COMPLETE.copy(
+                status = ListingStatus.PUBLISHED,
+                publishedAt = SENT,
+                url = "/douala/bonapriso/listing/501/appartement",
+            ),
+        )
+
+        val button = page.selectFirst("[data-listing-share]")!!
+        assertEquals("https://ndopify.com/douala/bonapriso/listing/501/appartement", button.attr("data-share-url"))
+        assertEquals("Annonce · Appartement, Bonapriso", button.attr("data-share-title"))
+        assertEquals("Partager", button.text())
+        assertTrue(button.hasAttr("hidden"))
+        assertNotNull(page.selectFirst("[data-share-status]"))
+    }
+
+    @Test
     fun `closed - public url`() {
         doReturn(TENANT.copy(publicPortalUrl = "https://ndopify.com")).whenever(tenantContext).getTenant()
 
@@ -264,6 +285,10 @@ class ListingTemplateTest {
             assertEquals(
                 "https://ndopify.com/douala/bonapriso/listing/501/appartement",
                 page.selectFirst("[data-listing-public-url]")?.attr("href"),
+            )
+            assertEquals(
+                "https://ndopify.com/douala/bonapriso/listing/501/appartement",
+                page.selectFirst("[data-listing-share]")?.attr("data-share-url"),
             )
         }
     }
