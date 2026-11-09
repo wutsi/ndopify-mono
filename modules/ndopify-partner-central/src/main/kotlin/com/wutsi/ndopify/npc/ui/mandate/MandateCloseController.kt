@@ -106,7 +106,8 @@ class MandateCloseController(
         val draft = pending(session)
 
         // The confirm step re-reads the candidates: a stored match that is no longer one is cleared and picked again.
-        if (step == PendingMandateClose.STEP_CONFIRM && draft.matchId != null &&
+        // A failed read (unavailable) is not "no longer a candidate": the selection stays, the step shows the note.
+        if (step == PendingMandateClose.STEP_CONFIRM && draft.matchId != null && !read.unavailable &&
             read.candidates.none { it.matchId == draft.matchId }
         ) {
             session.setAttribute(PendingMandateClose.SESSION_ATTRIBUTE, draft.copy(matchId = null))

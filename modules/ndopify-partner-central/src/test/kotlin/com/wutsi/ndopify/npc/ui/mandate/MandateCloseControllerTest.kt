@@ -38,6 +38,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.HttpServerErrorException
+import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.servlet.view.InternalResourceViewResolver
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -309,6 +310,22 @@ class MandateCloseControllerTest {
 
         assertEquals("redirect:/mandates/201/close?step=price", result.modelAndView?.viewName)
         assertEquals(true, result.flashMap[MandateCloseController.CONFLICT])
+    }
+
+    @Test
+    fun `confirm - read failure keeps the stored match`() {
+        doThrow(ResourceAccessException("down")).whenever(matchClient).search(listOf(201L), listOf(MatchStatus.ACCEPTED))
+
+        val result = mvc.perform(
+            get("/mandates/201/close?step=confirm")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(matchId = 9001, priceAmount = 240000)),
+        ).andReturn()
+
+        assertEquals("mandate/close", result.modelAndView?.viewName)
+        assertEquals("confirm", view(result).step)
+        assertTrue(view(result).candidatesUnavailable)
+        assertTrue(result.flashMap.isEmpty())
+        assertEquals(9001L, draft(result)?.matchId)
     }
 
     @Test
