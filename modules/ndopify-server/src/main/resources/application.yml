@@ -250,7 +250,7 @@ ndopify:
             ttl: # Per ApplicationCode: also how long the web apps keep their cookie
                 public-portal: 5d
                 admin-console: 1h
-                partner-central: 1d
+                partner-central: 7d
                 e-signature: 1h
                 match-link: 7d             # The token of the links of a match proposal e-mail (MatchLinkTokenService)
             default-ttl: 1h                # An application not listed above
