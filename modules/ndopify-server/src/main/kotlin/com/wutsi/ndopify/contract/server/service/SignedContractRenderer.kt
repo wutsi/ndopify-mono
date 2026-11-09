@@ -1,12 +1,12 @@
 package com.wutsi.ndopify.contract.server.service
 
 import com.github.mustachejava.MustacheFactory
-import com.lowagie.text.pdf.BaseFont
 import org.jsoup.Jsoup
 import org.jsoup.helper.W3CDom
 import org.jsoup.nodes.Comment
 import org.jsoup.nodes.Document
 import org.jsoup.nodes.Node
+import org.openpdf.text.pdf.BaseFont
 import org.springframework.stereotype.Component
 import org.xhtmlrenderer.pdf.ITextOutputDevice
 import org.xhtmlrenderer.pdf.ITextRenderer
