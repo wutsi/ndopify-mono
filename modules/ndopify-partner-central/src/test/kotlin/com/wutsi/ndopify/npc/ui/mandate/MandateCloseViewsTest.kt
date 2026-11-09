@@ -160,4 +160,52 @@ class MandateCloseViewsTest {
 
         assertEquals("Mandat n° 204", view.title)
     }
+
+    @Test
+    fun `recap - a search's chosen listing, its customer and the agreed rent`() {
+        val selected = MandateCloseViews.candidate(listingMatch, MatchFixtures.LISTING_A, MatchFixtures.LOCATIONS, FORMATTER)
+
+        val recap = MandateCloseViews.recap(
+            MANDATE,
+            selected,
+            outside = false,
+            listing = null,
+            customer = Party(firstName = "Ray", lastName = "Sponsible"),
+            locations = MatchFixtures.LOCATIONS,
+            amount = 240000,
+            formatter = FORMATTER,
+        )
+
+        assertEquals("Appartement · 3 chambres, Bonapriso — annonce n° 3012", recap.property)
+        assertEquals("Ray Sponsible", recap.client)
+        assertEquals("240\u00a0000\u00a0FCFA / mois", recap.rent)
+        assertEquals(
+            "À la confirmation : le mandat n° 201 est fermé, l'annonce est retirée du marché et le mandat du bailleur est fermé. Cette action est définitive.",
+            recap.note,
+        )
+    }
+
+    @Test
+    fun `recap - a landlord's listing and, outside, no client of the searches`() {
+        val listing = ListingViewsTest.COMPLETE.copy(cityId = 100, neighborhoodId = 1001)
+
+        val recap = MandateCloseViews.recap(
+            MANDATE.copy(mandateType = MandateType.LISTING),
+            selected = null,
+            outside = true,
+            listing = listing,
+            customer = null,
+            locations = MatchFixtures.LOCATIONS,
+            amount = 150000,
+            formatter = FORMATTER,
+        )
+
+        assertEquals("Appartement · 2 chambres, Bonapriso — annonce n° 501", recap.property)
+        assertEquals("Un client hors de vos recherches", recap.client)
+        assertEquals("150\u00a0000\u00a0FCFA / mois", recap.rent)
+        assertEquals(
+            "À la confirmation : le mandat n° 201 est fermé. Cette action est définitive.",
+            recap.note,
+        )
+    }
 }

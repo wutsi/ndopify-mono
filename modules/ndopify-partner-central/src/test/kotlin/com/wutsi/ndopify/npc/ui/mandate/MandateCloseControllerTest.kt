@@ -69,6 +69,7 @@ class MandateCloseControllerTest {
             matchClient,
             listingClient,
             locationClient,
+            customerClient,
             tenantContext,
             MandateDealCandidates(matchClient, mandateClient, customerClient, listingClient),
         )

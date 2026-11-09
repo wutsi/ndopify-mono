@@ -1,12 +1,14 @@
 package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.agent.dto.Agent
+import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.match.dto.MatchStatus
+import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
@@ -55,6 +57,7 @@ class MandateCloseController(
     private val matchClient: NdMatchClient,
     private val listingClient: NdListingClient,
     private val locationClient: NdLocationClient,
+    private val customerClient: NdCustomerClient,
     private val tenantContext: TenantContext,
     private val dealCandidates: MandateDealCandidates,
 ) {
@@ -80,6 +83,8 @@ class MandateCloseController(
     private data class Candidates(
         val candidates: List<CloseCandidateView>,
         val unavailable: Boolean,
+        /** The landlord's own listing (a LISTING mandate), for the confirm recap; null when there's none. */
+        val listing: Listing? = null,
     )
 
     @GetMapping
@@ -129,7 +134,7 @@ class MandateCloseController(
         if (shown != requested) {
             return redirectStep(mandate.id, steps[shown].name)
         }
-        return render(mandate, read, steps, steps[shown].name, formFor(steps[shown].name, draft, mandate, read), emptyMap(), model)
+        return render(mandate, read, steps, steps[shown].name, formFor(steps[shown].name, draft, mandate, read), emptyMap(), draft, model)
     }
 
     @PostMapping("/counterpart")
@@ -157,7 +162,7 @@ class MandateCloseController(
             return redirectStep(id, PendingMandateClose.STEP_PRICE)
         }
         val steps = MandateCloseViews.steps(counterpartApplicable, mandate.mandateType == MandateType.LISTING)
-        return render(mandate, read, steps, PendingMandateClose.STEP_COUNTERPART, form, mapOf("counterpart" to COUNTERPART_ERROR), model)
+        return render(mandate, read, steps, PendingMandateClose.STEP_COUNTERPART, form, mapOf("counterpart" to COUNTERPART_ERROR), draft, model)
     }
 
     @PostMapping("/price")
@@ -185,6 +190,7 @@ class MandateCloseController(
                 PendingMandateClose.STEP_PRICE,
                 form,
                 mapOf("finalPrice" to "Indiquez le loyer convenu, en ${formatter().currency()} par mois."),
+                draft,
                 model,
             )
         }
@@ -225,17 +231,48 @@ class MandateCloseController(
         step: String,
         form: Any,
         errors: Map<String, String>,
+        draft: PendingMandateClose,
         model: Model,
     ): String {
         val currency = formatter().currency()
         model.addAttribute(
             "close",
-            MandateCloseViews.of(mandate, read.candidates, read.unavailable, step, steps, currency),
+            MandateCloseViews.of(
+                mandate,
+                read.candidates,
+                read.unavailable,
+                step,
+                steps,
+                currency,
+                if (step == PendingMandateClose.STEP_CONFIRM) recap(mandate, read, draft) else null,
+            ),
         )
         model.addAttribute("form", form)
         model.addAttribute("errors", errors)
         model.addAttribute("currency", currency)
         return VIEW
+    }
+
+    /** The confirm step's recap, from the chosen counterpart (or the outside answer), the listing and the customer. */
+    private fun recap(mandate: Mandate, read: Candidates, draft: PendingMandateClose): CloseRecapView {
+        val owner = mandate.mandateType == MandateType.LISTING
+        val selected = draft.matchId?.let { id -> read.candidates.firstOrNull { it.matchId == id } }
+        val customer = if (owner) {
+            null
+        } else {
+            lookup("customer ${mandate.customerId} of mandate ${mandate.id}") { customerClient.get(mandate.customerId) }?.party
+        }
+        val locations = read.listing?.let { locations(it) } ?: emptyMap()
+        return MandateCloseViews.recap(
+            mandate,
+            selected,
+            draft.outside,
+            read.listing,
+            customer,
+            locations,
+            draft.priceAmount ?: 0,
+            formatter(),
+        )
     }
 
     /** The current draft as the step's form, so the page re-fills the agent's answers. */
@@ -272,7 +309,7 @@ class MandateCloseController(
             }
             val listing = lookup("listing $listingId of mandate ${mandate.id}") { listingClient.get(listingId) }
             if (listing?.status != ListingStatus.PUBLISHED) {
-                return Candidates(emptyList(), false)
+                return Candidates(emptyList(), false, listing)
             }
             return try {
                 val clients = dealCandidates.clients(listingId, listOf(MatchStatus.ACCEPTED), agent.id)
@@ -281,10 +318,11 @@ class MandateCloseController(
                 Candidates(
                     clients.map { MandateCloseViews.candidate(it.match, it.mandate!!, it.customer, price, formatter) },
                     false,
+                    listing,
                 )
             } catch (ex: RestClientException) {
                 LOGGER.warn("No candidates of listing $listingId: ${ex.message}")
-                Candidates(emptyList(), true)
+                Candidates(emptyList(), true, listing)
             }
         }
         return try {
@@ -305,6 +343,12 @@ class MandateCloseController(
     private fun locations(listings: List<ListingSummary>): Map<Long, Location> =
         lookup("location names of the candidates") {
             sector.locations(listings.flatMap { listOfNotNull(it.cityId, it.neighborhoodId) })
+        } ?: emptyMap()
+
+    /** The city and neighbourhood of the landlord's listing, for the recap's "Bien". */
+    private fun locations(listing: Listing): Map<Long, Location> =
+        lookup("location names of listing ${listing.id}") {
+            sector.locations(listOfNotNull(listing.cityId.takeIf { it > 0 }, listing.neighborhoodId))
         } ?: emptyMap()
 
     /** The mandate, only while it is the signed-in agent's and APPROVED (closable); null → the locked view. */

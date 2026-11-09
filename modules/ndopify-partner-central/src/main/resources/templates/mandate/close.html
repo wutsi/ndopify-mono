@@ -196,18 +196,19 @@
                     <p class="close-hint">Vérifiez avant de fermer :</p>
                     <dl class="review close-recap">
                         <div class="review__item">
-                            <dt class="review__term">Mandat</dt>
-                            <dd class="review__value" data-recap-mandate><span th:text="${c.title}">Locataire · Maison</span> ·
-                                mandat n° <span th:text="${c.mandateId}">201</span></dd>
+                            <dt class="review__term">Bien</dt>
+                            <dd class="review__value" data-recap-property th:text="${c.recap.property}">Appartement · 3 chambres, Bonapriso — annonce n° 3012</dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Client</dt>
+                            <dd class="review__value" data-recap-client th:text="${c.recap.client}">Ray Sponsible</dd>
                         </div>
                         <div class="review__item">
                             <dt class="review__term">Loyer convenu</dt>
-                            <dd class="review__value" data-recap-price
-                                th:text="|${#numbers.formatInteger(form.finalPrice, 1, 'WHITESPACE')} ${currency} / mois|">240 000 FCFA / mois</dd>
+                            <dd class="review__value" data-recap-rent th:text="${c.recap.rent}">240 000 FCFA / mois</dd>
                         </div>
                     </dl>
-                    <p class="close-hint" data-recap-note>À la confirmation : le mandat n° <span th:text="${c.mandateId}">201</span>
-                        est fermé. Cette action est définitive.</p>
+                    <p class="close-hint" data-recap-note th:text="${c.recap.note}">À la confirmation : le mandat n° 201 est fermé. Cette action est définitive.</p>
 
                     <div class="form__actions">
                         <a class="btn btn--outline" data-close-back
