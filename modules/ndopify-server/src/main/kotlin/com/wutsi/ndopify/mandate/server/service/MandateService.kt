@@ -38,6 +38,7 @@ import com.wutsi.ndopify.mandate.server.event.MandateCreatedEvent
 import com.wutsi.ndopify.mandate.server.mail.MandateApprovedMailet
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.platform.tenant.TenantContext
+import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
@@ -385,6 +386,47 @@ class MandateService(
         )
         eventPublisher.publishEvent(MandateClosedEvent(mandateId = id, tenantId = TenantContext.get()!!))
         return closed
+    }
+
+    /**
+     * Closes both sides of a deal (or one) with the same price: only APPROVED sides, a side already CLOSED/CANCELLED is
+     * left as is, 409 when no side is left. Locks in ascending id order; stores [matchId] on each closed side.
+     */
+    @Transactional
+    fun closeDeal(
+        searchMandateId: Long,
+        counterpartMandateId: Long?,
+        matchId: Long,
+        finalPrice: Money,
+    ): List<MandateEntity> {
+        val ids = listOfNotNull(searchMandateId, counterpartMandateId).distinct().sorted()
+        val entities = ids.map { id -> findByIdForUpdate(id) }
+        val toClose = entities.filter { it.status != MandateStatus.CLOSED && it.status != MandateStatus.CANCELLED }
+        if (toClose.isEmpty()) {
+            throw ConflictException(Error(ErrorCode.MANDATE_ALREADY_CLOSED))
+        }
+        if (toClose.any { it.status != MandateStatus.APPROVED }) {
+            throw ConflictException(Error(ErrorCode.MANDATE_NOT_APPROVED))
+        }
+
+        val now = Date(clock.millis())
+        return toClose.map { mandate ->
+            dao.save(
+                mandate.copy(
+                    status = MandateStatus.CLOSED,
+                    finalPrice = finalPrice.amount,
+                    closedAt = now,
+                    age = age(mandate.approvedAt ?: mandate.createdAt, now),
+                    dealMatchId = matchId,
+                    dealOutside = false,
+                    modifiedAt = now,
+                )
+            ).also { closed ->
+                eventPublisher.publishEvent(
+                    MandateClosedEvent(mandateId = closed.id!!, tenantId = TenantContext.get()!!)
+                )
+            }
+        }
     }
 
     /**

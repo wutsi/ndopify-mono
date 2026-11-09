@@ -21,6 +21,7 @@ import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.mandate.server.service.MandateService
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.dao.MatchRepository
 import com.wutsi.ndopify.match.server.domain.MatchEntity
@@ -72,6 +73,7 @@ class MatchServiceTest {
         locationService,
         tenantService,
         clock,
+        mock(),
         0.5,
         3.0,
         20,

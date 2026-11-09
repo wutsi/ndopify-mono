@@ -2,6 +2,9 @@ package com.wutsi.ndopify.match.server.service
 
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.Parameter
+import com.wutsi.ndopify.error.dto.ParameterType
+import com.wutsi.ndopify.error.server.exception.BadRequestException
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.listing.dto.ListingStatus
@@ -11,6 +14,8 @@ import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.mandate.server.service.MandateService
+import com.wutsi.ndopify.match.dto.CloseMatchRequest
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.dto.SearchMatchRequest
 import com.wutsi.ndopify.match.server.dao.MatchRepository
@@ -21,6 +26,7 @@ import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
+import jakarta.transaction.Transactional
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.dao.DataIntegrityViolationException
@@ -52,6 +58,7 @@ class MatchService(
     private val locationService: LocationService,
     private val tenantService: TenantService,
     private val clock: Clock,
+    private val mandateService: MandateService,
 
     @param:Value("\${ndopify.match.min-score}") private val minScore: Double,
     @param:Value("\${ndopify.match.nearby-radius-km}") private val nearbyRadiusKm: Double,
@@ -125,6 +132,41 @@ class MatchService(
                 listingPrice = match.listing.price,
                 modifiedAt = Date(clock.millis()),
             )
+        )
+    }
+
+    /**
+     * Closes the deal of an ACCEPTED match. 404 MATCH_NOT_FOUND, 409 MATCH_NOT_ACCEPTED, 409 LISTING_NOT_PUBLISHED when
+     * the listing side will be closed and its listing isn't PUBLISHED, 400 invalid price.
+     */
+    @Transactional
+    fun close(matchId: Long, request: CloseMatchRequest): List<MandateEntity> {
+        val match = findById(matchId)
+        if (match.status != MatchStatus.ACCEPTED) {
+            throw ConflictException(Error(ErrorCode.MATCH_NOT_ACCEPTED))
+        }
+        if (request.finalPrice.amount < 1) {
+            throw BadRequestException(
+                Error(
+                    code = ErrorCode.HTTP_INVALID_PARAMETER,
+                    parameter = Parameter(name = "finalPrice", type = ParameterType.PARAMETER_TYPE_PAYLOAD),
+                ),
+            )
+        }
+
+        val search = match.mandate
+        val listingMandate = match.listing.mandate
+        val closeListing = listingMandate.agentId == search.agentId &&
+            listingMandate.status != MandateStatus.CLOSED &&
+            listingMandate.status != MandateStatus.CANCELLED
+        if (closeListing && match.listing.status != ListingStatus.PUBLISHED) {
+            throw ConflictException(Error(ErrorCode.LISTING_NOT_PUBLISHED))
+        }
+        return mandateService.closeDeal(
+            searchMandateId = search.id!!,
+            counterpartMandateId = listingMandate.id!!.takeIf { closeListing },
+            matchId = matchId,
+            finalPrice = request.finalPrice,
         )
     }
 
