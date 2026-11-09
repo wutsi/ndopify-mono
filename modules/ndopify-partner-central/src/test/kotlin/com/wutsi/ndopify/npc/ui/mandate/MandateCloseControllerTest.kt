@@ -1,0 +1,317 @@
+package com.wutsi.ndopify.npc.ui.mandate
+
+import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.doThrow
+import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.verify
+import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
+import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.match.dto.CloseMatchRequest
+import com.wutsi.ndopify.match.dto.Match
+import com.wutsi.ndopify.match.dto.MatchStatus
+import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
+import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
+import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
+import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
+import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
+import com.wutsi.ndopify.npc.service.security.CurrentAgent
+import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
+import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.APPROVED
+import com.wutsi.ndopify.npc.ui.match.MatchFixtures
+import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
+import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
+import com.wutsi.ndopify.refdata.dto.Money
+import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import com.wutsi.ndopify.web.core.service.TenantContext
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.springframework.http.HttpStatus
+import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.MvcResult
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.setup.MockMvcBuilders
+import org.springframework.web.client.HttpClientErrorException
+import org.springframework.web.client.HttpServerErrorException
+import org.springframework.web.servlet.view.InternalResourceViewResolver
+import kotlin.test.assertEquals
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+class MandateCloseControllerTest {
+    private val currentAgent = mock<CurrentAgent>()
+    private val mandateClient = mock<NdMandateClient>()
+    private val matchClient = mock<NdMatchClient>()
+    private val listingClient = mock<NdListingClient>()
+    private val locationClient = mock<NdLocationClient>()
+    private val customerClient = mock<NdCustomerClient>()
+    private val tenantContext = mock<TenantContext>()
+    private lateinit var mvc: MockMvc
+
+    private val matchA = MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.ACCEPTED)
+    private val listingA = MatchFixtures.LISTING_A
+
+    @BeforeEach
+    fun setUp() {
+        ProfileFixtures.mockLocations(locationClient, tenantContext)
+        doReturn(AGENT).whenever(currentAgent).get()
+        doReturn(APPROVED).whenever(mandateClient).get(201)
+
+        val controller = MandateCloseController(
+            currentAgent,
+            mandateClient,
+            matchClient,
+            listingClient,
+            locationClient,
+            tenantContext,
+            MandateDealCandidates(matchClient, mandateClient, customerClient, listingClient),
+        )
+        mvc = MockMvcBuilders.standaloneSetup(controller)
+            .setControllerAdvice(HttpClientErrorHandler(mock()))
+            .setViewResolvers(InternalResourceViewResolver("/templates/", ".html"))
+            .build()
+    }
+
+    private fun model(result: MvcResult) = result.modelAndView!!.model
+
+    private fun view(result: MvcResult) = model(result)["close"] as MandateCloseView
+
+    @Suppress("UNCHECKED_CAST")
+    private fun errors(result: MvcResult) = model(result)["errors"] as Map<String, String>
+
+    private fun session(result: MvcResult) = result.request.session
+
+    private fun draft(result: MvcResult): PendingMandateClose? =
+        session(result).getAttribute(PendingMandateClose.SESSION_ATTRIBUTE) as PendingMandateClose?
+
+    private fun withCandidate() {
+        doReturn(listOf(matchA)).whenever(matchClient).search(listOf(201L), listOf(MatchStatus.ACCEPTED))
+        doReturn(listOf(listingA)).whenever(listingClient).searchByIds(listOf(3012L))
+    }
+
+    private fun outcome(result: MvcResult) = result.flashMap[MandateController.OUTCOME]
+
+    // Locked
+
+    @Test
+    fun `locked when not the agent's`() {
+        doReturn(APPROVED.copy(agentId = 999)).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(get("/mandates/201/close")).andReturn()
+
+        assertEquals("mandate/close", result.modelAndView?.viewName)
+        assertEquals(true, model(result)["locked"])
+        assertNull(model(result)["close"])
+    }
+
+    @Test
+    fun `locked when not approved`() {
+        doReturn(APPROVED.copy(status = MandateStatus.ASSIGNED)).whenever(mandateClient).get(201)
+
+        assertEquals(true, model(mvc.perform(get("/mandates/201/close")).andReturn())["locked"])
+    }
+
+    @Test
+    fun `locked when the mandate is gone`() {
+        doThrow(HttpClientErrorException(HttpStatus.NOT_FOUND)).whenever(mandateClient).get(201)
+
+        assertEquals(true, model(mvc.perform(get("/mandates/201/close")).andReturn())["locked"])
+    }
+
+    // Counterpart step
+
+    @Test
+    fun `counterpart is skipped without candidates`() {
+        doReturn(emptyList<Match>()).whenever(matchClient).search(listOf(201L), listOf(MatchStatus.ACCEPTED))
+
+        val result = mvc.perform(get("/mandates/201/close?step=counterpart")).andReturn()
+
+        assertEquals("redirect:/mandates/201/close?step=price", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun `no candidates - the price step is shown first`() {
+        doReturn(emptyList<Match>()).whenever(matchClient).search(listOf(201L), listOf(MatchStatus.ACCEPTED))
+
+        val result = mvc.perform(get("/mandates/201/close")).andReturn()
+
+        assertEquals("price", view(result).step)
+        assertEquals(1, view(result).stepNumber)
+        assertEquals(2, view(result).stepCount)
+    }
+
+    @Test
+    fun `counterpart - a listing outside the candidates is refused`() {
+        withCandidate()
+
+        val result = mvc.perform(post("/mandates/201/close/counterpart").param("counterpart", "9999")).andReturn()
+
+        assertEquals("mandate/close", result.modelAndView?.viewName)
+        assertEquals("counterpart", view(result).step)
+        assertEquals(mapOf("counterpart" to "Choisissez une contrepartie dans la liste, ou « hors de vos annonces »."), errors(result))
+        assertNull(draft(result))
+    }
+
+    @Test
+    fun `counterpart - outside is accepted`() {
+        withCandidate()
+
+        val result = mvc.perform(post("/mandates/201/close/counterpart").param("counterpart", "outside")).andReturn()
+
+        assertEquals("redirect:/mandates/201/close?step=price", result.modelAndView?.viewName)
+        assertEquals(true, draft(result)?.outside)
+        assertNull(draft(result)?.matchId)
+    }
+
+    @Test
+    fun `counterpart - a match is stored`() {
+        withCandidate()
+
+        val result = mvc.perform(post("/mandates/201/close/counterpart").param("counterpart", "9001")).andReturn()
+
+        assertEquals("redirect:/mandates/201/close?step=price", result.modelAndView?.viewName)
+        assertEquals(9001L, draft(result)?.matchId)
+        assertEquals(false, draft(result)?.outside)
+    }
+
+    // Price step
+
+    @Test
+    fun `price - invalid`() {
+        withCandidate()
+
+        val result = mvc.perform(post("/mandates/201/close/price").param("finalPrice", "abc")).andReturn()
+
+        assertEquals("mandate/close", result.modelAndView?.viewName)
+        assertEquals("price", view(result).step)
+        assertEquals(mapOf("finalPrice" to "Indiquez le loyer convenu, en FCFA par mois."), errors(result))
+    }
+
+    @Test
+    fun `price - kept between steps`() {
+        withCandidate()
+
+        val result = mvc.perform(
+            post("/mandates/201/close/price")
+                .param("finalPrice", "240 000")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(outside = true)),
+        ).andReturn()
+
+        assertEquals("redirect:/mandates/201/close?step=confirm", result.modelAndView?.viewName)
+        assertEquals(true, draft(result)?.outside)
+        assertEquals(240000L, draft(result)?.priceAmount)
+    }
+
+    // Confirm step
+
+    @Test
+    fun `confirm - match`() {
+        val result = mvc.perform(
+            post("/mandates/201/close/confirm")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(matchId = 100, priceAmount = 240000)),
+        ).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        assertEquals("closed", outcome(result))
+        verify(matchClient).close(100, CloseMatchRequest(Money(240000, "XAF", PeriodicityType.MONTHLY)))
+    }
+
+    @Test
+    fun `confirm - outside`() {
+        mvc.perform(
+            post("/mandates/201/close/confirm")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(outside = true, priceAmount = 240000)),
+        ).andReturn()
+
+        verify(mandateClient).close(201, CloseMandateRequest(Money(240000, "XAF", PeriodicityType.MONTHLY)))
+    }
+
+    @Test
+    fun `confirm - a match that is no longer a candidate sends back to step 1`() {
+        withCandidate()
+
+        val result = mvc.perform(
+            get("/mandates/201/close?step=confirm")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(matchId = 9999, priceAmount = 240000)),
+        ).andReturn()
+
+        assertEquals("redirect:/mandates/201/close?step=counterpart", result.modelAndView?.viewName)
+        assertEquals(true, result.flashMap[MandateCloseController.CONFLICT])
+    }
+
+    @Test
+    fun `confirm - a match gone with no candidates left goes to the price step`() {
+        doReturn(emptyList<Match>()).whenever(matchClient).search(listOf(201L), listOf(MatchStatus.ACCEPTED))
+
+        val result = mvc.perform(
+            get("/mandates/201/close?step=confirm")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(matchId = 9999)),
+        ).andReturn()
+
+        assertEquals("redirect:/mandates/201/close?step=price", result.modelAndView?.viewName)
+        assertEquals(true, result.flashMap[MandateCloseController.CONFLICT])
+    }
+
+    @Test
+    fun `confirm - 409 is changed`() {
+        doThrow(HttpClientErrorException(HttpStatus.CONFLICT)).whenever(matchClient).close(any(), any())
+
+        val result = mvc.perform(
+            post("/mandates/201/close/confirm")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(matchId = 100, priceAmount = 240000)),
+        ).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        assertEquals("changed", outcome(result))
+    }
+
+    @Test
+    fun `confirm - 5xx is error`() {
+        doThrow(HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR)).whenever(matchClient).close(any(), any())
+
+        val result = mvc.perform(
+            post("/mandates/201/close/confirm")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(matchId = 100, priceAmount = 240000)),
+        ).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        assertEquals("error", outcome(result))
+    }
+
+    // Draft
+
+    @Test
+    fun `no step clears a stale draft`() {
+        val result = mvc.perform(
+            get("/mandates/201/close")
+                .sessionAttr(PendingMandateClose.SESSION_ATTRIBUTE, PendingMandateClose(matchId = 9001, priceAmount = 240000)),
+        ).andReturn()
+
+        assertEquals("mandate/close", result.modelAndView?.viewName)
+        assertNull(draft(result))
+    }
+
+    @Test
+    fun `not an agent - sign out`() {
+        doReturn(null).whenever(currentAgent).get()
+
+        assertEquals("redirect:/login", mvc.perform(get("/mandates/201/close")).andReturn().modelAndView?.viewName)
+        assertEquals(
+            "redirect:/login",
+            mvc.perform(post("/mandates/201/close/confirm")).andReturn().modelAndView?.viewName,
+        )
+    }
+
+    @Test
+    fun `the candidates are shown as choices`() {
+        withCandidate()
+
+        val result = mvc.perform(get("/mandates/201/close?step=counterpart")).andReturn()
+
+        assertEquals("counterpart", view(result).step)
+        assertEquals(listOf(9001L), view(result).candidates.map { it.matchId })
+        assertEquals(3, view(result).stepCount)
+    }
+}
