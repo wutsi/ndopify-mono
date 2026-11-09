@@ -9,7 +9,18 @@ h1.alert__title {
 }
 
 .agent-back {
-    margin-bottom: var(--space-3);
+    margin-bottom: var(--space-2);
+}
+
+/* Tighter than the shared .section rhythm: a profile is two short blocks, not a home feed. */
+[data-page="agent"] .section {
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+}
+
+/* The agent's name leads; the section titles support it (the shared h2 is nearly as large as the h1). */
+[data-page="agent"] .section > h2 {
+    font-size: var(--step-h3);
 }
 
 .agent-back a {
@@ -54,7 +65,7 @@ h1.alert__title {
     align-items: center;
     justify-content: center;
     gap: var(--space-2);
-    margin-top: var(--space-2);
+    margin-top: var(--space-1);
 }
 
 .agent-hero__name {
@@ -97,7 +108,7 @@ h1.alert__title {
     gap: var(--space-2);
     width: 100%;
     max-width: 22rem;
-    margin-top: var(--space-3);
+    margin-top: var(--space-2);
 }
 
 .agent-hero__contact .icon {
