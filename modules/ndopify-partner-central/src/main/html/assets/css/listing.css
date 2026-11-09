@@ -13,6 +13,18 @@
     color: var(--color-fg);
 }
 
+/* The public page's link and its share button, once the listing is published or closed. */
+.listing-public {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.listing-share[hidden] {
+    display: none;
+}
+
 /* ---------- The checklist (listing.html) ---------- */
 .checklist {
     margin: 0;

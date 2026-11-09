@@ -3173,7 +3173,9 @@
         DRAFT: ["Brouillon", "info"],
         REJECTED: ["À corriger", "warning"],
         PENDING: ["En vérification", "warning"],
-        PUBLISHED: ["Publiée", "success"]
+        PUBLISHED: ["Publiée", "success"],
+        RENTED: ["Loué", "warning"],
+        SOLD: ["Vendu", "warning"]
     };
     var LISTING_FURNITURE_LABELS = { FULLY_FURNISHED: "Meublé", UNFURNISHED: "Non meublé" };
     var ROAD_ACCESS_KEYS = ["roadPaved", "trackAccessibleByCar", "trackInaccessibleByCar"];
@@ -3337,6 +3339,11 @@
         return type + ", " + (f.neighbourhood || f.city);
     }
 
+    // PROTOTYPE: no public portal here, the shared link is a stub.
+    function publicUrlOf(listing) {
+        return "https://ndopify.com/listing/" + encodeURIComponent(listing.id);
+    }
+
     function amenityLabels(keys) {
         var labels = [];
         AMENITY_GROUPS.forEach(function (group) {
@@ -3400,6 +3407,29 @@
         $all("[data-mandate-link]").forEach(function (a) {
             a.href = mandateLink;
         });
+
+        var share = $("[data-listing-share]");
+        var shareLabel = $("[data-share-label]", share);
+        var shareStatus = $("[data-share-status]");
+        share.addEventListener("click", function () {
+            var url = share.getAttribute("data-share-url");
+            if (!url) return;
+            var title = share.getAttribute("data-share-title") || document.title;
+            if (typeof navigator.share === "function") {
+                navigator.share({ title: title, url: url }).catch(function () { /* dismissed */ });
+                return;
+            }
+            if (!navigator.clipboard || !navigator.clipboard.writeText) return;
+            navigator.clipboard.writeText(url).then(function () {
+                shareLabel.textContent = "Lien copié";
+                shareStatus.textContent = "Lien copié.";
+                window.setTimeout(function () {
+                    shareLabel.textContent = "Partager";
+                    shareStatus.textContent = "";
+                }, 2000);
+            }).catch(function () { /* nothing */ });
+        });
+
         $("[data-listing-mandate]").textContent = listing.mandateId;
         $("[data-listing-created]").textContent = formatShortDate(listing.createdAt);
 
@@ -3431,8 +3461,18 @@
             });
             if (listing.rejection) $("[data-rejection-reason]").textContent = listing.rejection.reason;
             if (listing.submittedAt) $("[data-submitted-at]").textContent = formatDate(listing.submittedAt);
-            // PROTOTYPE: no public portal here, the link goes nowhere
-            $("[data-listing-public]").hidden = listing.status !== "PUBLISHED";
+            // PROTOTYPE: no public portal here, the link goes to a stub
+            var publicUrl = ["PUBLISHED", "RENTED", "SOLD"].indexOf(listing.status) !== -1 ? publicUrlOf(listing) : null;
+            $("[data-listing-public]").hidden = !publicUrl;
+            if (publicUrl) {
+                $("[data-listing-public-url]").href = publicUrl;
+                share.setAttribute("data-share-url", publicUrl);
+                share.setAttribute("data-share-title", "Annonce · " + listingTitle(listing));
+                share.hidden = !(typeof navigator.share === "function" ||
+                    (navigator.clipboard && navigator.clipboard.writeText));
+            } else {
+                share.hidden = true;
+            }
             // Published: its activity (views, interested clients, visits)
             var stats = $("[data-listing-stats]");
             stats.hidden = listing.status !== "PUBLISHED";
