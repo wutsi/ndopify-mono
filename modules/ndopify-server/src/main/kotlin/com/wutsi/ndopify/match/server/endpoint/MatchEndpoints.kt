@@ -10,6 +10,7 @@ import com.wutsi.ndopify.listing.server.service.ListingAccessService
 import com.wutsi.ndopify.listing.server.service.ListingService
 import com.wutsi.ndopify.mandate.server.service.MandateAccessService
 import com.wutsi.ndopify.mandate.server.service.MandateService
+import com.wutsi.ndopify.match.dto.CloseMatchRequest
 import com.wutsi.ndopify.match.dto.GetMatchResponse
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.dto.ProposeMatchRequest
@@ -91,6 +92,13 @@ class MatchEndpoints(
     fun dismiss(@PathVariable id: Long) {
         access.ensureCanUpdate(service.findById(id).mandate)
         service.dismiss(id)
+    }
+
+    // The deal of an ACCEPTED match: closes both mandates when both are the agent's.
+    @PostMapping("/{id}/close")
+    fun close(@PathVariable id: Long, @RequestBody request: CloseMatchRequest) {
+        access.ensureCanUpdate(service.findById(id).mandate)
+        service.close(id, request)
     }
 
     // The agent keeps it to propose later

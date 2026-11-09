@@ -10,6 +10,17 @@ import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import java.util.Date
 
+/**
+ * The secondary reads behind a CLOSED mandate's deal line, all optional: the counterpart mandate's id (the listing's
+ * for a search, the client's search for a listing), its customer (naming the client for a listing closure), and the
+ * property's listing id. Null when the deal isn't recorded or a read failed.
+ */
+data class MandateDeal(
+    val counterpartId: Long?,
+    val customer: Customer?,
+    val listingId: Long?,
+)
+
 /** Builds the mandate page's [MandateView], as the prototype's `initMandate` (partner-central.js) renders it. */
 object MandateViews {
     private val STEPS = listOf(
@@ -41,6 +52,7 @@ object MandateViews {
         locations: Map<Long, Location>,
         now: Long,
         formatter: TenantFormatter,
+        deal: MandateDeal? = null,
     ): MandateView {
         fun format(date: Date?): String? = date?.let { formatter.date(it) }
 
@@ -64,6 +76,7 @@ object MandateViews {
             )
         }
         val (key, more) = criteria(mandate, locations, formatter)
+        val dealLine = dealLine(mandate, deal)
 
         return MandateView(
             id = mandate.id,
@@ -87,6 +100,10 @@ object MandateViews {
             age = mandate.age?.let { if (it > 1) "$it jours" else "$it jour" },
             cancellation = if (status == MandateStatus.CANCELLED) MandateRules.cancellation(mandate.cancellationCode) else null,
             cancellationReason = mandate.cancellationReason?.trim()?.ifEmpty { null },
+            listingLabel = dealLine.listingLabel,
+            counterpartLabel = dealLine.counterpartLabel,
+            clientLabel = dealLine.clientLabel,
+            outside = dealLine.outside,
             contact = customer?.let { contact(mandate, it) },
             keyCriteria = key,
             moreCriteria = more,
@@ -96,6 +113,37 @@ object MandateViews {
             signatureTtlDays = MandateRules.signatureTtlDays(contract),
         )
     }
+
+    /** The deal line's four labels, null for any status but CLOSED (and for a pre-feature closing, no deal at all). */
+    private data class DealLine(
+        val listingLabel: String?,
+        val counterpartLabel: String?,
+        val clientLabel: String?,
+        val outside: String?,
+    )
+
+    private fun dealLine(mandate: Mandate, deal: MandateDeal?): DealLine {
+        if (mandate.status != MandateStatus.CLOSED) return DealLine(null, null, null, null)
+        val owner = mandate.mandateType == MandateType.LISTING
+        if (mandate.dealOutside) {
+            return DealLine(
+                listingLabel = deal?.listingId?.let { "Annonce n° $it" },
+                counterpartLabel = null,
+                clientLabel = null,
+                outside = if (owner) "Client hors de vos recherches" else "Bien hors de vos annonces",
+            )
+        }
+        if (deal == null || mandate.dealMatchId == null) return DealLine(null, null, null, null)
+        return DealLine(
+            listingLabel = deal.listingId?.let { "Annonce n° $it" },
+            counterpartLabel = deal.counterpartId?.let { "Fermé avec le mandat n° $it" },
+            clientLabel = if (owner) deal.customer?.let { "Client : ${partyName(it)}" } else null,
+            outside = null,
+        )
+    }
+
+    private fun partyName(customer: Customer): String =
+        listOf(customer.party.firstName, customer.party.lastName).filter { it.isNotBlank() }.joinToString(" ")
 
     /** Visible: sector, amount, date, the type with its rooms, then the comments. Folded: everything else. */
     private fun criteria(
@@ -116,7 +164,7 @@ object MandateViews {
     private fun contact(mandate: Mandate, customer: Customer): ContactView {
         val whatsapp = customer.whatsappNumber?.ifBlank { null }
         return ContactView(
-            name = listOf(customer.party.firstName, customer.party.lastName).filter { it.isNotBlank() }.joinToString(" "),
+            name = partyName(customer),
             email = customer.party.email,
             whatsapp = whatsapp,
             whatsappDisplay = whatsapp?.let { displayPhone(it) },

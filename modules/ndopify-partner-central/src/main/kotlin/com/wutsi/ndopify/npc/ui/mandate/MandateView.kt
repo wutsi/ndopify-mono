@@ -30,6 +30,11 @@ data class MandateView(
     val age: String?,
     val cancellation: String?,
     val cancellationReason: String?,
+    /** The deal line of a CLOSED mandate: the listing, the counterpart mandate and the client, or the "outside" note. */
+    val listingLabel: String?,
+    val counterpartLabel: String?,
+    val clientLabel: String?,
+    val outside: String?,
     /** Null when the customer can't be loaded. */
     val contact: ContactView?,
     /** Sector, amount, moving date, type (with its rooms) and comments: always visible. */

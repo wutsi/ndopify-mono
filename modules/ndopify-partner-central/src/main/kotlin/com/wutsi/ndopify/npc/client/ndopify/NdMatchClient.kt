@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.client.ndopify
 
+import com.wutsi.ndopify.match.dto.CloseMatchRequest
 import com.wutsi.ndopify.match.dto.GetMatchResponse
 import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.dto.MatchStatus
@@ -70,5 +71,10 @@ class NdMatchClient(
     /** Sets the listing aside: never matched again to this mandate (DISMISSED). 409 once the match isn't ACTIVE. */
     fun dismiss(id: Long) {
         rest.post().uri("/v1/matches/{id}/dismiss", id).retrieve().toBodilessEntity()
+    }
+
+    /** Closes the deal of an ACCEPTED match: both mandates, when both are the agent's. */
+    fun close(id: Long, request: CloseMatchRequest) {
+        rest.post().uri("/v1/matches/{id}/close", id).body(request).retrieve().toBodilessEntity()
     }
 }

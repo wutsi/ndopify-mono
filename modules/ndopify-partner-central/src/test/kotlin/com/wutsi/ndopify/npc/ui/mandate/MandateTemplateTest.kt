@@ -125,6 +125,7 @@ class MandateTemplateTest {
                     locationClient,
                     tenantContext,
                     clock,
+                    MandateDealCandidates(matchClient, mandateClient, customerClient, listingClient),
                 ),
             )
             .setControllerAdvice(SignedInAdvice())
@@ -228,6 +229,7 @@ class MandateTemplateTest {
         assertFalse(panel.text().contains("jours"))
         // Cancel only: closing needs the approval.
         assertNull(page.selectFirst("a[data-end-open=close]"))
+        assertNull(page.selectFirst("a[data-close-link]"))
         assertEquals("/mandates/201?end=cancel#end-title", page.selectFirst("a[data-end-open=cancel]")?.attr("href"))
         // Present for mandate.js, hidden without ?end=.
         assertEquals(listOf("cancel"), page.select("form[data-end-form]").map { it.attr("data-end-form") })
@@ -243,7 +245,7 @@ class MandateTemplateTest {
         assertEquals("Signé le 20 oct. 2026 · valable jusqu'au 28 mars 2027.", panel.selectFirst("p")?.text())
         assertTrue(panel.text().contains("Proposez des biens au client et organisez les visites."))
         assertNull(page.selectFirst("a[data-edit-link]"))
-        assertEquals("/mandates/201?end=close#end-title", page.selectFirst("a[data-end-open=close]")?.attr("href"))
+        assertEquals("/mandates/201/close", page.selectFirst("a[data-close-link]")?.attr("href"))
         assertEquals("btn btn--danger", page.selectFirst("a[data-end-open=cancel]")?.className())
     }
 
@@ -464,6 +466,47 @@ class MandateTemplateTest {
         )
         assertNull(page.selectFirst("[data-end]"))
         assertEquals(listOf("done", "done", "done", "done"), page.select("[data-mandate-steps] li").map { it.attr("data-state") })
+        // No deal fields: a pre-feature closing shows no deal line.
+        assertNull(page.selectFirst("[data-panel=CLOSED] [data-closed-deal]"))
+    }
+
+    @Test
+    fun `closed - deal - the deal line`() {
+        val closed = APPROVED.copy(status = MandateStatus.CLOSED, dealMatchId = 100)
+        doReturn(MatchFixtures.MATCH_A.copy(id = 100, mandateId = 201, listingId = 501)).whenever(matchClient).get(100)
+        doReturn(ListingViewsTest.LISTING).whenever(listingClient).get(501)
+
+        val page = render(closed)
+
+        val panel = page.selectFirst("[data-panel=CLOSED]")!!
+        assertEquals("Annonce n° 501", panel.selectFirst("[data-closed-deal-listing]")?.text())
+        assertEquals("Fermé avec le mandat n° 203", panel.selectFirst("[data-closed-deal-counterpart]")?.text())
+        assertNull(panel.selectFirst("[data-closed-deal-client]"))
+        assertNull(panel.selectFirst("[data-closed-deal-outside]"))
+    }
+
+    @Test
+    fun `closed - outside listing - the deal line`() {
+        val closed = APPROVED.copy(status = MandateStatus.CLOSED, mandateType = MandateType.LISTING, dealOutside = true)
+        doReturn(501L).whenever(listingClient).findIdByMandate(201, closed.agentId!!)
+
+        val page = render(closed)
+
+        val panel = page.selectFirst("[data-panel=CLOSED]")!!
+        assertEquals("Annonce n° 501", panel.selectFirst("[data-closed-deal-listing]")?.text())
+        assertEquals("Client hors de vos recherches", panel.selectFirst("[data-closed-deal-outside]")?.text())
+        assertNull(panel.selectFirst("[data-closed-deal-counterpart]"))
+        assertNull(panel.selectFirst("[data-closed-deal-client]"))
+    }
+
+    @Test
+    fun `close link - approved only`() {
+        val approved = render(APPROVED)
+        assertEquals("/mandates/201/close", approved.selectFirst("a[data-close-link]")?.attr("href"))
+        assertEquals("Fermer le mandat", approved.selectFirst("a[data-close-link]")?.text())
+
+        val closed = render(APPROVED.copy(status = MandateStatus.CLOSED))
+        assertNull(closed.selectFirst("a[data-close-link]"))
     }
 
     @Test
@@ -584,36 +627,10 @@ class MandateTemplateTest {
 
     @Test
     fun `close form`() {
-        val page = render(APPROVED, "/mandates/201?end=close")
+        // The close form moved to the closing page: ?end=close redirects there, it is never rendered here.
+        val result = mvc.perform(get("/mandates/201?end=close")).andReturn()
 
-        assertTrue(page.selectFirst("[data-end-buttons]")!!.hasAttr("hidden"))
-        val form = page.selectFirst("form[data-end-form=close]")!!
-        assertFalse(form.hasAttr("hidden"))
-        assertTrue(page.selectFirst("form[data-end-form=cancel]")!!.hasAttr("hidden"))
-        assertEquals("/mandates/201/close", form.attr("action"))
-        assertEquals("post", form.attr("method"))
-        assertEquals("Fermer le mandat", form.selectFirst("h2")?.text())
-        assertEquals("end-title", form.selectFirst("h2")?.id())
-        assertEquals("Confirmer la fermeture", form.selectFirst("button[type=submit]")?.text())
-        assertEquals("btn btn--primary", form.selectFirst("button[type=submit]")?.className())
-        assertEquals("/mandates/201", form.selectFirst("a[data-end-back]")?.attr("href"))
-        assertNotNull(form.selectFirst("input[name=finalPrice]"))
-        assertNull(form.selectFirst("[name=cancellationCode]"))
-        assertTrue(form.selectFirst("#finalPrice-error")!!.hasAttr("hidden"))
-    }
-
-    @Test
-    fun `close form - invalid amount`() {
-        doReturn(APPROVED).whenever(mandateClient).get(201)
-
-        val page = render(post("/mandates/201/close").param("finalPrice", "abc"))
-
-        val form = page.selectFirst("form[data-end-form=close]")!!
-        assertFalse(form.hasAttr("hidden"))
-        assertEquals("abc", form.selectFirst("input[name=finalPrice]")?.attr("value"))
-        assertEquals("true", form.selectFirst("input[name=finalPrice]")?.attr("aria-invalid"))
-        assertFalse(form.selectFirst("#finalPrice-error")!!.hasAttr("hidden"))
-        assertEquals("Indiquez le loyer convenu, en FCFA par mois.", form.selectFirst("#finalPrice-error")?.text())
+        assertEquals("redirect:/mandates/201/close", result.modelAndView?.viewName)
     }
 
     @Test
@@ -998,10 +1015,11 @@ class MandateTemplateTest {
         val script = page.selectFirst("script[src=/assets/js/mandate.js]")!!
         assertTrue(script.hasAttr("defer"))
         assertEquals("mandate", page.body().attr("data-page"))
-        assertEquals(listOf("close", "cancel"), page.select("[data-end-open]").map { it.attr("data-end-open") })
-        assertEquals(listOf("close", "cancel"), page.select("form[data-end-form]").map { it.attr("data-end-form") })
-        assertEquals("end-form-close", page.selectFirst("[data-end-open=close]")?.attr("aria-controls"))
-        assertEquals("end-form-close", page.selectFirst("form[data-end-form=close]")?.id())
-        assertEquals(2, page.select("[data-end-back]").size)
+        assertEquals("/mandates/201/close", page.selectFirst("[data-close-link]")?.attr("href"))
+        assertEquals(listOf("cancel"), page.select("[data-end-open]").map { it.attr("data-end-open") })
+        assertEquals(listOf("cancel"), page.select("form[data-end-form]").map { it.attr("data-end-form") })
+        assertEquals("end-form-cancel", page.selectFirst("[data-end-open=cancel]")?.attr("aria-controls"))
+        assertEquals("end-form-cancel", page.selectFirst("form[data-end-form=cancel]")?.id())
+        assertEquals(1, page.select("[data-end-back]").size)
     }
 }

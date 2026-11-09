@@ -14,6 +14,9 @@ import com.wutsi.ndopify.customer.dto.CreateCustomerRequest
 import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.Parameter
+import com.wutsi.ndopify.error.dto.ParameterType
+import com.wutsi.ndopify.error.server.exception.BadRequestException
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
@@ -35,6 +38,7 @@ import com.wutsi.ndopify.mandate.server.event.MandateCreatedEvent
 import com.wutsi.ndopify.mandate.server.mail.MandateApprovedMailet
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.platform.tenant.TenantContext
+import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
@@ -347,8 +351,9 @@ class MandateService(
     }
 
     /**
-     * Closes an APPROVED mandate: the deal is done, at [CloseMandateRequest.finalPrice]. Its [MandateEntity.age] is the
-     * number of days it took, from its approval to now. Locked, so it can't be cancelled meanwhile.
+     * Closes an APPROVED mandate: the deal is done, outside any match, at [CloseMandateRequest.finalPrice] (a positive
+     * amount, else 400 HTTP_INVALID_PARAMETER). Its [MandateEntity.age] is the number of days it took, from its
+     * approval to now. Locked, so it can't be cancelled meanwhile.
      */
     @Transactional
     fun close(id: Long, request: CloseMandateRequest): MandateEntity {
@@ -358,12 +363,22 @@ class MandateService(
         if (mandate.status != MandateStatus.APPROVED) {
             throw ConflictException(Error(ErrorCode.MANDATE_NOT_APPROVED))
         }
+        if (request.finalPrice.amount < 1) {
+            throw BadRequestException(
+                Error(
+                    code = ErrorCode.HTTP_INVALID_PARAMETER,
+                    parameter = Parameter(name = "finalPrice", type = ParameterType.PARAMETER_TYPE_PAYLOAD),
+                ),
+            )
+        }
 
         val now = Date(clock.millis())
         val closed = dao.save(
             mandate.copy(
                 status = MandateStatus.CLOSED,
                 finalPrice = request.finalPrice.amount,
+                dealMatchId = null,
+                dealOutside = true,
                 closedAt = now,
                 age = age(mandate.approvedAt ?: mandate.createdAt, now),
                 modifiedAt = now,
@@ -371,6 +386,47 @@ class MandateService(
         )
         eventPublisher.publishEvent(MandateClosedEvent(mandateId = id, tenantId = TenantContext.get()!!))
         return closed
+    }
+
+    /**
+     * Closes both sides of a deal (or one) with the same price: only APPROVED sides, a side already CLOSED/CANCELLED is
+     * left as is, 409 when no side is left. Locks in ascending id order; stores [matchId] on each closed side.
+     */
+    @Transactional
+    fun closeDeal(
+        searchMandateId: Long,
+        counterpartMandateId: Long?,
+        matchId: Long,
+        finalPrice: Money,
+    ): List<MandateEntity> {
+        val ids = listOfNotNull(searchMandateId, counterpartMandateId).distinct().sorted()
+        val entities = ids.map { id -> findByIdForUpdate(id) }
+        val toClose = entities.filter { it.status != MandateStatus.CLOSED && it.status != MandateStatus.CANCELLED }
+        if (toClose.isEmpty()) {
+            throw ConflictException(Error(ErrorCode.MANDATE_ALREADY_CLOSED))
+        }
+        if (toClose.any { it.status != MandateStatus.APPROVED }) {
+            throw ConflictException(Error(ErrorCode.MANDATE_NOT_APPROVED))
+        }
+
+        val now = Date(clock.millis())
+        return toClose.map { mandate ->
+            dao.save(
+                mandate.copy(
+                    status = MandateStatus.CLOSED,
+                    finalPrice = finalPrice.amount,
+                    closedAt = now,
+                    age = age(mandate.approvedAt ?: mandate.createdAt, now),
+                    dealMatchId = matchId,
+                    dealOutside = false,
+                    modifiedAt = now,
+                )
+            ).also { closed ->
+                eventPublisher.publishEvent(
+                    MandateClosedEvent(mandateId = closed.id!!, tenantId = TenantContext.get()!!)
+                )
+            }
+        }
     }
 
     /**

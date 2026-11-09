@@ -27,10 +27,10 @@
       e-mailed to the customer, who signs it online; sent again, it resets the signature deadline.
     - Modifier le mandat (Assigné, En approbation): /mandates/{id}/edit. Saved while En approbation, its contract is
       cancelled and the mandate is Assigné again, to be sent anew.
-    - Fermer (Actif: lease signed, with the agreed rent) and Annuler (any active step, with a reason): at the bottom
-      of the page, since they're rare and final.
+    - Fermer (Actif, on its own page /mandates/{id}/close: lease signed, with the agreed rent) and Annuler (any active
+      step, with a reason): at the bottom of the page, since they're rare and final.
   "mandate" is the MandateView, absent when "locked" (mandate not found, or a status the page doesn't show).
-  "end" is the close / cancel form open without JS ("close", "cancel" or null), "form" its values (MandateEndForm)
+  "end" is the cancel form open without JS ("cancel" or null), "form" its values (MandateEndForm)
   and "errors" its errors per field. "outcomeText" / "outcomeStyle" are the last action's outcome (flash attribute
   "outcome", worded by MandateController).
   "matchSection" is a signed search's Biens correspondants (MatchSectionView), null for any other mandate; its cards
@@ -262,6 +262,12 @@
                             <p>Mandat fermé le <span th:text="${m.closedAt}">1 novembre 2026</span>, au loyer de
                                 <strong th:text="${m.finalPrice}">240 000 FCFA / mois</strong>, <span th:text="${m.age}">12 jours</span>
                                 après son approbation.</p>
+                            <!-- What the closing recorded: the listing, the counterpart mandate and the client, or the
+                                 "outside" note — each only when it was recorded (a pre-feature closing has none). -->
+                            <p th:if="${m.outside}" data-closed-deal data-closed-deal-outside th:text="${m.outside}">Bien hors de vos annonces</p>
+                            <p th:if="${m.listingLabel}" data-closed-deal data-closed-deal-listing th:text="${m.listingLabel}">Annonce n° 501</p>
+                            <p th:if="${m.counterpartLabel}" data-closed-deal data-closed-deal-counterpart th:text="${m.counterpartLabel}">Fermé avec le mandat n° 203</p>
+                            <p th:if="${m.clientLabel}" data-closed-deal data-closed-deal-client th:text="${m.clientLabel}">Client : Sandrine Eboa</p>
                         </div>
                     </div>
 
@@ -495,39 +501,18 @@
 
                 <!--
                     The mandate's end, on every active step, at the bottom of the page since it's rare and final.
-                    Fermer (lease signed, with the agreed rent) only once approved, ndopify-server refusing it before
-                    (409 MANDATE_NOT_APPROVED). Annuler (no lease, with a reason) on any active step, in the danger
-                    style. Without JS each link opens the form in its mode (GET ?end=close|cancel).
+                    Fermer opens the closing page (only once approved, ndopify-server refusing it before). Annuler (no
+                    lease, with a reason) on any active step, in the danger style, its form open without JS (GET
+                    ?end=cancel).
                 -->
                 <section class="home-section mandate-close" aria-label="Fin du mandat" th:if="${m.cancellable}" data-end>
                     <div class="mandate-panel__actions mandate-close__buttons" data-end-buttons
                          th:attr="hidden=${end} ? 'hidden' : null">
-                        <a class="btn btn--outline" th:if="${m.closable}" th:href="@{|/mandates/${m.id}?end=close#end-title|}"
-                           aria-controls="end-form-close" data-end-open="close">Fermer le mandat</a>
+                        <a class="btn btn--outline" th:if="${m.closable}" th:href="@{/mandates/{id}/close(id=${m.id})}"
+                           data-close-link>Fermer le mandat</a>
                         <a class="btn btn--danger" th:href="@{|/mandates/${m.id}?end=cancel#end-title|}"
                            aria-controls="end-form-cancel" data-end-open="cancel">Annuler le mandat</a>
                     </div>
-
-                    <form id="end-form-close" class="form mandate-close__form" method="post" novalidate
-                          th:if="${m.closable}" th:action="@{/mandates/{id}/close(id=${m.id})}"
-                          th:attr="hidden=${end == 'close'} ? null : 'hidden'" data-end-form="close">
-                        <h2 class="mandate-panel__title" th:id="${end == 'close'} ? 'end-title' : null">Fermer le mandat</h2>
-                        <p>Le bail est signé&nbsp;? Indiquez le loyer convenu pour fermer le mandat.</p>
-                        <div class="field">
-                            <label class="field__label" for="finalPrice">Loyer convenu</label>
-                            <div class="input-unit">
-                                <input class="input" id="finalPrice" name="finalPrice" type="text" inputmode="numeric"
-                                       autocomplete="off" aria-describedby="finalPrice-error" th:value="${form.finalPrice}"
-                                       th:attr="aria-invalid=${errors['finalPrice'] != null ? 'true' : null}">
-                                <span aria-hidden="true" class="input-unit__suffix" th:text="${currency} + ' / mois'">FCFA / mois</span>
-                            </div>
-                            <p class="field__error" id="finalPrice-error" th:hidden="${errors['finalPrice'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['finalPrice']}"></span></p>
-                        </div>
-                        <div class="mandate-panel__actions">
-                            <button type="submit" class="btn btn--primary" data-end-submit>Confirmer la fermeture</button>
-                            <a class="btn btn--outline" th:href="@{/mandates/{id}(id=${m.id})}" data-end-back>Retour</a>
-                        </div>
-                    </form>
 
                     <form id="end-form-cancel" class="form mandate-close__form" method="post" novalidate
                           th:action="@{/mandates/{id}/cancel(id=${m.id})}"

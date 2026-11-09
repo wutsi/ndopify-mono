@@ -1,15 +1,18 @@
 package com.wutsi.ndopify.npc.client.ndopify
 
+import com.wutsi.ndopify.match.dto.CloseMatchRequest
 import com.wutsi.ndopify.match.dto.GetMatchResponse
 import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.dto.SearchMatchResponse
+import com.wutsi.ndopify.refdata.dto.Money
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpMethod
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.test.web.client.MockRestServiceServer
+import org.springframework.test.web.client.match.MockRestRequestMatchers.content
 import org.springframework.test.web.client.match.MockRestRequestMatchers.method
 import org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo
 import org.springframework.test.web.client.response.MockRestResponseCreators.withStatus
@@ -127,6 +130,18 @@ class NdMatchClientTest {
             .andRespond(withSuccess())
 
         client.dismiss(9001)
+        server.verify()
+    }
+
+    @Test
+    fun close() {
+        server.expect(requestTo("http://localhost:8080/v1/matches/9001/close"))
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(content().json("""{"finalPrice":{"amount":240000,"currency":"XAF"}}"""))
+            .andRespond(withSuccess())
+
+        client.close(9001, CloseMatchRequest(finalPrice = Money(240000, "XAF")))
+
         server.verify()
     }
 

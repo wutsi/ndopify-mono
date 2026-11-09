@@ -54,6 +54,8 @@ class MandateMapper {
             closedAt = entity.closedAt,
             age = entity.age,
             finalPrice = entity.finalPrice,
+            dealMatchId = entity.dealMatchId,
+            dealOutside = entity.dealOutside,
             cancellationCode = entity.cancellationCode,
             cancellationReason = entity.cancellationReason,
             version = entity.version ?: 0,

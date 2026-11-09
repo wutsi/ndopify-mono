@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${close} ? |Fermer le mandat ${close.mandateId} — Ndopify Partner Central| : 'Fermer le mandat — Ndopify Partner Central'">Fermer le mandat — Ndopify Partner Central</title>
+    <meta name="description" content="Fermer un mandat : le client, le loyer convenu, puis la confirmation.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/join.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/find-property.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/home.css}">
+    <script th:src="@{/assets/js/partner-central.js}" defer></script>
+</head>
+<!--/*
+    Closing a mandate (the deal's counterpart, the agreed rent, then the confirmation), one step at a time on its own
+    page, reached from the mandate page's "Fermer le mandat" while the mandate is APPROVED. Each step is its own form,
+    posted to MandateCloseController, and the URL is never trusted: the controller redirects a step back to the first
+    unanswered one.
+
+    - counterpart — the deal's other side: for a landlord's listing, the client it was rented to (its searches that
+      answered ACCEPTED), or "Loué à un autre client"; for a search, the listing it ended on (its ACCEPTED matches),
+      or "Un bien hors de vos annonces". Skipped when there are no candidates.
+    - price — the agreed rent, pre-filled with the selected listing's or the mandate's price. POST .../close/price.
+    - confirm — what will change, then POST .../close/confirm is the final action, back to the mandate page.
+
+    "close" is the MandateCloseView, absent when "locked" (not the agent's, or not one that can be closed). "form" is
+    the CounterpartForm on the counterpart step and the PriceForm on the price and confirm steps, "errors" its errors
+    per field, "currency" the tenant's currency, "conflict" the flash of a match that is no longer a candidate.
+*/-->
+<body data-page="mandate-close" th:attr="data-currency=${currency}">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" th:href="@{/}">
+                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte" th:if="${signedIn}">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <img class="user-menu__photo" th:if="${userPhotoUrl}" th:src="${userPhotoUrl}" alt="" width="44" height="44"
+                         data-user-photo>
+                    <span aria-hidden="true" data-user-initials th:unless="${userPhotoUrl}" th:text="${initials}">NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li><a class="user-menu__item" th:href="@{/profile}">Profil</a></li>
+                    <li>
+                        <form method="post" th:action="@{/logout}" data-logout>
+                            <button class="user-menu__item" type="submit">Déconnexion</button>
+                        </form>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="back-link">
+                <a th:if="${close}" th:href="@{/mandates/{id}(id=${close.mandateId})}" data-back-link>← Retour au mandat</a>
+                <a th:unless="${close}" th:href="@{/#mandates-title}" data-back-link>← Retour à l'espace agent</a>
+            </p>
+
+            <!-- Locked: not the agent's mandate, or not (no longer) one that can be closed. -->
+            <div class="alert alert--warning" th:if="${locked}" data-close-locked>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <h1 class="alert__title">Ce mandat n'est pas disponible</h1>
+                    <p>Un mandat se ferme une fois approuvé par le client.</p>
+                </div>
+            </div>
+
+            <div th:if="${close}" th:with="c=${close}" data-close-page>
+                <div class="page-intro">
+                    <h1>Fermer le mandat</h1>
+                    <p class="mandate__meta"><span th:text="${c.title}">Locataire · Maison</span> · mandat n° <span
+                            th:text="${c.mandateId}">201</span></p>
+                </div>
+
+                <!-- A match chosen earlier that is no longer a candidate: the wizard restarted at the counterpart step. -->
+                <div class="alert alert--warning" th:if="${conflict}" tabindex="-1" role="status" data-close-conflict>
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                    <p>La contrepartie choisie n'est plus disponible : choisissez-en une autre.</p>
+                </div>
+
+                <ol class="close-steps" aria-label="Étapes de la fermeture" data-close-steps>
+                    <li class="close-steps__item" th:each="step, it : ${c.steps}"
+                        th:attr="data-done=${it.index < c.stepNumber - 1} ? 'true' : 'false',
+                                 aria-current=${it.index == c.stepNumber - 1} ? 'step' : null">
+                        <span class="close-steps__mark"
+                              th:text="${it.index < c.stepNumber - 1} ? '✓' : ${it.count}">1</span>
+                        <span th:text="${step.label}">Client</span>
+                    </li>
+                </ol>
+
+                <!-- 1. The counterpart: the client (a listing), or the listing (a search). -->
+                <form class="form mandate-close__form" method="post" novalidate
+                      th:if="${c.step == 'counterpart'}"
+                      th:action="@{/mandates/{id}/close/counterpart(id=${c.mandateId})}">
+                    <fieldset class="choices" aria-describedby="counterpart-error"
+                              th:attr="aria-invalid=${errors['counterpart'] != null ? 'true' : null}">
+                        <legend class="choices__legend"
+                                th:text="${c.owner} ? 'Avec quel client le bien a-t-il été loué ?' : 'Sur quel bien la recherche s\'est-elle conclue ?'">Avec quel client le bien a-t-il été loué ?</legend>
+                        <p class="close-hint"
+                           th:text="${c.owner} ? 'Les clients qui ont répondu intéressés. Il peut aussi avoir été loué autrement.' : 'Les biens qui ont intéressé le client. Il peut aussi avoir trouvé ailleurs.'">Les clients qui ont répondu intéressés.</p>
+
+                        <div class="alert alert--warning" th:if="${c.candidatesUnavailable}" data-counterpart-unavailable>
+                            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                            <p th:text="${c.owner} ? 'Les clients intéressés ne peuvent pas être affichés pour le moment.' : 'Les biens correspondants ne peuvent pas être affichés pour le moment.'">Les biens correspondants ne peuvent pas être affichés pour le moment.</p>
+                        </div>
+
+                        <div class="choices__grid" th:unless="${c.candidatesUnavailable}">
+                            <label class="choice" th:each="candidate : ${c.candidates}">
+                                <input name="counterpart" type="radio" th:value="${candidate.matchId}"
+                                       th:checked="${form.counterpart == candidate.matchId.toString()}">
+                                <span>
+                                    <th:block th:if="${c.owner}">
+                                        <th:block th:text="${candidate.title}">Sandrine Eboa</th:block>
+                                        <span class="close-client__meta" th:if="${candidate.interestLabel != null}"
+                                              th:text="${candidate.interestLabel}">Intéressé le 29 oct. 2026</span>
+                                    </th:block>
+                                    <th:block th:unless="${c.owner}">
+                                        <th:block th:text="|${candidate.title}, ${candidate.neighbourhood} — ${candidate.reference}|">Appartement · 3 chambres, Bonapriso — annonce n° 3012</th:block>
+                                        <span class="close-client__meta" th:if="${candidate.rent != null}"
+                                              th:text="${candidate.interestLabel != null ? candidate.rent + ' · ' + candidate.interestLabel : candidate.rent}">240K FCFA / mois · Intéressé le 29 oct. 2026</span>
+                                    </th:block>
+                                </span>
+                            </label>
+                        </div>
+
+                        <!-- "None": rented to someone else, or a property outside the agent's listings. -->
+                        <label class="choice close-client-none">
+                            <input name="counterpart" type="radio" value="outside"
+                                   th:checked="${form.counterpart == 'outside'}">
+                            <span>
+                                <th:block th:if="${c.owner}">Loué à un autre client
+                                    <span class="close-client__meta">Sans passer par une de vos recherches</span>
+                                </th:block>
+                                <th:block th:unless="${c.owner}">Un bien hors de vos annonces
+                                    <span class="close-client__meta">Trouvé ailleurs, ou par un autre agent</span>
+                                </th:block>
+                            </span>
+                        </label>
+
+                        <p class="field__error" id="counterpart-error" th:hidden="${errors['counterpart'] == null}">
+                            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                            <span data-error-text th:text="${errors['counterpart']}"></span>
+                        </p>
+                    </fieldset>
+
+                    <div class="form__actions">
+                        <a class="btn btn--outline" data-close-back
+                           th:href="@{/mandates/{id}(id=${c.mandateId})}">Retour au mandat</a>
+                        <button type="submit" class="btn btn--primary" data-close-next>Continuer</button>
+                    </div>
+                </form>
+
+                <!-- 2. The agreed rent, pre-filled from the selected listing's or the mandate's price. -->
+                <form class="form mandate-close__form" method="post" novalidate
+                      th:if="${c.step == 'price'}"
+                      th:action="@{/mandates/{id}/close/price(id=${c.mandateId})}">
+                    <div class="field">
+                        <p class="close-hint">Le bail est signé ? Confirmez le loyer convenu.</p>
+                        <label class="field__label" for="finalPrice">Loyer convenu</label>
+                        <div class="input-unit">
+                            <input class="input" id="finalPrice" name="finalPrice" type="text" inputmode="numeric"
+                                   autocomplete="off" aria-describedby="finalPrice-error" th:value="${form.finalPrice}"
+                                   th:attr="aria-invalid=${errors['finalPrice'] != null ? 'true' : null}">
+                            <span aria-hidden="true" class="input-unit__suffix" th:text="${currency} + ' / mois'">FCFA / mois</span>
+                        </div>
+                        <p class="field__error" id="finalPrice-error" th:hidden="${errors['finalPrice'] == null}">
+                            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                            <span data-error-text th:text="${errors['finalPrice']}"></span>
+                        </p>
+                    </div>
+
+                    <div class="form__actions">
+                        <a th:if="${c.stepNumber > 1}" class="btn btn--outline" data-close-back
+                           th:href="@{/mandates/{id}/close(id=${c.mandateId}, step=${c.steps[c.stepNumber - 2].name})}">Précédent</a>
+                        <a th:if="${c.stepNumber == 1}" class="btn btn--outline" data-close-back
+                           th:href="@{/mandates/{id}(id=${c.mandateId})}">Retour au mandat</a>
+                        <button type="submit" class="btn btn--primary" data-close-next>Continuer</button>
+                    </div>
+                </form>
+
+                <!-- 3. What will change, then the final action. -->
+                <form class="form mandate-close__form" method="post" novalidate
+                      th:if="${c.step == 'confirm'}"
+                      th:action="@{/mandates/{id}/close/confirm(id=${c.mandateId})}">
+                    <p class="close-hint">Vérifiez avant de fermer :</p>
+                    <dl class="review close-recap">
+                        <div class="review__item">
+                            <dt class="review__term">Bien</dt>
+                            <dd class="review__value" data-recap-property th:text="${c.recap.property}">Appartement · 3 chambres, Bonapriso — annonce n° 3012</dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Client</dt>
+                            <dd class="review__value" data-recap-client th:text="${c.recap.client}">Ray Sponsible</dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Loyer convenu</dt>
+                            <dd class="review__value" data-recap-rent th:text="${c.recap.rent}">240 000 FCFA / mois</dd>
+                        </div>
+                    </dl>
+                    <p class="close-hint" data-recap-note th:text="${c.recap.note}">À la confirmation : le mandat n° 201 est fermé. Cette action est définitive.</p>
+
+                    <div class="form__actions">
+                        <a class="btn btn--outline" data-close-back
+                           th:href="@{/mandates/{id}/close(id=${c.mandateId}, step=${c.steps[c.stepNumber - 2].name})}">Précédent</a>
+                        <button type="submit" class="btn btn--primary" data-close-next>Confirmer la fermeture</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
