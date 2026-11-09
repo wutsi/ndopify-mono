@@ -9,6 +9,7 @@ import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
@@ -16,7 +17,6 @@ import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.MovingPeriod
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
-import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
@@ -57,8 +57,7 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.DOUALA
 import com.wutsi.ndopify.npc.ui.visit.PendingVisitView
 import com.wutsi.ndopify.npc.ui.visit.VisitFixtures
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
-import com.wutsi.ndopify.refdata.dto.Money
-import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.web.core.service.TenantContext
@@ -445,15 +444,10 @@ class MandateControllerTest {
     }
 
     @Test
-    fun `end - close ignored before approval`() {
-        assertNull(model(mvc.perform(get("/mandates/201?end=close")).andReturn())["end"])
-    }
+    fun `end - close redirects to the closing page`() {
+        val result = mvc.perform(get("/mandates/201?end=close")).andReturn()
 
-    @Test
-    fun `end - close open once approved`() {
-        doReturn(PENDING.copy(status = MandateStatus.APPROVED)).whenever(mandateClient).get(201)
-
-        assertEquals("close", model(mvc.perform(get("/mandates/201?end=close")).andReturn())["end"])
+        assertEquals("redirect:/mandates/201/close", result.modelAndView?.viewName)
     }
 
     @Test
@@ -466,6 +460,93 @@ class MandateControllerTest {
     @Test
     fun `end - unknown ignored`() {
         assertNull(model(mvc.perform(get("/mandates/201?end=xyz")).andReturn())["end"])
+    }
+
+    // Closed deal line
+
+    @Test
+    fun `closed - deal - the listing and its mandate`() {
+        doReturn(APPROVED.copy(status = MandateStatus.CLOSED, dealMatchId = 100)).whenever(mandateClient).get(201)
+        doReturn(Match(id = 100, mandateId = 201, listingId = 501)).whenever(matchClient).get(100)
+        doReturn(ListingViewsTest.LISTING).whenever(listingClient).get(501)
+
+        val view = mandate(mvc.perform(get("/mandates/201")).andReturn())
+
+        assertEquals("Annonce n° 501", view.listingLabel)
+        assertEquals("Fermé avec le mandat n° 203", view.counterpartLabel)
+        assertNull(view.clientLabel)
+        assertNull(view.outside)
+        verify(matchClient).get(100)
+        verify(listingClient).get(501)
+    }
+
+    @Test
+    fun `closed - deal - match unavailable leaves it out`() {
+        doReturn(APPROVED.copy(status = MandateStatus.CLOSED, dealMatchId = 100)).whenever(mandateClient).get(201)
+        doThrow(ResourceAccessException("down")).whenever(matchClient).get(100)
+
+        val view = mandate(mvc.perform(get("/mandates/201")).andReturn())
+
+        assertNull(view.listingLabel)
+        assertNull(view.counterpartLabel)
+        assertNull(view.clientLabel)
+        assertNull(view.outside)
+    }
+
+    @Test
+    fun `closed - deal - listing unavailable leaves the number only`() {
+        doReturn(APPROVED.copy(status = MandateStatus.CLOSED, dealMatchId = 100)).whenever(mandateClient).get(201)
+        doReturn(Match(id = 100, mandateId = 201, listingId = 501)).whenever(matchClient).get(100)
+        doThrow(ResourceAccessException("down")).whenever(listingClient).get(501)
+
+        val view = mandate(mvc.perform(get("/mandates/201")).andReturn())
+
+        assertEquals("Annonce n° 501", view.listingLabel)
+        assertNull(view.counterpartLabel)
+    }
+
+    @Test
+    fun `closed - listing deal - the client`() {
+        doReturn(APPROVED.copy(status = MandateStatus.CLOSED, mandateType = MandateType.LISTING, dealMatchId = 100))
+            .whenever(mandateClient).get(201)
+        doReturn(Match(id = 100, mandateId = 204, listingId = 501)).whenever(matchClient).get(100)
+        doReturn(APPROVED.copy(id = 204, customerId = 14)).whenever(mandateClient).get(204)
+        doReturn(CUSTOMER.copy(id = 14, party = Party(firstName = "Sandrine", lastName = "Eboa"))).whenever(customerClient).get(14)
+
+        val view = mandate(mvc.perform(get("/mandates/201")).andReturn())
+
+        assertEquals("Annonce n° 501", view.listingLabel)
+        assertEquals("Fermé avec le mandat n° 204", view.counterpartLabel)
+        assertEquals("Client : Sandrine Eboa", view.clientLabel)
+        assertNull(view.outside)
+        verify(matchClient).get(100)
+        verify(mandateClient).get(204)
+        verify(customerClient).get(14)
+    }
+
+    @Test
+    fun `closed - outside listing - the listing is still named`() {
+        val closed = APPROVED.copy(status = MandateStatus.CLOSED, mandateType = MandateType.LISTING, dealOutside = true)
+        doReturn(closed).whenever(mandateClient).get(201)
+        doReturn(501L).whenever(listingClient).findIdByMandate(201, closed.agentId!!)
+
+        val view = mandate(mvc.perform(get("/mandates/201")).andReturn())
+
+        assertEquals("Annonce n° 501", view.listingLabel)
+        assertNull(view.counterpartLabel)
+        assertNull(view.clientLabel)
+        assertEquals("Client hors de vos recherches", view.outside)
+        verify(listingClient).findIdByMandate(201, closed.agentId!!)
+    }
+
+    @Test
+    fun `closed - outside search - no listing`() {
+        doReturn(APPROVED.copy(status = MandateStatus.CLOSED, dealOutside = true)).whenever(mandateClient).get(201)
+
+        val view = mandate(mvc.perform(get("/mandates/201")).andReturn())
+
+        assertNull(view.listingLabel)
+        assertEquals("Bien hors de vos annonces", view.outside)
     }
 
     @Test
@@ -779,57 +860,6 @@ class MandateControllerTest {
     }
 
     @Test
-    fun close() {
-        doReturn(APPROVED).whenever(mandateClient).get(201)
-
-        val result = mvc.perform(post("/mandates/201/close").param("finalPrice", "150 000")).andReturn()
-
-        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
-        assertEquals("closed", outcome(result))
-        verify(mandateClient).close(201, CloseMandateRequest(Money(150000, "XAF", PeriodicityType.MONTHLY)))
-    }
-
-    @Test
-    fun `close - conflict`() {
-        doReturn(APPROVED).whenever(mandateClient).get(201)
-        doThrow(HttpClientErrorException(HttpStatus.CONFLICT)).whenever(mandateClient).close(any(), any())
-
-        val result = mvc.perform(post("/mandates/201/close").param("finalPrice", "150000")).andReturn()
-
-        assertEquals("changed", outcome(result))
-    }
-
-    @Test
-    fun `close - server error`() {
-        doReturn(APPROVED).whenever(mandateClient).get(201)
-        doThrow(HttpServerErrorException(HttpStatus.BAD_GATEWAY)).whenever(mandateClient).close(any(), any())
-
-        assertEquals("error", outcome(mvc.perform(post("/mandates/201/close").param("finalPrice", "150000")).andReturn()))
-    }
-
-    @Test
-    fun `close - mandate gone`() {
-        doThrow(HttpClientErrorException(HttpStatus.NOT_FOUND)).whenever(mandateClient).get(201)
-
-        val result = mvc.perform(post("/mandates/201/close").param("finalPrice", "150000")).andReturn()
-
-        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
-        assertEquals("changed", outcome(result))
-        verify(mandateClient, never()).close(any(), any())
-    }
-
-    @Test
-    fun `close - no longer the agent's`() {
-        doThrow(HttpClientErrorException(HttpStatus.FORBIDDEN)).whenever(mandateClient).get(201)
-
-        val result = mvc.perform(post("/mandates/201/close").param("finalPrice", "150000")).andReturn()
-
-        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
-        assertEquals("changed", outcome(result))
-        verify(mandateClient, never()).close(any(), any())
-    }
-
-    @Test
     fun `request approval - forbidden`() {
         doThrow(HttpClientErrorException(HttpStatus.FORBIDDEN)).whenever(mandateClient).requestApproval(201)
 
@@ -848,22 +878,6 @@ class MandateControllerTest {
         assertEquals("mandate", result.modelAndView?.viewName)
         assertEquals(true, model(result)["locked"])
         assertNull(model(result)["mandate"])
-    }
-
-    @Test
-    fun `close - invalid amount`() {
-        doReturn(APPROVED).whenever(mandateClient).get(201)
-
-        for (amount in listOf("", "abc", "0", "150k", "12abc", "1 500 000 F/mois")) {
-            val result = mvc.perform(post("/mandates/201/close").param("finalPrice", amount)).andReturn()
-
-            assertEquals("mandate", result.modelAndView?.viewName, amount)
-            assertEquals("close", model(result)["end"])
-            assertEquals(mapOf("finalPrice" to "Indiquez le loyer convenu, en FCFA par mois."), model(result)["errors"])
-            assertEquals(amount, (model(result)["form"] as MandateEndForm).finalPrice)
-            assertEquals(201L, mandate(result).id)
-        }
-        verify(mandateClient, never()).close(any(), any())
     }
 
     @Test
@@ -938,7 +952,7 @@ class MandateControllerTest {
     fun `actions - not an agent - sign out`() {
         doReturn(null).whenever(currentAgent).get()
 
-        for (action in listOf("request-approval", "close", "cancel")) {
+        for (action in listOf("request-approval", "cancel")) {
             assertEquals(
                 "redirect:/login",
                 mvc.perform(post("/mandates/201/$action")).andReturn().modelAndView?.viewName,
@@ -1243,14 +1257,5 @@ class MandateControllerTest {
 
         assertEquals("redirect:/login", mvc.perform(get("/mandates/201/edit")).andReturn().modelAndView?.viewName)
         assertEquals("redirect:/login", mvc.perform(edit()).andReturn().modelAndView?.viewName)
-    }
-
-    @Test
-    fun `close - amount with separators`() {
-        doReturn(APPROVED).whenever(mandateClient).get(201)
-
-        mvc.perform(post("/mandates/201/close").param("finalPrice", "150.000")).andReturn()
-
-        verify(mandateClient).close(201, CloseMandateRequest(Money(150000, "XAF", PeriodicityType.MONTHLY)))
     }
 }

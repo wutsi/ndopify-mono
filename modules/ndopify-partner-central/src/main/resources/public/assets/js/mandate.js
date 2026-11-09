@@ -1,10 +1,10 @@
 /*
  * Ndopify Partner Central — the mandate page (templates/mandate.html) and its edit page (templates/mandate/edit.html).
- * Both work without this file: the forms post to MandateController, "Fermer" / "Annuler" open their form through
- * ?end=close|cancel, and the edit page shows every follow-up question. This script only enhances them:
- * - mandate page: "Fermer le mandat" / "Annuler le mandat" open their form in place, "Retour" closes it; the form is
- *   checked before posting, with the server's messages; a button that posted is disabled ("Envoi…", "Fermeture…",
- *   "Annulation…"), so a double click doesn't post twice; the outcome of the last action gets the focus;
+ * Both work without this file: the forms post to MandateController, "Annuler" opens its form through ?end=cancel, and
+ * the edit page shows every follow-up question. This script only enhances them:
+ * - mandate page: "Annuler le mandat" opens its form in place, "Retour" closes it; the form is checked before posting,
+ *   with the server's messages; a button that posted is disabled ("Envoi…", "Annulation…"), so a double click doesn't
+ *   post twice; the outcome of the last action gets the focus;
  * - mandate page, *Biens correspondants*: "Écarter" / "Annuler" toggle the confirmation in place (?dismiss= without
  *   JS), "Envoyer au client" and "Confirmer" can't post twice;
  * - edit page: the types of the chosen category only, the follow-up questions of the type only, each folded group's
@@ -145,7 +145,7 @@
         });
     }
 
-    /* Fermer (lease signed) and Annuler: each button opens its form in place, as ?end= does without JS. */
+    /* Annuler: the button opens its form in place, as ?end=cancel does without JS. */
     function initEnd() {
         var end = $("[data-end]");
         if (!end) return;
@@ -204,23 +204,6 @@
             var invalid = $('[aria-invalid="true"] input, input[aria-invalid="true"], textarea[aria-invalid="true"]', form);
             (invalid || $("input, textarea", form)).focus();
         });
-
-        var closeForm = formOf("close");
-        if (closeForm) {
-            var price = $("#finalPrice", closeForm);
-            var priceError = $("#finalPrice-error", closeForm);
-            price.addEventListener("input", function () {
-                setFieldError(price, priceError, null);
-            });
-            closeForm.addEventListener("submit", function (event) {
-                if (!(parseAmount(price.value) > 0)) {
-                    event.preventDefault();
-                    setFieldError(price, priceError, "Indiquez le loyer convenu, en " + currency() + " par mois.");
-                    price.focus();
-                }
-            });
-            guardSubmit(closeForm, "Fermeture…");
-        }
 
         var cancelForm = formOf("cancel");
         if (cancelForm) {

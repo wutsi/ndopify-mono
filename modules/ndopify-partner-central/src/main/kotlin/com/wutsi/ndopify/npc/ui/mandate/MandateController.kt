@@ -10,7 +10,6 @@ import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
-import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
@@ -42,8 +41,6 @@ import com.wutsi.ndopify.npc.ui.visit.VisitCards
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
 import com.wutsi.ndopify.npc.ui.visit.VisitStats
 import com.wutsi.ndopify.refdata.dto.Location
-import com.wutsi.ndopify.refdata.dto.Money
-import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.web.core.service.TenantContext
 import com.wutsi.ndopify.web.core.service.TenantFormatter
@@ -70,10 +67,11 @@ import java.time.ZoneOffset
  * customer's contact details, its criteria, and the actions of its status. Any status but the five of
  * [MandateRules.SHOWN], or a mandate that can't be loaded, is the locked view.
  *
- * The actions (send for approval, close, cancel) are post-redirect-get, back to the page with their outcome (flash
- * attribute [OUTCOME]). A mandate that changed since the page was loaded (approved, closed or cancelled meanwhile:
- * ndopify-server's 409, gone: 404, or no longer the agent's: 403) is [CHANGED], not an error: the page it was on was just stale. The close /
- * cancel form opens without JS through `GET /mandates/{id}?end=close|cancel`, and comes back with its errors.
+ * The actions (send for approval, cancel) are post-redirect-get, back to the page with their outcome (flash attribute
+ * [OUTCOME]). A mandate that changed since the page was loaded (approved, closed or cancelled meanwhile:
+ * ndopify-server's 409, gone: 404, or no longer the agent's: 403) is [CHANGED], not an error: the page it was on was just stale. Closing
+ * now has its own page (`MandateCloseController`), reached from the *Fermer le mandat* link; `?end=close` redirects there so old
+ * links still work. The cancel form opens without JS through `GET /mandates/{id}?end=cancel`, and comes back with its errors.
  *
  * The edit page (`mandate/edit.html`) is only for a mandate the customer hasn't signed ([MandateRules.EDITABLE]),
  * checked again when it's saved. ndopify-server refuses it too once signed or closed (409, shown as [CHANGED]), and
@@ -116,9 +114,11 @@ class MandateController(
         const val VIEW = "mandate"
         const val VIEW_EDIT = "mandate/edit"
 
-        // GET /mandates/{id}?end=…: the close / cancel form, open without JS.
-        const val END_CLOSE = "close"
+        // GET /mandates/{id}?end=cancel: the cancel form, open without JS.
         const val END_CANCEL = "cancel"
+
+        // ?end=close: the close form moved to MandateCloseController; a redirect keeps old links working.
+        private const val END_CLOSE = "close"
 
         const val OUTCOME = "outcome"
         const val SENT = "sent"
@@ -164,6 +164,9 @@ class MandateController(
         @RequestParam(required = false) dismiss: String?,
         model: Model,
     ): String {
+        // The close form is on its own page now: a stale ?end=close link still reaches it (the page locks there).
+        if (end == END_CLOSE) return "redirect:/mandates/$id/close"
+
         val agent = currentAgent.get() ?: throw SignInRequiredException()
         ProfileRules.header(agent, model)
 
@@ -178,27 +181,6 @@ class MandateController(
         // Sending again resets the deadline: worded "renvoyé". Without the mandate, it's still worth sending.
         val again = lookup("mandate $id") { mandateClient.get(id) }?.status == MandateStatus.PENDING_APPROVAL
         return act(id, if (again) RESENT else SENT, redirect) { mandateClient.requestApproval(id) }
-    }
-
-    @PostMapping("/{id}/close")
-    fun close(
-        @PathVariable id: Long,
-        @ModelAttribute form: MandateEndForm,
-        binding: BindingResult,
-        model: Model,
-        redirect: RedirectAttributes,
-    ): String {
-        val agent = currentAgent.get() ?: throw SignInRequiredException()
-        val mandate = current(id, redirect) { it.status == MandateStatus.APPROVED } ?: return back(id)
-
-        val amount = finalPrice(form.finalPrice)
-        if (amount == null || amount < 1) {
-            ProfileRules.header(agent, model)
-            val errors = mapOf("finalPrice" to "Indiquez le loyer convenu, en ${formatter().currency()} par mois.")
-            return render(agent, mandate, END_CLOSE, form, errors, model)
-        }
-        val price = Money(amount, mandate.price.currency, PeriodicityType.MONTHLY)
-        return act(id, CLOSED, redirect) { mandateClient.close(id, CloseMandateRequest(price)) }
     }
 
     /** An unknown code (hand-edited form) fails the binding: it reads as no code, [binding] keeps it from a 400. */
@@ -394,10 +376,7 @@ class MandateController(
                 },
             )
         }
-        model.addAttribute(
-            "end",
-            end?.takeIf { (it == END_CLOSE && view.closable) || (it == END_CANCEL && view.cancellable) },
-        )
+        model.addAttribute("end", end?.takeIf { it == END_CANCEL && view.cancellable })
         model.addAttribute("form", form)
         model.addAttribute("errors", errors)
         model.addAttribute("currency", formatter().currency())
@@ -566,16 +545,6 @@ class MandateController(
             null
         }
 
-    /**
-     * "150 000" or "150.000" → 150000; anything but digits and separators ("150k") → null: closing is final, so a
-     * typo is refused rather than read as another amount (the prototype's check).
-     */
-    private fun finalPrice(value: String?): Long? =
-        value.orEmpty()
-            .filterNot { it.isWhitespace() || it == '.' || it == '\u00a0' || it == '\u202f' }
-            .takeIf { it.isNotEmpty() && it.all { c -> c.isDigit() } }
-            ?.let { FindPropertyRules.parseAmount(it) }
-
     private fun locked(model: Model): String {
         model.addAttribute("locked", true)
         return VIEW
@@ -600,6 +569,7 @@ class MandateController(
             locations,
             clock.millis(),
             formatter(),
+            deal(mandate),
         )
 
     private fun formatter(): TenantFormatter = TenantFormatter(tenantContext.getTenant())
@@ -668,6 +638,47 @@ class MandateController(
 
     private fun accepted(mandate: Mandate): AssignmentSummary? =
         lookup("accepted offer of mandate ${mandate.id}") { assignmentClient.accepted(mandate.id) }
+
+    /**
+     * The reads behind a CLOSED mandate's deal line, all secondary: the deal's match (from `dealMatchId`), the
+     * counterpart mandate (the listing's for a search, the client's search for a listing) and its customer, plus the
+     * property's listing id (the match's, or found by mandate id for an outside listing closure). A failed read leaves
+     * its line out; another agent's listing or mandate is only ever read for its public number.
+     */
+    private fun deal(mandate: Mandate): MandateDeal? {
+        if (mandate.status != MandateStatus.CLOSED) return null
+        val owner = mandate.mandateType == MandateType.LISTING
+        val matchId = mandate.dealMatchId
+
+        if (matchId != null) {
+            val match = lookup("match $matchId of mandate ${mandate.id}") { matchClient.get(matchId) }
+            val listingId = match?.listingId?.takeIf { it > 0 }
+            if (owner) {
+                val counterpartId = match?.mandateId?.takeIf { it > 0 }
+                val counterpart = counterpartId?.let { lookup("mandate $it") { mandateClient.get(it) } }
+                val customer = counterpart?.takeIf { it.customerId > 0 }?.let {
+                    lookup("customer ${it.customerId} of mandate ${mandate.id}") { customerClient.get(it.customerId) }
+                }
+                return MandateDeal(counterpartId, customer, listingId)
+            }
+            val counterpartId = listingId
+                ?.let { lookup("listing $it of mandate ${mandate.id}") { listingClient.get(it) } }
+                ?.mandateId
+                ?.takeIf { it > 0 }
+            return MandateDeal(counterpartId, null, listingId)
+        }
+
+        if (mandate.dealOutside) {
+            val listingId = if (owner) {
+                mandate.agentId?.let { lookup("listing of mandate ${mandate.id}") { listingClient.findIdByMandate(mandate.id, it) } }
+            } else {
+                null
+            }
+            return MandateDeal(null, null, listingId)
+        }
+
+        return null
+    }
 
     /** The names of the mandate's city and neighbourhoods, and of its matched [listings]', in one lookup. */
     private fun locations(mandate: Mandate, listings: Collection<ListingSummary>): Map<Long, Location> =
