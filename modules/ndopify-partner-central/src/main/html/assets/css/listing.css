@@ -21,6 +21,13 @@
     gap: var(--space-3);
 }
 
+/* Light blue, like a hint: the info tokens. */
+.listing-share {
+    background: var(--color-info-bg);
+    color: var(--color-info-fg);
+    border-color: var(--color-info-border);
+}
+
 .listing-share[hidden] {
     display: none;
 }
