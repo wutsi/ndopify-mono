@@ -72,7 +72,7 @@ class AuthenticateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
         assertEquals(TENANT_ID, principal.getTenantId())
         assertEquals(listOf("AGENT"), principal.getRoles().toList())
         assertEquals(100L, principal.getPartyId())
-        assertEquals(Duration.ofDays(1), lifetime(response.body!!.accessToken)) // partner-central's ttl
+        assertEquals(Duration.ofDays(7), lifetime(response.body!!.accessToken)) // partner-central's ttl
 
         val authFactor = authFactorRepository.findById(1L).get()
         assertNotNull(authFactor.lastLoggedInAt)
