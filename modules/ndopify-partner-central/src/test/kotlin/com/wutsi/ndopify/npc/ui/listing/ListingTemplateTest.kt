@@ -117,6 +117,7 @@ class ListingTemplateTest {
         assertEquals("listing", page.body().attr("data-page"))
         assertNotNull(page.selectFirst("script[src=/assets/js/listing.js]"))
         assertNull(page.selectFirst("[data-listing-stats]"))
+        assertNull(page.selectFirst("[data-listing-share]"))
     }
 
     @Test
@@ -184,6 +185,7 @@ class ListingTemplateTest {
                 publishedAt = SENT,
                 title = "Appartement 2 chambres à louer à Bonapriso",
                 summary = "Appartement de 85 m² à Bonapriso.",
+                url = "/douala/bonapriso/listing/501/appartement",
             ),
         )
 
