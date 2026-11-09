@@ -24,12 +24,14 @@ colleague can see what they have on offer. This iteration is the static prototyp
 ## Content
 
 - Back link.
-- Hero: photo (or initials), name, "Vérifié" badge when the party's KYC is VERIFIED, agent type
-  ("Indépendant" / "Rattaché à une agence immobilière") and city.
+- Compact hero: photo (or initials) on the left; the name, "Vérifié" badge when the party's KYC is
+  VERIFIED, agent type ("Indépendant" / "Rattaché à une agence immobilière"), city and member-since on
+  the right; then the sectors as an inline chip line; then the WhatsApp action.
 - No rating yet (and no "not rated" fallback).
 - "Membre depuis <mois année>" from `joinedAt`. No experience level.
 - Primary action "Contacter sur WhatsApp" (wa.me), only when a number exists. Never shows the e-mail.
-- "Ses secteurs": city + up to three neighbourhoods, as chips; hidden when empty.
+- "Ses secteurs": city + up to three neighbourhoods, as chips inline under the identity; hidden when
+  empty.
 - "Ses annonces": the agent's current PUBLISHED listings, newest first, one compact card each — a
   photo (or placeholder), title, place, key facts and rent — linking to the public listing page.
   Hidden when the agent has none.
@@ -38,16 +40,17 @@ colleague can see what they have on offer. This iteration is the static prototyp
 ## States (prototype fixtures)
 
 - Default / `?id=…`: complete profile — photo, name, verified, independent, Douala, Bonapriso / Akwa /
-  Bonanjo, member since, biography, WhatsApp, three published listings.
-- `?id=…` incomplete: initials instead of photo, no biography, sectors only, no listings (the section is
-  hidden).
+  Bonanjo inline sectors, member since, biography, WhatsApp, three published listings.
+- `?id=…` incomplete: initials instead of photo, no biography, inline sectors only, no listings (the
+  section is hidden).
 - Unknown id: "Agent introuvable" panel with a link back to the Espace agent.
 - Own profile is not a state: the link always points at another agent.
 
 ## Approaches considered
 
-- **Carte de visite (chosen)** — one narrow column, trust first, contact action, room for listings later.
-  Fits the profile / mandate pages and works on a phone.
+- **Carte de visite (chosen)** — one narrow column, a compact horizontal identity card (avatar left,
+  name/meta right, sectors inline), trust first, contact action, listings below. Fits the profile /
+  mandate pages and works on a phone.
 - **Vitrine** — identity strip then the agent's listings immediately. Rejected: it leads with inventory
   before trust, and the page is opened from a listing the agent is already looking at; the listings sit
   below the identity instead.

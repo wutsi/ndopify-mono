@@ -124,11 +124,11 @@
     }
 
     function renderSectors(agent) {
-        var section = $("[data-agent-sectors]");
-        if (!section) return;
+        var sectors = $("[data-agent-sectors]");
+        if (!sectors) return;
         var city = agent.city || "";
         var neighborhoods = agent.neighborhoods || [];
-        section.hidden = !city && neighborhoods.length === 0;
+        sectors.hidden = !city && neighborhoods.length === 0;
 
         setText("[data-agent-sectors-city]", city);
         show("[data-agent-sectors-city]", Boolean(city));
