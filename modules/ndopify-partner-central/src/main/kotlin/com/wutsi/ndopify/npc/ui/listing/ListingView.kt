@@ -24,7 +24,9 @@ data class ListingView(
     /** Why the verification sent the DRAFT back (ListingRules.rejections), empty otherwise. */
     val rejections: List<String>,
     val publishedAt: String?,
-    /** The published listing's page on the public portal; null without its `url` or the tenant's portal. */
+    /** The listing's hero image, when it has one and its photo could be loaded. */
+    val heroImageUrl: String?,
+    /** The published or closed listing's page on the public portal; null without its `url` or the tenant's portal. */
     val publicUrl: String?,
     /** Published only: "2 personnes intéressées · 3 visites"; null else, or when its stats can't be had. */
     val stats: String? = null,

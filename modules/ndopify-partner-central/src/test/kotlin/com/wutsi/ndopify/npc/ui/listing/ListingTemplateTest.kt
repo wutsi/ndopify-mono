@@ -196,6 +196,20 @@ class ListingTemplateTest {
     }
 
     @Test
+    fun `published - hero image`() {
+        val page = render(COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT, heroImageId = 2))
+
+        val hero = page.selectFirst("[data-listing-hero]")!!
+        assertEquals("https://cdn/2.jpg", hero.attr("src"))
+        assertEquals("Annonce · Appartement, Bonapriso", hero.attr("alt"))
+    }
+
+    @Test
+    fun `draft - no hero image`() {
+        assertNull(render().selectFirst("[data-listing-hero]"))
+    }
+
+    @Test
     fun `published - activity line`() {
         doReturn(mapOf(501L to ListingStats(501, 2, 1, 2))).whenever(listingClient).stats(listOf(501L))
 
@@ -233,6 +247,25 @@ class ListingTemplateTest {
             "https://ndopify.com/douala/bonapriso/listing/501/appartement",
             page.selectFirst("[data-listing-public-url]")?.attr("href"),
         )
+    }
+
+    @Test
+    fun `closed - public url`() {
+        doReturn(TENANT.copy(publicPortalUrl = "https://ndopify.com")).whenever(tenantContext).getTenant()
+
+        listOf(ListingStatus.RENTED, ListingStatus.SOLD).forEach { status ->
+            val page = render(
+                COMPLETE.copy(
+                    status = status,
+                    url = "/douala/bonapriso/listing/501/appartement",
+                ),
+            )
+
+            assertEquals(
+                "https://ndopify.com/douala/bonapriso/listing/501/appartement",
+                page.selectFirst("[data-listing-public-url]")?.attr("href"),
+            )
+        }
     }
 
     @Test

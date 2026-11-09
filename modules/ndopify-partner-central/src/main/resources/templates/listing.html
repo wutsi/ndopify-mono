@@ -28,7 +28,7 @@
   refused. "Envoyer pour vérification" (POST /listings/{id}/verify) stays inactive until every section but the
   remarks is done, and says what's left; without JS it still posts, and the controller refuses it. Sent, the listing
   is read-only while it's checked (PENDING_VERIFICATION, UNDER_VERIFICATION, VERIFIED, PUBLISHING), then published:
-  its date in the tag, and a link to its public page under the title. A DRAFT the verification sent back
+  its date in the tag, its hero image, and a link to its public page under the title (also once SOLD or RENTED). A DRAFT the verification sent back
   (its errorCodes) is "À corriger": the reasons, and the sections they're about, still editable and sent again.
   "listing" is the ListingView, absent when "locked" (not found, or not the agent's) or "unavailable"
   (ndopify-server couldn't answer). "outcomeText" / "outcomeStyle"
@@ -105,6 +105,8 @@
                     </div>
                     <p class="mandate__meta">Mandat n° <span th:text="${l.mandateId}">203</span> · créée le
                         <span th:text="${l.createdAt}">20 oct. 2026</span></p>
+                    <img class="listing-hero" th:if="${l.heroImageUrl}" th:src="${l.heroImageUrl}" th:alt="${l.title}"
+                         width="960" height="540" loading="lazy" data-listing-hero>
                     <p th:if="${l.publicUrl}"><a th:href="${l.publicUrl}" target="_blank" rel="noopener"
                                                  data-listing-public-url>Voir l'annonce en ligne</a></p>
                     <p class="listing-stats" th:if="${l.stats}" data-listing-stats>

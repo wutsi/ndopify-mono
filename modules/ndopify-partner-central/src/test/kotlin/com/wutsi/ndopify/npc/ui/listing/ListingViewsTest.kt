@@ -280,6 +280,18 @@ class ListingViewsTest {
     }
 
     @Test
+    fun `hero image`() {
+        assertEquals("https://cdn/2.jpg", of(LISTING.copy(heroImageId = 2)).heroImageUrl)
+    }
+
+    @Test
+    fun `hero image - unavailable`() {
+        assertNull(of(LISTING).heroImageUrl)
+        assertNull(of(LISTING.copy(heroImageId = 99)).heroImageUrl)
+        assertNull(of(LISTING.copy(heroImageId = 2), null).heroImageUrl)
+    }
+
+    @Test
     fun `area in the tenant's format`() {
         val view = of(LISTING.copy(area = 1200))
 
@@ -397,6 +409,26 @@ class ListingViewsTest {
         assertNull(ListingViews.of(listing.copy(url = null), IMAGES, locations, formatter, "https://ndopify.com").publicUrl)
         assertNull(
             ListingViews.of(listing.copy(status = ListingStatus.PUBLISHING), IMAGES, locations, formatter, "https://ndopify.com")
+                .publicUrl,
+        )
+    }
+
+    @Test
+    fun `closed - public url`() {
+        val url = "/douala/bonapriso/listing/501/appartement"
+
+        assertEquals(
+            "https://ndopify.com$url",
+            ListingViews.of(COMPLETE.copy(status = ListingStatus.RENTED, url = url), IMAGES, locations, formatter, "https://ndopify.com/")
+                .publicUrl,
+        )
+        assertEquals(
+            "https://ndopify.com$url",
+            ListingViews.of(COMPLETE.copy(status = ListingStatus.SOLD, url = url), IMAGES, locations, formatter, "https://ndopify.com/")
+                .publicUrl,
+        )
+        assertNull(
+            ListingViews.of(COMPLETE.copy(status = ListingStatus.EXPIRED, url = url), IMAGES, locations, formatter, "https://ndopify.com")
                 .publicUrl,
         )
     }

@@ -49,10 +49,13 @@ object ListingViews {
 
     private const val OTHER_AGENT = "Client d'un autre agent"
 
+    // A listing that keeps its public page once it leaves the market
+    private val PUBLIC = setOf(ListingStatus.PUBLISHED, ListingStatus.RENTED, ListingStatus.SOLD)
+
     /**
-     * [images] is null when they couldn't be loaded: the photos' row then has no count. [publicPortalUrl] is the
-     * tenant's, the host of a published listing's `url`. [stats] is a published listing's activity, null when it can't
-     * be had: no line then.
+     * [images] is null when they couldn't be loaded: the photos' row and the hero image then have no URL.
+     * [publicPortalUrl] is the tenant's, the host of a published or closed listing's `url`. [stats] is a published
+     * listing's activity, null when it can't be had: no line then.
      */
     fun of(
         listing: Listing,
@@ -88,7 +91,8 @@ object ListingViews {
             sentAt = if (ListingRules.sent(listing.status)) formatter.date(listing.modifiedAt) else null,
             rejections = rejections.map { it.reason },
             publishedAt = listing.publishedAt?.let { formatter.date(it) },
-            publicUrl = if (published) publicUrl(listing, publicPortalUrl) else null,
+            heroImageUrl = listing.heroImageId?.let { id -> images?.firstOrNull { it.id == id }?.url?.ifBlank { null } },
+            publicUrl = if (listing.status in PUBLIC) publicUrl(listing, publicPortalUrl) else null,
             stats = if (published) ListingStatsView.of(stats)?.label else null,
             rows = ListingRules.SECTIONS.map { section ->
                 ChecklistRow(

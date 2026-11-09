@@ -14,6 +14,16 @@
     color: var(--color-fg);
 }
 
+/* The listing's cover, once it is published (or sold/rented): its hero image from ndopify-server. */
+.listing-hero {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    background: var(--color-surface-alt);
+}
+
 /* ---------- The checklist (listing.html) ---------- */
 .checklist {
     margin: 0;
