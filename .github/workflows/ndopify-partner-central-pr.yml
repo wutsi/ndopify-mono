@@ -23,7 +23,7 @@ jobs:
                 env:
                     GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
                 run: |
-                    mvn -q -s settings.xml --non-recursive install
+                    mvn -Dlogging.level.root=WARN -q -s settings.xml --non-recursive install
                     cd modules/ndopify-partner-central
                     mvn -Dspring.datasource.username=root -Dspring.datasource.password=root -q -s ../../settings.xml install
 
