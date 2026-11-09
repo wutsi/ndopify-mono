@@ -100,7 +100,7 @@
             </div>
 
             <!-- Price card: sticky on desktop; on mobile, the fixed bottom bar shows the price. -->
-            <aside aria-label="Prix et contact" class="listing__aside">
+            <aside aria-label="Prix et contact" class="listing__aside" th:if="${page.closedNotice == null}">
                 <div class="price-card">
                     <p class="price-card__price"><strong th:text="${page.priceAmount}">175K FCFA</strong><th:block
                             th:if="${page.pricePeriod}" th:text="| ${page.pricePeriod}|"> / mois</th:block></p>
@@ -113,7 +113,7 @@
     </div>
 
     <!--/* Below 1024px, the price stays in the fixed bottom bar (the price card is hidden) */-->
-    <div class="cta-bar">
+    <div class="cta-bar" th:if="${page.closedNotice == null}">
         <p class="cta-bar__price"><strong th:text="${page.priceAmount}">175K FCFA</strong><th:block
                 th:if="${page.pricePeriod}" th:text="| ${page.pricePeriod}|"> / mois</th:block></p>
     </div>
@@ -131,7 +131,7 @@
             <div>
                 <h2 class="modal__title" id="visit-title">Demander une visite</h2>
                 <p class="modal__subtitle"><th:block th:text="${page.title}">Appartement meublé 2 chambres</th:block><span
-                        class="modal__price">&nbsp;· <strong th:text="${page.price}">175K FCFA / mois</strong></span></p>
+                        class="modal__price" th:if="${page.closedNotice == null}">&nbsp;· <strong th:text="${page.price}">175K FCFA / mois</strong></span></p>
             </div>
             <a class="modal__close" data-modal-close href="#main">
                 <svg aria-hidden="true" class="icon"><use href="#i-close"/></svg>
