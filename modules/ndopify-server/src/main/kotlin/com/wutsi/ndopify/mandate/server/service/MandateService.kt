@@ -14,6 +14,9 @@ import com.wutsi.ndopify.customer.dto.CreateCustomerRequest
 import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.Parameter
+import com.wutsi.ndopify.error.dto.ParameterType
+import com.wutsi.ndopify.error.server.exception.BadRequestException
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
@@ -347,8 +350,9 @@ class MandateService(
     }
 
     /**
-     * Closes an APPROVED mandate: the deal is done, at [CloseMandateRequest.finalPrice]. Its [MandateEntity.age] is the
-     * number of days it took, from its approval to now. Locked, so it can't be cancelled meanwhile.
+     * Closes an APPROVED mandate: the deal is done, outside any match, at [CloseMandateRequest.finalPrice] (a positive
+     * amount, else 400 HTTP_INVALID_PARAMETER). Its [MandateEntity.age] is the number of days it took, from its
+     * approval to now. Locked, so it can't be cancelled meanwhile.
      */
     @Transactional
     fun close(id: Long, request: CloseMandateRequest): MandateEntity {
@@ -358,12 +362,22 @@ class MandateService(
         if (mandate.status != MandateStatus.APPROVED) {
             throw ConflictException(Error(ErrorCode.MANDATE_NOT_APPROVED))
         }
+        if (request.finalPrice.amount < 1) {
+            throw BadRequestException(
+                Error(
+                    code = ErrorCode.HTTP_INVALID_PARAMETER,
+                    parameter = Parameter(name = "finalPrice", type = ParameterType.PARAMETER_TYPE_PAYLOAD),
+                ),
+            )
+        }
 
         val now = Date(clock.millis())
         val closed = dao.save(
             mandate.copy(
                 status = MandateStatus.CLOSED,
                 finalPrice = request.finalPrice.amount,
+                dealMatchId = null,
+                dealOutside = true,
                 closedAt = now,
                 age = age(mandate.approvedAt ?: mandate.createdAt, now),
                 modifiedAt = now,

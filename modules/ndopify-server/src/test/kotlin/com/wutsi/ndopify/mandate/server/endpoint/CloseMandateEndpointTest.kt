@@ -17,6 +17,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/CloseMandateEndpoint.sql"])
 class CloseMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
@@ -46,6 +47,19 @@ class CloseMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         val age = Duration.ofMillis(mandate.closedAt.time - mandate.approvedAt!!.time).toDays().toInt()
         assertEquals(age, mandate.age)
         assertNull(mandate.cancellationCode)
+        assertTrue(mandate.dealOutside)
+        assertNull(mandate.dealMatchId)
+    }
+
+    @Test
+    fun `zero price`() {
+        val response = rest.postForEntity(
+            "/v1/mandates/1/close",
+            CloseMandateRequest(finalPrice = Money(amount = 0, currency = "XAF")),
+            ErrorResponse::class.java,
+        )
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
     }
 
     @Test

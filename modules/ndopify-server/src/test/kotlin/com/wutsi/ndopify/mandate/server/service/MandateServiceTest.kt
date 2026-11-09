@@ -118,14 +118,14 @@ class MandateServiceTest {
     fun `close - approved today is 0 day old`() {
         doReturn(mandate(MandateStatus.APPROVED, Date(now - 60_000))).whenever(dao).findByIdForUpdate(1L)
 
-        assertEquals(0, service.close(1L, CloseMandateRequest()).age)
+        assertEquals(0, service.close(1L, CloseMandateRequest(finalPrice = Money(amount = 100000))).age)
     }
 
     @Test
     fun `close - without an approval date, the age is from its creation`() {
         doReturn(mandate(MandateStatus.APPROVED)).whenever(dao).findByIdForUpdate(1L)
 
-        assertEquals(30, service.close(1L, CloseMandateRequest()).age)
+        assertEquals(30, service.close(1L, CloseMandateRequest(finalPrice = Money(amount = 100000))).age)
     }
 
     @Test
