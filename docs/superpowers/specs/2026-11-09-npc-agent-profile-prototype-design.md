@@ -32,9 +32,10 @@ colleague can see what they have on offer. This iteration is the static prototyp
 - Primary action "Contacter sur WhatsApp" (wa.me), only when a number exists. Never shows the e-mail.
 - "Ses secteurs": city + up to three neighbourhoods, as chips inline under the identity; hidden when
   empty.
-- "Ses annonces": the agent's current PUBLISHED listings, newest first, one compact card each — a
-  photo (or placeholder), title, place, key facts and rent — linking to the public listing page.
-  Hidden when the agent has none.
+- "Ses annonces": the agent's current PUBLISHED listings, newest first, one compact row card each — a
+  large thumbnail (or placeholder), a concise title (property type + rooms), a place line (neighbourhood,
+  city), a facts line (area · furniture) and the rent — no repeated place or room count — linking to the
+  public listing page. Hidden when the agent has none.
 - "À propos": biography; hidden when empty.
 
 ## States (prototype fixtures)
@@ -75,8 +76,9 @@ colleague can see what they have on offer. This iteration is the static prototyp
 - Listing photos: `ListingSummary` carries `heroImageId`, not a URL. The BFF must resolve the hero image
   (`GET /v1/listings/{id}/images`, or a batch) and build the public link as
   `{tenant.publicPortalUrl}{listing.url}`.
-- Listing labels: `ListingSummary.title` may be null; the BFF needs the public page's fallback (property
-  type + place) and the key-facts line (rooms, area, furniture) built from the summary.
+- Listing labels: the card uses a concise title (property type + rooms), a place line (neighbourhood,
+  city) and a facts line (area · furniture) built from the summary. `ListingSummary.title` is free text
+  and can repeat those, so the BFF should use the generated labels for these cards.
 
 ## What's left to the builder
 

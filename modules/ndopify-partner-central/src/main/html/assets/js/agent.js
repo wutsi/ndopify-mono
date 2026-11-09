@@ -20,16 +20,16 @@
             // PROTOTYPE: PUBLISHED only, newest first — what GET /v1/listings?agent-id={id} returns for another agent.
             listings: [
                 {
-                    id: 5001, title: "Appartement 2 chambres à Bonapriso", place: "Bonapriso, Douala",
-                    facts: "2 chambres · 80 m² · Meublé", amount: "250K FCFA", period: "/ mois"
+                    id: 5001, title: "Appartement 2 chambres", place: "Bonapriso, Douala",
+                    facts: "80 m² · Meublé", amount: "250K FCFA", period: "/ mois"
                 },
                 {
-                    id: 5002, title: "Studio meublé à Akwa", place: "Akwa, Douala",
-                    facts: "1 chambre · 30 m² · Meublé", amount: "120K FCFA", period: "/ mois"
+                    id: 5002, title: "Studio", place: "Akwa, Douala",
+                    facts: "30 m² · Meublé", amount: "120K FCFA", period: "/ mois"
                 },
                 {
-                    id: 5003, title: "Maison 3 chambres à Bonanjo", place: "Bonanjo, Douala",
-                    facts: "3 chambres · 150 m² · Non meublé", amount: "400K FCFA", period: "/ mois"
+                    id: 5003, title: "Maison 3 chambres", place: "Bonanjo, Douala",
+                    facts: "150 m² · Non meublé", amount: "400K FCFA", period: "/ mois"
                 }
             ]
         },

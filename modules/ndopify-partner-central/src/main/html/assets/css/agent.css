@@ -195,14 +195,14 @@ h1.alert__title {
     display: grid;
     place-items: center;
     flex: none;
-    width: 5.5rem;
-    height: 4rem;
+    width: 7.5rem;
+    height: 6rem;
     background: var(--color-bg-subtle);
 }
 
 .agent-listing__photo .icon {
-    width: 1.5rem;
-    height: 1.5rem;
+    width: 2rem;
+    height: 2rem;
     margin-top: 0;
 }
 
@@ -213,7 +213,9 @@ h1.alert__title {
     line-height: 1.35;
 }
 
-.agent-listing__title {
+.agent-listing__title,
+.agent-listing__place,
+.agent-listing__facts {
     overflow-wrap: anywhere;
 }
 
@@ -238,7 +240,7 @@ h1.alert__title {
     }
 
     .agent-listing__photo {
-        width: 4.5rem;
-        height: 3.5rem;
+        width: 6rem;
+        height: 4.75rem;
     }
 }
