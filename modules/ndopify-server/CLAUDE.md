@@ -257,8 +257,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `DELETE /images/{id}`. `GET /stats?listing-id=` aggregates each requested listing's interested clients (its ACCEPTED
   matches, any agent's) and its upcoming/completed visits in the database: one row per distinct id, in request order,
   zeros included, no counters on `ListingEntity`; it needs a token and the agent of every listing (404
-  `LISTING_NOT_FOUND` before 403 `HTTP_ACCESS_DENIED`; 400 `HTTP_MISSING_PARAMETER` without an id). Search, get and the images list are public (`PublicEndpoints.TENANT`), for PUBLISHED
-  listings only (`ListingAccessService`): another status is only for an admin or the listing's agent, a 404
+  `LISTING_NOT_FOUND` before 403 `HTTP_ACCESS_DENIED`; 400 `HTTP_MISSING_PARAMETER` without an id). Search, get and the images list are public (`PublicEndpoints.TENANT`), for PUBLISHED, SOLD
+  and RENTED listings (`ListingAccessService`): another status is only for an admin or the listing's agent, a 404
   `LISTING_NOT_FOUND` for anybody else (get, images), with or without a token; a search is forced to PUBLISHED but an
   admin's, or an agent's with its own `agent-id`; the images to VERIFIED but for an admin or the listing's agent. The fields aren't trimmed. The changes (create, update, verify, publish, upload or delete a photo) are only
   for an admin or the listing's agent (the mandate's, for create): 401 without a token, 403 `HTTP_ACCESS_DENIED`

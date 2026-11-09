@@ -17,19 +17,23 @@ import org.springframework.stereotype.Service
 
 /**
  * Who may read or change a listing. The reads are public (`PublicEndpoints.TENANT`), with or without a token, for
- * the PUBLISHED listings and their VERIFIED images. The others aren't checked yet, and are the agent's work in
- * progress: only an admin (see [CallerService.isAdmin]) or the listing's agent may read them. 404 LISTING_NOT_FOUND
- * for anybody else, as if it didn't exist, rather than a 403 that would tell it does. Only they may change it: 401
- * without a token, 403 HTTP_ACCESS_DENIED otherwise. Only for the API's callers: the server's own reads and changes
- * (jobs, listeners) aren't checked.
+ * the PUBLISHED, SOLD and RENTED listings and their VERIFIED images. The others aren't checked yet, and are the
+ * agent's work in progress: only an admin (see [CallerService.isAdmin]) or the listing's agent may read them. 404
+ * LISTING_NOT_FOUND for anybody else, as if it didn't exist, rather than a 403 that would tell it does. Only they may
+ * change it: 401 without a token, 403 HTTP_ACCESS_DENIED otherwise. Only for the API's callers: the server's own reads
+ * and changes (jobs, listeners) aren't checked.
  */
 @Service
 class ListingAccessService(
     private val callerService: CallerService,
     private val agentService: AgentService,
 ) {
+    companion object {
+        val PUBLIC_STATUSES = setOf(ListingStatus.PUBLISHED, ListingStatus.SOLD, ListingStatus.RENTED)
+    }
+
     fun ensureCanRead(listing: ListingEntity) {
-        if (listing.status != ListingStatus.PUBLISHED && !canReadAll(listing)) {
+        if (listing.status !in PUBLIC_STATUSES && !canReadAll(listing)) {
             throw NotFoundException(error = Error(code = ErrorCode.LISTING_NOT_FOUND))
         }
     }
