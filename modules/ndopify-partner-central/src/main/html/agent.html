@@ -94,15 +94,15 @@
                 <!--
                     Her current published listings, newest first. The real page reads
                     GET /v1/listings?agent-id={id} (ndopify-server restricts another agent to PUBLISHED) and links
-                    each card to {tenant.publicPortalUrl}{listing.url}. PROTOTYPE: three fixtures, a placeholder
-                    photo and a stub URL; the section is hidden when the agent has none.
+                    each card to NPC's listing page (`/listings/{id}`). PROTOTYPE: three fixtures, a placeholder
+                    photo and listing.html?id={id}; the section is hidden when the agent has none. The BFF's
+                    listing page is the owner's checklist today, so a co-brokerage read-only view is still needed.
                 -->
                 <section class="section" aria-labelledby="listings-title" data-agent-listings>
                     <h2 id="listings-title">Ses annonces</h2>
                     <ul class="agent-listings" data-agent-listings-list>
                         <li>
-                            <a class="agent-listing" href="https://ndopify.com/listing/5001" target="_blank"
-                               rel="noopener">
+                            <a class="agent-listing" href="listing.html?id=5001">
                                 <span class="agent-listing__photo" aria-hidden="true">
                                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                          stroke-width="2" focusable="false"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
@@ -116,8 +116,7 @@
                             </a>
                         </li>
                         <li>
-                            <a class="agent-listing" href="https://ndopify.com/listing/5002" target="_blank"
-                               rel="noopener">
+                            <a class="agent-listing" href="listing.html?id=5002">
                                 <span class="agent-listing__photo" aria-hidden="true">
                                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                          stroke-width="2" focusable="false"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
@@ -131,8 +130,7 @@
                             </a>
                         </li>
                         <li>
-                            <a class="agent-listing" href="https://ndopify.com/listing/5003" target="_blank"
-                               rel="noopener">
+                            <a class="agent-listing" href="listing.html?id=5003">
                                 <span class="agent-listing__photo" aria-hidden="true">
                                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                          stroke-width="2" focusable="false"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>

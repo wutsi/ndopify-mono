@@ -34,8 +34,8 @@ colleague can see what they have on offer. This iteration is the static prototyp
   empty.
 - "Ses annonces": the agent's current PUBLISHED listings, newest first, one compact row card each — a
   large thumbnail (or placeholder), a concise title (property type + rooms), a place line (neighbourhood,
-  city), a facts line (area · furniture) and the rent — no repeated place or room count — linking to the
-  public listing page. Hidden when the agent has none.
+  city), a facts line (area · furniture) and the rent — no repeated place or room count — linking to
+  NPC's listing page (`/listings/{id}`). Hidden when the agent has none.
 - "À propos": biography; hidden when empty.
 
 ## States (prototype fixtures)
@@ -63,8 +63,8 @@ colleague can see what they have on offer. This iteration is the static prototyp
 - `agent.js` only switches fixtures for the `?id=` states; the default profile and its listings render
   without JS. It also links the back action to the listing's URL when one is passed, otherwise to
   `index.html`.
-- The listing cards are fixtures: no photos, so each shows a placeholder, and the link is the
-  `https://ndopify.com/listing/{id}` stub already used by `partner-central.js`'s share link.
+- The listing cards are fixtures: no photos, so each shows a placeholder; each card links to
+  `listing.html?id={id}`, NPC's listing page.
 - Reuse `partner-central.css` tokens and classes (`.page`, `.column`, `.page-intro`, `.hint`, `.btn`,
   `.status-tag`); page-specific classes live in `agent.css`.
 - `data-page="agent"`, header and account menu as on the other signed-in pages.
@@ -74,8 +74,10 @@ colleague can see what they have on offer. This iteration is the static prototyp
 
 - The agency's name is not in the DTO, so the type label is all the page can show.
 - Listing photos: `ListingSummary` carries `heroImageId`, not a URL. The BFF must resolve the hero image
-  (`GET /v1/listings/{id}/images`, or a batch) and build the public link as
-  `{tenant.publicPortalUrl}{listing.url}`.
+  (`GET /v1/listings/{id}/images`, or a batch).
+- Listing access: NPC's `/listings/{id}` is the listing agent's checklist page and locks any other agent.
+  A co-brokerage read-only view (or access for PUBLISHED listings) is needed before these cards open a
+  colleague's listing; the prototype links to `listing.html?id={id}`.
 - Listing labels: the card uses a concise title (property type + rooms), a place line (neighbourhood,
   city) and a facts line (area · furniture) built from the summary. `ListingSummary.title` is free text
   and can repeat those, so the BFF should use the generated labels for these cards.
@@ -84,4 +86,5 @@ colleague can see what they have on offer. This iteration is the static prototyp
 
 - Exact responsive spacing and the final visual pass on the prototype.
 - Later work: the real `/agent` controller/template, the listing → agent link, the agent-listings search
-  (`GET /v1/listings?agent-id={id}`; the server restricts another agent to PUBLISHED) and the image URLs.
+  (`GET /v1/listings?agent-id={id}`; the server restricts another agent to PUBLISHED), the image URLs and
+  the read-only listing access for co-brokerage.

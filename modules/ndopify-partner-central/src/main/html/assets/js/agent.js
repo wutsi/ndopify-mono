@@ -144,9 +144,9 @@
         });
     }
 
-    // PROTOTYPE: no public portal here, the link is a stub (same as partner-central.js's share link).
-    function publicUrlOf(listing) {
-        return "https://ndopify.com/listing/" + encodeURIComponent(listing.id);
+    // PROTOTYPE: the card opens NPC's listing page; the BFF will use /listings/{id}.
+    function listingUrlOf(listing) {
+        return "listing.html?id=" + encodeURIComponent(listing.id);
     }
 
     function listingLine(className, value) {
@@ -160,9 +160,7 @@
         var item = document.createElement("li");
         var link = document.createElement("a");
         link.className = "agent-listing";
-        link.href = publicUrlOf(listing);
-        link.target = "_blank";
-        link.rel = "noopener";
+        link.href = listingUrlOf(listing);
 
         var photo = document.createElement("span");
         photo.className = "agent-listing__photo";
