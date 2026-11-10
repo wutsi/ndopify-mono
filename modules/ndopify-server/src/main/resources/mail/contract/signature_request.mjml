@@ -5,45 +5,47 @@
         </mj-style>
     </mj-head>
     <mj-body css-class="body">
-        <mj-section css-class="main-content">
-            <mj-column>
-                <!-- Logo -->
-                <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
+        <mj-wrapper background-color="#ffffff" border-radius="30px" padding="20px">
+            <mj-section padding="0">
+                <mj-column>
+                    <!-- Logo -->
+                    <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
 
-                <!-- Divider with class for CSS injection -->
-                <mj-divider css-class="divider"/>
+                    <!-- Divider with class for CSS injection -->
+                    <mj-divider css-class="divider"/>
 
-                <!-- Body Text -->
-                <mj-text>
-                    Bonjour <strong>{{recipient_name}}</strong>,
-                </mj-text>
-                <mj-text>
-                    Votre <strong>{{contract_type}}</strong> n° <strong>{{contract_number}}</strong> est prêt. Nous
-                    vous invitons à le lire attentivement, puis à le signer électroniquement.
-                </mj-text>
+                    <!-- Body Text -->
+                    <mj-text>
+                        Bonjour <strong>{{recipient_name}}</strong>,
+                    </mj-text>
+                    <mj-text>
+                        Votre <strong>{{contract_type}}</strong> n° <strong>{{contract_number}}</strong> est prêt. Nous
+                        vous invitons à le lire attentivement, puis à le signer électroniquement.
+                    </mj-text>
 
-                <mj-text font-weight="bold">
-                    Vous avez jusqu'au <span class="text-primary">{{deadline}}</span> pour le signer.
-                </mj-text>
+                    <mj-text font-weight="bold">
+                        Vous avez jusqu'au <span class="text-primary">{{deadline}}</span> pour le signer.
+                    </mj-text>
 
-                {{#sign_url}}
-                <!-- Button with class for CSS injection -->
-                <mj-spacer/>
-                <mj-button href="{{sign_url}}" css-class="btn-primary" align="center">
-                    Lire et signer le contrat
-                </mj-button>
-                <mj-spacer/>
-                {{/sign_url}}
+                    {{#sign_url}}
+                    <!-- Button with class for CSS injection -->
+                    <mj-spacer/>
+                    <mj-button href="{{sign_url}}" css-class="btn-primary" align="center">
+                        Lire et signer le contrat
+                    </mj-button>
+                    <mj-spacer/>
+                    {{/sign_url}}
 
-                <!-- Sign-off -->
-                <mj-spacer/>
-                <mj-text>
-                    Cordialement,
-                    <br/>
-                    L'équipe {{tenant_name}}
-                </mj-text>
-            </mj-column>
-        </mj-section>
-        {{> mail/fragments/agent-footer.mjml}}
+                    <!-- Sign-off -->
+                    <mj-spacer/>
+                    <mj-text>
+                        Cordialement,
+                        <br/>
+                        L'équipe {{tenant_name}}
+                    </mj-text>
+                </mj-column>
+            </mj-section>
+            {{> mail/fragments/agent-footer.mjml}}
+        </mj-wrapper>
     </mj-body>
 </mjml>
