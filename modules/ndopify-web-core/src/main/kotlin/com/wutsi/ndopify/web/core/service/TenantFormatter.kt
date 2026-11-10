@@ -36,6 +36,10 @@ class TenantFormatter(private val tenant: Tenant) {
     /** [date] with [pattern] in the tenant's locale ("sam.", "oct."), for what its `dateFormat` doesn't say. */
     fun date(date: LocalDate, pattern: String): String = date.format(DateTimeFormatter.ofPattern(pattern, locale))
 
+    /** [date] in the tenant's time zone, with [pattern] and its first locale ("octobre 2026"). */
+    fun date(date: Date, pattern: String): String =
+        date.toInstant().atZone(zone).format(DateTimeFormatter.ofPattern(pattern, locale))
+
     fun time(date: Date): String =
         date.toInstant().atZone(zone)
             .format(DateTimeFormatter.ofPattern(tenant.timeFormat.ifBlank { DEFAULT_TIME_FORMAT }, locale))

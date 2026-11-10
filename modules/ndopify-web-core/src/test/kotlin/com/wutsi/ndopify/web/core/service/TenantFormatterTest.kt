@@ -107,4 +107,11 @@ class TenantFormatterTest {
         assertEquals("sam.", TenantFormatter(TENANT).date(LocalDate.of(2026, 10, 31), "EEE"))
         assertEquals("oct.", TenantFormatter(TENANT).date(LocalDate.of(2026, 10, 31), "MMM"))
     }
+
+    @Test
+    fun `date in a custom pattern`() {
+        // date = 2026-10-16T23:30Z; Africa/Douala is already 17 Oct
+        assertEquals("octobre 2026", TenantFormatter(TENANT).date(date, "MMMM yyyy"))
+        assertEquals("October 2026", TenantFormatter(TENANT.copy(locales = listOf("en-CM"))).date(date, "MMMM yyyy"))
+    }
 }
