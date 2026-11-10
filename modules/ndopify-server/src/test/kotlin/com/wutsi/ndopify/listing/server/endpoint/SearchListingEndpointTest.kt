@@ -142,4 +142,11 @@ class SearchListingEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(listOf(102L, 101L), search("limit=2"))
         assertEquals(listOf(100L), search("limit=2&offset=2"))
     }
+
+    @Test
+    fun `total - the whole filtered set, not the page`() {
+        val response = rest.getForEntity("/v1/listings?agent-id=20&limit=1", SearchListingResponse::class.java)
+        assertEquals(3L, response.body!!.total)
+        assertEquals(1, response.body!!.listings.size)
+    }
 }

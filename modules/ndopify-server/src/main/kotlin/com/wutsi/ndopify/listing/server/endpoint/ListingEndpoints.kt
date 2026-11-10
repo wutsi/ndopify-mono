@@ -73,7 +73,10 @@ class ListingEndpoints(
     fun search(@ModelAttribute request: SearchListingRequest): SearchListingResponse {
         val restricted = accessService.restrict(request)
         val listings = service.search(restricted.copy(limit = OffsetLimitPageRequest.limit(request.limit)))
-        return SearchListingResponse(listings = listings.map { listing -> mapper.toListingSummary(listing) })
+        return SearchListingResponse(
+            listings = listings.map { listing -> mapper.toListingSummary(listing) },
+            total = service.count(restricted),
+        )
     }
 
     @GetMapping("/{id}")

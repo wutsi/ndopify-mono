@@ -50,7 +50,15 @@ class ListingService(
 ) {
     /** Newest first. */
     fun search(request: SearchListingRequest): List<ListingEntity> {
-        val spec = Specification<ListingEntity> { root, _, cb ->
+        val sort = Sort.by(Sort.Direction.DESC, "id")
+        return dao.findAll(specification(request), OffsetLimitPageRequest(request.offset, request.limit, sort)).content
+    }
+
+    /** The whole filtered set, not the page. */
+    fun count(request: SearchListingRequest): Long = dao.count(specification(request))
+
+    private fun specification(request: SearchListingRequest): Specification<ListingEntity> {
+        return Specification { root, _, cb ->
             val predicates = mutableListOf<Predicate>()
 
             if (request.ids.isNotEmpty()) {
@@ -110,9 +118,6 @@ class ListingService(
 
             cb.and(*predicates.toTypedArray())
         }
-
-        val sort = Sort.by(Sort.Direction.DESC, "id")
-        return dao.findAll(spec, OffsetLimitPageRequest(request.offset, request.limit, sort)).content
     }
 
     fun findById(id: Long): ListingEntity {
