@@ -128,6 +128,31 @@ class NdListingClientTest {
     }
 
     @Test
+    fun searchByAgent() {
+        server.expect(
+            requestTo("http://localhost:8080/v1/listings?agent-id=30&status=PUBLISHED&limit=3&offset=3"),
+        )
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(
+                withSuccess(
+                    json(
+                        SearchListingResponse(
+                            listings = listOf(ListingSummary(id = 5004, agentId = 30, status = ListingStatus.PUBLISHED)),
+                            total = 6,
+                        ),
+                    ),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val page = client.searchByAgent(30, 3, 3)
+
+        assertEquals(6L, page.total)
+        assertEquals(listOf(5004L), page.listings.map { it.id })
+        server.verify()
+    }
+
+    @Test
     fun searchByIds() {
         server.expect(requestTo("http://localhost:8080/v1/listings?id=3012&id=3044&limit=2"))
             .andExpect(method(HttpMethod.GET))

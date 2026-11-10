@@ -107,6 +107,34 @@ class NdAgentClientTest {
     }
 
     @Test
+    fun get() {
+        server.expect(requestTo("http://localhost:8080/v1/agents/30"))
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(
+                withSuccess(
+                    """{"agent":{"id":30,"party":{"id":300,"firstName":"Clarisse","lastName":"Mbarga","email":"clarisse@gmail.com","kycStatus":"VERIFIED","createdAt":0,"modifiedAt":0},""" +
+                        """"agentType":"INDEPENDANT","experienceLevel":"SENIOR","biography":"Bio","cityId":1,"neighborhoodIds":[1,2],"whatsappNumber":"+237699123456",""" +
+                        """"createdAt":0,"modifiedAt":0,"rating":4.5,"version":1}}""",
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val agent = client.get(30)
+
+        assertEquals(30L, agent?.id)
+        assertEquals("Clarisse", agent?.party?.firstName)
+        server.verify()
+    }
+
+    @Test
+    fun `get - unknown agent`() {
+        server.expect(requestTo("http://localhost:8080/v1/agents/99"))
+            .andRespond(withStatus(HttpStatus.NOT_FOUND))
+
+        assertNull(client.get(99))
+    }
+
+    @Test
     fun me() {
         server.expect(requestTo("http://localhost:8080/v1/agents/me"))
             .andExpect(method(HttpMethod.GET))

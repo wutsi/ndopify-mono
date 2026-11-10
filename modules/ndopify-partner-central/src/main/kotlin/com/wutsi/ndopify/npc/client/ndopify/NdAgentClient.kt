@@ -54,6 +54,18 @@ class NdAgentClient(
             if (ex.statusCode == HttpStatus.NOT_FOUND) null else throw ex
         }
 
+    /** The agent [id]; null when the server doesn't know it (404). Every other error propagates. */
+    fun get(id: Long): Agent? =
+        try {
+            rest.get()
+                .uri("/v1/agents/{id}", id)
+                .retrieve()
+                .body<GetAgentResponse>()
+                ?.agent
+        } catch (ex: HttpClientErrorException) {
+            if (ex.statusCode == HttpStatus.NOT_FOUND) null else throw ex
+        }
+
     /** Updates the agent's profile: a null field is left unchanged, so an empty biography is sent as `""`. */
     fun update(id: Long, request: UpdateAgentRequest) {
         rest.post()

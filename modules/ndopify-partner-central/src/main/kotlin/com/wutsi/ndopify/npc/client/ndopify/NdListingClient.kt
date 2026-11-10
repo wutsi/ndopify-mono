@@ -53,6 +53,19 @@ class NdListingClient(
             ?.listing
             ?: Listing()
 
+    /** One page of [agentId]'s PUBLISHED listings, newest first, with the whole filtered set's total. */
+    fun searchByAgent(agentId: Long, limit: Int, offset: Int): SearchListingResponse =
+        rest.get()
+            .uri(
+                "/v1/listings?agent-id={agentId}&status=PUBLISHED&limit={limit}&offset={offset}",
+                agentId,
+                limit,
+                offset,
+            )
+            .retrieve()
+            .body<SearchListingResponse>()
+            ?: SearchListingResponse()
+
     /**
      * The id of the listing of [mandateId], null before it's created. [agentId] must be the signed-in agent's: without
      * it, ndopify-server only searches the PUBLISHED listings.
