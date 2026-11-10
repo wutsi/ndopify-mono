@@ -97,26 +97,22 @@ class AgentProfileController(
     private fun listings(agentId: Long, requested: Int): AgentListingsPage? =
         try {
             val requestedPage = requested.coerceAtLeast(1)
-            val first = listingClient.searchByAgent(
-                agentId,
-                AgentProfileRules.PAGE_SIZE,
-                (requestedPage - 1) * AgentProfileRules.PAGE_SIZE,
-            )
+            val first = listingClient.searchByAgent(agentId, AgentProfileRules.PAGE_SIZE, offset(requestedPage))
             val page = AgentProfileRules.page(first.total, requestedPage)
             val listings = if (page == requestedPage) {
                 first.listings
             } else {
-                listingClient.searchByAgent(
-                    agentId,
-                    AgentProfileRules.PAGE_SIZE,
-                    (page - 1) * AgentProfileRules.PAGE_SIZE,
-                ).listings
+                listingClient.searchByAgent(agentId, AgentProfileRules.PAGE_SIZE, offset(page)).listings
             }
             AgentListingsPage(listings, page, AgentProfileRules.pages(first.total))
         } catch (ex: RestClientException) {
             LOGGER.warn("No listings for agent $agentId: ${ex.message}")
             null
         }
+
+    /** [page]'s offset, capped so an absurd page number can't overflow into a negative offset. */
+    private fun offset(page: Int): Int =
+        ((page - 1L) * AgentProfileRules.PAGE_SIZE).coerceIn(0L, Int.MAX_VALUE.toLong()).toInt()
 
     /** The listing's images; empty when they can't be had (the card keeps its placeholder). */
     private fun images(listingId: Long): List<ListingImage> =

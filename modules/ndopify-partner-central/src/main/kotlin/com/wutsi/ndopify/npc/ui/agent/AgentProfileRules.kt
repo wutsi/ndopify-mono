@@ -40,7 +40,7 @@ object AgentProfileRules {
     fun listingTitle(summary: ListingSummary): String {
         val type = MandateLabels.shortPropertyType(summary.propertyType) ?: FALLBACK_TITLE
         val rooms = summary.rooms?.takeIf {
-            summary.propertyType != PropertyType.STUDIO && summary.propertyType != PropertyType.ROOM
+            it > 0 && summary.propertyType != PropertyType.STUDIO && summary.propertyType != PropertyType.ROOM
         }
         return listOfNotNull(type, rooms?.let { "$it " + if (it > 1) "chambres" else "chambre" }).joinToString(" ")
     }

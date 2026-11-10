@@ -63,6 +63,12 @@ class AgentProfileRulesTest {
     }
 
     @Test
+    fun `listingTitle - no room count when it is not positive`() {
+        assertEquals("Appartement", AgentProfileRules.listingTitle(LISTING_APARTMENT.copy(rooms = 0)))
+        assertEquals("Appartement", AgentProfileRules.listingTitle(LISTING_APARTMENT.copy(rooms = -1)))
+    }
+
+    @Test
     fun `listingPlace - neighbourhood and city`() {
         assertEquals("Bonapriso, Douala", AgentProfileRules.listingPlace(LISTING_APARTMENT, AgentProfileFixtures.LOCATIONS))
         assertNull(AgentProfileRules.listingPlace(SPARSE_LISTING, AgentProfileFixtures.LOCATIONS))

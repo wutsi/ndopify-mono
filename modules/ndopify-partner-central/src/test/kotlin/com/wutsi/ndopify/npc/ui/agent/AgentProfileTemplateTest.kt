@@ -146,6 +146,20 @@ class AgentProfileTemplateTest {
     }
 
     @Test
+    fun `missing with a back - the panel returns to the Espace agent`() {
+        doReturn(null).whenever(agentClient).get(99)
+
+        val page = Jsoup.parse(
+            mvc.perform(get("/agent?id=99&back=/listings/501")).andReturn().response.contentAsString,
+        )
+
+        assertEquals("/listings/501", page.selectFirst(".agent-back a")?.attr("href"))
+        assertEquals("← Retour", page.selectFirst(".agent-back a")?.text())
+        assertEquals("/", page.selectFirst(".alert a")?.attr("href"))
+        assertEquals("Retour à l'espace agent", page.selectFirst(".alert a")?.text())
+    }
+
+    @Test
     fun `no listings - no section nor pager`() {
         doReturn(SearchListingResponse()).whenever(listingClient).searchByAgent(any(), any(), any())
 

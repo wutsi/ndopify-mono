@@ -1,8 +1,11 @@
 package com.wutsi.ndopify.npc.ui.agent
 
 import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.argumentCaptor
+import com.nhaarman.mockitokotlin2.atLeastOnce
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
+import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
@@ -140,6 +143,16 @@ class AgentProfileControllerTest {
 
         assertEquals(1, view.page)
         verify(listingClient).searchByAgent(30, 3, 0)
+    }
+
+    @Test
+    fun `huge page never sends a negative offset`() {
+        val offset = argumentCaptor<Int>()
+
+        mvc.perform(get("/agent?id=30&page=1000000000")).andReturn()
+
+        verify(listingClient, atLeastOnce()).searchByAgent(eq(30), eq(3), offset.capture())
+        assertTrue(offset.allValues.all { it >= 0 }, offset.allValues.toString())
     }
 
     @Test
