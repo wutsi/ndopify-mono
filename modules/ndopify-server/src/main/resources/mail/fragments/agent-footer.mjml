@@ -1,5 +1,10 @@
 {{#agent_full_name}}
 <!-- The agent's signature: the customer's contact on one side, the tenant's mark on the other. -->
+<mj-section padding="0">
+    <mj-column>
+        <mj-divider css-class="divider"/>
+    </mj-column>
+</mj-section>
 <mj-section padding="0 24px 16px 24px">
     <mj-column width="68%" vertical-align="middle">
         {{#agent_photo_url}}

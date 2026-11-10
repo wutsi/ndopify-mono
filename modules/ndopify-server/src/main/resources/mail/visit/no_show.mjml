@@ -5,58 +5,60 @@
         </mj-style>
     </mj-head>
     <mj-body css-class="body">
-        <mj-section css-class="main-content">
-            <mj-column>
-                <!-- Logo -->
-                <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
+        <mj-wrapper background-color="#ffffff" border-radius="30px" padding="20px">
+            <mj-section padding="0">
+                <mj-column>
+                    <!-- Logo -->
+                    <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
 
-                <!-- Divider with class for CSS injection -->
-                <mj-divider css-class="divider"/>
+                    <!-- Divider with class for CSS injection -->
+                    <mj-divider css-class="divider"/>
 
-                <!-- The listing's photo, if any, linked to the visit's page when there is one -->
-                {{#image_url}}
-                <mj-image src="{{image_url}}" alt="{{listing_title}}" {{#visit_url}}href="{{visit_url}}"{{/visit_url}}
-                          border-radius="8px" padding="10px 0"/>
-                {{/image_url}}
+                    <!-- The listing's photo, if any, linked to the visit's page when there is one -->
+                    {{#image_url}}
+                    <mj-image src="{{image_url}}" alt="{{listing_title}}" {{#visit_url}}href="{{visit_url}}"{{/visit_url}}
+                              border-radius="8px" padding="10px 0"/>
+                    {{/image_url}}
 
-                <!-- Body Text -->
-                <mj-text>
-                    Bonjour <strong>{{recipient_name}}</strong>,
-                </mj-text>
-                <mj-text>
-                    La visite du bien <strong>{{listing_title}}</strong> prévue le {{visit_date}} à {{visit_time}}
-                    n'a pas eu lieu.
-                </mj-text>
-                <mj-text>
-                    {{reason_label}}
-                </mj-text>
-                {{#agent_recipient}}
-                <mj-text>
-                    Contactez votre client ({{other_party}}) pour convenir d'une nouvelle visite.
-                </mj-text>
-                {{/agent_recipient}}
-                {{^agent_recipient}}
-                <mj-text>
-                    Vous pouvez demander une nouvelle visite&#160;: votre agent ({{other_party}}) organisera celle qui
-                    vous convient.
-                </mj-text>
-                {{/agent_recipient}}
+                    <!-- Body Text -->
+                    <mj-text>
+                        Bonjour <strong>{{recipient_name}}</strong>,
+                    </mj-text>
+                    <mj-text>
+                        La visite du bien <strong>{{listing_title}}</strong> prévue le {{visit_date}} à {{visit_time}}
+                        n'a pas eu lieu.
+                    </mj-text>
+                    <mj-text>
+                        {{reason_label}}
+                    </mj-text>
+                    {{#agent_recipient}}
+                    <mj-text>
+                        Contactez votre client ({{other_party}}) pour convenir d'une nouvelle visite.
+                    </mj-text>
+                    {{/agent_recipient}}
+                    {{^agent_recipient}}
+                    <mj-text>
+                        Vous pouvez demander une nouvelle visite&#160;: votre agent ({{other_party}}) organisera celle qui
+                        vous convient.
+                    </mj-text>
+                    {{/agent_recipient}}
 
-                {{#visit_url}}
-                <mj-button href="{{visit_url}}" css-class="btn-primary" align="center">
-                    Demander une autre visite
-                </mj-button>
-                {{/visit_url}}
+                    {{#visit_url}}
+                    <mj-button href="{{visit_url}}" css-class="btn-primary" align="center">
+                        Demander une autre visite
+                    </mj-button>
+                    {{/visit_url}}
 
-                <!-- Sign-off -->
-                <mj-spacer/>
-                <mj-text>
-                    Cordialement,
-                    <br/>
-                    L'équipe {{tenant_name}}
-                </mj-text>
-            </mj-column>
-        </mj-section>
-        {{> mail/fragments/agent-footer.mjml}}
+                    <!-- Sign-off -->
+                    <mj-spacer/>
+                    <mj-text>
+                        Cordialement,
+                        <br/>
+                        L'équipe {{tenant_name}}
+                    </mj-text>
+                </mj-column>
+            </mj-section>
+            {{> mail/fragments/agent-footer.mjml}}
+        </mj-wrapper>
     </mj-body>
 </mjml>
