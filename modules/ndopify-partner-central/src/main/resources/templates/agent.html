@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${missing} ? 'Agent introuvable — Ndopify Partner Central' : ${profile.name} + ' — Ndopify Partner Central'">Profil de l'agent — Ndopify Partner Central</title>
+    <meta name="description" content="Profil d'un agent du réseau Ndopify.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/agent.css}">
+    <script th:src="@{/assets/js/partner-central.js}" defer></script>
+</head>
+<!--/*
+  Another agent's profile (AgentProfileController), opened from one of that agent's listings once co-brokerage ships.
+  "profile" is the AgentProfileView (absent when "missing": an unknown or missing id, answered with a 404).
+  "backUrl"/"backLabel" are the link back to the listing the agent came from, or to the Espace agent.
+  The listings pager is server-rendered (no agent.js): three per page, hidden for a single page.
+*/-->
+<body data-page="agent">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" th:href="@{/}">
+                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte" th:if="${signedIn}">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <img class="user-menu__photo" th:if="${userPhotoUrl}" th:src="${userPhotoUrl}" alt="" width="44" height="44"
+                         data-user-photo>
+                    <span aria-hidden="true" data-user-initials th:unless="${userPhotoUrl}" th:text="${initials}">NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li><a class="user-menu__item" th:href="@{/profile}">Profil</a></li>
+                    <li>
+                        <form method="post" th:action="@{/logout}" data-logout>
+                            <button class="user-menu__item" type="submit">Déconnexion</button>
+                        </form>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="agent-back"><a th:href="@{${backUrl}}" th:text="${backLabel}">← Retour à l'espace agent</a></p>
+
+            <!-- Unknown or missing id: the same 404 panel. -->
+            <div class="alert alert--warning" th:if="${missing}">
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <h1 class="alert__title">Agent introuvable</h1>
+                    <p>Ce profil n'existe pas ou n'est plus disponible.</p>
+                    <p><a th:href="@{${backUrl}}">Retour à l'espace agent</a></p>
+                </div>
+            </div>
+
+            <article data-agent th:unless="${missing}">
+                <header class="agent-hero">
+                    <div class="agent-hero__avatar" aria-hidden="true">
+                        <img th:if="${profile.photoUrl}" th:src="${profile.photoUrl}" alt="">
+                        <span class="agent-hero__initials" th:unless="${profile.photoUrl}" th:text="${profile.initials}">NP</span>
+                    </div>
+                    <div class="agent-hero__heading">
+                        <h1 class="agent-hero__name" th:text="${profile.name}">Clarisse Mbarga</h1>
+                        <span class="agent-badge" th:if="${profile.verified}">
+                            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            Vérifié
+                        </span>
+                    </div>
+                    <p class="agent-hero__meta" th:if="${profile.typeLabel != null or profile.city != null}">
+                        <span th:if="${profile.typeLabel != null}" th:text="${profile.typeLabel}">Indépendant</span>
+                        <span class="agent-hero__dot" aria-hidden="true"
+                              th:if="${profile.typeLabel != null and profile.city != null}"> · </span>
+                        <span th:if="${profile.city != null}" th:text="${profile.city}">Douala</span>
+                    </p>
+                    <p class="agent-hero__since" th:if="${profile.since != null}" th:text="${profile.since}">Membre depuis mars 2023</p>
+                    <p class="agent-sectors agent-hero__sectors"
+                       th:if="${profile.sectorCity != null or !profile.sectorNeighborhoods.isEmpty()}">
+                        <span class="visually-hidden">Ses secteurs&nbsp;:</span>
+                        <span class="agent-sectors__city" th:if="${profile.sectorCity != null}" th:text="${profile.sectorCity}">Douala</span>
+                        <span class="agent-sectors__chips">
+                            <span class="agent-sectors__chip" th:each="neighborhood : ${profile.sectorNeighborhoods}"
+                                  th:text="${neighborhood}">Bonapriso</span>
+                        </span>
+                    </p>
+                    <a class="btn btn--primary agent-hero__contact" th:if="${profile.whatsappUrl != null}"
+                       th:href="${profile.whatsappUrl}" target="_blank" rel="noopener">
+                        <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+                        Contacter sur WhatsApp
+                    </a>
+                </header>
+
+                <section class="section" id="listings" aria-labelledby="listings-title"
+                         th:if="${profile.listingsUnavailable or !profile.listings.isEmpty()}">
+                    <h2 id="listings-title">Ses annonces</h2>
+                    <div class="alert alert--warning" th:if="${profile.listingsUnavailable}">
+                        <p>Annonces indisponibles pour le moment. Réessayez plus tard.</p>
+                    </div>
+                    <th:block th:unless="${profile.listingsUnavailable}">
+                        <ul class="agent-listings">
+                            <li th:each="card : ${profile.listings}">
+                                <a class="agent-listing" th:href="@{${card.url}}">
+                                    <span class="agent-listing__photo" aria-hidden="true">
+                                        <img th:if="${card.photoUrl != null}" th:src="${card.photoUrl}" alt="">
+                                        <svg th:unless="${card.photoUrl != null}" class="icon" viewBox="0 0 24 24" fill="none"
+                                             stroke="currentColor" stroke-width="2" focusable="false"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
+                                    </span>
+                                    <span class="agent-listing__text">
+                                        <strong class="agent-listing__title" th:text="${card.title}">Appartement 2 chambres</strong>
+                                        <span class="agent-listing__place" th:if="${card.place != null}" th:text="${card.place}">Bonapriso, Douala</span>
+                                        <span class="agent-listing__facts" th:if="${card.facts != null}" th:text="${card.facts}">80 m² · Meublé</span>
+                                        <span class="agent-listing__price" th:if="${card.price != null}" th:text="${card.price}">250K FCFA / mois</span>
+                                    </span>
+                                </a>
+                            </li>
+                        </ul>
+                        <nav class="agent-pagination" aria-label="Pagination des annonces" th:if="${profile.pages > 1}">
+                            <a th:if="${profile.prevUrl != null}" class="btn btn--outline agent-pagination__button"
+                               th:href="@{${profile.prevUrl}}" aria-label="Page précédente" data-listings-prev>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                     aria-hidden="true" focusable="false"><path d="m15 18-6-6 6-6"/></svg>
+                            </a>
+                            <button th:unless="${profile.prevUrl != null}" type="button"
+                                    class="btn btn--outline agent-pagination__button" disabled aria-label="Page précédente">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                     aria-hidden="true" focusable="false"><path d="m15 18-6-6 6-6"/></svg>
+                            </button>
+                            <p class="agent-pagination__page" th:text="|Page ${profile.page} sur ${profile.pages}|">Page 1 sur 2</p>
+                            <a th:if="${profile.nextUrl != null}" class="btn btn--outline agent-pagination__button"
+                               th:href="@{${profile.nextUrl}}" aria-label="Page suivante" data-listings-next>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                     aria-hidden="true" focusable="false"><path d="m9 18 6-6-6-6"/></svg>
+                            </a>
+                            <button th:unless="${profile.nextUrl != null}" type="button"
+                                    class="btn btn--outline agent-pagination__button" disabled aria-label="Page suivante">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                     aria-hidden="true" focusable="false"><path d="m9 18 6-6-6-6"/></svg>
+                            </button>
+                        </nav>
+                    </th:block>
+                </section>
+
+                <section class="section" aria-labelledby="about-title" th:if="${profile.biography != null}">
+                    <h2 id="about-title">À propos</h2>
+                    <p th:text="${profile.biography}">Démarcheur à Douala.</p>
+                </section>
+            </article>
+        </div>
+    </main>
+</body>
+</html>
