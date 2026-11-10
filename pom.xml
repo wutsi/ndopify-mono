@@ -9,7 +9,7 @@
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>4.1.2</version>
     </parent>
-    
+
     <name>ndopify-mono</name>
     <artifactId>ndopify-mono</artifactId>
     <groupId>com.wutsi.ndopify</groupId>
@@ -49,8 +49,8 @@
     </repositories>
 
     <properties>
-        <ndopify-dto.version>0.0.86-SNAPSHOT</ndopify-dto.version>
-        <ndopify-web-core.version>0.0.8-SNAPSHOT</ndopify-web-core.version>
+        <ndopify-dto.version>0.0.86</ndopify-dto.version>
+        <ndopify-web-core.version>0.0.8</ndopify-web-core.version>
 
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
