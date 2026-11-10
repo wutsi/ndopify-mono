@@ -36,12 +36,15 @@ colleague can see what they have on offer. This iteration is the static prototyp
   large thumbnail (or placeholder), a concise title (property type + rooms), a place line (neighbourhood,
   city), a facts line (area · furniture) and the rent — no repeated place or room count — linking to
   NPC's listing page (`/listings/{id}`). Hidden when the agent has none.
+- The listings are paginated three per page in the prototype, with a compact previous/next pager and a
+  "Page X sur Y" label; the pager is hidden when there is only one page.
 - "À propos": biography; hidden when empty.
 
 ## States (prototype fixtures)
 
 - Default / `?id=…`: complete profile — photo, name, verified, independent, Douala, Bonapriso / Akwa /
-  Bonanjo inline sectors, member since, biography, WhatsApp, three published listings.
+  Bonanjo inline sectors, member since, biography, WhatsApp, six published listings on two pages (three
+  per page); `?page=2` shows the second page.
 - `?id=…` incomplete: initials instead of photo, no biography, inline sectors only, no listings (the
   section is hidden).
 - Unknown id: "Agent introuvable" panel with a link back to the Espace agent.
@@ -65,6 +68,9 @@ colleague can see what they have on offer. This iteration is the static prototyp
   `index.html`.
 - The listing cards are fixtures: no photos, so each shows a placeholder; each card links to
   `listing.html?id={id}`, NPC's listing page.
+- Six listing fixtures, three per page; `?page=` selects the page. The pager updates the URL without a
+  reload and announces the page. Without JS, the default page and its pager render, but moving to page 2
+  is the served page's job.
 - Reuse `partner-central.css` tokens and classes (`.page`, `.column`, `.page-intro`, `.hint`, `.btn`,
   `.status-tag`); page-specific classes live in `agent.css`.
 - `data-page="agent"`, header and account menu as on the other signed-in pages.
@@ -78,6 +84,10 @@ colleague can see what they have on offer. This iteration is the static prototyp
 - Listing access: NPC's `/listings/{id}` is the listing agent's checklist page and locks any other agent.
   A co-brokerage read-only view (or access for PUBLISHED listings) is needed before these cards open a
   colleague's listing; the prototype links to `listing.html?id={id}`.
+- Pagination: `SearchListingResponse` has no total, so the BFF can request `limit + 1` to know whether a
+  next page exists, or the server should add a total; the prototype uses three per page and a
+  "Page X sur Y" label. The BFF should paginate with
+  `GET /v1/listings?agent-id={id}&limit=&offset=`.
 - Listing labels: the card uses a concise title (property type + rooms), a place line (neighbourhood,
   city) and a facts line (area · furniture) built from the summary. `ListingSummary.title` is free text
   and can repeat those, so the BFF should use the generated labels for these cards.
@@ -86,5 +96,6 @@ colleague can see what they have on offer. This iteration is the static prototyp
 
 - Exact responsive spacing and the final visual pass on the prototype.
 - Later work: the real `/agent` controller/template, the listing → agent link, the agent-listings search
-  (`GET /v1/listings?agent-id={id}`; the server restricts another agent to PUBLISHED), the image URLs and
-  the read-only listing access for co-brokerage.
+  (`GET /v1/listings?agent-id={id}`; the server restricts another agent to PUBLISHED), the server-side
+  pagination (limit/offset and a total or look-ahead), the image URLs and the read-only listing access
+  for co-brokerage.

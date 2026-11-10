@@ -94,11 +94,12 @@
                 <!--
                     Her current published listings, newest first. The real page reads
                     GET /v1/listings?agent-id={id} (ndopify-server restricts another agent to PUBLISHED) and links
-                    each card to NPC's listing page (`/listings/{id}`). PROTOTYPE: three fixtures, a placeholder
-                    photo and listing.html?id={id}; the section is hidden when the agent has none. The BFF's
-                    listing page is the owner's checklist today, so a co-brokerage read-only view is still needed.
+                    each card to NPC's listing page (`/listings/{id}`). PROTOTYPE: six fixtures, three per page,
+                    a placeholder photo and listing.html?id={id}; the section is hidden when the agent has none.
+                    The BFF's listing page is the owner's checklist today, so a co-brokerage read-only view is
+                    still needed.
                 -->
-                <section class="section" aria-labelledby="listings-title" data-agent-listings>
+                <section class="section" id="listings" aria-labelledby="listings-title" data-agent-listings>
                     <h2 id="listings-title">Ses annonces</h2>
                     <ul class="agent-listings" data-agent-listings-list>
                         <li>
@@ -144,6 +145,23 @@
                             </a>
                         </li>
                     </ul>
+                    <p class="visually-hidden" role="status" data-listings-status></p>
+                    <nav class="agent-pagination" aria-label="Pagination des annonces" data-agent-pagination>
+                        <a class="btn btn--outline agent-pagination__button" aria-label="Page précédente"
+                           aria-disabled="true" data-listings-prev>
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                 aria-hidden="true" focusable="false"><path d="m15 18-6-6 6-6"/></svg>
+                        </a>
+                        <p class="agent-pagination__page">Page <span data-listings-page>1</span> sur
+                            <span data-listings-pages>2</span></p>
+                        <a class="btn btn--outline agent-pagination__button" href="agent.html?id=1001&page=2#listings"
+                           aria-label="Page suivante" data-listings-next>
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                 aria-hidden="true" focusable="false"><path d="m9 18 6-6-6-6"/></svg>
+                        </a>
+                    </nav>
                 </section>
 
                 <section class="section" aria-labelledby="about-title" data-agent-about>

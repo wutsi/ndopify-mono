@@ -30,6 +30,18 @@
                 {
                     id: 5003, title: "Maison 3 chambres", place: "Bonanjo, Douala",
                     facts: "150 m² · Non meublé", amount: "400K FCFA", period: "/ mois"
+                },
+                {
+                    id: 5004, title: "Appartement 3 chambres", place: "Bonapriso, Douala",
+                    facts: "95 m² · Non meublé", amount: "300K FCFA", period: "/ mois"
+                },
+                {
+                    id: 5005, title: "Studio", place: "Akwa, Douala",
+                    facts: "28 m² · Meublé", amount: "110K FCFA", period: "/ mois"
+                },
+                {
+                    id: 5006, title: "Maison 4 chambres", place: "Bonanjo, Douala",
+                    facts: "200 m² · Non meublé", amount: "450K FCFA", period: "/ mois"
                 }
             ]
         },
@@ -54,8 +66,17 @@
         ' aria-hidden="true" focusable="false"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/>' +
         '<path d="M10 20v-6h4v6"/></svg>';
 
+    var PAGE_SIZE = 3; // what the prototype shows per page
+
+    // The agent and page currently rendered, for the pager.
+    var current = { id: "1001", agent: null, page: 1 };
+
     function $(selector) {
         return document.querySelector(selector);
+    }
+
+    function $all(selector) {
+        return Array.prototype.slice.call(document.querySelectorAll(selector));
     }
 
     function setText(selector, value) {
@@ -190,15 +211,94 @@
         return item;
     }
 
-    function renderListings(agent) {
+    function listingsUrl(id, page) {
+        var params = new URLSearchParams(window.location.search);
+        params.set("id", id);
+        params.set("page", page);
+        return "agent.html?" + params.toString() + "#listings";
+    }
+
+    // The URL follows the pager; file:// may refuse history changes, so the page keeps working either way.
+    function rememberPage(url, replace) {
+        try {
+            if (replace) {
+                window.history.replaceState({ page: current.page }, "", url);
+            } else {
+                window.history.pushState({ page: current.page }, "", url);
+            }
+        } catch (e) {
+            /* ignore */
+        }
+    }
+
+    function setPagerLink(selector, enabled, id, page) {
+        var link = $(selector);
+        if (!link) return;
+        if (!enabled) {
+            link.setAttribute("aria-disabled", "true");
+            link.removeAttribute("href");
+            link.removeAttribute("data-listings-target");
+            return;
+        }
+        link.removeAttribute("aria-disabled");
+        link.setAttribute("href", listingsUrl(id, page));
+        link.setAttribute("data-listings-target", page);
+    }
+
+    function renderListings(agent, id, requestedPage) {
         var section = $("[data-agent-listings]");
         var list = $("[data-agent-listings-list]");
-        if (!section || !list) return;
+        var pager = $("[data-agent-pagination]");
+        if (!section || !list || !pager) return 1;
         var listings = agent.listings || [];
         section.hidden = listings.length === 0;
         list.textContent = "";
-        listings.forEach(function (listing) {
+        if (!listings.length) {
+            pager.hidden = true;
+            return 1;
+        }
+        var pages = Math.ceil(listings.length / PAGE_SIZE);
+        var page = Math.min(Math.max(requestedPage || 1, 1), pages);
+        var start = (page - 1) * PAGE_SIZE;
+        listings.slice(start, start + PAGE_SIZE).forEach(function (listing) {
             list.appendChild(listingItem(listing));
+        });
+        pager.hidden = pages <= 1;
+        setText("[data-listings-page]", page);
+        setText("[data-listings-pages]", pages);
+        setPagerLink("[data-listings-prev]", page > 1, id, page - 1);
+        setPagerLink("[data-listings-next]", page < pages, id, page + 1);
+        return page;
+    }
+
+    function goToListingsPage(page) {
+        if (!current.agent) return;
+        current.page = renderListings(current.agent, current.id, page);
+        rememberPage(listingsUrl(current.id, current.page), false);
+        var section = $("[data-agent-listings]");
+        if (section) section.scrollIntoView({ block: "start" });
+        var status = $("[data-listings-status]");
+        var pages = $("[data-listings-pages]");
+        if (status && pages) status.textContent = "Page " + current.page + " sur " + pages.textContent;
+    }
+
+    function initListingsPager() {
+        $all("[data-listings-prev], [data-listings-next]").forEach(function (link) {
+            link.addEventListener("click", function (event) {
+                if (link.getAttribute("aria-disabled") === "true") {
+                    event.preventDefault();
+                    return;
+                }
+                var target = parseInt(link.getAttribute("data-listings-target"), 10);
+                if (!target) return;
+                event.preventDefault();
+                goToListingsPage(target);
+            });
+        });
+        window.addEventListener("popstate", function () {
+            if (!current.agent) return;
+            var page = parseInt(new URLSearchParams(window.location.search).get("page"), 10) || 1;
+            current.page = renderListings(current.agent, current.id, page);
         });
     }
 
@@ -220,11 +320,11 @@
         link.href = "https://wa.me/" + digits;
     }
 
-    function renderAgent(agent) {
+    function renderAgent(agent, id, requestedPage) {
         renderIdentity(agent);
         renderPhoto(agent);
         renderSectors(agent);
-        renderListings(agent);
+        current.page = renderListings(agent, id, requestedPage);
         renderAbout(agent);
         renderContact(agent);
     }
@@ -244,13 +344,21 @@
         if (!page) return;
         initBackLink();
 
-        var id = new URLSearchParams(window.location.search).get("id") || "1001";
+        var params = new URLSearchParams(window.location.search);
+        var id = params.get("id") || "1001";
         var agent = Object.prototype.hasOwnProperty.call(AGENTS, id) ? AGENTS[id] : null;
         if (!agent) {
             page.hidden = true;
             show("[data-agent-missing]", true);
             return;
         }
-        renderAgent(agent);
+        current.id = id;
+        current.agent = agent;
+        var requested = parseInt(params.get("page"), 10) || 1;
+        renderAgent(agent, id, requested);
+        if (requested !== current.page) {
+            rememberPage(listingsUrl(id, current.page), true);
+        }
+        initListingsPager();
     });
 })();

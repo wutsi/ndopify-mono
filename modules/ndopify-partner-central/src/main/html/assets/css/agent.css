@@ -229,6 +229,30 @@ h1.alert__title {
     font-family: var(--font-heading);
 }
 
+.agent-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+}
+
+.agent-pagination__page {
+    font-size: var(--step-hint);
+    font-variant-numeric: tabular-nums;
+}
+
+.agent-pagination__button {
+    flex: none;
+    width: var(--target);
+    height: var(--target);
+    padding: 0;
+}
+
+.agent-pagination__button .icon {
+    margin-top: 0;
+}
+
 [data-agent-bio] {
     overflow-wrap: anywhere;
 }
