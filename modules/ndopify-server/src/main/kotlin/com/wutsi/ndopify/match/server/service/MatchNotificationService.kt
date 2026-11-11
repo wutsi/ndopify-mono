@@ -12,10 +12,10 @@ import java.time.Clock
 import java.util.Date
 
 /**
- * Tells the agents of the current tenant about their new matches: the ACTIVE ones not notified yet, while the mandate
- * is APPROVED and the listing PUBLISHED. One e-mail per agent ([MatchNotificationMailet]), then its matches are marked
- * notified, each agent on its own: a failed e-mail is logged, its matches left to the next run, and the other agents
- * still sent.
+ * Tells the agents of the current tenant about their new matches: the ACTIVE ones from their own inventory, not
+ * notified yet, while the mandate is APPROVED and the listing PUBLISHED. Co-brokerage rows are left to the later
+ * notification slice. One e-mail per agent ([MatchNotificationMailet]), then its matches are marked notified, each
+ * agent on its own: a failed e-mail is logged, its matches left to the next run, and the other agents still sent.
  */
 @Service
 class MatchNotificationService(
@@ -30,7 +30,7 @@ class MatchNotificationService(
 
     /** Returns the number of agents e-mailed. */
     fun notifyAgents(): Int {
-        val pending = dao.findByStatusAndNotifiedAtIsNullAndMandateStatusAndListingStatus(
+        val pending = dao.findByStatusAndNotifiedAtIsNullAndMandateStatusAndListingStatusAndCoBrokerageFalse(
             MatchStatus.ACTIVE,
             MandateStatus.APPROVED,
             ListingStatus.PUBLISHED,
