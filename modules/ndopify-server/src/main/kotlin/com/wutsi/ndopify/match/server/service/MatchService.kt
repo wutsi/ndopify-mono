@@ -196,7 +196,12 @@ class MatchService(
 
         // 1. The agent's own inventory
         val own = listingDao.findByAgentIdAndStatus(agentId, ListingStatus.PUBLISHED)
-        val ownCount = matchAll(own.map { listing -> Triple(mandate, listing, distances) }, today)
+        val ownCount = matchAll(
+            own.map { listing -> Triple(mandate, listing, distances) },
+            today,
+            "Mandate#$mandateId",
+            "own",
+        )
         if (ownCount > 0 || hasViableOwnMatch(mandate.id!!)) {
             return ownCount
         }
@@ -213,7 +218,12 @@ class MatchService(
             return 0
         }
         LOGGER.info(">>> Mandate#$mandateId - CO_BROKERAGE candidate_count=${candidates.size}")
-        return matchAll(candidates.map { listing -> Triple(mandate, listing, distances) }, today)
+        return matchAll(
+            candidates.map { listing -> Triple(mandate, listing, distances) },
+            today,
+            "Mandate#$mandateId",
+            "co-brokerage",
+        )
     }
 
     // A PUBLISHED own match that neither the agent nor the customer turned down
@@ -263,20 +273,58 @@ class MatchService(
         }
 
         val today = today(listing.tenantId!!)
-        return matchAll(mandates.map { mandate -> Triple(mandate, listing, distances(mandate)) }, today)
+        return matchAll(
+            mandates.map { mandate -> Triple(mandate, listing, distances(mandate)) },
+            today,
+            "Listing#$listingId",
+            "listing",
+        )
     }
 
-    private fun matchAll(pairs: List<Triple<MandateEntity, ListingEntity, Map<Long, Double>>>, today: LocalDate): Int {
-        var count = 0
+    private enum class StoreOutcome { STORED, BELOW_MIN_SCORE, NOT_ACTIVE }
+
+    private fun matchAll(
+        pairs: List<Triple<MandateEntity, ListingEntity, Map<Long, Double>>>,
+        today: LocalDate,
+        scope: String,
+        phase: String,
+    ): Int {
+        var matched = 0
+        var belowMinScore = 0
+        var notActive = 0
+        val ruledOut = mutableMapOf<MatchRuleOut, Int>()
         var conflicts = 0
         pairs.forEach { (mandate, listing, distances) ->
             try {
-                val score = matcher.score(mandate, listing, distances, today)
-                if (store(mandate, listing, score)) {
-                    LOGGER.info(">>> Mandate#${mandate.id} Listing#${listing.id} - MATCH score=${score?.total}")
-                    count++
-                } else {
-                    LOGGER.info(">>> Mandate#${mandate.id} Listing#${listing.id} - NO_MATCH Match score=${score?.total}")
+                when (val result = matcher.evaluate(mandate, listing, distances, today)) {
+                    is MatchResult.RuledOut -> {
+                        ruledOut.merge(result.rule, 1, Int::plus)
+                        LOGGER.debug(
+                            ">>> Mandate#${mandate.id} Listing#${listing.id} - NO_MATCH reason=${result.rule} ${result.detail}",
+                        )
+                        discard(mandate, listing)
+                    }
+                    is MatchResult.Scored -> when (store(mandate, listing, result.score)) {
+                        StoreOutcome.STORED -> {
+                            matched++
+                            LOGGER.info(
+                                ">>> Mandate#${mandate.id} Listing#${listing.id} - MATCH score=${result.score.total}",
+                            )
+                        }
+                        StoreOutcome.BELOW_MIN_SCORE -> {
+                            belowMinScore++
+                            LOGGER.info(
+                                ">>> Mandate#${mandate.id} Listing#${listing.id} - " +
+                                    "NO_MATCH reason=BELOW_MIN_SCORE score=${result.score.total} min=$minScore",
+                            )
+                        }
+                        StoreOutcome.NOT_ACTIVE -> {
+                            notActive++
+                            LOGGER.debug(
+                                ">>> Mandate#${mandate.id} Listing#${listing.id} - NO_MATCH reason=NOT_ACTIVE",
+                            )
+                        }
+                    }
                 }
             } catch (_: ObjectOptimisticLockingFailureException) {
                 conflicts++ // The agent dismissed it meanwhile
@@ -284,22 +332,36 @@ class MatchService(
                 conflicts++ // Another run inserted the same pair meanwhile
             }
         }
-        return count
+        LOGGER.info(
+            ">>> $scope - MATCH_SUMMARY phase=$phase candidates=${pairs.size} matched=$matched " +
+                "below_min_score=$belowMinScore not_active=$notActive ruled_out=$ruledOut",
+        )
+        return matched
     }
 
-    // Returns true when an ACTIVE match is stored
-    private fun store(mandate: MandateEntity, listing: ListingEntity, score: MatchScore?): Boolean {
+    // An own ACTIVE row is removed when its pair no longer matches; a co-brokerage row is sticky
+    private fun discard(mandate: MandateEntity, listing: ListingEntity) {
+        if (listing.agent.id == mandate.agentId) {
+            val existing = dao.findByMandateAndListing(mandate, listing)
+            if (existing != null && existing.status == MatchStatus.ACTIVE) {
+                dao.delete(existing)
+            }
+        }
+    }
+
+    // Returns the outcome of the pair: nothing is deleted when the pair isn't ACTIVE, nor for co-brokerage
+    private fun store(mandate: MandateEntity, listing: ListingEntity, score: MatchScore): StoreOutcome {
         val coBrokerage = listing.agent.id != mandate.agentId
         val existing = dao.findByMandateAndListing(mandate, listing)
         if (existing != null && existing.status != MatchStatus.ACTIVE) {
-            return false
+            return StoreOutcome.NOT_ACTIVE
         }
-        if (score == null || score.total < minScore) {
+        if (score.total < minScore) {
             // A co-brokerage row was valid when created and its own-inventory situation is unchanged: kept (sticky)
             if (existing != null && !coBrokerage) {
                 dao.delete(existing)
             }
-            return false
+            return StoreOutcome.BELOW_MIN_SCORE
         }
 
         val now = Date(clock.millis())
@@ -328,7 +390,7 @@ class MatchService(
                 modifiedAt = now,
             )
         )
-        return true
+        return StoreOutcome.STORED
     }
 
     // Distance (km) from each neighbourhood of the mandate's city to the nearest of the mandate's: 0 for its own
