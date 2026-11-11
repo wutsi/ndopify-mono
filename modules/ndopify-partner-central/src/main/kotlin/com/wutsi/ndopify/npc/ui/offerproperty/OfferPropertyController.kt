@@ -7,6 +7,7 @@ import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.npc.ui.findproperty.SubmittedMandate
 import com.wutsi.ndopify.npc.ui.join.JoinRules
 import com.wutsi.ndopify.npc.ui.listing.ListingViews
+import com.wutsi.ndopify.npc.ui.listing.RentalTerms
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.npc.ui.login.LoginController
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
@@ -342,6 +343,7 @@ class OfferPropertyController(
             model.addAttribute("currency", formatter().currency())
             model.addAttribute("availableMin", today.toString())
             model.addAttribute("availableMax", today.plusDays(OfferPropertyRules.MAX_AVAILABILITY_DAYS).toString())
+            model.addAttribute("rentalMonths", RentalTerms.MONTHS)
         }
         if (step == STEP_FEATURES) {
             model.addAttribute(
@@ -379,7 +381,7 @@ class OfferPropertyController(
         return listOfNotNull(
             answers.priceAmount?.let { formatter.money(it) + " par mois" },
             answers.advanceRent?.let { "Avance de $it mois" } ?: "Sans avance de loyer",
-            answers.securityDeposit?.let { "Caution de $it mois" },
+            answers.securityDeposit?.let { "Caution de $it mois" } ?: "Sans caution",
             answers.availableFrom?.let {
                 if (it == formatter.today(clock)) "Disponible dès maintenant" else "Disponible dès le " + formatter.date(it)
             },

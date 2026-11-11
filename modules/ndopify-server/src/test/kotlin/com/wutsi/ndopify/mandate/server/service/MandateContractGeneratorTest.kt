@@ -145,6 +145,16 @@ class MandateContractGeneratorTest {
     }
 
     @Test
+    fun `legacy zero terms are left out`() {
+        val html = generator.generate(mandate.copy(securityDeposit = 0, advanceRent = 0), contract)
+
+        assertFalse(html.contains("0 mois"), "unexpected: 0 mois")
+        assertFalse(html.contains("<b>Caution</b>"), "unexpected: caution")
+        assertFalse(html.contains("<b>Avance sur loyer</b>"), "unexpected: advance")
+        assertTrue(html.contains("<b>Durée du bail</b> : 12 mois"))
+    }
+
+    @Test
     fun `optional criteria left out`() {
         doReturn(CustomerEntity(id = 10L, party = PartyEntity(firstName = "Ray", lastName = "Sponsible")))
             .whenever(customerService).findById(10L)

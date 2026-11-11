@@ -511,6 +511,29 @@ class ListingViewsTest {
     }
 
     @Test
+    fun `owner hints - the landlord asked no caution`() {
+        val form = ListingSectionForm.of(LISTING, formatter)
+        val mandate = MANDATE.copy(securityDeposit = 0)
+
+        assertEquals(
+            emptyMap(),
+            ListingViews.ownerHints(form.copy(securityDeposit = ""), mandate, locations, formatter)
+                .filterKeys { it == "securityDeposit" },
+        )
+        assertEquals(
+            "Indiqué par le propriétaire : Aucune",
+            ListingViews.ownerHints(form.copy(securityDeposit = "2"), mandate, locations, formatter)["securityDeposit"],
+        )
+    }
+
+    @Test
+    fun `rows - no caution`() {
+        val view = of(LISTING.copy(securityDeposit = 0))
+
+        assertEquals("150K\u00a0FCFA / mois · sans caution", row(view, ListingSection.TERMS).summary)
+    }
+
+    @Test
     fun photos() {
         val view = ListingViews.photos(IMAGES, editable = true)
 
