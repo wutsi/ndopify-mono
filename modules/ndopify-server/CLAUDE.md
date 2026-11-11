@@ -302,7 +302,13 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   one row per (mandate, listing), `@Version`-ed), see `docs/superpowers/plans/2026-10-31-search-listing-matching.md`
   for the algorithm. Depends on `mandate` and `listing`, never the reverse: `MatchEventListener` (async, after commit)
   runs `MatchService.matchMandate` on `MandateApprovedEvent` and `matchListing` on `ListingPublishedEvent`. Only an
-  APPROVED SEARCH mandate with an agent is matched, against that agent's PUBLISHED listings; `Matcher` (pure, unit
+  APPROVED SEARCH mandate with an agent is matched: against that agent's PUBLISHED listings first, then, only when it
+  has no viable own match (`existsViableOwnMatch`: PUBLISHED, not `DISMISSED` nor `REJECTED`), against the other
+  agents' PUBLISHED listings of the same city and listing type (co-brokerage, `coBrokerage`, `V10_5`). The same
+  `Matcher`, `min-score` and distances apply. A co-brokerage row is never deleted (sticky when own inventory appears
+  later); an own-inventory row keeps the re-score/delete behaviour. `GET /v1/matches` lists the agent's own inventory
+  first, then co-brokerage, best score first. `matchListing` never creates co-brokerage rows: the daily `rematch`
+  picks a newly published listing up. `Matcher` (pure, unit
   tested case by case in `MatcherTest`) rules a pair out (the customer's own property, another listing type / city /
   category — skipped only for a specified `BUILDING` pair — currency or periodicity, over budget +
   `price-tolerance`, an incompatible property type) or scores it (neighbourhood, price, rooms, amenities, availability,
