@@ -106,6 +106,9 @@ class MatchServiceTest {
         // furniture carries the whole total, so that MatchScore.total == [total] for the test
         MatchScore(0.0, 0.0, 0.0, 0.0, 0.0, total / Matcher.WEIGHT_FURNITURE)
 
+    private fun scored(total: Double): MatchResult = MatchResult.Scored(score(total))
+    private val ruledOut = MatchResult.RuledOut(MatchRuleOut.PROPERTY_TYPE, "search=APARTMENT listing=LAND")
+
     @BeforeTest
     fun setUp() {
         doReturn(TenantEntity(id = TENANT_ID, timeZone = "Africa/Douala")).whenever(tenantService).findById(TENANT_ID)
@@ -117,8 +120,8 @@ class MatchServiceTest {
     @Test
     fun `matchMandate creates the matches`() {
         doReturn(listOf(listing1, listing2)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
-        doReturn(score(0.9)).whenever(matcher).score(eq(search), eq(listing1), any(), eq(today))
-        doReturn(score(0.6)).whenever(matcher).score(eq(search), eq(listing2), any(), eq(today))
+        doReturn(scored(0.9)).whenever(matcher).evaluate(eq(search), eq(listing1), any(), eq(today))
+        doReturn(scored(0.6)).whenever(matcher).evaluate(eq(search), eq(listing2), any(), eq(today))
 
         val count = service.matchMandate(MANDATE_ID)
 
@@ -144,8 +147,8 @@ class MatchServiceTest {
     @Test
     fun `matchMandate persists the type score`() {
         doReturn(listOf(listing1)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
-        doReturn(score(1.0).copy(type = 0.85))
-            .whenever(matcher).score(eq(search), eq(listing1), any(), eq(today))
+        doReturn(MatchResult.Scored(score(1.0).copy(type = 0.85)))
+            .whenever(matcher).evaluate(eq(search), eq(listing1), any(), eq(today))
 
         service.matchMandate(MANDATE_ID)
 
@@ -160,7 +163,7 @@ class MatchServiceTest {
             .findIdsWithAgent(MandateType.SEARCH, MandateStatus.APPROVED)
         doThrow(RuntimeException("boom")).whenever(mandateDao).findWithNeighborhoodsById(99L)
         doReturn(listOf(listing1, listing2)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
-        doReturn(score(0.9)).whenever(matcher).score(any(), any(), any(), any())
+        doReturn(scored(0.9)).whenever(matcher).evaluate(any(), any(), any(), any())
 
         assertEquals(2, service.matchAll())
         verify(matchDao, times(2)).save(any<MatchEntity>())
@@ -177,7 +180,7 @@ class MatchServiceTest {
     @Test
     fun `matchMandate skips scores below min-score`() {
         doReturn(listOf(listing1)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
-        doReturn(score(0.4)).whenever(matcher).score(any(), any(), any(), any())
+        doReturn(scored(0.4)).whenever(matcher).evaluate(any(), any(), any(), any())
 
         assertEquals(0, service.matchMandate(MANDATE_ID))
         verify(matchDao, never()).save(any<MatchEntity>())
@@ -197,7 +200,7 @@ class MatchServiceTest {
         )
         doReturn(listOf(listing1)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
         doReturn(existing).whenever(matchDao).findByMandateAndListing(search, listing1)
-        doReturn(score(0.8)).whenever(matcher).score(any(), any(), any(), any())
+        doReturn(scored(0.8)).whenever(matcher).evaluate(any(), any(), any(), any())
 
         assertEquals(1, service.matchMandate(MANDATE_ID))
 
@@ -216,7 +219,7 @@ class MatchServiceTest {
         val existing = MatchEntity(id = 7L, mandate = search, listing = listing1, status = MatchStatus.ACTIVE)
         doReturn(listOf(listing1)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
         doReturn(existing).whenever(matchDao).findByMandateAndListing(search, listing1)
-        doReturn(null).whenever(matcher).score(any(), any(), any(), any())
+        doReturn(ruledOut).whenever(matcher).evaluate(any(), any(), any(), any())
 
         assertEquals(0, service.matchMandate(MANDATE_ID))
         verify(matchDao).delete(existing)
@@ -228,7 +231,21 @@ class MatchServiceTest {
         val existing = MatchEntity(id = 7L, mandate = search, listing = listing1, status = MatchStatus.DISMISSED)
         doReturn(listOf(listing1)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
         doReturn(existing).whenever(matchDao).findByMandateAndListing(search, listing1)
-        doReturn(score(0.9)).whenever(matcher).score(any(), any(), any(), any())
+        doReturn(scored(0.9)).whenever(matcher).evaluate(any(), any(), any(), any())
+
+        assertEquals(0, service.matchMandate(MANDATE_ID))
+        verify(matchDao, never()).save(any<MatchEntity>())
+        verify(matchDao, never()).delete(any<MatchEntity>())
+    }
+
+    @Test
+    fun `matchMandate reports NOT_ACTIVE before BELOW_MIN_SCORE`() {
+        val existing = MatchEntity(id = 7L, mandate = search, listing = listing1, status = MatchStatus.DISMISSED)
+        doReturn(listOf(listing1)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
+        doReturn(existing).whenever(matchDao).findByMandateAndListing(search, listing1)
+        doReturn(emptyList<ListingEntity>()).whenever(listingDao)
+            .findByCityIdAndListingTypeAndStatusAndAgentIdNot(CITY_ID, ListingType.RENTAL, ListingStatus.PUBLISHED, AGENT_ID)
+        doReturn(scored(0.4)).whenever(matcher).evaluate(any(), any(), any(), any())
 
         assertEquals(0, service.matchMandate(MANDATE_ID))
         verify(matchDao, never()).save(any<MatchEntity>())
@@ -276,7 +293,7 @@ class MatchServiceTest {
     @Test
     fun `a conflict skips the pair`() {
         doReturn(listOf(listing1, listing2)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
-        doReturn(score(0.9)).whenever(matcher).score(any(), any(), any(), any())
+        doReturn(scored(0.9)).whenever(matcher).evaluate(any(), any(), any(), any())
         doThrow(ObjectOptimisticLockingFailureException(MatchEntity::class.java, 7L))
             .doAnswer { it.arguments[0] }
             .whenever(matchDao).save(any<MatchEntity>())
@@ -292,7 +309,7 @@ class MatchServiceTest {
     fun `a duplicate insert skips the pair`() {
         // Another run (ex: matchListing while matchMandate runs) inserted the same pair meanwhile
         doReturn(listOf(listing1, listing2)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
-        doReturn(score(0.9)).whenever(matcher).score(any(), any(), any(), any())
+        doReturn(scored(0.9)).whenever(matcher).evaluate(any(), any(), any(), any())
         doThrow(DataIntegrityViolationException("Duplicate entry"))
             .doAnswer { it.arguments[0] }
             .whenever(matchDao).save(any<MatchEntity>())
@@ -307,7 +324,7 @@ class MatchServiceTest {
     @Test
     fun distances() {
         doReturn(listOf(listing1)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
-        doReturn(score(0.9)).whenever(matcher).score(any(), any(), any(), any())
+        doReturn(scored(0.9)).whenever(matcher).evaluate(any(), any(), any(), any())
 
         service.matchMandate(MANDATE_ID)
 
@@ -320,7 +337,7 @@ class MatchServiceTest {
                 limit = 20,
             )
         )
-        verify(matcher).score(search, listing1, mapOf(N2 to 1.5, N1 to 0.0), today)
+        verify(matcher).evaluate(search, listing1, mapOf(N2 to 1.5, N1 to 0.0), today)
     }
 
     @Test
@@ -328,12 +345,12 @@ class MatchServiceTest {
         val mandate = search.copy(neighborhoodIds = emptyList())
         doReturn(mandate).whenever(mandateDao).findWithNeighborhoodsById(MANDATE_ID)
         doReturn(listOf(listing1)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
-        doReturn(score(0.9)).whenever(matcher).score(any(), any(), any(), any())
+        doReturn(scored(0.9)).whenever(matcher).evaluate(any(), any(), any(), any())
 
         service.matchMandate(MANDATE_ID)
 
         verify(locationService, never()).searchNearest(any())
-        verify(matcher).score(mandate, listing1, emptyMap(), today)
+        verify(matcher).evaluate(mandate, listing1, emptyMap(), today)
     }
 
     @Test
@@ -342,12 +359,12 @@ class MatchServiceTest {
         doReturn(Optional.of(listing1)).whenever(listingDao).findById(LISTING_ID)
         doReturn(listOf(search, search2)).whenever(mandateDao)
             .findByAgentIdAndMandateTypeAndStatus(AGENT_ID, MandateType.SEARCH, MandateStatus.APPROVED)
-        doReturn(score(0.9)).whenever(matcher).score(any(), any(), any(), any())
+        doReturn(scored(0.9)).whenever(matcher).evaluate(any(), any(), any(), any())
 
         assertEquals(2, service.matchListing(LISTING_ID))
 
-        verify(matcher).score(eq(search), eq(listing1), any(), eq(today))
-        verify(matcher).score(eq(search2), eq(listing1), any(), eq(today))
+        verify(matcher).evaluate(eq(search), eq(listing1), any(), eq(today))
+        verify(matcher).evaluate(eq(search2), eq(listing1), any(), eq(today))
     }
 
     @Test
@@ -365,7 +382,7 @@ class MatchServiceTest {
             .findByAgentIdAndMandateTypeAndStatus(AGENT_ID, MandateType.SEARCH, MandateStatus.APPROVED)
 
         assertEquals(0, service.matchListing(LISTING_ID))
-        verify(matcher, never()).score(any(), any(), any(), anyOrNull())
+        verify(matcher, never()).evaluate(any(), any(), any(), anyOrNull())
     }
 
     @Test
@@ -381,7 +398,7 @@ class MatchServiceTest {
             .findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
         doReturn(listOf(otherListing)).whenever(listingDao)
             .findByCityIdAndListingTypeAndStatusAndAgentIdNot(CITY_ID, ListingType.RENTAL, ListingStatus.PUBLISHED, AGENT_ID)
-        doReturn(score(0.8)).whenever(matcher).score(eq(search), eq(otherListing), any(), eq(today))
+        doReturn(scored(0.8)).whenever(matcher).evaluate(eq(search), eq(otherListing), any(), eq(today))
 
         assertEquals(1, service.matchMandate(MANDATE_ID))
 
@@ -395,7 +412,7 @@ class MatchServiceTest {
     @Test
     fun `matchMandate does not fall back when an own match is stored`() {
         doReturn(listOf(listing1)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
-        doReturn(score(0.9)).whenever(matcher).score(any(), any(), any(), any())
+        doReturn(scored(0.9)).whenever(matcher).evaluate(any(), any(), any(), any())
 
         assertEquals(1, service.matchMandate(MANDATE_ID))
 
@@ -406,7 +423,7 @@ class MatchServiceTest {
     @Test
     fun `matchMandate does not fall back while a viable own match exists`() {
         doReturn(listOf(listing1)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
-        doReturn(score(0.4)).whenever(matcher).score(any(), any(), any(), any())
+        doReturn(scored(0.4)).whenever(matcher).evaluate(any(), any(), any(), any())
         doReturn(true).whenever(matchDao)
             .existsViableOwnMatch(eq(MANDATE_ID), any(), eq(ListingStatus.PUBLISHED))
 
@@ -423,8 +440,8 @@ class MatchServiceTest {
         doReturn(dismissed).whenever(matchDao).findByMandateAndListing(search, listing1)
         doReturn(listOf(otherListing)).whenever(listingDao)
             .findByCityIdAndListingTypeAndStatusAndAgentIdNot(CITY_ID, ListingType.RENTAL, ListingStatus.PUBLISHED, AGENT_ID)
-        doReturn(score(0.9)).whenever(matcher).score(eq(search), eq(listing1), any(), eq(today))
-        doReturn(score(0.8)).whenever(matcher).score(eq(search), eq(otherListing), any(), eq(today))
+        doReturn(scored(0.9)).whenever(matcher).evaluate(eq(search), eq(listing1), any(), eq(today))
+        doReturn(scored(0.8)).whenever(matcher).evaluate(eq(search), eq(otherListing), any(), eq(today))
 
         assertEquals(1, service.matchMandate(MANDATE_ID))
 
@@ -448,7 +465,29 @@ class MatchServiceTest {
         doReturn(existing).whenever(matchDao).findByMandateAndListing(search, otherListing)
         doReturn(listOf(otherListing)).whenever(listingDao)
             .findByCityIdAndListingTypeAndStatusAndAgentIdNot(CITY_ID, ListingType.RENTAL, ListingStatus.PUBLISHED, AGENT_ID)
-        doReturn(null).whenever(matcher).score(any(), any(), any(), anyOrNull())
+        doReturn(ruledOut).whenever(matcher).evaluate(any(), any(), any(), anyOrNull())
+
+        assertEquals(0, service.matchMandate(MANDATE_ID))
+
+        verify(matchDao, never()).delete(any<MatchEntity>())
+        verify(matchDao, never()).save(any<MatchEntity>())
+    }
+
+    @Test
+    fun `matchMandate keeps an ACTIVE co-brokerage match below min score`() {
+        val existing = MatchEntity(
+            id = 7L,
+            mandate = search,
+            listing = otherListing,
+            status = MatchStatus.ACTIVE,
+            coBrokerage = true,
+        )
+        doReturn(emptyList<ListingEntity>()).whenever(listingDao)
+            .findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
+        doReturn(existing).whenever(matchDao).findByMandateAndListing(search, otherListing)
+        doReturn(listOf(otherListing)).whenever(listingDao)
+            .findByCityIdAndListingTypeAndStatusAndAgentIdNot(CITY_ID, ListingType.RENTAL, ListingStatus.PUBLISHED, AGENT_ID)
+        doReturn(scored(0.4)).whenever(matcher).evaluate(any(), any(), any(), any())
 
         assertEquals(0, service.matchMandate(MANDATE_ID))
 
@@ -461,11 +500,25 @@ class MatchServiceTest {
         doReturn(Optional.of(listing1)).whenever(listingDao).findById(LISTING_ID)
         doReturn(listOf(search)).whenever(mandateDao)
             .findByAgentIdAndMandateTypeAndStatus(AGENT_ID, MandateType.SEARCH, MandateStatus.APPROVED)
-        doReturn(score(0.9)).whenever(matcher).score(any(), any(), any(), any())
+        doReturn(scored(0.9)).whenever(matcher).evaluate(any(), any(), any(), any())
 
         assertEquals(1, service.matchListing(LISTING_ID))
 
         verify(listingDao, never())
             .findByCityIdAndListingTypeAndStatusAndAgentIdNot(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `matchMandate logs the reasons of unruled candidates without storing them`() {
+        doReturn(emptyList<ListingEntity>()).whenever(listingDao)
+            .findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
+        doReturn(listOf(otherListing)).whenever(listingDao)
+            .findByCityIdAndListingTypeAndStatusAndAgentIdNot(CITY_ID, ListingType.RENTAL, ListingStatus.PUBLISHED, AGENT_ID)
+        doReturn(ruledOut).whenever(matcher).evaluate(any(), any(), any(), any())
+
+        assertEquals(0, service.matchMandate(MANDATE_ID))
+
+        verify(matchDao, never()).save(any<MatchEntity>())
+        verify(matchDao, never()).delete(any<MatchEntity>())
     }
 }
