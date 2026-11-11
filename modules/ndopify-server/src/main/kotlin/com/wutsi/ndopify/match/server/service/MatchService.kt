@@ -212,7 +212,7 @@ class MatchService(
             LOGGER.info(">>> Mandate#$mandateId - NO_MATCH own_listing_count=${own.size}")
             return 0
         }
-        LOGGER.info(">>> Mandate#$mandateId - CO_BROKERAGE candidate_count=${candidates.size}")
+        LOGGER.info(">>> Mandate#$mandateId - CO_BROKERAGE candidate_listing_ids=${candidates.map { it.id }}")
         return matchAll(candidates.map { listing -> Triple(mandate, listing, distances) }, today)
     }
 
