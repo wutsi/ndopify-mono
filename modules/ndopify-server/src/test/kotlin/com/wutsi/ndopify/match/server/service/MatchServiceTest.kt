@@ -239,6 +239,20 @@ class MatchServiceTest {
     }
 
     @Test
+    fun `matchMandate reports NOT_ACTIVE before BELOW_MIN_SCORE`() {
+        val existing = MatchEntity(id = 7L, mandate = search, listing = listing1, status = MatchStatus.DISMISSED)
+        doReturn(listOf(listing1)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
+        doReturn(existing).whenever(matchDao).findByMandateAndListing(search, listing1)
+        doReturn(emptyList<ListingEntity>()).whenever(listingDao)
+            .findByCityIdAndListingTypeAndStatusAndAgentIdNot(CITY_ID, ListingType.RENTAL, ListingStatus.PUBLISHED, AGENT_ID)
+        doReturn(scored(0.4)).whenever(matcher).evaluate(any(), any(), any(), any())
+
+        assertEquals(0, service.matchMandate(MANDATE_ID))
+        verify(matchDao, never()).save(any<MatchEntity>())
+        verify(matchDao, never()).delete(any<MatchEntity>())
+    }
+
+    @Test
     fun `matchMandate ignores a LISTING mandate`() {
         assertIgnored(search.copy(mandateType = MandateType.LISTING))
     }
@@ -452,6 +466,28 @@ class MatchServiceTest {
         doReturn(listOf(otherListing)).whenever(listingDao)
             .findByCityIdAndListingTypeAndStatusAndAgentIdNot(CITY_ID, ListingType.RENTAL, ListingStatus.PUBLISHED, AGENT_ID)
         doReturn(ruledOut).whenever(matcher).evaluate(any(), any(), any(), anyOrNull())
+
+        assertEquals(0, service.matchMandate(MANDATE_ID))
+
+        verify(matchDao, never()).delete(any<MatchEntity>())
+        verify(matchDao, never()).save(any<MatchEntity>())
+    }
+
+    @Test
+    fun `matchMandate keeps an ACTIVE co-brokerage match below min score`() {
+        val existing = MatchEntity(
+            id = 7L,
+            mandate = search,
+            listing = otherListing,
+            status = MatchStatus.ACTIVE,
+            coBrokerage = true,
+        )
+        doReturn(emptyList<ListingEntity>()).whenever(listingDao)
+            .findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
+        doReturn(existing).whenever(matchDao).findByMandateAndListing(search, otherListing)
+        doReturn(listOf(otherListing)).whenever(listingDao)
+            .findByCityIdAndListingTypeAndStatusAndAgentIdNot(CITY_ID, ListingType.RENTAL, ListingStatus.PUBLISHED, AGENT_ID)
+        doReturn(scored(0.4)).whenever(matcher).evaluate(any(), any(), any(), any())
 
         assertEquals(0, service.matchMandate(MANDATE_ID))
 
