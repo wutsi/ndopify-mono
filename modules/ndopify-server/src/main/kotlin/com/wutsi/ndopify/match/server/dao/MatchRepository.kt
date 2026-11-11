@@ -34,6 +34,21 @@ interface MandateMatchCount {
 interface MatchRepository : CrudRepository<MatchEntity, Long>, JpaSpecificationExecutor<MatchEntity> {
     fun findByMandateAndListing(mandate: MandateEntity, listing: ListingEntity): MatchEntity?
 
+    /**
+     * Whether the search still has one of its agent's own listings to offer: PUBLISHED, and not turned down by the
+     * agent (DISMISSED) or the customer (REJECTED). When it has none, co-brokerage may fill in.
+     */
+    @Query(
+        "SELECT CASE WHEN COUNT(m) > 0 THEN TRUE ELSE FALSE END FROM MatchEntity m " +
+            "WHERE m.mandate.id = :mandateId AND m.coBrokerage = FALSE " +
+            "AND m.status NOT IN :statuses AND m.listing.status = :listingStatus"
+    )
+    fun existsViableOwnMatch(
+        mandateId: Long,
+        statuses: Collection<MatchStatus>,
+        listingStatus: ListingStatus,
+    ): Boolean
+
     // A visit request locks the match, so that two requests for the same match can't both pass the open-visit check
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT m FROM MatchEntity m WHERE m.id = :id")

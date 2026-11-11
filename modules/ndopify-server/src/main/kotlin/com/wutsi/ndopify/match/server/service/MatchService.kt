@@ -101,7 +101,11 @@ class MatchService(
             cb.and(*predicates.toTypedArray())
         }
 
-        val sort = Sort.by(Sort.Order.desc("score"), Sort.Order.asc("id"))
+        val sort = Sort.by(
+            Sort.Order.asc("coBrokerage"),
+            Sort.Order.desc("score"),
+            Sort.Order.asc("id"),
+        )
         return dao.findAll(spec, OffsetLimitPageRequest(request.offset, request.limit, sort)).content
     }
 

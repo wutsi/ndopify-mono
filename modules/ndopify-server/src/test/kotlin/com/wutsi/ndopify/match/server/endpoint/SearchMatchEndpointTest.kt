@@ -26,6 +26,15 @@ class SearchMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `own inventory first, then co-brokerage`() {
+        val matches = rest.getForEntity("/v1/matches?mandate-id=5", SearchMatchResponse::class.java).body!!.matches
+
+        assertEquals(listOf(11L, 12L), matches.map { it.id })
+        assertEquals(listOf(false, true), matches.map { it.coBrokerage })
+        assertEquals(0.99, matches[1].score) // Higher score, but another agent's listing still comes second
+    }
+
+    @Test
     fun `several mandates`() {
         val matches = rest.getForEntity("/v1/matches?mandate-id=1&mandate-id=4", SearchMatchResponse::class.java)
             .body!!.matches

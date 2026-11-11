@@ -44,6 +44,7 @@ INSERT INTO T_MANDATE(
     (4, 1, 10, 20, 'APPROVED', 'SEARCH', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
     (3, 1, 10, 20, 'CLOSED', 'SEARCH', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
     (9, 2, 90, 90, 'APPROVED', 'SEARCH', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
+    (5, 1, 10, 20, 'APPROVED', 'SEARCH', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
     (11, 1, 11, 20, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
     (12, 1, 11, 20, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
     (13, 1, 11, 20, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 150000, 'MONTHLY', 'XAF'),
@@ -82,3 +83,8 @@ INSERT INTO T_MATCH(
     (7, 1, 4, 102, 20, 'ACTIVE', 0.85, 140000, 1.0, 1.0, 0.7, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
     (9, 2, 9, 901, 90, 'ACTIVE', 0.8, 150000, 1.0, 1.0, 1.0, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00'),
     (10, 1, 4, 101, 20, 'ACCEPTED', 0.75, 160000, 1.0, 1.0, 0.7, 0.5, 1.0, 1.0, '2026-10-01 10:00:00', '2026-10-01 10:00:00');
+
+-- 11: own inventory (below the co-brokerage score)   12: another agent's listing
+INSERT INTO T_MATCH(id, tenant_id, mandate_id, listing_id, agent_id, status, score, listing_price, co_brokerage) VALUES
+    (11, 1, 5, 104, 20, 'ACTIVE', 0.4, 150000, FALSE),
+    (12, 1, 5, 109, 20, 'ACTIVE', 0.99, 150000, TRUE);

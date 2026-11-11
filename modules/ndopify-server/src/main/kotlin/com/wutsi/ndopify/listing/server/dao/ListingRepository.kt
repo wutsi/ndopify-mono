@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.listing.server.dao
 
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
@@ -14,6 +15,14 @@ interface ListingRepository : CrudRepository<ListingEntity, Long>, JpaSpecificat
     fun existsByMandate(mandate: MandateEntity): Boolean
 
     fun findByAgentIdAndStatus(agentId: Long, status: ListingStatus): List<ListingEntity>
+
+    // The co-brokerage candidates of a search: another agent's published listings in its city and listing type
+    fun findByCityIdAndListingTypeAndStatusAndAgentIdNot(
+        cityId: Long,
+        listingType: ListingType,
+        status: ListingStatus,
+        agentId: Long,
+    ): List<ListingEntity>
 
     fun findByMandate(mandate: MandateEntity): ListingEntity?
 

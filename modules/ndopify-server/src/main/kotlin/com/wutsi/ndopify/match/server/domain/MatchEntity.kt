@@ -39,6 +39,8 @@ data class MatchEntity(
     val listing: ListingEntity = ListingEntity(),
 
     val agentId: Long = -1L,
+    // The listing belongs to another agent's inventory: the search had no own match (co-brokerage fallback)
+    val coBrokerage: Boolean = false,
     val status: MatchStatus = MatchStatus.UNKNOWN,
 
     val score: Double = 0.0,
