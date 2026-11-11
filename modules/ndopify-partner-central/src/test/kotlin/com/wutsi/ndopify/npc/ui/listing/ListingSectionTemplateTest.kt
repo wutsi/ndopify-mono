@@ -275,12 +275,14 @@ class ListingSectionTemplateTest {
         assertEquals("150 000", form.selectFirst("input[name=price]")?.attr("value"))
         assertEquals("FCFA / mois", form.selectFirst("input[name=price] + .input-unit__suffix")?.text())
         assertEquals("3", form.selectFirst("select[name=securityDeposit] option[selected]")?.attr("value"))
+        assertEquals("Aucune caution", form.selectFirst("select[name=securityDeposit] option[value='']")?.text())
+        assertEquals("Aucune avance", form.selectFirst("select[name=advanceRent] option[value='']")?.text())
         assertEquals(
-            (1..6).map { "$it" },
+            (1..24).map { "$it" },
             form.select("select[name=securityDeposit] option").map { it.attr("value") }.drop(1)
         )
         assertEquals(
-            (1..12).map { "$it" },
+            (1..24).map { "$it" },
             form.select("select[name=advanceRent] option").map { it.attr("value") }.drop(1)
         )
         assertEquals(

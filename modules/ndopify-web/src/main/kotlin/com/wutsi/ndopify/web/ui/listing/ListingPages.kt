@@ -134,8 +134,8 @@ object ListingPages {
             } else {
                 listOfNotNull(
                     "Loyer" to price,
-                    listing.securityDeposit?.let { "Caution" to months(it, listing, formatter) },
-                    listing.advanceRent?.let { "Avance sur loyer" to months(it, listing, formatter) },
+                    listing.securityDeposit?.let { "Caution" to if (it > 0) months(it, listing, formatter) else "Sans caution" },
+                    listing.advanceRent?.let { "Avance sur loyer" to if (it > 0) months(it, listing, formatter) else "Sans avance" },
                     listing.leaseTerm?.let { "Durée du bail" to "$it mois" },
                     listing.noticePeriod?.let { "Préavis" to "$it mois" },
                     "Disponible" to (available?.let { "À partir du $it" } ?: "Immédiatement"),
@@ -145,8 +145,8 @@ object ListingPages {
                 emptyList()
             } else {
                 listOfNotNull(
-                    listing.securityDeposit?.let { "Caution : $it mois" },
-                    listing.advanceRent?.let { "Avance : $it mois" },
+                    listing.securityDeposit?.let { if (it > 0) "Caution : $it mois" else "Sans caution" },
+                    listing.advanceRent?.let { if (it > 0) "Avance : $it mois" else "Sans avance" },
                     available?.let { "Disponible le $it" } ?: "Disponible immédiatement",
                 )
             },

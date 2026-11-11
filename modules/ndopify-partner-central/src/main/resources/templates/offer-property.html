@@ -190,7 +190,7 @@
                                 name="advanceRent"
                                 th:attr="aria-invalid=${errors['advanceRent'] != null ? 'true' : null}">
                             <option th:selected="${answers.advanceRent == null}" value="">Aucune avance</option>
-                            <option th:each="months : ${#numbers.sequence(1, 12)}"
+                            <option th:each="months : ${rentalMonths}"
                                     th:selected="${answers.advanceRent != null and answers.advanceRent == months}"
                                     th:text="|${months} mois|" th:value="${months}">1 mois</option>
                         </select>
@@ -199,11 +199,10 @@
                     <div class="field">
                         <label class="field__label" for="securityDeposit">Caution demandée</label>
                         <select aria-describedby="securityDeposit-error" class="input select" id="securityDeposit"
-                                name="securityDeposit" required
+                                name="securityDeposit"
                                 th:attr="aria-invalid=${errors['securityDeposit'] != null ? 'true' : null}">
-                            <option th:selected="${answers.securityDeposit == null}" value="">Choisissez le nombre de
-                                mois</option>
-                            <option th:each="months : ${#numbers.sequence(1, 6)}"
+                            <option th:selected="${answers.securityDeposit == null}" value="">Aucune caution</option>
+                            <option th:each="months : ${rentalMonths}"
                                     th:selected="${answers.securityDeposit != null and answers.securityDeposit == months}"
                                     th:text="|${months} mois|" th:value="${months}">1 mois</option>
                         </select>

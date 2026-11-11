@@ -203,6 +203,6 @@ class MandateContractGenerator(
         return "$amount$periodicity"
     }
 
-    // The deposit, advance, lease term and notice period are numbers of months
-    private fun months(value: Int?): String? = value?.let { "$it mois" }
+    // The deposit, advance, lease term and notice period are numbers of months; a legacy 0 is no deposit/advance
+    private fun months(value: Int?): String? = value?.takeIf { it > 0 }?.let { "$it mois" }
 }
