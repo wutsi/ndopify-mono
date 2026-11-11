@@ -6,6 +6,8 @@ data class Match(
     val id: Long = -1,
     val mandateId: Long = -1,
     val listingId: Long = -1,
+    // True when the listing belongs to another agent's inventory (co-brokerage fallback)
+    val coBrokerage: Boolean = false,
     val status: MatchStatus = MatchStatus.UNKNOWN,
 
     val score: Double = 0.0,
