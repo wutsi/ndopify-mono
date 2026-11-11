@@ -57,6 +57,14 @@ class NotifyMatchesJobTest : BaseEndpointIntegrationTest() {
     }
 
     @Test
+    fun `co-brokerage match not sent`() {
+        jobs.notifyAgents()
+
+        assertEquals(false, sent().values.flatten().contains(8L))
+        assertEquals(false, notified().contains(8L))
+    }
+
+    @Test
     fun `failed agent is retried next run`() {
         doThrow(RuntimeException("SMTP down")).whenever(mailet).send(argThat { id == 20L }, any())
 

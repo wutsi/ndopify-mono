@@ -72,7 +72,8 @@ interface MatchRepository : CrudRepository<MatchEntity, Long>, JpaSpecificationE
         statuses: Collection<MatchStatus>,
     ): List<MandateMatchCount>
 
-    fun findByStatusAndNotifiedAtIsNullAndMandateStatusAndListingStatus(
+    // Not co-brokerage: this alert is about the agent's own inventory (its own slice covers co-brokerage)
+    fun findByStatusAndNotifiedAtIsNullAndMandateStatusAndListingStatusAndCoBrokerageFalse(
         status: MatchStatus,
         mandateStatus: MandateStatus,
         listingStatus: ListingStatus,
