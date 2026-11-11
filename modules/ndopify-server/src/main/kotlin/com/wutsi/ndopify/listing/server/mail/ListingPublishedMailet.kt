@@ -3,6 +3,7 @@ package com.wutsi.ndopify.listing.server.mail
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
+import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
@@ -11,12 +12,15 @@ import com.wutsi.ndopify.platform.mail.Receipient
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
+import org.springframework.context.annotation.Lazy
 import org.springframework.stereotype.Service
 
 /**
- * Tells the agent of a listing that it's published, with a link to its public page: the tenant's `publicPortalUrl`
- * followed by the listing's `url`, none without either. The customer (the property's owner) isn't e-mailed for now:
- * its subject and template ([SUBJECT_CUSTOMER], [TEMPLATE_CUSTOMER]) are kept for when it is again.
+ * Tells the agent of a listing that it's published, with its cover photo and a link to its public page: the tenant's
+ * `publicPortalUrl` followed by the listing's `url`, none without either. The customer (the property's owner) isn't
+ * e-mailed for now: its subject and template ([SUBJECT_CUSTOMER], [TEMPLATE_CUSTOMER]) are kept for when it is again.
+ *
+ * [imageService] is lazy: `ListingService` owns this mailet, and `ListingImageService` depends on `ListingService`.
  */
 @Service
 class ListingPublishedMailet(
@@ -24,6 +28,7 @@ class ListingPublishedMailet(
     private val locationService: LocationService,
     private val mailService: MailService,
     private val mailBodyResolver: MailBodyResolver,
+    @Lazy private val imageService: ListingImageService,
 ) {
     companion object {
         const val SUBJECT_CUSTOMER = "{{tenant_name}}: Votre bien à {{city}} est en ligne"
@@ -44,6 +49,7 @@ class ListingPublishedMailet(
             "city" to city,
             "neighbourhood" to listing.neighborhoodId?.let { id -> locationService.findByIdOrNull(id)?.name },
             "listing_url" to ListingUrls.publicUrl(tenant, listing),
+            "image_url" to imageService.cover(listing)?.url?.ifBlank { null },
         )
 
         send(tenant, agent.party, SUBJECT_AGENT, TEMPLATE_AGENT, city, context)

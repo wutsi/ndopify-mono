@@ -289,10 +289,11 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   largest), and its public `url`, the path `/<city>/<neighborhood>/listing/<id>/<slug of the title>` (no host: the
   tenant's `publicPortalUrl`; no neighbourhood nor title segment without them): `PUBLISHED`, or still `PUBLISHING` to be retried after a failure; after `MAX_RETRIES` failed attempts
   it's `PUBLISHED` without title, summary nor description (the UIs handle it), its last error kept. Either way it
-  publishes `ListingPublishedEvent`: `ListingPublishedMailet` e-mails the agent (not the customer, for now), with a
-  link to `{publicPortalUrl}{url}` (`mail/listing/published_customer.mjml` / `published_agent.mjml`; no link without
-  either). **Close**: a mandate's closing (`MandateClosedEvent`, `ListingMandateEventListener`, synchronous, so it
-  commits or rolls back with the mandate; a listing `@Version` conflict fails the closing) moves its listing, if
+  publishes `ListingPublishedEvent`: `ListingPublishedMailet` e-mails the agent (not the customer, for now), with its
+  cover photo (`ListingImageService.cover`, no image without one) and a link to `{publicPortalUrl}{url}`
+  (`mail/listing/published_customer.mjml` / `published_agent.mjml`; no link without either). **Close**: a mandate's
+  closing (`MandateClosedEvent`, `ListingMandateEventListener`, synchronous, so it commits or rolls back with the
+  mandate; a listing `@Version` conflict fails the closing) moves its listing, if
   PUBLISHED, to `SOLD` / `RENTED` (its `listingType`; an UNKNOWN one is left as is) once CLOSED, or `CANCELLED` once
   CANCELLED, with `closedAt` (`ListingService.onMandateClosed`); a listing in any other status is left as is.
   `ListingJobs.close` (daily, `ndopify.listing.close.cron`) does the same for the PUBLISHED listings of closed mandates
