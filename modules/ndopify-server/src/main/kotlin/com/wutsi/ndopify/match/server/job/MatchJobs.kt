@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.match.server.job
 
+import com.wutsi.ndopify.match.server.service.CoBrokerageNotificationService
 import com.wutsi.ndopify.match.server.service.MatchNotificationService
 import com.wutsi.ndopify.match.server.service.MatchProposalService
 import com.wutsi.ndopify.match.server.service.MatchService
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service
 @Service
 class MatchJobs(
     private val notificationService: MatchNotificationService,
+    private val coBrokerageNotificationService: CoBrokerageNotificationService,
     private val proposalService: MatchProposalService,
     private val matchService: MatchService,
     private val tenantService: TenantService,
@@ -28,7 +30,9 @@ class MatchJobs(
     /** E-mails the agents about their new matches. */
     @Scheduled(cron = "\${ndopify.match.notify.cron}")
     fun notifyAgents() {
-        forEachTenant("notifyAgents", "agent(s)") { notificationService.notifyAgents() }
+        forEachTenant("notifyAgents", "agent(s)") {
+            notificationService.notifyAgents() + coBrokerageNotificationService.notifySearchAgents()
+        }
     }
 
     /** Re-matches the open searches: catches up on the runs lost, re-scores against today. */

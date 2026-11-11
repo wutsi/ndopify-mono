@@ -14,6 +14,7 @@ import com.wutsi.ndopify.BaseEndpointIntegrationTest
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.match.server.mail.MatchNotificationMailet
+import com.wutsi.ndopify.match.server.service.CoBrokerageNotificationService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.bean.override.mockito.MockitoBean
@@ -31,6 +32,9 @@ class NotifyMatchesJobTest : BaseEndpointIntegrationTest() {
 
     @MockitoBean
     private lateinit var mailet: MatchNotificationMailet
+
+    @MockitoBean
+    private lateinit var coBrokerageNotificationService: CoBrokerageNotificationService
 
     @Test
     fun notifyAgents() {
