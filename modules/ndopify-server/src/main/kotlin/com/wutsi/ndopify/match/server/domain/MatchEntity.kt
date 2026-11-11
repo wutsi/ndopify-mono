@@ -70,6 +70,9 @@ data class MatchEntity(
     // When the agent was e-mailed about it (MatchJobs.notifyAgents): null until then, kept by a re-score
     val notifiedAt: Date? = null,
 
+    // When the listing's agent was told another agent's search matched their listing (co-brokerage interest)
+    val listingAgentNotifiedAt: Date? = null,
+
     val proposedAt: Date? = null,
     val answeredAt: Date? = null, // When the customer accepted or rejected it
 

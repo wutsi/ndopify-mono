@@ -304,7 +304,13 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   runs `MatchService.matchMandate` on `MandateApprovedEvent` and `matchListing` on `ListingPublishedEvent`. Only an
   APPROVED SEARCH mandate with an agent is matched: against that agent's PUBLISHED listings first, then, only when it
   has no viable own match (`existsViableOwnMatch`: PUBLISHED, not `DISMISSED` nor `REJECTED`), against the other
-  agents' PUBLISHED listings of the same city and listing type (co-brokerage, `coBrokerage`, `V10_5`). The same
+  agents' PUBLISHED listings of the same city and listing type (co-brokerage, `coBrokerage`, `V10_5`). Co-brokerage
+  notifications (`V10_6`): the search agent is e-mailed the other agent's listing and contact when the match is
+  created; the listing agent is e-mailed the interested agent's contact and anonymized search criteria only after a
+  shortlist/proposal (`SHORTLISTED`, `PROPOSED`, `ACCEPTED`, `EXPIRED`). Both ride `MatchJobs.notifyAgents`;
+  `notifiedAt` is the forward one-shot and `listingAgentNotifiedAt` the reverse one. Anti-sautage: a customer never
+  learns the counterpart agent's identity/contact, and a counterpart agent never learns the customer's
+  identity/contact/mandate; the customer-facing proposal still names only the search agent. The same
   `Matcher`, `min-score` and distances apply. A co-brokerage row is never deleted (sticky when own inventory appears
   later); an own-inventory row keeps the re-score/delete behaviour. `GET /v1/matches` lists the agent's own inventory
   first, then co-brokerage, best score first. `matchListing` never creates co-brokerage rows: the daily `rematch`

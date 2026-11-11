@@ -1,0 +1,80 @@
+<mjml>
+    <mj-head>
+        <mj-style inline="inline">
+            {{__css__}}
+        </mj-style>
+    </mj-head>
+    <mj-body css-class="body">
+        <mj-section css-class="main-content">
+            <mj-column>
+                <!-- Logo -->
+                <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
+
+                <!-- Divider with class for CSS injection -->
+                <mj-divider css-class="divider"/>
+
+                <!-- Body Text -->
+                <mj-text>
+                    Bonjour <strong>{{recipient_name}}</strong>,
+                </mj-text>
+                <mj-text>
+                    Des biens publiés par d'autres agents correspondent aux recherches de vos clients :
+                </mj-text>
+
+                {{#mandates}}
+                <mj-text font-weight="bold">
+                    {{customer_name}} — {{listing_type}}{{#property_type}} - {{property_type}}{{/property_type}} à {{place}}
+                </mj-text>
+                <!-- In an mj-text: MJML drops raw HTML outside of it. A thumbnail of each listing's photo, if any -->
+                <mj-text>
+                    <table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse">
+                        {{#listings}}
+                        <tr>
+                            <td style="width:88px;padding:4px 8px 4px 0;vertical-align:middle">
+                                {{#image_url}}
+                                <img src="{{image_url}}" alt="{{title}}" width="80" height="60"
+                                     style="display:block;width:80px;height:60px;object-fit:cover;border-radius:6px"/>
+                                {{/image_url}}
+                            </td>
+                            <td style="padding:4px 0;vertical-align:middle">
+                                <b>{{title}}</b> — {{price}} ({{score}} %)
+                                <br/>
+                                {{#agent_photo_url}}
+                                <img src="{{agent_photo_url}}" alt="{{agent_full_name}}" width="32" height="32"
+                                     style="display:inline-block;width:32px;height:32px;object-fit:cover;border-radius:50%;vertical-align:middle"/>
+                                {{/agent_photo_url}}
+                                {{agent_full_name}}{{#agent_whatsapp_url}}
+                                — <a href="{{agent_whatsapp_url}}">WhatsApp {{agent_whatsapp}}</a>{{/agent_whatsapp_url}}{{#agent_email_url}}
+                                — <a href="{{agent_email_url}}">{{agent_email}}</a>{{/agent_email_url}}
+                            </td>
+                        </tr>
+                        {{/listings}}
+                    </table>
+                    {{#more}}
+                    et {{more}} autre(s) bien(s)
+                    {{/more}}
+                </mj-text>
+                {{#mandate_url}}
+                <!-- Button with class for CSS injection -->
+                <mj-button href="{{mandate_url}}" css-class="btn-primary" align="center">
+                    Voir le mandat
+                </mj-button>
+                {{/mandate_url}}
+                <mj-spacer/>
+                {{/mandates}}
+
+                <mj-text>
+                    Contactez l'agent qui publie le bien pour proposer la visite à vos clients.
+                </mj-text>
+
+                <!-- Sign-off -->
+                <mj-spacer/>
+                <mj-text>
+                    Cordialement,
+                    <br/>
+                    L'équipe {{tenant_name}}
+                </mj-text>
+            </mj-column>
+        </mj-section>
+    </mj-body>
+</mjml>
