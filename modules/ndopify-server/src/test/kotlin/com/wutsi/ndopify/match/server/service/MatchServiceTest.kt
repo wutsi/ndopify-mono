@@ -15,6 +15,7 @@ import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.server.dao.ListingRepository
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.mandate.dto.MandateStatus
@@ -42,6 +43,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
 
 class MatchServiceTest {
     companion object {
@@ -88,6 +90,7 @@ class MatchServiceTest {
         status = MandateStatus.APPROVED,
         cityId = CITY_ID,
         neighborhoodIds = listOf(N1),
+        listingType = ListingType.RENTAL,
     )
     private val listing1 = ListingEntity(
         id = LISTING_ID,
@@ -97,6 +100,7 @@ class MatchServiceTest {
         price = 240_000,
     )
     private val listing2 = listing1.copy(id = 12L, price = 200_000)
+    private val otherListing = listing1.copy(id = 20L, price = 90_000, agent = AgentEntity(id = 30L))
 
     private fun score(total: Double): MatchScore =
         // furniture carries the whole total, so that MatchScore.total == [total] for the test
@@ -126,6 +130,7 @@ class MatchServiceTest {
         assertEquals(search, first.mandate)
         assertEquals(listing1, first.listing)
         assertEquals(AGENT_ID, first.agentId)
+        assertEquals(false, first.coBrokerage)
         assertEquals(MatchStatus.ACTIVE, first.status)
         assertEquals(0.9, first.score, 0.000001)
         assertEquals(18.0, first.furnitureScore, 0.000001)
@@ -368,5 +373,99 @@ class MatchServiceTest {
         doReturn(Optional.empty<ListingEntity>()).whenever(listingDao).findById(LISTING_ID)
 
         assertFailsWith<NotFoundException> { service.matchListing(LISTING_ID) }
+    }
+
+    @Test
+    fun `matchMandate falls back to another agent's listing`() {
+        doReturn(emptyList<ListingEntity>()).whenever(listingDao)
+            .findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
+        doReturn(listOf(otherListing)).whenever(listingDao)
+            .findByCityIdAndListingTypeAndStatusAndAgentIdNot(CITY_ID, ListingType.RENTAL, ListingStatus.PUBLISHED, AGENT_ID)
+        doReturn(score(0.8)).whenever(matcher).score(eq(search), eq(otherListing), any(), eq(today))
+
+        assertEquals(1, service.matchMandate(MANDATE_ID))
+
+        val captor = argumentCaptor<MatchEntity>()
+        verify(matchDao).save(captor.capture())
+        assertEquals(otherListing, captor.firstValue.listing)
+        assertEquals(AGENT_ID, captor.firstValue.agentId)
+        assertTrue(captor.firstValue.coBrokerage)
+    }
+
+    @Test
+    fun `matchMandate does not fall back when an own match is stored`() {
+        doReturn(listOf(listing1)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
+        doReturn(score(0.9)).whenever(matcher).score(any(), any(), any(), any())
+
+        assertEquals(1, service.matchMandate(MANDATE_ID))
+
+        verify(listingDao, never())
+            .findByCityIdAndListingTypeAndStatusAndAgentIdNot(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `matchMandate does not fall back while a viable own match exists`() {
+        doReturn(listOf(listing1)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
+        doReturn(score(0.4)).whenever(matcher).score(any(), any(), any(), any())
+        doReturn(true).whenever(matchDao)
+            .existsViableOwnMatch(eq(MANDATE_ID), any(), eq(ListingStatus.PUBLISHED))
+
+        assertEquals(0, service.matchMandate(MANDATE_ID))
+
+        verify(listingDao, never())
+            .findByCityIdAndListingTypeAndStatusAndAgentIdNot(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `matchMandate falls back when the only own match is dismissed`() {
+        val dismissed = MatchEntity(id = 7L, mandate = search, listing = listing1, status = MatchStatus.DISMISSED)
+        doReturn(listOf(listing1)).whenever(listingDao).findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
+        doReturn(dismissed).whenever(matchDao).findByMandateAndListing(search, listing1)
+        doReturn(listOf(otherListing)).whenever(listingDao)
+            .findByCityIdAndListingTypeAndStatusAndAgentIdNot(CITY_ID, ListingType.RENTAL, ListingStatus.PUBLISHED, AGENT_ID)
+        doReturn(score(0.9)).whenever(matcher).score(eq(search), eq(listing1), any(), eq(today))
+        doReturn(score(0.8)).whenever(matcher).score(eq(search), eq(otherListing), any(), eq(today))
+
+        assertEquals(1, service.matchMandate(MANDATE_ID))
+
+        val captor = argumentCaptor<MatchEntity>()
+        verify(matchDao).save(captor.capture())
+        assertEquals(otherListing, captor.firstValue.listing)
+        assertTrue(captor.firstValue.coBrokerage)
+    }
+
+    @Test
+    fun `matchMandate never deletes a co-brokerage match`() {
+        val existing = MatchEntity(
+            id = 7L,
+            mandate = search,
+            listing = otherListing,
+            status = MatchStatus.ACTIVE,
+            coBrokerage = true,
+        )
+        doReturn(emptyList<ListingEntity>()).whenever(listingDao)
+            .findByAgentIdAndStatus(AGENT_ID, ListingStatus.PUBLISHED)
+        doReturn(existing).whenever(matchDao).findByMandateAndListing(search, otherListing)
+        doReturn(listOf(otherListing)).whenever(listingDao)
+            .findByCityIdAndListingTypeAndStatusAndAgentIdNot(CITY_ID, ListingType.RENTAL, ListingStatus.PUBLISHED, AGENT_ID)
+        doReturn(null).whenever(matcher).score(any(), any(), any(), anyOrNull())
+
+        assertEquals(0, service.matchMandate(MANDATE_ID))
+
+        verify(matchDao, never()).delete(any<MatchEntity>())
+        verify(matchDao, never()).save(any<MatchEntity>())
+    }
+
+    @Test
+    fun `matchListing does not create co-brokerage matches`() {
+        doReturn(Optional.of(listing1)).whenever(listingDao).findById(LISTING_ID)
+        doReturn(listOf(search)).whenever(mandateDao)
+            .findByAgentIdAndMandateTypeAndStatus(AGENT_ID, MandateType.SEARCH, MandateStatus.APPROVED)
+        doReturn(score(0.9)).whenever(matcher).score(any(), any(), any(), any())
+
+        assertEquals(1, service.matchListing(LISTING_ID))
+
+        verify(listingDao, never())
+            .findByCityIdAndListingTypeAndStatusAndAgentIdNot(any(), any(), any(), any())
     }
 }

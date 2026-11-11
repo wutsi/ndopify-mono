@@ -69,6 +69,9 @@ class MatchService(
 
         // Not proposed (or the proposal expired unanswered) nor dismissed: the agent may still propose or dismiss it
         val OPEN_STATUSES = setOf(MatchStatus.ACTIVE, MatchStatus.SHORTLISTED, MatchStatus.EXPIRED)
+
+        // The own matches that show the agent's inventory still has nothing for the search
+        val NON_VIABLE_OWN_STATUSES = setOf(MatchStatus.DISMISSED, MatchStatus.REJECTED)
     }
 
     fun findById(id: Long): MatchEntity {
@@ -174,7 +177,10 @@ class MatchService(
         )
     }
 
-    /** Matches a search mandate against its agent's inventory. Returns the number of ACTIVE matches stored. */
+    /**
+     * Matches a search mandate against its agent's inventory, then, when no viable own match is left to offer, against
+     * the other agents' published listings (co-brokerage). Returns the number of ACTIVE matches stored.
+     */
     fun matchMandate(mandateId: Long): Int {
         // With its neighbourhoods: not in a transaction, the lazy collection couldn't be read later
         val mandate = mandateDao.findWithNeighborhoodsById(mandateId)
@@ -185,16 +191,38 @@ class MatchService(
         }
         val agentId = mandate.agentId ?: return 0
 
-        val listings = listingDao.findByAgentIdAndStatus(agentId, ListingStatus.PUBLISHED)
-        if (listings.isEmpty()) {
-            LOGGER.info(">>> Mandate#$mandateId - NO_MATCH listing_count=${listings.size}")
-            return 0
-        }
-
         val distances = distances(mandate)
         val today = today(mandate.tenantId!!)
-        return matchAll(listings.map { listing -> Triple(mandate, listing, distances) }, today)
+
+        // 1. The agent's own inventory
+        val own = listingDao.findByAgentIdAndStatus(agentId, ListingStatus.PUBLISHED)
+        val ownCount = matchAll(own.map { listing -> Triple(mandate, listing, distances) }, today)
+        if (ownCount > 0 || hasViableOwnMatch(mandate.id!!)) {
+            return ownCount
+        }
+
+        // 2. No own match left to offer: fall back to the other agents' listings (co-brokerage)
+        val candidates = listingDao.findByCityIdAndListingTypeAndStatusAndAgentIdNot(
+            mandate.cityId,
+            mandate.listingType,
+            ListingStatus.PUBLISHED,
+            agentId,
+        )
+        if (candidates.isEmpty()) {
+            LOGGER.info(">>> Mandate#$mandateId - NO_MATCH own_listing_count=${own.size}")
+            return 0
+        }
+        LOGGER.info(">>> Mandate#$mandateId - CO_BROKERAGE candidate_count=${candidates.size}")
+        return matchAll(candidates.map { listing -> Triple(mandate, listing, distances) }, today)
     }
+
+    // A PUBLISHED own match that neither the agent nor the customer turned down
+    private fun hasViableOwnMatch(mandateId: Long): Boolean =
+        dao.existsViableOwnMatch(
+            mandateId = mandateId,
+            statuses = NON_VIABLE_OWN_STATUSES,
+            listingStatus = ListingStatus.PUBLISHED,
+        )
 
     /**
      * Re-matches every APPROVED SEARCH mandate with an agent, as [matchMandate]: catches up on a run lost after an
@@ -261,12 +289,16 @@ class MatchService(
 
     // Returns true when an ACTIVE match is stored
     private fun store(mandate: MandateEntity, listing: ListingEntity, score: MatchScore?): Boolean {
+        val coBrokerage = listing.agent.id != mandate.agentId
         val existing = dao.findByMandateAndListing(mandate, listing)
         if (existing != null && existing.status != MatchStatus.ACTIVE) {
             return false
         }
         if (score == null || score.total < minScore) {
-            existing?.let { dao.delete(it) }
+            // A co-brokerage row was valid when created and its own-inventory situation is unchanged: kept (sticky)
+            if (existing != null && !coBrokerage) {
+                dao.delete(existing)
+            }
             return false
         }
 
@@ -275,11 +307,13 @@ class MatchService(
             mandate = mandate,
             listing = listing,
             agentId = mandate.agentId!!,
+            coBrokerage = coBrokerage,
             status = MatchStatus.ACTIVE,
             createdAt = now,
         )
         dao.save(
             match.copy(
+                coBrokerage = coBrokerage,
                 score = score.total,
                 typeScore = score.type,
                 neighborhoodScore = score.neighborhood,
