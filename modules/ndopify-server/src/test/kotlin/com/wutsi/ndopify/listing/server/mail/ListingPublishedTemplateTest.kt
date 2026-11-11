@@ -26,6 +26,7 @@ class ListingPublishedTemplateTest {
         "city" to "Yaounde",
         "neighbourhood" to "Bastos",
         "listing_url" to "https://www.ndopify.com/yaounde/bastos/listing/1/appartement",
+        "image_url" to "https://cdn.ndopify.com/7.jpg",
     )
 
     @Test
@@ -37,6 +38,7 @@ class ListingPublishedTemplateTest {
         assertTrue(html.contains("Appartement à louer, 3 chambres, Yaounde (Bastos)"))
         assertTrue(html.contains("Quartier</b>: Bastos"))
         assertTrue(html.contains("https://www.ndopify.com/yaounde/bastos/listing/1/appartement"))
+        assertTrue(html.contains("https://cdn.ndopify.com/7.jpg"))
     }
 
     @Test
@@ -46,15 +48,17 @@ class ListingPublishedTemplateTest {
         assertTrue(html.contains("publiée"))
         assertTrue(html.contains("Ray Sponsible"))
         assertTrue(html.contains("https://www.ndopify.com/yaounde/bastos/listing/1/appartement"))
+        assertTrue(html.contains("https://cdn.ndopify.com/7.jpg"))
     }
 
     @Test
-    fun `without link, title nor neighbourhood`() {
+    fun `without cover photo, link, title nor neighbourhood`() {
         val html = resolver.resolve(
             ListingPublishedMailet.TEMPLATE_CUSTOMER,
-            context - "listing_url" - "title" - "neighbourhood",
+            context - "image_url" - "listing_url" - "title" - "neighbourhood",
         )
 
+        assertFalse(html.contains("cdn.ndopify.com"))
         assertFalse(html.contains("listing/1"))
         assertFalse(html.contains("Annonce</b>"))
         assertFalse(html.contains("Quartier"))
