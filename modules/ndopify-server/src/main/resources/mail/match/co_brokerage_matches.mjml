@@ -39,6 +39,10 @@
                             <td style="padding:4px 0;vertical-align:middle">
                                 <b>{{title}}</b> — {{price}} ({{score}} %)
                                 <br/>
+                                {{#agent_photo_url}}
+                                <img src="{{agent_photo_url}}" alt="{{agent_full_name}}" width="32" height="32"
+                                     style="display:inline-block;width:32px;height:32px;object-fit:cover;border-radius:50%;vertical-align:middle"/>
+                                {{/agent_photo_url}}
                                 {{agent_full_name}}{{#agent_whatsapp_url}}
                                 — <a href="{{agent_whatsapp_url}}">WhatsApp {{agent_whatsapp}}</a>{{/agent_whatsapp_url}}{{#agent_email_url}}
                                 — <a href="{{agent_email_url}}">{{agent_email}}</a>{{/agent_email_url}}

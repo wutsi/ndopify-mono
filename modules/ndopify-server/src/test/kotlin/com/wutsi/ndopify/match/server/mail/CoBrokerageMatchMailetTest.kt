@@ -231,6 +231,7 @@ class CoBrokerageMatchMailetTest {
                                 "price" to "90 000 FCFA / mois",
                                 "score" to 80,
                                 "agent_full_name" to "John Doe",
+                                "agent_photo_url" to "https://cdn.ndopify.com/john.jpg",
                                 "agent_whatsapp_url" to "https://wa.me/237677889900",
                             ),
                         ),
@@ -242,6 +243,7 @@ class CoBrokerageMatchMailetTest {
         assertTrue(html.contains("Villa Bastos"))
         assertTrue(html.contains("John Doe"))
         assertTrue(html.contains("https://wa.me/237677889900"))
+        assertTrue(html.contains("https://cdn.ndopify.com/john.jpg"))
         assertFalse(html.contains("Secret Owner"))
         assertFalse(html.contains("owner@gmail.com"))
     }
