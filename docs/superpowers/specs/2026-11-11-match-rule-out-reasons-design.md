@@ -1,6 +1,6 @@
 # Match Rule-Out Reasons — Design
 
-**Status:** Proposed — awaiting approval
+**Status:** Implemented
 
 **Scope:** logs / ops only. The reason is not persisted, not exposed through the API, and never shown to
 agents or customers.
