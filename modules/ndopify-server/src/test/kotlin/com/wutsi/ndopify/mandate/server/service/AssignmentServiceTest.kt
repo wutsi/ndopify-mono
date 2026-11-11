@@ -55,6 +55,11 @@ class AssignmentServiceTest {
         status = AssignmentStatus.PENDING,
     )
 
+    private fun offered(id: Long, mandateId: Long) = DispatchResult.Offered(
+        assignment = offer(id, mandateId),
+        diagnostics = DispatchDiagnostics(candidateCount = 1, excluded = emptyMap(), eligible = emptyList()),
+    )
+
     @BeforeTest
     fun setUp() {
         TenantContext.set(1L)
@@ -114,9 +119,9 @@ class AssignmentServiceTest {
     @Test
     fun `dispatchPending - the mandates waiting without an offer are dispatched`() {
         doReturn(listOf(3L, 4L, 5L)).whenever(mandateDao).findIdsWithoutAssignment(any(), any(), any())
-        doReturn(offer(30, 3)).whenever(dispatcher).dispatch(3L)
-        doReturn(null).whenever(dispatcher).dispatch(4L) // Night, no candidate...
-        doReturn(offer(50, 5)).whenever(dispatcher).dispatch(5L)
+        doReturn(offered(30, 3)).whenever(dispatcher).dispatchResult(3L)
+        doReturn(DispatchResult.Skipped(DispatchReason.NIGHT)).whenever(dispatcher).dispatchResult(4L)
+        doReturn(offered(50, 5)).whenever(dispatcher).dispatchResult(5L)
 
         assertEquals(2, service.dispatchPending())
 
@@ -130,11 +135,20 @@ class AssignmentServiceTest {
     @Test
     fun `dispatchPending - a failing mandate doesn't stop the others`() {
         doReturn(listOf(3L, 4L)).whenever(mandateDao).findIdsWithoutAssignment(any(), any(), any())
-        doThrow(IllegalStateException("boom")).whenever(dispatcher).dispatch(3L)
-        doReturn(offer(40, 4)).whenever(dispatcher).dispatch(4L)
+        doThrow(IllegalStateException("boom")).whenever(dispatcher).dispatchResult(3L)
+        doReturn(offered(40, 4)).whenever(dispatcher).dispatchResult(4L)
 
         assertEquals(1, service.dispatchPending())
 
-        verify(dispatcher).dispatch(4L)
+        verify(dispatcher).dispatchResult(4L)
+    }
+
+    @Test
+    fun `dispatchPending - the mandates without an offer are not counted`() {
+        doReturn(listOf(3L, 4L)).whenever(mandateDao).findIdsWithoutAssignment(any(), any(), any())
+        doReturn(DispatchResult.Skipped(DispatchReason.NIGHT)).whenever(dispatcher).dispatchResult(3L)
+        doReturn(DispatchResult.Skipped(DispatchReason.NO_CANDIDATE)).whenever(dispatcher).dispatchResult(4L)
+
+        assertEquals(0, service.dispatchPending())
     }
 }
