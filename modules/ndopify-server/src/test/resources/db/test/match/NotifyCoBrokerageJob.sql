@@ -30,8 +30,14 @@ INSERT INTO T_MANDATE(
     (1, 1, 10, 20, 'APPROVED', 'SEARCH', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 250000, 'MONTHLY', 'XAF'),
     (2, 1, 10, 20, 'APPROVED', 'SEARCH', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 250000, 'MONTHLY', 'XAF'),
     (3, 1, 10, 20, 'APPROVED', 'SEARCH', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 250000, 'MONTHLY', 'XAF'),
+    (4, 1, 10, 20, 'APPROVED', 'SEARCH', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 250000, 'MONTHLY', 'XAF'),
+    (5, 1, 10, 20, 'APPROVED', 'SEARCH', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 250000, 'MONTHLY', 'XAF'),
+    (6, 1, 10, 20, 'APPROVED', 'SEARCH', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 250000, 'MONTHLY', 'XAF'),
+    (7, 1, 10, 20, 'CLOSED', 'SEARCH', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 250000, 'MONTHLY', 'XAF'),
+    (8, 1, 10, 20, 'APPROVED', 'SEARCH', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 250000, 'MONTHLY', 'XAF'),
     (11, 1, 11, 30, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 90000, 'MONTHLY', 'XAF'),
-    (12, 1, 11, 20, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 100000, 'MONTHLY', 'XAF');
+    (12, 1, 11, 20, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 100000, 'MONTHLY', 'XAF'),
+    (13, 1, 11, 30, 'APPROVED', 'LISTING', 'RENTAL', 'RESIDENTIAL', 2370201, 'APARTMENT', '2', 90000, 'MONTHLY', 'XAF');
 
 INSERT INTO T_MANDATE_NEIGHBORHOOD(mandate_id, neighborhood_id) VALUES
     (1, 1001),
@@ -44,10 +50,16 @@ INSERT INTO T_LISTING(
     property_type, rooms, price, currency_code, price_periodicity_type, title
 ) VALUES
     (101, 1, 11, 30, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'APARTMENT', 2, 90000, 'XAF', 'MONTHLY', 'Co-brokerage'),
-    (102, 1, 12, 20, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'APARTMENT', 2, 100000, 'XAF', 'MONTHLY', 'Own');
+    (102, 1, 12, 20, 'RESIDENTIAL', 'RENTAL', 'PUBLISHED', 2370201, 1001, 'APARTMENT', 2, 100000, 'XAF', 'MONTHLY', 'Own'),
+    (103, 1, 13, 30, 'RESIDENTIAL', 'RENTAL', 'RENTED', 2370201, 1001, 'APARTMENT', 2, 90000, 'XAF', 'MONTHLY', 'Rented');
 
-INSERT INTO T_MATCH(id, tenant_id, mandate_id, listing_id, agent_id, status, score, listing_price, notified_at, co_brokerage) VALUES
-    (1, 1, 1, 101, 20, 'ACTIVE', 0.8, 90000, NULL, TRUE),                     -- forward
-    (2, 1, 1, 102, 20, 'ACTIVE', 0.9, 100000, NULL, FALSE),                   -- own inventory
-    (3, 1, 2, 101, 20, 'ACTIVE', 0.8, 90000, '2026-10-01 10:00:00', TRUE),    -- already notified
-    (4, 1, 3, 101, 20, 'SHORTLISTED', 0.8, 90000, NULL, TRUE);                -- interest, not a forward match
+INSERT INTO T_MATCH(id, tenant_id, mandate_id, listing_id, agent_id, status, score, listing_price, notified_at, co_brokerage, listing_agent_notified_at) VALUES
+    (1, 1, 1, 101, 20, 'ACTIVE', 0.8, 90000, NULL, TRUE, NULL),                     -- forward
+    (2, 1, 1, 102, 20, 'ACTIVE', 0.9, 100000, NULL, FALSE, NULL),                   -- own inventory
+    (3, 1, 2, 101, 20, 'ACTIVE', 0.8, 90000, '2026-10-01 10:00:00', TRUE, NULL),    -- already notified
+    (4, 1, 3, 101, 20, 'SHORTLISTED', 0.8, 90000, NULL, TRUE, NULL),                -- interest, not a forward match
+    (5, 1, 4, 101, 20, 'PROPOSED', 0.8, 90000, '2026-10-01 10:00:00', TRUE, NULL),  -- reverse
+    (6, 1, 5, 101, 20, 'REJECTED', 0.8, 90000, '2026-10-01 10:00:00', TRUE, NULL),  -- not reverse
+    (7, 1, 6, 101, 20, 'DISMISSED', 0.8, 90000, '2026-10-01 10:00:00', TRUE, NULL), -- not reverse
+    (8, 1, 7, 101, 20, 'SHORTLISTED', 0.8, 90000, '2026-10-01 10:00:00', TRUE, NULL), -- CLOSED search
+    (9, 1, 8, 103, 20, 'SHORTLISTED', 0.8, 90000, '2026-10-01 10:00:00', TRUE, NULL); -- RENTED listing

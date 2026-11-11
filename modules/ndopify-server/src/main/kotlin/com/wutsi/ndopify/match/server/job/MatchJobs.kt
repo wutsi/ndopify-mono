@@ -31,7 +31,9 @@ class MatchJobs(
     @Scheduled(cron = "\${ndopify.match.notify.cron}")
     fun notifyAgents() {
         forEachTenant("notifyAgents", "agent(s)") {
-            notificationService.notifyAgents() + coBrokerageNotificationService.notifySearchAgents()
+            notificationService.notifyAgents() +
+                coBrokerageNotificationService.notifySearchAgents() +
+                coBrokerageNotificationService.notifyListingAgents()
         }
     }
 

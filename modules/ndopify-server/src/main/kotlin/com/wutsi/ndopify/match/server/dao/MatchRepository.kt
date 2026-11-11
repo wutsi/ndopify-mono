@@ -90,6 +90,17 @@ interface MatchRepository : CrudRepository<MatchEntity, Long>, JpaSpecificationE
         listingStatus: ListingStatus,
     ): List<MatchEntity>
 
+    // Co-brokerage rows where the search agent showed interest, the listing agent not told yet
+    @Query(
+        "SELECT m FROM MatchEntity m WHERE m.coBrokerage = TRUE AND m.listingAgentNotifiedAt IS NULL " +
+            "AND m.status IN :statuses AND m.mandate.status = :mandateStatus AND m.listing.status = :listingStatus"
+    )
+    fun findCoBrokerageInterestToNotify(
+        statuses: Collection<MatchStatus>,
+        mandateStatus: MandateStatus,
+        listingStatus: ListingStatus,
+    ): List<MatchEntity>
+
     // The matches to expire: proposed before, oldest first (MatchProposalService.expireDue)
     fun findByStatusAndProposedAtBeforeOrderByProposedAt(
         status: MatchStatus,
@@ -105,4 +116,9 @@ interface MatchRepository : CrudRepository<MatchEntity, Long>, JpaSpecificationE
     @Modifying
     @Query("UPDATE MatchEntity m SET m.notifiedAt = :now WHERE m.id IN :ids")
     fun markNotified(@Param("ids") ids: Collection<Long>, @Param("now") now: Date): Int
+
+    @Transactional
+    @Modifying
+    @Query("UPDATE MatchEntity m SET m.listingAgentNotifiedAt = :now WHERE m.id IN :ids")
+    fun markListingAgentNotified(@Param("ids") ids: Collection<Long>, @Param("now") now: Date): Int
 }
