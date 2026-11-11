@@ -185,11 +185,11 @@ class ListingFormRulesTest {
         assertEquals(
             mapOf(
                 "price" to "Indiquez le loyer mensuel.",
-                "securityDeposit" to "Choisissez la caution demandée.",
                 "availableFrom" to "Indiquez la date à laquelle le bien est libre.",
             ),
             errors(ListingSection.TERMS, ListingSectionForm()),
         )
+        assertEquals(emptyMap(), errors(ListingSection.TERMS, terms.copy(securityDeposit = "")))
         assertEquals(
             mapOf("price" to "Indiquez le loyer en chiffres, en FCFA par mois."),
             errors(ListingSection.TERMS, terms.copy(price = "150k")),
@@ -209,7 +209,11 @@ class ListingFormRulesTest {
         )
         assertEquals(
             setOf("securityDeposit", "advanceRent", "leaseTerm", "noticePeriod"),
-            errors(ListingSection.TERMS, terms.copy(securityDeposit = "7", advanceRent = "13", leaseTerm = "5", noticePeriod = "x")).keys,
+            errors(ListingSection.TERMS, terms.copy(securityDeposit = "25", advanceRent = "25", leaseTerm = "5", noticePeriod = "x")).keys,
+        )
+        assertEquals(
+            emptyMap(),
+            errors(ListingSection.TERMS, terms.copy(securityDeposit = "24", advanceRent = "24")),
         )
     }
 
@@ -226,6 +230,7 @@ class ListingFormRulesTest {
         assertNull(request.leaseTerm)
         assertEquals(1, request.noticePeriod)
         assertEquals(LocalDate.of(2026, 11, 15), request.availableFrom)
+        assertNull(ListingRules.request(ListingSection.TERMS, terms.copy(securityDeposit = "")).securityDeposit)
     }
 
     @Test

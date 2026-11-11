@@ -223,11 +223,27 @@ class OfferPropertyTemplateTest {
         assertEquals("150${' '}000".replace(' ', ' '), page.selectFirst("input[name=priceAmount]")?.attr("value")?.replace(' ', ' '))
         assertEquals("3", page.selectFirst("select[name=advanceRent] option[selected]")?.attr("value"))
         assertEquals("2", page.selectFirst("select[name=securityDeposit] option[selected]")?.attr("value"))
+        assertEquals("Aucune avance", page.selectFirst("select[name=advanceRent] option[value='']")?.text())
+        assertEquals("Aucune caution", page.selectFirst("select[name=securityDeposit] option[value='']")?.text())
+        assertEquals(
+            (1..24).map { "$it" },
+            page.select("select[name=advanceRent] option").map { it.attr("value") }.drop(1)
+        )
+        assertEquals(
+            (1..24).map { "$it" },
+            page.select("select[name=securityDeposit] option").map { it.attr("value") }.drop(1)
+        )
+        assertFalse(page.selectFirst("select[name=securityDeposit]")!!.hasAttr("required"))
     }
 
     @Test
     fun `terms step shows the errors`() {
-        val page = render(post("/offer-property/terms").param("priceAmount", "10").param("availableFrom", "2020-01-01"))
+        val page = render(
+            post("/offer-property/terms")
+                .param("priceAmount", "10")
+                .param("securityDeposit", "25")
+                .param("availableFrom", "2020-01-01"),
+        )
 
         val date = page.selectFirst("input[name=availableFrom]")!!
         assertEquals("true", date.attr("aria-invalid"))

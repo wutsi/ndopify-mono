@@ -2,6 +2,7 @@ package com.wutsi.ndopify.mandate.server.endpoint
 
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.customer.server.dao.CustomerRepository
+import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.listing.dto.ContactPeriodType
 import com.wutsi.ndopify.listing.dto.FurnitureType
@@ -84,6 +85,32 @@ class CreateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         preferredContactPeriod = ContactPeriodType.MORNING,
         comments = "Close to the market",
     )
+
+    @Test
+    fun `security deposit over 24 months - 400`() {
+        val response = rest.postForEntity(
+            "/v1/mandates",
+            request.copy(securityDeposit = 25),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
+        assertEquals("securityDeposit", response.body?.error?.parameter?.name)
+    }
+
+    @Test
+    fun `advance rent over 24 months - 400`() {
+        val response = rest.postForEntity(
+            "/v1/mandates",
+            request.copy(advanceRent = 25),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
+        assertEquals("advanceRent", response.body?.error?.parameter?.name)
+    }
 
     @Test
     fun create() {

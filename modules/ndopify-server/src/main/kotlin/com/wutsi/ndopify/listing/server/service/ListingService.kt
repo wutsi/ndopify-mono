@@ -264,8 +264,8 @@ class ListingService(
 
             ListingSection.TERMS -> listing.copy(
                 price = required("price", request.price?.takeIf { it > 0 }),
-                securityDeposit = required("securityDeposit", request.securityDeposit?.takeIf { it >= 0 }),
-                advanceRent = request.advanceRent,
+                securityDeposit = optionalMonths("securityDeposit", request.securityDeposit),
+                advanceRent = optionalMonths("advanceRent", request.advanceRent),
                 leaseTerm = request.leaseTerm,
                 noticePeriod = request.noticePeriod,
                 availableFrom = required("availableFrom", request.availableFrom),
@@ -398,6 +398,12 @@ class ListingService(
     }
 
     private fun <T> required(name: String, value: T?): T = value ?: throw invalid(name)
+
+    // Optional: null (none), or a legacy 0 to 24 months
+    private fun optionalMonths(name: String, value: Int?): Int? {
+        if (!RentalTerms.isValid(value)) throw invalid(name)
+        return value
+    }
 
     private fun invalid(name: String) = BadRequestException(
         Error(

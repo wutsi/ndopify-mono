@@ -484,6 +484,26 @@ class OfferPropertyControllerTest {
         )
     }
 
+    @Test
+    fun reviewShowsNoCautionAndNoAdvance() {
+        session.setAttribute(
+            PendingListing.SESSION_ATTRIBUTE,
+            complete.copy(securityDeposit = null, advanceRent = null),
+        )
+
+        val result = mvc.perform(get("/offer-property?step=review").session(session)).andReturn()
+
+        assertEquals(
+            listOf(
+                FORMATTER.money(150_000) + " par mois",
+                "Sans avance de loyer",
+                "Sans caution",
+                "Disponible dès le " + FORMATTER.date(TODAY.plusDays(10)),
+            ),
+            model(result)["termsLines"],
+        )
+    }
+
     // POST /offer-property/review
 
     @Test
