@@ -1,10 +1,12 @@
 package com.wutsi.ndopify.match.server.service
 
+import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.agent.server.service.AgentService
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.dao.MatchRepository
+import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.match.server.mail.CoBrokerageInterestMailet
 import com.wutsi.ndopify.match.server.mail.CoBrokerageMatchMailet
 import org.slf4j.LoggerFactory
@@ -43,26 +45,20 @@ class CoBrokerageNotificationService(
     }
 
     /** Returns the number of agents e-mailed. */
-    fun notifySearchAgents(): Int {
-        val pending = dao.findCoBrokerageToNotify(
+    fun notifySearchAgents(): Int = notify(
+        pending = dao.findCoBrokerageToNotify(
             MatchStatus.ACTIVE,
             MandateStatus.APPROVED,
             ListingStatus.PUBLISHED,
-        )
-        var count = 0
-        pending.groupBy { match -> match.agentId }.forEach { (agentId, matches) ->
-            try {
-                val agent = agentService.findByIdOrNull(agentId) ?: return@forEach
-                mailet.send(agent, matches)
-                dao.markNotified(matches.map { match -> match.id!! }, Date(clock.millis()))
-                count++
-            } catch (ex: Exception) {
-                // An agent failing must not prevent the others to be notified
-                LOGGER.warn("Agent#$agentId - ${matches.size} match(es) not notified", ex)
-            }
-        }
-        return count
-    }
+        ),
+        label = "Agent",
+        recipientId = { match -> match.agentId },
+        send = { agent, matches -> mailet.send(agent, matches) },
+        mark = { ids, now ->
+            dao.markNotified(ids, now)
+            Unit
+        },
+    )
 
     /** Returns the number of listing agents e-mailed. */
     fun notifyListingAgents(): Int {
@@ -71,16 +67,47 @@ class CoBrokerageNotificationService(
             MandateStatus.APPROVED,
             ListingStatus.PUBLISHED,
         )
+
+        // The interest mailet drops rows whose search agent no longer exists: never mark those as told
+        val knownSearchAgents = pending.mapNotNull { match -> match.mandate.agentId }
+            .distinct()
+            .filter { agentId -> agentService.findByIdOrNull(agentId) != null }
+            .toSet()
+        val notifiable = pending.filter { match -> match.mandate.agentId in knownSearchAgents }
+
+        return notify(
+            pending = notifiable,
+            label = "Listing agent",
+            recipientId = { match -> match.listing.agent.id },
+            send = { agent, matches -> interestMailet.send(agent, matches) },
+            mark = { ids, now ->
+                dao.markListingAgentNotified(ids, now)
+                Unit
+            },
+        )
+    }
+
+    private fun notify(
+        pending: List<MatchEntity>,
+        label: String,
+        recipientId: (MatchEntity) -> Long?,
+        send: (AgentEntity, List<MatchEntity>) -> Unit,
+        mark: (Collection<Long>, Date) -> Unit,
+    ): Int {
         var count = 0
-        pending.groupBy { match -> match.listing.agent.id }.forEach { (agentId, matches) ->
+        val groups: Map<Long?, List<MatchEntity>> = pending.groupBy { match -> recipientId(match) }
+        groups.forEach { (agentId, matches) ->
+            if (agentId == null) {
+                return@forEach
+            }
             try {
-                val agent = agentId?.let { agentService.findByIdOrNull(it) } ?: return@forEach
-                interestMailet.send(agent, matches)
-                dao.markListingAgentNotified(matches.map { match -> match.id!! }, Date(clock.millis()))
+                val agent = agentService.findByIdOrNull(agentId) ?: return@forEach
+                send(agent, matches)
+                mark(matches.map { match -> match.id!! }, Date(clock.millis()))
                 count++
             } catch (ex: Exception) {
-                // A listing agent failing must not prevent the others to be notified
-                LOGGER.warn("Listing agent#$agentId - ${matches.size} match(es) not notified", ex)
+                // An agent failing must not prevent the others to be notified
+                LOGGER.warn("$label#$agentId - ${matches.size} match(es) not notified", ex)
             }
         }
         return count

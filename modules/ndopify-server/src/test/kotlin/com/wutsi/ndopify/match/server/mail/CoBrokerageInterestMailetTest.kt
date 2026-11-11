@@ -7,6 +7,7 @@ import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
@@ -139,7 +140,10 @@ class CoBrokerageInterestMailetTest {
         assertEquals("Kim Possible", agent["agent_full_name"])
         assertEquals("Appartement", agent["property_type"])
         assertEquals("Bastos (Yaounde)", agent["place"])
+        assertEquals("2 pièces", agent["rooms_label"])
         assertNull(agent["search_count"])
+        assertTrue(agent.containsKey("agent_email"))
+        assertTrue(agent.containsKey("agent_email_url"))
 
         // Anti-sautage: the search customer never appears
         val rendered = context.toString()
@@ -150,6 +154,27 @@ class CoBrokerageInterestMailetTest {
         verify(mailService).send(email.capture())
         assertEquals("john.doe@gmail.com", email.firstValue.recipient.email)
         assertEquals("Ndopify: 1 agent s'intéresse à votre bien", email.firstValue.subject)
+    }
+
+    @Test
+    fun `no matches - no email`() {
+        mailet.send(listingAgent, emptyList())
+
+        verify(mailService, never()).send(any())
+    }
+
+    @Test
+    fun `one room is singular`() {
+        mailet.send(listingAgent, listOf(match.copy(mandate = search.copy(rooms = "1"))))
+
+        assertEquals("1 pièce", (agents().single() as Map<*, *>)["rooms_label"])
+    }
+
+    @Test
+    fun `non-numeric rooms has no label`() {
+        mailet.send(listingAgent, listOf(match.copy(mandate = search.copy(rooms = "Studio"))))
+
+        assertNull((agents().single() as Map<*, *>)["rooms_label"])
     }
 
     @Test
@@ -211,6 +236,29 @@ class CoBrokerageInterestMailetTest {
     }
 
     @Test
+    fun `more than 5 agents`() {
+        val interested = (20L..25L).map { id ->
+            AgentEntity(id = id, party = PartyEntity(id = id * 10, firstName = "Agent", lastName = "$id"))
+        }
+        interested.forEach { agent ->
+            doReturn(agent).whenever(agentService).findByIdOrNull(agent.id!!)
+        }
+        val matches = interested.mapIndexed { i, agent ->
+            match.copy(
+                id = i + 1L,
+                mandate = search.copy(id = i + 1L, agentId = agent.id),
+                score = 0.5 + i * 0.01,
+            )
+        }
+
+        mailet.send(listingAgent, matches)
+
+        val listing = listing()
+        assertEquals(5, (listing["agents"] as List<*>).size)
+        assertEquals(1, listing["more"])
+    }
+
+    @Test
     fun `no partner portal - no mandate link`() {
         doReturn(tenant.copy(partnerCentralUrl = null)).whenever(tenantService).findById(1L)
 
@@ -241,6 +289,7 @@ class CoBrokerageInterestMailetTest {
                                 "agent_full_name" to "Kim Possible",
                                 "property_type" to "Appartement",
                                 "place" to "Bastos (Yaounde)",
+                                "rooms_label" to "2 pièces",
                                 "budget" to "100 000 FCFA / mois",
                                 "agent_whatsapp_url" to "https://wa.me/237677889900",
                             ),
@@ -253,6 +302,7 @@ class CoBrokerageInterestMailetTest {
         assertTrue(html.contains("Villa Bastos"))
         assertTrue(html.contains("Kim Possible"))
         assertTrue(html.contains("https://wa.me/237677889900"))
+        assertTrue(html.contains("2 pièces"))
         assertFalse(html.contains("Secret Client"))
         assertFalse(html.contains("secret@example.com"))
     }
