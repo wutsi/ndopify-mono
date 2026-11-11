@@ -48,7 +48,7 @@
                     — <a href="{{agent_whatsapp_url}}">WhatsApp {{agent_whatsapp}}</a>{{/agent_whatsapp_url}}{{#agent_email_url}}
                     — <a href="{{agent_email_url}}">{{agent_email}}</a>{{/agent_email_url}}
                     <br/>
-                    {{listing_type}}{{#property_type}} - {{property_type}}{{/property_type}} à {{place}}{{#rooms}} - {{rooms}} pièces{{/rooms}} - {{budget}}{{#search_count}} - {{search_count}} recherches{{/search_count}}
+                    {{listing_type}}{{#property_type}} - {{property_type}}{{/property_type}} à {{place}}{{#rooms_label}} - {{rooms_label}}{{/rooms_label}} - {{budget}}{{#search_count}} - {{search_count}} recherches{{/search_count}}
                 </mj-text>
                 {{/agents}}
 

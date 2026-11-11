@@ -117,6 +117,10 @@ interface MatchRepository : CrudRepository<MatchEntity, Long>, JpaSpecificationE
     @Query("UPDATE MatchEntity m SET m.notifiedAt = :now WHERE m.id IN :ids")
     fun markNotified(@Param("ids") ids: Collection<Long>, @Param("now") now: Date): Int
 
+    /**
+     * Sets [MatchEntity.listingAgentNotifiedAt]. A bulk update on purpose: it skips the `@Version` check, so a
+     * dismiss made meanwhile neither fails it nor is overwritten, since only `listing_agent_notified_at` is set.
+     */
     @Transactional
     @Modifying
     @Query("UPDATE MatchEntity m SET m.listingAgentNotifiedAt = :now WHERE m.id IN :ids")

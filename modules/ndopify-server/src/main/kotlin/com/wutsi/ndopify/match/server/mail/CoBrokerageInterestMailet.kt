@@ -40,6 +40,9 @@ class CoBrokerageInterestMailet(
 
     /** [matches]: the listing agent's, all of one tenant. [agent]: the listing agent (the recipient). */
     fun send(agent: AgentEntity, matches: List<MatchEntity>) {
+        if (matches.isEmpty()) {
+            return
+        }
         val tenant = tenantService.findById(matches.first().listing.tenantId!!)
         val formatter = TenantFormatter(tenant)
         val fullName = agent.party.fullName()
@@ -60,16 +63,19 @@ class CoBrokerageInterestMailet(
                         val interested = agentService.findByIdOrNull(mandate.agentId!!) ?: return@mapNotNull null
                         val city = locationService.findByIdOrNull(mandate.cityId)?.name ?: ""
                         val row = AgentMailContext.of(interested, formatter).toMutableMap()
-                        if (interested.whatsappNumber.isNullOrBlank()) {
-                            val email = interested.party.email.takeIf { it.isNotBlank() }
-                            row["agent_email"] = email
-                            row["agent_email_url"] = email?.let { "mailto:$it" }
+                        val email = interested.party.email.takeIf {
+                            interested.whatsappNumber.isNullOrBlank() && it.isNotBlank()
                         }
+                        row["agent_email"] = email
+                        row["agent_email_url"] = email?.let { "mailto:$it" }
                         row["search_count"] = perAgent.size.takeIf { it > 1 }
                         row["listing_type"] = MandateMailLabels.listingType(mandate)
                         row["property_type"] = MandateMailLabels.propertyType(mandate)
                         row["place"] = MandateMailLabels.place(mandate, city, locationService)
                         row["rooms"] = mandate.rooms
+                        row["rooms_label"] = mandate.rooms?.trim()?.toIntOrNull()?.let { rooms ->
+                            "$rooms pièce" + if (rooms > 1) "s" else ""
+                        }
                         row["budget"] = MandateMailLabels.budget(mandate, formatter)
                         row
                     }

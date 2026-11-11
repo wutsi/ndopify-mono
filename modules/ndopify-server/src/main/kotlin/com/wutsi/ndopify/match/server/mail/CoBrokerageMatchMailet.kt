@@ -42,6 +42,9 @@ class CoBrokerageMatchMailet(
 
     /** [matches]: the search agent's, all of one tenant. */
     fun send(agent: AgentEntity, matches: List<MatchEntity>) {
+        if (matches.isEmpty()) {
+            return
+        }
         val tenant = tenantService.findById(matches.first().mandate.tenantId!!)
         val formatter = TenantFormatter(tenant)
         val party = agent.party
@@ -64,11 +67,11 @@ class CoBrokerageMatchMailet(
                         val listing = match.listing
                         val listingAgent = listing.agent
                         val contact = AgentMailContext.of(listingAgent, formatter).toMutableMap()
-                        if (listingAgent.whatsappNumber.isNullOrBlank()) {
-                            val email = listingAgent.party.email.takeIf { it.isNotBlank() }
-                            contact["agent_email"] = email
-                            contact["agent_email_url"] = email?.let { "mailto:$it" }
+                        val email = listingAgent.party.email.takeIf {
+                            listingAgent.whatsappNumber.isNullOrBlank() && it.isNotBlank()
                         }
+                        contact["agent_email"] = email
+                        contact["agent_email_url"] = email?.let { "mailto:$it" }
                         mapOf(
                             "image_url" to imageService.cover(listing)?.url?.ifBlank { null },
                             "title" to (listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"),

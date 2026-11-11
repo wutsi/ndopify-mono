@@ -147,6 +147,8 @@ class CoBrokerageMatchMailetTest {
         assertEquals("John Doe", listing["agent_full_name"])
         assertEquals("https://wa.me/237677889900", listing["agent_whatsapp_url"])
         assertNull(listing["agent_email"])
+        assertTrue(listing.containsKey("agent_email"))
+        assertTrue(listing.containsKey("agent_email_url"))
 
         // Anti-sautage: the search agent's own customer is fine, the listing customer is not
         val rendered = context.toString()
@@ -197,6 +199,13 @@ class CoBrokerageMatchMailetTest {
     }
 
     @Test
+    fun `no matches - no email`() {
+        mailet.send(searchAgent, emptyList())
+
+        verify(mailService, never()).send(any())
+    }
+
+    @Test
     fun `more than 5 listings`() {
         val matches = (1..6).map { i -> match.copy(id = i.toLong(), mandate = search) }
         mailet.send(searchAgent, matches)
@@ -216,6 +225,7 @@ class CoBrokerageMatchMailetTest {
         val html = resolver.resolve(
             CoBrokerageMatchMailet.TEMPLATE,
             mapOf(
+                "tenant_logo_url" to "https://cdn.ndopify.com/logo.png",
                 "tenant_name" to "Ndopify",
                 "recipient_name" to "Kim Possible",
                 "mandates" to listOf(
@@ -232,7 +242,10 @@ class CoBrokerageMatchMailetTest {
                                 "score" to 80,
                                 "agent_full_name" to "John Doe",
                                 "agent_photo_url" to "https://cdn.ndopify.com/john.jpg",
+                                "agent_whatsapp" to "+237 677 889 900",
                                 "agent_whatsapp_url" to "https://wa.me/237677889900",
+                                "agent_email" to "john.doe@gmail.com",
+                                "agent_email_url" to "mailto:john.doe@gmail.com",
                             ),
                         ),
                         "more" to null,
@@ -244,6 +257,8 @@ class CoBrokerageMatchMailetTest {
         assertTrue(html.contains("John Doe"))
         assertTrue(html.contains("https://wa.me/237677889900"))
         assertTrue(html.contains("https://cdn.ndopify.com/john.jpg"))
+        assertTrue(html.contains("https://cdn.ndopify.com/logo.png"))
+        assertTrue(html.contains("mailto:john.doe@gmail.com"))
         assertFalse(html.contains("Secret Owner"))
         assertFalse(html.contains("owner@gmail.com"))
     }
