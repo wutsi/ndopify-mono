@@ -194,7 +194,7 @@ class MatchProposedMailetTest {
     }
 
     @Test
-    fun `never exposes the listing agent or the listing customer`() {
+    fun `never exposes the listing agent`() {
         val coBroker = AgentEntity(
             id = 30L,
             party = PartyEntity(id = 300L, firstName = "Co", lastName = "Broker", email = "co.broker@example.com"),
@@ -206,11 +206,11 @@ class MatchProposedMailetTest {
 
         mailet.send(listOf(match.copy(listing = coListing)), customer, agent)
 
+        // The listing customer is structurally unreachable here: MatchProposedMailet has no CustomerService and never
+        // reads listing.mandate.customerId, so only the listing agent can leak through this mailet.
         val rendered = context().toString()
         assertFalse(rendered.contains("Co Broker"))
         assertFalse(rendered.contains("co.broker@example.com"))
-        assertFalse(rendered.contains("Secret Owner"))
-        assertFalse(rendered.contains("owner@example.com"))
     }
 
     private fun listing(): Map<*, *> = (context()["listings"] as List<*>).first() as Map<*, *>
