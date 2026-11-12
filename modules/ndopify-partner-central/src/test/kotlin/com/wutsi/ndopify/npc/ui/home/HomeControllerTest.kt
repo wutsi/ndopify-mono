@@ -40,6 +40,7 @@ import com.wutsi.ndopify.npc.ui.visit.VisitFixtures
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
 import com.wutsi.ndopify.party.dto.KycCase
 import com.wutsi.ndopify.party.dto.KycStatus
+import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.junit.jupiter.api.AfterEach
@@ -368,9 +369,31 @@ class HomeControllerTest {
         // The mandates aren't loaded one by one
         verify(mandateClient, never()).get(any())
         val mandates = mandates(result)
-        assertEquals(listOf(203L, 201L, 202L), mandates.map { it.id })
+        assertEquals(listOf(201L, 202L, 203L), mandates.map { it.id })
         assertEquals("Secteurs" to "Bonapriso, Akwa", mandates[1].facts[0])
         assertEquals(false, model(result)["mandatesUnavailable"])
+    }
+
+    @Test
+    fun `mandates - five cards, the rest folded`() {
+        active(*(201L..207L).map { assigned.copy(id = it) }.toTypedArray())
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        // All assigned with the same creation date: newest id first.
+        assertEquals(listOf(207L, 206L, 205L, 204L, 203L), mandates(result).map { it.id })
+        assertEquals(listOf(202L, 201L), foldedMandates(result).map { it.id })
+    }
+
+    @Test
+    fun `mandate card titled with the client name`() {
+        active(assigned)
+        doReturn(listOf(CustomerSummary(id = 555, party = Party(firstName = "Sandrine", lastName = "Eboa"))))
+            .whenever(customerClient).search(listOf(555L))
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        assertEquals("Sandrine Eboa", mandates(result).single().clientName)
     }
 
     @Test
@@ -382,8 +405,11 @@ class HomeControllerTest {
         val result = mvc.perform(get("/")).andReturn()
 
         verify(mandateClient).stats(listOf(203L, 204L))
-        assertEquals("2 biens · 1 intéressé · 2 visites", mandates(result)[0].searchStats?.label)
-        assertEquals("Aucun bien correspondant pour l'instant", mandates(result)[2].searchStats?.label)
+        assertEquals("2 biens · 1 intéressé · 2 visites", mandates(result).first { it.id == 203L }.searchStats?.label)
+        assertEquals(
+            "Aucun bien correspondant pour l'instant",
+            mandates(result).first { it.id == 204L }.searchStats?.label,
+        )
     }
 
     @Test
@@ -441,10 +467,10 @@ class HomeControllerTest {
         val result = mvc.perform(get("/")).andReturn()
 
         verify(listingClient).searchByMandates(listOf(205L, 206L), AGENT.id)
-        val mandates = mandates(result)
-        assertNull(mandates[0].listing)
-        assertEquals("/listings/501", mandates[1].listing?.url)
-        assertEquals("/mandates/206", mandates[2].listing?.url)
+        val cards = mandates(result).associateBy { it.id }
+        assertNull(cards[203L]?.listing)
+        assertEquals("/listings/501", cards[205L]?.listing?.url)
+        assertEquals("/mandates/206", cards[206L]?.listing?.url)
     }
 
     @Test
@@ -485,10 +511,10 @@ class HomeControllerTest {
         val result = mvc.perform(get("/")).andReturn()
 
         verify(listingClient).stats(listOf(501L, 502L))
-        val mandates = mandates(result)
-        assertEquals("2 personnes intéressées · 3 visites", mandates[0].stats)
-        assertEquals("Aucune personne intéressée pour l'instant · Aucune visite", mandates[1].stats)
-        assertNull(mandates[2].stats)
+        val cards = mandates(result).associateBy { it.id }
+        assertEquals("2 personnes intéressées · 3 visites", cards[205L]?.stats)
+        assertEquals("Aucune personne intéressée pour l'instant · Aucune visite", cards[206L]?.stats)
+        assertNull(cards[207L]?.stats)
     }
 
     @Test
@@ -586,6 +612,9 @@ class HomeControllerTest {
 
     @Suppress("UNCHECKED_CAST")
     private fun mandates(result: MvcResult) = model(result)["mandates"] as List<MandateCardView>
+
+    @Suppress("UNCHECKED_CAST")
+    private fun foldedMandates(result: MvcResult) = model(result)["foldedMandates"] as List<MandateCardView>
 
     @Suppress("UNCHECKED_CAST")
     private fun assignments(result: MvcResult) = model(result)["assignments"] as List<AssignmentView>

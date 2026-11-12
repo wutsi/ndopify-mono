@@ -503,6 +503,25 @@
     text-underline-offset: 0.2em;
 }
 
+/* The mandates past the fifth, folded: the home page stays a triage page. */
+.mandate-more {
+    margin-top: var(--space-4);
+}
+
+.mandate-more > summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    font-weight: 600;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    cursor: pointer;
+}
+
+.mandate-more > .assignments {
+    margin-top: var(--space-4);
+}
+
 /* A landlord's signed mandate: its listing's number and status (the card, and mandate.html's Actif panel). */
 .mandate-card__listing,
 .mandate-listing__status {

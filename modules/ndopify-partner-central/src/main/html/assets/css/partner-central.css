@@ -948,6 +948,18 @@ a.user-menu__item:hover {
     display: none;
 }
 
+/* The title's words: the client's name first, then who the mandate is with and what it is for. */
+.mandate-title__text {
+    display: flex;
+    flex-direction: column;
+}
+
+/* On a card, the name leads; the party and type are a quiet line under it. */
+.mandate-card__kind {
+    font-size: var(--step-hint);
+    font-weight: 400;
+}
+
 h1.mandate-title .mandate-title__icon .icon {
     width: 1.5rem;
     height: 1.5rem;

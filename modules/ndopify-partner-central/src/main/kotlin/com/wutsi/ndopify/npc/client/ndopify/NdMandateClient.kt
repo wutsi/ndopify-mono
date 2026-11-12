@@ -27,6 +27,11 @@ class NdMandateClient(
 
     builder: RestClient.Builder,
 ) {
+    companion object {
+        /** ndopify-server's maximum page size: the home page folds what it doesn't show, so load as many as allowed. */
+        const val ACTIVE_LIMIT = 100
+    }
+
     private val rest: RestClient = builder
         .baseUrl(baseUrl)
         .build()
@@ -52,11 +57,12 @@ class NdMandateClient(
     fun active(agentId: Long): List<MandateSummary> =
         rest.get()
             .uri(
-                "/v1/mandates?agent-id={agentId}&status={assigned}&status={pending}&status={approved}",
+                "/v1/mandates?agent-id={agentId}&status={assigned}&status={pending}&status={approved}&limit={limit}",
                 agentId,
                 MandateStatus.ASSIGNED,
                 MandateStatus.PENDING_APPROVAL,
                 MandateStatus.APPROVED,
+                ACTIVE_LIMIT,
             )
             .retrieve()
             .body<SearchMandateResponse>()

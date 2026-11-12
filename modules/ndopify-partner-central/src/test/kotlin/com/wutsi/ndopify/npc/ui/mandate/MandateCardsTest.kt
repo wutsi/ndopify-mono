@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.npc.ui.mandate
 
 import com.wutsi.ndopify.contract.dto.Contract
+import com.wutsi.ndopify.customer.dto.CustomerSummary
 import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.ListingSummary
@@ -18,6 +19,7 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AKWA
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BONAPRISO
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.DOUALA
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.LOCATIONS
+import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import java.time.Instant
@@ -62,7 +64,8 @@ class MandateCardsTest {
         listings: Map<Long, ListingSummary>? = emptyMap(),
         mandateStats: Map<Long, MandateStats>? = null,
         stats: Map<Long, ListingStats>? = null,
-    ) = MandateCards.of(mandate, listings, NAMES, FORMATTER, mandateStats, stats)
+        customers: Map<Long, CustomerSummary>? = null,
+    ) = MandateCards.of(mandate, listings, NAMES, FORMATTER, mandateStats, stats, customers)
 
     @Test
     fun assigned() {
@@ -223,5 +226,32 @@ class MandateCardsTest {
     @Test
     fun `not an approved search - no stats`() {
         assertNull(card(MANDATE, mandateStats = mapOf(201L to MandateStats(201, 3, 1, 0, 0))).searchStats)
+    }
+
+    // The card's title and the home page's order
+
+    @Test
+    fun `client name leads`() {
+        val customer = CustomerSummary(id = 555, party = Party(firstName = "Sandrine", lastName = "Eboa"))
+
+        assertEquals("Sandrine Eboa", card(customers = mapOf(555L to customer)).clientName)
+    }
+
+    @Test
+    fun `no customer - no client name`() {
+        assertNull(card().clientName)
+        assertNull(card(customers = emptyMap()).clientName)
+    }
+
+    @Test
+    fun `order - actionable first, newest within a status`() {
+        val mandates = listOf(
+            MANDATE.copy(id = 1, status = MandateStatus.APPROVED, createdAt = Date(1000)),
+            MANDATE.copy(id = 2, status = MandateStatus.ASSIGNED, createdAt = Date(500)),
+            MANDATE.copy(id = 3, status = MandateStatus.PENDING_APPROVAL, createdAt = Date(2000)),
+            MANDATE.copy(id = 4, status = MandateStatus.ASSIGNED, createdAt = Date(1500)),
+        )
+
+        assertEquals(listOf(4L, 2L, 3L, 1L), MandateCards.order(mandates).map { it.id })
     }
 }
