@@ -297,31 +297,26 @@
     color: var(--color-warning-fg);
 }
 
-/* Secondary, rarer actions (refuse, cancel, no-show): folded, a link-like summary; open, a form below it. */
-.visit-secondary summary {
-    display: inline-flex;
-    align-items: center;
-    min-height: var(--target);
-    font-weight: 600;
-    text-decoration: underline;
-    text-underline-offset: 0.2em;
-    cursor: pointer;
+/* The closure actions (refuse, cancel, no-show): the last, rare and final actions. Same as the mandate's
+   `.mandate-close`: grouped in a light blue box, the buttons in the danger style; a form opens below on a white
+   card, the box hidden until Retour brings the buttons back. */
+.visit-close {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
 }
 
-.visit-secondary__body {
-    margin-top: var(--space-2);
+.visit-close__buttons {
+    justify-content: center;
     padding: var(--space-4);
-    background: var(--color-surface-alt);
+    border: 1px solid var(--color-info-border);
+    background: var(--color-info-bg);
 }
 
-.visit-secondary__body .btn {
-    width: 100%;
-}
-
-@media (min-width: 640px) {
-    .visit-secondary__body .btn {
-        width: auto;
-    }
+.visit-close__form {
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
 }
 
 .visit-summary .review__value {

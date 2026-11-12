@@ -712,6 +712,37 @@
             return;
         }
 
+        /* The closure actions (refuse, cancel, no-show): the buttons box opens one form below; Retour brings it
+           back, like the mandate's Fermer / Annuler section. */
+        $all("[data-visit-close]").forEach(function (box) {
+            var buttons = $("[data-close-buttons]", box);
+            var opener = null;
+            $all("[data-close-open]", buttons).forEach(function (button) {
+                button.addEventListener("click", function () {
+                    var form = $('[data-close-form="' + button.getAttribute("data-close-open") + '"]', box);
+                    opener = button;
+                    buttons.hidden = true;
+                    button.setAttribute("aria-expanded", "true");
+                    form.hidden = false;
+                    var first = $("input, textarea, select, button", form);
+                    if (first) first.focus();
+                });
+            });
+            $all("[data-close-back]", box).forEach(function (back) {
+                back.addEventListener("click", function () {
+                    var form = back.closest("form");
+                    form.hidden = true;
+                    form.reset();
+                    buttons.hidden = false;
+                    if (opener) {
+                        opener.setAttribute("aria-expanded", "false");
+                        opener.focus();
+                    }
+                    opener = null;
+                });
+            });
+        });
+
         // PROTOTYPE: ?error=invalid shows a wrong code with 3 tries left, ?error=locked the locked check-in.
         if (params.get("error") === "invalid" || params.get("error") === "locked") {
             saveVisit(id, { codeAttempts: params.get("error") === "locked" ? MAX_ATTEMPTS : 2 });
@@ -979,8 +1010,8 @@
 
         // "#no-show" (the locked message's link) opens the declaration.
         function openNoShow() {
-            var details = $("#no-show");
-            if (window.location.hash === "#no-show" && !details.hidden) details.open = true;
+            var opener = $("#no-show");
+            if (window.location.hash === "#no-show" && !opener.hidden) opener.click();
         }
         window.addEventListener("hashchange", openNoShow);
 

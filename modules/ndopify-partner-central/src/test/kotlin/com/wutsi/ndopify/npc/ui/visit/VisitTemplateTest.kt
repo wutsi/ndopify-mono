@@ -133,6 +133,15 @@ class VisitTemplateTest {
         assertEquals(listOf("ON_SITE", "VIDEO"), panel.select("input[name=type]").map { it.attr("value") })
         assertEquals("/visits/7001/cancel", panel.selectFirst("form[data-cancel-form]")?.attr("action"))
         assertTrue(panel.text().contains("Je viendrai avec mon mari."))
+
+        val close = panel.selectFirst("[data-visit-close]")!!
+        assertEquals("/visits/7001?close=refuse#close-title-refuse",
+            close.selectFirst("[data-close-open=refuse]")?.attr("href"))
+        assertEquals("false", close.selectFirst("[data-close-open=refuse]")?.attr("aria-expanded"))
+        assertFalse(close.selectFirst("[data-close-buttons]")!!.hasAttr("hidden"))
+        assertTrue(close.selectFirst("[data-close-form=refuse]")!!.hasAttr("hidden"))
+        assertEquals("/visits/7001/cancel", close.selectFirst("[data-close-form=refuse]")?.attr("action"))
+        assertEquals("/visits/7001", close.selectFirst("[data-close-form=refuse] [data-close-back]")?.attr("href"))
     }
 
     @Test
@@ -146,6 +155,11 @@ class VisitTemplateTest {
         assertNotNull(panel.selectFirst("form[data-cancel-form]"))
         assertNull(panel.selectFirst("form[data-checkin-form]"))
         assertTrue(panel.text().contains("sam. 7 novembre 2026 à 09:30"))
+
+        val close = panel.selectFirst("[data-visit-close]")!!
+        assertEquals("/visits/7001?close=cancel#close-title-cancel",
+            close.selectFirst("[data-close-open=cancel]")?.attr("href"))
+        assertTrue(close.selectFirst("[data-close-form=cancel]")!!.hasAttr("hidden"))
     }
 
     @Test
@@ -160,6 +174,14 @@ class VisitTemplateTest {
         assertEquals(3, checkIn.select("input[data-position-input]").size)
         assertEquals("/visits/7001/no-show", panel.selectFirst("form[data-noshow-form]")?.attr("action"))
         assertEquals("/visits/7001/cancel", panel.selectFirst("form[data-cancel-form]")?.attr("action"))
+
+        val close = panel.selectFirst("[data-visit-close]")!!
+        assertEquals("/visits/7001?close=no-show#close-title-noshow",
+            close.selectFirst("[data-close-open=no-show]")?.attr("href"))
+        assertEquals("/visits/7001?close=cancel#close-title-cancel",
+            close.selectFirst("[data-close-open=cancel]")?.attr("href"))
+        assertTrue(close.selectFirst("[data-close-form=no-show]")!!.hasAttr("hidden"))
+        assertTrue(close.selectFirst("[data-close-form=cancel]")!!.hasAttr("hidden"))
     }
 
     @Test
@@ -168,6 +190,8 @@ class VisitTemplateTest {
         val panel = panel(page, "WINDOW")!!
 
         assertNull(panel.selectFirst("[data-noshow-form]"))
+        assertNull(panel.selectFirst("[data-close-open=no-show]"))
+        assertNull(panel.selectFirst("[data-close-form=no-show]"))
     }
 
     @Test
@@ -179,6 +203,8 @@ class VisitTemplateTest {
 
         assertNull(panel.selectFirst("form[data-checkin-form]"))
         assertNotNull(panel.selectFirst("[data-code-locked]"))
+        assertEquals("/visits/7001?close=no-show#close-title-noshow",
+            panel.selectFirst("[data-locked-noshow]")?.attr("href"))
     }
 
     @Test
@@ -307,5 +333,74 @@ class VisitTemplateTest {
 
         val checkedIn = panel(render(checkedIn()), "CHECKED_IN")!!
         assertEquals("post", checkedIn.selectFirst("form[data-checkout-form]")?.attr("method"))
+    }
+
+    @Test
+    fun `requested close refuse`() {
+        val page = render(get("/visits/7001?close=refuse"))
+        val panel = panel(page, "REQUESTED")!!
+        val close = panel.selectFirst("[data-visit-close]")!!
+
+        assertTrue(close.selectFirst("[data-close-buttons]")!!.hasAttr("hidden"))
+        val form = close.selectFirst("[data-close-form=refuse]")!!
+        assertFalse(form.hasAttr("hidden"))
+        assertEquals("close-title-refuse", form.selectFirst("h2")?.id())
+        assertEquals("true", close.selectFirst("[data-close-open=refuse]")?.attr("aria-expanded"))
+    }
+
+    @Test
+    fun `requested ignores another close`() {
+        val page = render(get("/visits/7001?close=cancel"))
+        val close = panel(page, "REQUESTED")!!.selectFirst("[data-visit-close]")!!
+
+        assertFalse(close.selectFirst("[data-close-buttons]")!!.hasAttr("hidden"))
+        assertTrue(close.selectFirst("[data-close-form=refuse]")!!.hasAttr("hidden"))
+    }
+
+    @Test
+    fun `confirmed close cancel`() {
+        doReturn(confirmed()).whenever(visitClient).get(7001)
+
+        val page = render(get("/visits/7001?close=cancel"))
+        val close = panel(page, "CONFIRMED")!!.selectFirst("[data-visit-close]")!!
+
+        assertTrue(close.selectFirst("[data-close-buttons]")!!.hasAttr("hidden"))
+        assertFalse(close.selectFirst("[data-close-form=cancel]")!!.hasAttr("hidden"))
+        assertEquals("close-title-cancel", close.selectFirst("[data-close-form=cancel] h2")?.id())
+    }
+
+    @Test
+    fun `window close no show`() {
+        doReturn(window()).whenever(visitClient).get(7001)
+
+        val page = render(get("/visits/7001?close=no-show"))
+        val close = panel(page, "WINDOW")!!.selectFirst("[data-visit-close]")!!
+
+        assertTrue(close.selectFirst("[data-close-buttons]")!!.hasAttr("hidden"))
+        assertFalse(close.selectFirst("[data-close-form=no-show]")!!.hasAttr("hidden"))
+        assertTrue(close.selectFirst("[data-close-form=cancel]")!!.hasAttr("hidden"))
+    }
+
+    @Test
+    fun `window close cancel`() {
+        doReturn(window()).whenever(visitClient).get(7001)
+
+        val page = render(get("/visits/7001?close=cancel"))
+        val close = panel(page, "WINDOW")!!.selectFirst("[data-visit-close]")!!
+
+        assertFalse(close.selectFirst("[data-close-form=cancel]")!!.hasAttr("hidden"))
+        assertTrue(close.selectFirst("[data-close-form=no-show]")!!.hasAttr("hidden"))
+    }
+
+    @Test
+    fun `window - before the no-show ignores close no-show`() {
+        doReturn(window().copy(scheduledAt = Date(VisitFixtures.NOW - 5 * 60_000)))
+            .whenever(visitClient).get(7001)
+
+        val page = render(get("/visits/7001?close=no-show"))
+        val close = panel(page, "WINDOW")!!.selectFirst("[data-visit-close]")!!
+
+        assertFalse(close.selectFirst("[data-close-buttons]")!!.hasAttr("hidden"))
+        assertNull(close.selectFirst("[data-close-form=no-show]"))
     }
 }

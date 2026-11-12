@@ -113,7 +113,61 @@
 
     if (positionInputs.length > 0) capture();
 
-    /* ---------- The locked check-in's link opens the no-show ---------- */
-    var noShow = $("#no-show");
-    if (noShow && window.location.hash === "#no-show") noShow.open = true;
+    /* ---------- The closure actions: the trigger opens its form in place, as ?close= does without JS ---------- */
+    $all("[data-visit-close]").forEach(function (box) {
+        var buttons = $("[data-close-buttons]", box);
+        var openers = $all("[data-close-open]", box);
+        var opener = null;
+
+        function formOf(mode) {
+            return $('[data-close-form="' + mode + '"]', box);
+        }
+
+        function open(link) {
+            opener = link;
+            var mode = link.getAttribute("data-close-open");
+            $all("[data-close-form]", box).forEach(function (form) {
+                form.hidden = form.getAttribute("data-close-form") !== mode;
+            });
+            buttons.hidden = true;
+            link.setAttribute("aria-expanded", "true");
+            var first = $("input, textarea", formOf(mode));
+            if (first) first.focus();
+        }
+
+        function close() {
+            $all("[data-close-form]", box).forEach(function (form) {
+                form.hidden = true;
+            });
+            buttons.hidden = false;
+            openers.forEach(function (link) {
+                link.setAttribute("aria-expanded", "false");
+            });
+            if (opener) opener.focus();
+        }
+
+        openers.forEach(function (link) {
+            var form = formOf(link.getAttribute("data-close-open"));
+            link.setAttribute("aria-expanded", form && !form.hidden ? "true" : "false");
+            link.addEventListener("click", function (event) {
+                event.preventDefault();
+                open(link);
+            });
+        });
+
+        $all("[data-close-back]", box).forEach(function (back) {
+            back.addEventListener("click", function (event) {
+                event.preventDefault();
+                close();
+            });
+        });
+
+        /* Opened by the server (?close=...): focus its first field. */
+        $all("[data-close-form]", box).forEach(function (form) {
+            if (form.hidden) return;
+            opener = $('[data-close-open="' + form.getAttribute("data-close-form") + '"]', box);
+            var first = $("input, textarea", form);
+            if (first) first.focus();
+        });
+    });
 })();
