@@ -283,6 +283,8 @@ fun `requested ignores another close`() {
 
 @Test
 fun `confirmed close cancel`() {
+    doReturn(confirmed()).whenever(visitClient).get(7001)
+
     val page = render(get("/visits/7001?close=cancel"))
     val close = panel(page, "CONFIRMED")!!.selectFirst("[data-visit-close]")!!
 
@@ -293,6 +295,8 @@ fun `confirmed close cancel`() {
 
 @Test
 fun `window close no show`() {
+    doReturn(window()).whenever(visitClient).get(7001)
+
     val page = render(get("/visits/7001?close=no-show"))
     val close = panel(page, "WINDOW")!!.selectFirst("[data-visit-close]")!!
 
@@ -303,6 +307,8 @@ fun `window close no show`() {
 
 @Test
 fun `window close cancel`() {
+    doReturn(window()).whenever(visitClient).get(7001)
+
     val page = render(get("/visits/7001?close=cancel"))
     val close = panel(page, "WINDOW")!!.selectFirst("[data-visit-close]")!!
 
