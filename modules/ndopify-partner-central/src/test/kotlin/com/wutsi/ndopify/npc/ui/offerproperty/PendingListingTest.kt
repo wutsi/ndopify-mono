@@ -66,7 +66,7 @@ class PendingListingTest {
         assertEquals("address", step(COMPLETE.copy(cityId = null)))
         assertEquals("address", step(COMPLETE.copy(neighborhoodId = null)))
         assertEquals("terms", step(COMPLETE.copy(priceAmount = null)))
-        assertEquals("terms", step(COMPLETE.copy(securityDeposit = null)))
+        assertEquals("review", step(COMPLETE.copy(securityDeposit = null)))
         assertEquals("terms", step(COMPLETE.copy(availableFrom = null)))
         assertEquals("features", step(COMPLETE.copy(propertyType = null)))
         assertEquals("features", step(COMPLETE.copy(furnitureType = null)))

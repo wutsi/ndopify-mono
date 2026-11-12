@@ -181,6 +181,53 @@ class UpdateListingEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `terms - no deposit`() {
+        val response = update(
+            UpdateListingRequest(
+                version = 3,
+                section = ListingSection.TERMS,
+                price = 175000,
+                securityDeposit = null,
+                availableFrom = LocalDate.of(2027, 1, 15),
+            )
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertNull(listing().securityDeposit)
+    }
+
+    @Test
+    fun `terms - deposit over 24 months - 400`() {
+        val response = update(
+            UpdateListingRequest(
+                version = 3,
+                section = ListingSection.TERMS,
+                price = 175000,
+                securityDeposit = 25,
+                availableFrom = LocalDate.of(2027, 1, 15),
+            )
+        )
+
+        assertBadRequest(response.body, "securityDeposit")
+    }
+
+    @Test
+    fun `terms - advance over 24 months - 400`() {
+        val response = update(
+            UpdateListingRequest(
+                version = 3,
+                section = ListingSection.TERMS,
+                price = 175000,
+                securityDeposit = 2,
+                advanceRent = 25,
+                availableFrom = LocalDate.of(2027, 1, 15),
+            )
+        )
+
+        assertBadRequest(response.body, "advanceRent")
+    }
+
+    @Test
     fun remarks() {
         val response = update(UpdateListingRequest(version = 3, section = ListingSection.REMARKS, agentRemarks = " "))
 

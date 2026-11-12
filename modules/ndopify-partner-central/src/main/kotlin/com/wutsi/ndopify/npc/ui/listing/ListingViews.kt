@@ -241,7 +241,9 @@ object ListingViews {
             "advanceRent" to (mandate.advanceRent to form.advanceRent),
         ).forEach { (field, values) ->
             val (months, value) = values
-            if (months != null && ListingRules.count(value) != months) owner[field] = "$months mois"
+            if (months != null && (ListingRules.count(value) ?: 0) != months) {
+                owner[field] = if (months > 0) "$months mois" else "Aucune"
+            }
         }
         mandate.availableFrom?.let { date ->
             if (form.availableFrom?.trim() != date.toString()) owner["availableFrom"] = formatter.date(date)
@@ -522,7 +524,7 @@ object ListingViews {
                 formatter,
                 compact = true,
             )
-            rent + (listing.securityDeposit?.let { " · caution $it mois" } ?: "")
+            rent + (listing.securityDeposit?.let { if (it > 0) " · caution $it mois" else " · sans caution" } ?: "")
         }
 
         ListingSection.PHOTOS -> images?.let {

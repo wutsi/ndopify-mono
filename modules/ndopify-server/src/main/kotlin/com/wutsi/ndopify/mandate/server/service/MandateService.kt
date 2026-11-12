@@ -19,6 +19,7 @@ import com.wutsi.ndopify.error.dto.ParameterType
 import com.wutsi.ndopify.error.server.exception.BadRequestException
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
+import com.wutsi.ndopify.listing.server.service.RentalTerms
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
 import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
@@ -137,6 +138,7 @@ class MandateService(
 
     @Transactional
     fun create(request: CreateMandateRequest): MandateEntity {
+        validateRentalTerms(request.securityDeposit, request.advanceRent)
         val customer = customerService.findOrCreate(
             CreateCustomerRequest(
                 firstName = request.firstName,
@@ -215,6 +217,7 @@ class MandateService(
      */
     @Transactional
     fun update(id: Long, request: UpdateMandateRequest): MandateEntity {
+        validateRentalTerms(request.securityDeposit, request.advanceRent)
         val contractId = dao.findContractIdById(id)
         contractId?.let { contractService.findByIdForUpdate(it) }
 
@@ -465,6 +468,19 @@ class MandateService(
         eventPublisher.publishEvent(MandateClosedEvent(mandateId = id, tenantId = TenantContext.get()!!))
         return cancelled
     }
+
+    // The caution and the advance: null (none), or a legacy 0 to 24 months
+    private fun validateRentalTerms(securityDeposit: Int?, advanceRent: Int?) {
+        if (!RentalTerms.isValid(securityDeposit)) throw invalid("securityDeposit")
+        if (!RentalTerms.isValid(advanceRent)) throw invalid("advanceRent")
+    }
+
+    private fun invalid(name: String) = BadRequestException(
+        Error(
+            code = ErrorCode.HTTP_INVALID_PARAMETER,
+            parameter = Parameter(name = name, type = ParameterType.PARAMETER_TYPE_PAYLOAD),
+        ),
+    )
 
     private fun findByIdForUpdate(id: Long): MandateEntity {
         return dao.findByIdForUpdate(id)

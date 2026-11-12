@@ -161,6 +161,32 @@ a { color: var(--color-text-info); }
   color: var(--color-text-info);
   text-decoration: underline;
 }
+.site-nav__list a:focus-visible {
+  outline: none;
+  border-radius: var(--radius-full);
+  box-shadow: var(--focus-ring);
+}
+/* Desktop: the current section is a soft blue pill, hover a neutral pill */
+@media (min-width: 768px) {
+  .site-nav__list { gap: var(--space-md); }
+  .site-nav__list a {
+    display: inline-flex;
+    align-items: center;
+    padding: var(--space-md) var(--space-lg);
+    border-radius: var(--radius-full);
+    transition: background-color 150ms ease-out, color 150ms ease-out;
+  }
+  .site-nav__list a:hover,
+  .site-nav__list a[aria-current="page"] { text-decoration: none; }
+  .site-nav__list a:hover {
+    color: var(--color-text-info);
+    background: var(--surface-low);
+  }
+  .site-nav__list a[aria-current="page"] {
+    color: var(--color-text-info);
+    background: var(--color-bg-secondary);
+  }
+}
 .nav-toggle {
   display: none;
   align-items: center;

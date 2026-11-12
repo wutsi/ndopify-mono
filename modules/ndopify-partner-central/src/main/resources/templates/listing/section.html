@@ -323,8 +323,8 @@
                             <label class="field__label" for="securityDeposit">Caution</label>
                             <select class="input select" id="securityDeposit" name="securityDeposit" aria-describedby="securityDeposit-error"
                                     th:disabled="${!e}" th:attr="aria-invalid=${errors['securityDeposit'] != null} ? 'true' : null">
-                                <option value="">Choisissez le nombre de mois</option>
-                                <option th:each="n : ${#numbers.sequence(1, 6)}" th:value="${n}" th:text="|${n} mois|"
+                                <option value="">Aucune caution</option>
+                                <option th:each="n : ${rentalMonths}" th:value="${n}" th:text="|${n} mois|"
                                         th:selected="${a.securityDeposit == '' + n}">1 mois</option>
                             </select>
                             <p class="owner-value" th:if="${ownerHints['securityDeposit']}" th:text="${ownerHints['securityDeposit']}" data-owner-for="securityDeposit"></p>
@@ -334,7 +334,7 @@
                             <label class="field__label" for="advanceRent">Avance de loyer <span class="field__optional">(si applicable)</span></label>
                             <select class="input select" id="advanceRent" name="advanceRent" aria-describedby="advanceRent-error" th:disabled="${!e}">
                                 <option value="">Aucune avance</option>
-                                <option th:each="n : ${#numbers.sequence(1, 12)}" th:value="${n}" th:text="|${n} mois|"
+                                <option th:each="n : ${rentalMonths}" th:value="${n}" th:text="|${n} mois|"
                                         th:selected="${a.advanceRent == '' + n}">1 mois</option>
                             </select>
                             <p class="owner-value" th:if="${ownerHints['advanceRent']}" th:text="${ownerHints['advanceRent']}" data-owner-for="advanceRent"></p>

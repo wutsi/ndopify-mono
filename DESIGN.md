@@ -374,10 +374,23 @@ Not a source-doc rule either, but the established implementation pattern for `re
 - **Validation:** required fields validate inline on `next`, blocking advance until valid; focus moves to the first
   invalid field.
 
+### Navigation
+
+Established implementation pattern (not specified in the source doc):
+
+- **Header links (desktop, from `768px`):** Locataires / Propriétaires / Agents are pill-shaped links. The current
+  section (`aria-current="page"`) is the only one filled: `background-secondary` (`#e4edf7`) with `text-info`
+  (`#1e3a8a`); hovering another link uses `surface-low` (`#f8f8f8`) with `text-info`. Links use `rounded/full` and
+  `md`/`lg` padding; the current state never relies on an underline.
+- **Don't fill the current item with `primary`:** the header stays quiet so the page's primary call to action remains
+  the only strong blue.
+- **Below `768px`:** the list moves into the drawer opened by the `.nav-toggle` button; the desktop pill styling does
+  not apply there.
+
 ### Not yet specified
 
-The source doc does not define card background/border/padding/radius (beyond title alignment, above), Navigation,
-or Tabs — don't invent styling for any of these; flag them as missing if needed before the source doc is updated.
+The source doc does not define card background/border/padding/radius (beyond title alignment, above) or Tabs —
+don't invent styling for these; flag them as missing if needed before the source doc is updated.
 
 ## Do's and Don'ts
 
