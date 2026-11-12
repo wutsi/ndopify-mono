@@ -37,6 +37,7 @@ import com.wutsi.ndopify.npc.ui.visit.VisitController
 import com.wutsi.ndopify.npc.ui.visit.VisitFixtures
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
 import com.wutsi.ndopify.party.dto.KycStatus
+import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.jsoup.Jsoup
@@ -323,6 +324,46 @@ class HomeTemplateTest {
     }
 
     @Test
+    fun `mandate card titled with the client name`() {
+        doReturn(listOf(CustomerSummary(id = 555, party = Party(firstName = "Sandrine", lastName = "Eboa"))))
+            .whenever(customerClient).search(listOf(555L))
+
+        val card = render(get("/")).selectFirst("[data-mandate-card]")!!
+
+        assertEquals("Sandrine Eboa", card.selectFirst("a.mandate-card__link")?.text())
+        assertEquals("Locataire · Maison", card.selectFirst(".mandate-card__kind")?.text())
+    }
+
+    @Test
+    fun `mandates - five cards, the rest folded`() {
+        doReturn((201L..207L).map { MandateSummariesTest.summary(MandateCardsTest.MANDATE.copy(id = it)) })
+            .whenever(mandateClient).active(AGENT.id)
+
+        val page = render(get("/"))
+
+        assertEquals(
+            listOf("207", "206", "205", "204", "203"),
+            page.select("[data-mandates] [data-mandate-card]").map { it.attr("data-mandate-id") },
+        )
+        val fold = page.selectFirst("[data-mandate-more]")!!
+        assertEquals("Voir les 2 autres mandats", fold.selectFirst("summary")?.text())
+        assertEquals(
+            listOf("202", "201"),
+            fold.select("[data-mandate-card]").map { it.attr("data-mandate-id") },
+        )
+    }
+
+    @Test
+    fun `one folded mandate - singular label`() {
+        doReturn((201L..206L).map { MandateSummariesTest.summary(MandateCardsTest.MANDATE.copy(id = it)) })
+            .whenever(mandateClient).active(AGENT.id)
+
+        val fold = render(get("/")).selectFirst("[data-mandate-more]")!!
+
+        assertEquals("Voir l'autre mandat", fold.selectFirst("summary")?.text())
+    }
+
+    @Test
     fun `landlord's signed mandate - listing line`() {
         val landlord = MandateCardsTest.MANDATE.copy(id = 203, status = MandateStatus.APPROVED, mandateType = MandateType.LISTING)
         doReturn(listOf(MandateSummariesTest.summary(landlord), MandateSummariesTest.summary(landlord.copy(id = 205))))
@@ -330,16 +371,18 @@ class HomeTemplateTest {
         doReturn(listOf(ListingSummary(id = 501, mandateId = 203, status = ListingStatus.DRAFT)))
             .whenever(listingClient).searchByMandates(any(), any())
 
-        val cards = render(get("/")).select("[data-mandate-card]")
+        val page = render(get("/"))
+        val draft = page.selectFirst("[data-mandate-id='203']")!!
+        val missing = page.selectFirst("[data-mandate-id='205']")!!
 
-        assertEquals("listing", cards[0].selectFirst("h3 [data-mandate-kind]")?.attr("data-mandate-kind"))
-        val line = cards[0].selectFirst("[data-listing-line]")!!
+        assertEquals("listing", draft.selectFirst("h3 [data-mandate-kind]")?.attr("data-mandate-kind"))
+        val line = draft.selectFirst("[data-listing-line]")!!
         assertEquals("/listings/501", line.selectFirst("a[data-listing-number]")?.attr("href"))
         assertEquals("Annonce", line.selectFirst("a[data-listing-number]")?.text()) // No number: one line on a phone
         assertEquals("status-tag status-tag--info", line.selectFirst("[data-listing-status-tag]")?.className())
         assertEquals("Brouillon", line.selectFirst("[data-listing-status-tag]")?.text())
-        assertEquals("/mandates/205", cards[1].selectFirst("a[data-listing-number]")?.attr("href"))
-        assertEquals("À créer", cards[1].selectFirst("[data-listing-status-tag]")?.text())
+        assertEquals("/mandates/205", missing.selectFirst("a[data-listing-number]")?.attr("href"))
+        assertEquals("À créer", missing.selectFirst("[data-listing-status-tag]")?.text())
     }
 
     @Test

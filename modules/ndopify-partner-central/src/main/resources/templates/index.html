@@ -346,44 +346,20 @@
                 </div>
 
                 <ul class="assignments" data-mandates th:unless="${#lists.isEmpty(mandates)}">
-                    <li class="mandate-card" th:each="m : ${mandates}" data-mandate-card
-                        th:attr="data-mandate-id=${m.id}">
-                        <article th:attr="aria-labelledby=|mandate-${m.id}-title|">
-                            <div class="assignment__head">
-                                <h3 th:id="|mandate-${m.id}-title|" class="assignment__type mandate-title">
-                                    <span th:replace="~{fragments/mandate-kind :: icon(${m.owner})}"></span>
-                                    <a class="mandate-card__link" th:href="@{/mandates/{id}(id=${m.id})}"
-                                       th:text="${m.title}">Locataire · Maison</a>
-                                </h3>
-                                <p th:class="|status-tag status-tag--${m.tag.style}|" th:text="${m.tag.label}">Assigné</p>
-                            </div>
-                            <dl class="assignment__facts">
-                                <div th:each="fact : ${m.facts}">
-                                    <dt th:text="${fact.first}">Secteurs</dt>
-                                    <dd th:text="${fact.second}">Kotto, Logpom</dd>
-                                </div>
-                            </dl>
-                            <!-- A landlord's signed mandate only: its listing (the link: the listing, or the mandate to create it) and status. -->
-                            <p class="mandate-card__listing" th:if="${m.listing}" th:with="l=${m.listing}" data-listing-line>
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M6 3h9l3 3v15H6z"/><path d="M9 12h6M9 16h6"/></svg>
-                                <a th:href="@{${l.url}}" th:text="${l.label}" data-listing-number>Annonce</a>
-                                <span th:if="${l.tag}" th:class="|status-tag status-tag--${l.tag.style}|" th:text="${l.tag.label}"
-                                      data-listing-status-tag>Brouillon</span>
-                            </p>
-                            <p class="listing-stats" th:if="${m.stats}" data-listing-stats>
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
-                                <span><span class="visually-hidden">Activité de l'annonce : </span><span th:text="${m.stats}">2 personnes intéressées · 3 visites</span></span>
-                            </p>
-                            <!-- A signed search: its current pool, the client's interest and its visits. One line, even on a phone; the
-                                 mandate page has the detail. -->
-                            <p class="search-stats mandate-card__search-stats" th:if="${m.searchStats}" data-search-stats>
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
-                                <span class="visually-hidden">Activité de la recherche : </span>
-                                <a th:href="@{${m.searchStats.url}}" data-search-stats-link><span th:text="${m.searchStats.label}">12 biens · 1 intéressé · 3 visites</span></a>
-                            </p>
-                        </article>
-                    </li>
+                    <th:block th:each="m : ${mandates}">
+                        <li th:replace="~{fragments/mandate-card :: mandateCard(${m})}"></li>
+                    </th:block>
                 </ul>
+
+                <!-- The server's rest of a long list, folded: the home page stays a triage page. -->
+                <details class="mandate-more" th:if="${!#lists.isEmpty(foldedMandates)}" data-mandate-more>
+                    <summary data-mandate-more-label th:text="${foldedMandatesLabel}">Voir les autres mandats</summary>
+                    <ul class="assignments">
+                        <th:block th:each="m : ${foldedMandates}">
+                            <li th:replace="~{fragments/mandate-card :: mandateCard(${m})}"></li>
+                        </th:block>
+                    </ul>
+                </details>
 
                 <p class="assignments__empty" data-mandates-empty
                    th:attr="hidden=${#lists.isEmpty(mandates) and !mandatesUnavailable} ? null : 'hidden'">

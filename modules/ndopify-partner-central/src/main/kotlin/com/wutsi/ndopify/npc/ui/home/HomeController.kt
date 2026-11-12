@@ -20,7 +20,6 @@ import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.kyc.KycRules
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
-import com.wutsi.ndopify.npc.ui.mandate.MandateCardView
 import com.wutsi.ndopify.npc.ui.mandate.MandateCards
 import com.wutsi.ndopify.npc.ui.mandate.MandateRules
 import com.wutsi.ndopify.npc.ui.mandate.MandateSummaries
@@ -111,11 +110,13 @@ class HomeController(
             val offersCall = parallel.async { offers(agent, open) }
             val mandateStatsCall = parallel.async { mandates?.let { mandateStats(it) } }
             val listingsCall = parallel.async { mandates?.let { listings(agent, it) } }
+            val mandateCustomersCall = parallel.async { mandates?.let { loadMandateCustomers(it) } ?: emptyMap() }
             val visitListingsCall = parallel.async { visits?.let { loadVisitListings(it) } }
             val visitCustomersCall = parallel.async { visits?.let { loadVisitCustomers(it) } ?: emptyMap() }
             val offers = offersCall.join()
             val mandateStats = mandateStatsCall.join()
             val listings = listingsCall.join()
+            val mandateCustomers = mandateCustomersCall.join()
             val visitListings = visitListingsCall.join()
             val visitCustomers = visitCustomersCall.join()
 
@@ -142,10 +143,17 @@ class HomeController(
             val declineId = decline?.toLongOrNull()
             model.addAttribute("declining", assignments?.firstOrNull { it.id == declineId }?.id)
 
+            val card = { mandate: Mandate ->
+                MandateCards.of(mandate, listings, names, formatter, mandateStats, stats, mandateCustomers)
+            }
+            // A triage list: the actionable mandates first, five cards, the rest folded.
+            val ordered = mandates?.let { MandateCards.order(it) }.orEmpty()
+            val folded = ordered.drop(MandateCards.PAGE_SIZE)
+            model.addAttribute("mandates", ordered.take(MandateCards.PAGE_SIZE).map(card))
+            model.addAttribute("foldedMandates", folded.map(card))
             model.addAttribute(
-                "mandates",
-                mandates?.map { mandate -> MandateCards.of(mandate, listings, names, formatter, mandateStats, stats) }
-                    ?: emptyList<MandateCardView>(),
+                "foldedMandatesLabel",
+                if (folded.size == 1) "Voir l'autre mandat" else "Voir les ${folded.size} autres mandats",
             )
             model.addAttribute("mandatesUnavailable", mandates == null)
             val visitsView = VisitCards.of(visits, visitListings, visitCustomers, names, now, tenant, formatter)
@@ -277,6 +285,23 @@ class HomeController(
             LOGGER.warn("No customers for the visits of agent: ${ex.message}")
             emptyMap()
         }
+
+    /**
+     * The mandates' customers by id, in one search, for the cards' titles; empty when there are none or they can't be
+     * had (the cards then keep the party and type as their title).
+     */
+    private fun loadMandateCustomers(mandates: List<Mandate>): Map<Long, CustomerSummary> {
+        val ids = mandates.map { it.customerId }.filter { it > 0 }.distinct()
+        if (ids.isEmpty()) return emptyMap()
+        return try {
+            customerClient.search(ids)
+                .mapNotNull { customer -> customer.id?.let { it to customer } }
+                .toMap()
+        } catch (ex: RestClientException) {
+            LOGGER.warn("No customers for the mandates: ${ex.message}")
+            emptyMap()
+        }
+    }
 
     /** One lookup for every card; without the names, the cards still show (no sector). */
     private fun names(ids: List<Long>): Map<Long, Location> =

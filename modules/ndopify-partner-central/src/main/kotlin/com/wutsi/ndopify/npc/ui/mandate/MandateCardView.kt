@@ -6,6 +6,8 @@ import com.wutsi.ndopify.npc.ui.listing.ListingLineView
 data class MandateCardView(
     val id: Long,
     val title: String,
+    /** The client the mandate is for, the card's title; null when the customer couldn't be loaded (the title leads). */
+    val clientName: String? = null,
     /** A landlord's listing (the key icon before the title), not a search (the magnifying glass). */
     val owner: Boolean,
     val tag: MandateRules.Tag,

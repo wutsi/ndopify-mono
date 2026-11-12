@@ -125,7 +125,7 @@ class NdMandateClientTest {
     fun active() {
         server.expect(
             requestTo(
-                "http://localhost:8080/v1/mandates?agent-id=20&status=ASSIGNED&status=PENDING_APPROVAL&status=APPROVED",
+                "http://localhost:8080/v1/mandates?agent-id=20&status=ASSIGNED&status=PENDING_APPROVAL&status=APPROVED&limit=100",
             ),
         )
             .andExpect(method(HttpMethod.GET))

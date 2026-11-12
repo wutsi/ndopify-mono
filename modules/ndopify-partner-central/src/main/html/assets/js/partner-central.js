@@ -1222,6 +1222,7 @@
     var MANDATES = {
         101: {
             party: "client",
+            createdAt: -4,
             contact: {
                 name: "Aïcha Mbarga",
                 whatsapp: "+237699123456",
@@ -1246,6 +1247,7 @@
         },
         102: {
             party: "bailleur",
+            createdAt: -6,
             contact: {
                 name: "Paul Ekwalla",
                 whatsapp: "+237677987654",
@@ -1269,6 +1271,7 @@
         },
         103: {
             party: "client",
+            createdAt: -2,
             contact: {
                 name: "Marie-Claire Ndjock",
                 whatsapp: "+237655443322",
@@ -1291,6 +1294,7 @@
         },
         201: {
             party: "client",
+            createdAt: -30,
             initial: { status: "ASSIGNED", acceptedAt: -1 },
             contact: {
                 name: "Jean-Pierre Fotso",
@@ -1316,6 +1320,7 @@
         },
         202: {
             party: "client",
+            createdAt: -12,
             initial: { status: "PENDING_APPROVAL", acceptedAt: -5, requestedAt: -2 },
             contact: {
                 name: "Grâce Nkoulou",
@@ -1338,6 +1343,7 @@
         },
         203: {
             party: "bailleur",
+            createdAt: -24,
             initial: { status: "APPROVED", acceptedAt: -24, requestedAt: -21, approvedAt: -19 },
             contact: {
                 name: "Emmanuel Tchoua",
@@ -1366,6 +1372,7 @@
         // A signed search: the matcher found listings of the agent's inventory for it (see MATCHES).
         204: {
             party: "client",
+            createdAt: -8,
             initial: { status: "APPROVED", acceptedAt: -12, requestedAt: -10, approvedAt: -8 },
             contact: {
                 name: "Sandrine Eboa",
@@ -1384,6 +1391,82 @@
                 amenities: ["waterTank", "generatorSet", "securedFenced"],
                 price: 250000,
                 movingPeriod: "WITHIN_3_MONTHS"
+            }
+        },
+        // A few more active mandates, so the card list has more than one page's worth (see MANDATE_PAGE_SIZE).
+        205: {
+            party: "client",
+            createdAt: -3,
+            initial: { status: "ASSIGNED", acceptedAt: -2 },
+            contact: {
+                name: "Yannick Mballa",
+                whatsapp: "+237655778899",
+                email: "y.mballa@example.com",
+                period: "Matin"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Bonamoussadi"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "APARTMENT",
+                furnitureType: "UNFURNISHED",
+                rooms: "2",
+                parkings: "1",
+                area: 70,
+                amenities: ["waterMeter", "electricityMeter", "trackAccessibleByCar"],
+                price: 180000,
+                movingPeriod: "WITHIN_1_MONTH"
+            }
+        },
+        206: {
+            party: "client",
+            createdAt: -1,
+            initial: { status: "APPROVED", acceptedAt: -10, requestedAt: -9, approvedAt: -7 },
+            contact: {
+                name: "Nadège Atangana",
+                whatsapp: "+237690112244",
+                email: "n.atangana@example.com",
+                period: "Après-midi"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Bonapriso"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "STUDIO",
+                furnitureType: "FULLY_FURNISHED",
+                rooms: "1",
+                parkings: "0",
+                area: 35,
+                amenities: ["waterMeter", "electricityMeter", "securedFenced"],
+                price: 95000,
+                movingPeriod: "WITHIN_1_MONTH"
+            }
+        },
+        207: {
+            party: "bailleur",
+            createdAt: -20,
+            initial: { status: "PENDING_APPROVAL", acceptedAt: -7, requestedAt: -5 },
+            contact: {
+                name: "Serge Kamga",
+                whatsapp: "+237677334455",
+                email: "s.kamga@example.com",
+                period: "Soirée"
+            },
+            fields: {
+                city: "Douala",
+                neighbourhoods: ["Bonanjo"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "DUPLEX",
+                furnitureType: "UNFURNISHED",
+                rooms: "4",
+                parkings: "2",
+                area: 200,
+                amenities: ["dedicatedWaterMeter", "waterTank", "dedicatedElectricityMeter", "generatorSet",
+                    "roadPaved", "securityGuard"],
+                price: 450000,
+                movingPeriod: "AFTER_3_MONTHS",
+                securityDeposit: 3,
+                advanceRent: 6
             }
         }
     };
@@ -1469,6 +1552,12 @@
         return (MANDATES[id].party === "bailleur" ? "Propriétaire" : "Locataire") + " · " + type;
     }
 
+    // Who the mandate is for: the card's title. Null when the customer couldn't be loaded: the card then keeps the
+    // role and type as its title (see render in initMandates).
+    function clientNameOf(id) {
+        return MANDATES[id].contact ? MANDATES[id].contact.name : null;
+    }
+
     // The search as [term, value] rows: sector, amount and date first (a card's three facts), then the rest.
     function criteriaOf(id) {
         var f = fieldsOf(id);
@@ -1500,6 +1589,8 @@
     var DAY_MS = 24 * 60 * 60 * 1000;
     // Assigné, En approbation, Actif: listed in "Mes mandats". CLOSED is "Fermé" (lease signed), CANCELLED "Annulé".
     var ACTIVE_STATUSES = ["ASSIGNED", "PENDING_APPROVAL", "APPROVED"];
+    // A triage page: five mandates on the home page, the rest folded ("Voir les N autres mandats").
+    var MANDATE_PAGE_SIZE = 5;
     // ndopify.contract.signature.ttl-days and ndopify.mandate.contract.duration-months.
     var SIGNATURE_TTL_DAYS = 7;
     var CONTRACT_MONTHS = 6;
@@ -2120,17 +2211,59 @@
         if (!list) return null;
         var empty = $("[data-mandates-empty]");
         var template = $("[data-mandate-template]");
+        var more = $("[data-mandate-more]");
+        var moreList = $("[data-mandate-more-list]");
+        var moreLabel = $("[data-mandate-more-label]");
+
+        function cards() {
+            return $all("[data-mandate-card]", list).concat($all("[data-mandate-card]", moreList));
+        }
 
         function syncEmpty() {
-            var none = $all("[data-mandate-card]", list).length === 0;
+            var none = cards().length === 0;
             list.hidden = none;
             empty.hidden = !none;
+        }
+
+        // The triage order: what the agent must act on first (Assigné), then what waits for the client's signature,
+        // then the active mandates; newest first within each group.
+        var RANK = { ASSIGNED: 0, PENDING_APPROVAL: 1, APPROVED: 2 };
+
+        function rankOf(id) {
+            var rank = RANK[stateOf(id).status];
+            return rank === undefined ? 99 : rank;
+        }
+
+        // Five cards, the rest folded behind "Voir les N autres mandats".
+        function layout() {
+            var items = cards();
+            items.sort(function (a, b) {
+                var ida = a.getAttribute("data-mandate-id");
+                var idb = b.getAttribute("data-mandate-id");
+                var rank = rankOf(ida) - rankOf(idb);
+                if (rank) return rank;
+                return (MANDATES[idb].createdAt || 0) - (MANDATES[ida].createdAt || 0);
+            });
+            items.forEach(function (item, i) {
+                (i < MANDATE_PAGE_SIZE ? list : moreList).appendChild(item);
+            });
+            var folded = Math.max(0, items.length - MANDATE_PAGE_SIZE);
+            more.hidden = folded === 0;
+            moreLabel.textContent = folded === 1
+                ? "Voir l'autre mandat" : "Voir les " + folded + " autres mandats";
+            syncEmpty();
         }
 
         // Title and facts too: the search may have been edited since the page was written.
         function render(item, id) {
             var state = stateOf(id);
-            $("[data-mandate-link]", item).textContent = titleOf(id);
+            var name = clientNameOf(id);
+            $("[data-mandate-link]", item).textContent = name || titleOf(id);
+            var kind = $("[data-mandate-kind-label]", item);
+            if (kind) {
+                kind.textContent = name ? titleOf(id) : "";
+                kind.hidden = !name;
+            }
             setKindIcon($("[data-mandate-kind]", item), id);
             var facts = $(".assignment__facts", item);
             facts.textContent = "";
@@ -2181,13 +2314,14 @@
             return item;
         }
 
-        // An accepted offer: newest first.
+        // An accepted offer: placed by the same status-then-date order as the existing cards.
         function add(id) {
-            if ($('[data-mandate-id="' + id + '"]', list)) return;
+            if ($all('[data-mandate-id="' + id + '"]', list).length ||
+                $all('[data-mandate-id="' + id + '"]', moreList).length) return;
             var item = card(id);
-            list.insertBefore(item, list.firstElementChild);
             render(item, id);
-            syncEmpty();
+            list.appendChild(item);
+            layout();
         }
 
         // PROTOTYPE: ?mandates=empty shows an agent without mandates.
@@ -2199,12 +2333,12 @@
             acceptedMandates().forEach(add);
         }
 
-        $all("[data-mandate-card]", list).forEach(function (item) {
+        $all("[data-mandate-card]", list).concat($all("[data-mandate-card]", moreList)).forEach(function (item) {
             var id = item.getAttribute("data-mandate-id");
             if (ACTIVE_STATUSES.indexOf(stateOf(id).status) === -1) item.remove();
             else render(item, id);
         });
-        syncEmpty();
+        layout();
         return { add: add };
     }
 
