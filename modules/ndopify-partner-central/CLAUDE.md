@@ -307,7 +307,9 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   are post-redirect-get back to `/visits/{id}` with the `visitOutcome` flash, worded by the controller; 403/404/409 and
   an action whose visit moved on are `changed` without a call. The page is behind the default authentication rule (no
   security matcher). `public/assets/js/visit.js` only enhances (flash focus, digits-only code, type hint, comment
-  counter, position, `#no-show`); `templates/index.html` and `templates/mandate.html` link `visit.css`; `home.js` is
+  counter, position, the closure box); `GET /visits/{id}?close=refuse|cancel|no-show` opens the chosen closure
+  form without JS (ignored when the panel doesn't offer it); `templates/index.html` and `templates/mandate.html`
+  link `visit.css`; `home.js` is
   unchanged (the cards are server-rendered, and a reload shows the next time-bound panel). `HomeController` loads the
   sections' independent reads together on virtual threads (`config/Parallel`), so the page waits on four round trips
   instead of up to eleven; each section still degrades on its own, every `Model` write stays on the request thread,
