@@ -187,18 +187,31 @@
                         </div>
                     </form>
 
-                    <details class="visit-secondary">
-                        <summary>Refuser la demande</summary>
-                        <form class="form visit-secondary__body" method="post" novalidate data-cancel-form
-                              th:action="@{/visits/{id}/cancel(id=${p.id})}">
+                    <div class="visit-close" data-visit-close>
+                        <div class="mandate-panel__actions visit-close__buttons" data-close-buttons
+                             th:attr="hidden=${close} ? 'hidden' : null">
+                            <a class="btn btn--danger"
+                               th:href="@{|/visits/${p.id}?close=refuse#close-title-refuse|}"
+                               aria-controls="close-form-refuse" data-close-open="refuse"
+                               th:attr="aria-expanded=${close == 'refuse'} ? 'true' : 'false'">Refuser la demande</a>
+                        </div>
+                        <form id="close-form-refuse" class="form visit-close__form" method="post" novalidate
+                              th:action="@{/visits/{id}/cancel(id=${p.id})}"
+                              th:attr="hidden=${close == 'refuse'} ? null : 'hidden'"
+                              data-close-form="refuse" data-cancel-form>
+                            <h2 class="visit-form__title"
+                                th:id="${close == 'refuse'} ? 'close-title-refuse' : null">Refuser la demande</h2>
                             <p>Le client est prévenu par e-mail et peut demander un autre créneau.</p>
                             <div class="field">
                                 <label class="field__label" for="refuse-reason">Raison <span class="field__optional">(facultatif, envoyée au client)</span></label>
                                 <textarea class="input input--textarea" id="refuse-reason" name="reason" rows="3" maxlength="500"></textarea>
                             </div>
-                            <button type="submit" class="btn btn--danger">Refuser la demande</button>
+                            <div class="mandate-panel__actions">
+                                <button type="submit" class="btn btn--danger">Refuser la demande</button>
+                                <a class="btn btn--outline" th:href="@{/visits/{id}(id=${p.id})}" data-close-back>Retour</a>
+                            </div>
                         </form>
-                    </details>
+                    </div>
                 </section>
 
                 <!-- ===== CONFIRMED, before the check-in window ===== -->
@@ -224,18 +237,31 @@
                             le bien.</strong> Au début de l'appel, demandez-lui son code à 4 chiffres&nbsp;: c'est lui qui
                             démarre la visite. Vous le saisirez ici, à partir du <span th:text="${p.windowFrom}">sam. 7 novembre 2026 à 09:30</span>.</p>
                     </div>
-                    <details class="visit-secondary">
-                        <summary>Annuler la visite</summary>
-                        <form class="form visit-secondary__body" method="post" novalidate data-cancel-form
-                              th:action="@{/visits/{id}/cancel(id=${p.id})}">
+                    <div class="visit-close" data-visit-close>
+                        <div class="mandate-panel__actions visit-close__buttons" data-close-buttons
+                             th:attr="hidden=${close} ? 'hidden' : null">
+                            <a class="btn btn--danger"
+                               th:href="@{|/visits/${p.id}?close=cancel#close-title-cancel|}"
+                               aria-controls="close-form-cancel" data-close-open="cancel"
+                               th:attr="aria-expanded=${close == 'cancel'} ? 'true' : 'false'">Annuler la visite</a>
+                        </div>
+                        <form id="close-form-cancel" class="form visit-close__form" method="post" novalidate
+                              th:action="@{/visits/{id}/cancel(id=${p.id})}"
+                              th:attr="hidden=${close == 'cancel'} ? null : 'hidden'"
+                              data-close-form="cancel" data-cancel-form>
+                            <h2 class="visit-form__title"
+                                th:id="${close == 'cancel'} ? 'close-title-cancel' : null">Annuler la visite</h2>
                             <p>Le client est prévenu par e-mail.</p>
                             <div class="field">
                                 <label class="field__label" for="confirmed-cancel-reason">Raison <span class="field__optional">(facultatif, envoyée au client)</span></label>
                                 <textarea class="input input--textarea" id="confirmed-cancel-reason" name="reason" rows="3" maxlength="500"></textarea>
                             </div>
-                            <button type="submit" class="btn btn--danger">Annuler la visite</button>
+                            <div class="mandate-panel__actions">
+                                <button type="submit" class="btn btn--danger">Annuler la visite</button>
+                                <a class="btn btn--outline" th:href="@{/visits/{id}(id=${p.id})}" data-close-back>Retour</a>
+                            </div>
                         </form>
-                    </details>
+                    </div>
                 </section>
 
                 <!-- ===== CONFIRMED, in the check-in window: start it with the customer's code, or the no-show ===== -->
@@ -294,15 +320,33 @@
                         <div>
                             <p class="alert__title">Trop d'essais&nbsp;: contactez le support ou déclarez le client absent.</p>
                             <p>Le code ne peut plus être saisi pour cette visite.
-                                <a th:if="${p.canNoShow}" href="#no-show" data-locked-noshow>Déclarer le client absent</a></p>
+                                <a th:if="${p.canNoShow}" th:href="@{|/visits/${p.id}?close=no-show#close-title-noshow|}"
+                                   data-locked-noshow>Déclarer le client absent</a></p>
                         </div>
                     </div>
 
-                    <details id="no-show" class="visit-secondary" th:if="${p.canNoShow}">
-                        <summary><span th:if="${p.type.name() == 'ON_SITE'}">Le client est absent ou refuse de donner le code</span><span
-                                th:unless="${p.type.name() == 'ON_SITE'}">Le client ne répond pas ou refuse de donner le code</span></summary>
-                        <form class="form visit-secondary__body" method="post" novalidate data-noshow-form
-                              th:action="@{/visits/{id}/no-show(id=${p.id})}">
+                    <div class="visit-close" data-visit-close>
+                        <div class="mandate-panel__actions visit-close__buttons" data-close-buttons
+                             th:attr="hidden=${close} ? 'hidden' : null">
+                            <a class="btn btn--danger" th:if="${p.canNoShow}"
+                               th:href="@{|/visits/${p.id}?close=no-show#close-title-noshow|}"
+                               aria-controls="close-form-no-show" data-close-open="no-show"
+                               th:attr="aria-expanded=${close == 'no-show'} ? 'true' : 'false'"><span
+                                    th:if="${p.type.name() == 'ON_SITE'}">Le client est absent ou refuse de donner le code</span><span
+                                    th:unless="${p.type.name() == 'ON_SITE'}">Le client ne répond pas ou refuse de donner le code</span></a>
+                            <a class="btn btn--danger"
+                               th:href="@{|/visits/${p.id}?close=cancel#close-title-cancel|}"
+                               aria-controls="close-form-cancel" data-close-open="cancel"
+                               th:attr="aria-expanded=${close == 'cancel'} ? 'true' : 'false'">Vous ne pouvez pas venir&nbsp;?</a>
+                        </div>
+
+                        <form id="close-form-no-show" class="form visit-close__form" method="post" novalidate
+                              th:if="${p.canNoShow}"
+                              th:action="@{/visits/{id}/no-show(id=${p.id})}"
+                              th:attr="hidden=${close == 'no-show'} ? null : 'hidden'"
+                              data-close-form="no-show" data-noshow-form>
+                            <h2 class="visit-form__title"
+                                th:id="${close == 'no-show'} ? 'close-title-noshow' : null">Déclarer l'absence</h2>
                             <fieldset class="choices">
                                 <legend class="choices__legend">Que s'est-il passé&nbsp;?</legend>
                                 <div class="choices__grid choices__grid--2">
@@ -328,22 +372,29 @@
                                 <span role="status" data-position-text></span>
                                 <button type="button" class="link-button" hidden data-position-retry>Relever à nouveau</button>
                             </div>
-                            <button type="submit" class="btn btn--danger">Déclarer l'absence</button>
+                            <div class="mandate-panel__actions">
+                                <button type="submit" class="btn btn--danger">Déclarer l'absence</button>
+                                <a class="btn btn--outline" th:href="@{/visits/{id}(id=${p.id})}" data-close-back>Retour</a>
+                            </div>
                         </form>
-                    </details>
 
-                    <details class="visit-secondary">
-                        <summary>Vous ne pouvez pas venir&nbsp;?</summary>
-                        <form class="form visit-secondary__body" method="post" novalidate data-cancel-form
-                              th:action="@{/visits/{id}/cancel(id=${p.id})}">
+                        <form id="close-form-cancel" class="form visit-close__form" method="post" novalidate
+                              th:action="@{/visits/{id}/cancel(id=${p.id})}"
+                              th:attr="hidden=${close == 'cancel'} ? null : 'hidden'"
+                              data-close-form="cancel" data-cancel-form>
+                            <h2 class="visit-form__title"
+                                th:id="${close == 'cancel'} ? 'close-title-cancel' : null">Annuler la visite</h2>
                             <p>Annulez la visite&nbsp;: le client est prévenu par e-mail.</p>
                             <div class="field">
                                 <label class="field__label" for="window-cancel-reason">Raison <span class="field__optional">(facultatif, envoyée au client)</span></label>
                                 <textarea class="input input--textarea" id="window-cancel-reason" name="reason" rows="3" maxlength="500"></textarea>
                             </div>
-                            <button type="submit" class="btn btn--danger">Annuler la visite</button>
+                            <div class="mandate-panel__actions">
+                                <button type="submit" class="btn btn--danger">Annuler la visite</button>
+                                <a class="btn btn--outline" th:href="@{/visits/{id}(id=${p.id})}" data-close-back>Retour</a>
+                            </div>
                         </form>
-                    </details>
+                    </div>
                 </section>
 
                 <!-- ===== CHECKED_IN: the visit is on; end it with the agent's report ===== -->
