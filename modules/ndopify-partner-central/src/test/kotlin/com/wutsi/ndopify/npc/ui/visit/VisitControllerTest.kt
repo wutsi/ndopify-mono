@@ -571,4 +571,53 @@ class VisitControllerTest {
         assertEquals("/", result.response.redirectedUrl)
         verify(visitClient, never()).cancel(any(), any())
     }
+
+    @Test
+    fun `close refuse`() {
+        val result = mvc.perform(get("/visits/7001").param("close", "refuse")).andReturn()
+
+        assertEquals(VisitController.CLOSE_REFUSE, model(result)[VisitController.CLOSE])
+    }
+
+    @Test
+    fun `close ignored on the wrong panel`() {
+        val result = mvc.perform(get("/visits/7001").param("close", "cancel")).andReturn()
+
+        assertNull(model(result)[VisitController.CLOSE])
+    }
+
+    @Test
+    fun `close cancel on a window`() {
+        doReturn(window()).whenever(visitClient).get(7001)
+
+        val result = mvc.perform(get("/visits/7001").param("close", "cancel")).andReturn()
+
+        assertEquals(VisitController.CLOSE_CANCEL, model(result)[VisitController.CLOSE])
+    }
+
+    @Test
+    fun `close no show`() {
+        doReturn(window()).whenever(visitClient).get(7001)
+
+        val result = mvc.perform(get("/visits/7001").param("close", "no-show")).andReturn()
+
+        assertEquals(VisitController.CLOSE_NO_SHOW, model(result)[VisitController.CLOSE])
+    }
+
+    @Test
+    fun `close no show before the time is ignored`() {
+        doReturn(window().copy(scheduledAt = VisitFixtures.date("2026-11-05T09:50:00Z")))
+            .whenever(visitClient).get(7001)
+
+        val result = mvc.perform(get("/visits/7001").param("close", "no-show")).andReturn()
+
+        assertNull(model(result)[VisitController.CLOSE])
+    }
+
+    @Test
+    fun `unknown close is ignored`() {
+        val result = mvc.perform(get("/visits/7001").param("close", "hack")).andReturn()
+
+        assertNull(model(result)[VisitController.CLOSE])
+    }
 }

@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClientException
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
@@ -68,6 +69,12 @@ class VisitController(
         const val CHECK_IN_LOCKED = "checkInLocked"
         const val SESSION_CODE_LOCKED = "npc.visit.code-locked."
 
+        // GET /visits/{id}?close=refuse|cancel|no-show: the closure form open without JS.
+        const val CLOSE = "close"
+        const val CLOSE_REFUSE = "refuse"
+        const val CLOSE_CANCEL = "cancel"
+        const val CLOSE_NO_SHOW = "no-show"
+
         const val CONFIRMED = "confirmed"
         const val REFUSED = "refused"
         const val CANCELLED = "cancelled"
@@ -93,7 +100,12 @@ class VisitController(
     private val sector = SectorValidator(locationClient, tenantContext)
 
     @GetMapping("/{id}")
-    fun show(@PathVariable id: String, model: Model, session: HttpSession): String {
+    fun show(
+        @PathVariable id: String,
+        @RequestParam(required = false) close: String?,
+        model: Model,
+        session: HttpSession,
+    ): String {
         val agent = currentAgent.get() ?: throw SignInRequiredException()
         ProfileRules.header(agent, model)
 
@@ -121,15 +133,32 @@ class VisitController(
         val tenant = tenantContext.getTenant()
         val formatter = TenantFormatter(tenant)
 
-        model.addAttribute(
-            "page",
-            VisitViews.of(visit, customer, listing, locations, clock.millis(), tenant, formatter),
-        )
+        val page = VisitViews.of(visit, customer, listing, locations, clock.millis(), tenant, formatter)
+        model.addAttribute("page", page)
+        model.addAttribute(CLOSE, closeFor(page, close))
         model.addAttribute(CHECK_IN_LOCKED, session.getAttribute(SESSION_CODE_LOCKED + visitId) == true)
         (model.getAttribute(OUTCOME) as? String)?.let { flash(it, visit, customer, tenant, formatter, model) }
         model.addAttribute("currency", formatter.currency())
         return VIEW
     }
+
+    /** The closure form the page opens, only when the current panel offers it; a hand-edited value is ignored. */
+    private fun closeFor(page: VisitPage, close: String?): String? =
+        when (close) {
+            CLOSE_REFUSE -> close.takeIf {
+                page.panel == VisitRules.Panel.REQUESTED && page.canCancel
+            }
+
+            CLOSE_CANCEL -> close.takeIf {
+                (page.panel == VisitRules.Panel.CONFIRMED || page.panel == VisitRules.Panel.WINDOW) && page.canCancel
+            }
+
+            CLOSE_NO_SHOW -> close.takeIf {
+                page.panel == VisitRules.Panel.WINDOW && page.canNoShow
+            }
+
+            else -> null
+        }
 
     @PostMapping("/{id}/schedule")
     fun schedule(@PathVariable id: String, @ModelAttribute form: VisitScheduleForm, redirect: RedirectAttributes): String {
