@@ -20,6 +20,7 @@ import com.wutsi.ndopify.refdata.dto.SearchNearestLocationRequest
 import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import jakarta.transaction.Transactional
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
@@ -56,6 +57,8 @@ class MandateDispatcher(
     @param:Value("\${ndopify.mandate.assignment.jitter}") private val jitter: Double,
 ) {
     companion object {
+        private val LOGGER = LoggerFactory.getLogger(MandateDispatcher::class.java)
+
         const val WEIGHT_NEIGHBORHOOD = 0.35
         const val WEIGHT_FAIRNESS = 0.25
         const val WEIGHT_RATING = 0.15
@@ -67,6 +70,13 @@ class MandateDispatcher(
         const val MAX_CANDIDATES = 100
         private const val DAY_MILLIS = 86_400_000L
         private const val HOUR_MILLIS = 3_600_000.0
+
+        // Expected races and missing mandates: the DISPATCH_SUMMARY / NO_OFFER details only matter when debugging
+        private val QUIET_REASONS = setOf(
+            DispatchReason.MANDATE_NOT_FOUND,
+            DispatchReason.NOT_PENDING,
+            DispatchReason.ALREADY_PENDING,
+        )
 
         // Mandates an agent is actively working on, counted against its max-load. Not APPROVED / PUBLISHED: a listing
         // can stay published for weeks, and 5 of them would lock the agent out of new mandates
@@ -82,14 +92,24 @@ class MandateDispatcher(
      * no candidate left.
      */
     @Transactional
-    fun dispatch(mandateId: Long): AssignmentEntity? {
+    fun dispatch(mandateId: Long): AssignmentEntity? = dispatchResult(mandateId).assignmentOrNull
+
+    /**
+     * Same as [dispatch], keeping the reason and the candidate details instead of only the offer. Called by
+     * [AssignmentService.dispatchPending] to aggregate a batch summary; [dispatch] stays the public entry point.
+     */
+    @Transactional
+    internal fun dispatchResult(mandateId: Long): DispatchResult {
         // Locked, so that 2 concurrent dispatches (ex: a decline + the expiry job) can't offer it twice
-        val mandate = mandateDao.findByIdForUpdate(mandateId) ?: return null
-        if (mandate.status != MandateStatus.PENDING_ASSIGNMENT ||
-            assignmentDao.existsByMandateAndStatus(mandate, AssignmentStatus.PENDING)
-        ) {
+        val mandate = mandateDao.findByIdForUpdate(mandateId)
+            ?: return skip(mandateId, DispatchReason.MANDATE_NOT_FOUND)
+        if (mandate.status != MandateStatus.PENDING_ASSIGNMENT) {
             logger.add("mandate_status", mandate.status)
-            return null
+            return skip(mandateId, DispatchReason.NOT_PENDING, "mandate_status=${mandate.status}")
+        }
+        if (assignmentDao.existsByMandateAndStatus(mandate, AssignmentStatus.PENDING)) {
+            logger.add("mandate_status", mandate.status)
+            return skip(mandateId, DispatchReason.ALREADY_PENDING, "mandate_status=${mandate.status}")
         }
 
         // Too long without an agent: handed over to a human. Checked before the night, so it's never delayed
@@ -98,32 +118,53 @@ class MandateDispatcher(
             logger.add("mandate_expired", true)
             mandateDao.save(mandate.copy(status = MandateStatus.MANUAL_ASSIGNMENT, modifiedAt = now))
             eventPublisher.publishEvent(MandateManualAssignmentEvent(mandate.id!!, mandate.tenantId!!))
-            return null
+            return skip(mandateId, DispatchReason.OVERDUE_MANUAL, "manual_after_days=$manualAfterDays")
         }
 
         // No offer at night, in the tenant's time zone: the mandate is picked up again in the morning
         val zoneId = ZoneId.of(tenantService.findById(mandate.tenantId!!).timeZone)
         if (dispatchHours.isNight(now.toInstant(), zoneId)) {
             logger.add("is_night", true)
-            return null
+            return skip(mandateId, DispatchReason.NIGHT, "timezone=$zoneId")
         }
 
         val distances = distances(mandate)
         val candidates = findCandidates(mandate, distances)
-        val best = score(mandate, candidates, distances).maxByOrNull { it.second }
+        val excluded = candidates.excluded.toMutableMap()
+        val scored = score(mandate, candidates.eligible, distances, excluded)
+        val best = scored.maxByOrNull { it.total }
+        val diagnostics = DispatchDiagnostics(candidates.searched, excluded, scored)
         if (best == null) {
             logger.add("no_candidate", true)
-            return null
+            LOGGER.info(
+                ">>> Mandate#$mandateId - DISPATCH_SUMMARY candidates=${candidates.searched} " +
+                    "excluded=$excluded eligible=0 offered=false",
+            )
+            return skip(mandateId, DispatchReason.NO_CANDIDATE, diagnostics = diagnostics)
         }
 
-        logger.add("agent_id", best.first.id)
-        logger.add("agent_full_name", best.first.party.fullName())
+        logger.add("agent_id", best.agent.id)
+        logger.add("agent_full_name", best.agent.party.fullName())
+        val runnerUp = scored.filter { it.agent.id != best.agent.id }.maxByOrNull { it.total }
+        LOGGER.info(
+            ">>> Mandate#$mandateId - OFFER agent_id=${best.agent.id} score=${best.total}" +
+                (
+                    runnerUp?.let {
+                        " runner_up=${it.agent.id}/${it.total} margin=${best.total - it.total}"
+                    } ?: ""
+                    ),
+        )
+        LOGGER.info(
+            ">>> Mandate#$mandateId - DISPATCH_SUMMARY candidates=${candidates.searched} excluded=$excluded " +
+                "eligible=${scored.size} offered=true agent_id=${best.agent.id}",
+        )
+
         val assignment = assignmentDao.save(
             AssignmentEntity(
                 mandate = mandate,
-                agentId = best.first.id!!,
+                agentId = best.agent.id!!,
                 status = AssignmentStatus.PENDING,
-                score = best.second,
+                score = best.total,
                 // The TTL only runs during the day: offered at 20:30 for 1h, it expires at 07:30
                 expiresAt = Date.from(
                     dispatchHours.addDaytime(now.toInstant(), Duration.ofMinutes(ttlMinutes), zoneId)
@@ -134,11 +175,28 @@ class MandateDispatcher(
         )
 
         // On offer, not on accept: an agent who ignores offers still moves down the rotation
-        agentService.markAssigned(best.first, now)
+        agentService.markAssigned(best.agent, now)
 
         // Notifies the agent asynchronously, after commit
         eventPublisher.publishEvent(AssignmentCreatedEvent(assignment.id!!, mandate.tenantId))
-        return assignment
+        return DispatchResult.Offered(assignment, diagnostics)
+    }
+
+    // Logs why nothing was offered. Expected races stay at DEBUG; the actionable reasons are at INFO
+    private fun skip(
+        mandateId: Long,
+        reason: DispatchReason,
+        detail: String = "",
+        diagnostics: DispatchDiagnostics? = null,
+    ): DispatchResult.Skipped {
+        logger.add("dispatch_reason", reason)
+        val line = ">>> Mandate#$mandateId - NO_OFFER reason=$reason" + if (detail.isEmpty()) "" else " $detail"
+        if (reason in QUIET_REASONS) {
+            LOGGER.debug(line)
+        } else {
+            LOGGER.info(line)
+        }
+        return DispatchResult.Skipped(reason, detail, diagnostics)
     }
 
     // Distance (km) from each neighbourhood of the mandate's city to the nearest of the mandate's: 0 for its own
@@ -158,7 +216,14 @@ class MandateDispatcher(
         return nearby + mandate.neighborhoodIds.associateWith { 0.0 }
     }
 
-    private fun findCandidates(mandate: MandateEntity, distances: Map<Long, Double>): List<AgentEntity> {
+    // The candidates after the hard filters, the reasons they were dropped, and how many were merged before them
+    private data class CandidatePool(
+        val eligible: List<AgentEntity>,
+        val excluded: Map<CandidateRuleOut, Int>,
+        val searched: Int,
+    )
+
+    private fun findCandidates(mandate: MandateEntity, distances: Map<Long, Double>): CandidatePool {
         // Agents that already declined or ignored the mandate are never offered it again
         val excludeIds = assignmentDao.findByMandateAndStatusIn(
             mandate,
@@ -191,16 +256,33 @@ class MandateDispatcher(
                 AgentService.SORT_LEAST_RECENTLY_ASSIGNED,
             )
         }
-        return (nearby + inCity)
-            .distinctBy { it.id }
-            .filter { agent -> agent.id !in excludeIds && agent.party.id != customer.party.id }
+
+        val merged = (nearby + inCity).distinctBy { it.id }
+        val eligible = mutableListOf<AgentEntity>()
+        val excluded = mutableMapOf<CandidateRuleOut, Int>()
+        merged.forEach { agent ->
+            // Same single `&&` as before: a declined customer only reports DECLINED_OR_EXPIRED
+            val reason = when {
+                agent.id in excludeIds -> CandidateRuleOut.DECLINED_OR_EXPIRED
+                agent.party.id == customer.party.id -> CandidateRuleOut.SELF
+                else -> null
+            }
+            if (reason == null) {
+                eligible += agent
+            } else {
+                excluded.merge(reason, 1, Int::plus)
+                LOGGER.debug(">>> Mandate#${mandate.id} Agent#${agent.id} - REJECTED reason=$reason")
+            }
+        }
+        return CandidatePool(eligible, excluded, merged.size)
     }
 
     private fun score(
         mandate: MandateEntity,
         candidates: List<AgentEntity>,
         distances: Map<Long, Double>,
-    ): List<Pair<AgentEntity, Double>> {
+        excluded: MutableMap<CandidateRuleOut, Int>,
+    ): List<CandidateScore> {
         if (candidates.isEmpty()) {
             return emptyList()
         }
@@ -211,19 +293,57 @@ class MandateDispatcher(
             .associate { it.agentId to it.total }
         val now = clock.millis()
 
-        return candidates
-            .filter { agent -> (loads[agent.id] ?: 0) < maxLoad } // At capacity: not a candidate
-            // Offers still unanswered: not flooded with more until answering one, or until they expire
-            .filter { agent -> pending(counts[agent.id].orEmpty()) < maxPending }
-            .map { agent ->
-                val score = WEIGHT_NEIGHBORHOOD * neighborhood(mandate, agent, distances) +
-                    WEIGHT_FAIRNESS * fairness(agent, now) +
-                    WEIGHT_RATING * rating(agent) +
-                    WEIGHT_RESPONSIVENESS * responsiveness(counts[agent.id].orEmpty()) +
-                    WEIGHT_CAPACITY * (1.0 - (loads[agent.id] ?: 0).toDouble() / maxLoad) +
-                    (if (jitter > 0) Random.nextDouble(-jitter, jitter) else 0.0) // 0 in tests: deterministic
-                agent to score
+        val scored = mutableListOf<CandidateScore>()
+        candidates.forEach { agent ->
+            val load = loads[agent.id] ?: 0
+            if (load >= maxLoad) { // At capacity: not a candidate
+                excluded.merge(CandidateRuleOut.AT_CAPACITY, 1, Int::plus)
+                LOGGER.debug(
+                    ">>> Mandate#${mandate.id} Agent#${agent.id} - REJECTED reason=AT_CAPACITY load=$load max=$maxLoad",
+                )
+                return@forEach
             }
+            // Offers still unanswered: not flooded with more until answering one, or until they expire
+            val pendingOffers = pending(counts[agent.id].orEmpty())
+            if (pendingOffers >= maxPending) {
+                excluded.merge(CandidateRuleOut.MAX_PENDING, 1, Int::plus)
+                LOGGER.debug(
+                    ">>> Mandate#${mandate.id} Agent#${agent.id} - REJECTED reason=MAX_PENDING " +
+                        "pending=$pendingOffers max=$maxPending",
+                )
+                return@forEach
+            }
+
+            val neighborhood = neighborhood(mandate, agent, distances)
+            val fairness = fairness(agent, now)
+            val rating = rating(agent)
+            val responsiveness = responsiveness(counts[agent.id].orEmpty())
+            val capacity = 1.0 - load.toDouble() / maxLoad
+            // 0 in tests: deterministic
+            val jitterValue = if (jitter > 0) Random.nextDouble(-jitter, jitter) else 0.0
+            val total = WEIGHT_NEIGHBORHOOD * neighborhood +
+                WEIGHT_FAIRNESS * fairness +
+                WEIGHT_RATING * rating +
+                WEIGHT_RESPONSIVENESS * responsiveness +
+                WEIGHT_CAPACITY * capacity +
+                jitterValue
+            LOGGER.debug(
+                ">>> Mandate#${mandate.id} Agent#${agent.id} - CANDIDATE score=$total neighborhood=$neighborhood " +
+                    "fairness=$fairness rating=$rating responsiveness=$responsiveness capacity=$capacity " +
+                    "jitter=$jitterValue",
+            )
+            scored += CandidateScore(
+                agent = agent,
+                total = total,
+                neighborhood = neighborhood,
+                fairness = fairness,
+                rating = rating,
+                responsiveness = responsiveness,
+                capacity = capacity,
+                jitter = jitterValue,
+            )
+        }
+        return scored
     }
 
     // Covering the mandate's neighbourhoods: 0.5..1 by coverage. Covering a nearby one: 0..0.5 by distance.

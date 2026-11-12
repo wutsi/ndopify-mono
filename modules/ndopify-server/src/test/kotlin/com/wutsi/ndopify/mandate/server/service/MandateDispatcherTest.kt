@@ -813,4 +813,91 @@ class MandateDispatcherTest {
         assertNothingOffered(dispatcher().dispatch(MANDATE_ID))
         verify(mandateDao, never()).save(any())
     }
+
+    // --- Dispatch result: why nothing was offered
+
+    private fun result(id: Long = MANDATE_ID): DispatchResult = dispatcher().dispatchResult(id)
+
+    private fun skipped(id: Long = MANDATE_ID): DispatchReason = (result(id) as DispatchResult.Skipped).reason
+
+    private fun offered(result: DispatchResult): DispatchResult.Offered = result as DispatchResult.Offered
+
+    @Test
+    fun `dispatch result - mandate not found`() {
+        assertEquals(DispatchReason.MANDATE_NOT_FOUND, skipped(999L))
+    }
+
+    @Test
+    fun `dispatch result - the mandate is not waiting for an agent`() {
+        mandate = mandate.copy(status = MandateStatus.ASSIGNED)
+
+        assertEquals(DispatchReason.NOT_PENDING, skipped())
+    }
+
+    @Test
+    fun `dispatch result - the mandate already has a pending offer`() {
+        doReturn(true).whenever(assignmentDao).existsByMandateAndStatus(any(), eq(AssignmentStatus.PENDING))
+
+        assertEquals(DispatchReason.ALREADY_PENDING, skipped())
+    }
+
+    @Test
+    fun `dispatch result - overdue is handed over to a human`() {
+        mandate = mandate.copy(createdAt = Date(now - 4 * DAY))
+
+        assertEquals(DispatchReason.OVERDUE_MANUAL, skipped())
+        verify(mandateDao).save(any())
+    }
+
+    @Test
+    fun `dispatch result - night`() {
+        now = time("2026-10-15T22:00")
+        mandate = mandate.copy(createdAt = Date(now - HOUR))
+
+        assertEquals(DispatchReason.NIGHT, skipped())
+    }
+
+    @Test
+    fun `dispatch result - no candidate`() {
+        inCity = emptyList()
+
+        assertEquals(DispatchReason.NO_CANDIDATE, skipped())
+    }
+
+    @Test
+    fun `dispatch result - an offer reports the excluded candidates`() {
+        inCity = listOf(agent(20), agent(30, neighborhoodIds = listOf(N9)))
+        loads(20L to 5L)
+
+        val offered = offered(result())
+
+        assertEquals(30L, offered.assignment.agentId)
+        assertEquals(2, offered.diagnostics.candidateCount)
+        assertEquals(1, offered.diagnostics.excluded[CandidateRuleOut.AT_CAPACITY])
+        assertEquals(listOf(30L), offered.diagnostics.eligible.map { it.agent.id })
+    }
+
+    @Test
+    fun `dispatch result - a declined agent is reported before self`() {
+        inCity = listOf(agent(20, partyId = CUSTOMER_PARTY_ID), agent(30, neighborhoodIds = listOf(N9)))
+        doReturn(listOf(AssignmentEntity(mandate = mandate, agentId = 20, status = AssignmentStatus.EXPIRED)))
+            .whenever(assignmentDao).findByMandateAndStatusIn(any(), any())
+
+        val offered = offered(result())
+
+        assertEquals(1, offered.diagnostics.excluded[CandidateRuleOut.DECLINED_OR_EXPIRED])
+        assertNull(offered.diagnostics.excluded[CandidateRuleOut.SELF])
+    }
+
+    @Test
+    fun `dispatch result - capacity is reported before the pending offers`() {
+        inCity = listOf(agent(20), agent(30, neighborhoodIds = listOf(N9)))
+        loads(20L to 5L)
+        doReturn(offers(20, pending = 3)).whenever(assignmentDao).countByAgentIds(any())
+
+        val offered = offered(result())
+
+        assertEquals(1, offered.diagnostics.excluded[CandidateRuleOut.AT_CAPACITY])
+        assertNull(offered.diagnostics.excluded[CandidateRuleOut.MAX_PENDING])
+    }
 }

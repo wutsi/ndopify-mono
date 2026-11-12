@@ -140,14 +140,17 @@ class AssignmentService(
         val now = Date(clock.millis())
         val due = dao.findByStatusAndExpiresAtBefore(AssignmentStatus.PENDING, now, PageRequest.of(0, BATCH_SIZE))
         var expired = 0
+        var failed = 0
         due.forEach { assignment ->
             try {
                 close(assignment, AssignmentStatus.EXPIRED)
                 expired++
             } catch (ex: Exception) {
+                failed++
                 LOGGER.warn("Unable to expire Assignment#${assignment.id}", ex)
             }
         }
+        LOGGER.info(">>> ASSIGN_EXPIRE_SUMMARY due=${due.size} expired=$expired failed=$failed")
         return expired
     }
 
@@ -164,15 +167,22 @@ class AssignmentService(
             AssignmentStatus.PENDING,
             PageRequest.of(0, BATCH_SIZE),
         )
-        var dispatched = 0
+        var offered = 0
+        val skipped = mutableMapOf<DispatchReason, Int>()
+        var failed = 0
         ids.forEach { id ->
             try {
-                dispatcher.dispatch(id)?.let { dispatched++ }
+                when (val result = dispatcher.dispatchResult(id)) {
+                    is DispatchResult.Offered -> offered++
+                    is DispatchResult.Skipped -> skipped.merge(result.reason, 1, Int::plus)
+                }
             } catch (ex: Exception) {
+                failed++
                 LOGGER.warn("Unable to dispatch Mandate#$id", ex)
             }
         }
-        return dispatched
+        LOGGER.info(">>> ASSIGN_BATCH attempted=${ids.size} offered=$offered skipped=$skipped failed=$failed")
+        return offered
     }
 
     /**

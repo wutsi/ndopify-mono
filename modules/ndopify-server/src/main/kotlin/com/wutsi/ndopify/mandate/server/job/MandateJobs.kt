@@ -1,6 +1,8 @@
 package com.wutsi.ndopify.mandate.server.job
 
 import com.wutsi.ndopify.mandate.server.service.AssignmentService
+import com.wutsi.ndopify.platform.logger.DefaultKVLogger
+import com.wutsi.ndopify.platform.logger.KVLoggerThreadLocal
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.slf4j.LoggerFactory
@@ -31,15 +33,24 @@ class MandateJobs(
     private fun forEachTenant(name: String, block: () -> Int) {
         tenantService.search(true).forEach { tenant ->
             val tenantId = tenant.id!!
+            // The scheduler thread has no request logger: install one, so the dispatcher's KV fields are emitted
+            val logger = DefaultKVLogger()
+            KVLoggerThreadLocal.set(logger)
             try {
                 TenantContext.set(tenantId)
+                logger.add("job", "MandateJobs.$name")
+                logger.add("tenant_id", tenantId)
                 val count = block()
+                logger.add("count", count)
                 LOGGER.info("Tenant#$tenantId - MandateJobs.$name() completed: $count mandate(s)")
             } catch (ex: Exception) {
                 // A tenant failing must not prevent the others to be processed
+                logger.setException(ex)
                 LOGGER.warn("Tenant#$tenantId - MandateJobs.$name() failed", ex)
             } finally {
+                logger.log()
                 TenantContext.remove()
+                KVLoggerThreadLocal.remove()
             }
         }
     }
