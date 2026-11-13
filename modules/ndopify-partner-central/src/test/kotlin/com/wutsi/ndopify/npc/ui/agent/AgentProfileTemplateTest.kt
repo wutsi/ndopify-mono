@@ -113,7 +113,7 @@ class AgentProfileTemplateTest {
             listOf("Appartement 2 chambres", "Studio", "Maison 3 chambres"),
             page.select(".agent-listing__title").map { it.text() },
         )
-        assertEquals("/listings/5001", page.selectFirst(".agent-listing")?.attr("href"))
+        assertEquals("/listings/5001?back=/agent?id%3D30%26page%3D1", page.selectFirst(".agent-listing")?.attr("href"))
         assertEquals("Page 1 sur 2", page.selectFirst(".agent-pagination__page")?.text())
         assertEquals("/agent?id=30&page=2", page.selectFirst("[data-listings-next]")?.attr("href"))
         assertNotNull(page.selectFirst("button.agent-pagination__button[disabled]"))
@@ -188,7 +188,7 @@ class AgentProfileTemplateTest {
 
         val page = render(page = 2)
 
-        assertEquals("/listings/5004", page.selectFirst(".agent-listing")?.attr("href"))
+        assertEquals("/listings/5004?back=/agent?id%3D30%26page%3D2", page.selectFirst(".agent-listing")?.attr("href"))
         assertEquals("Page 2 sur 2", page.selectFirst(".agent-pagination__page")?.text())
         assertEquals("/agent?id=30&page=1", page.selectFirst("[data-listings-prev]")?.attr("href"))
         assertNull(page.selectFirst("[data-listings-next]"))

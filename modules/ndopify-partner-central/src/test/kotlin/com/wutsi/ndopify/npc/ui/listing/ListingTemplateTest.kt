@@ -8,6 +8,7 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
@@ -46,6 +47,7 @@ import kotlin.test.assertTrue
 class ListingTemplateTest {
     private val currentAgent = mock<CurrentAgent>()
     private val listingClient = mock<NdListingClient>()
+    private val agentClient = mock<NdAgentClient>()
     private val mandateClient = mock<NdMandateClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
@@ -77,6 +79,7 @@ class ListingTemplateTest {
                 ListingController(
                     currentAgent,
                     listingClient,
+                    agentClient,
                     mandateClient,
                     locationClient,
                     tenantContext,
@@ -385,5 +388,82 @@ class ListingTemplateTest {
         assertEquals("Cette annonce n'est pas disponible", page.selectFirst("[data-listing-locked] h1")?.text())
         assertEquals("/#mandates-title", page.selectFirst(".back-link a")?.attr("href"))
         assertNull(page.selectFirst("[data-listing]"))
+    }
+
+    @Test
+    fun `shared - read-only with the agent card`() {
+        doReturn(LISTING.copy(agentId = 999, status = ListingStatus.PUBLISHED, publishedAt = SENT))
+            .whenever(listingClient).get(501)
+        doReturn(AGENT.copy(id = 999)).whenever(agentClient).get(999)
+
+        val page = render()
+
+        assertEquals("Bien d'un autre agent", page.selectFirst("[data-listing-origin] .status-tag")?.text())
+        assertNull(page.selectFirst("[data-listing-meta]"))
+        assertNull(page.selectFirst("[data-listing-send]"))
+        assertNull(page.selectFirst("[data-listing-panel]"))
+        assertNull(page.selectFirst("[data-listing-stats]"))
+        assertEquals(0, page.select("a.checklist__row").size)
+        assertEquals(7, page.select("div.checklist__row").size)
+
+        val card = page.selectFirst(".listing-agent")!!
+        assertEquals("Serge Ngono", card.selectFirst("[data-agent-name]")?.text())
+        assertEquals(
+            "https://wa.me/237670000001",
+            card.selectFirst("[data-agent-whatsapp]")?.attr("href"),
+        )
+        assertEquals("+237 6 70 00 00 01", card.selectFirst("[data-agent-whatsapp]")?.text())
+        assertEquals(
+            "/agent?id=999&page=1&back=/listings/501",
+            card.selectFirst("[data-agent-profile]")?.attr("href"),
+        )
+        assertNull(page.selectFirst("[data-listing-agent-unavailable]"))
+    }
+
+    @Test
+    fun `shared - no WhatsApp, no contact line`() {
+        doReturn(LISTING.copy(agentId = 999, status = ListingStatus.PUBLISHED))
+            .whenever(listingClient).get(501)
+        doReturn(AGENT.copy(id = 999, whatsappNumber = null)).whenever(agentClient).get(999)
+
+        val page = render()
+
+        assertNull(page.selectFirst("[data-agent-contact]"))
+        assertEquals("Serge Ngono", page.selectFirst("[data-agent-name]")?.text())
+    }
+
+    @Test
+    fun `shared - the agent is unavailable`() {
+        doReturn(LISTING.copy(agentId = 999, status = ListingStatus.PUBLISHED))
+            .whenever(listingClient).get(501)
+        doReturn(null).whenever(agentClient).get(999)
+
+        val page = render()
+
+        assertNull(page.selectFirst(".listing-agent"))
+        assertEquals(
+            "Les coordonnées de l'agent ne peuvent pas être affichées pour le moment.",
+            page.selectFirst("[data-listing-agent-unavailable]")?.text(),
+        )
+    }
+
+    @Test
+    fun `shared - public link stays`() {
+        doReturn(TENANT.copy(publicPortalUrl = "https://ndopify.com")).whenever(tenantContext).getTenant()
+        doReturn(
+            LISTING.copy(
+                agentId = 999,
+                status = ListingStatus.PUBLISHED,
+                url = "/douala/bonapriso/listing/501/appartement",
+            ),
+        ).whenever(listingClient).get(501)
+        doReturn(AGENT.copy(id = 999)).whenever(agentClient).get(999)
+
+        val page = render()
+
+        assertEquals(
+            "https://ndopify.com/douala/bonapriso/listing/501/appartement",
+            page.selectFirst("[data-listing-public-url]")?.attr("href"),
+        )
     }
 }

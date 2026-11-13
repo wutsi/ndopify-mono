@@ -4,6 +4,7 @@ import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.dto.MatchStatus
+import com.wutsi.ndopify.npc.ui.listing.ListingRules
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.npc.ui.visit.VisitCardView
 import com.wutsi.ndopify.refdata.dto.Location
@@ -92,14 +93,18 @@ object MatchViews {
             listingId = listing.id,
             title = listOfNotNull(type, listing.rooms?.let { MatchRules.rooms(it) }).joinToString(" · "),
             tag = MatchRules.tag(match),
-            listingUrl = "/listings/${listing.id}",
-            facts = listOf(
+            listingUrl = ListingRules.url(
+                listing.id,
+                "/mandates/${mandate.id}#matches-title".takeIf { match.coBrokerage },
+            ),
+            facts = listOfNotNull(
                 "Correspondance" to MatchRules.score(match),
                 "Quartier" to (
                     listing.neighborhoodId?.let { locations[it]?.name }
                         ?: locations[listing.cityId]?.name
                         ?: "—"
                     ),
+                if (match.coBrokerage) "Origine" to "Bien d'un autre agent" else null,
                 "Loyer" to MandateLabels.price(
                     Money(listing.price, listing.currencyCode, listing.pricePeriodicityType),
                     formatter,

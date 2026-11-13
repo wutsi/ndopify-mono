@@ -194,6 +194,16 @@ class ListingPhotoControllerTest {
     }
 
     @Test
+    fun `upload - another agent's published listing`() {
+        doReturn(LISTING.copy(agentId = 999, status = ListingStatus.PUBLISHED)).whenever(listingClient).get(501)
+
+        val result = mvc.perform(multipart("/listings/501/photos").file(photo("salon.jpg", JPEG))).andReturn()
+
+        verify(listingClient, never()).upload(any(), any(), any(), any())
+        assertEquals(ListingController.CHANGED, result.flashMap[ListingController.OUTCOME])
+    }
+
+    @Test
     fun `upload - refused by the server`() {
         doThrow(HttpClientErrorException(HttpStatus.BAD_REQUEST)).whenever(listingClient).upload(any(), any(), any(), any())
 

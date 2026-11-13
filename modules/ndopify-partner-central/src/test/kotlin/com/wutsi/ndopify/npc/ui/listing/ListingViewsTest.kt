@@ -846,4 +846,50 @@ class ListingViewsTest {
         assertTrue(view.rows.isEmpty())
         assertTrue(view.groups.isEmpty())
     }
+
+    @Test
+    fun `shared - read-only, no section links, agent card`() {
+        val view = ListingViews.of(
+            COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT),
+            IMAGES,
+            locations,
+            formatter,
+            shared = true,
+            agent = ProfileFixtures.AGENT,
+        )
+
+        assertTrue(view.shared)
+        assertEquals("Appartement, Bonapriso", view.title)
+        assertFalse(view.editable)
+        assertFalse(view.sendable)
+        assertTrue(view.rows.all { it.url == null })
+        assertEquals("Serge Ngono", view.agent?.name)
+        assertEquals("SN", view.agent?.initials)
+        assertEquals("https://cdn.ndopify.com/party/100/photo/a.jpg", view.agent?.photoUrl)
+        assertEquals("https://wa.me/237670000001", view.agent?.whatsappUrl)
+        assertEquals("+237 6 70 00 00 01", view.agent?.whatsappDisplay)
+        assertEquals("/agent?id=20&page=1&back=/listings/501", view.agent?.profileUrl)
+    }
+
+    @Test
+    fun `shared - the agent may be unknown`() {
+        val view = ListingViews.of(
+            COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT),
+            IMAGES,
+            locations,
+            formatter,
+            shared = true,
+        )
+
+        assertNull(view.agent)
+    }
+
+    @Test
+    fun `own listing - title and section links unchanged`() {
+        val view = ListingViews.of(LISTING, IMAGES, locations, formatter)
+
+        assertFalse(view.shared)
+        assertEquals("Annonce · Appartement, Bonapriso", view.title)
+        assertEquals("/listings/501/location", view.rows.first().url)
+    }
 }

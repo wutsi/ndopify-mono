@@ -62,8 +62,7 @@
     </header>
     <main id="main" class="page">
         <div class="column column--wide">
-            <p class="back-link"><a th:href="${listing} ? @{/mandates/{id}(id=${listing.mandateId})} : @{/#mandates-title}"
-                                    th:text="${listing} ? '← Retour au mandat' : '← Retour à l\'espace agent'">← Retour au mandat</a></p>
+            <p class="back-link"><a th:href="${backUrl}" th:text="${backLabel}">← Retour au mandat</a></p>
 
             <!--
                 Outcome of the last action (sent, or why it couldn't be): under the title, or first on the locked or
@@ -103,8 +102,13 @@
                            th:text="${l.status.name() == 'PUBLISHED' and l.publishedAt != null} ? |${l.tag.label} le ${l.publishedAt}| : ${l.tag.label}"
                            data-listing-tag>Brouillon</p>
                     </div>
-                    <p class="mandate__meta">Mandat n° <span th:text="${l.mandateId}">203</span> · créée le
+                    <p class="mandate__meta" th:if="${!l.shared}" data-listing-meta>Mandat n° <span th:text="${l.mandateId}">203</span> · créée le
                         <span th:text="${l.createdAt}">20 oct. 2026</span></p>
+                    <!-- Another agent's listing (co-brokerage): its mandate and customer stay hidden. -->
+                    <p class="listing-origin" th:if="${l.shared}" data-listing-origin>
+                        <span class="status-tag status-tag--info">Bien d'un autre agent</span>
+                        <span>Ce bien est publié par un autre agent. Ses coordonnées sont ci-dessous.</span>
+                    </p>
                     <img class="listing-hero" th:if="${l.heroImageUrl}" th:src="${l.heroImageUrl}" th:alt="${l.title}"
                          width="960" height="540" loading="lazy" data-listing-hero>
                     <p class="listing-public" th:if="${l.publicUrl}" data-listing-public>
@@ -123,15 +127,45 @@
                     </p>
                 </div>
 
+                <!--
+                    Co-brokerage only: the agent who publishes this listing. The customer's card never appears here,
+                    unlike on the listing's own mandate page. The identity opens that agent's profile.
+                -->
+                <section class="home-section" aria-labelledby="listing-agent-title" th:if="${l.shared}" data-listing-agent>
+                    <h2 id="listing-agent-title" class="visually-hidden">L'agent qui publie ce bien</h2>
+                    <div class="listing-agent" th:if="${l.agent}" th:with="a=${l.agent}">
+                        <a class="listing-agent__photo" th:href="${a.profileUrl}" aria-hidden="true" tabindex="-1">
+                            <img th:if="${a.photoUrl}" th:src="${a.photoUrl}" alt="">
+                            <span th:unless="${a.photoUrl}" th:text="${a.initials}">CM</span>
+                        </a>
+                        <div class="listing-agent__info">
+                            <p class="listing-agent__headline">
+                                <span class="listing-agent__eyebrow">Publié par</span>
+                                <a class="listing-agent__name" th:href="${a.profileUrl}" data-agent-profile>
+                                    <span th:text="${a.name}" data-agent-name>Clarisse Mbarga</span>
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
+                                </a>
+                            </p>
+                            <p class="listing-agent__contact" th:if="${a.whatsappUrl}" data-agent-contact>
+                                <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+                                <a th:href="${a.whatsappUrl}" target="_blank" rel="noopener"
+                                   th:text="${a.whatsappDisplay}" data-agent-whatsapp>+237 6 70 00 00 01</a>
+                            </p>
+                        </div>
+                    </div>
+                    <p class="hint" th:unless="${l.agent}" data-listing-agent-unavailable>Les coordonnées de l'agent ne peuvent pas être affichées pour le moment.</p>
+                </section>
+
                 <div th:replace="~{:: flash}"></div>
 
                 <!-- One panel per status but PUBLISHED, above the checklist. -->
-                <div class="hint" th:if="${l.panel == 'DRAFT'}" data-listing-panel="DRAFT">
+                <div class="hint" th:if="${!l.shared and l.panel == 'DRAFT'}" data-listing-panel="DRAFT">
                     <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
                     <p>Sur place, vérifiez chaque section et prenez les photos. Les réponses du propriétaire sont
                         déjà remplies&nbsp;: corrigez ce qui ne correspond pas.</p>
                 </div>
-                <div class="alert alert--info" th:if="${l.panel == 'SENT'}" data-listing-panel="SENT">
+                <div class="alert alert--info" th:if="${!l.shared and l.panel == 'SENT'}" data-listing-panel="SENT">
                     <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
                     <div>
                         <p class="alert__title">En vérification</p>
@@ -139,7 +173,7 @@
                             puis rédigeons son titre et sa description à partir de votre visite.</p>
                     </div>
                 </div>
-                <div class="alert alert--warning" th:if="${l.panel == 'TO_FIX'}" data-listing-panel="TO_FIX">
+                <div class="alert alert--warning" th:if="${!l.shared and l.panel == 'TO_FIX'}" data-listing-panel="TO_FIX">
                     <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
                     <div>
                         <p class="alert__title">Annonce à corriger</p>
@@ -153,19 +187,20 @@
                     <h2 id="checklist-title">Détails de la propriété</h2>
                     <p class="checklist__progress" th:text="${l.progress}" data-checklist-progress>1 sections sur 6 vérifiées</p>
                     <!-- One row per section: to edit it while a draft, to view it (read-only) once sent. -->
+                    <!-- Another agent's listing has no section pages: its rows are plain text. -->
                     <ol class="checklist" data-checklist>
                         <li th:each="row : ${l.rows}">
-                            <a class="checklist__row" th:href="@{${row.url}}">
-                                <span class="checklist__title" th:text="${row.label}" data-section-title>Emplacement</span>
-                                <span th:class="|status-tag status-tag--${row.state.style}|" th:text="${row.state.label}"
-                                      data-section-state>À vérifier</span>
-                                <span class="checklist__summary" th:text="${row.summary}" data-section-summary></span>
+                            <a class="checklist__row" th:if="${row.url != null}" th:href="@{${row.url}}">
+                                <th:block th:replace="~{fragments/listing-row :: content(${row})}"></th:block>
                             </a>
+                            <div class="checklist__row" th:unless="${row.url != null}">
+                                <th:block th:replace="~{fragments/listing-row :: content(${row})}"></th:block>
+                            </div>
                         </li>
                     </ol>
                 </section>
 
-                <section class="home-section listing-send" aria-label="Envoi de l'annonce" th:if="${l.editable}" data-listing-send>
+                <section class="home-section listing-send" aria-label="Envoi de l'annonce" th:if="${!l.shared and l.editable}" data-listing-send>
                     <form method="post" th:action="@{/listings/{id}/verify(id=${l.id})}" data-listing-send-form>
                         <button type="submit" class="btn btn--primary btn--block" aria-describedby="listing-missing"
                                 th:attr="aria-disabled=${l.sendable} ? null : 'true'" data-listing-submit>Envoyer pour vérification</button>

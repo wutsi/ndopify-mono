@@ -10,6 +10,7 @@ import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.listing.dto.UpdateListingRequest
 import com.wutsi.ndopify.web.core.service.TenantFormatter
+import org.springframework.web.util.UriComponentsBuilder
 import java.time.LocalDate
 
 /**
@@ -138,6 +139,14 @@ object ListingRules {
 
     // PENDING (and UNKNOWN, never shown: the page is then locked): no code sets it yet, neither closed nor sent.
     private val PENDING_TAG = Tag("En attente", "warning")
+
+    /** `/listings/{id}`, with `?back=` when [back] is given (encoded so its own query and fragment survive). */
+    fun url(id: Long, back: String? = null): String =
+        UriComponentsBuilder.fromPath("/listings/$id")
+            .apply { back?.let { queryParam("back", it) } }
+            .build()
+            .encode()
+            .toUriString()
 
     /** The URL's name of a section: `/listings/{id}/location`. */
     fun slug(section: ListingSection): String = section.name.lowercase()
