@@ -19,7 +19,7 @@
                         Bonjour <strong>{{recipient_name}}</strong>,
                     </mj-text>
                     <mj-text>
-                        <strong>{{agent_full_name}}</strong>, votre agent, a sélectionné pour vous
+                        J'ai sélectionné pour vous
                         {{^count}}un bien qui correspond{{/count}}{{#count}}{{count}} biens qui correspondent{{/count}}
                         à votre recherche&#160;:
                     </mj-text>
@@ -54,30 +54,30 @@
                     <!-- With the matches' pages: the customer answers there. Without them: by replying to the agent. -->
                     {{#online}}
                     <mj-text>
-                        Découvrez les photos et tous les détails, puis dites-nous si {{^count}}ce bien vous
+                        Découvrez les photos et tous les détails, puis dites-moi si {{^count}}ce bien vous
                         intéresse{{/count}}{{#count}}ces biens vous intéressent{{/count}}. Si c'est le cas, vous pourrez
                         demander une visite dans la foulée.
                     </mj-text>
 
                     <mj-text>
                         {{^count}}Il ne vous convient pas{{/count}}{{#count}}L'un d'eux ne vous convient pas{{/count}}&#160;?
-                        Dites-le aussi&#160;: votre agent en tiendra compte pour ses prochaines propositions.
+                        Dites-le-moi aussi&#160;: j'en tiendrai compte pour mes prochaines propositions.
                     </mj-text>
                     {{/online}}
                     {{^online}}
                     <mj-text>
                         {{^count}}Ce bien vous intéresse{{/count}}{{#count}}Un de ces biens vous intéresse{{/count}}&#160;?
-                        Répondez à votre agent&#160;: il organisera la visite avec vous. S'il ne vous convient pas,
-                        dites-le-lui aussi, il en tiendra compte pour ses prochaines propositions.
+                        Répondez-moi&#160;: j'organiserai la visite avec vous. S'il ne vous convient pas,
+                        dites-le-moi aussi, j'en tiendrai compte pour mes prochaines propositions.
                     </mj-text>
                     {{/online}}
 
                     <!-- Sign-off -->
                     <mj-spacer/>
                     <mj-text>
-                        Cordialement,
+                        Cordialement,{{^agent_full_name}}
                         <br/>
-                        L'équipe {{tenant_name}}
+                        L'équipe {{tenant_name}}{{/agent_full_name}}
                     </mj-text>
                 </mj-column>
             </mj-section>

@@ -32,6 +32,9 @@ class VisitCompletedTemplateTest {
         assertTrue(html.contains("Ray Sponsible"))
         assertTrue(html.contains("Nice apartment"))
         assertTrue(html.contains("Le bien vous int"))
+        assertTrue(html.contains("Dites-le-moi"))
+        assertTrue(html.contains("je vous accompagnerai"))
+        assertFalse(html.contains("Dites-le à votre agent"))
         assertTrue(html.contains("https://www.ndopify.com/visits/1?token=xxx.yyy.zzz"))
     }
 

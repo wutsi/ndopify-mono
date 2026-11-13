@@ -7,6 +7,8 @@ import dev.jcputney.mjml.MjmlRenderer
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -25,6 +27,7 @@ class AgentFooterLayoutTest {
         "tenant_name" to "Ndopify",
         "recipient_name" to "Ray Sponsible",
         "agent_full_name" to "Kim Possible",
+        "agent_photo_url" to "https://cdn.ndopify.com/kim.png",
         "agent_whatsapp" to "+237 6 99 00 00 01",
         "agent_whatsapp_url" to "https://wa.me/237699000001",
         "tenant_logo_url" to "https://cdn.ndopify.com/logo.png",
@@ -72,6 +75,38 @@ class AgentFooterLayoutTest {
         }
     }
 
+    @Test
+    fun `the agent footer shows the photo next to its details`() {
+        templates.forEach { path ->
+            val doc = Jsoup.parse(resolver.resolve(path, context))
+            val link = assertNotNull(
+                doc.selectFirst("a[href='https://wa.me/237699000001']"),
+                "$path: the agent footer is missing",
+            )
+            val details = link.parents().first { isColumn(it) }
+            val photo = assertNotNull(
+                doc.selectFirst("img[alt='Photo de Kim Possible']"),
+                "$path: the agent photo is missing",
+            )
+            val photoColumn = photo.parents().first { isColumn(it) }
+            val section = details.parent()!!
+
+            assertEquals(2, section.children().count { isColumn(it) }, "$path: the footer needs 2 columns")
+            assertTrue(photoColumn != details, "$path: the photo and the details share a column")
+            assertTrue(details.text().contains("Kim Possible"), "$path: the details do not name the agent")
+            assertTrue(details.text().contains("WhatsApp"), "$path: the details have no WhatsApp link")
+            assertFalse(details.text().contains("Votre agent"), "$path: the details still say 'Votre agent'")
+            assertEquals(
+                0,
+                section.select("img[alt='Ndopify']").size,
+                "$path: the footer still shows the tenant logo",
+            )
+        }
+    }
+
     private fun isWhiteCard(element: Element): Boolean =
         element.attr("style").replace(" ", "").contains("background-color:#ffffff")
+
+    private fun isColumn(element: Element): Boolean =
+        element.classNames().any { it.startsWith("mj-column-per-") }
 }

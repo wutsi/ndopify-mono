@@ -36,23 +36,23 @@
 
                     {{#on_site}}
                     <mj-text>
-                        <strong>{{agent_full_name}}</strong>, votre agent, vous attend sur place. Vous pouvez le joindre
-                        sur WhatsApp au <strong>{{agent_whatsapp}}</strong>.
+                        Je vous attends sur place. Vous pouvez me joindre sur WhatsApp au
+                        <strong>{{agent_whatsapp}}</strong>.
                     </mj-text>
                     <mj-text>
-                        Votre code de visite est <strong>{{code}}</strong>. Présentez-le à votre agent à votre arrivée.
+                        Votre code de visite est <strong>{{code}}</strong>. Présentez-le-moi à votre arrivée.
                     </mj-text>
                     <mj-text>
-                        L'adresse exacte et l'itinéraire vous seront communiqués par votre agent avant la visite.
+                        Je vous communiquerai l'adresse exacte et l'itinéraire avant la visite.
                     </mj-text>
                     {{/on_site}}
                     {{^on_site}}
                     <mj-text>
-                        <strong>{{agent_full_name}}</strong>, votre agent, vous appellera en vidéo sur WhatsApp au
-                        <strong>{{agent_whatsapp}}</strong> depuis le bien, à l'heure convenue.
+                        Je vous appellerai en vidéo sur WhatsApp au <strong>{{agent_whatsapp}}</strong> depuis le bien,
+                        à l'heure convenue.
                     </mj-text>
                     <mj-text>
-                        Votre code de visite est <strong>{{code}}</strong>. Lisez-le à votre agent pendant l'appel.
+                        Votre code de visite est <strong>{{code}}</strong>. Lisez-le-moi pendant l'appel.
                     </mj-text>
                     {{/on_site}}
 
@@ -65,9 +65,9 @@
                     <!-- Sign-off -->
                     <mj-spacer/>
                     <mj-text>
-                        Cordialement,
+                        Cordialement,{{^agent_full_name}}
                         <br/>
-                        L'équipe {{tenant_name}}
+                        L'équipe {{tenant_name}}{{/agent_full_name}}
                     </mj-text>
                 </mj-column>
             </mj-section>

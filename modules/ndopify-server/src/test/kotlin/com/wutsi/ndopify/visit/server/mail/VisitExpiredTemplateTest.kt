@@ -31,7 +31,9 @@ class VisitExpiredTemplateTest {
         val html = resolver.resolve(VisitExpiredMailet.TEMPLATE, context)
 
         assertTrue(html.contains("demander une nouvelle visite"))
-        assertTrue(html.contains("Kim Possible"))
+        assertTrue(html.contains("je l'organiserai"))
+        assertTrue(html.contains("je n'ai pas pu la confirmer à temps"))
+        assertFalse(html.contains("votre agent"))
     }
 
     @Test

@@ -40,8 +40,9 @@ class VisitReminderTemplateTest {
         assertTrue(html.contains("1234"))
         assertTrue(html.contains("Bonapriso, Douala"))
         assertTrue(html.contains("près de la boulangerie Zepol"))
-        assertTrue(html.contains("L'adresse exacte et l'itinéraire vous seront communiqués"))
-        assertTrue(html.contains("vous attend sur place"))
+        assertTrue(html.contains("Je vous communiquerai l'adresse exacte et l'itinéraire"))
+        assertTrue(html.contains("Je vous attends sur place"))
+        assertTrue(html.contains("Présentez-le-moi"))
         assertFalse(html.contains("Rue 1.234"))
         assertFalse(html.contains("<b>Adresse</b>"))
     }
@@ -55,8 +56,9 @@ class VisitReminderTemplateTest {
 
         assertTrue(html.contains("1234"))
         assertTrue(html.contains("près de la boulangerie Zepol"))
-        assertTrue(html.contains("vous appellera en vid"))
+        assertTrue(html.contains("Je vous appellerai en vidéo"))
+        assertTrue(html.contains("Lisez-le-moi"))
         assertFalse(html.contains("Rue 1.234"))
-        assertFalse(html.contains("L'adresse exacte et l'itinéraire"))
+        assertFalse(html.contains("Je vous communiquerai l'adresse"))
     }
 }

@@ -38,8 +38,7 @@
                     {{/agent_recipient}}
                     {{^agent_recipient}}
                     <mj-text>
-                        Vous pouvez demander une nouvelle visite&#160;: votre agent ({{other_party}}) organisera celle qui
-                        vous convient.
+                        Vous pouvez demander une nouvelle visite&#160;: je l'organiserai pour vous.
                     </mj-text>
                     {{/agent_recipient}}
 
@@ -52,9 +51,9 @@
                     <!-- Sign-off -->
                     <mj-spacer/>
                     <mj-text>
-                        Cordialement,
+                        Cordialement,{{^agent_full_name}}
                         <br/>
-                        L'équipe {{tenant_name}}
+                        L'équipe {{tenant_name}}{{/agent_full_name}}
                     </mj-text>
                 </mj-column>
             </mj-section>

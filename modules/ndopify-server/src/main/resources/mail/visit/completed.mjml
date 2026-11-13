@@ -32,8 +32,8 @@
                         Le bien vous intéresse&#160;?
                     </mj-text>
                     <mj-text>
-                        Dites-le à votre agent&#160;: il vous accompagnera pour la suite. Sinon, dites-le-lui aussi, il en
-                        tiendra compte pour ses prochaines propositions.
+                        Dites-le-moi&#160;: je vous accompagnerai pour la suite. Sinon, dites-le-moi aussi, j'en
+                        tiendrai compte pour mes prochaines propositions.
                     </mj-text>
 
                     {{#visit_url}}
@@ -45,9 +45,9 @@
                     <!-- Sign-off -->
                     <mj-spacer/>
                     <mj-text>
-                        Cordialement,
+                        Cordialement,{{^agent_full_name}}
                         <br/>
-                        L'équipe {{tenant_name}}
+                        L'équipe {{tenant_name}}{{/agent_full_name}}
                     </mj-text>
                 </mj-column>
             </mj-section>
