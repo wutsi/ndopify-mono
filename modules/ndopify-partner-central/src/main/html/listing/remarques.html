@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Vos remarques — Ndopify Partner Central</title>
-    <meta name="description" content="Les remarques de l'agent sur le bien, pour Ndopify seulement.">
+    <meta name="description" content="Les remarques de l'agent sur le bien, pour enrichir l'annonce publiée.">
     <meta name="robots" content="noindex, nofollow">
     <meta name="theme-color" content="#ffffff">
     <link rel="icon" type="image/png" href="../assets/images/icon.png">
@@ -20,7 +20,8 @@
     <script src="../assets/js/partner-central.js" defer></script>
 </head>
 <!--
-    Listing section "Vos remarques" (agentRemarks): optional, never published. Read by whoever checks the listing.
+    Listing section "Vos remarques" (agentRemarks): optional, never published as they are. Feed the title,
+    summary and description Ndopify generates.
     Once sent (en vérification, publiée), the section is read-only: only the answers given, no action.
     PROTOTYPE: ?id= of a listing (see listing.html). Saved in the
     session (KEYS.listings), the section is then "Vérifié" on the checklist.
@@ -63,7 +64,7 @@
                 <div class="page-intro">
                     <h1>Vos remarques</h1>
                     <p class="mandate__meta" data-section-meta></p>
-                    <p>Ce que l'équipe qui vérifie l'annonce doit savoir.</p>
+                    <p>Ce que le formulaire ne demande pas, et qui aide à mieux décrire le bien.</p>
                 </div>
                 <!-- Sent or published: the section as it was sent, read-only. -->
                 <div class="hint" hidden data-section-readonly>
@@ -78,8 +79,9 @@
                     </div>
                     <div class="hint">
                         <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
-                        <p>Visibles par Ndopify seulement, jamais publiées&nbsp;: état du bien, travaux à prévoir,
-                            points à revoir avec le propriétaire.</p>
+                        <p>Ndopify s'en sert pour rédiger le titre, le résumé et la description de l'annonce&nbsp;: ces
+                            remarques ne sont pas publiées telles quelles. Par exemple&nbsp;: luminosité, vue, environnement,
+                            finitions, travaux récents. N'y indiquez pas de codes d'accès, de clés ni de coordonnées.</p>
                     </div>
 
                     <div class="form__actions">

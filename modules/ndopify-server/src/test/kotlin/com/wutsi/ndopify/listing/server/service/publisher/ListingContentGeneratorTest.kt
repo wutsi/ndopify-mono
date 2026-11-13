@@ -131,6 +131,13 @@ class ListingContentGeneratorTest {
     }
 
     @Test
+    fun `prompt has the agent remarks`() {
+        generator.generate(listing.copy(agentRemarks = "Peinture à refaire, clé chez le gardien"))
+
+        assertTrue(prompt().contains("- Agent remarks: Peinture à refaire, clé chez le gardien"))
+    }
+
+    @Test
     fun `prompt has the verified images`() {
         generator.generate(listing)
 
@@ -163,6 +170,7 @@ class ListingContentGeneratorTest {
         assertTrue(prompt.contains("- Furnished: -"))
         assertTrue(prompt.contains("- City: -"))
         assertTrue(prompt.contains("- Neighborhood: -"))
+        assertTrue(prompt.contains("- Agent remarks: -"))
         assertFalse(prompt.contains("{{"), prompt)
     }
 

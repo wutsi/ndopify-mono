@@ -3295,7 +3295,7 @@
      * The agent creates it from the mandate (POST /v1/listings: a DRAFT, pre-filled from the landlord's answers),
      * visits the property, checks each section of the checklist (POST /v1/listings/{id}) and adds the photos
      * (POST /v1/listings/{id}/images/upload), then sends it to be checked. Once checked, it's published, its title,
-     * summary and description written by AI from the audit and the photos: the agent never writes them.
+     * summary and description written by AI from the audit, the photos and the remarks: the agent never writes them.
      * PROTOTYPE: ndopify-server has neither a submit nor a publish endpoint yet, nor any check that the mandate is an
      * approved LISTING one; "PENDING" stands for the listing being checked.
      */

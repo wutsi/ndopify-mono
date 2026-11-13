@@ -92,6 +92,7 @@ class ListingContentGenerator(
             - Parkings: {{parkings}}
             - City: {{city}}
             - Neighborhood: {{neighborhood}}
+            - Agent remarks: {{agentRemarks}}
 
             # Images
             {{images}}
@@ -143,6 +144,7 @@ class ListingContentGenerator(
             .replace("{{videoSurveillance}}", yesNo(listing.videoSurveillance))
             .replace("{{city}}", city?.name ?: "-")
             .replace("{{neighborhood}}", neighborhood?.name ?: "-")
+            .replace("{{agentRemarks}}", listing.agentRemarks ?: "-")
             .replace("{{images}}", images.joinToString(separator = "\n\n"))
 
         return client.prompt()

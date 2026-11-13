@@ -304,7 +304,19 @@ class ListingSectionTemplateTest {
 
     @Test
     fun remarks() {
-        val form = form(render("remarks", LISTING.copy(agentRemarks = "Peinture à refaire")))
+        val page = render("remarks", LISTING.copy(agentRemarks = "Peinture à refaire"))
+        val form = form(page)
+
+        assertEquals(
+            "Ce que le formulaire ne demande pas, et qui aide à mieux décrire le bien.",
+            page.selectFirst("[data-section-instruction]")?.text(),
+        )
+        assertEquals(
+            "Ndopify s'en sert pour rédiger le titre, le résumé et la description de l'annonce : ces remarques ne " +
+                "sont pas publiées telles quelles. Par exemple : luminosité, vue, environnement, finitions, travaux " +
+                "récents. N'y indiquez pas de codes d'accès, de clés ni de coordonnées.",
+            form.selectFirst("#agentRemarks-hint")?.text(),
+        )
 
         val remarks = form.selectFirst("textarea[name=agentRemarks]")!!
         assertEquals("Peinture à refaire", remarks.text())
