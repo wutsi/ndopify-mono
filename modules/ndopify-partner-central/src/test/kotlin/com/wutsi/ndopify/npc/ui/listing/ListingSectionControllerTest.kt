@@ -305,6 +305,17 @@ class ListingSectionControllerTest {
     }
 
     @Test
+    fun `save - another agent's published listing`() {
+        doReturn(LISTING.copy(agentId = 999, status = ListingStatus.PUBLISHED)).whenever(listingClient).get(501)
+
+        val result = mvc.perform(location()).andReturn()
+
+        verify(listingClient, never()).update(any(), any())
+        assertEquals("redirect:/listings/501", result.modelAndView?.viewName)
+        assertEquals(ListingController.CHANGED, result.flashMap[ListingController.OUTCOME])
+    }
+
+    @Test
     fun `save - listing unavailable`() {
         doThrow(ResourceAccessException("down")).whenever(listingClient).get(501)
 

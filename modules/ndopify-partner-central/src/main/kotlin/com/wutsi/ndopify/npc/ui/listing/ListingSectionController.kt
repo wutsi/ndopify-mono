@@ -111,6 +111,7 @@ class ListingSectionController(
         val listing = when (val result = access.load(id, agent)) {
             is ListingAccess.Found -> result.listing.takeIf { ListingRules.editable(it) }
                 ?: return back(id, ListingController.CHANGED, redirect)
+            is ListingAccess.ReadOnly -> return back(id, ListingController.CHANGED, redirect)
             ListingAccess.Locked -> return back(id, ListingController.CHANGED, redirect)
             ListingAccess.Unavailable -> return back(id, ListingController.FAILED, redirect)
         }
