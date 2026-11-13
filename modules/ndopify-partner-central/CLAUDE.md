@@ -253,6 +253,11 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `listing-section`, `listing-photos`): the types and questions of the type, geolocation, photos shrunk and sent as
   soon as chosen, no double post. Prototype: `src/main/html/listing.html`, `listing/*.html`; its "Simuler" buttons
   have no server support, and its `REJECTED` panel is the `TO_FIX` one here.
+  Another agent's `PUBLISHED` listing opens read-only (`ListingAccess.ReadOnly`): no mandate number, no customer, no
+  stats, no section links and no send/upload/delete action. A boxed card shows the publishing agent (photo or initials,
+  name linked to `/agent`, WhatsApp number as the `wa.me` link); an unreadable agent leaves a contact-unavailable note.
+  A valid same-origin `?back=` returns to where it was opened, otherwise the Espace agent; own listings still return to
+  their mandate.
 - A signed search (APPROVED, SEARCH: `MatchRules.matched`) has *Biens correspondants* on its mandate page: the
   PUBLISHED listings of the agent's inventory ndopify-server matched to it (`ui/match/`, see
   `docs/superpowers/plans/2026-10-31-partner-central-matches.md`). `MandateController` reads its matches in one
@@ -283,6 +288,8 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   (`NdVisitClient.search`, the same `VisitCards` as the Espace agent; past visits aren't shown). A listing whose
   client has an open visit leaves *Biens correspondants*, so it isn't shown twice, and comes back once the visit
   closes (cancelled, missed, expired or completed); if only such visits remain, the section says where they went.
+  A co-brokerage match shows `Origine · Bien d'un autre agent`, and its title link carries
+  `?back=/mandates/{searchMandateId}#matches-title`; an agent-profile listing card carries `?back=` to its profile page.
 - The Espace agent's *Visites* section (`HomeController`, `ui/visit/`) lists the agent's open visits:
   `GET /v1/visits?agent-id=&status=REQUESTED&status=CONFIRMED&status=CHECKED_IN` (`NdVisitClient.search`,
   `VisitRules.OPEN`), their listings in one `GET /v1/listings?id=` and their customers in one `GET /v1/customers?id=`,
