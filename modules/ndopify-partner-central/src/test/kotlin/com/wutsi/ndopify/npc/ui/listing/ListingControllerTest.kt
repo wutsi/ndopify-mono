@@ -99,7 +99,7 @@ class ListingControllerTest {
         val view = model(result)["listing"] as ListingView
         assertEquals(501L, view.id)
         assertEquals("Annonce · Appartement, Bonapriso", view.title)
-        assertEquals("2 photos · 5 au moins", view.rows.first { it.url.endsWith("/photos") }.summary)
+        assertEquals("2 photos · 5 au moins", view.rows.first { it.url.orEmpty().endsWith("/photos") }.summary)
         assertEquals("SN", model(result)["initials"])
         assertNull(model(result)["locked"])
     }
@@ -137,7 +137,7 @@ class ListingControllerTest {
 
         val view = model(mvc.perform(get("/listings/501")).andReturn())["listing"] as ListingView
 
-        assertEquals("", view.rows.first { it.url.endsWith("/photos") }.summary)
+        assertEquals("", view.rows.first { it.url.orEmpty().endsWith("/photos") }.summary)
     }
 
     @Test

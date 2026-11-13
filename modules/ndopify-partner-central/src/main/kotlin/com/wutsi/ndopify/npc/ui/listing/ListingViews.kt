@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.listing
 
+import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.customer.dto.CustomerSummary
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ImageStatus
@@ -15,10 +16,13 @@ import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateSummary
 import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.dto.MatchStatus
+import com.wutsi.ndopify.npc.ui.agent.AgentProfileRules
+import com.wutsi.ndopify.npc.ui.kyc.KycRules
 import com.wutsi.ndopify.npc.ui.mandate.Amenity
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.npc.ui.mandate.MandateRules
 import com.wutsi.ndopify.npc.ui.match.MatchRules
+import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import com.wutsi.ndopify.npc.ui.visit.VisitCardView
 import com.wutsi.ndopify.npc.ui.visit.VisitCards
 import com.wutsi.ndopify.npc.ui.visit.VisitStats
@@ -49,6 +53,8 @@ object ListingViews {
 
     private const val OTHER_AGENT = "Client d'un autre agent"
 
+    private val CAMEROON_PHONE = Regex("""^\+237(\d)(\d{2})(\d{2})(\d{2})(\d{2})$""")
+
     // A listing that keeps its public page once it leaves the market
     private val PUBLIC = setOf(ListingStatus.PUBLISHED, ListingStatus.RENTED, ListingStatus.SOLD)
 
@@ -64,8 +70,10 @@ object ListingViews {
         formatter: TenantFormatter,
         publicPortalUrl: String? = null,
         stats: ListingStats? = null,
+        shared: Boolean = false,
+        agent: Agent? = null,
     ): ListingView {
-        val editable = ListingRules.editable(listing)
+        val editable = !shared && ListingRules.editable(listing)
         val required = ListingRules.SECTIONS.filter { ListingRules.required(listing, it) }
         val done = required.count { ListingRules.done(listing, it) }
         val left = required.filter { !ListingRules.done(listing, it) }.map { missing(it, images) }
@@ -77,15 +85,19 @@ object ListingViews {
         return ListingView(
             id = listing.id,
             mandateId = listing.mandateId,
-            title = title(listing, neighborhood ?: locations[listing.cityId]?.name),
+            title = title(listing, neighborhood ?: locations[listing.cityId]?.name, shared),
             tag = ListingRules.tag(listing),
             status = listing.status,
             createdAt = formatter.date(listing.createdAt),
-            panel = when {
-                editable && rejections.isNotEmpty() -> ListingView.PANEL_TO_FIX
-                editable -> ListingView.PANEL_DRAFT
-                ListingRules.sent(listing.status) -> ListingView.PANEL_SENT
-                else -> null
+            panel = if (shared) {
+                null
+            } else {
+                when {
+                    editable && rejections.isNotEmpty() -> ListingView.PANEL_TO_FIX
+                    editable -> ListingView.PANEL_DRAFT
+                    ListingRules.sent(listing.status) -> ListingView.PANEL_SENT
+                    else -> null
+                }
             },
             // No "sent at" on the server: nothing changes a listing while it's checked, so its last change is it
             sentAt = if (ListingRules.sent(listing.status)) formatter.date(listing.modifiedAt) else null,
@@ -93,12 +105,12 @@ object ListingViews {
             publishedAt = listing.publishedAt?.let { formatter.date(it) },
             heroImageUrl = listing.heroImageId?.let { id -> images?.firstOrNull { it.id == id }?.url?.ifBlank { null } },
             publicUrl = if (listing.status in PUBLIC) publicUrl(listing, publicPortalUrl) else null,
-            stats = if (published) ListingStatsView.of(stats)?.label else null,
+            stats = if (!shared && published) ListingStatsView.of(stats)?.label else null,
             rows = ListingRules.SECTIONS.map { section ->
                 ChecklistRow(
                     section = section,
                     label = ListingRules.LABELS.getValue(section),
-                    url = "/listings/${listing.id}/${ListingRules.slug(section)}",
+                    url = if (shared) null else "/listings/${listing.id}/${ListingRules.slug(section)}",
                     summary = summary(listing, section, neighborhood, images, formatter),
                     state = if (section in toFix) TO_FIX else state(listing, section),
                 )
@@ -110,7 +122,9 @@ object ListingViews {
                 "Encore à faire : ${left.joinToString(", ")}."
             },
             editable = editable,
-            sendable = editable && left.isEmpty(),
+            sendable = !shared && editable && left.isEmpty(),
+            shared = shared,
+            agent = agent?.let { agentCard(it, listing) },
         )
     }
 
@@ -463,10 +477,27 @@ object ListingViews {
         return host + (if (path.startsWith("/")) path else "/$path")
     }
 
-    private fun title(listing: Listing, place: String?): String {
+    // Another agent's listing isn't "the agent's ad": no "Annonce · " prefix
+    private fun title(listing: Listing, place: String?, shared: Boolean = false): String {
         val type = MandateLabels.shortPropertyType(listing.propertyType) ?: "Bien"
-        return "Annonce · " + listOfNotNull(type, place).joinToString(", ")
+        val label = listOfNotNull(type, place).joinToString(", ")
+        return if (shared) label else "Annonce · $label"
     }
+
+    /** The boxed card of the agent who publishes a shared listing. */
+    private fun agentCard(agent: Agent, listing: Listing): ListingAgentView =
+        ListingAgentView(
+            name = ProfileRules.fullName(agent),
+            photoUrl = agent.party.photoUrl?.ifBlank { null },
+            initials = KycRules.initials(agent.party.firstName, agent.party.lastName),
+            whatsappUrl = AgentProfileRules.whatsappUrl(agent.whatsappNumber),
+            whatsappDisplay = agent.whatsappNumber?.takeIf { it.isNotBlank() }?.let { displayPhone(it) },
+            profileUrl = AgentProfileRules.pageUrl(agent.id, 1, "/listings/${listing.id}"),
+        )
+
+    /** "+237699123456" → "+237 6 99 12 34 56" (Cameroon numbers; others are shown as they are). */
+    private fun displayPhone(e164: String): String =
+        CAMEROON_PHONE.matchEntire(e164)?.groupValues?.drop(1)?.joinToString(" ", prefix = "+237 ") ?: e164
 
     // "Emplacement", or what the photos lack: "la photo refusée, 3 photos"
     private fun missing(section: ListingSection, images: List<ListingImage>?): String {
