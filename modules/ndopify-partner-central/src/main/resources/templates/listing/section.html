@@ -89,7 +89,7 @@
                         <th:block th:case="'property'">Comptez les pièces sur place et corrigez ce qui ne correspond pas aux réponses du propriétaire.</th:block>
                         <th:block th:case="'amenities'">Cochez ce que vous constatez sur place, pas seulement ce qu'annonce le propriétaire.</th:block>
                         <th:block th:case="'terms'">Indiquez les conditions convenues avec le propriétaire&nbsp;: elles peuvent différer du mandat.</th:block>
-                        <th:block th:case="'remarks'">Ce que l'équipe qui vérifie l'annonce doit savoir.</th:block>
+                        <th:block th:case="'remarks'">Ce que le formulaire ne demande pas, et qui aide à mieux décrire le bien.</th:block>
                     </p>
                 </div>
 
@@ -375,8 +375,9 @@
                             <textarea class="input input--textarea" id="agentRemarks" name="agentRemarks" rows="6"
                                       maxlength="1000" aria-describedby="agentRemarks-hint agentRemarks-error" th:text="${a.agentRemarks}"
                                       th:disabled="${!e}" th:attr="aria-invalid=${errors['agentRemarks'] != null} ? 'true' : null"></textarea>
-                            <p class="field__optional" id="agentRemarks-hint">Visibles par Ndopify seulement, jamais publiées&nbsp;: état du bien, travaux à prévoir,
-                                points à revoir avec le propriétaire.</p>
+                            <p class="field__optional" id="agentRemarks-hint">Ndopify s'en sert pour rédiger le titre, le résumé et la description
+                                de l'annonce&nbsp;: ces remarques ne sont pas publiées telles quelles. Par exemple&nbsp;: luminosité, vue, environnement,
+                                finitions, travaux récents. N'y indiquez pas de codes d'accès, de clés ni de coordonnées.</p>
                             <p th:replace="~{:: error('agentRemarks')}"></p>
                         </div>
                     </th:block>
