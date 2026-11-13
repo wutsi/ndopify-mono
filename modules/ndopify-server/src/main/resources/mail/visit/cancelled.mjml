@@ -38,7 +38,7 @@
                     </mj-text>
                     {{/cancellation_reason}}
                     <mj-text>
-                        Contactez {{other_party}} pour convenir d'une autre date.
+                        {{#agent_full_name}}Contactez-moi{{/agent_full_name}}{{^agent_full_name}}Contactez {{other_party}}{{/agent_full_name}} pour convenir d'une autre date.
                     </mj-text>
 
                     {{#visit_url}}
@@ -50,9 +50,9 @@
                     <!-- Sign-off -->
                     <mj-spacer/>
                     <mj-text>
-                        Cordialement,
+                        Cordialement,{{^agent_full_name}}
                         <br/>
-                        L'équipe {{tenant_name}}
+                        L'équipe {{tenant_name}}{{/agent_full_name}}
                     </mj-text>
                 </mj-column>
             </mj-section>

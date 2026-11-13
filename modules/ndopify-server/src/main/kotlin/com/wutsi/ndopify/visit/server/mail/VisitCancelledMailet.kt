@@ -31,7 +31,7 @@ class VisitCancelledMailet(
         const val TEMPLATE = "/mail/visit/cancelled.mjml"
 
         const val LABEL_BY_CUSTOMER = "Le client a annulé la visite."
-        const val LABEL_BY_AGENT = "Votre agent a annulé la visite."
+        const val LABEL_BY_AGENT = "J'ai annulé la visite."
     }
 
     fun send(visit: VisitEntity, customer: CustomerEntity, agent: AgentEntity, listing: ListingEntity) {
