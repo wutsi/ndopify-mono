@@ -24,7 +24,7 @@ object AssignmentViews {
         return AssignmentView(
             id = assignment.id,
             // The card shows neither the property type (it is in the details) nor the city (the agent works in one).
-            title = MandateLabels.mandateType(mandate.mandateType),
+            title = MandateLabels.party(mandate.mandateType),
             owner = owner,
             sectorTerm = if (mandate.neighborhoodIds.size > 1) "Secteurs" else "Secteur",
             sector = sector(mandate, neighborhoods),
