@@ -154,7 +154,7 @@ class HomeTemplateTest {
         assertEquals("assignment-7", card.id())
         assertEquals("7", card.attr("data-assignment-id"))
         assertEquals((AssignmentViewsTest.NOW + 52 * 60_000L).toString(), card.attr("data-expires-at"))
-        assertEquals("Recherche", card.selectFirst("h3")?.text())
+        assertEquals("Locataire", card.selectFirst("h3")?.text())
         assertEquals("search", card.selectFirst("h3 [data-mandate-kind]")?.attr("data-mandate-kind"))
         assertEquals("true", card.selectFirst("h3 [data-mandate-kind] svg")?.attr("aria-hidden"))
         assertEquals("52 min", card.selectFirst("[data-timer-value]")?.text())

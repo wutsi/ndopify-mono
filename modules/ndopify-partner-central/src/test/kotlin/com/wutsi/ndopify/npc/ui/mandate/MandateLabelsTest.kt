@@ -17,13 +17,6 @@ import kotlin.test.assertNull
 
 class MandateLabelsTest {
     @Test
-    fun mandateType() {
-        assertEquals("Recherche", MandateLabels.mandateType(MandateType.SEARCH))
-        assertEquals("Affichage", MandateLabels.mandateType(MandateType.LISTING))
-        assertEquals("Mandat", MandateLabels.mandateType(MandateType.UNKNOWN))
-    }
-
-    @Test
     fun category() {
         assertEquals("Résidentiel", MandateLabels.category(PropertyCategory.RESIDENTIAL))
         assertEquals("Commercial", MandateLabels.category(PropertyCategory.COMMERCIAL))

@@ -66,7 +66,7 @@ class AssignmentViewsTest {
         val view = AssignmentViews.of(ASSIGNMENT, MANDATE, NAMES, NOW, FORMATTER)
 
         assertEquals(7L, view.id)
-        assertEquals("Recherche", view.title)
+        assertEquals("Locataire", view.title)
         assertEquals("Secteurs", view.sectorTerm)
         assertEquals("Bonapriso, Akwa", view.sector)
         assertEquals("Budget", view.priceTerm)
@@ -121,7 +121,7 @@ class AssignmentViewsTest {
             FORMATTER,
         )
 
-        assertEquals("Affichage", view.title)
+        assertEquals("Propriétaire", view.title)
         assertEquals("Secteur", view.sectorTerm)
         assertEquals("Bonapriso", view.sector)
         assertEquals("Loyer", view.priceTerm)

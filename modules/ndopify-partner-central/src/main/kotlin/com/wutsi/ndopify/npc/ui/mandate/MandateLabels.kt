@@ -84,11 +84,6 @@ object MandateLabels {
     // The criteria's "Parking" row (prototype's PARKING_LABELS in partner-central.js); other values are shown as is.
     private val PARKING_VALUES = mapOf("0" to "Aucune")
 
-    private val MANDATE_TYPE_LABELS = mapOf(
-        MandateType.SEARCH to "Recherche",
-        MandateType.LISTING to "Affichage"
-    )
-
     // The wizards' review, after "Location, " (prototype's find-property.js / offer-property.js).
     private val PROJECT_LABELS = mapOf(
         PropertyCategory.RESIDENTIAL to "usage résidentiel",
@@ -106,8 +101,6 @@ object MandateLabels {
     /** "150 000", with a non-breaking space so an amount never wraps. */
     fun formatNumber(value: Number): String =
         String.format(Locale.FRANCE, "%,d", value.toLong()).replace(' ', ' ')
-
-    fun mandateType(type: MandateType): String = MANDATE_TYPE_LABELS[type] ?: "Mandat"
 
     fun category(category: PropertyCategory): String? = CATEGORY_LABELS[category]
 
