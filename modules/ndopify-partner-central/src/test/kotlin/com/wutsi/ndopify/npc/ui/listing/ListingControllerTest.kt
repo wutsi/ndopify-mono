@@ -15,9 +15,13 @@ import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.match.dto.Match
+import com.wutsi.ndopify.match.dto.MatchStatus
+import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
+import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.COMPLETE
@@ -41,7 +45,9 @@ import org.springframework.web.client.HttpServerErrorException
 import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.servlet.view.InternalResourceViewResolver
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class ListingControllerTest {
     private val currentAgent = mock<CurrentAgent>()
@@ -49,6 +55,8 @@ class ListingControllerTest {
     private val mandateClient = mock<NdMandateClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
+    private val matchClient = mock<NdMatchClient>()
+    private val agentClient = mock<NdAgentClient>()
     private lateinit var mvc: MockMvc
 
     private val mandate = Mandate(
@@ -74,6 +82,8 @@ class ListingControllerTest {
             mandateClient,
             locationClient,
             tenantContext,
+            matchClient,
+            agentClient,
         )
         mvc = MockMvcBuilders.standaloneSetup(controller)
             .setControllerAdvice(HttpClientErrorHandler(mock()))
@@ -181,6 +191,35 @@ class ListingControllerTest {
         doReturn(LISTING.copy(status = ListingStatus.UNKNOWN)).whenever(listingClient).get(501)
 
         assertEquals(true, model(mvc.perform(get("/listings/501")).andReturn())["locked"])
+    }
+
+    @Test
+    fun `show - co-brokerage listing`() {
+        doReturn(COMPLETE.copy(status = ListingStatus.PUBLISHED, agentId = 999, publishedAt = SENT, description = "Public"))
+            .whenever(listingClient).get(501)
+        doReturn(Match(id = 9009, mandateId = 204, listingId = 501, coBrokerage = true, status = MatchStatus.ACTIVE))
+            .whenever(matchClient).get(9009)
+        doReturn(Mandate(id = 204, agentId = AGENT.id, mandateType = MandateType.SEARCH, status = MandateStatus.APPROVED))
+            .whenever(mandateClient).get(204)
+        doReturn(ProfileFixtures.AGENT.copy(id = 999)).whenever(agentClient).get(999)
+
+        val view = model(mvc.perform(get("/listings/501?match=9009")).andReturn())["listing"] as ListingView
+
+        assertTrue(view.coBrokerage)
+        assertNotNull(view.agent)
+        assertNull(view.publicUrl)
+        assertNull(view.stats)
+        assertEquals("/mandates/204#matches-title", view.backUrl)
+        verify(listingClient, never()).stats(any())
+    }
+
+    @Test
+    fun `show - co-brokerage listing without a match is locked`() {
+        doReturn(COMPLETE.copy(status = ListingStatus.PUBLISHED, agentId = 999)).whenever(listingClient).get(501)
+
+        val result = mvc.perform(get("/listings/501")).andReturn()
+
+        assertEquals(true, model(result)["locked"])
     }
 
     @Test

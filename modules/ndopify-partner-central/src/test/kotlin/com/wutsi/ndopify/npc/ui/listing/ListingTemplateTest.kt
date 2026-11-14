@@ -8,9 +8,11 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
+import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
@@ -49,6 +51,8 @@ class ListingTemplateTest {
     private val mandateClient = mock<NdMandateClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
+    private val matchClient = mock<NdMatchClient>()
+    private val agentClient = mock<NdAgentClient>()
     private lateinit var mvc: MockMvc
 
     @BeforeEach
@@ -80,6 +84,8 @@ class ListingTemplateTest {
                     mandateClient,
                     locationClient,
                     tenantContext,
+                    matchClient,
+                    agentClient,
                 ),
             )
             .setControllerAdvice(SignedInAdvice())

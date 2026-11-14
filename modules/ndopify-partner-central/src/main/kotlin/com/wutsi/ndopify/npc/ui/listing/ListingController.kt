@@ -8,9 +8,11 @@ import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
+import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
@@ -24,6 +26,7 @@ import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClientException
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
@@ -47,6 +50,8 @@ class ListingController(
     private val mandateClient: NdMandateClient,
     locationClient: NdLocationClient,
     private val tenantContext: TenantContext,
+    private val matchClient: NdMatchClient,
+    private val agentClient: NdAgentClient,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(ListingController::class.java)
@@ -70,19 +75,39 @@ class ListingController(
     }
 
     private val sector = SectorValidator(locationClient, tenantContext)
-    private val access = ListingAccess(listingClient)
+    private val publishedAccess = PublishedListingAccess(listingClient, matchClient, mandateClient)
 
-    /** [id] is a String so that a hand-edited value is the locked view instead of failing the page. */
+    /**
+     * [id] is a String so that a hand-edited value is the locked view instead of failing the page. [match] is the
+     * co-brokerage match a *Biens correspondants* card opened with: its owner doesn't need one, and a co-broker without
+     * it (or with one that isn't theirs) is locked.
+     */
     @GetMapping("/listings/{id}")
-    fun show(@PathVariable id: String, model: Model): String {
+    fun show(
+        @PathVariable id: String,
+        @RequestParam(required = false) match: String?,
+        model: Model,
+    ): String {
         val agent = currentAgent.get() ?: throw SignInRequiredException()
         ProfileRules.header(agent, model)
 
         (model.getAttribute(OUTCOME) as? String)?.let { outcome(it, model) }
-        val listing = id.toLongOrNull()?.let { load(it, agent, model) } ?: return locked(model)
+        val result = id.toLongOrNull()?.let { load(it, agent, match?.toLongOrNull(), model) } ?: return locked(model)
+        val listing = when (result) {
+            is PublishedListingAccess.Owner -> result.listing
+            is PublishedListingAccess.CoBroker -> result.listing
+            else -> return locked(model)
+        }
+        val coBrokerage = result is PublishedListingAccess.CoBroker
         val images = lookup("images of listing ${listing.id}") { listingClient.images(listing.id) }
-        val stats = if (listing.status == ListingStatus.PUBLISHED) {
+        val stats = if (!coBrokerage && listing.status == ListingStatus.PUBLISHED) {
             lookup("stats of listing ${listing.id}") { listingClient.stats(listOf(listing.id)) }?.get(listing.id)
+        } else {
+            null
+        }
+        val agentCard = if (result is PublishedListingAccess.CoBroker) {
+            lookup("listing agent ${listing.agentId}") { agentClient.get(listing.agentId) }
+                ?.let { ListingViews.agent(it, listing, result.match) }
         } else {
             null
         }
@@ -93,6 +118,14 @@ class ListingController(
             formatter(),
             tenantContext.getTenant().publicPortalUrl,
             stats,
+            coBrokerage = coBrokerage,
+            agent = agentCard,
+            backUrl = if (result is PublishedListingAccess.CoBroker) {
+                "/mandates/${result.match.mandateId}#matches-title"
+            } else {
+                "/mandates/${listing.mandateId}"
+            },
+            backLabel = if (coBrokerage) "← Retour aux biens correspondants" else "← Retour au mandat",
         )
         model.addAttribute("listing", view)
         return VIEW
@@ -206,12 +239,12 @@ class ListingController(
         return VIEW
     }
 
-    /** The agent's listing; null when it can't be had, with the view to show instead ([UNAVAILABLE] or locked). */
-    private fun load(id: Long, agent: Agent, model: Model): Listing? =
-        when (val result = access.load(id, agent)) {
-            is ListingAccess.Found -> result.listing
-            ListingAccess.Locked -> null
-            ListingAccess.Unavailable -> {
+    /** The admitted listing; null when it can't be had, with the view to show instead ([UNAVAILABLE] or locked). */
+    private fun load(id: Long, agent: Agent, matchId: Long?, model: Model): PublishedListingAccess.Result? =
+        when (val result = publishedAccess.load(id, agent, matchId)) {
+            is PublishedListingAccess.Owner, is PublishedListingAccess.CoBroker -> result
+            PublishedListingAccess.Locked -> null
+            PublishedListingAccess.Unavailable -> {
                 model.addAttribute(UNAVAILABLE, true)
                 null
             }

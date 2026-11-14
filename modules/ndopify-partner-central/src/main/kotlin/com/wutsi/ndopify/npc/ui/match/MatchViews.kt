@@ -92,7 +92,7 @@ object MatchViews {
             listingId = listing.id,
             title = listOfNotNull(type, listing.rooms?.let { MatchRules.rooms(it) }).joinToString(" · "),
             tag = MatchRules.tag(match),
-            listingUrl = "/listings/${listing.id}",
+            listingUrl = if (match.coBrokerage) "/listings/${listing.id}?match=${match.id}" else "/listings/${listing.id}",
             facts = listOf(
                 "Correspondance" to MatchRules.score(match),
                 "Quartier" to (

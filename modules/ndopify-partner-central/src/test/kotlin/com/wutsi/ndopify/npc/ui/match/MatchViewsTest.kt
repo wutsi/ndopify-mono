@@ -84,6 +84,13 @@ class MatchViewsTest {
     }
 
     @Test
+    fun `co-brokerage card links with its match`() {
+        val section = section(listOf(MATCH_A.copy(coBrokerage = true)))
+
+        assertEquals("/listings/3012?match=9001", section.matches.single().listingUrl)
+    }
+
+    @Test
     fun `refused - left out, counted in the outcomes`() {
         val matches = listOf(
             MATCH_A,
