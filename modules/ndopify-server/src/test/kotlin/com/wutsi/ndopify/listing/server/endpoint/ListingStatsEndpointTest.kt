@@ -27,7 +27,7 @@ class ListingStatsEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(1, stats[0].completedVisits)
         assertEquals(0, stats[1].upcomingVisits)
         assertEquals(0, stats[1].completedVisits)
-        assertEquals(0, stats[2].upcomingVisits)
+        assertEquals(1, stats[2].upcomingVisits) // old request, slot ahead
         assertEquals(1, stats[2].completedVisits)
     }
 

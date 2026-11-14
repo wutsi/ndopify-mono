@@ -32,7 +32,7 @@ interface VisitRepository : CrudRepository<VisitEntity, Long>, JpaSpecificationE
     @Query(
         "SELECT v.listingId AS listingId, COUNT(v) AS total FROM VisitEntity v " +
             "WHERE v.listingId IN :listingIds AND (" +
-            "(v.status = :requested AND v.createdAt > :expireBefore) OR " +
+            "(v.status = :requested AND (v.createdAt > :expireBefore OR v.requestedAt > :now)) OR " +
             "(v.status = :confirmed AND v.scheduledAt >= :checkInBefore) OR " +
             "v.status = :checkedIn) " +
             "GROUP BY v.listingId"
@@ -44,6 +44,7 @@ interface VisitRepository : CrudRepository<VisitEntity, Long>, JpaSpecificationE
         checkedIn: VisitStatus,
         expireBefore: Date,
         checkInBefore: Date,
+        now: Date,
     ): List<ListingVisitCount>
 
     @Query(
@@ -58,7 +59,7 @@ interface VisitRepository : CrudRepository<VisitEntity, Long>, JpaSpecificationE
     @Query(
         "SELECT v.mandateId AS mandateId, COUNT(v) AS total FROM VisitEntity v " +
             "WHERE v.mandateId IN :mandateIds AND (" +
-            "(v.status = :requested AND v.createdAt > :expireBefore) OR " +
+            "(v.status = :requested AND (v.createdAt > :expireBefore OR v.requestedAt > :now)) OR " +
             "(v.status = :confirmed AND v.scheduledAt >= :checkInBefore) OR " +
             "v.status = :checkedIn) " +
             "GROUP BY v.mandateId"
@@ -70,6 +71,7 @@ interface VisitRepository : CrudRepository<VisitEntity, Long>, JpaSpecificationE
         checkedIn: VisitStatus,
         expireBefore: Date,
         checkInBefore: Date,
+        now: Date,
     ): List<MandateVisitCount>
 
     @Query(

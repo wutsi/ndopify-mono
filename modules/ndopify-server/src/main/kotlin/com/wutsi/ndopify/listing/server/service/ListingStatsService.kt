@@ -31,6 +31,7 @@ class ListingStatsService(
             VisitStatus.CHECKED_IN,
             Date(now - policy.expireAfter.toMillis()),
             Date(now - policy.checkInAfter.toMillis()),
+            Date(now),
         ).associate { it.listingId to it.total }
         val completed = visitDao.countByListingIdsAndStatus(ids, VisitStatus.COMPLETED)
             .associate { it.listingId to it.total }
