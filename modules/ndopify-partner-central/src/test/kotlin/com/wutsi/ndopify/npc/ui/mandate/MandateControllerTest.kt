@@ -268,6 +268,32 @@ class MandateControllerTest {
         assertEquals(1, visits.size)
     }
 
+    @Test
+    fun `approved landlord - hosted visits with unreadable agent`() {
+        publishedListing()
+        doReturn(
+            listOf(
+                CoBrokerageVisitSummary(
+                    id = 8001,
+                    listingId = 501,
+                    agentId = VisitFixtures.OTHER_AGENT_ID,
+                    status = VisitStatus.CONFIRMED,
+                    type = VisitType.ON_SITE,
+                    scheduledAt = Date(VisitFixtures.NOW),
+                ),
+            ),
+        ).whenever(visitClient).coBrokerageOnListing(501)
+        doThrow(ResourceAccessException("down")).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
+
+        val result = mvc.perform(get("/mandates/201")).andReturn()
+
+        @Suppress("UNCHECKED_CAST")
+        val visits = model(result)["coBrokerageVisits"] as List<ListingVisitView>
+        assertEquals(1, visits.size)
+        assertNull(visits.single().agentName)
+        assertNull(visits.single().agentInitials)
+    }
+
     private fun publishedListing() {
         doReturn(APPROVED.copy(mandateType = MandateType.LISTING)).whenever(mandateClient).get(201)
         doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)

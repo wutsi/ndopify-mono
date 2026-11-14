@@ -572,6 +572,33 @@ class HomeTemplateTest {
         assertEquals("https://wa.me/237699000002", card.selectFirst("[data-co-brokerage-whatsapp]")?.attr("href"))
         assertEquals("/listings/501#visits-title", card.selectFirst(".co-visit-card__listing a")?.attr("href"))
         assertFalse(card.text().contains("Sandrine Eboa"))
+        assertFalse(card.text().contains("sandrine@gmail.com"))
+        assertFalse(card.text().contains("1234"))
+    }
+
+    @Test
+    fun `a hosted video visit shows the video icon`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        doReturn(
+            listOf(
+                CoBrokerageVisitSummary(
+                    id = 8002,
+                    listingId = 501,
+                    agentId = VisitFixtures.OTHER_AGENT_ID,
+                    status = VisitStatus.CHECKED_IN,
+                    type = VisitType.VIDEO,
+                    scheduledAt = Date(VisitFixtures.NOW),
+                ),
+            ),
+        ).whenever(visitClient).coBrokerage()
+        doReturn(listOf(VisitFixtures.listingSummary().copy(id = 501)))
+            .whenever(listingClient).searchByIds(listOf(501L))
+        doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
+
+        val card = render(get("/")).selectFirst("[data-co-brokerage-visits] .co-visit-card")!!
+
+        assertNotNull(card.selectFirst("[data-co-brokerage-type-icon=VIDEO]"))
+        assertNull(card.selectFirst("[data-co-brokerage-type-icon=ON_SITE]"))
     }
 
     @Test

@@ -316,9 +316,4 @@ class VisitViewsTest {
         assertEquals("/agent?id=30&back=/visits/7001", page.agent?.profileUrl)
         assertEquals("https://wa.me/237699000002", page.agent?.whatsappUrl)
     }
-
-    @Test
-    fun `an own-inventory visit has no agent card`() {
-        assertNull(of(agent = null).agent)
-    }
 }

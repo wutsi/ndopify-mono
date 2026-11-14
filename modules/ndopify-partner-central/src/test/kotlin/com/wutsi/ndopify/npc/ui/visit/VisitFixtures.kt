@@ -58,8 +58,6 @@ object VisitFixtures {
         longitude = 9.6943,
     )
 
-    fun coBrokerageListing() = LISTING.copy(agentId = OTHER_AGENT_ID)
-
     fun requested() = Visit(
         id = 7001,
         matchId = 9001,
