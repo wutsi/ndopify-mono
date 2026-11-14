@@ -161,18 +161,30 @@ merges.
 1. **CI** — wait for every check to finish: `gh pr checks <pr> --watch`. The review starts only once they're all
    green; no check reported (a PR whose paths start no workflow) counts as green. If one is red, report it to the user
    (`gh run view <run-id> --log-failed`) and stop — no review, no verdict.
-2. **Review** — run `/code-review high <pr>`, and check the PR against the story's acceptance criteria, its plan and
+2. **Review** — run `/code-review high <pr>` (without `--comment`: step 3 posts the findings, in one review), and check the PR against the story's acceptance criteria, its plan and
    the repo rules.
 3. **Verdict** — then stop:
     - No finding: approve it (`gh pr review <pr> --approve --body "<what was checked>"`) and tell the user it's ready
       to merge.
-    - Any finding: reject it (`gh pr review <pr> --request-changes --body "<the findings, each with its file:line>"`)
-      and tell the user the findings. They're fixed outside this mode, on the branch, with the `implement` commit
-      rules; a fix that touches a library is released by `push <story-id>`, which also updates the PR. Then re-run
-      `review <pr-number>`.
+    - Any finding: reject it in one review, with each finding as an inline comment where it makes sense, and tell
+      the user the findings. A finding goes inline when it's about a line the PR adds or changes (a line of the
+      diff, on its `RIGHT` side): the comment is on that line, or that range (`start_line` + `line`). A finding
+      about something the PR misses (an acceptance criterion, a missing test, a file it doesn't touch) or a line
+      outside the diff goes in the review body, with its `file:line`. Write the payload to a file and post it:
 
-   GitHub refuses both on a PR the user authored (every PR `push` opens): then post the same verdict with
-   `gh pr review <pr> --comment`, its body starting with `Approved` or `Changes requested`.
+      ```bash
+      # review.json: {"event": "REQUEST_CHANGES", "body": "<summary + findings not inline>",
+      #   "comments": [{"path": "<file>", "line": <n>, "side": "RIGHT", "body": "<finding>"}, …]}
+      gh api repos/wutsi/ndopify-mono/pulls/<pr>/reviews --method POST --input review.json
+      ```
+
+      A 422 means a comment's line isn't in the diff: move that finding to the body and post again. The findings
+      are fixed outside this mode, on the branch, with the `implement` commit rules; a fix that touches a library is
+      released by `push <story-id>`, which also updates the PR. Then re-run `review <pr-number>`.
+
+   GitHub refuses `APPROVE` and `REQUEST_CHANGES` on a PR the user authored (every PR `push` opens): then post the
+   same verdict with `gh pr review <pr> --comment` (approval) or `"event": "COMMENT"` (findings, inline comments
+   kept), its body starting with `Approved` or `Changes requested`.
 4. **After the merge** — on a re-run once the user merged it: watch every run the merge commit started
    (`gh pr view <pr> --json mergeCommit --jq .mergeCommit.oid`, then `gh run list --commit <sha>` and
    `gh run watch <run-id> --exit-status` for each). If one is red, report it and stop. Once all are green, close the
