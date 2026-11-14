@@ -10,6 +10,7 @@ import com.wutsi.ndopify.error.server.exception.BadRequestException
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingService
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.match.dto.MatchRejectionReason
@@ -99,6 +100,14 @@ class VisitService(
         return dao.findById(id).orElse(null)
             ?: throw NotFoundException(error = Error(code = ErrorCode.VISIT_NOT_FOUND))
     }
+
+    /** The CONFIRMED/CHECKED_IN visits another agent organizes on [listing], soonest first. */
+    fun findCoBrokerageOnListing(listing: ListingEntity): List<VisitEntity> =
+        dao.findByListingIdAndAgentIdNotAndStatusInOrderByScheduledAtAscIdAsc(
+            listing.id!!,
+            listing.agent.id!!,
+            setOf(VisitStatus.CONFIRMED, VisitStatus.CHECKED_IN),
+        )
 
     /**
      * The customer requests a visit of a match it accepted. The match is locked first, so that two requests for the same

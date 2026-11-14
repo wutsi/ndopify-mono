@@ -91,6 +91,13 @@ interface VisitRepository : CrudRepository<VisitEntity, Long>, JpaSpecificationE
         to: Date,
     ): List<VisitEntity>
 
+    // Another agent's visits on a listing, soonest first: the co-brokerage block
+    fun findByListingIdAndAgentIdNotAndStatusInOrderByScheduledAtAscIdAsc(
+        listingId: Long,
+        agentId: Long,
+        statuses: Collection<VisitStatus>,
+    ): List<VisitEntity>
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT v FROM VisitEntity v WHERE v.id = :id")
     fun findByIdForUpdate(id: Long): VisitEntity?

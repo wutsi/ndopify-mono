@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.visit.server.mapper
 
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
+import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
 import com.wutsi.ndopify.visit.dto.Visit
 import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.visit.dto.VisitType
@@ -76,6 +77,17 @@ class VisitMapper {
             version = visit.version,
         )
     }
+
+    fun toCoBrokerageSummary(visit: VisitEntity): CoBrokerageVisitSummary =
+        CoBrokerageVisitSummary(
+            id = visit.id ?: -1,
+            listingId = visit.listingId,
+            agentId = visit.agentId,
+            status = visit.status,
+            type = visit.type,
+            scheduledAt = visit.scheduledAt,
+            checkedInAt = visit.checkedInAt,
+        )
 
     private fun address(listing: ListingEntity): String? =
         listOfNotNull(

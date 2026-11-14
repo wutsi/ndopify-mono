@@ -1,5 +1,10 @@
 package com.wutsi.ndopify.visit.server.endpoint
 
+import com.wutsi.ndopify.error.dto.Error
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.Parameter
+import com.wutsi.ndopify.error.dto.ParameterType
+import com.wutsi.ndopify.error.server.exception.BadRequestException
 import com.wutsi.ndopify.listing.server.service.ListingService
 import com.wutsi.ndopify.mandate.server.service.MandateAccessService
 import com.wutsi.ndopify.mandate.server.service.MandateService
@@ -13,6 +18,7 @@ import com.wutsi.ndopify.visit.dto.CreateVisitResponse
 import com.wutsi.ndopify.visit.dto.GetVisitResponse
 import com.wutsi.ndopify.visit.dto.NoShowVisitRequest
 import com.wutsi.ndopify.visit.dto.ScheduleVisitRequest
+import com.wutsi.ndopify.visit.dto.SearchCoBrokerageVisitResponse
 import com.wutsi.ndopify.visit.dto.SearchVisitRequest
 import com.wutsi.ndopify.visit.dto.SearchVisitResponse
 import com.wutsi.ndopify.visit.dto.VisitFeedbackRequest
@@ -27,6 +33,7 @@ import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
 
 /**
@@ -107,6 +114,24 @@ class VisitEndpoints(
         access.ensureCanRead(visit)
         val listing = listingService.findById(visit.listingId)
         return GetVisitResponse(visit = mapper.toVisit(visit, listing, showCode = access.isCustomer(visit)))
+    }
+
+    // The listing agent sees the visits another agent organizes on its property, never their customer
+    @GetMapping("/co-brokerage")
+    fun coBrokerage(@RequestParam(name = "listing-id") listingId: Long): SearchCoBrokerageVisitResponse {
+        if (listingId <= 0) {
+            throw BadRequestException(
+                error = Error(
+                    code = ErrorCode.HTTP_INVALID_PARAMETER,
+                    parameter = Parameter(name = "listing-id", type = ParameterType.PARAMETER_TYPE_QUERY),
+                ),
+            )
+        }
+        val listing = listingService.findById(listingId)
+        access.ensureIsListingAgent(listing)
+        return SearchCoBrokerageVisitResponse(
+            visits = service.findCoBrokerageOnListing(listing).map { mapper.toCoBrokerageSummary(it) },
+        )
     }
 
     // An agent's search is restricted to its own visits, a customer's to its own mandates
