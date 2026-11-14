@@ -38,6 +38,15 @@ data class ListingView(
     val editable: Boolean,
     /** Every required section done: "Envoyer pour vérification" is active. */
     val sendable: Boolean,
+    /** A co-broker's view: the published sheet without the owner's blocks nor the checklist. */
+    val coBrokerage: Boolean = false,
+    /** The published sheet; null until PUBLISHED, RENTED or SOLD. */
+    val published: PublishedListingView? = null,
+    /** The listing agent's card, co-broker only. */
+    val agent: ListingAgentView? = null,
+    /** The mandate for its agent, the search's *Biens correspondants* for a co-broker. */
+    val backUrl: String = "/mandates/$mandateId",
+    val backLabel: String = "← Retour au mandat",
 ) {
     companion object {
         const val PANEL_DRAFT = "DRAFT"

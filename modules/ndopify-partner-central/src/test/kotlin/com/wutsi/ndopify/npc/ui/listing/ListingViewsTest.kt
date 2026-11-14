@@ -37,6 +37,7 @@ import java.time.LocalDate
 import java.util.Date
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -511,6 +512,29 @@ class ListingViewsTest {
     }
 
     @Test
+    fun `owner hints - the landlord asked no caution`() {
+        val form = ListingSectionForm.of(LISTING, formatter)
+        val mandate = MANDATE.copy(securityDeposit = 0)
+
+        assertEquals(
+            emptyMap(),
+            ListingViews.ownerHints(form.copy(securityDeposit = ""), mandate, locations, formatter)
+                .filterKeys { it == "securityDeposit" },
+        )
+        assertEquals(
+            "Indiqué par le propriétaire : Aucune",
+            ListingViews.ownerHints(form.copy(securityDeposit = "2"), mandate, locations, formatter)["securityDeposit"],
+        )
+    }
+
+    @Test
+    fun `rows - no caution`() {
+        val view = of(LISTING.copy(securityDeposit = 0))
+
+        assertEquals("150K\u00a0FCFA / mois · sans caution", row(view, ListingSection.TERMS).summary)
+    }
+
+    @Test
     fun photos() {
         val view = ListingViews.photos(IMAGES, editable = true)
 
@@ -822,5 +846,66 @@ class ListingViewsTest {
         assertNull(view.outcomes)
         assertTrue(view.rows.isEmpty())
         assertTrue(view.groups.isEmpty())
+    }
+
+    @Test
+    fun `published owner - the sheet, the public url and the stats`() {
+        val listing = COMPLETE.copy(
+            status = ListingStatus.PUBLISHED,
+            publishedAt = SENT,
+            description = "Texte public",
+            url = "/douala/bonapriso/listing/501/appartement",
+        )
+        val view = ListingViews.of(
+            listing, IMAGES, locations, formatter, "https://ndopify.com",
+            ListingStats(501, 2, 1, 2),
+        )
+
+        assertNotNull(view.published)
+        assertEquals("Texte public", view.published.description)
+        assertEquals("https://ndopify.com/douala/bonapriso/listing/501/appartement", view.publicUrl)
+        assertEquals("2 personnes intéressées · 3 visites", view.stats)
+        assertEquals(7, view.rows.size)
+        assertEquals("/mandates/203", view.backUrl)
+        assertFalse(view.coBrokerage)
+    }
+
+    @Test
+    fun `published co-broker - no public url, stats, checklist or private location`() {
+        val listing = COMPLETE.copy(
+            status = ListingStatus.PUBLISHED,
+            publishedAt = SENT,
+            description = "Texte public",
+            accessDirections = "Porte de droite",
+            url = "/douala/bonapriso/listing/501/appartement",
+        )
+        val agent = ListingAgentView(30, "Clarisse Mbarga", "CM", null, null, "+237699123456", "/agent?id=30")
+        val view = ListingViews.of(
+            listing, IMAGES, locations, formatter, "https://ndopify.com", ListingStats(501, 2, 1, 2),
+            coBrokerage = true, agent = agent, backUrl = "/mandates/204#matches-title",
+            backLabel = "← Retour aux biens correspondants",
+        )
+
+        assertEquals("Appartement, Bonapriso", view.title)
+        assertTrue(view.coBrokerage)
+        assertNull(view.publicUrl)
+        assertNull(view.stats)
+        assertTrue(view.rows.isEmpty())
+        assertEquals("", view.progress)
+        assertEquals("", view.missing)
+        assertFalse(view.editable)
+        assertNull(view.published?.privateLocation)
+        assertEquals(agent, view.agent)
+        assertEquals("/mandates/204#matches-title", view.backUrl)
+        assertEquals("← Retour aux biens correspondants", view.backLabel)
+    }
+
+    @Test
+    fun `draft - the checklist stays the page`() {
+        val view = of()
+
+        assertNull(view.published)
+        assertFalse(view.coBrokerage)
+        assertEquals(7, view.rows.size)
     }
 }

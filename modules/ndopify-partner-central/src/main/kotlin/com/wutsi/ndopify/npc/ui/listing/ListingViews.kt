@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.listing
 
+import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.customer.dto.CustomerSummary
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ImageStatus
@@ -15,10 +16,13 @@ import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateSummary
 import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.dto.MatchStatus
+import com.wutsi.ndopify.npc.ui.agent.AgentProfileRules
+import com.wutsi.ndopify.npc.ui.kyc.KycRules
 import com.wutsi.ndopify.npc.ui.mandate.Amenity
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.npc.ui.mandate.MandateRules
 import com.wutsi.ndopify.npc.ui.match.MatchRules
+import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import com.wutsi.ndopify.npc.ui.visit.VisitCardView
 import com.wutsi.ndopify.npc.ui.visit.VisitCards
 import com.wutsi.ndopify.npc.ui.visit.VisitStats
@@ -29,6 +33,7 @@ import com.wutsi.ndopify.refdata.dto.Tenant
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.web.core.service.TenantFormatter
+import org.springframework.web.util.UriComponentsBuilder
 import java.util.Date
 import java.util.Locale
 
@@ -49,13 +54,17 @@ object ListingViews {
 
     private const val OTHER_AGENT = "Client d'un autre agent"
 
+    private const val TITLE_PREFIX = "Annonce · "
+
     // A listing that keeps its public page once it leaves the market
     private val PUBLIC = setOf(ListingStatus.PUBLISHED, ListingStatus.RENTED, ListingStatus.SOLD)
 
     /**
      * [images] is null when they couldn't be loaded: the photos' row and the hero image then have no URL.
      * [publicPortalUrl] is the tenant's, the host of a published or closed listing's `url`. [stats] is a published
-     * listing's activity, null when it can't be had: no line then.
+     * listing's activity, null when it can't be had: no line then. [coBrokerage] is the co-broker's lens: the same
+     * published sheet, without the public link, the stats, the checklist or the private location. [agent], [backUrl]
+     * and [backLabel] place the card and the return link of that lens.
      */
     fun of(
         listing: Listing,
@@ -64,8 +73,12 @@ object ListingViews {
         formatter: TenantFormatter,
         publicPortalUrl: String? = null,
         stats: ListingStats? = null,
+        coBrokerage: Boolean = false,
+        agent: ListingAgentView? = null,
+        backUrl: String = "/mandates/${listing.mandateId}",
+        backLabel: String = "← Retour au mandat",
     ): ListingView {
-        val editable = ListingRules.editable(listing)
+        val editable = ListingRules.editable(listing) && !coBrokerage
         val required = ListingRules.SECTIONS.filter { ListingRules.required(listing, it) }
         val done = required.count { ListingRules.done(listing, it) }
         val left = required.filter { !ListingRules.done(listing, it) }.map { missing(it, images) }
@@ -73,15 +86,17 @@ object ListingViews {
         val rejections = ListingRules.rejections(listing)
         val toFix = rejections.mapNotNull { it.section }.toSet()
         val neighborhood = listing.neighborhoodId?.let { locations[it]?.name }
+        val title = title(listing, neighborhood ?: locations[listing.cityId]?.name)
 
         return ListingView(
             id = listing.id,
             mandateId = listing.mandateId,
-            title = title(listing, neighborhood ?: locations[listing.cityId]?.name),
+            title = if (coBrokerage) title.removePrefix(TITLE_PREFIX) else title,
             tag = ListingRules.tag(listing),
             status = listing.status,
             createdAt = formatter.date(listing.createdAt),
             panel = when {
+                coBrokerage -> null
                 editable && rejections.isNotEmpty() -> ListingView.PANEL_TO_FIX
                 editable -> ListingView.PANEL_DRAFT
                 ListingRules.sent(listing.status) -> ListingView.PANEL_SENT
@@ -92,27 +107,60 @@ object ListingViews {
             rejections = rejections.map { it.reason },
             publishedAt = listing.publishedAt?.let { formatter.date(it) },
             heroImageUrl = listing.heroImageId?.let { id -> images?.firstOrNull { it.id == id }?.url?.ifBlank { null } },
-            publicUrl = if (listing.status in PUBLIC) publicUrl(listing, publicPortalUrl) else null,
-            stats = if (published) ListingStatsView.of(stats)?.label else null,
-            rows = ListingRules.SECTIONS.map { section ->
-                ChecklistRow(
-                    section = section,
-                    label = ListingRules.LABELS.getValue(section),
-                    url = "/listings/${listing.id}/${ListingRules.slug(section)}",
-                    summary = summary(listing, section, neighborhood, images, formatter),
-                    state = if (section in toFix) TO_FIX else state(listing, section),
-                )
-            },
-            progress = "$done sections sur ${required.size} vérifiées",
-            missing = if (left.isEmpty()) {
-                "Tout est vérifié : vous pouvez envoyer l'annonce."
+            publicUrl = if (!coBrokerage && listing.status in PUBLIC) publicUrl(listing, publicPortalUrl) else null,
+            stats = if (!coBrokerage && published) ListingStatsView.of(stats)?.label else null,
+            rows = if (coBrokerage) {
+                emptyList()
             } else {
-                "Encore à faire : ${left.joinToString(", ")}."
+                ListingRules.SECTIONS.map { section ->
+                    ChecklistRow(
+                        section = section,
+                        label = ListingRules.LABELS.getValue(section),
+                        url = "/listings/${listing.id}/${ListingRules.slug(section)}",
+                        summary = summary(listing, section, neighborhood, images, formatter),
+                        state = if (section in toFix) TO_FIX else state(listing, section),
+                    )
+                }
+            },
+            progress = if (coBrokerage) "" else "$done sections sur ${required.size} vérifiées",
+            missing = when {
+                coBrokerage -> ""
+                left.isEmpty() -> "Tout est vérifié : vous pouvez envoyer l'annonce."
+                else -> "Encore à faire : ${left.joinToString(", ")}."
             },
             editable = editable,
             sendable = editable && left.isEmpty(),
+            coBrokerage = coBrokerage,
+            published = if (listing.status in PUBLIC) {
+                PublishedListingViews.of(listing, images, locations, formatter, owner = !coBrokerage)
+            } else {
+                null
+            },
+            agent = agent,
+            backUrl = backUrl,
+            backLabel = backLabel,
         )
     }
+
+    /**
+     * The listing agent's card on a co-broker's page, from the profile page's helpers. Its profile link returns to the
+     * co-brokered listing, [match] included.
+     */
+    fun agent(agent: Agent, listing: Listing, match: Match): ListingAgentView =
+        ListingAgentView(
+            id = agent.id,
+            name = ProfileRules.fullName(agent),
+            initials = KycRules.initials(agent.party.firstName, agent.party.lastName),
+            photoUrl = agent.party.photoUrl?.ifBlank { null },
+            whatsappUrl = AgentProfileRules.whatsappUrl(agent.whatsappNumber),
+            whatsappNumber = agent.whatsappNumber,
+            profileUrl = UriComponentsBuilder.fromPath("/agent")
+                .queryParam("id", agent.id)
+                .queryParam("back", "/listings/${listing.id}?match=${match.id}")
+                .build()
+                .encode()
+                .toUriString(),
+        )
 
     // The prototype's labels of *Le bien*'s types (listing/bien.html), not the mandates'
     private val TYPE_LABELS: Map<PropertyType, String> =
@@ -241,7 +289,9 @@ object ListingViews {
             "advanceRent" to (mandate.advanceRent to form.advanceRent),
         ).forEach { (field, values) ->
             val (months, value) = values
-            if (months != null && ListingRules.count(value) != months) owner[field] = "$months mois"
+            if (months != null && (ListingRules.count(value) ?: 0) != months) {
+                owner[field] = if (months > 0) "$months mois" else "Aucune"
+            }
         }
         mandate.availableFrom?.let { date ->
             if (form.availableFrom?.trim() != date.toString()) owner["availableFrom"] = formatter.date(date)
@@ -522,7 +572,7 @@ object ListingViews {
                 formatter,
                 compact = true,
             )
-            rent + (listing.securityDeposit?.let { " · caution $it mois" } ?: "")
+            rent + (listing.securityDeposit?.let { if (it > 0) " · caution $it mois" else " · sans caution" } ?: "")
         }
 
         ListingSection.PHOTOS -> images?.let {
