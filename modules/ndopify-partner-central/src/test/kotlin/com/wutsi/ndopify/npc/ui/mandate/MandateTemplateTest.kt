@@ -350,6 +350,28 @@ class MandateTemplateTest {
     }
 
     @Test
+    fun `approved - landlord with listing published - another agent's client names that agent`() {
+        publishedListing()
+        doReturn(
+            ProfileFixtures.AGENT.copy(
+                id = 30,
+                party = ProfileFixtures.AGENT.party.copy(id = 130, firstName = "Clarisse", lastName = "Mbarga"),
+            ),
+        ).whenever(agentClient).get(30)
+
+        val card = render(APPROVED.copy(mandateType = MandateType.LISTING))
+            .selectFirst("[data-listing-proposals] [data-proposal-protected]")!!.parents().first { it.hasAttr("data-proposal") }
+
+        val line = card.selectFirst("[data-proposal-agent]")!!
+        assertEquals("Clarisse Mbarga", line.text())
+        assertTrue(line.selectFirst("svg")!!.hasAttr("aria-hidden"))
+        assertEquals(
+            "/agent?id=30&back=/mandates/203%23proposals-title",
+            line.selectFirst("a[data-proposal-agent-link]")?.attr("href"),
+        )
+    }
+
+    @Test
     fun `approved - landlord with listing published - proposals`() {
         publishedListing()
 
@@ -364,6 +386,8 @@ class MandateTemplateTest {
         )
         // Another agent's client: not a link
         assertEquals("span", section.selectFirst("[data-proposal-protected]")?.tagName())
+        // ...and its agent unknown here: no agent line
+        assertNull(section.selectFirst("[data-proposal-agent]"))
         assertEquals(
             listOf("/mandates/204#matches-title", "/mandates/207#matches-title"),
             section.select("a[data-proposal-link]").map { it.attr("href") },
@@ -840,6 +864,10 @@ class MandateTemplateTest {
 
         assertEquals("Clarisse Mbarga", card.selectFirst("[data-match-origin]")?.text())
         assertTrue(card.selectFirst("[data-match-origin] svg")!!.hasAttr("aria-hidden"))
+        assertEquals(
+            "/agent?id=30&back=/mandates/201%23matches-title",
+            card.selectFirst("[data-match-origin] a[data-match-agent]")?.attr("href"),
+        )
     }
 
     @Test
@@ -853,6 +881,7 @@ class MandateTemplateTest {
             "Bien d'un autre agent",
             page.selectFirst("[data-match-id=9001] [data-match-origin]")?.text(),
         )
+        assertNull(page.selectFirst("[data-match-id=9001] [data-match-origin] a"))
     }
 
     @Test

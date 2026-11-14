@@ -27,6 +27,15 @@ object AgentProfileRules {
     fun back(value: String?): String? =
         value?.takeIf { it.startsWith("/") && !it.startsWith("//") && ':' !in it && '\\' !in it && it.isNotBlank() }
 
+    /** Another agent's profile, opened from [back]: its back link returns there. */
+    fun profileUrl(id: Long, back: String): String =
+        UriComponentsBuilder.fromPath("/agent")
+            .queryParam("id", id)
+            .queryParam("back", back)
+            .build()
+            .encode()
+            .toUriString()
+
     /** The page URL, with [id], [page] and a valid [back]. */
     fun pageUrl(id: Long, page: Int, back: String?): String {
         val builder = UriComponentsBuilder.fromPath("/agent")

@@ -80,14 +80,18 @@ data class ProposalsView(
 
 /**
  * A client the listing was sent to. Another agent's client is "Client d'un autre agent" with no [url] and no [visit]:
- * that agent's mandate is protected, neither its customer nor its mandate is on the page. A visit the client asked for
- * sits in the same card, as [visit].
+ * that agent's mandate is protected, neither its customer nor its mandate is on the page; only that agent is named
+ * ([agentName], linked to its profile). A visit the client asked for sits in the same card, as [visit].
  */
 data class ProposalRow(
     val matchId: Long,
     val client: String,
     /** The search's *Biens correspondants*, where the match is handled; null for another agent's. */
     val url: String?,
+    /** Another agent's client only: that agent's name, when it could be read. */
+    val agentName: String? = null,
+    /** [agentName]'s profile, back to this section. */
+    val agentUrl: String? = null,
     /** "Intéressé", "En attente". */
     val tag: MandateRules.Tag,
     /** "Envoyé le 28 oct. 2026" / "Intéressé le 29 oct. 2026"; for a visit card, the sent date only. */

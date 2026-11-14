@@ -33,7 +33,6 @@ import com.wutsi.ndopify.refdata.dto.Tenant
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.web.core.service.TenantFormatter
-import org.springframework.web.util.UriComponentsBuilder
 import java.util.Date
 import java.util.Locale
 
@@ -53,6 +52,9 @@ object ListingViews {
     private val TO_CREATE = ListingRules.Tag("À créer", "neutral")
 
     private const val OTHER_AGENT = "Client d'un autre agent"
+
+    /** The sent matches with a card in *Propositions et visites*: a refused one is only counted. */
+    val PROPOSAL_ROWS: Set<MatchStatus> = setOf(MatchStatus.ACCEPTED, MatchStatus.PROPOSED)
 
     private const val TITLE_PREFIX = "Annonce · "
 
@@ -153,12 +155,7 @@ object ListingViews {
             photoUrl = agent.party.photoUrl?.ifBlank { null },
             whatsappUrl = AgentProfileRules.whatsappUrl(agent.whatsappNumber),
             whatsappNumber = agent.whatsappNumber,
-            profileUrl = UriComponentsBuilder.fromPath("/agent")
-                .queryParam("id", agent.id)
-                .queryParam("back", "/listings/${listing.id}?match=${match.id}")
-                .build()
-                .encode()
-                .toUriString(),
+            profileUrl = AgentProfileRules.profileUrl(agent.id, "/listings/${listing.id}?match=${match.id}"),
         )
 
     // The prototype's labels of *Le bien*'s types (listing/bien.html), not the mandates'
@@ -318,6 +315,8 @@ object ListingViews {
         tenant: Tenant,
         now: Long,
         formatter: TenantFormatter,
+        agentNames: Map<Long, String> = emptyMap(),
+        back: String? = null,
     ): ListingClientsView {
         val own = mandates.filter { it.agentId == agentId }.associateBy { it.id }
         val names = customers.mapNotNull { customer ->
@@ -337,7 +336,7 @@ object ListingViews {
         val byMatch = (cards.requested + cards.upcoming)
             .mapNotNull { visit -> visit.matchId?.let { it to visit } }
             .toMap()
-        val visible = matches.filter { it.status == MatchStatus.ACCEPTED || it.status == MatchStatus.PROPOSED }
+        val visible = matches.filter { it.status in PROPOSAL_ROWS }
         val rows = visible
             .sortedWith(
                 compareBy<Match> { group(it, byMatch[it.id]).ordinal }
@@ -346,6 +345,8 @@ object ListingViews {
             .map { match ->
                 val mandate = own[match.mandateId]
                 val visit = byMatch[match.id]
+                // Another agent's client: that agent may be named and linked, never its client nor its mandate.
+                val otherAgent = if (mandate == null) agentNames[match.agentId] else null
                 ProposalRow(
                     matchId = match.id,
                     client = when (mandate) {
@@ -353,6 +354,8 @@ object ListingViews {
                         else -> names[mandate.customerId] ?: "Mandat n° ${mandate.id}"
                     },
                     url = mandate?.let { "/mandates/${it.id}#matches-title" },
+                    agentName = otherAgent,
+                    agentUrl = otherAgent?.let { back?.let { AgentProfileRules.profileUrl(match.agentId, it) } },
                     tag = MatchRules.tag(match),
                     sent = if (visit != null) {
                         match.proposedAt?.let { "Envoyé le ${formatter.date(it)}" }.orEmpty()

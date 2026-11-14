@@ -322,6 +322,12 @@
                                                th:class="|status-tag status-tag--${row.tag.style}|"
                                                th:text="${row.tag.label}" data-proposal-tag>Intéressé</p>
                                         </div>
+                                        <p class="match__origin" th:if="${row.agentName}" data-proposal-agent>
+                                            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="6.5" r="3.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                                            <a th:if="${row.agentUrl}" th:href="${row.agentUrl}" th:text="${row.agentName}"
+                                               data-proposal-agent-link>Clarisse Mbarga</a>
+                                            <span th:unless="${row.agentUrl}" th:text="${row.agentName}">Clarisse Mbarga</span>
+                                        </p>
                                         <th:block th:if="${row.visit != null}">
                                             <div th:replace="~{fragments/visit-detail :: detail(${row.visit}, ${row.client})}"></div>
                                         </th:block>
@@ -404,7 +410,9 @@
                                             </div>
                                             <p class="match__origin" th:if="${match.origin}" data-match-origin>
                                                 <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="6.5" r="3.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                                                <span th:text="${match.origin}">Clarisse Mbarga</span>
+                                                <a th:if="${match.originUrl}" th:href="${match.originUrl}"
+                                                   th:text="${match.origin}" data-match-agent>Clarisse Mbarga</a>
+                                                <span th:unless="${match.originUrl}" th:text="${match.origin}">Bien d'un autre agent</span>
                                             </p>
                                             <dl class="match__facts" data-match-facts>
                                                 <div th:each="fact : ${match.facts}">
