@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.visit.server.service
 
+import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.agent.server.service.AgentService
 import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.error.dto.Error
@@ -68,6 +69,12 @@ class VisitAccessService(
             throw accessDenied()
         }
     }
+
+    /** The caller's own agent: the co-brokerage read of an agent's home and mandate pages. No admin bypass. */
+    fun requireAgent(): AgentEntity =
+        callerService.findPartyIdOrNull(callerService.getPrincipal())
+            ?.let { partyId -> agentService.findByPartyIdOrNull(partyId) }
+            ?: throw accessDenied()
 
     /** True when the caller is the visit's customer. */
     fun isCustomer(visit: VisitEntity): Boolean {

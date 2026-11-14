@@ -118,20 +118,23 @@ class VisitEndpoints(
 
     // The listing agent sees the visits another agent organizes on its property, never their customer
     @GetMapping("/co-brokerage")
-    fun coBrokerage(@RequestParam(name = "listing-id") listingId: Long): SearchCoBrokerageVisitResponse {
-        if (listingId <= 0) {
-            throw BadRequestException(
-                error = Error(
-                    code = ErrorCode.HTTP_INVALID_PARAMETER,
-                    parameter = Parameter(name = "listing-id", type = ParameterType.PARAMETER_TYPE_QUERY),
-                ),
-            )
+    fun coBrokerage(@RequestParam(name = "listing-id", required = false) listingId: Long?): SearchCoBrokerageVisitResponse {
+        val visits = if (listingId == null) {
+            service.findCoBrokerageForAgent(access.requireAgent())
+        } else {
+            if (listingId <= 0) {
+                throw BadRequestException(
+                    error = Error(
+                        code = ErrorCode.HTTP_INVALID_PARAMETER,
+                        parameter = Parameter(name = "listing-id", type = ParameterType.PARAMETER_TYPE_QUERY),
+                    ),
+                )
+            }
+            val listing = listingService.findById(listingId)
+            access.ensureIsListingAgent(listing)
+            service.findCoBrokerageOnListing(listing)
         }
-        val listing = listingService.findById(listingId)
-        access.ensureIsListingAgent(listing)
-        return SearchCoBrokerageVisitResponse(
-            visits = service.findCoBrokerageOnListing(listing).map { mapper.toCoBrokerageSummary(it) },
-        )
+        return SearchCoBrokerageVisitResponse(visits = visits.map { mapper.toCoBrokerageSummary(it) })
     }
 
     // An agent's search is restricted to its own visits, a customer's to its own mandates

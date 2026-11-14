@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.visit.server.service
 
+import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.agent.server.service.AgentService
 import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.error.dto.Error
@@ -115,6 +116,14 @@ class VisitService(
             listing.id!!,
             listing.agent.id!!,
             setOf(VisitStatus.CONFIRMED, VisitStatus.CHECKED_IN),
+        )
+
+    /** The CONFIRMED/CHECKED_IN co-brokerage visits on an agent's live listings, soonest first. */
+    fun findCoBrokerageForAgent(agent: AgentEntity): List<VisitEntity> =
+        dao.findCoBrokerageByListingAgent(
+            agent.id!!,
+            setOf(VisitStatus.CONFIRMED, VisitStatus.CHECKED_IN),
+            setOf(ListingStatus.PUBLISHED, ListingStatus.RENTED, ListingStatus.SOLD),
         )
 
     /**

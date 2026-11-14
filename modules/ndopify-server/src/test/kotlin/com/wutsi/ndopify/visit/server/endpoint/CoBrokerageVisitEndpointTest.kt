@@ -86,10 +86,51 @@ class CoBrokerageVisitEndpointTest : AuthorizationAwareEndpointIntegrationTest()
     }
 
     @Test
-    fun `a missing listing id is 400`() {
+    fun `no listing id answers the caller's co-brokerage visits across its listings`() {
+        val response = rest.getForEntity("/v1/visits/co-brokerage", SearchCoBrokerageVisitResponse::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(listOf(2L, 1L, 6L), response.body!!.visits.map { it.id }) // scheduledAt ascending
+        assertEquals(listOf(101L, 101L, 102L), response.body!!.visits.map { it.listingId })
+        assertEquals(listOf(30L, 30L, 30L), response.body!!.visits.map { it.agentId })
+        assertEquals(VisitStatus.CHECKED_IN, response.body!!.visits.first().status)
+    }
+
+    @Test
+    fun `no listing id - the answer carries no customer field`() {
+        val response = rest.getForEntity("/v1/visits/co-brokerage", String::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val body = response.body!!
+        assertTrue(body.contains("listingId"))
+        assertFalse(body.contains("Ray Sponsible"))
+        assertFalse(body.contains("ray.sponsible"))
+        assertFalse(body.contains("1234"))
+        assertFalse(body.contains("5678"))
+        assertFalse(body.contains("note"))
+        assertFalse(body.contains("address"))
+        assertFalse(body.contains("feedback"))
+        assertFalse(body.contains("agentComment"))
+    }
+
+    @Test
+    fun `no listing id - the customer is forbidden`() {
+        userId = 13L
+
         val response = rest.getForEntity("/v1/visits/co-brokerage", ErrorResponse::class.java)
 
-        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.VISIT_ACCESS_DENIED, response.body?.error?.code)
+    }
+
+    @Test
+    fun `no listing id - a caller without an agent is forbidden`() {
+        userId = 17L
+
+        val response = rest.getForEntity("/v1/visits/co-brokerage", ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.VISIT_ACCESS_DENIED, response.body?.error?.code)
     }
 
     @Test

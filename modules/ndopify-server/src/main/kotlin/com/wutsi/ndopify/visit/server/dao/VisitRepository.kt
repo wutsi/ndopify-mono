@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.visit.server.dao
 
+import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.visit.dto.VisitStatus
@@ -105,6 +106,18 @@ interface VisitRepository : CrudRepository<VisitEntity, Long>, JpaSpecificationE
         listingId: Long,
         agentId: Long,
         statuses: Collection<VisitStatus>,
+    ): List<VisitEntity>
+
+    // The co-brokerage visits on an agent's live listings, soonest first: the listing agent's home and mandate views
+    @Query(
+        "SELECT v FROM VisitEntity v WHERE v.agentId <> :agentId AND v.status IN :statuses AND " +
+            "v.listingId IN (SELECT l.id FROM ListingEntity l WHERE l.agent.id = :agentId AND l.status IN :listingStatuses) " +
+            "ORDER BY v.scheduledAt ASC, v.id ASC"
+    )
+    fun findCoBrokerageByListingAgent(
+        agentId: Long,
+        statuses: Collection<VisitStatus>,
+        listingStatuses: Collection<ListingStatus>,
     ): List<VisitEntity>
 
     // The REQUESTED/CONFIRMED visits the ended mandate makes moot: its own (search side) and its listing's
