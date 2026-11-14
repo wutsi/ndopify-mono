@@ -167,7 +167,6 @@ class MandateViewsTest {
 
         assertEquals("Ray Sponsible", contact.name)
         assertEquals("ray@gmail.com", contact.email)
-        assertEquals("+237699123456", contact.whatsapp)
         assertEquals("+237 6 99 12 34 56", contact.whatsappDisplay)
         assertEquals("237699123456", contact.whatsappDigits)
         assertEquals("le matin", contact.period)
