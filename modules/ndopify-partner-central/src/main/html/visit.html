@@ -237,18 +237,26 @@
                         </div>
                     </form>
 
-                    <details class="visit-secondary">
-                        <summary>Refuser la demande</summary>
-                        <form class="form visit-secondary__body" method="post" novalidate data-cancel-form>
+                    <div class="visit-close" data-visit-close>
+                        <div class="mandate-panel__actions visit-close__buttons" data-close-buttons>
+                            <button type="button" class="btn btn--danger" aria-expanded="false"
+                                    aria-controls="refuse-form" data-close-open="refuse">Refuser la demande</button>
+                        </div>
+                        <form id="refuse-form" class="form visit-close__form" method="post" novalidate hidden
+                              data-close-form="refuse" data-cancel-form>
+                            <h2 class="visit-form__title">Refuser la demande</h2>
                             <p>Le client est prévenu par e-mail et peut demander un
                                 autre créneau.</p>
                             <div class="field">
                                 <label class="field__label" for="refuse-reason">Raison <span class="field__optional">(facultatif, envoyée au client)</span></label>
                                 <textarea class="input input--textarea" id="refuse-reason" name="reason" rows="3" maxlength="500"></textarea>
                             </div>
-                            <button type="submit" class="btn btn--danger">Refuser la demande</button>
+                            <div class="mandate-panel__actions">
+                                <button type="submit" class="btn btn--danger">Refuser la demande</button>
+                                <button type="button" class="btn btn--outline" data-close-back>Retour</button>
+                            </div>
                         </form>
-                    </details>
+                    </div>
                 </section>
 
                 <!-- ===== CONFIRMED, before the check-in window ===== -->
@@ -273,17 +281,25 @@
                             le bien.</strong> Au début de l'appel, demandez-lui son code à 4 chiffres&nbsp;: c'est lui qui
                             démarre la visite. Vous le saisirez ici, à partir du <span data-v="windowFrom"></span>.</p>
                     </div>
-                    <details class="visit-secondary">
-                        <summary>Annuler la visite</summary>
-                        <form class="form visit-secondary__body" method="post" novalidate data-cancel-form>
+                    <div class="visit-close" data-visit-close>
+                        <div class="mandate-panel__actions visit-close__buttons" data-close-buttons>
+                            <button type="button" class="btn btn--danger" aria-expanded="false"
+                                    aria-controls="confirmed-cancel-form" data-close-open="cancel">Annuler la visite</button>
+                        </div>
+                        <form id="confirmed-cancel-form" class="form visit-close__form" method="post" novalidate hidden
+                              data-close-form="cancel" data-cancel-form>
+                            <h2 class="visit-form__title">Annuler la visite</h2>
                             <p>Le client est prévenu par e-mail.</p>
                             <div class="field">
                                 <label class="field__label" for="confirmed-cancel-reason">Raison <span class="field__optional">(facultatif, envoyée au client)</span></label>
                                 <textarea class="input input--textarea" id="confirmed-cancel-reason" name="reason" rows="3" maxlength="500"></textarea>
                             </div>
-                            <button type="submit" class="btn btn--danger">Annuler la visite</button>
+                            <div class="mandate-panel__actions">
+                                <button type="submit" class="btn btn--danger">Annuler la visite</button>
+                                <button type="button" class="btn btn--outline" data-close-back>Retour</button>
+                            </div>
                         </form>
-                    </details>
+                    </div>
                 </section>
 
                 <!-- ===== CONFIRMED, in the check-in window: start it with the client's code, or the no-show ===== -->
@@ -351,10 +367,18 @@
                     <p class="visit-later" data-noshow-later><span data-for-type="ON_SITE">Le client n'est pas là&nbsp;?</span><span
                         hidden data-for-type="VIDEO">Le client ne répond pas&nbsp;?</span> À partir de
                         <strong data-v="noShowFrom"></strong>, 15 min après l'heure prévue, vous pourrez le déclarer absent.</p>
-                    <details id="no-show" class="visit-secondary" hidden>
-                        <summary><span data-for-type="ON_SITE">Le client est absent ou refuse de donner le code</span><span
-                            hidden data-for-type="VIDEO">Le client ne répond pas ou refuse de donner le code</span></summary>
-                        <form class="form visit-secondary__body" method="post" novalidate data-noshow-form>
+                    <div class="visit-close" data-visit-close>
+                        <div class="mandate-panel__actions visit-close__buttons" data-close-buttons>
+                            <button id="no-show" type="button" class="btn btn--danger" aria-expanded="false"
+                                    aria-controls="noshow-form" hidden data-close-open="noshow"><span data-for-type="ON_SITE">Le client est absent ou refuse de donner le code</span><span
+                                hidden data-for-type="VIDEO">Le client ne répond pas ou refuse de donner le code</span></button>
+                            <button type="button" class="btn btn--danger" aria-expanded="false"
+                                    aria-controls="window-cancel-form" data-close-open="cancel">Vous ne pouvez pas venir&nbsp;?</button>
+                        </div>
+
+                        <form id="noshow-form" class="form visit-close__form" method="post" novalidate hidden
+                              data-close-form="noshow" data-noshow-form>
+                            <h2 class="visit-form__title">Déclarer l'absence</h2>
                             <fieldset class="choices" aria-describedby="noshow-error">
                                 <legend class="choices__legend">Que s'est-il passé&nbsp;?</legend>
                                 <div class="choices__grid choices__grid--2">
@@ -374,25 +398,30 @@
                             <input type="hidden" name="longitude" data-position-input>
                             <input type="hidden" name="accuracyMeters" data-position-input>
                             <div class="visit-position" hidden data-position-status data-none-text="Position non disponible&nbsp;: la déclaration est quand même enregistrée.">
-                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
-                            <span role="status" data-position-text></span>
-                            <button type="button" class="link-button" hidden data-position-retry>Relever à nouveau</button>
-                        </div>
-                            <button type="submit" class="btn btn--danger">Déclarer l'absence</button>
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+                                <span role="status" data-position-text></span>
+                                <button type="button" class="link-button" hidden data-position-retry>Relever à nouveau</button>
+                            </div>
+                            <div class="mandate-panel__actions">
+                                <button type="submit" class="btn btn--danger">Déclarer l'absence</button>
+                                <button type="button" class="btn btn--outline" data-close-back>Retour</button>
+                            </div>
                         </form>
-                    </details>
 
-                    <details class="visit-secondary">
-                        <summary>Vous ne pouvez pas venir&nbsp;?</summary>
-                        <form class="form visit-secondary__body" method="post" novalidate data-cancel-form>
+                        <form id="window-cancel-form" class="form visit-close__form" method="post" novalidate hidden
+                              data-close-form="cancel" data-cancel-form>
+                            <h2 class="visit-form__title">Annuler la visite</h2>
                             <p>Annulez la visite&nbsp;: le client est prévenu par e-mail.</p>
                             <div class="field">
                                 <label class="field__label" for="window-cancel-reason">Raison <span class="field__optional">(facultatif, envoyée au client)</span></label>
                                 <textarea class="input input--textarea" id="window-cancel-reason" name="reason" rows="3" maxlength="500"></textarea>
                             </div>
-                            <button type="submit" class="btn btn--danger">Annuler la visite</button>
+                            <div class="mandate-panel__actions">
+                                <button type="submit" class="btn btn--danger">Annuler la visite</button>
+                                <button type="button" class="btn btn--outline" data-close-back>Retour</button>
+                            </div>
                         </form>
-                    </details>
+                    </div>
                 </section>
 
                 <!-- ===== CHECKED_IN: the visit is on; end it with the agent's report ===== -->

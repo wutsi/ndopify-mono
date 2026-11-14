@@ -56,7 +56,24 @@ class MandateListingTemplateTest {
         val html = resolver.resolve(MandateAssignedMailet.TEMPLATE_LISTING, context)
 
         assertTrue(html.contains("la mise en location de votre bien"))
+        assertTrue(html.contains("Je suis votre agent dédié"))
+        assertTrue(html.contains("Je me présente"))
+        assertTrue(html.contains("Je vous contacterai"))
+        assertFalse(html.contains("Nous vous remercions"))
+        assertFalse(html.contains("Votre agent prendra contact"))
         assertFalse(html.contains("recherche"))
+    }
+
+    @Test
+    fun `assigned to a search`() {
+        val html = resolver.resolve(MandateAssignedMailet.TEMPLATE, context)
+
+        assertTrue(html.contains("votre recherche immobilière"))
+        assertTrue(html.contains("Je suis votre agent dédié"))
+        assertTrue(html.contains("Je me présente"))
+        assertTrue(html.contains("Je vous contacterai"))
+        assertFalse(html.contains("Nous vous remercions"))
+        assertFalse(html.contains("Votre agent prendra contact"))
     }
 
     @Test

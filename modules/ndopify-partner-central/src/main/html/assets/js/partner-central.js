@@ -1760,6 +1760,15 @@
                     [true, "3 chambres, comme demandé"], [true, "Les 3 équipements demandés"],
                     [true, "Disponible dès maintenant"], [true, "Non meublé, comme demandé"]]
             },
+            // Co-brokerage: another agent's published listing (Clarisse Mbarga's, see agent.js). Its card opens the
+            // read-only listing page, with that agent's contact instead of a customer.
+            {
+                id: "9009", listingId: "5001", propertyType: "APARTMENT", rooms: 2, neighbourhood: "Bonapriso",
+                price: 250000, availableIn: 0, score: 0.72, coBrokerage: true,
+                fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"],
+                    [false, "2 chambres, une de moins que demandé"], [true, "Les 3 équipements demandés"],
+                    [true, "Disponible dès maintenant"], [false, "Meublé : le client le veut vide"]]
+            },
             // Sent 9 days ago, never answered: expired by the server after 7 days (MatchJobs.expire), to send again.
             {
                 id: "9007", listingId: "3010", propertyType: "APARTMENT", rooms: 3, neighbourhood: "Bonapriso",
@@ -2733,6 +2742,7 @@
             fact(facts, "Correspondance", Math.round(match.score * 100) + " %");
             fact(facts, "Quartier", match.neighbourhood + (match.distanceKm
                 ? " (à " + String(match.distanceKm).replace(".", ",") + " km)" : ""));
+            if (match.coBrokerage) fact(facts, "Origine", "Bien d'un autre agent");
             // In bold: what the agent looks at first
             fact(facts, "Loyer", formatCompactRent(match.price), "match__rent");
             fact(facts, "Disponibilité", matchAvailability(match));
@@ -3285,7 +3295,7 @@
      * The agent creates it from the mandate (POST /v1/listings: a DRAFT, pre-filled from the landlord's answers),
      * visits the property, checks each section of the checklist (POST /v1/listings/{id}) and adds the photos
      * (POST /v1/listings/{id}/images/upload), then sends it to be checked. Once checked, it's published, its title,
-     * summary and description written by AI from the audit and the photos: the agent never writes them.
+     * summary and description written by AI from the audit, the photos and the remarks: the agent never writes them.
      * PROTOTYPE: ndopify-server has neither a submit nor a publish endpoint yet, nor any check that the mandate is an
      * approved LISTING one; "PENDING" stands for the listing being checked.
      */
@@ -3320,6 +3330,50 @@
         amenities: "Équipements enregistrés.",
         terms: "Loyer et conditions enregistrés.",
         remarks: "Remarques enregistrées."
+    };
+
+    // PROTOTYPE: another agent's published listing, matched to search 204 (co-brokerage), as GET /v1/listings/5001
+    // would return it. It is not in the session: it belongs to Clarisse Mbarga (agent.js's 1001), never to this agent.
+    var CO_BROKERAGE_LISTING = {
+        id: 5001,
+        mandateId: "1111",
+        status: "PUBLISHED",
+        createdAt: Date.now() - 42 * DAY_MS,
+        publishedAt: Date.now() - 30 * DAY_MS,
+        agent: {
+            id: "1001", firstName: "Clarisse", lastName: "Mbarga", photoUrl: null,
+            whatsappNumber: "+237699123456", whatsappDisplay: "+237 6 99 12 34 56"
+        },
+        fields: {
+            city: "Douala",
+            neighbourhood: "Bonapriso",
+            landmark: "À deux pas du carrefour Bonapriso",
+            accessDirections: "Immeuble bleu, 3e étage, porte de droite.",
+            latitude: 4.0483,
+            longitude: 9.7042,
+            accuracy: 8,
+            propertyCategory: "RESIDENTIAL",
+            propertyType: "APARTMENT",
+            furnitureType: "FULLY_FURNISHED",
+            rooms: 2,
+            bathrooms: 1,
+            livingRooms: 1,
+            kitchens: 1,
+            parkings: 1,
+            area: 80,
+            amenities: ["waterTank", "generatorSet", "securedFenced", "dedicatedWaterMeter",
+                "dedicatedElectricityMeter", "securityGuard"],
+            price: 250000,
+            securityDeposit: 2,
+            advanceRent: 1,
+            availableFrom: isoDate(Date.now() + 7 * DAY_MS),
+            agentRemarks: "Le bien est libre depuis le 1er novembre. Visites possibles en semaine après 17 h."
+        },
+        // Every section checked on site, and the 5 verified photos the check needs.
+        checked: { location: 1, gps: 1, property: 1, amenities: 1, terms: 1 },
+        photos: [1, 2, 3, 4, 5].map(function (n) {
+            return { id: n, src: "assets/images/listing-" + n + ".jpg", status: "VERIFIED" };
+        })
     };
 
     function listings() {
@@ -3529,18 +3583,54 @@
         return [key === "photos" ? "À compléter" : "À vérifier", "warning"];
     }
 
+    // The co-agent's card: photo (or initials), name, WhatsApp, and a link to agent.html.
+    function renderCoBrokerageAgent(agent) {
+        var names = [agent.firstName, agent.lastName].filter(Boolean);
+        var name = names.join(" ");
+        $("[data-agent-name]").textContent = name;
+        $("[data-agent-initials]").textContent = names.map(function (part) {
+            return part.charAt(0);
+        }).join("");
+        if (agent.photoUrl) {
+            $("[data-agent-photo-image]").src = agent.photoUrl;
+            $("[data-agent-photo-image]").hidden = false;
+            $("[data-agent-initials]").hidden = true;
+        }
+        var back = "listing.html?id=" + encodeURIComponent(CO_BROKERAGE_LISTING.id);
+        var profile = "agent.html?id=" + encodeURIComponent(agent.id) +
+            "&back=" + encodeURIComponent(back);
+        $all("[data-agent-profile]").forEach(function (link) {
+            link.href = profile;
+        });
+        var whatsapp = agent.whatsappNumber
+            ? "https://wa.me/" + agent.whatsappNumber.replace(/\D/g, "")
+            : null;
+        var contact = $("[data-agent-contact]");
+        contact.hidden = !whatsapp;
+        if (whatsapp) {
+            $("[data-agent-phone-text]").textContent = agent.whatsappDisplay || agent.whatsappNumber;
+            $("[data-agent-whatsapp]").href = whatsapp;
+        }
+    }
+
     function initListing() {
         var params = new URLSearchParams(window.location.search);
         var id = params.get("id");
-        var listing = listings()[id];
-        if (!listing || !ownsMandate(listing.mandateId)) {
+        var coBrokerage = id === String(CO_BROKERAGE_LISTING.id);
+        var listing = coBrokerage ? CO_BROKERAGE_LISTING : listings()[id];
+        if (!listing || (!coBrokerage && !ownsMandate(listing.mandateId))) {
             $("[data-listing-locked]").hidden = false;
             return;
         }
-        var mandateLink = "mandate.html?id=" + encodeURIComponent(listing.mandateId);
+        // A co-brokerage listing belongs to another agent's mandate: never link to it, go back to the search instead.
+        var mandateLink = coBrokerage
+            ? "mandate.html?id=204#match-9009-title"
+            : "mandate.html?id=" + encodeURIComponent(listing.mandateId);
         $all("[data-mandate-link]").forEach(function (a) {
             a.href = mandateLink;
+            if (coBrokerage) a.textContent = "← Retour aux biens correspondants";
         });
+        if (coBrokerage) renderCoBrokerageAgent(listing.agent);
 
         var share = $("[data-listing-share]");
         var shareLabel = $("[data-share-label]", share);
@@ -3580,18 +3670,22 @@
         }
 
         function render() {
-            listing = listings()[id];
+            listing = coBrokerage ? CO_BROKERAGE_LISTING : listings()[id];
             var tag = listingTag(listing);
             var editable = listing.status === "DRAFT";
-            document.title = "Annonce · " + listingTitle(listing) + " — Ndopify Partner Central";
-            $("[data-listing-title]").textContent = "Annonce · " + listingTitle(listing);
+            var title = (coBrokerage ? "" : "Annonce · ") + listingTitle(listing);
+            document.title = title + " — Ndopify Partner Central";
+            $("[data-listing-title]").textContent = title;
+            $("[data-listing-meta]").hidden = coBrokerage;
+            $("[data-listing-origin]").hidden = !coBrokerage;
+            $("[data-listing-agent]").hidden = !coBrokerage;
             var tagEl = $("[data-listing-tag]");
             tagEl.textContent = LISTING_TAGS[tag][0] +
                 (listing.status === "PUBLISHED" ? " le " + formatShortDate(listing.publishedAt) : "");
             tagEl.className = "status-tag status-tag--" + LISTING_TAGS[tag][1];
 
             $all("[data-listing-panel]").forEach(function (panel) {
-                panel.hidden = panel.getAttribute("data-listing-panel") !== tag;
+                panel.hidden = coBrokerage || panel.getAttribute("data-listing-panel") !== tag;
             });
             if (listing.rejection) $("[data-rejection-reason]").textContent = listing.rejection.reason;
             if (listing.submittedAt) $("[data-submitted-at]").textContent = formatDate(listing.submittedAt);
@@ -3607,9 +3701,9 @@
             } else {
                 share.hidden = true;
             }
-            // Published: its activity (views, interested clients, visits)
+            // Published: its activity (views, interested clients, visits). Never another agent's.
             var stats = $("[data-listing-stats]");
-            stats.hidden = listing.status !== "PUBLISHED";
+            stats.hidden = coBrokerage || listing.status !== "PUBLISHED";
             $("[data-listing-stats-text]", stats).textContent = statsSummary(listing.mandateId);
 
             var done = LISTING_SECTIONS.filter(function (s) {
@@ -3618,13 +3712,14 @@
             $("[data-checklist-progress]").textContent = done + " sections sur " +
                 (LISTING_SECTIONS.length - 1) + " vérifiées";
 
-            // Each row opens its section: to edit it while a draft, to view it (read-only) once sent
+            // Each row opens its section: to edit it while a draft, to view it (read-only) once sent.
+            // Another agent's listing has no section pages here: its rows are plain text.
             list.textContent = "";
             LISTING_SECTIONS.forEach(function (s) {
                 var item = template.content.firstElementChild.cloneNode(true);
-                var row = document.createElement("a");
+                var row = document.createElement(coBrokerage ? "div" : "a");
                 row.className = "checklist__row";
-                row.href = "listing/" + s.page + "?id=" + encodeURIComponent(id);
+                if (!coBrokerage) row.href = "listing/" + s.page + "?id=" + encodeURIComponent(id);
                 while (item.firstChild) row.appendChild(item.firstChild);
                 item.appendChild(row);
                 $("[data-section-title]", item).textContent = s.label;
@@ -3637,7 +3732,7 @@
             });
 
             var left = missingSections(listing);
-            $("[data-listing-send]").hidden = !editable;
+            $("[data-listing-send]").hidden = coBrokerage || !editable;
             setActive(submit, left.length === 0);
             missing.textContent = left.length ? "Encore à faire : " + left.join(", ") + "." :
                 "Tout est vérifié : vous pouvez envoyer l'annonce.";

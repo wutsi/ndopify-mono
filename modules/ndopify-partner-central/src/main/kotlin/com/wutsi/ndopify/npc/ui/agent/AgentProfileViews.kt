@@ -5,6 +5,7 @@ import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.npc.ui.join.JoinRules
 import com.wutsi.ndopify.npc.ui.kyc.KycRules
+import com.wutsi.ndopify.npc.ui.listing.ListingRules
 import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.refdata.dto.Location
@@ -27,6 +28,7 @@ object AgentProfileViews {
     ): AgentProfileView {
         val page = listings?.page ?: 1
         val pages = listings?.pages ?: 1
+        val listingBack = AgentProfileRules.pageUrl(agent.id, page, back)
         val city = agent.cityId?.let { locations[it]?.name }
         return AgentProfileView(
             id = agent.id,
@@ -43,7 +45,7 @@ object AgentProfileViews {
                 .take(JoinRules.MAX_NEIGHBORHOODS),
             biography = agent.biography?.trim()?.ifEmpty { null },
             whatsappUrl = AgentProfileRules.whatsappUrl(agent.whatsappNumber),
-            listings = listings?.listings?.map { card(it, images, locations, formatter) } ?: emptyList(),
+            listings = listings?.listings?.map { card(it, images, locations, formatter, listingBack) } ?: emptyList(),
             page = page,
             pages = pages,
             prevUrl = if (page > 1) AgentProfileRules.pageUrl(agent.id, page - 1, back) else null,
@@ -57,6 +59,7 @@ object AgentProfileViews {
         images: Map<Long, List<ListingImage>>,
         locations: Map<Long, Location>,
         formatter: TenantFormatter,
+        back: String,
     ): AgentListingCardView =
         AgentListingCardView(
             id = summary.id,
@@ -65,7 +68,7 @@ object AgentProfileViews {
             facts = AgentProfileRules.listingFacts(summary, formatter),
             price = AgentProfileRules.listingPrice(summary, formatter),
             photoUrl = heroImage(summary, images),
-            url = "/listings/${summary.id}",
+            url = ListingRules.url(summary.id, back),
         )
 
     private fun heroImage(summary: ListingSummary, images: Map<Long, List<ListingImage>>): String? {

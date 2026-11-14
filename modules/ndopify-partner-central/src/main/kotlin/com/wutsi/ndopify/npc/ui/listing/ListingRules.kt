@@ -10,13 +10,15 @@ import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.listing.dto.UpdateListingRequest
 import com.wutsi.ndopify.web.core.service.TenantFormatter
+import org.springframework.web.util.UriComponentsBuilder
 import java.time.LocalDate
 
 /**
  * The rules of a listing's pages (the prototype's `LISTING_SECTIONS`, `LISTING_TAGS`, `LISTING_APPLIES` and
  * `LISTING_RULES` in partner-central.js): its checklist, in order, how its status reads, and the validation of each
  * section's form. The checklist's state (each section VERIFIED or not) is ndopify-server's: `Listing.sections`.
- * ndopify-server checks the required fields again, not the lengths, ranges and choices checked here.
+ * ndopify-server checks the required fields again, and the caution/advance range, not the lengths and the other
+ * choices checked here.
  */
 object ListingRules {
     /** Same as ndopify-server's `ListingSectionService.MIN_PHOTOS`. */
@@ -36,9 +38,9 @@ object ListingRules {
     const val TRACK_INACCESSIBLE_BY_CAR = "trackInaccessibleByCar"
     val ROAD_ACCESS = listOf(ROAD_PAVED, TRACK_ACCESSIBLE_BY_CAR, TRACK_INACCESSIBLE_BY_CAR)
 
-    // The terms' choices (the prototype's <select>s), in months
-    val SECURITY_DEPOSITS = 1..6
-    val ADVANCE_RENTS = 1..12
+    // The terms' choices, in months; "none" is null
+    val SECURITY_DEPOSITS = RentalTerms.MONTHS
+    val ADVANCE_RENTS = RentalTerms.MONTHS
     val LEASE_TERMS = listOf(6, 12, 24, 36)
     val NOTICE_PERIODS = 1..3
 
@@ -137,6 +139,14 @@ object ListingRules {
 
     // PENDING (and UNKNOWN, never shown: the page is then locked): no code sets it yet, neither closed nor sent.
     private val PENDING_TAG = Tag("En attente", "warning")
+
+    /** `/listings/{id}`, with `?back=` when [back] is given (encoded so its own query and fragment survive). */
+    fun url(id: Long, back: String? = null): String =
+        UriComponentsBuilder.fromPath("/listings/$id")
+            .apply { back?.let { queryParam("back", it) } }
+            .build()
+            .encode()
+            .toUriString()
 
     /** The URL's name of a section: `/listings/{id}/location`. */
     fun slug(section: ListingSection): String = section.name.lowercase()
@@ -300,9 +310,7 @@ object ListingRules {
                         errors["price"] = "Indiquez le loyer mensuel."
                     }
                 }
-                if (choice(form.securityDeposit, SECURITY_DEPOSITS.toList()) == null) {
-                    errors["securityDeposit"] = "Choisissez la caution demandée."
-                }
+                optionalChoiceError(form.securityDeposit, SECURITY_DEPOSITS.toList())?.let { errors["securityDeposit"] = it }
                 optionalChoiceError(form.advanceRent, ADVANCE_RENTS.toList())?.let { errors["advanceRent"] = it }
                 optionalChoiceError(form.leaseTerm, LEASE_TERMS)?.let { errors["leaseTerm"] = it }
                 optionalChoiceError(form.noticePeriod, NOTICE_PERIODS.toList())?.let { errors["noticePeriod"] = it }

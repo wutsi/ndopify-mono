@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<body>
+<th:block th:fragment="content(row)">
+    <span class="checklist__title" th:text="${row.label}" data-section-title>Emplacement</span>
+    <span th:class="|status-tag status-tag--${row.state.style}|" th:text="${row.state.label}"
+          data-section-state>À vérifier</span>
+    <span class="checklist__summary" th:text="${row.summary}" data-section-summary></span>
+</th:block>
+</body>
+</html>

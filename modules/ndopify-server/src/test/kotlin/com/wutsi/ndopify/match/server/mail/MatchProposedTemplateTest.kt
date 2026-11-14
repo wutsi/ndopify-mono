@@ -40,16 +40,19 @@ class MatchProposedTemplateTest {
         val html = resolver.resolve(MatchProposedMailet.TEMPLATE, context)
 
         assertTrue(html.contains("Kim Possible"))
+        assertTrue(html.contains("J'ai sélectionné pour vous"))
         assertTrue(html.contains("un bien qui correspond"))
         assertTrue(html.contains("Nice apartment"))
         assertTrue(html.contains("150 000 FCFA / mois"))
         assertTrue(html.contains("https://www.ndopify.com/match/1"))
         assertTrue(html.contains("Voir le bien et répondre"))
-        assertFalse(html.contains("Répondez à votre agent"))
+        assertFalse(html.contains("Répondez-moi"))
+        assertTrue(html.contains("dites-moi"))
+        assertTrue(html.contains("j'en tiendrai compte"))
         assertTrue(html.contains("src=\"https://cdn.ndopify.com/7.jpg\""))
         assertTrue(html.contains("<a href=\"https://www.ndopify.com/match/1\""))
-        // The shared signature footer: the agent on one side, the tenant logo on the other
-        assertTrue(html.contains("Votre agent"))
+        // The shared signature footer: the agent's photo next to its name and WhatsApp
+        assertFalse(html.contains("Votre agent"))
         assertTrue(html.contains("https://wa.me/237699000001"))
         assertTrue(html.contains("src=\"https://cdn.ndopify.com/agent.jpg\""))
     }
@@ -87,7 +90,9 @@ class MatchProposedTemplateTest {
         )
 
         assertFalse(html.contains("Voir le bien et répondre"))
-        assertTrue(html.contains("Répondez à votre agent"))
+        assertTrue(html.contains("Répondez-moi"))
+        assertTrue(html.contains("j'organiserai la visite"))
+        assertTrue(html.contains("dites-le-moi"))
         assertTrue(html.contains("src=\"https://cdn.ndopify.com/7.jpg\"")) // The photo, without a link
         assertFalse(html.contains("href=\"\""))
     }

@@ -198,6 +198,7 @@ class ListingSectionController(
                 val today = formatter.today(clock)
                 model.addAttribute("today", today.toString())
                 model.addAttribute("maxDate", today.plusDays(ListingRules.MAX_AVAILABILITY_DAYS).toString())
+                model.addAttribute("rentalMonths", RentalTerms.MONTHS)
             }
             else -> {}
         }

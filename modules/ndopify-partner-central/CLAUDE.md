@@ -253,6 +253,11 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `listing-section`, `listing-photos`): the types and questions of the type, geolocation, photos shrunk and sent as
   soon as chosen, no double post. Prototype: `src/main/html/listing.html`, `listing/*.html`; its "Simuler" buttons
   have no server support, and its `REJECTED` panel is the `TO_FIX` one here.
+  Another agent's `PUBLISHED` listing opens read-only (`ListingAccess.ReadOnly`): no mandate number, no customer, no
+  stats, no section links and no send/upload/delete action. A boxed card shows the publishing agent (photo or initials,
+  name linked to `/agent`, WhatsApp number as the `wa.me` link); an unreadable agent leaves a contact-unavailable note.
+  A valid same-origin `?back=` returns to where it was opened, otherwise the Espace agent; own listings still return to
+  their mandate.
 - A signed search (APPROVED, SEARCH: `MatchRules.matched`) has *Biens correspondants* on its mandate page: the
   PUBLISHED listings of the agent's inventory ndopify-server matched to it (`ui/match/`, see
   `docs/superpowers/plans/2026-10-31-partner-central-matches.md`). `MandateController` reads its matches in one
@@ -283,6 +288,8 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   (`NdVisitClient.search`, the same `VisitCards` as the Espace agent; past visits aren't shown). A listing whose
   client has an open visit leaves *Biens correspondants*, so it isn't shown twice, and comes back once the visit
   closes (cancelled, missed, expired or completed); if only such visits remain, the section says where they went.
+  A co-brokerage match shows `Origine · Bien d'un autre agent`, and its title link carries
+  `?back=/mandates/{searchMandateId}#matches-title`; an agent-profile listing card carries `?back=` to its profile page.
 - The Espace agent's *Visites* section (`HomeController`, `ui/visit/`) lists the agent's open visits:
   `GET /v1/visits?agent-id=&status=REQUESTED&status=CONFIRMED&status=CHECKED_IN` (`NdVisitClient.search`,
   `VisitRules.OPEN`), their listings in one `GET /v1/listings?id=` and their customers in one `GET /v1/customers?id=`,
@@ -307,7 +314,9 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   are post-redirect-get back to `/visits/{id}` with the `visitOutcome` flash, worded by the controller; 403/404/409 and
   an action whose visit moved on are `changed` without a call. The page is behind the default authentication rule (no
   security matcher). `public/assets/js/visit.js` only enhances (flash focus, digits-only code, type hint, comment
-  counter, position, `#no-show`); `templates/index.html` and `templates/mandate.html` link `visit.css`; `home.js` is
+  counter, position, the closure box); `GET /visits/{id}?close=refuse|cancel|no-show` opens the chosen closure
+  form without JS (ignored when the panel doesn't offer it); `templates/index.html` and `templates/mandate.html`
+  link `visit.css`; `home.js` is
   unchanged (the cards are server-rendered, and a reload shows the next time-bound panel). `HomeController` loads the
   sections' independent reads together on virtual threads (`config/Parallel`), so the page waits on four round trips
   instead of up to eleven; each section still degrades on its own, every `Model` write stays on the request thread,

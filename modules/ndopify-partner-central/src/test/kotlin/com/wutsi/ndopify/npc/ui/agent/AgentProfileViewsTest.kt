@@ -51,7 +51,7 @@ class AgentProfileViewsTest {
         assertEquals("80 m² · Meublé", card.facts)
         assertEquals("250K\u00a0FCFA / mois", card.price)
         assertEquals("https://cdn.ndopify.com/listing/5001/9001.jpg", card.photoUrl)
-        assertEquals("/listings/5001", card.url)
+        assertEquals("/listings/5001?back=/agent?id%3D30%26page%3D1", card.url)
         assertEquals(listOf("Appartement 2 chambres", "Studio", "Maison 3 chambres"), view.listings.map { it.title })
     }
 
@@ -145,8 +145,15 @@ class AgentProfileViewsTest {
         assertNull(card.facts)
         assertNull(card.price)
         assertNull(card.photoUrl)
-        assertEquals("/listings/5009", card.url)
+        assertEquals("/listings/5009?back=/agent?id%3D30%26page%3D1", card.url)
         assertNull(view.prevUrl)
         assertNull(view.nextUrl)
+    }
+
+    @Test
+    fun `listing card - returns to the profile`() {
+        val view = AgentProfileViews.of(AGENT, page, images, LOCATIONS, formatter, null)
+
+        assertEquals("/listings/5001?back=/agent?id%3D30%26page%3D1", view.listings.first().url)
     }
 }

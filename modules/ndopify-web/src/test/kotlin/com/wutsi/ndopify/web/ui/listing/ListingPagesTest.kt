@@ -133,6 +133,24 @@ class ListingPagesTest {
     }
 
     @Test
+    fun `no caution and no advance`() {
+        val page = page(listing.copy(securityDeposit = 0, advanceRent = 0))
+
+        assertEquals(
+            listOf(
+                "Loyer" to "175K\u00a0FCFA / mois",
+                "Caution" to "Sans caution",
+                "Avance sur loyer" to "Sans avance",
+                "Durée du bail" to "12 mois",
+                "Préavis" to "1 mois",
+                "Disponible" to "À partir du 01 déc. 2026",
+            ),
+            page.terms,
+        )
+        assertEquals(listOf("Sans caution", "Sans avance", "Disponible le 01 déc. 2026"), page.asideTerms)
+    }
+
+    @Test
     fun `sold listing`() {
         val page = page(
             listing.copy(

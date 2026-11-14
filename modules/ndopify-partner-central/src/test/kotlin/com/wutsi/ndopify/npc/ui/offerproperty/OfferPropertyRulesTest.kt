@@ -75,18 +75,18 @@ class OfferPropertyRulesTest {
         assertNull(OfferPropertyRules.advanceRent(null))
         assertEquals(message, OfferPropertyRules.advanceRent(0))
         assertNull(OfferPropertyRules.advanceRent(1))
-        assertNull(OfferPropertyRules.advanceRent(12))
-        assertEquals(message, OfferPropertyRules.advanceRent(13))
+        assertNull(OfferPropertyRules.advanceRent(24))
+        assertEquals(message, OfferPropertyRules.advanceRent(25))
     }
 
     @Test
     fun securityDeposit() {
         val message = "Indiquez la caution demandée, en mois de loyer."
-        assertEquals(message, OfferPropertyRules.securityDeposit(null))
+        assertNull(OfferPropertyRules.securityDeposit(null))
         assertEquals(message, OfferPropertyRules.securityDeposit(0))
         assertNull(OfferPropertyRules.securityDeposit(1))
-        assertNull(OfferPropertyRules.securityDeposit(6))
-        assertEquals(message, OfferPropertyRules.securityDeposit(7))
+        assertNull(OfferPropertyRules.securityDeposit(24))
+        assertEquals(message, OfferPropertyRules.securityDeposit(25))
     }
 
     @Test

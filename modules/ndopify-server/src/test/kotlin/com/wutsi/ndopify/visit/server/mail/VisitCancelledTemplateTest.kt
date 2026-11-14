@@ -5,6 +5,7 @@ import com.github.mustachejava.resolver.ClasspathResolver
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.filter.MailFilterNull
 import dev.jcputney.mjml.MjmlRenderer
+import org.jsoup.Jsoup
 import kotlin.test.Test
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -35,8 +36,28 @@ class VisitCancelledTemplateTest {
         assertTrue(html.contains("Kim Possible"))
         assertTrue(html.contains("Nice apartment"))
         assertTrue(html.contains("annul"))
+        assertTrue(html.contains("Contactez Ray Sponsible"))
         assertTrue(html.contains("Empêchement"))
         assertTrue(html.contains("https://partner.ndopify.com/visits/1"))
+    }
+
+    @Test
+    fun `the customer is told to contact the agent`() {
+        val html = resolver.resolve(
+            VisitCancelledMailet.TEMPLATE,
+            context + mapOf(
+                "recipient_name" to "Ray Sponsible",
+                "other_party" to "Kim Possible",
+                "agent_full_name" to "Kim Possible",
+                "cancelled_by_label" to "J'ai annulé la visite.",
+            ),
+        )
+
+        val text = Jsoup.parse(html).text()
+
+        assertTrue(text.contains("J'ai annulé la visite."))
+        assertTrue(text.contains("Contactez-moi"))
+        assertFalse(text.contains("Contactez Kim Possible"))
     }
 
     @Test

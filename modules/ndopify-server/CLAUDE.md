@@ -285,8 +285,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   a DRAFT with `errorCodes` is one sent back. **Publish**: `POST /{id}/publish` moves a `VERIFIED` listing
   to `PUBLISHING` (404 `LISTING_NOT_FOUND`, then 409 `LISTING_NOT_VERIFIED`), `retries` reset; `ListingJobs.publish`
   then has `ListingPublisherService` generate its title, summary and description (`ListingContentGenerator`, text
-  LLM, `ChatClients.TEXT`) and its hero image (the model's, else the verified photo of highest quality, then
-  largest), and its public `url`, the path `/<city>/<neighborhood>/listing/<id>/<slug of the title>` (no host: the
+  LLM, `ChatClients.TEXT`, from the listing's details, verified photos and agent remarks) and its hero image (the
+  model's, else the verified photo of highest quality, then largest), and its public `url`, the path `/<city>/<neighborhood>/listing/<id>/<slug of the title>` (no host: the
   tenant's `publicPortalUrl`; no neighbourhood nor title segment without them): `PUBLISHED`, or still `PUBLISHING` to be retried after a failure; after `MAX_RETRIES` failed attempts
   it's `PUBLISHED` without title, summary nor description (the UIs handle it), its last error kept. Either way it
   publishes `ListingPublishedEvent`: `ListingPublishedMailet` e-mails the agent (not the customer, for now), with its

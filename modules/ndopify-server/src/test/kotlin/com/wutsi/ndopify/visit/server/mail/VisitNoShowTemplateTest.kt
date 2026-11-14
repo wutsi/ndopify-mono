@@ -23,7 +23,7 @@ class VisitNoShowTemplateTest {
         "listing_title" to "Nice apartment",
         "visit_date" to "02/12/2026",
         "visit_time" to "10:00",
-        "reason_label" to "Le client ne s'est pas présenté.",
+        "reason_label" to "Vous ne vous êtes pas présenté.",
         "visit_url" to "https://www.ndopify.com/visits/1?token=xxx.yyy.zzz",
     )
 
@@ -33,7 +33,8 @@ class VisitNoShowTemplateTest {
 
         assertTrue(html.contains("Ray Sponsible"))
         assertTrue(html.contains("Nice apartment"))
-        assertTrue(html.contains("Le client ne s"))
+        assertTrue(html.contains("Vous ne vous êtes pas présenté"))
+        assertTrue(html.contains("je l'organiserai"))
         assertTrue(html.contains("Demander une autre visite"))
         assertTrue(html.contains("https://www.ndopify.com/visits/1?token=xxx.yyy.zzz"))
     }

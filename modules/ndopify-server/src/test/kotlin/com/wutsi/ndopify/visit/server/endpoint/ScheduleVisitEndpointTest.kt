@@ -47,8 +47,7 @@ class ScheduleVisitEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertTrue(customerBody.contains(visit.code!!))
         assertTrue(customerBody.contains("Bastos, Yaounde"), customerBody)
         assertTrue(customerBody.contains("Rue 1.234, Bonapriso"), customerBody)
-        assertTrue(customerBody.contains("adresse exacte et l"), customerBody)
-        assertTrue(customerBody.contains("seront communiqu"), customerBody)
+        assertTrue(customerBody.contains("Je vous communiquerai l'adresse exacte et l"), customerBody)
         assertFalse(customerBody.contains("pharmacie"), "the address must not be forwarded in the e-mail")
         assertTrue(customerBody.contains("+237 6 99 00 00 01"))
         assertTrue(customerBody.contains("https://www.ndopify.com/visits/1?token="))
@@ -88,7 +87,7 @@ class ScheduleVisitEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         val customerBody = smtp.receivedMessages.single {
             it.allRecipients.single().toString() == "Ray Sponsible <ray.sponsible@gmail.com>"
         }.content.toString()
-        assertTrue(customerBody.contains("vous appellera en vid"), customerBody)
+        assertTrue(customerBody.contains("Je vous appellerai en vid"), customerBody)
         assertTrue(customerBody.contains("sur WhatsApp"), customerBody)
         assertTrue(customerBody.contains("Bastos, Yaounde"), customerBody)
         assertTrue(customerBody.contains("Rue 1.234, Bonapriso"), customerBody)

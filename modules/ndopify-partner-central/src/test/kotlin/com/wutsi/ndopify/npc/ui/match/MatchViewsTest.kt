@@ -287,4 +287,5 @@ class MatchViewsTest {
         assertTrue(section.matches.isEmpty())
         assertTrue(section.groups.isEmpty())
     }
+
 }

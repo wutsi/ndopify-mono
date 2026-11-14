@@ -101,7 +101,8 @@ data class ProposalRow(
 data class ChecklistRow(
     val section: ListingSection,
     val label: String,
-    val url: String,
+    /** The section page; null on another agent's listing, whose sections are not reachable. */
+    val url: String?,
     /** The section's main values, on one line. */
     val summary: String,
     val state: ListingRules.Tag,

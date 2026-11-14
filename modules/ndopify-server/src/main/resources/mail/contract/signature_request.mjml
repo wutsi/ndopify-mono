@@ -19,8 +19,8 @@
                         Bonjour <strong>{{recipient_name}}</strong>,
                     </mj-text>
                     <mj-text>
-                        Votre <strong>{{contract_type}}</strong> n° <strong>{{contract_number}}</strong> est prêt. Nous
-                        vous invitons à le lire attentivement, puis à le signer électroniquement.
+                        Votre <strong>{{contract_type}}</strong> n° <strong>{{contract_number}}</strong> est prêt. Merci
+                        de le lire attentivement, puis de le signer électroniquement.
                     </mj-text>
 
                     <mj-text font-weight="bold">
@@ -39,9 +39,9 @@
                     <!-- Sign-off -->
                     <mj-spacer/>
                     <mj-text>
-                        Cordialement,
+                        Cordialement,{{^agent_full_name}}
                         <br/>
-                        L'équipe {{tenant_name}}
+                        L'équipe {{tenant_name}}{{/agent_full_name}}
                     </mj-text>
                 </mj-column>
             </mj-section>

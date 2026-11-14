@@ -14,15 +14,15 @@ import java.time.LocalDate
  * is passed in. See `docs/superpowers/specs/2026-11-06-match-property-type-score-design.md` for the property type
  * matrix, and `docs/superpowers/plans/2026-10-31-search-listing-matching.md` for the weights and the other rules.
  *
- * Ruled out (`null`), in this order:
- * 1. the listing is the search customer's own property;
- * 2. other `listingType`, `cityId`, or `propertyCategory` (a `BUILDING` pair is decided by its type instead);
- * 3. an incompatible `propertyType` (`typeScore` is 0.0): `LAND` against non-land, residential against commercial,
+ * Ruled out (`MatchResult.RuledOut`), reporting the first rule the chain hits:
+ * 1. an incompatible `propertyType` (`typeScore` is 0.0): `LAND` against non-land, residential against commercial,
  *    `ROOM` against a housing type other than `STUDIO`, an unknown listed type;
- * 4. a housing sibling (ex: a `HOUSE` for an `APARTMENT` search) whose rooms are not the searched count or one more
- *    (`rooms` partial under [MIN_SIBLING_ROOMS]); a search without a rooms count keeps every sibling;
- * 5. with a budget: other `currencyCode` or `pricePeriodicityType`;
- * 6. with a budget: a price over the budget + `priceTolerance`.
+ * 2. the listing is the search customer's own property;
+ * 3. other `listingType`, `cityId`, or `propertyCategory` (a `BUILDING` pair is decided by its type instead);
+ * 4. with a budget: other `currencyCode` or `pricePeriodicityType`;
+ * 5. with a budget: a price over the budget + `priceTolerance`;
+ * 6. a housing sibling (ex: a `HOUSE` for an `APARTMENT` search) whose rooms are not the searched count or one more
+ *    (`rooms` partial under [MIN_SIBLING_ROOMS]); a search without a rooms count keeps every sibling.
  *
  * The score is the weighted sum of its partials multiplied by `typeScore`: 1.0 for the searched type (or none),
  * 0.8-0.9 for a commercial or housing sibling. See also
@@ -71,41 +71,73 @@ class Matcher(
         listing: ListingEntity,
         distances: Map<Long, Double>,
         today: LocalDate,
-    ): MatchScore? {
+    ): MatchScore? = (evaluate(search, listing, distances, today) as? MatchResult.Scored)?.score
+
+    /**
+     * Returns the score of the pair, or the first rule that ruled it out. Same arguments as [score].
+     */
+    fun evaluate(
+        search: MandateEntity,
+        listing: ListingEntity,
+        distances: Map<Long, Double>,
+        today: LocalDate,
+    ): MatchResult {
         val type = typeScore(search.propertyType, listing.propertyType)
-        if (type == 0.0 || isRuledOut(search, listing)) {
-            return null
+        if (type == 0.0) {
+            return MatchResult.RuledOut(
+                MatchRuleOut.PROPERTY_TYPE,
+                "search=${search.propertyType} listing=${listing.propertyType}",
+            )
         }
+        ruleOut(search, listing)?.let { return it }
         val rooms = rooms(search, listing)
         if (type < 1.0 && listing.propertyType in HOUSING && rooms < MIN_SIBLING_ROOMS) {
-            return null
+            return MatchResult.RuledOut(
+                MatchRuleOut.SIBLING_ROOMS,
+                "search=${search.rooms} listing=${listing.rooms}",
+            )
         }
-        return MatchScore(
-            neighborhood = neighborhood(search, listing, distances),
-            price = price(search, listing),
-            rooms = rooms,
-            amenities = amenities(search, listing),
-            availability = availability(search, listing, today),
-            furniture = furniture(search, listing),
-            type = type,
-            distanceKm = distanceKm(search, listing, distances),
-            missingAmenities = requested(search, listing).filterNot { (_, has) -> has }.map { (key, _) -> key },
+        return MatchResult.Scored(
+            MatchScore(
+                neighborhood = neighborhood(search, listing, distances),
+                price = price(search, listing),
+                rooms = rooms,
+                amenities = amenities(search, listing),
+                availability = availability(search, listing, today),
+                furniture = furniture(search, listing),
+                type = type,
+                distanceKm = distanceKm(search, listing, distances),
+                missingAmenities = requested(search, listing).filterNot { (_, has) -> has }.map { (key, _) -> key },
+            ),
         )
     }
 
-    private fun isRuledOut(search: MandateEntity, listing: ListingEntity): Boolean =
-        listing.mandate.customerId == search.customerId ||
-            listing.listingType != search.listingType ||
-            listing.cityId != search.cityId ||
-            categoryMismatch(search, listing) ||
-            (
-                search.price > 0 &&
-                    (
-                        listing.currencyCode != search.currencyCode ||
-                            listing.pricePeriodicityType != search.pricePeriodicityType ||
-                            listing.price > search.price * (1.0 + priceTolerance)
-                        )
-                )
+    private fun ruleOut(search: MandateEntity, listing: ListingEntity): MatchResult.RuledOut? = when {
+        listing.mandate.customerId == search.customerId ->
+            MatchResult.RuledOut(MatchRuleOut.OWN_PROPERTY, "customer=${search.customerId}")
+        listing.listingType != search.listingType ->
+            MatchResult.RuledOut(MatchRuleOut.LISTING_TYPE, "search=${search.listingType} listing=${listing.listingType}")
+        listing.cityId != search.cityId ->
+            MatchResult.RuledOut(MatchRuleOut.CITY, "search=${search.cityId} listing=${listing.cityId}")
+        categoryMismatch(search, listing) ->
+            MatchResult.RuledOut(
+                MatchRuleOut.CATEGORY,
+                "search=${search.propertyCategory} listing=${listing.propertyCategory}",
+            )
+        search.price > 0 && listing.currencyCode != search.currencyCode ->
+            MatchResult.RuledOut(MatchRuleOut.CURRENCY, "search=${search.currencyCode} listing=${listing.currencyCode}")
+        search.price > 0 && listing.pricePeriodicityType != search.pricePeriodicityType ->
+            MatchResult.RuledOut(
+                MatchRuleOut.PERIODICITY,
+                "search=${search.pricePeriodicityType} listing=${listing.pricePeriodicityType}",
+            )
+        search.price > 0 && listing.price > search.price * (1.0 + priceTolerance) ->
+            MatchResult.RuledOut(
+                MatchRuleOut.OVER_BUDGET,
+                "price=${listing.price} budget=${search.price} tolerance=$priceTolerance",
+            )
+        else -> null
+    }
 
     // The type is the specific fact; the category is derived, and the two wizards map BUILDING differently. With no
     // preferred type the category still decides, as before.

@@ -165,4 +165,21 @@ class ListingRulesTest {
         assertTrue(ListingRules.sent(ListingStatus.PUBLISHING))
         assertFalse(ListingRules.sent(ListingStatus.PUBLISHED))
     }
+
+    @Test
+    fun `url - without a back path`() {
+        assertEquals("/listings/501", ListingRules.url(501))
+    }
+
+    @Test
+    fun `url - with a back path`() {
+        assertEquals(
+            "/listings/501?back=/mandates/204%23matches-title",
+            ListingRules.url(501, "/mandates/204#matches-title"),
+        )
+        assertEquals(
+            "/listings/5001?back=/agent?id%3D30%26page%3D1",
+            ListingRules.url(5001, "/agent?id=30&page=1"),
+        )
+    }
 }

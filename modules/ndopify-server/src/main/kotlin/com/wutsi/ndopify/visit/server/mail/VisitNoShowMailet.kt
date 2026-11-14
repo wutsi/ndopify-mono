@@ -35,16 +35,19 @@ class VisitNoShowMailet(
         const val SUBJECT_AGENT = "{{tenant_name}}: visite manquée avec {{customer_name}}"
         const val TEMPLATE = "/mail/visit/no_show.mjml"
 
-        const val LABEL_CUSTOMER_ABSENT = "Le client ne s'est pas présenté."
+        // The customer's copy speaks as the agent; the agent's copy, from the platform, speaks in the second person
+        const val LABEL_CUSTOMER_ABSENT = "Vous ne vous êtes pas présenté."
+        const val LABEL_CUSTOMER_ABSENT_TO_AGENT = "Le client ne s'est pas présenté."
         const val LABEL_CODE_REFUSED = "Le code de visite n'a pas pu être vérifié."
-        const val LABEL_AGENT_ABSENT = "L'agent ne s'est pas présenté."
+        const val LABEL_AGENT_ABSENT = "Je ne me suis pas présenté."
+        const val LABEL_AGENT_ABSENT_TO_AGENT = "Vous ne vous êtes pas présenté."
     }
 
     fun send(visit: VisitEntity, customer: CustomerEntity, agent: AgentEntity, listing: ListingEntity) {
         val tenant = tenantService.findById(visit.tenantId!!)
         val customerName = customer.party.fullName()
         val agentName = agent.party.fullName()
-        val reason = reasonLabel(visit.noShowReason)
+        val reason = reasonLabel(visit.noShowReason, agentRecipient = false)
 
         val token = tenant.publicPortalUrl?.let { linkTokenService.create(customer) }
         val customerUrl = tenant.publicPortalUrl?.removeSuffix("/")?.let { base ->
@@ -87,7 +90,7 @@ class VisitNoShowMailet(
                             otherParty = customerName,
                             visit = visit,
                             listing = listing,
-                            reason = reason,
+                            reason = reasonLabel(visit.noShowReason, agentRecipient = true),
                             visitUrl = agentUrl,
                             agentRecipient = true,
                         ),
@@ -124,10 +127,11 @@ class VisitNoShowMailet(
         )
     }
 
-    private fun reasonLabel(reason: VisitNoShowReason?): String =
+    private fun reasonLabel(reason: VisitNoShowReason?, agentRecipient: Boolean): String =
         when (reason) {
             VisitNoShowReason.CODE_REFUSED -> LABEL_CODE_REFUSED
-            VisitNoShowReason.AGENT_ABSENT -> LABEL_AGENT_ABSENT
-            else -> LABEL_CUSTOMER_ABSENT
+            VisitNoShowReason.AGENT_ABSENT ->
+                if (agentRecipient) LABEL_AGENT_ABSENT_TO_AGENT else LABEL_AGENT_ABSENT
+            else -> if (agentRecipient) LABEL_CUSTOMER_ABSENT_TO_AGENT else LABEL_CUSTOMER_ABSENT
         }
 }

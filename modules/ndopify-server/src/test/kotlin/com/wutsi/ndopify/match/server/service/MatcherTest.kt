@@ -100,6 +100,9 @@ class MatcherTest {
     private fun score(search: MandateEntity, listing: ListingEntity): MatchScore? =
         matcher.score(search, listing, distances, TODAY)
 
+    private fun rule(search: MandateEntity, listing: ListingEntity): MatchRuleOut? =
+        (matcher.evaluate(search, listing, distances, TODAY) as? MatchResult.RuledOut)?.rule
+
     private fun assertScore(expected: List<Double>, total: Double, actual: MatchScore?) {
         assertNotNull(actual)
         assertEquals(expected[0], actual.neighborhood, DELTA)
@@ -170,8 +173,13 @@ class MatcherTest {
 
     @Test
     fun `ruled out - land`() {
-        assertNull(score(commercialSearch, commercialListing.copy(propertyType = PropertyType.LAND)))
-        assertNull(score(commercialSearch.copy(propertyType = PropertyType.LAND), commercialListing))
+        val landListing = commercialListing.copy(propertyType = PropertyType.LAND)
+        val landSearch = commercialSearch.copy(propertyType = PropertyType.LAND)
+
+        assertNull(score(commercialSearch, landListing))
+        assertNull(score(landSearch, commercialListing))
+        assertEquals(MatchRuleOut.PROPERTY_TYPE, rule(commercialSearch, landListing))
+        assertEquals(MatchRuleOut.PROPERTY_TYPE, rule(landSearch, commercialListing))
     }
 
     @Test
@@ -245,7 +253,10 @@ class MatcherTest {
 
     @Test
     fun `ruled out - over budget`() {
-        assertNull(score(search, listingA.copy(price = 290_000)))
+        val overBudget = listingA.copy(price = 290_000)
+
+        assertNull(score(search, overBudget))
+        assertEquals(MatchRuleOut.OVER_BUDGET, rule(search, overBudget))
     }
 
     @Test
@@ -269,10 +280,16 @@ class MatcherTest {
     @Test
     fun `ruled out - housing sibling with other rooms`() {
         val house = listingA.copy(propertyType = PropertyType.HOUSE)
+        val twoRooms = house.copy(rooms = 2)
+        val fiveRooms = house.copy(rooms = 5)
+        val noRooms = house.copy(rooms = null)
 
-        assertNull(score(search, house.copy(rooms = 2)))
-        assertNull(score(search, house.copy(rooms = 5)))
-        assertNull(score(search, house.copy(rooms = null)))
+        assertNull(score(search, twoRooms))
+        assertNull(score(search, fiveRooms))
+        assertNull(score(search, noRooms))
+        assertEquals(MatchRuleOut.SIBLING_ROOMS, rule(search, twoRooms))
+        assertEquals(MatchRuleOut.SIBLING_ROOMS, rule(search, fiveRooms))
+        assertEquals(MatchRuleOut.SIBLING_ROOMS, rule(search, noRooms))
     }
 
     @Test
@@ -340,32 +357,60 @@ class MatcherTest {
 
     @Test
     fun `ruled out - other listing type`() {
-        assertNull(score(search, listingA.copy(listingType = ListingType.SALE)))
+        val listing = listingA.copy(listingType = ListingType.SALE)
+
+        assertNull(score(search, listing))
+        assertEquals(MatchRuleOut.LISTING_TYPE, rule(search, listing))
     }
 
     @Test
     fun `ruled out - other city`() {
-        assertNull(score(search, listingA.copy(cityId = 200L)))
+        val listing = listingA.copy(cityId = 200L)
+
+        assertNull(score(search, listing))
+        assertEquals(MatchRuleOut.CITY, rule(search, listing))
     }
 
     @Test
     fun `ruled out - other property category`() {
-        assertNull(score(search, listingA.copy(propertyCategory = PropertyCategory.COMMERCIAL)))
+        val listing = listingA.copy(propertyCategory = PropertyCategory.COMMERCIAL)
+
+        assertNull(score(search, listing))
+        assertEquals(MatchRuleOut.CATEGORY, rule(search, listing))
     }
 
     @Test
     fun `ruled out - other currency`() {
-        assertNull(score(search, listingA.copy(currencyCode = "EUR")))
+        val listing = listingA.copy(currencyCode = "EUR")
+
+        assertNull(score(search, listing))
+        assertEquals(MatchRuleOut.CURRENCY, rule(search, listing))
     }
 
     @Test
     fun `ruled out - other price periodicity`() {
-        assertNull(score(search, listingA.copy(pricePeriodicityType = PeriodicityType.WEEKLY)))
+        val listing = listingA.copy(pricePeriodicityType = PeriodicityType.WEEKLY)
+
+        assertNull(score(search, listing))
+        assertEquals(MatchRuleOut.PERIODICITY, rule(search, listing))
     }
 
     @Test
     fun `ruled out - the customer's own property`() {
-        assertNull(score(search, listingA.copy(mandate = listingA.mandate.copy(customerId = search.customerId))))
+        val listing = listingA.copy(mandate = listingA.mandate.copy(customerId = search.customerId))
+
+        assertNull(score(search, listing))
+        assertEquals(MatchRuleOut.OWN_PROPERTY, rule(search, listing))
+    }
+
+    @Test
+    fun `ruled out - property type is reported before the own-property rule`() {
+        val listing = listingA.copy(
+            mandate = listingA.mandate.copy(customerId = search.customerId),
+            propertyType = PropertyType.LAND,
+        )
+
+        assertEquals(MatchRuleOut.PROPERTY_TYPE, rule(search, listing))
     }
 
     @Test

@@ -105,7 +105,7 @@ class VisitNoShowMailetTest {
                 "image_url" to "https://cdn.ndopify.com/7.jpg",
                 "visit_date" to "02/12/2026",
                 "visit_time" to "10:00",
-                "reason_label" to "Le client ne s'est pas présenté.",
+                "reason_label" to "Vous ne vous êtes pas présenté.",
                 "agent_recipient" to false,
                 "visit_url" to "https://www.ndopify.com/visits/1?token=xxx.yyy.zzz",
                 "agent_full_name" to "Kim Possible",
@@ -138,8 +138,8 @@ class VisitNoShowMailetTest {
         )
         assertNull(captor.allValues.single { it.recipient.email == "kim.possible@gmail.com" }.sender)
         val contexts = contexts()
-        assertEquals("L'agent ne s'est pas présenté.", contexts[0]["reason_label"])
-        assertEquals("L'agent ne s'est pas présenté.", contexts[1]["reason_label"])
+        assertEquals("Je ne me suis pas présenté.", contexts[0]["reason_label"])
+        assertEquals("Vous ne vous êtes pas présenté.", contexts[1]["reason_label"])
         assertEquals("Kim Possible", contexts[1]["recipient_name"])
         assertEquals("Ray Sponsible", contexts[1]["other_party"])
         assertEquals("https://partner.ndopify.com/visits/1", contexts[1]["visit_url"])

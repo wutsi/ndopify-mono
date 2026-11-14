@@ -5,6 +5,7 @@ import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
+import com.wutsi.ndopify.npc.ui.listing.RentalTerms
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import java.time.LocalDate
 import java.time.format.DateTimeParseException
@@ -12,8 +13,8 @@ import java.time.format.DateTimeParseException
 /**
  * Field rules of the "Proposer un bien" wizard, shared by its controller (to validate what a step posts) and
  * [PendingListing] (to tell which steps are complete). Each returns the French error message, or null when valid.
- * Messages and thresholds are the ones of the `offer-property.js` prototype. ndopify-server doesn't re-check any of
- * this yet, so these rules are the only validation a listing gets.
+ * Messages and thresholds are the ones of the `offer-property.js` prototype. ndopify-server re-checks the caution and
+ * advance range only, so the other rules here are the only validation a listing gets.
  */
 object OfferPropertyRules {
     const val STEP_PROPERTY = "property"
@@ -36,8 +37,6 @@ object OfferPropertyRules {
 
     // Smallest monthly rent worth a listing, in the tenant's currency.
     const val MIN_RENT = 5000L
-    const val MAX_ADVANCE_MONTHS = 12
-    const val MAX_DEPOSIT_MONTHS = 6
 
     /** How far ahead the availability date may be, in days. */
     const val MAX_AVAILABILITY_DAYS = 365L
@@ -119,10 +118,11 @@ object OfferPropertyRules {
 
     /** Optional: no advance asked. */
     fun advanceRent(value: Int?): String? =
-        if (value == null || value in 1..MAX_ADVANCE_MONTHS) null else "Choisissez une avance proposée."
+        if (value == null || value in RentalTerms.MONTHS) null else "Choisissez une avance proposée."
 
+    /** Optional: no caution asked. */
     fun securityDeposit(value: Int?): String? =
-        if (value != null && value in 1..MAX_DEPOSIT_MONTHS) null else "Indiquez la caution demandée, en mois de loyer."
+        if (value == null || value in RentalTerms.MONTHS) null else "Indiquez la caution demandée, en mois de loyer."
 
     /** The date must be between [today] and [MAX_AVAILABILITY_DAYS] days later, so a saved date can expire. */
     fun availableFrom(value: LocalDate?, today: LocalDate): String? = when {

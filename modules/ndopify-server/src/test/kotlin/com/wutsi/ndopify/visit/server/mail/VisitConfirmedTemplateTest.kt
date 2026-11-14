@@ -52,14 +52,17 @@ class VisitConfirmedTemplateTest {
         assertTrue(html.contains("10:00"))
         assertTrue(html.contains("Bonapriso, Douala"))
         assertTrue(html.contains("près de la boulangerie Zepol"))
-        assertTrue(html.contains("L'adresse exacte et l'itinéraire vous seront communiqués"))
+        assertTrue(html.contains("Je vous attends sur place"))
+        assertTrue(html.contains("me joindre"))
+        assertTrue(html.contains("Présentez-le-moi"))
+        assertTrue(html.contains("Je vous communiquerai l'adresse exacte et l'itinéraire"))
         assertFalse(html.contains("Rue 1.234"))
         assertFalse(html.contains("<b>Adresse</b>"))
         assertTrue(html.contains("1234"))
         assertTrue(html.contains("https://www.ndopify.com/visits/1?token=xxx.yyy.zzz"))
         assertTrue(html.contains("https://wa.me/237699000001"))
         assertTrue(html.contains("src=\"https://cdn.ndopify.com/agent.jpg\""))
-        assertFalse(html.contains("vous appellera en vid"))
+        assertFalse(html.contains("Je vous appellerai en vidéo"))
     }
 
     @Test
@@ -69,13 +72,14 @@ class VisitConfirmedTemplateTest {
             onSite - "address" + mapOf("on_site" to false),
         )
 
-        assertTrue(html.contains("vous appellera en vid"))
+        assertTrue(html.contains("Je vous appellerai en vidéo"))
         assertTrue(html.contains("sur WhatsApp"))
         assertTrue(html.contains("+237699000001"))
         assertTrue(html.contains("près de la boulangerie Zepol"))
         assertTrue(html.contains("1234"))
+        assertTrue(html.contains("Lisez-le-moi"))
         assertFalse(html.contains("Rue 1.234"))
-        assertFalse(html.contains("L'adresse exacte et l'itinéraire"))
+        assertFalse(html.contains("Je vous communiquerai l'adresse"))
     }
 
     @Test
