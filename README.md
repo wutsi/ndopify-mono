@@ -14,14 +14,14 @@ Early-stage. Six modules exist today — there is no SDK, admin console or track
 
 ## Modules
 
-| Module                                                     | Description                                                                              |
-|------------------------------------------------------------|------------------------------------------------------------------------------------------|
-| [ndopify-dto](modules/ndopify-dto)                         | Shared request/response DTOs and contracts — no business logic                           |
-| [ndopify-server](modules/ndopify-server)                   | REST API backend (Spring Boot): agents and KYC, mandates and dispatch, contracts and e-signature, listings, matching, visits and mobile money |
+| Module                                                     | Description                                                                                                                                                                                                                                                           |
+|------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [ndopify-dto](modules/ndopify-dto)                         | Shared request/response DTOs and contracts — no business logic                                                                                                                                                                                                        |
+| [ndopify-server](modules/ndopify-server)                   | REST API backend (Spring Boot): agents and KYC, mandates and dispatch, contracts and e-signature, listings, matching, visits and mobile money                                                                                                                         |
 | [ndopify-partner-central](modules/ndopify-partner-central) | Agent-facing web app (Spring Boot + Thymeleaf, French): sign-up, e-mail OTP sign-in, KYC, mandate offers and follow-up, listings, matched properties, their visits (confirm, check in/out, no-show), plus the public *Trouver un bien* and *Proposer un bien* wizards |
-| [ndopify-esignature](modules/ndopify-esignature)           | Signer-facing contract sign page (Spring Boot + Thymeleaf, French): e-mail OTP sign-in, read and sign a contract, plus the public verify page of a signature's QR code |
-| [ndopify-web](modules/ndopify-web)                         | Public marketing site (Spring Boot + Thymeleaf, French): tenant pages, a published listing's public page, the match-proposal page and its answer, plus links to Partner Central's public wizards |
-| [ndopify-web-core](modules/ndopify-web-core)               | Library of the infrastructure shared by the three web apps: tenant resolution and formatting, access-token cookie and JWT decoding, REST interceptors and the tenant client |
+| [ndopify-esignature](modules/ndopify-esignature)           | Signer-facing contract sign page (Spring Boot + Thymeleaf, French): e-mail OTP sign-in, read and sign a contract, plus the public verify page of a signature's QR code                                                                                                |
+| [ndopify-web](modules/ndopify-web)                         | Public marketing site (Spring Boot + Thymeleaf, French): tenant pages, a published listing's public page, the match-proposal page and its answer, plus links to Partner Central's public wizards                                                                      |
+| [ndopify-web-core](modules/ndopify-web-core)               | Library of the infrastructure shared by the three web apps: tenant resolution and formatting, access-token cookie and JWT decoding, REST interceptors and the tenant client                                                                                           |
 
 ### Module Dependency
 
@@ -40,7 +40,8 @@ own, nor depends on another web app.
 ## Technologies
 
 - **Language**: Kotlin, JDK 25
-- **Framework**: Spring Boot (Web, Data JPA, Security, Cache, Validation, Actuator), Thymeleaf (partner central, e-signature, web)
+- **Framework**: Spring Boot (Web, Data JPA, Security, Cache, Validation, Actuator), Thymeleaf (partner central,
+  e-signature, web)
 - **AI**: Spring AI, with two `ChatClient`s: a vision client (OpenAI-compatible, for the KYC documents and listing
   pictures) and a text client (DeepSeek, for text-only prompts). Both currently point at DeepSeek's API
   (`deepseek-flash`) and read `DEEPSEEK_API_KEY`
@@ -143,21 +144,22 @@ AI tooling for [Claude Code](https://claude.com/claude-code) lives in [`.claude/
 
 ### Slash commands
 
-| Command                                                            | Purpose                                                                                                   |
-|--------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
-| [`/init-website-design`](.claude/commands/init-website-design.md)   | Generates [DESIGN.md](DESIGN.md) (colors, typography, spacing, components) from the canonical design doc. Run it before `/init-website`, which reads that file. |
+| Command                                                             | Purpose                                                                                                                                                                                             |
+|---------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`/init-website-design`](.claude/commands/init-website-design.md)   | Generates [DESIGN.md](DESIGN.md) (colors, typography, spacing, components) from the canonical design doc. Run it before `/init-website`, which reads that file.                                     |
 | [`/init-website`](.claude/commands/init-website.md)                 | Builds the French website prototype in `modules/ndopify-web/src/main/html/` in three stages: journey planning (`neo-user-journey`), generation (`power-design`), critique and fixes (`impeccable`). |
-| [`/init-partner-central`](.claude/commands/init-partner-central.md) | Builds the French partner central pages in `modules/ndopify-partner-central/src/main/html/` using the same three-stage pipeline (`neo-user-journey` → `power-design` → `impeccable`). |
-| [`/init-esignature`](.claude/commands/init-esignature.md)           | Builds the French e-signature prototype in `modules/ndopify-esignature/src/main/html/` with the same pipeline. |
+| [`/init-partner-central`](.claude/commands/init-partner-central.md) | Builds the French partner central pages in `modules/ndopify-partner-central/src/main/html/` using the same three-stage pipeline (`neo-user-journey` → `power-design` → `impeccable`).               |
+| [`/init-esignature`](.claude/commands/init-esignature.md)           | Builds the French e-signature prototype in `modules/ndopify-esignature/src/main/html/` with the same pipeline.                                                                                      |
 
 ### Vendored third-party skills
 
 Used by `/init-website`, `/init-partner-central` and `/init-esignature`; not specific to Ndopify.
 
-| Skill                                                          | Purpose                                                                                           |
-|----------------------------------------------------------------|---------------------------------------------------------------------------------------------------|
-| [`neo-user-journey`](.claude/skills/neo-user-journey) | UX research: user journeys, personas, synthetic-user walkthroughs, accessibility audits           |
-| [`power-design`](.claude/skills/power-design)         | On-brand HTML decks and websites, using 20 codified web design rules                              |
+| Skill                                                                | Purpose                                                                                 |
+|----------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
+| [`neo-user-journey`]( https://github.com/Cornjebus/neo-user-journey) | UX research: user journeys, personas, synthetic-user walkthroughs, accessibility audits |
+| [`power-design`](https://github.com/ItsssssJack/power-design)        | On-brand HTML decks and websites, using 20 codified web design rules                    |
+| [`impeccable`](https://github.com/pbakaus/impeccable)                | Design critique, audit, polish and anti-pattern detection                               |
 
 The commands also use `impeccable` (design critique, audit, polish and an anti-pattern detector) from the AI
 environment's own skill set; it isn't vendored in this repository.
