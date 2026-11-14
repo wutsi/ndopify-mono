@@ -3,9 +3,11 @@ package com.wutsi.ndopify.npc.client.ndopify
 import com.wutsi.ndopify.visit.dto.CancelVisitRequest
 import com.wutsi.ndopify.visit.dto.CheckInVisitRequest
 import com.wutsi.ndopify.visit.dto.CheckOutVisitRequest
+import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
 import com.wutsi.ndopify.visit.dto.GetVisitResponse
 import com.wutsi.ndopify.visit.dto.NoShowVisitRequest
 import com.wutsi.ndopify.visit.dto.ScheduleVisitRequest
+import com.wutsi.ndopify.visit.dto.SearchCoBrokerageVisitResponse
 import com.wutsi.ndopify.visit.dto.SearchVisitResponse
 import com.wutsi.ndopify.visit.dto.Visit
 import com.wutsi.ndopify.visit.dto.VisitStatus
@@ -82,6 +84,15 @@ class NdVisitClient(
             }
             .retrieve()
             .body<SearchVisitResponse>()
+            ?.visits
+            ?: emptyList()
+
+    /** The visits another agent organizes on [listingId]; the listing agent's block. */
+    fun coBrokerageOnListing(listingId: Long): List<CoBrokerageVisitSummary> =
+        rest.get()
+            .uri { uri -> uri.path("/v1/visits/co-brokerage").queryParam("listing-id", listingId).build() }
+            .retrieve()
+            .body<SearchCoBrokerageVisitResponse>()
             ?.visits
             ?: emptyList()
 

@@ -25,11 +25,14 @@ import com.wutsi.ndopify.npc.ui.match.MatchRules
 import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import com.wutsi.ndopify.npc.ui.visit.VisitCardView
 import com.wutsi.ndopify.npc.ui.visit.VisitCards
+import com.wutsi.ndopify.npc.ui.visit.VisitRules
+import com.wutsi.ndopify.npc.ui.visit.VisitSlots
 import com.wutsi.ndopify.npc.ui.visit.VisitStats
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.dto.Tenant
+import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.web.core.service.TenantFormatter
@@ -75,6 +78,7 @@ object ListingViews {
         formatter: TenantFormatter,
         publicPortalUrl: String? = null,
         stats: ListingStats? = null,
+        visits: List<ListingVisitView> = emptyList(),
         coBrokerage: Boolean = false,
         agent: ListingAgentView? = null,
         backUrl: String = "/mandates/${listing.mandateId}",
@@ -110,6 +114,7 @@ object ListingViews {
             publishedAt = listing.publishedAt?.let { formatter.date(it) },
             publicUrl = if (!coBrokerage && listing.status in PUBLIC) publicUrl(listing, publicPortalUrl) else null,
             stats = if (!coBrokerage && published) ListingStatsView.of(stats)?.label else null,
+            visits = visits,
             rows = if (coBrokerage) {
                 emptyList()
             } else {
@@ -157,6 +162,32 @@ object ListingViews {
             whatsappNumber = agent.whatsappNumber,
             profileUrl = AgentProfileRules.profileUrl(agent.id, "/listings/${listing.id}?match=${match.id}"),
         )
+
+    /**
+     * The owner's visits block: soonest first, the agent's name/profile/WhatsApp when it could be read, "un autre agent"
+     * (null name) otherwise. Never a customer field.
+     */
+    fun visits(
+        visits: List<CoBrokerageVisitSummary>,
+        agents: Map<Long, Agent>,
+        listingId: Long,
+        tenant: Tenant,
+        formatter: TenantFormatter,
+    ): List<ListingVisitView> =
+        visits
+            .sortedWith(compareBy<CoBrokerageVisitSummary> { it.scheduledAt?.time }.thenBy { it.id })
+            .map { visit ->
+                val agent = agents[visit.agentId]
+                val name = agent?.let { ProfileRules.fullName(it) }?.ifBlank { null }
+                ListingVisitView(
+                    at = visit.scheduledAt?.let { VisitSlots.dateTimeLabel(it, tenant, formatter) }.orEmpty(),
+                    typeLabel = VisitRules.typeLabel(visit.type),
+                    inProgress = visit.status == VisitStatus.CHECKED_IN,
+                    agentName = name,
+                    agentUrl = name?.let { AgentProfileRules.profileUrl(visit.agentId, "/listings/$listingId#visits-title") },
+                    whatsappUrl = AgentProfileRules.whatsappUrl(agent?.whatsappNumber),
+                )
+            }
 
     // The prototype's labels of *Le bien*'s types (listing/bien.html), not the mandates'
     private val TYPE_LABELS: Map<PropertyType, String> =
