@@ -189,7 +189,7 @@
             note: "Je viendrai avec mon mari. Le matin nous arrange, mais nous pouvons nous adapter." },
         // À confirmer, expiring in 8 h (its requested time is off the allowed half-hour slots)
         7002: { mandateId: "208", listingId: "3002", status: "REQUESTED", createdAt: NOW - 40 * HOUR,
-            requestedAt: at(2, "16:10") },
+            requestedAt: at(0, "18:10") },
         // Confirmed 2 h ago at another time than the client asked
         7003: { mandateId: "207", listingId: "3010", status: "CONFIRMED", createdAt: NOW - 26 * HOUR,
             requestedAt: at(3, "09:00"), scheduledAt: at(3, "09:30"), scheduledOn: NOW - 2 * HOUR,

@@ -2046,8 +2046,7 @@
     var LISTING_PROPOSALS = {
         203: [
             { mandateId: "204", client: "Sandrine Eboa", sentAt: -3, answer: "ACCEPTED", answeredAt: -2,
-                visit: { id: "7301", in: 2, time: "10h00", type: "IN_PERSON", status: "REQUESTED",
-                    expiresInHours: 8 } },
+                visit: { id: "7301", in: 2, time: "10h00", type: "IN_PERSON", status: "REQUESTED" } },
             { mandateId: "207", client: "Hervé Mbarga", sentAt: -4, answer: "ACCEPTED", answeredAt: -4,
                 visit: { id: "7302", in: 1, time: "09h30", type: "IN_PERSON", status: "CONFIRMED" } },
             { otherAgent: true, agent: { id: "1001", name: "Clarisse Mbarga" }, sentAt: -2, answer: "ACCEPTED",
@@ -2074,7 +2073,7 @@
                 match.visit.status = p.visit.status || "REQUESTED";
                 match.visit.id = p.visit.id;
                 match.visit.expiresAt = match.visit.status === "REQUESTED"
-                    ? Date.now() + (p.visit.expiresInHours || 42) * 60 * 60 * 1000
+                    ? Math.max(Date.now() + 48 * 60 * 60 * 1000, match.visit.at)
                     : null;
             }
             return match;
