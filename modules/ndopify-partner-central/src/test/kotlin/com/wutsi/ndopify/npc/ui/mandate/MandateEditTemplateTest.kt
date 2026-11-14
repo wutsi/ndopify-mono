@@ -13,6 +13,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
+import com.wutsi.ndopify.npc.config.Parallel
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdviceTest
@@ -106,6 +107,7 @@ class MandateEditTemplateTest {
                     tenantContext,
                     clock,
                     MandateDealCandidates(mock(), mandateClient, customerClient, listingClient),
+                    Parallel(),
                 ),
             )
             .setControllerAdvice(SignedInAdvice())

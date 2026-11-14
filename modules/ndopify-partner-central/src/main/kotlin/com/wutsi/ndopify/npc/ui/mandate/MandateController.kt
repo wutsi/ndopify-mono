@@ -23,6 +23,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
+import com.wutsi.ndopify.npc.config.Parallel
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
@@ -109,6 +110,7 @@ class MandateController(
     private val tenantContext: TenantContext,
     private val clock: Clock,
     private val dealCandidates: MandateDealCandidates,
+    private val parallel: Parallel,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(MandateController::class.java)
@@ -474,10 +476,18 @@ class MandateController(
             .mapNotNull { listings[it.listingId]?.agentId }
             .filter { it > 0 && it != agent.id }
             .distinct()
-        return ids.mapNotNull { id ->
-            lookup("agent $id of a co-brokerage listing") { agentClient.get(id) }
-                ?.let { owner -> id to ProfileRules.fullName(owner) }
-                ?.takeIf { (_, name) -> name.isNotBlank() }
+        val calls = ids.associateWith { id ->
+            parallel.async {
+                lookup("agent $id of a co-brokerage listing") { agentClient.get(id) }
+            }
+        }
+        return calls.mapNotNull { (id, call) ->
+            val owner = try {
+                call.join()
+            } catch (ex: Exception) {
+                null
+            }
+            owner?.let { id to ProfileRules.fullName(it) }?.takeIf { (_, name) -> name.isNotBlank() }
         }.toMap()
     }
 
