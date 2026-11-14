@@ -43,6 +43,8 @@ ndopify:
             cron: "-" # Never on its own: tests call MatchJobs
         rematch:
             cron: "-" # Never on its own: tests call MatchJobs
+        auto-propose:
+            cron: "-" # Never on its own: tests call MatchJobs
     visit:
         expire:
             cron: "-" # Never on its own: tests call VisitJobs

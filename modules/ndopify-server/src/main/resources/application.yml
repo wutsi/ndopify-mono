@@ -314,6 +314,7 @@ ndopify:
         auto-propose:
             after-hours: 24                 # A match the agent hasn't touched for 24h is proposed to the customer
             batch-size: 100                 # Matches examined per run
+            cron: "30 */15 * * * ?"         # Every 15 minutes, offset from the other 15-minute jobs
 
     mobile-money:
         mtn:
