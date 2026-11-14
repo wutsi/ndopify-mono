@@ -55,7 +55,7 @@
   - `MatchView.origin: String?` — the name under the title, null for own inventory.
   - `MatchViews.section(..., agentNames: Map<Long, String> = emptyMap())`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Extend the `section` helper with `agentNames: Map<Long, String> = emptyMap()` and pass it as the last argument to
 `MatchViews.section`. Add:
@@ -86,12 +86,12 @@ fun `own-inventory card - no origin line`() {
 }
 ```
 
-- [ ] **Step 2: Run them and verify they fail**
+- [x] **Step 2: Run them and verify they fail**
 
 Run: `mvn test -Dtest=MatchViewsTest`
 Expected: compilation fails on `origin` / `agentNames`.
 
-- [ ] **Step 3: Implement the field and the resolution**
+- [x] **Step 3: Implement the field and the resolution**
 
 In `MatchView`, after `coBrokerage`:
 
@@ -123,12 +123,12 @@ Pass `agentNames` to `view(...)`, and set:
 origin = if (match.coBrokerage) agentNames[listing.agentId] ?: OTHER_AGENT else null,
 ```
 
-- [ ] **Step 4: Run them and verify they pass**
+- [x] **Step 4: Run them and verify they pass**
 
 Run: `mvn test -Dtest=MatchViewsTest`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add modules/ndopify-partner-central/src/main/kotlin/com/wutsi/ndopify/npc/ui/match/MatchView.kt \
@@ -152,7 +152,7 @@ git commit -m "feat(npc): resolve the co-brokerage card origin line"
 - Consumes: `MatchView.origin` (Task 2), `NdAgentClient.get(id): Agent?`, `ProfileRules.fullName(agent): String`.
 - Produces: the rendered `[data-match-origin]` line and `[data-matches-intro]` paragraph.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `MandateTemplateTest`, add `private val agentClient = mock<NdAgentClient>()` and pass it right after
 `listingClient` in the `MandateController(...)` construction. Do the same minimal wiring in `MandateControllerTest`
@@ -257,13 +257,13 @@ fun `matches intro covers other agents' listings`() {
 }
 ```
 
-- [ ] **Step 2: Run them and verify they fail**
+- [x] **Step 2: Run them and verify they fail**
 
 Run: `mvn test -Dtest=MandateTemplateTest`
 Expected: failures on the missing `[data-match-origin]` / `[data-matches-intro]`, and the unknown `agentClient`
 constructor argument.
 
-- [ ] **Step 3: Read the listing agents in `MandateController`**
+- [x] **Step 3: Read the listing agents in `MandateController`**
 
 Add the `NdAgentClient` import and constructor parameter after `listingClient`:
 
@@ -306,7 +306,7 @@ private fun listingAgentNames(
 }
 ```
 
-- [ ] **Step 4: Render the line**
+- [x] **Step 4: Render the line**
 
 In `templates/mandate.html`, after the closing `</div>` of `assignment__head` and before
 `<dl class="match__facts" data-match-facts>`:
@@ -318,7 +318,7 @@ In `templates/mandate.html`, after the closing `</div>` of `assignment__head` an
 </p>
 ```
 
-- [ ] **Step 5: Correct the section intro**
+- [x] **Step 5: Correct the section intro**
 
 Replace the current intro paragraph with:
 
@@ -327,7 +327,7 @@ Replace the current intro paragraph with:
     d'autres agents. Envoyez-les-lui ou écartez-les.</p>
 ```
 
-- [ ] **Step 6: Add the CSS rule**
+- [x] **Step 6: Add the CSS rule**
 
 In `resources/public/assets/css/home.css`, immediately before the `.match__facts` rule:
 
@@ -351,17 +351,17 @@ In `resources/public/assets/css/home.css`, immediately before the `.match__facts
 
 The existing `.match article > * + *` rule supplies the small top margin; do not add one.
 
-- [ ] **Step 7: Run the tests**
+- [x] **Step 7: Run the tests**
 
 Run: `mvn test -Dtest=MandateTemplateTest`
 Expected: PASS.
 
-- [ ] **Step 8: Run the module suite**
+- [x] **Step 8: Run the module suite**
 
 Run: `mvn test`
 Expected: PASS, including the updated constructor wiring.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add modules/ndopify-partner-central/src/main/kotlin/com/wutsi/ndopify/npc/ui/mandate/MandateController.kt \
@@ -377,6 +377,6 @@ git commit -m "feat(npc): show the listing agent on co-brokerage matches"
 
 ## Final verification
 
-- [ ] `mvn test` in `modules/ndopify-partner-central` — all pass.
-- [ ] `mvn validate` — ktlint passes.
-- [ ] `git status` contains no unintended files from this work.
+- [x] `mvn test` in `modules/ndopify-partner-central` — all pass.
+- [x] `mvn validate` — ktlint passes.
+- [x] `git status` contains no unintended files from this work.
