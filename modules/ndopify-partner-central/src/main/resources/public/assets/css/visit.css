@@ -49,6 +49,52 @@
     font-size: var(--step-hint);
 }
 
+/* Another agent's listing: the organizer, named and linked; their customer never appears. */
+.visit-card__agent {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    margin-top: var(--space-2);
+    padding-top: var(--space-2);
+    border-top: 1px solid var(--color-border);
+    font-size: var(--step-hint);
+}
+
+.visit-detail__agent {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    font-size: var(--step-hint);
+}
+
+.visit-card__agent a,
+.visit-detail__agent a {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    color: inherit;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.visit-card__agent a:hover,
+.visit-detail__agent a:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
+.visit-card__agent .icon,
+.visit-detail__agent .icon {
+    flex: none;
+}
+
+.visit-card__agent a .icon,
+.visit-detail__agent a .icon {
+    width: 0.85em;
+    height: 0.85em;
+    color: var(--color-info-fg);
+}
+
 .visit-card .icon {
     flex: none;
 }

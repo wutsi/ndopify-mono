@@ -1,9 +1,12 @@
 package com.wutsi.ndopify.npc.ui.visit
 
+import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.customer.dto.CustomerSummary
 import com.wutsi.ndopify.listing.dto.ListingSummary
+import com.wutsi.ndopify.npc.ui.agent.AgentProfileRules
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.npc.ui.match.MatchRules
+import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Tenant
 import com.wutsi.ndopify.visit.dto.Visit
@@ -34,6 +37,8 @@ object VisitCards {
         now: Long,
         tenant: Tenant,
         formatter: TenantFormatter,
+        agents: Map<Long, Agent> = emptyMap(),
+        back: String? = null,
     ): VisitCardsView {
         if (visits == null) {
             return VisitCardsView(emptyList(), emptyList(), unavailable = true)
@@ -54,10 +59,13 @@ object VisitCards {
                 val requestedTime = VisitSlots.localTime(visit.requestedAt, tenant).toString()
                 val dayValid = days.any { it.value == requestedDay }
                 val timeValid = times.any { it.first == requestedTime }
+                val listingAgent = agent(visit, listings, agents, back)
                 VisitCardView(
                     id = visit.id,
                     matchId = visit.matchId,
                     customerName = name(customers[visit.customerId]),
+                    agentName = listingAgent.first,
+                    agentUrl = listingAgent.second,
                     type = VisitRules.typeLabel(visit.type),
                     video = visit.type == VisitType.VIDEO,
                     status = visit.status,
@@ -84,10 +92,13 @@ object VisitCards {
             .sortedWith(compareBy(nullsLast()) { it.scheduledAt?.time })
             .map { visit ->
                 val label = whenLabel(visit, today, tenant, formatter)
+                val listingAgent = agent(visit, listings, agents, back)
                 VisitCardView(
                     id = visit.id,
                     matchId = visit.matchId,
                     customerName = name(customers[visit.customerId]),
+                    agentName = listingAgent.first,
+                    agentUrl = listingAgent.second,
                     type = VisitRules.typeLabel(visit.type),
                     video = visit.type == VisitType.VIDEO,
                     status = visit.status,
@@ -193,6 +204,25 @@ object VisitCards {
             if (at != null) return "En cours depuis ${formatter.time(at)}"
         }
         return VisitRules.whenLabel(visit.scheduledAt ?: visit.requestedAt, today, tenant, formatter)
+    }
+
+    /**
+     * The listing's agent when this is a co-brokerage visit: its name, or "un autre agent" when it can't be read, and
+     * its profile link back to [back]. Null when [back] is null (a page that doesn't show the line) or the visit is on
+     * the agent's own inventory.
+     */
+    private fun agent(
+        visit: Visit,
+        listings: Map<Long, ListingSummary>?,
+        agents: Map<Long, Agent>,
+        back: String?,
+    ): Pair<String?, String?> {
+        if (back == null) return null to null
+        val listing = listings?.get(visit.listingId) ?: return null to null
+        if (listing.agentId == visit.agentId) return null to null
+        val agent = agents[listing.agentId]
+        val name = agent?.let { ProfileRules.fullName(it) }?.ifBlank { null } ?: "un autre agent"
+        return name to agent?.let { AgentProfileRules.profileUrl(listing.agentId, back) }
     }
 
     private fun name(customer: CustomerSummary?): String =

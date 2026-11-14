@@ -18,6 +18,7 @@ import com.wutsi.ndopify.mandate.dto.MandateStats
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateSummary
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
@@ -70,6 +71,7 @@ class HomeControllerTest {
     private val listingClient = mock<NdListingClient>()
     private val visitClient = mock<NdVisitClient>()
     private val customerClient = mock<NdCustomerClient>()
+    private val agentClient = mock<NdAgentClient>()
     private val clock = mock<Clock>()
     private val parallel = Parallel()
     private lateinit var mvc: MockMvc
@@ -93,6 +95,7 @@ class HomeControllerTest {
             listingClient,
             visitClient,
             customerClient,
+            agentClient,
             locationClient,
             tenantContext,
             clock,
@@ -578,6 +581,39 @@ class HomeControllerTest {
         assertEquals("Sur place · Appartement 3 chambres · Bonapriso", visits.requested.single().listing)
         assertEquals("Confirmée", visits.upcoming.single().tag?.label)
         assertEquals(false, visits.unavailable)
+    }
+
+    @Test
+    fun `a co-brokerage visit names the listing agent`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        doReturn(listOf(VisitFixtures.summary(VisitFixtures.confirmed())))
+            .whenever(visitClient).search(AGENT.id, VisitRules.OPEN)
+        doReturn(listOf(VisitFixtures.listingSummary().copy(agentId = VisitFixtures.OTHER_AGENT_ID)))
+            .whenever(listingClient).searchByIds(listOf(3012L))
+        doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        val card = visitCards(result).upcoming.single()
+        assertEquals("Clarisse Mbarga", card.agentName)
+        assertEquals("/agent?id=30&back=/%23visits-title", card.agentUrl)
+        verify(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
+    }
+
+    @Test
+    fun `a co-brokerage visit keeps the card when the agent cannot be read`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        doReturn(listOf(VisitFixtures.summary(VisitFixtures.confirmed())))
+            .whenever(visitClient).search(AGENT.id, VisitRules.OPEN)
+        doReturn(listOf(VisitFixtures.listingSummary().copy(agentId = VisitFixtures.OTHER_AGENT_ID)))
+            .whenever(listingClient).searchByIds(listOf(3012L))
+        doThrow(ResourceAccessException("timeout")).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        val card = visitCards(result).upcoming.single()
+        assertEquals("un autre agent", card.agentName)
+        assertNull(card.agentUrl)
     }
 
     @Test

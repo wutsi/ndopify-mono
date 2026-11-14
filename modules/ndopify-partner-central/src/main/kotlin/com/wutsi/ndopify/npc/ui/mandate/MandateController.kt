@@ -344,6 +344,7 @@ class MandateController(
         val visitListings = visits
             ?.filter { VisitRules.isOpen(VisitRules.asVisit(it), now) }
             ?.let { loadVisitListings(mandate, it) }
+        val visitAgents = visitAgents(agent, visits, visitListings)
         val visitStats = if (matched) VisitStats.of(visits, now) else null
         val listings = matches?.let { listings(mandate, it) }
         val agentNames = if (matches != null && listings != null) {
@@ -369,6 +370,8 @@ class MandateController(
                 now,
                 tenantContext.getTenant(),
                 formatter,
+                agents = visitAgents,
+                back = "/mandates/${mandate.id}#matches-title",
             )
             val byMatch = (cards.requested + cards.upcoming)
                 .mapNotNull { visit -> visit.matchId?.let { it to visit } }
@@ -517,6 +520,33 @@ class MandateController(
                 listingClient.searchByIds(visits.map { it.listingId }.distinct()).associateBy { it.id }
             }
         }
+
+    /**
+     * The listing agents of the co-brokerage visits, by id, read in parallel; the signed-in agent and unreadable ids
+     * are left out.
+     */
+    private fun visitAgents(
+        agent: Agent,
+        visits: List<VisitSummary>?,
+        listings: Map<Long, ListingSummary>?,
+    ): Map<Long, Agent> {
+        val ids = visits.orEmpty()
+            .mapNotNull { listings?.get(it.listingId) }
+            .filter { it.agentId > 0 && it.agentId != agent.id }
+            .map { it.agentId }
+            .distinct()
+        val calls = ids.associateWith { id ->
+            parallel.async { lookup("agent $id") { agentClient.get(id) } }
+        }
+        return calls.mapNotNull { (id, call) ->
+            val found = try {
+                call.join()
+            } catch (ex: Exception) {
+                null
+            }
+            found?.let { id to it }
+        }.toMap()
+    }
 
     /** The flash outcome of the last action, worded after the mandate as it is now. */
     private fun outcome(outcome: String, view: MandateView, model: Model) {

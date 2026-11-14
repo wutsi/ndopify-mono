@@ -15,6 +15,7 @@ import com.wutsi.ndopify.mandate.dto.MandateStats
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateSummary
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
@@ -77,6 +78,7 @@ class HomeTemplateTest {
     private val listingClient = mock<NdListingClient>()
     private val visitClient = mock<NdVisitClient>()
     private val customerClient = mock<NdCustomerClient>()
+    private val agentClient = mock<NdAgentClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
@@ -125,6 +127,7 @@ class HomeTemplateTest {
                     listingClient,
                     visitClient,
                     customerClient,
+                    agentClient,
                     locationClient,
                     tenantContext,
                     clock,
@@ -519,6 +522,23 @@ class HomeTemplateTest {
         val upcoming = page.selectFirst("[data-visit-group=upcoming]")!!
         assertEquals(1, upcoming.select("[data-visit-card]").size)
         assertNull(upcoming.selectFirst("[data-visit-timer]"))
+    }
+
+    @Test
+    fun `a co-brokerage visit names the listing agent`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        doReturn(listOf(VisitFixtures.summary(VisitFixtures.confirmed())))
+            .whenever(visitClient).search(AGENT.id, VisitRules.OPEN)
+        doReturn(listOf(VisitFixtures.listingSummary().copy(agentId = VisitFixtures.OTHER_AGENT_ID)))
+            .whenever(listingClient).searchByIds(listOf(3012L))
+        doReturn(listOf(VisitFixtures.customerSummary())).whenever(customerClient).search(listOf(300L))
+        doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
+
+        val page = render(get("/"))
+        val card = page.selectFirst("[data-visit-group=upcoming] [data-visit-card]")!!
+
+        assertEquals("Clarisse Mbarga", card.selectFirst("[data-visit-agent-name]")?.text())
+        assertEquals("/agent?id=30&back=/%23visits-title", card.selectFirst("[data-visit-agent-link]")?.attr("href"))
     }
 
     @Test

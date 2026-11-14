@@ -259,4 +259,58 @@ class VisitCardsTest {
         assertEquals(7002L, cards.ongoing.single().id)
         assertEquals(listOf(7002L, 7003L), cards.upcoming.map { it.id })
     }
+
+    @Test
+    fun `a co-brokerage visit names the listing agent`() {
+        val cards = VisitCards.of(
+            listOf(summary(VisitFixtures.confirmed())),
+            mapOf(3012L to listingSummary().copy(agentId = VisitFixtures.OTHER_AGENT_ID)),
+            mapOf(300L to customerSummary()),
+            LOCATIONS,
+            VisitFixtures.NOW,
+            VisitFixtures.TENANT,
+            VisitFixtures.FORMATTER,
+            agents = mapOf(VisitFixtures.OTHER_AGENT_ID to VisitFixtures.OTHER_AGENT),
+            back = "/#visits-title",
+        )
+
+        assertEquals("Clarisse Mbarga", cards.upcoming.single().agentName)
+        assertEquals("/agent?id=30&back=/%23visits-title", cards.upcoming.single().agentUrl)
+    }
+
+    @Test
+    fun `an own-inventory visit has no agent line`() {
+        val cards = VisitCards.of(
+            listOf(summary(VisitFixtures.confirmed())),
+            mapOf(3012L to listingSummary()),
+            mapOf(300L to customerSummary()),
+            LOCATIONS,
+            VisitFixtures.NOW,
+            VisitFixtures.TENANT,
+            VisitFixtures.FORMATTER,
+            agents = mapOf(VisitFixtures.AGENT_ID to VisitFixtures.OTHER_AGENT),
+            back = "/#visits-title",
+        )
+
+        assertNull(cards.upcoming.single().agentName)
+        assertNull(cards.upcoming.single().agentUrl)
+    }
+
+    @Test
+    fun `an unreadable listing agent keeps the line as un autre agent`() {
+        val cards = VisitCards.of(
+            listOf(summary(VisitFixtures.confirmed())),
+            mapOf(3012L to listingSummary().copy(agentId = VisitFixtures.OTHER_AGENT_ID)),
+            mapOf(300L to customerSummary()),
+            LOCATIONS,
+            VisitFixtures.NOW,
+            VisitFixtures.TENANT,
+            VisitFixtures.FORMATTER,
+            agents = emptyMap(),
+            back = "/#visits-title",
+        )
+
+        assertEquals("un autre agent", cards.upcoming.single().agentName)
+        assertNull(cards.upcoming.single().agentUrl)
+    }
 }

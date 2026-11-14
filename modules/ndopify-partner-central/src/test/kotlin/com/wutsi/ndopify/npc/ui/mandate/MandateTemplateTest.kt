@@ -788,6 +788,29 @@ class MandateTemplateTest {
     }
 
     @Test
+    fun `visits - a co-brokerage visit names the listing agent`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        withVisits(VisitFixtures.summary(VisitFixtures.confirmed().copy(mandateId = 201, matchId = 9001)))
+        doReturn(
+            listOf(
+                MatchFixtures.LISTING_A.copy(agentId = VisitFixtures.OTHER_AGENT_ID),
+                MatchFixtures.LISTING_B,
+                MatchFixtures.LISTING_C,
+            ),
+        ).whenever(listingClient).searchByIds(any())
+        doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
+
+        val page = render(APPROVED)
+
+        val card = page.selectFirst("[data-match-id=9001]")!!
+        assertEquals("Clarisse Mbarga", card.selectFirst("[data-visit-agent-name]")?.text())
+        assertEquals(
+            "/agent?id=30&back=/mandates/201%23matches-title",
+            card.selectFirst("[data-visit-agent-link]")?.attr("href"),
+        )
+    }
+
+    @Test
     fun `visits unavailable`() {
         withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.ACCEPTED))
         doThrow(ResourceAccessException("timeout")).whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)

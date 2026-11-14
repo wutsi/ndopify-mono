@@ -8,6 +8,7 @@ import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStats
+import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
@@ -60,6 +61,7 @@ class HomeController(
     private val listingClient: NdListingClient,
     private val visitClient: NdVisitClient,
     private val customerClient: NdCustomerClient,
+    private val agentClient: NdAgentClient,
     locationClient: NdLocationClient,
     private val tenantContext: TenantContext,
     private val clock: Clock,
@@ -129,8 +131,10 @@ class HomeController(
                 )
             }
             val listingStatsCall = parallel.async { listings?.let { listingStats(it.values) } }
+            val visitAgentsCall = parallel.async { visitAgents(agent, visits, visitListings) }
             val names = namesCall.join()
             val stats = listingStatsCall.join()
+            val visitAgents = visitAgentsCall.join()
 
             // The Model and the view stay on the request thread.
             val assignments = offers?.map { (assignment, mandate) ->
@@ -156,7 +160,17 @@ class HomeController(
                 if (folded.size == 1) "Voir l'autre mandat" else "Voir les ${folded.size} autres mandats",
             )
             model.addAttribute("mandatesUnavailable", mandates == null)
-            val visitsView = VisitCards.of(visits, visitListings, visitCustomers, names, now, tenant, formatter)
+            val visitsView = VisitCards.of(
+                visits,
+                visitListings,
+                visitCustomers,
+                names,
+                now,
+                tenant,
+                formatter,
+                agents = visitAgents,
+                back = "/#visits-title",
+            )
             model.addAttribute("visits", visitsView)
 
             // The triage header: the agent's day and what is waiting, so the first screen answers "what now?".
@@ -285,6 +299,40 @@ class HomeController(
             LOGGER.warn("No customers for the visits of agent: ${ex.message}")
             emptyMap()
         }
+
+    /**
+     * The listing agents of the co-brokerage visits, by id, read in parallel; the signed-in agent and unreadable ids
+     * are left out.
+     */
+    private fun visitAgents(
+        agent: Agent,
+        visits: List<VisitSummary>?,
+        listings: Map<Long, ListingSummary>?,
+    ): Map<Long, Agent> {
+        val ids = visits.orEmpty()
+            .mapNotNull { listings?.get(it.listingId) }
+            .filter { it.agentId > 0 && it.agentId != agent.id }
+            .map { it.agentId }
+            .distinct()
+        val calls = ids.associateWith { id ->
+            parallel.async {
+                try {
+                    agentClient.get(id)
+                } catch (ex: RestClientException) {
+                    LOGGER.warn("No agent $id for a visit: ${ex.message}")
+                    null
+                }
+            }
+        }
+        return calls.mapNotNull { (id, call) ->
+            val found = try {
+                call.join()
+            } catch (ex: Exception) {
+                null
+            }
+            found?.let { id to it }
+        }.toMap()
+    }
 
     /**
      * The mandates' customers by id, in one search, for the cards' titles; empty when there are none or they can't be
