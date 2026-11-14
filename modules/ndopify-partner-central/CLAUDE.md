@@ -259,7 +259,12 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   stats, no section links and no send/upload/delete action. A boxed card shows the publishing agent (photo or initials,
   name linked to `/agent`, WhatsApp number as the `wa.me` link); an unreadable agent leaves a contact-unavailable note.
   A valid same-origin `?back=` returns to where it was opened, otherwise the Espace agent; own listings still return to
-  their mandate.
+  their mandate. The owner of a `PUBLISHED`/`RENTED`/`SOLD` listing also sees *Visites d'autres agents*
+  (`ListingView.visits`, `ListingViews.visits`): `GET /v1/visits/co-brokerage?listing-id=`
+  (`NdVisitClient.coBrokerageOnListing`), owner lens only, with the slot, the type, an "En cours" tag, and A's
+  name/profile/WhatsApp; an unreadable agent keeps the row as "un autre agent", a failed visits read hides the block.
+  No customer field ever reaches this block. A visit page's listing link now carries `?match={matchId}` so a
+  co-brokerage listing opens instead of the locked page.
 - A signed search (APPROVED, SEARCH: `MatchRules.matched`) has *Biens correspondants* on its mandate page: the
   PUBLISHED listings of the agent's inventory ndopify-server matched to it (`ui/match/`, see
   `docs/superpowers/plans/2026-10-31-partner-central-matches.md`). `MandateController` reads its matches in one
