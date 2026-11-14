@@ -535,6 +535,7 @@
         var section = document.querySelector("[data-co-brokerage-visits]");
         if (!section) return;
         var $ = npc().$;
+        var $all = npc().$all;
         var list = $("[data-co-brokerage-visit-list]", section);
         var template = $("[data-co-brokerage-visit-template]", section);
         list.textContent = "";
@@ -542,15 +543,23 @@
             var item = template.content.firstElementChild.cloneNode(true);
             $("[data-co-brokerage-at]", item).textContent = formatAt(visit.at);
             $("[data-co-brokerage-type]", item).textContent = visit.type === "VIDEO" ? "Visite vidéo" : "Sur place";
+            $all("[data-co-brokerage-type-icon]", item).forEach(function (el) {
+                if (el.getAttribute("data-co-brokerage-type-icon") === visit.type) el.removeAttribute("hidden");
+                else el.setAttribute("hidden", "");
+            });
             $("[data-co-brokerage-progress]", item).hidden = visit.status !== "CHECKED_IN";
             var listing = LISTINGS[visit.listingId];
             var listingLink = $("[data-co-brokerage-listing]", item);
             listingLink.textContent = listing.title + " · " + listing.neighbourhood;
             listingLink.href = "listing.html?id=" + encodeURIComponent(visit.listingId);
             var agent = visit.agent;
-            var name = [agent.firstName, agent.lastName].filter(Boolean).join(" ");
+            var names = [agent.firstName, agent.lastName].filter(Boolean);
+            var name = names.join(" ");
+            $("[data-co-brokerage-initials]", item).textContent = names.map(function (part) {
+                return part.charAt(0);
+            }).join("");
             var agentLink = $("[data-co-brokerage-agent]", item);
-            agentLink.textContent = name;
+            $("[data-co-brokerage-agent-name]", item).textContent = name;
             agentLink.href = "agent.html?id=" + encodeURIComponent(agent.id) +
                 "&back=" + encodeURIComponent("index.html#co-brokerage-visits-title");
             $("[data-co-brokerage-whatsapp]", item).href =
@@ -649,7 +658,7 @@
                     var agentLink = $("[data-visit-agent-link]", agentLine);
                     agentLink.href = "agent.html?id=" + encodeURIComponent(v.agent.id) +
                         "&back=" + encodeURIComponent("index.html#visits-title");
-                    $("[data-visit-agent-name]", agentLine).textContent = "Avec " + agentName;
+                    $("[data-visit-agent-name]", agentLine).textContent = agentName;
                 }
             }
             return item;

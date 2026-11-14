@@ -1886,7 +1886,7 @@
                 var organizerLink = $("[data-visit-agent-link]", agentLine);
                 organizerLink.href = "agent.html?id=" + encodeURIComponent(visit.agent.id) + "&back=" +
                     encodeURIComponent("mandate.html?id=" + encodeURIComponent(currentMandate) + anchor);
-                $("[data-visit-agent-name]", agentLine).textContent = "Avec " + organizer;
+                $("[data-visit-agent-name]", agentLine).textContent = organizer;
             }
         }
         var link = $("[data-visit-link]", box);
@@ -2246,14 +2246,22 @@
             var item = template.content.firstElementChild.cloneNode(true);
             $("[data-co-brokerage-at]", item).textContent = formatVisitAt(visit.at);
             $("[data-co-brokerage-type]", item).textContent = visit.type === "VIDEO" ? "Visite vidéo" : "Sur place";
+            $all("[data-co-brokerage-type-icon]", item).forEach(function (el) {
+                if (el.getAttribute("data-co-brokerage-type-icon") === visit.type) el.removeAttribute("hidden");
+                else el.setAttribute("hidden", "");
+            });
             $("[data-co-brokerage-progress]", item).hidden = visit.status !== "CHECKED_IN";
             var listingLink = $("[data-co-brokerage-listing]", item);
             listingLink.textContent = listing.fields ? listingTitle(listing) : "Appartement 3 chambres · Bonapriso";
             listingLink.href = "listing.html?id=" + encodeURIComponent(listing.id);
             var agent = visit.agent;
-            var name = [agent.firstName, agent.lastName].filter(Boolean).join(" ");
+            var names = [agent.firstName, agent.lastName].filter(Boolean);
+            var name = names.join(" ");
+            $("[data-co-brokerage-initials]", item).textContent = names.map(function (part) {
+                return part.charAt(0);
+            }).join("");
             var agentLink = $("[data-co-brokerage-agent]", item);
-            agentLink.textContent = name;
+            $("[data-co-brokerage-agent-name]", item).textContent = name;
             agentLink.href = "agent.html?id=" + encodeURIComponent(agent.id) + "&back=" +
                 encodeURIComponent("mandate.html?id=" + encodeURIComponent(mandateId) + "#co-brokerage-visits-title");
             $("[data-co-brokerage-whatsapp]", item).href =
