@@ -14,16 +14,6 @@
     color: var(--color-fg);
 }
 
-/* The listing's cover, once it is published (or sold/rented): its hero image from ndopify-server. */
-.listing-hero {
-    display: block;
-    width: 100%;
-    height: auto;
-    aspect-ratio: 16 / 9;
-    object-fit: cover;
-    background: var(--color-surface-alt);
-}
-
 /* The public page's link and its share button, once the listing is published or closed. */
 .listing-public {
     display: flex;
@@ -93,6 +83,45 @@ a.checklist__row:focus-visible {
 .checklist__progress,
 .listing-send__missing {
     font-size: var(--step-hint);
+}
+
+/* The owner's audit trail: open while the listing is prepared, collapsed once it is published. */
+.listing-verification {
+    margin-top: var(--space-4);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border);
+}
+
+.listing-verification > summary {
+    min-height: var(--target);
+    padding-block: var(--space-2);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.listing-verification > summary:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
+.listing-verification > section {
+    margin-top: var(--space-3);
+}
+
+/* The audit trail is secondary: its heading is not a page-level title. */
+.listing-verification > section > h2 {
+    font-size: var(--step-h4);
+}
+
+/* While the listing is prepared, the checklist is the page itself: no disclosure, no separator. */
+.listing-verification[data-mode="edit"] {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.listing-verification[data-mode="edit"] > summary {
+    display: none;
 }
 
 .listing-send > * + * {
@@ -358,4 +387,299 @@ html:has(.viewer[open]) {
 /* Only the answers given: the choices not taken are left out. */
 .listing-readonly .choice:not(:has(input:checked)) {
     display: none;
+}
+
+/* ---------- Published: photos, "À propos" and the read-only sheet ---------- */
+
+/* `hidden` must win over the display these blocks set. */
+[data-listing-gallery][hidden],
+[data-listing-about][hidden],
+[data-listing-details][hidden],
+[data-checklist-section][hidden],
+.listing-verification[hidden] {
+    display: none;
+}
+
+/* A swipeable strip on a phone, the hero + four thumbnails from 640px (as the public page). */
+.listing-gallery {
+    position: relative;
+    display: grid;
+    gap: var(--space-2);
+}
+
+.listing-gallery__grid {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 88%;
+    gap: var(--space-2);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+}
+
+.listing-gallery__grid::-webkit-scrollbar {
+    display: none;
+}
+
+.listing-gallery__item {
+    display: block;
+    overflow: hidden;
+    scroll-snap-align: start;
+    background: var(--color-surface-alt);
+}
+
+.listing-gallery__item img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 3 / 2;
+    object-fit: cover;
+    transition: opacity var(--duration) var(--ease-out);
+}
+
+.listing-gallery__item:hover img {
+    opacity: 0.92;
+}
+
+/* Beyond the fifth: still a slide of the viewer, never a tile of the grid. */
+.listing-gallery__item--extra {
+    display: none;
+}
+
+/* On the hero's corner: visible at every width, unlike the public page's desktop-only button. */
+.listing-gallery__all {
+    position: absolute;
+    right: var(--space-3);
+    bottom: var(--space-3);
+    z-index: 1;
+    background: var(--color-bg);
+    border-color: var(--color-border-strong);
+    box-shadow: 0 2px 10px rgba(4, 4, 4, 0.18);
+}
+
+@media (min-width: 640px) {
+    .listing-gallery__grid {
+        grid-auto-flow: row;
+        grid-auto-columns: auto;
+        grid-template-columns: 2fr 1fr 1fr;
+        grid-template-rows: repeat(2, minmax(0, 8.5rem));
+        overflow: hidden;
+    }
+
+    .listing-gallery__item--hero {
+        grid-row: span 2;
+    }
+
+    .listing-gallery__item img {
+        aspect-ratio: auto;
+    }
+}
+
+/* The public text of the listing, as on its public page: its line breaks are kept. */
+.listing-description {
+    white-space: pre-line;
+}
+
+.listing-description > * + * {
+    margin-top: var(--space-3);
+}
+
+/* Key facts: the numbers an agent compares before proposing the property. */
+.listing-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2) var(--space-4);
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    list-style: none;
+}
+
+.listing-facts[hidden] {
+    display: none;
+}
+
+.listing-facts li {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--step-hint);
+    white-space: nowrap;
+}
+
+.listing-facts strong {
+    font-size: var(--step-body);
+}
+
+.listing-facts .icon {
+    color: var(--color-info-fg);
+}
+
+/* One sheet, hairline-separated blocks: quieter than six floating cards, and it reads top to bottom. */
+.listing-sheet {
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+.listing-sheet__block {
+    padding: var(--space-4);
+}
+
+.listing-sheet__block + .listing-sheet__block {
+    border-top: 1px solid var(--color-border);
+}
+
+.listing-sheet__block > h3 {
+    margin: 0 0 var(--space-3);
+    font-size: var(--step-h4);
+}
+
+/* Label left, value right, a hairline rhythm: the public page's spec list. */
+.listing-specs {
+    display: grid;
+    margin: 0;
+}
+
+.listing-specs > div {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-3);
+    padding-block: var(--space-2);
+}
+
+.listing-specs > div + div {
+    border-top: 1px solid var(--color-border);
+}
+
+.listing-specs dt {
+    font-size: var(--step-hint);
+}
+
+.listing-specs dd {
+    margin: 0;
+    font-weight: 600;
+    text-align: right;
+}
+
+/* The listing agent's note: quoted as written, line breaks kept. */
+.listing-notes {
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    border-left: 3px solid var(--color-info-fg);
+    background: var(--color-surface-alt);
+    white-space: pre-line;
+}
+
+.listing-place {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin: 0;
+}
+
+.listing-place .icon {
+    margin-top: 0.15em;
+    color: var(--color-info-fg);
+}
+
+.listing-place__landmark {
+    margin: var(--space-2) 0 0;
+    padding-left: calc(var(--space-2) + 1.25rem);
+    font-size: var(--step-hint);
+}
+
+.listing-place__note {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin: var(--space-3) 0 0;
+    padding: var(--space-3);
+    background: var(--color-surface-alt);
+    font-size: var(--step-hint);
+}
+
+.listing-place__note .icon {
+    margin-top: 0.15em;
+    color: var(--color-info-fg);
+}
+
+/* The owner's private half of "Emplacement": exact position and way in. Boxed in the info palette, not public. */
+.listing-private {
+    margin-top: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-info-border);
+    background: var(--color-info-bg);
+    font-size: var(--step-hint);
+}
+
+.listing-private > * + * {
+    margin-top: var(--space-2);
+}
+
+.listing-private__title {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font: 600 var(--step-hint) / 1.3 var(--font-body);
+}
+
+.listing-private__hint {
+    margin-top: 0;
+}
+
+.listing-private__coords {
+    margin-top: var(--space-1);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.listing-private__map {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    color: inherit;
+    font-weight: 600;
+    text-underline-offset: 0.2em;
+}
+
+.listing-private__label {
+    margin-top: var(--space-3);
+    font-weight: 600;
+}
+
+.listing-amenities {
+    display: grid;
+    gap: var(--space-4);
+}
+
+@media (min-width: 640px) {
+    .listing-amenities {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+.listing-amenities__group h4 {
+    margin: 0 0 var(--space-2);
+    font: 600 var(--step-hint) / 1.3 var(--font-body);
+}
+
+.listing-amenities__group ul {
+    display: grid;
+    gap: var(--space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.listing-amenities__group li {
+    display: flex;
+    gap: var(--space-2);
+}
+
+.listing-amenities__group .icon {
+    width: 1em;
+    height: 1em;
+    margin-top: 0.2em;
+    color: var(--color-success-fg);
 }
