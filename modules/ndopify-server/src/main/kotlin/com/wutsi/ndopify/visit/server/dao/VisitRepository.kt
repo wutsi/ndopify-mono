@@ -1,8 +1,11 @@
 package com.wutsi.ndopify.visit.server.dao
 
+import com.wutsi.ndopify.listing.server.domain.ListingEntity
+import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
 import jakarta.persistence.LockModeType
+import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor
 import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
@@ -89,6 +92,36 @@ interface VisitRepository : CrudRepository<VisitEntity, Long>, JpaSpecificationE
         status: VisitStatus,
         from: Date,
         to: Date,
+    ): List<VisitEntity>
+
+    // Another agent's visits on a listing, soonest first: the co-brokerage block
+    fun findByListingIdAndAgentIdNotAndStatusInOrderByScheduledAtAscIdAsc(
+        listingId: Long,
+        agentId: Long,
+        statuses: Collection<VisitStatus>,
+    ): List<VisitEntity>
+
+    // The REQUESTED/CONFIRMED visits the ended mandate makes moot: its own (search side) and its listing's
+    @Query(
+        "SELECT v FROM VisitEntity v WHERE v.status IN :statuses AND (" +
+            "v.mandateId = :mandateId OR v.listingId IN (" +
+            "SELECT l.id FROM ListingEntity l WHERE l.mandate.id = :mandateId))"
+    )
+    fun findOpenByMandateOrListingMandate(
+        mandateId: Long,
+        statuses: Collection<VisitStatus>,
+    ): List<VisitEntity>
+
+    // The catch-up sweep: the open visits whose search mandate, or whose listing's mandate, already ended
+    @Query(
+        "SELECT v FROM VisitEntity v WHERE v.status IN :visitStatuses AND (" +
+            "v.mandateId IN (SELECT m.id FROM MandateEntity m WHERE m.status IN :mandateStatuses) OR " +
+            "v.listingId IN (SELECT l.id FROM ListingEntity l WHERE l.mandate.status IN :mandateStatuses))"
+    )
+    fun findOpenByEndedMandate(
+        visitStatuses: Collection<VisitStatus>,
+        mandateStatuses: Collection<MandateStatus>,
+        page: Pageable,
     ): List<VisitEntity>
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

@@ -3,9 +3,11 @@ package com.wutsi.ndopify.npc.client.ndopify
 import com.wutsi.ndopify.visit.dto.CancelVisitRequest
 import com.wutsi.ndopify.visit.dto.CheckInVisitRequest
 import com.wutsi.ndopify.visit.dto.CheckOutVisitRequest
+import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
 import com.wutsi.ndopify.visit.dto.GetVisitResponse
 import com.wutsi.ndopify.visit.dto.NoShowVisitRequest
 import com.wutsi.ndopify.visit.dto.ScheduleVisitRequest
+import com.wutsi.ndopify.visit.dto.SearchCoBrokerageVisitResponse
 import com.wutsi.ndopify.visit.dto.SearchVisitResponse
 import com.wutsi.ndopify.visit.dto.Visit
 import com.wutsi.ndopify.visit.dto.VisitNoShowReason
@@ -221,6 +223,36 @@ class NdVisitClientTest {
         assertFailsWith<HttpClientErrorException.Conflict> {
             client.checkIn(7001, CheckInVisitRequest("4827", 4.0247, 9.6943, 12.0))
         }
+    }
+
+    @Test
+    fun `co-brokerage visits of a listing`() {
+        server.expect(requestTo("http://localhost:8080/v1/visits/co-brokerage?listing-id=501"))
+            .andExpect(method(HttpMethod.GET))
+            .andRespond(
+                withSuccess(
+                    json(
+                        SearchCoBrokerageVisitResponse(
+                            listOf(
+                                CoBrokerageVisitSummary(
+                                    id = 7001,
+                                    listingId = 501,
+                                    agentId = 20,
+                                    status = VisitStatus.CONFIRMED,
+                                    type = VisitType.ON_SITE,
+                                ),
+                            ),
+                        ),
+                    ),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val visits = client.coBrokerageOnListing(501)
+
+        assertEquals(listOf(7001L), visits.map { it.id })
+        assertEquals(20L, visits.single().agentId)
+        server.verify()
     }
 
     private fun json(value: Any): String = JsonMapper.builder().build().writeValueAsString(value)

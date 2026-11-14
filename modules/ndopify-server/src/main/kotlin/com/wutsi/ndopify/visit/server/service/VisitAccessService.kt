@@ -5,6 +5,7 @@ import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.ForbiddenException
+import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.security.dto.JwtPrincipal
@@ -56,6 +57,14 @@ class VisitAccessService(
     fun ensureIsAgent(visit: VisitEntity) {
         val partyId = callerService.findPartyIdOrNull(callerService.getPrincipal())
         if (partyId == null || !isAgent(partyId, visit)) {
+            throw accessDenied()
+        }
+    }
+
+    /** The listing's agent only: the co-brokerage block. No admin bypass, no customer. */
+    fun ensureIsListingAgent(listing: ListingEntity) {
+        val partyId = callerService.findPartyIdOrNull(callerService.getPrincipal())
+        if (partyId == null || agentService.findByPartyIdOrNull(partyId)?.id != listing.agent.id) {
             throw accessDenied()
         }
     }

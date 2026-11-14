@@ -165,6 +165,59 @@
     }
 }
 
+/* ---------- Co-brokerage visits: another agent's visits the owner hosts (listing.html) ---------- */
+
+.listing-visits ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* One row per visit, stacked and separated. */
+.listing-visits li {
+    padding-block: var(--space-3);
+}
+
+.listing-visits li + li {
+    border-top: 1px solid var(--color-border);
+}
+
+.listing-visits li p {
+    margin: 0;
+}
+
+.listing-visits li p + p {
+    margin-top: var(--space-2);
+}
+
+/* The slot and type on one clear line, with "En cours" tagged at the end. */
+.listing-visits li p:first-child {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 var(--space-2);
+}
+
+/* The profile and WhatsApp links: 44px targets, inline so the row reads naturally. */
+.listing-visits li a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    color: inherit;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.listing-visits li a:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
+.listing-visits li a:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
 /* ---------- The checklist (listing.html) ---------- */
 .checklist {
     margin: 0;

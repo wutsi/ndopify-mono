@@ -6,6 +6,7 @@ import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.match.server.service.MatchLinkTokenService
+import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
@@ -17,7 +18,10 @@ import com.wutsi.ndopify.visit.dto.VisitParty
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
 import org.springframework.stereotype.Service
 
-/** Tells the other side of a cancelled visit: the agent when the customer cancelled, the customer when the agent did. */
+/**
+ * Tells the other side of a cancelled visit: the agent when the customer cancelled, the customer when the agent did,
+ * and both sides — with the neutral wording, never the mandate's reason — when the system ended the mandate.
+ */
 @Service
 class VisitCancelledMailet(
     private val tenantService: TenantService,
@@ -32,45 +36,122 @@ class VisitCancelledMailet(
 
         const val LABEL_BY_CUSTOMER = "Le client a annulé la visite."
         const val LABEL_BY_AGENT = "J'ai annulé la visite."
+        const val LABEL_BY_SYSTEM = "La visite est annulée."
     }
 
     fun send(visit: VisitEntity, customer: CustomerEntity, agent: AgentEntity, listing: ListingEntity) {
         val tenant = tenantService.findById(visit.tenantId!!)
         val formatter = TenantFormatter(tenant)
-        val byCustomer = visit.cancelledBy == VisitParty.CUSTOMER
-        val recipientParty = if (byCustomer) agent.party else customer.party
-        val otherParty = if (byCustomer) customer.party.fullName() else agent.party.fullName()
-        val recipientName = recipientParty.fullName()
-        val visitUrl = if (byCustomer) {
-            tenant.partnerCentralUrl?.removeSuffix("/")?.let { "$it/visits/${visit.id}" }
-        } else {
-            val token = tenant.publicPortalUrl?.let { linkTokenService.create(customer) }
-            tenant.publicPortalUrl?.removeSuffix("/")?.let { base ->
-                val url = "$base/visits/${visit.id}"
-                token?.let { "$url?token=$it" } ?: url
+        when (visit.cancelledBy) {
+            VisitParty.CUSTOMER -> send(
+                tenant = tenant,
+                formatter = formatter,
+                visit = visit,
+                listing = listing,
+                recipient = agent.party,
+                otherParty = customer.party.fullName(),
+                sender = null,
+                label = LABEL_BY_CUSTOMER,
+                visitUrl = partnerCentralUrl(tenant, visit),
+                reason = visit.cancellationReason,
+                footer = emptyMap(),
+            )
+
+            VisitParty.AGENT -> {
+                val token = tenant.publicPortalUrl?.let { linkTokenService.create(customer) }
+                send(
+                    tenant = tenant,
+                    formatter = formatter,
+                    visit = visit,
+                    listing = listing,
+                    recipient = customer.party,
+                    otherParty = agent.party.fullName(),
+                    sender = AgentMailContext.from(agent),
+                    label = LABEL_BY_AGENT,
+                    visitUrl = publicPortalUrl(tenant, visit, token),
+                    reason = visit.cancellationReason,
+                    footer = AgentMailContext.of(agent, formatter),
+                )
             }
+
+            VisitParty.SYSTEM -> {
+                val token = tenant.publicPortalUrl?.let { linkTokenService.create(customer) }
+                send(
+                    tenant = tenant,
+                    formatter = formatter,
+                    visit = visit,
+                    listing = listing,
+                    recipient = customer.party,
+                    otherParty = agent.party.fullName(),
+                    sender = AgentMailContext.from(agent),
+                    label = LABEL_BY_SYSTEM,
+                    visitUrl = publicPortalUrl(tenant, visit, token),
+                    reason = null,
+                    footer = AgentMailContext.of(agent, formatter),
+                )
+                send(
+                    tenant = tenant,
+                    formatter = formatter,
+                    visit = visit,
+                    listing = listing,
+                    recipient = agent.party,
+                    otherParty = customer.party.fullName(),
+                    sender = null,
+                    label = LABEL_BY_SYSTEM,
+                    visitUrl = partnerCentralUrl(tenant, visit),
+                    reason = null,
+                    footer = emptyMap(),
+                )
+            }
+
+            null -> Unit
         }
+    }
+
+    private fun send(
+        tenant: TenantEntity,
+        formatter: TenantFormatter,
+        visit: VisitEntity,
+        listing: ListingEntity,
+        recipient: PartyEntity,
+        otherParty: String,
+        sender: Receipient?,
+        label: String,
+        visitUrl: String?,
+        reason: String?,
+        footer: Map<String, Any?>,
+    ) {
         mailService.send(
             Email(
-                sender = if (byCustomer) null else AgentMailContext.from(agent),
-                recipient = Receipient(email = recipientParty.email, displayName = recipientName),
+                sender = sender,
+                recipient = Receipient(email = recipient.email, displayName = recipient.fullName()),
                 subject = SUBJECT.replace("{{tenant_name}}", tenant.name),
                 body = mailBodyResolver.resolve(
                     path = TEMPLATE,
                     context = context(
                         tenant = tenant,
                         formatter = formatter,
-                        recipientName = recipientName,
+                        recipientName = recipient.fullName(),
                         otherParty = otherParty,
                         visit = visit,
                         listing = listing,
-                        cancelledByLabel = if (byCustomer) LABEL_BY_CUSTOMER else LABEL_BY_AGENT,
+                        cancelledByLabel = label,
                         visitUrl = visitUrl,
-                    ) + if (byCustomer) emptyMap() else AgentMailContext.of(agent, formatter),
+                        reason = reason,
+                    ) + footer,
                 ),
             ),
         )
     }
+
+    private fun partnerCentralUrl(tenant: TenantEntity, visit: VisitEntity): String? =
+        tenant.partnerCentralUrl?.removeSuffix("/")?.let { "$it/visits/${visit.id}" }
+
+    private fun publicPortalUrl(tenant: TenantEntity, visit: VisitEntity, token: String?): String? =
+        tenant.publicPortalUrl?.removeSuffix("/")?.let { base ->
+            val url = "$base/visits/${visit.id}"
+            token?.let { "$url?token=$it" } ?: url
+        }
 
     private fun context(
         tenant: TenantEntity,
@@ -81,6 +162,7 @@ class VisitCancelledMailet(
         listing: ListingEntity,
         cancelledByLabel: String,
         visitUrl: String?,
+        reason: String?,
     ): Map<String, Any?> =
         mapOf(
             "tenant_logo_url" to tenant.logoUrl,
@@ -92,7 +174,8 @@ class VisitCancelledMailet(
             "visit_date" to visit.scheduledAt?.let { formatter.date(it) },
             "visit_time" to visit.scheduledAt?.let { formatter.time(it) },
             "cancelled_by_label" to cancelledByLabel,
-            "cancellation_reason" to visit.cancellationReason?.ifBlank { null },
+            "cancellation_reason" to reason?.ifBlank { null },
             "visit_url" to visitUrl,
+            "system_cancelled" to (visit.cancelledBy == VisitParty.SYSTEM),
         )
 }

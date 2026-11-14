@@ -28,6 +28,8 @@ data class ListingView(
     val publicUrl: String?,
     /** Published only: "2 personnes intéressées · 3 visites"; null else, or when its stats can't be had. */
     val stats: String? = null,
+    /** The other agents' upcoming visits on this listing, owner lens only; empty when none or unreadable. */
+    val visits: List<ListingVisitView> = emptyList(),
     val rows: List<ChecklistRow>,
     /** "4 sections sur 6 vérifiées". */
     val progress: String,
@@ -184,4 +186,23 @@ data class PhotoView(
     val note: String,
     val rejected: Boolean,
     val deleteLabel: String,
+)
+
+/**
+ * A visit another agent organizes on the owner's listing, on `listing.html`: never the customer, the note, the code
+ * or the report.
+ */
+data class ListingVisitView(
+    /** "dimanche 22 novembre 2026 à 10:30", in the tenant's time zone. */
+    val at: String,
+    /** "Sur place" / "Visite vidéo". */
+    val typeLabel: String,
+    /** CHECKED_IN: the "En cours" tag. */
+    val inProgress: Boolean,
+    /** A's full name; null when the agent can't be read. */
+    val agentName: String?,
+    /** A's profile, back to the visits block; null without a name. */
+    val agentUrl: String?,
+    /** A's wa.me link; null without a number. */
+    val whatsappUrl: String?,
 )

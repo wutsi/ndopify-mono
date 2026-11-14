@@ -10,6 +10,7 @@ import com.wutsi.ndopify.error.server.exception.BadRequestException
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingService
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.match.dto.MatchRejectionReason
@@ -40,6 +41,7 @@ import com.wutsi.ndopify.visit.server.event.VisitExpiredEvent
 import com.wutsi.ndopify.visit.server.event.VisitNoShowEvent
 import com.wutsi.ndopify.visit.server.event.VisitReminderEvent
 import com.wutsi.ndopify.visit.server.event.VisitRequestedEvent
+import com.wutsi.ndopify.visit.server.mail.CoBrokerageVisitMailet
 import com.wutsi.ndopify.visit.server.mail.VisitCancelledMailet
 import com.wutsi.ndopify.visit.server.mail.VisitCompletedMailet
 import com.wutsi.ndopify.visit.server.mail.VisitConfirmedMailet
@@ -81,6 +83,7 @@ class VisitService(
     private val cancelledMailet: VisitCancelledMailet,
     private val reminderMailet: VisitReminderMailet,
     private val expiredMailet: VisitExpiredMailet,
+    private val coBrokerageVisitMailet: CoBrokerageVisitMailet,
     private val codeGenerator: VisitCodeGenerator,
     private val eventPublisher: ApplicationEventPublisher,
     private val tx: TransactionTemplate,
@@ -92,6 +95,12 @@ class VisitService(
         // The statuses in which a match already has a visit: only one at a time
         val OPEN_STATUSES = setOf(VisitStatus.REQUESTED, VisitStatus.CONFIRMED, VisitStatus.CHECKED_IN)
 
+        // The visits an ended mandate makes moot; a CHECKED_IN visit is left alone
+        private val OPEN_TO_CANCEL = setOf(VisitStatus.REQUESTED, VisitStatus.CONFIRMED)
+
+        // The mandate statuses that end an agreement: its open visits can't outlive it
+        private val ENDED_MANDATE_STATUSES = setOf(MandateStatus.CLOSED, MandateStatus.CANCELLED)
+
         private val LOGGER = LoggerFactory.getLogger(VisitService::class.java)
     }
 
@@ -99,6 +108,14 @@ class VisitService(
         return dao.findById(id).orElse(null)
             ?: throw NotFoundException(error = Error(code = ErrorCode.VISIT_NOT_FOUND))
     }
+
+    /** The CONFIRMED/CHECKED_IN visits another agent organizes on [listing], soonest first. */
+    fun findCoBrokerageOnListing(listing: ListingEntity): List<VisitEntity> =
+        dao.findByListingIdAndAgentIdNotAndStatusInOrderByScheduledAtAscIdAsc(
+            listing.id!!,
+            listing.agent.id!!,
+            setOf(VisitStatus.CONFIRMED, VisitStatus.CHECKED_IN),
+        )
 
     /**
      * The customer requests a visit of a match it accepted. The match is locked first, so that two requests for the same
@@ -529,12 +546,17 @@ class VisitService(
             return
         }
         logger.add("visit_id", visitId)
+        val agent = agentService.findById(visit.agentId)
+        val listing = listingService.findById(visit.listingId)
         confirmedMailet.send(
             visit = visit,
             customer = customerService.findById(visit.customerId),
-            agent = agentService.findById(visit.agentId),
-            listing = listingService.findById(visit.listingId),
+            agent = agent,
+            listing = listing,
         )
+        if (visit.agentId != listing.agent.id) {
+            coBrokerageVisitMailet.sendConfirmed(visit, listing, agent)
+        }
     }
 
     /** E-mails the customer that the visit is over. Called by `VisitEventListener`; nothing when not COMPLETED. */
@@ -564,12 +586,17 @@ class VisitService(
             return
         }
         logger.add("visit_id", visitId)
+        val agent = agentService.findById(visit.agentId)
+        val listing = listingService.findById(visit.listingId)
         noShowMailet.send(
             visit = visit,
             customer = customerService.findById(visit.customerId),
-            agent = agentService.findById(visit.agentId),
-            listing = listingService.findById(visit.listingId),
+            agent = agent,
+            listing = listing,
         )
+        if (visit.agentId != listing.agent.id && visit.noShowParty == VisitParty.CUSTOMER) {
+            coBrokerageVisitMailet.sendNoShow(visit, listing, agent)
+        }
     }
 
     /** E-mails the other side of a cancellation. Called by `VisitEventListener`; nothing when not CANCELLED. */
@@ -580,12 +607,67 @@ class VisitService(
             return
         }
         logger.add("visit_id", visitId)
+        val agent = agentService.findById(visit.agentId)
+        val listing = listingService.findById(visit.listingId)
         cancelledMailet.send(
             visit = visit,
             customer = customerService.findById(visit.customerId),
-            agent = agentService.findById(visit.agentId),
-            listing = listingService.findById(visit.listingId),
+            agent = agent,
+            listing = listing,
         )
+        if (notifyListingAgentOfCancellation(visit, listing)) {
+            coBrokerageVisitMailet.sendCancelled(visit, listing, agent)
+        }
+    }
+
+    /**
+     * Whether B still needs the co-brokerage cancellation: another agent's confirmed visit, on a listing whose mandate
+     * is still live. When the listing's mandate already ended, B is party to that ending (they caused it, or it was
+     * decided on their mandate): mailing them the visit cancellation too is noise, and there is nothing left to host.
+     */
+    private fun notifyListingAgentOfCancellation(visit: VisitEntity, listing: ListingEntity): Boolean =
+        visit.agentId != listing.agent.id &&
+            visit.scheduledAt != null &&
+            listing.mandate.status !in ENDED_MANDATE_STATUSES
+
+    /**
+     * The mandate ended (CLOSED or CANCELLED): its open visits and those on its listing become CANCELLED by the system,
+     * with no reason copied from the mandate. A CHECKED_IN visit stays on; A closes it. Called by
+     * `VisitMandateEventListener` after commit, each visit in its own transaction. Returns how many were cancelled.
+     */
+    fun cancelForEndedMandate(mandateId: Long): Int =
+        cancel(dao.findOpenByMandateOrListingMandate(mandateId, OPEN_TO_CANCEL))
+
+    /**
+     * The catch-up sweep: the same cancellation for up to [limit] open visits whose search mandate, or whose listing's
+     * mandate, already ended. Catches up on a cancellation the async listener missed (failed task, crash, mandate ended
+     * before the listener existed), one transaction per visit. Returns how many were cancelled.
+     */
+    fun cancelEndedMandateVisits(limit: Int): Int =
+        cancel(
+            dao.findOpenByEndedMandate(
+                OPEN_TO_CANCEL,
+                ENDED_MANDATE_STATUSES,
+                OffsetLimitPageRequest(0, limit, Sort.by(Sort.Direction.ASC, "id")),
+            ),
+        )
+
+    private fun cancel(visits: List<VisitEntity>): Int {
+        val now = Date(clock.millis())
+        return visits.count { visit ->
+            update(visit) { current ->
+                val saved = dao.save(
+                    current.copy(
+                        status = VisitStatus.CANCELLED,
+                        cancelledBy = VisitParty.SYSTEM,
+                        cancelledAt = now,
+                        cancellationReason = null,
+                    ),
+                )
+                eventPublisher.publishEvent(VisitCancelledEvent(visitId = saved.id!!, tenantId = saved.tenantId!!))
+                saved
+            }
+        }
     }
 
     /** E-mails both sides the 24 h reminder. Called by `VisitEventListener`; nothing when no longer CONFIRMED. */
@@ -596,12 +678,17 @@ class VisitService(
             return
         }
         logger.add("visit_id", visitId)
+        val agent = agentService.findById(visit.agentId)
+        val listing = listingService.findById(visit.listingId)
         reminderMailet.send(
             visit = visit,
             customer = customerService.findById(visit.customerId),
-            agent = agentService.findById(visit.agentId),
-            listing = listingService.findById(visit.listingId),
+            agent = agent,
+            listing = listing,
         )
+        if (visit.agentId != listing.agent.id) {
+            coBrokerageVisitMailet.sendReminder(visit, listing, agent)
+        }
     }
 
     /** E-mails both sides an expired request. Called by `VisitEventListener`; nothing when not EXPIRED. */

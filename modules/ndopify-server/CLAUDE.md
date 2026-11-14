@@ -384,7 +384,19 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   customer alone requests / answers / cancels as itself, the visit's agent alone checks in, marks a no-show and checks out
   (no admin bypass); schedule and cancel-as-agent follow `MandateAccessService`. A search filters by `mandate-id`,
   `match-id`, `listing-id`, `agent-id` and `customer-id` (repeatable), and is restricted to the caller's own visits
-  (`agent-id` or `customer-id` forced). `VisitJobs`: `expire` hourly moves a `REQUESTED` visit older than 48 h to
+  (`agent-id` or `customer-id` forced). Co-brokerage visits: the listing's agent (B) is a read-only backstage
+  participant. `GET /v1/visits/co-brokerage?listing-id=` returns only `CONFIRMED`/`CHECKED_IN` visits of another
+  agent (`agentId != listing.agent.id`), as `CoBrokerageVisitSummary` (no customer, note, code, address, report or
+  feedback), to the listing's agent only. `CoBrokerageVisitMailet` mails B on confirmation, the 24 h reminder,
+  a cancellation after confirmation (only while the listing's mandate is still live: B is not re-mailed a cancellation
+  B caused by ending the listing mandate) and a customer-caused no-show; never on
+  `REQUESTED`/`EXPIRED`/`COMPLETED`/agent no-show or an own-inventory visit. `MandateClosedEvent` now also reaches
+  `VisitMandateEventListener`, an async
+  after-commit listener that cancels the mandate's `REQUESTED`/`CONFIRMED` visits (search side and listing side) as
+  `SYSTEM` with no mandate reason; `CHECKED_IN` stays. A failed async cancellation never fails the closing:
+  `VisitJobs.cancelEndedMandates` sweeps the open visits of ended mandates hourly (100/tenant/run, first run back-fills
+  and e-mails). B never learns A's customer. `VisitJobs`: `expire` hourly moves a `REQUESTED` visit older than
+  48 h to
   `EXPIRED`, `reminder` every 15 min e-mails both sides 24 h ahead (once), `noShow` hourly marks the `CONFIRMED` visits
   whose agent didn't check in 4 h after the time as `NO_SHOW` (both sides e-mailed). The delays and tolerances above are
   `ndopify.visit.policy.*` (overridable); the job crons are `ndopify.visit.*`. Tenant-scoped.

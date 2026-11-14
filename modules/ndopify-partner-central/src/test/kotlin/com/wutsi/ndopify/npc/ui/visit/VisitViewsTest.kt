@@ -287,4 +287,19 @@ class VisitViewsTest {
             ).startsWith("Rendez-vous avec le client le sam. 7 novembre 2026 à 10:30."),
         )
     }
+
+    @Test
+    fun `the listing link carries the co-brokerage match`() {
+        val page = VisitViews.of(
+            visit = VisitFixtures.confirmed().copy(listingId = 501, matchId = 9001),
+            customer = null,
+            listing = null,
+            locations = emptyMap(),
+            now = VisitFixtures.NOW,
+            tenant = VisitFixtures.TENANT,
+            formatter = VisitFixtures.FORMATTER,
+        )
+
+        assertEquals("/listings/501?match=9001", page.listingUrl)
+    }
 }

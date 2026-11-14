@@ -9,9 +9,9 @@ import org.springframework.stereotype.Service
 
 /**
  * The visits' jobs, for each active tenant: a request not scheduled in 48 h expires, a confirmed visit in the next 24 h is
- * reminded, and a confirmed visit whose agent didn't check in 4 h after the time is a no-show. A scheduler thread has no
- * tenant of its own: each tenant is processed with it set in [TenantContext], removed afterwards since the threads are
- * reused.
+ * reminded, a confirmed visit whose agent didn't check in 4 h after the time is a no-show, and the open visits of a
+ * mandate that ended without its async listener doing it are cancelled. A scheduler thread has no tenant of its own:
+ * each tenant is processed with it set in [TenantContext], removed afterwards since the threads are reused.
  */
 @Service
 class VisitJobs(
@@ -20,6 +20,9 @@ class VisitJobs(
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(VisitJobs::class.java)
+
+        // Max visits cancelled per sweep, so one run doesn't cancel and e-mail a whole backlog at once
+        private const val CANCEL_LIMIT = 100
     }
 
     /** Expires the visit requests the agent didn't schedule in time. */
@@ -38,6 +41,15 @@ class VisitJobs(
     @Scheduled(cron = "\${ndopify.visit.no-show.cron}")
     fun noShow() {
         forEachTenant("noShow", "visit(s)") { service.markAgentNoShows() }
+    }
+
+    /**
+     * Cancels the open visits whose mandate ended without `VisitMandateEventListener` doing it: a failed async task, a
+     * crash, or a mandate closed before the listener existed. Catches up on the live path, it doesn't replace it.
+     */
+    @Scheduled(cron = "\${ndopify.visit.cancel-ended-mandates.cron}")
+    fun cancelEndedMandates() {
+        forEachTenant("cancelEndedMandates", "visit(s)") { service.cancelEndedMandateVisits(CANCEL_LIMIT) }
     }
 
     private fun forEachTenant(job: String, unit: String, run: () -> Int) {

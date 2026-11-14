@@ -104,9 +104,11 @@ class VisitCancelledMailetTest {
                 "cancelled_by_label" to "Le client a annulé la visite.",
                 "cancellation_reason" to "Empêchement",
                 "visit_url" to "https://partner.ndopify.com/visits/1",
+                "system_cancelled" to false,
             ),
             context(),
         )
+        assertEquals(false, context()["system_cancelled"])
     }
 
     @Test
@@ -119,6 +121,7 @@ class VisitCancelledMailetTest {
         assertEquals("Kim Possible", email.firstValue.sender?.displayName)
         assertEquals("J'ai annulé la visite.", context()["cancelled_by_label"])
         assertEquals("https://www.ndopify.com/visits/1?token=xxx.yyy.zzz", context()["visit_url"])
+        assertEquals(false, context()["system_cancelled"])
     }
 
     @Test
@@ -126,6 +129,31 @@ class VisitCancelledMailetTest {
         mailet.send(visit.copy(cancellationReason = null), customer, agent, listing)
 
         assertNull(context()["cancellation_reason"])
+    }
+
+    @Test
+    fun `the system cancelled - both sides get the neutral wording, never the mandate reason`() {
+        mailet.send(
+            visit.copy(cancelledBy = VisitParty.SYSTEM, cancellationReason = "Mandat clôturé"),
+            customer,
+            agent,
+            listing,
+        )
+
+        val emails = argumentCaptor<Email>()
+        verify(mailService, times(2)).send(emails.capture())
+        assertEquals(
+            setOf("ray.sponsible@gmail.com", "kim.possible@gmail.com"),
+            emails.allValues.map { it.recipient.email }.toSet(),
+        )
+
+        val contexts = argumentCaptor<Map<String, Any?>>()
+        verify(mailBodyResolver, times(2)).resolve(eq(VisitCancelledMailet.TEMPLATE), contexts.capture())
+        contexts.allValues.forEach { context ->
+            assertEquals("La visite est annulée.", context["cancelled_by_label"])
+            assertNull(context["cancellation_reason"])
+            assertEquals(true, context["system_cancelled"])
+        }
     }
 
     private fun context(): Map<String, Any?> {

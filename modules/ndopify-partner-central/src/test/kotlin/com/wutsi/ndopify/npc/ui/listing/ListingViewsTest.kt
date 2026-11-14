@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.listing
 
+import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.customer.dto.CustomerSummary
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.listing.dto.FurnitureType
@@ -28,12 +29,16 @@ import com.wutsi.ndopify.npc.ui.visit.VisitFixtures
 import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitSummary
+import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import org.junit.jupiter.api.Test
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
+import java.time.ZoneId
 import java.util.Date
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -929,5 +934,89 @@ class ListingViewsTest {
         assertNull(view.published)
         assertFalse(view.coBrokerage)
         assertEquals(7, view.rows.size)
+    }
+
+    private fun agent(id: Long, firstName: String, lastName: String, whatsappNumber: String?): Agent =
+        Agent(id = id, party = Party(firstName = firstName, lastName = lastName), whatsappNumber = whatsappNumber)
+
+    private fun date(year: Int, month: Int, day: Int, hour: Int, minute: Int): Date =
+        Date.from(LocalDateTime.of(year, month, day, hour, minute).atZone(ZoneId.of(TENANT.timeZone)).toInstant())
+
+    @Test
+    fun `co-brokerage visits - formatted, labelled and linked`() {
+        val visits = listOf(
+            CoBrokerageVisitSummary(
+                id = 2,
+                listingId = 501,
+                agentId = 21,
+                status = VisitStatus.CHECKED_IN,
+                type = VisitType.VIDEO,
+                scheduledAt = date(2026, 11, 23, 9, 0),
+            ),
+            CoBrokerageVisitSummary(
+                id = 1,
+                listingId = 501,
+                agentId = 20,
+                status = VisitStatus.CONFIRMED,
+                type = VisitType.ON_SITE,
+                scheduledAt = date(2026, 11, 22, 10, 30),
+            ),
+        )
+
+        val rows = ListingViews.visits(
+            visits,
+            mapOf(20L to agent(20, "Serge", "Ngono", "+237699000001")),
+            501,
+            TENANT,
+            TenantFormatter(TENANT),
+        )
+
+        assertEquals(2, rows.size)
+        assertEquals("dim. 22 novembre 2026 à 10:30", rows[0].at)
+        assertEquals("Sur place", rows[0].typeLabel)
+        assertFalse(rows[0].inProgress)
+        assertEquals("Serge Ngono", rows[0].agentName)
+        assertEquals("/agent?id=20&back=/listings/501%23visits-title", rows[0].agentUrl)
+        assertEquals("https://wa.me/237699000001", rows[0].whatsappUrl)
+
+        assertEquals("Visite vidéo", rows[1].typeLabel)
+        assertTrue(rows[1].inProgress)
+        assertNull(rows[1].agentName) // unreadable agent: the row stays
+        assertNull(rows[1].agentUrl)
+        assertNull(rows[1].whatsappUrl)
+    }
+
+    @Test
+    fun `co-brokerage visits - no WhatsApp, no link`() {
+        val rows = ListingViews.visits(
+            listOf(CoBrokerageVisitSummary(id = 1, listingId = 501, agentId = 20, scheduledAt = date(2026, 11, 22, 10, 30))),
+            mapOf(20L to agent(20, "Serge", "Ngono", null)),
+            501,
+            TENANT,
+            TenantFormatter(TENANT),
+        )
+
+        assertEquals("Serge Ngono", rows.single().agentName)
+        assertNull(rows.single().whatsappUrl)
+    }
+
+    @Test
+    fun `co-brokerage visits - blank name means no link, even with a number`() {
+        val rows = ListingViews.visits(
+            listOf(CoBrokerageVisitSummary(id = 1, listingId = 501, agentId = 20, scheduledAt = date(2026, 11, 22, 10, 30))),
+            mapOf(20L to agent(20, "", "", "+237699000001")),
+            501,
+            TENANT,
+            TenantFormatter(TENANT),
+        )
+
+        assertNull(rows.single().agentName)
+        assertNull(rows.single().agentUrl)
+        assertNull(rows.single().whatsappUrl)
+    }
+
+    @Test
+    fun `co-brokerage visits - empty stays empty`() {
+        assertTrue(ListingViews.visits(emptyList(), emptyMap(), 501, TENANT, TenantFormatter(TENANT)).isEmpty())
     }
 }

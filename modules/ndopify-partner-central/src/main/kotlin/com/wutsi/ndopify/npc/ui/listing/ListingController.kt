@@ -13,11 +13,14 @@ import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
+import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
+import com.wutsi.ndopify.npc.config.Parallel
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.npc.ui.mandate.MandateController
 import com.wutsi.ndopify.npc.ui.profile.ProfileRules
+import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
 import com.wutsi.ndopify.web.core.service.TenantContext
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import org.slf4j.LoggerFactory
@@ -52,6 +55,8 @@ class ListingController(
     private val tenantContext: TenantContext,
     private val matchClient: NdMatchClient,
     private val agentClient: NdAgentClient,
+    private val visitClient: NdVisitClient,
+    private val parallel: Parallel,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(ListingController::class.java)
@@ -72,6 +77,9 @@ class ListingController(
 
         // 403: no longer the agent's; 404: gone; 409: changed since the page was shown
         private val CHANGED_STATUSES = setOf(403, 404, 409)
+
+        // A listing that keeps its public page once it leaves the market, so its visits stay on show
+        private val PUBLIC_OR_CLOSED = setOf(ListingStatus.PUBLISHED, ListingStatus.RENTED, ListingStatus.SOLD)
     }
 
     private val sector = SectorValidator(locationClient, tenantContext)
@@ -111,6 +119,11 @@ class ListingController(
         } else {
             null
         }
+        val visits = if (result is PublishedListingAccess.Owner && listing.status in PUBLIC_OR_CLOSED) {
+            coBrokerageVisits(listing)
+        } else {
+            emptyList()
+        }
         val view = ListingViews.of(
             listing,
             images,
@@ -118,6 +131,7 @@ class ListingController(
             formatter(),
             tenantContext.getTenant().publicPortalUrl,
             stats,
+            visits,
             coBrokerage = coBrokerage,
             agent = agentCard,
             backUrl = if (result is PublishedListingAccess.CoBroker) {
@@ -256,6 +270,29 @@ class ListingController(
         } ?: emptyMap()
 
     private fun formatter(): TenantFormatter = TenantFormatter(tenantContext.getTenant())
+
+    /**
+     * The other agents' visits on this listing, read secondarily. The agents are read once per distinct id, in parallel;
+     * an unreadable one keeps its row with "un autre agent". A failed visits read empties the block.
+     */
+    private fun coBrokerageVisits(listing: Listing): List<ListingVisitView> {
+        val visits = lookup("co-brokerage visits of listing ${listing.id}") {
+            visitClient.coBrokerageOnListing(listing.id)
+        } ?: return emptyList()
+        if (visits.isEmpty()) return emptyList()
+
+        val calls = visits.map { it.agentId }.filter { it > 0 }.distinct()
+            .associateWith { id -> parallel.async { lookup("agent $id") { agentClient.get(id) } } }
+        val agents = calls.mapNotNull { (id, call) ->
+            val agent = try {
+                call.join()
+            } catch (ex: Exception) {
+                null
+            }
+            agent?.let { id to it }
+        }.toMap()
+        return ListingViews.visits(visits, agents, listing.id, tenantContext.getTenant(), formatter())
+    }
 
     private fun errorCode(ex: HttpClientErrorException): String? =
         try {

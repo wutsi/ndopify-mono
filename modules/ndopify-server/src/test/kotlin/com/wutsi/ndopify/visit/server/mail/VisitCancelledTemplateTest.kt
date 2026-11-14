@@ -67,4 +67,20 @@ class VisitCancelledTemplateTest {
         assertFalse(html.contains("https://partner.ndopify.com/visits/1"))
         assertTrue(html.contains("annul"))
     }
+
+    @Test
+    fun `the system cancellation does not invite another date`() {
+        val html = resolver.resolve(
+            VisitCancelledMailet.TEMPLATE,
+            context + mapOf(
+                "system_cancelled" to true,
+                "cancelled_by_label" to "La visite est annulée.",
+            ),
+        )
+
+        val text = Jsoup.parse(html).text()
+
+        assertTrue(text.contains("La visite est annulée."))
+        assertFalse(text.contains("convenir d'une autre date"))
+    }
 }

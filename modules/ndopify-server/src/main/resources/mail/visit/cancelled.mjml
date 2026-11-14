@@ -37,9 +37,11 @@
                         <b>Motif</b>&#160;: {{cancellation_reason}}
                     </mj-text>
                     {{/cancellation_reason}}
+                    {{^system_cancelled}}
                     <mj-text>
                         {{#agent_full_name}}Contactez-moi{{/agent_full_name}}{{^agent_full_name}}Contactez {{other_party}}{{/agent_full_name}} pour convenir d'une autre date.
                     </mj-text>
+                    {{/system_cancelled}}
 
                     {{#visit_url}}
                     <mj-button href="{{visit_url}}" css-class="btn-primary" align="center">

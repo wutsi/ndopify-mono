@@ -1,8 +1,11 @@
 package com.wutsi.ndopify.npc.ui.listing
 
+import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.never
+import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.listing.dto.ImageStatus
@@ -20,6 +23,8 @@ import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
+import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
+import com.wutsi.ndopify.npc.config.Parallel
 import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
@@ -30,6 +35,9 @@ import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.LISTING
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.SENT
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
+import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
+import com.wutsi.ndopify.visit.dto.VisitStatus
+import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -47,6 +55,9 @@ import org.springframework.web.client.ResourceAccessException
 import org.thymeleaf.spring6.SpringTemplateEngine
 import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
+import java.time.LocalDateTime
+import java.time.ZoneId
+import java.util.Date
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
@@ -62,6 +73,8 @@ class ListingTemplateTest {
     private val tenantContext = mock<TenantContext>()
     private val matchClient = mock<NdMatchClient>()
     private val agentClient = mock<NdAgentClient>()
+    private val visitClient = mock<NdVisitClient>()
+    private val parallel = Parallel()
     private lateinit var mvc: MockMvc
 
     @BeforeEach
@@ -95,6 +108,8 @@ class ListingTemplateTest {
                     tenantContext,
                     matchClient,
                     agentClient,
+                    visitClient,
+                    parallel,
                 ),
             )
             .setControllerAdvice(SignedInAdvice())
@@ -105,6 +120,7 @@ class ListingTemplateTest {
     @AfterEach
     fun tearDown() {
         SecurityContextHolder.clearContext()
+        parallel.close()
     }
 
     private fun render(listing: Listing? = null, outcome: String? = null, match: String? = null): Document {
@@ -351,6 +367,64 @@ class ListingTemplateTest {
         assertNull(page.selectFirst("[data-listing-meta]"))
         assertNotNull(page.selectFirst("[data-listing-gallery]"))
         assertNotNull(page.selectFirst("[data-listing-details]"))
+    }
+
+    @Test
+    fun `owner of a published listing sees the visits block`() {
+        val published = COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT, description = "Public")
+        doReturn(published).whenever(listingClient).get(501)
+        doReturn(
+            listOf(
+                CoBrokerageVisitSummary(
+                    id = 1, listingId = 501, agentId = 20,
+                    status = VisitStatus.CONFIRMED, type = VisitType.ON_SITE,
+                    scheduledAt = Date.from(
+                        LocalDateTime.of(2026, 11, 22, 10, 30).atZone(ZoneId.of("Africa/Douala")).toInstant(),
+                    ),
+                ),
+            ),
+        ).whenever(visitClient).coBrokerageOnListing(501)
+        doReturn(ProfileFixtures.AGENT).whenever(agentClient).get(20)
+
+        val page = render(published)
+
+        val section = page.selectFirst("[data-listing-visits]")
+        assertNotNull(section)
+        assertEquals("Visites d'autres agents", section.selectFirst("h2")!!.text())
+        assertTrue(section.text().contains("Serge Ngono"))
+        assertTrue(section.text().contains("Sur place"))
+        assertTrue(section.text().contains("dim. 22 novembre 2026 à 10:30"))
+        assertTrue(section.select("a[href*=wa.me]").isNotEmpty())
+        assertFalse(page.text().contains("Secret Client"))
+        assertFalse(page.text().contains("secret@example.com"))
+    }
+
+    @Test
+    fun `no visit, no block`() {
+        doReturn(COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT)).whenever(listingClient).get(501)
+
+        assertNull(render(COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT)).selectFirst("[data-listing-visits]"))
+    }
+
+    @Test
+    fun `a co-broker lens has no visits block`() {
+        doReturn(
+            COMPLETE.copy(
+                status = ListingStatus.PUBLISHED,
+                agentId = 999,
+                publishedAt = SENT,
+                description = "Public",
+                url = "/douala/bonapriso/listing/501/appartement",
+            ),
+        ).whenever(listingClient).get(501)
+        doReturn(Match(id = 9009, mandateId = 204, listingId = 501, coBrokerage = true, status = MatchStatus.ACTIVE))
+            .whenever(matchClient).get(9009)
+        doReturn(Mandate(id = 204, agentId = AGENT.id, mandateType = MandateType.SEARCH, status = MandateStatus.APPROVED))
+            .whenever(mandateClient).get(204)
+        doReturn(ProfileFixtures.AGENT.copy(id = 999)).whenever(agentClient).get(999)
+
+        assertNull(render(match = "9009").selectFirst("[data-listing-visits]"))
+        verify(visitClient, never()).coBrokerageOnListing(any())
     }
 
     @Test
