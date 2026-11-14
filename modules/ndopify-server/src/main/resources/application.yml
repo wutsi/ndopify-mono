@@ -359,3 +359,5 @@ ndopify:
             cron: "0 */15 * * * ?"      # Every 15 minutes: confirmed visits starting within 24 h
         no-show:
             cron: "0 0 * * * ?"         # Every hour: confirmed visits whose agent didn't check in 4 h after the time
+        cancel-ended-mandates:
+            cron: "0 30 * * * ?"        # Every hour: open visits whose mandate ended without its async listener

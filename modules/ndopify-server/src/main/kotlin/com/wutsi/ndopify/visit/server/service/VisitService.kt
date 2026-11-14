@@ -95,6 +95,12 @@ class VisitService(
         // The statuses in which a match already has a visit: only one at a time
         val OPEN_STATUSES = setOf(VisitStatus.REQUESTED, VisitStatus.CONFIRMED, VisitStatus.CHECKED_IN)
 
+        // The visits an ended mandate makes moot; a CHECKED_IN visit is left alone
+        private val OPEN_TO_CANCEL = setOf(VisitStatus.REQUESTED, VisitStatus.CONFIRMED)
+
+        // The mandate statuses that end an agreement: its open visits can't outlive it
+        private val ENDED_MANDATE_STATUSES = setOf(MandateStatus.CLOSED, MandateStatus.CANCELLED)
+
         private val LOGGER = LoggerFactory.getLogger(VisitService::class.java)
     }
 
@@ -616,27 +622,41 @@ class VisitService(
 
     /**
      * The mandate ended (CLOSED or CANCELLED): its open visits and those on its listing become CANCELLED by the system,
-     * with no reason copied from the mandate. A CHECKED_IN visit stays on; A closes it. Synchronous, inside the mandate's
-     * transaction. Returns how many were cancelled.
+     * with no reason copied from the mandate. A CHECKED_IN visit stays on; A closes it. Called by
+     * `VisitMandateEventListener` after commit, each visit in its own transaction. Returns how many were cancelled.
      */
-    @Transactional
-    fun cancelForEndedMandate(mandateId: Long): Int {
-        val now = Date(clock.millis())
-        val visits = dao.findOpenByMandateOrListingMandate(
-            mandateId,
-            setOf(VisitStatus.REQUESTED, VisitStatus.CONFIRMED),
+    fun cancelForEndedMandate(mandateId: Long): Int =
+        cancel(dao.findOpenByMandateOrListingMandate(mandateId, OPEN_TO_CANCEL))
+
+    /**
+     * The catch-up sweep: the same cancellation for up to [limit] open visits whose search mandate, or whose listing's
+     * mandate, already ended. Catches up on a cancellation the async listener missed (failed task, crash, mandate ended
+     * before the listener existed), one transaction per visit. Returns how many were cancelled.
+     */
+    fun cancelEndedMandateVisits(limit: Int): Int =
+        cancel(
+            dao.findOpenByEndedMandate(
+                OPEN_TO_CANCEL,
+                ENDED_MANDATE_STATUSES,
+                OffsetLimitPageRequest(0, limit, Sort.by(Sort.Direction.ASC, "id")),
+            ),
         )
+
+    private fun cancel(visits: List<VisitEntity>): Int {
+        val now = Date(clock.millis())
         return visits.count { visit ->
-            val saved = dao.save(
-                visit.copy(
-                    status = VisitStatus.CANCELLED,
-                    cancelledBy = VisitParty.SYSTEM,
-                    cancelledAt = now,
-                    cancellationReason = null,
-                ),
-            )
-            eventPublisher.publishEvent(VisitCancelledEvent(visitId = saved.id!!, tenantId = saved.tenantId!!))
-            true
+            update(visit) { current ->
+                val saved = dao.save(
+                    current.copy(
+                        status = VisitStatus.CANCELLED,
+                        cancelledBy = VisitParty.SYSTEM,
+                        cancelledAt = now,
+                        cancellationReason = null,
+                    ),
+                )
+                eventPublisher.publishEvent(VisitCancelledEvent(visitId = saved.id!!, tenantId = saved.tenantId!!))
+                saved
+            }
         }
     }
 

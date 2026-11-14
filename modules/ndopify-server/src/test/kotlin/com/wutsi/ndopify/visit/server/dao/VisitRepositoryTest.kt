@@ -2,8 +2,11 @@ package com.wutsi.ndopify.visit.server.dao
 
 import com.wutsi.ndopify.TenantAwareEndpointIntegrationTest
 import com.wutsi.ndopify.listing.server.service.ListingService
+import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.data.domain.Sort
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
@@ -63,6 +66,28 @@ class VisitRepositoryTest : TenantAwareEndpointIntegrationTest() {
             dao.findOpenByMandateOrListingMandate(
                 11,
                 setOf(VisitStatus.REQUESTED, VisitStatus.CONFIRMED),
+            ).map { it.id }.toSet(),
+        )
+    }
+
+    @Test
+    @Sql(
+        value = [
+            "/db/test/clean.sql",
+            "/db/test/visit/VisitFixtures.sql",
+            "/db/test/visit/CoBrokerageVisitEndpoint.sql",
+            "/db/test/visit/EndedMandates.sql",
+        ],
+    )
+    fun `the sweep finds open visits of ended mandates on both sides`() {
+        // Search side (mandates 1 and 4): 1, 3, 5, 6. Listing side (listing 101, mandate 11): 1, 3, 5.
+        // CHECKED_IN 2 and COMPLETED 4 are left out.
+        assertEquals(
+            setOf(1L, 3L, 5L, 6L),
+            dao.findOpenByEndedMandate(
+                setOf(VisitStatus.REQUESTED, VisitStatus.CONFIRMED),
+                setOf(MandateStatus.CLOSED, MandateStatus.CANCELLED),
+                OffsetLimitPageRequest(0, 100, Sort.by(Sort.Direction.ASC, "id")),
             ).map { it.id }.toSet(),
         )
     }

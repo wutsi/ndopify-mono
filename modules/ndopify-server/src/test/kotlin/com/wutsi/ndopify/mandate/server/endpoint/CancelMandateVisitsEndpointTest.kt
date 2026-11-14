@@ -31,6 +31,7 @@ class CancelMandateVisitsEndpointTest : AuthorizationAwareEndpointIntegrationTes
             ),
             Any::class.java,
         )
+        awaitAsyncTasks()
 
         assertEquals("CANCELLED", visit(1)["status"])
         assertEquals("SYSTEM", visit(1)["cancelled_by"])
@@ -51,6 +52,7 @@ class CancelMandateVisitsEndpointTest : AuthorizationAwareEndpointIntegrationTes
     @Test
     fun `cancelling a listing mandate cancels the visits on its listing`() {
         rest.postForEntity("/v1/mandates/11/cancel", CancelMandateRequest(cancellationCode = MandateCancellationCode.OTHER), Any::class.java)
+        awaitAsyncTasks()
 
         assertEquals("CANCELLED", visit(1)["status"])
         assertEquals("CANCELLED", visit(3)["status"])

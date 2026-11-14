@@ -310,6 +310,26 @@ class VisitServiceTest {
         verify(eventPublisher, times(2)).publishEvent(any<VisitCancelledEvent>())
     }
 
+    @Test
+    fun `the catch-up sweep cancels the open visits of ended mandates`() {
+        val requested = visit.copy(id = 3L, status = VisitStatus.REQUESTED, scheduledAt = null)
+        val confirmed = visit.copy(id = 1L, status = VisitStatus.CONFIRMED, scheduledAt = date(2026, 12, 2, 10, 0))
+        doReturn(listOf(requested, confirmed)).whenever(dao)
+            .findOpenByEndedMandate(any(), any(), any())
+
+        assertEquals(2, service.cancelEndedMandateVisits(100))
+
+        val saved = argumentCaptor<VisitEntity>()
+        verify(dao, times(2)).save(saved.capture())
+        saved.allValues.forEach {
+            assertEquals(VisitStatus.CANCELLED, it.status)
+            assertEquals(VisitParty.SYSTEM, it.cancelledBy)
+            assertNotNull(it.cancelledAt)
+            assertNull(it.cancellationReason)
+        }
+        verify(eventPublisher, times(2)).publishEvent(any<VisitCancelledEvent>())
+    }
+
     private fun saved(): VisitEntity {
         val captor = argumentCaptor<VisitEntity>()
         verify(dao, atLeastOnce()).save(captor.capture())
