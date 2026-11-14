@@ -155,7 +155,7 @@
                     <a class="btn btn-primary price-card__cta" th:href="@{/visits/{id}(id=${open.id})}">Voir ma visite</a>
                     <p class="price-card__hint">
                         <th:block th:switch="${open.status.name()}">
-                            <span th:case="'REQUESTED'">L'agent vous confirme la date par e-mail sous 48 h.</span>
+                            <span th:case="'REQUESTED'">L'agent vous confirme la date par e-mail.</span>
                             <span th:case="'CONFIRMED'">Votre code de visite vous a été envoyé par e-mail.</span>
                             <span th:case="*">Visite en cours.</span>
                         </th:block>
@@ -238,7 +238,7 @@
                                 <a class="btn btn-primary price-card__cta" th:href="@{/visits/{id}(id=${open.id})}">Voir ma visite</a>
                                 <p class="price-card__hint">
                                     <th:block th:switch="${open.status.name()}">
-                                        <span th:case="'REQUESTED'">L'agent vous confirme la date par e-mail sous 48 h.</span>
+                                        <span th:case="'REQUESTED'">L'agent vous confirme la date par e-mail.</span>
                                         <span th:case="'CONFIRMED'">Votre code de visite vous a été envoyé par e-mail.</span>
                                         <span th:case="*">Visite en cours.</span>
                                     </th:block>

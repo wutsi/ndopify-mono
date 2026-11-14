@@ -136,7 +136,7 @@
       var slot = longDate(checked.value, time.options[time.selectedIndex].text);
       done.querySelector('[data-interest-done-text]').textContent = 'Vous avez demandé une ' +
         (type === 'VIDEO' ? 'visite vidéo' : 'visite sur place') + ' le ' + slot +
-        '. Serge vous confirme la date par e-mail sous 48 h.';
+        '. Serge vous confirme la date par e-mail.';
       showSlot(TYPES[type] + ' · ' + slot);
       done.querySelector('.btn-primary').href = 'visite.html?state=requested' + (type === 'VIDEO' ? '&type=video' : '');
       document.querySelectorAll('[data-answer="VISIT_REQUESTED"] a, [data-bar-answer="VISIT_REQUESTED"] a')
