@@ -946,20 +946,20 @@ class ListingViewsTest {
     fun `co-brokerage visits - formatted, labelled and linked`() {
         val visits = listOf(
             CoBrokerageVisitSummary(
-                id = 1,
-                listingId = 501,
-                agentId = 20,
-                status = VisitStatus.CONFIRMED,
-                type = VisitType.ON_SITE,
-                scheduledAt = date(2026, 11, 22, 10, 30),
-            ),
-            CoBrokerageVisitSummary(
                 id = 2,
                 listingId = 501,
                 agentId = 21,
                 status = VisitStatus.CHECKED_IN,
                 type = VisitType.VIDEO,
                 scheduledAt = date(2026, 11, 23, 9, 0),
+            ),
+            CoBrokerageVisitSummary(
+                id = 1,
+                listingId = 501,
+                agentId = 20,
+                status = VisitStatus.CONFIRMED,
+                type = VisitType.ON_SITE,
+                scheduledAt = date(2026, 11, 22, 10, 30),
             ),
         )
 
@@ -997,6 +997,21 @@ class ListingViewsTest {
         )
 
         assertEquals("Serge Ngono", rows.single().agentName)
+        assertNull(rows.single().whatsappUrl)
+    }
+
+    @Test
+    fun `co-brokerage visits - blank name means no link, even with a number`() {
+        val rows = ListingViews.visits(
+            listOf(CoBrokerageVisitSummary(id = 1, listingId = 501, agentId = 20, scheduledAt = date(2026, 11, 22, 10, 30))),
+            mapOf(20L to agent(20, "", "", "+237699000001")),
+            501,
+            TENANT,
+            TenantFormatter(TENANT),
+        )
+
+        assertNull(rows.single().agentName)
+        assertNull(rows.single().agentUrl)
         assertNull(rows.single().whatsappUrl)
     }
 

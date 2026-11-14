@@ -193,7 +193,7 @@ data class PhotoView(
  * or the report.
  */
 data class ListingVisitView(
-    /** "samedi 22 novembre 2026 à 10:30", in the tenant's time zone. */
+    /** "dimanche 22 novembre 2026 à 10:30", in the tenant's time zone. */
     val at: String,
     /** "Sur place" / "Visite vidéo". */
     val typeLabel: String,

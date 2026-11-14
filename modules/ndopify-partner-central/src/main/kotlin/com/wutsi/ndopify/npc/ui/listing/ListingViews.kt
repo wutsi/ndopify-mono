@@ -185,7 +185,7 @@ object ListingViews {
                     inProgress = visit.status == VisitStatus.CHECKED_IN,
                     agentName = name,
                     agentUrl = name?.let { AgentProfileRules.profileUrl(visit.agentId, "/listings/$listingId#visits-title") },
-                    whatsappUrl = AgentProfileRules.whatsappUrl(agent?.whatsappNumber),
+                    whatsappUrl = name?.let { AgentProfileRules.whatsappUrl(agent?.whatsappNumber) },
                 )
             }
 

@@ -176,5 +176,6 @@ class VisitCancelledMailet(
             "cancelled_by_label" to cancelledByLabel,
             "cancellation_reason" to reason?.ifBlank { null },
             "visit_url" to visitUrl,
+            "system_cancelled" to (visit.cancelledBy == VisitParty.SYSTEM),
         )
 }

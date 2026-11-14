@@ -104,9 +104,11 @@ class VisitCancelledMailetTest {
                 "cancelled_by_label" to "Le client a annulé la visite.",
                 "cancellation_reason" to "Empêchement",
                 "visit_url" to "https://partner.ndopify.com/visits/1",
+                "system_cancelled" to false,
             ),
             context(),
         )
+        assertEquals(false, context()["system_cancelled"])
     }
 
     @Test
@@ -119,6 +121,7 @@ class VisitCancelledMailetTest {
         assertEquals("Kim Possible", email.firstValue.sender?.displayName)
         assertEquals("J'ai annulé la visite.", context()["cancelled_by_label"])
         assertEquals("https://www.ndopify.com/visits/1?token=xxx.yyy.zzz", context()["visit_url"])
+        assertEquals(false, context()["system_cancelled"])
     }
 
     @Test
@@ -149,6 +152,7 @@ class VisitCancelledMailetTest {
         contexts.allValues.forEach { context ->
             assertEquals("La visite est annulée.", context["cancelled_by_label"])
             assertNull(context["cancellation_reason"])
+            assertEquals(true, context["system_cancelled"])
         }
     }
 
