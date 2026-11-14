@@ -10,6 +10,7 @@ import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
+import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
@@ -30,6 +31,7 @@ import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.visit.server.dao.VisitRepository
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
+import com.wutsi.ndopify.visit.server.event.VisitCancelledEvent
 import com.wutsi.ndopify.visit.server.mail.CoBrokerageVisitMailet
 import com.wutsi.ndopify.visit.server.mail.VisitCancelledMailet
 import com.wutsi.ndopify.visit.server.mail.VisitCompletedMailet
@@ -52,6 +54,7 @@ import java.util.Optional
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
 class VisitServiceTest {
@@ -284,6 +287,27 @@ class VisitServiceTest {
         }
 
         verify(coBrokerageVisitMailet, never()).sendNoShow(any(), any(), any())
+    }
+
+    @Test
+    fun `an ended mandate cancels the open visits the query returns`() {
+        val requested = visit.copy(id = 2L, status = VisitStatus.REQUESTED, scheduledAt = null)
+        val confirmed = visit.copy(id = 1L, status = VisitStatus.CONFIRMED, scheduledAt = date(2026, 12, 2, 10, 0))
+        // The repository query already excludes CHECKED_IN/COMPLETED; VisitRepositoryTest pins that exclusion.
+        doReturn(listOf(requested, confirmed)).whenever(dao)
+            .findOpenByMandateOrListingMandate(eq(1L), any())
+
+        assertEquals(2, service.cancelForEndedMandate(1L))
+
+        val saved = argumentCaptor<VisitEntity>()
+        verify(dao, times(2)).save(saved.capture())
+        saved.allValues.forEach {
+            assertEquals(VisitStatus.CANCELLED, it.status)
+            assertEquals(VisitParty.SYSTEM, it.cancelledBy)
+            assertNotNull(it.cancelledAt)
+            assertNull(it.cancellationReason)
+        }
+        verify(eventPublisher, times(2)).publishEvent(any<VisitCancelledEvent>())
     }
 
     private fun saved(): VisitEntity {

@@ -128,6 +128,30 @@ class VisitCancelledMailetTest {
         assertNull(context()["cancellation_reason"])
     }
 
+    @Test
+    fun `the system cancelled - both sides get the neutral wording, never the mandate reason`() {
+        mailet.send(
+            visit.copy(cancelledBy = VisitParty.SYSTEM, cancellationReason = "Mandat clôturé"),
+            customer,
+            agent,
+            listing,
+        )
+
+        val emails = argumentCaptor<Email>()
+        verify(mailService, times(2)).send(emails.capture())
+        assertEquals(
+            setOf("ray.sponsible@gmail.com", "kim.possible@gmail.com"),
+            emails.allValues.map { it.recipient.email }.toSet(),
+        )
+
+        val contexts = argumentCaptor<Map<String, Any?>>()
+        verify(mailBodyResolver, times(2)).resolve(eq(VisitCancelledMailet.TEMPLATE), contexts.capture())
+        contexts.allValues.forEach { context ->
+            assertEquals("La visite est annulée.", context["cancelled_by_label"])
+            assertNull(context["cancellation_reason"])
+        }
+    }
+
     private fun context(): Map<String, Any?> {
         val captor = argumentCaptor<Map<String, Any?>>()
         verify(mailBodyResolver).resolve(eq(VisitCancelledMailet.TEMPLATE), captor.capture())

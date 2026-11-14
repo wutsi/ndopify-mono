@@ -614,6 +614,32 @@ class VisitService(
         }
     }
 
+    /**
+     * The mandate ended (CLOSED or CANCELLED): its open visits and those on its listing become CANCELLED by the system,
+     * with no reason copied from the mandate. A CHECKED_IN visit stays on; A closes it. Synchronous, inside the mandate's
+     * transaction. Returns how many were cancelled.
+     */
+    @Transactional
+    fun cancelForEndedMandate(mandateId: Long): Int {
+        val now = Date(clock.millis())
+        val visits = dao.findOpenByMandateOrListingMandate(
+            mandateId,
+            setOf(VisitStatus.REQUESTED, VisitStatus.CONFIRMED),
+        )
+        return visits.count { visit ->
+            val saved = dao.save(
+                visit.copy(
+                    status = VisitStatus.CANCELLED,
+                    cancelledBy = VisitParty.SYSTEM,
+                    cancelledAt = now,
+                    cancellationReason = null,
+                ),
+            )
+            eventPublisher.publishEvent(VisitCancelledEvent(visitId = saved.id!!, tenantId = saved.tenantId!!))
+            true
+        }
+    }
+
     /** E-mails both sides the 24 h reminder. Called by `VisitEventListener`; nothing when no longer CONFIRMED. */
     @Transactional
     fun sendReminderEmails(visitId: Long) {

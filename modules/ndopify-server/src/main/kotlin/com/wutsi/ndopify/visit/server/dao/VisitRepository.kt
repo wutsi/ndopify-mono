@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.visit.server.dao
 
+import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
 import jakarta.persistence.LockModeType
@@ -95,6 +96,17 @@ interface VisitRepository : CrudRepository<VisitEntity, Long>, JpaSpecificationE
     fun findByListingIdAndAgentIdNotAndStatusInOrderByScheduledAtAscIdAsc(
         listingId: Long,
         agentId: Long,
+        statuses: Collection<VisitStatus>,
+    ): List<VisitEntity>
+
+    // The REQUESTED/CONFIRMED visits the ended mandate makes moot: its own (search side) and its listing's
+    @Query(
+        "SELECT v FROM VisitEntity v WHERE v.status IN :statuses AND (" +
+            "v.mandateId = :mandateId OR v.listingId IN (" +
+            "SELECT l.id FROM ListingEntity l WHERE l.mandate.id = :mandateId))"
+    )
+    fun findOpenByMandateOrListingMandate(
+        mandateId: Long,
         statuses: Collection<VisitStatus>,
     ): List<VisitEntity>
 

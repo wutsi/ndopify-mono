@@ -44,4 +44,26 @@ class VisitRepositoryTest : TenantAwareEndpointIntegrationTest() {
             ).map { it.id },
         )
     }
+
+    @Test
+    @Sql(value = ["/db/test/clean.sql", "/db/test/visit/VisitFixtures.sql", "/db/test/visit/CoBrokerageVisitEndpoint.sql"])
+    fun `open visits by mandate or listing mandate`() {
+        // Search side: mandate 4 has visits 1..4 and 6 (CONFIRMED, CHECKED_IN, REQUESTED, COMPLETED, CONFIRMED)
+        assertEquals(
+            setOf(1L, 3L, 6L),
+            dao.findOpenByMandateOrListingMandate(
+                4,
+                setOf(VisitStatus.REQUESTED, VisitStatus.CONFIRMED),
+            ).map { it.id }.toSet(),
+        )
+
+        // Listing side: listing mandate 11 owns listing 101, which holds visits 1..5
+        assertEquals(
+            setOf(1L, 3L, 5L),
+            dao.findOpenByMandateOrListingMandate(
+                11,
+                setOf(VisitStatus.REQUESTED, VisitStatus.CONFIRMED),
+            ).map { it.id }.toSet(),
+        )
+    }
 }
