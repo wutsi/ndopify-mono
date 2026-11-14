@@ -376,7 +376,7 @@ class MandateController(
             listing,
             listings?.values.orEmpty() + visitListings?.values.orEmpty(),
         )
-        val view = view(mandate, locations)
+        val view = view(mandate, locations, listingId)
         model.addAttribute("mandate", view)
         model.addAttribute(
             "searchStats",
@@ -649,7 +649,7 @@ class MandateController(
         }
 
     /** Each secondary lookup that fails leaves its lines out: only the mandate itself is required. */
-    private fun view(mandate: Mandate, locations: Map<Long, Location>): MandateView =
+    private fun view(mandate: Mandate, locations: Map<Long, Location>, listingId: Long?): MandateView =
         MandateViews.of(
             mandate,
             contract(mandate),
@@ -658,7 +658,7 @@ class MandateController(
             locations,
             clock.millis(),
             formatter(),
-            deal(mandate),
+            deal(mandate, listingId),
         )
 
     private fun formatter(): TenantFormatter = TenantFormatter(tenantContext.getTenant())
@@ -672,11 +672,13 @@ class MandateController(
     }
 
     /**
-     * A landlord's signed mandate only: the id of its listing, null before it's created or when it can't be searched.
-     * The mandate's agent is the signed-in one (ndopify-server refuses another's mandate), so its DRAFT is found.
+     * A landlord's mandate: the id of its listing, null before it's created or when it can't be searched. A closed
+     * mandate's listing (RENTED / SOLD) is resolved too, so its hosted visits still show; the *Actif* panel itself
+     * stays for the signed (APPROVED) mandate only.
      */
     private fun listingId(mandate: Mandate): Long? {
-        if (mandate.mandateType != MandateType.LISTING || mandate.status != MandateStatus.APPROVED) return null
+        val listed = mandate.status == MandateStatus.APPROVED || mandate.status == MandateStatus.CLOSED
+        if (mandate.mandateType != MandateType.LISTING || !listed) return null
         val agentId = mandate.agentId ?: return null
         return lookup("listing of mandate ${mandate.id}") { listingClient.findIdByMandate(mandate.id, agentId) }
     }
@@ -767,7 +769,7 @@ class MandateController(
      * property's listing id (the match's, or found by mandate id for an outside listing closure). A failed read leaves
      * its line out; another agent's listing or mandate is only ever read for its public number.
      */
-    private fun deal(mandate: Mandate): MandateDeal? {
+    private fun deal(mandate: Mandate, resolvedListingId: Long?): MandateDeal? {
         if (mandate.status != MandateStatus.CLOSED) return null
         val owner = mandate.mandateType == MandateType.LISTING
         val matchId = mandate.dealMatchId
@@ -791,12 +793,7 @@ class MandateController(
         }
 
         if (mandate.dealOutside) {
-            val listingId = if (owner) {
-                mandate.agentId?.let { lookup("listing of mandate ${mandate.id}") { listingClient.findIdByMandate(mandate.id, it) } }
-            } else {
-                null
-            }
-            return MandateDeal(null, null, listingId)
+            return MandateDeal(null, null, resolvedListingId)
         }
 
         return null

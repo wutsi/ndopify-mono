@@ -330,7 +330,7 @@
                                             <span th:unless="${row.agentUrl}" th:text="${row.agentName}">Clarisse Mbarga</span>
                                         </p>
                                         <th:block th:if="${row.visit != null}">
-                                            <div th:replace="~{fragments/visit-detail :: detail(${row.visit}, ${row.client}, ${row.agentName == null})}"></div>
+                                            <div th:replace="~{fragments/visit-detail :: detail(${row.visit}, ${row.client})}"></div>
                                         </th:block>
                                         <p class="proposal-card__meta" th:if="${!#strings.isEmpty(row.sent)}"
                                            th:text="${row.sent}" data-proposal-summary>Envoyé le 28 oct. 2026</p>
@@ -420,7 +420,9 @@
                                                    th:class="|status-tag status-tag--${match.tag.style}|"
                                                    th:text="${match.tag.label}" data-match-tag>Nouveau</p>
                                             </div>
-                                            <p class="match__origin" th:if="${match.origin}" data-match-origin>
+                                            <p class="match__origin"
+                                               th:if="${match.origin != null and (match.visit == null or match.visit.agentName == null)}"
+                                               data-match-origin>
                                                 <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="6.5" r="3.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                                                 <a th:if="${match.originUrl}" th:href="${match.originUrl}"
                                                    th:text="${match.origin}" data-match-agent>Clarisse Mbarga</a>
@@ -437,7 +439,7 @@
                                                th:text="${match.visit != null ? match.sent : match.answer}"
                                                data-match-answer>Envoyé le 28 octobre 2026</p>
                                             <th:block th:if="${match.visit != null}">
-                                                <div th:replace="~{fragments/visit-detail :: detail(${match.visit}, ${match.title + ' · annonce n° ' + match.listingId}, ${match.origin == null})}"></div>
+                                                <div th:replace="~{fragments/visit-detail :: detail(${match.visit}, ${match.title + ' · annonce n° ' + match.listingId})}"></div>
                                             </th:block>
                                             <details class="assignment__details">
                                                 <summary>Pourquoi ce bien&nbsp;?</summary>

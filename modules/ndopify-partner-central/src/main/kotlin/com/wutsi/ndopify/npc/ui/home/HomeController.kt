@@ -120,7 +120,7 @@ class HomeController(
             val mandateCustomersCall = parallel.async { mandates?.let { loadMandateCustomers(it) } ?: emptyMap() }
             val visitListingsCall = parallel.async { visits?.let { loadVisitListings(it) } }
             val visitCustomersCall = parallel.async { visits?.let { loadVisitCustomers(it) } ?: emptyMap() }
-            val coBrokerageListingsCall = parallel.async { coBrokerage?.let { loadCoBrokerageListings(it) } }
+            val coBrokerageListingsCall = parallel.async { coBrokerage?.let { loadCoBrokerageListings(agent, it) } }
             val offers = offersCall.join()
             val mandateStats = mandateStatsCall.join()
             val listings = listingsCall.join()
@@ -353,13 +353,16 @@ class HomeController(
             null
         }
 
-    /** The visits' listings by id; null when they can't be read (the rows keep their number only). */
-    private fun loadCoBrokerageListings(visits: List<CoBrokerageVisitSummary>): Map<Long, ListingSummary>? =
+    /** The visits' listings by id, the agent's own (RENTED / SOLD included); null when they can't be read (the rows keep their number only). */
+    private fun loadCoBrokerageListings(
+        agent: Agent,
+        visits: List<CoBrokerageVisitSummary>,
+    ): Map<Long, ListingSummary>? =
         if (visits.isEmpty()) {
             emptyMap()
         } else {
             try {
-                listingClient.searchByIds(visits.map { it.listingId }.distinct()).associateBy { it.id }
+                listingClient.searchOwnByIds(visits.map { it.listingId }.distinct(), agent.id).associateBy { it.id }
             } catch (ex: RestClientException) {
                 LOGGER.warn("No listings for the co-brokerage visits: ${ex.message}")
                 null

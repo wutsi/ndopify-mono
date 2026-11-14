@@ -638,7 +638,7 @@ class HomeControllerTest {
             ),
         ).whenever(visitClient).coBrokerage()
         doReturn(listOf(VisitFixtures.listingSummary().copy(id = 501)))
-            .whenever(listingClient).searchByIds(listOf(501L))
+            .whenever(listingClient).searchOwnByIds(listOf(501L), AGENT.id)
         doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
 
         val result = mvc.perform(get("/")).andReturn()
@@ -663,7 +663,7 @@ class HomeControllerTest {
         doReturn(listOf(hostedVisit())).whenever(visitClient).coBrokerage()
         doReturn(listOf(VisitFixtures.listingSummary())).whenever(listingClient).searchByIds(listOf(3012L))
         doReturn(listOf(VisitFixtures.listingSummary().copy(id = 501)))
-            .whenever(listingClient).searchByIds(listOf(501L))
+            .whenever(listingClient).searchOwnByIds(listOf(501L), AGENT.id)
         doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
 
         val result = mvc.perform(get("/")).andReturn()
@@ -687,7 +687,7 @@ class HomeControllerTest {
     fun `a co-brokerage visit keeps its row when the listing cannot be read`() {
         doReturn(VisitFixtures.NOW).whenever(clock).millis()
         doReturn(listOf(hostedVisit())).whenever(visitClient).coBrokerage()
-        doThrow(ResourceAccessException("down")).whenever(listingClient).searchByIds(listOf(501L))
+        doThrow(ResourceAccessException("down")).whenever(listingClient).searchOwnByIds(listOf(501L), AGENT.id)
         doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
 
         val result = mvc.perform(get("/")).andReturn()
@@ -704,7 +704,7 @@ class HomeControllerTest {
         doReturn(VisitFixtures.NOW).whenever(clock).millis()
         doReturn(listOf(hostedVisit())).whenever(visitClient).coBrokerage()
         doReturn(listOf(VisitFixtures.listingSummary().copy(id = 501)))
-            .whenever(listingClient).searchByIds(listOf(501L))
+            .whenever(listingClient).searchOwnByIds(listOf(501L), AGENT.id)
         doThrow(ResourceAccessException("down")).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
 
         val result = mvc.perform(get("/")).andReturn()

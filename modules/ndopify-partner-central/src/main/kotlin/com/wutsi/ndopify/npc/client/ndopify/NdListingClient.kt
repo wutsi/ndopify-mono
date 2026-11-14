@@ -118,6 +118,28 @@ class NdListingClient(
             ?: emptyList()
     }
 
+    /**
+     * The agent's own listings among [ids], in one search: [agentId] must be the signed-in agent's, so ndopify-server
+     * returns its RENTED / SOLD ones too. No call without an id.
+     */
+    fun searchOwnByIds(ids: List<Long>, agentId: Long): List<ListingSummary> {
+        if (ids.isEmpty()) {
+            return emptyList()
+        }
+        return rest.get()
+            .uri { uri ->
+                ids.forEach { uri.queryParam("id", it) }
+                uri.path("/v1/listings")
+                    .queryParam("agent-id", agentId)
+                    .queryParam("limit", ids.size)
+                    .build()
+            }
+            .retrieve()
+            .body<SearchListingResponse>()
+            ?.listings
+            ?: emptyList()
+    }
+
     /** How each of [listingIds] is doing: the clients it interested and its visits. One call; none without an id. */
     fun stats(listingIds: List<Long>): Map<Long, ListingStats> {
         if (listingIds.isEmpty()) return emptyMap()

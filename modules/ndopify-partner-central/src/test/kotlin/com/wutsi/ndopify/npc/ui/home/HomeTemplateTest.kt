@@ -560,7 +560,7 @@ class HomeTemplateTest {
             ),
         ).whenever(visitClient).coBrokerage()
         doReturn(listOf(VisitFixtures.listingSummary().copy(id = 501)))
-            .whenever(listingClient).searchByIds(listOf(501L))
+            .whenever(listingClient).searchOwnByIds(listOf(501L), AGENT.id)
         doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
 
         val page = render(get("/"))
@@ -596,7 +596,7 @@ class HomeTemplateTest {
             ),
         ).whenever(visitClient).coBrokerage()
         doReturn(listOf(VisitFixtures.listingSummary().copy(id = 501)))
-            .whenever(listingClient).searchByIds(listOf(501L))
+            .whenever(listingClient).searchOwnByIds(listOf(501L), AGENT.id)
         doThrow(ResourceAccessException("down")).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
 
         val card = render(get("/")).selectFirst("[data-co-brokerage-visits] .co-visit-card")!!
@@ -624,7 +624,7 @@ class HomeTemplateTest {
             ),
         ).whenever(visitClient).coBrokerage()
         doReturn(listOf(VisitFixtures.listingSummary().copy(id = 501)))
-            .whenever(listingClient).searchByIds(listOf(501L))
+            .whenever(listingClient).searchOwnByIds(listOf(501L), AGENT.id)
         doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
 
         val card = render(get("/")).selectFirst("[data-co-brokerage-visits] .co-visit-card")!!

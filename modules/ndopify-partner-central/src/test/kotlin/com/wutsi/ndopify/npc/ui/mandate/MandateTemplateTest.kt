@@ -759,10 +759,15 @@ class MandateTemplateTest {
      * A signed search with a requested visit on its ACCEPTED match (9001), a proposal awaiting an answer (9003), and
      * one refused and one unanswered match (to fill the outcomes line).
      */
-    private fun withVisits(vararg visits: VisitSummary) {
+    private fun withVisits(vararg visits: VisitSummary, coBrokerage: Boolean = false) {
         withMatches(
             MatchFixtures.MATCH_B.copy(mandateId = 201, status = MatchStatus.PROPOSED, proposedAt = proposedAt),
-            MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.ACCEPTED, proposedAt = proposedAt),
+            MatchFixtures.MATCH_A.copy(
+                mandateId = 201,
+                status = MatchStatus.ACCEPTED,
+                proposedAt = proposedAt,
+                coBrokerage = coBrokerage,
+            ),
             MatchFixtures.MATCH_C.copy(mandateId = 201, status = MatchStatus.REJECTED),
             MatchFixtures.MATCH_C.copy(id = 9005, mandateId = 201, status = MatchStatus.EXPIRED, proposedAt = proposedAt),
             MatchFixtures.MATCH_C.copy(id = 9006, mandateId = 201, status = MatchStatus.DISMISSED),
@@ -823,7 +828,10 @@ class MandateTemplateTest {
     @Test
     fun `visits - a co-brokerage visit names the listing agent`() {
         doReturn(VisitFixtures.NOW).whenever(clock).millis()
-        withVisits(VisitFixtures.summary(VisitFixtures.confirmed().copy(mandateId = 201, matchId = 9001)))
+        withVisits(
+            VisitFixtures.summary(VisitFixtures.confirmed().copy(mandateId = 201, matchId = 9001)),
+            coBrokerage = true,
+        )
         doReturn(
             listOf(
                 MatchFixtures.LISTING_A.copy(agentId = VisitFixtures.OTHER_AGENT_ID),
@@ -837,6 +845,8 @@ class MandateTemplateTest {
 
         val card = page.selectFirst("[data-match-id=9001]")!!
         assertEquals("Clarisse Mbarga", card.selectFirst("[data-visit-agent-name]")?.text())
+        // The visit names the agent: the card does not repeat it on an origin line.
+        assertNull(card.selectFirst("[data-match-origin]"))
         assertEquals(
             "/agent?id=30&back=/mandates/201%23matches-title",
             card.selectFirst("[data-visit-agent-link]")?.attr("href"),
@@ -981,7 +991,7 @@ class MandateTemplateTest {
     }
 
     @Test
-    fun `co-brokerage match with a visit keeps its origin line`() {
+    fun `co-brokerage match with a visit names the agent once`() {
         doReturn(VisitFixtures.NOW).whenever(clock).millis()
         withMatches(
             MatchFixtures.MATCH_A.copy(
@@ -1005,9 +1015,9 @@ class MandateTemplateTest {
         val card = page.selectFirst("[data-match-id=9001]")!!
 
         assertNull(card.selectFirst("[data-match-tag]"))
-        assertEquals("Clarisse Mbarga", card.selectFirst("[data-match-origin]")?.text())
-        // The origin line already names the agent: the visit does not repeat it.
-        assertNull(card.selectFirst("[data-visit-agent]"))
+        // The visit names the agent ("Avec …"): the card does not repeat it on an origin line.
+        assertNull(card.selectFirst("[data-match-origin]"))
+        assertEquals("Clarisse Mbarga", card.selectFirst("[data-visit-agent-name]")?.text())
     }
 
     @Test

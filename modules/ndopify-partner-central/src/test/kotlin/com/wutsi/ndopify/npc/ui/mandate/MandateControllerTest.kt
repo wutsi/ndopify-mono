@@ -294,6 +294,34 @@ class MandateControllerTest {
         assertNull(visits.single().agentInitials)
     }
 
+    @Test
+    fun `closed listing mandate - hosted visits of its rented listing`() {
+        doReturn(APPROVED.copy(mandateType = MandateType.LISTING, status = MandateStatus.CLOSED))
+            .whenever(mandateClient).get(201)
+        doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
+        doReturn(ListingViewsTest.COMPLETE.copy(status = ListingStatus.RENTED)).whenever(listingClient).get(501)
+        doReturn(
+            listOf(
+                CoBrokerageVisitSummary(
+                    id = 8001,
+                    listingId = 501,
+                    agentId = VisitFixtures.OTHER_AGENT_ID,
+                    status = VisitStatus.CHECKED_IN,
+                    type = VisitType.ON_SITE,
+                    scheduledAt = Date(VisitFixtures.NOW),
+                ),
+            ),
+        ).whenever(visitClient).coBrokerageOnListing(501)
+        doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
+
+        val result = mvc.perform(get("/mandates/201")).andReturn()
+
+        @Suppress("UNCHECKED_CAST")
+        val visits = model(result)["coBrokerageVisits"] as List<ListingVisitView>
+        assertEquals(1, visits.size)
+        assertEquals("Clarisse Mbarga", visits.single().agentName)
+    }
+
     private fun publishedListing() {
         doReturn(APPROVED.copy(mandateType = MandateType.LISTING)).whenever(mandateClient).get(201)
         doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
@@ -836,7 +864,7 @@ class MandateControllerTest {
         doReturn(
             listOf(
                 matchB,
-                matchA.copy(status = MatchStatus.ACCEPTED),
+                matchA.copy(status = MatchStatus.ACCEPTED, coBrokerage = true),
                 matchA.copy(id = 9009, listingId = 3099, status = MatchStatus.DISMISSED),
             ),
         ).whenever(matchClient).search(any(), any(), any())
@@ -860,7 +888,7 @@ class MandateControllerTest {
         doReturn(
             listOf(
                 matchB,
-                matchA.copy(status = MatchStatus.ACCEPTED),
+                matchA.copy(status = MatchStatus.ACCEPTED, coBrokerage = true),
                 matchA.copy(id = 9009, listingId = 3099, status = MatchStatus.DISMISSED),
             ),
         ).whenever(matchClient).search(any(), any(), any())
