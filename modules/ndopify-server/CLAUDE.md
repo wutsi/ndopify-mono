@@ -387,9 +387,11 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   (`agent-id` or `customer-id` forced). Co-brokerage visits: the listing's agent (B) is a read-only backstage
   participant. `GET /v1/visits/co-brokerage?listing-id=` returns only `CONFIRMED`/`CHECKED_IN` visits of another
   agent (`agentId != listing.agent.id`), as `CoBrokerageVisitSummary` (no customer, note, code, address, report or
-  feedback), to the listing's agent only. `CoBrokerageVisitMailet` mails B on confirmation, the 24 h reminder, a
-  cancellation after confirmation and a customer-caused no-show, never on `REQUESTED`/`EXPIRED`/`COMPLETED`/agent
-  no-show or an own-inventory visit. `MandateClosedEvent` now also reaches `VisitMandateEventListener`, an async
+  feedback), to the listing's agent only. `CoBrokerageVisitMailet` mails B on confirmation, the 24 h reminder,
+  a cancellation after confirmation (only while the listing's mandate is still live: B is not re-mailed a cancellation
+  B caused by ending the listing mandate) and a customer-caused no-show; never on
+  `REQUESTED`/`EXPIRED`/`COMPLETED`/agent no-show or an own-inventory visit. `MandateClosedEvent` now also reaches
+  `VisitMandateEventListener`, an async
   after-commit listener that cancels the mandate's `REQUESTED`/`CONFIRMED` visits (search side and listing side) as
   `SYSTEM` with no mandate reason; `CHECKED_IN` stays. A failed async cancellation never fails the closing:
   `VisitJobs.cancelEndedMandates` sweeps the open visits of ended mandates hourly (100/tenant/run, first run back-fills

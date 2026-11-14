@@ -477,7 +477,12 @@ event is a side effect; a visit left open is recoverable, a mandate closing roll
   cancellation e-mails **are** sent. This is accepted (the earlier "no back-fill" non-goal is lifted).
 - The sweep is bounded (100 per tenant per run, hourly), so a large backlog drains over several runs instead of
   e-mailing everything at once.
+- **B is not mailed when the listing's mandate has already ended** (the usual case: B cancelled or closed it, so B
+  caused the visit cancellation). The check is made at send time against `listing.mandate.status`, not against the
+  ended mandate's id, so it is race-free when both mandates end in the same deal. B is still mailed for a search-side
+  ending while the listing is live.
 
 **Unchanged:** the cancellation is `VisitParty.SYSTEM`, `cancelled_at = now`, `cancellation_reason = null`; `CHECKED_IN`
 stays; both sides get the neutral « La visite est annulée. » and B gets the co-brokerage mail when the visit was
-confirmed and organized by another agent.
+confirmed, organized by another agent, and the listing's mandate is still live.
+

@@ -615,10 +615,20 @@ class VisitService(
             agent = agent,
             listing = listing,
         )
-        if (visit.agentId != listing.agent.id && visit.scheduledAt != null) {
+        if (notifyListingAgentOfCancellation(visit, listing)) {
             coBrokerageVisitMailet.sendCancelled(visit, listing, agent)
         }
     }
+
+    /**
+     * Whether B still needs the co-brokerage cancellation: another agent's confirmed visit, on a listing whose mandate
+     * is still live. When the listing's mandate already ended, B is party to that ending (they caused it, or it was
+     * decided on their mandate): mailing them the visit cancellation too is noise, and there is nothing left to host.
+     */
+    private fun notifyListingAgentOfCancellation(visit: VisitEntity, listing: ListingEntity): Boolean =
+        visit.agentId != listing.agent.id &&
+            visit.scheduledAt != null &&
+            listing.mandate.status !in ENDED_MANDATE_STATUSES
 
     /**
      * The mandate ended (CLOSED or CANCELLED): its open visits and those on its listing become CANCELLED by the system,

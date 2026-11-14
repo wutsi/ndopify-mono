@@ -58,6 +58,12 @@ class CancelMandateVisitsEndpointTest : AuthorizationAwareEndpointIntegrationTes
         assertEquals("CANCELLED", visit(3)["status"])
         assertEquals("CANCELLED", visit(4)["status"])
         assertEquals("CHECKED_IN", visit(2)["status"])
+        assertFalse(
+            smtp.receivedMessages.any { message ->
+                message.allRecipients.any { it.toString().contains("john.doe@gmail.com") }
+            },
+            "B ended the listing mandate itself: no co-brokerage cancellation is mailed to B",
+        )
     }
 
     private fun visit(id: Long): Map<String, Any?> =

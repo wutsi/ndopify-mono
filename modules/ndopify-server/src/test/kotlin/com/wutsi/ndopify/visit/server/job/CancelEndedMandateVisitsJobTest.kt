@@ -7,6 +7,7 @@ import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 @Sql(
@@ -39,7 +40,12 @@ class CancelEndedMandateVisitsJobTest : BaseEndpointIntegrationTest() {
         awaitAsyncTasks()
         val bodies = smtp.receivedMessages.toList().joinToString("\n") { it.content.toString() }
         assertTrue(bodies.contains("La visite est annul"), "the neutral wording, to both sides")
-        assertTrue(smtp.receivedMessages.any { it.subject == "Ndopify: la visite de votre bien est annulée" })
+        assertFalse(
+            smtp.receivedMessages.any { message ->
+                message.allRecipients.any { it.toString().contains("john.doe@gmail.com") }
+            },
+            "B ended the listing mandate itself: no co-brokerage cancellation is mailed to B",
+        )
     }
 
     private fun statuses(): Map<Long, VisitStatus> =

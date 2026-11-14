@@ -19,6 +19,8 @@ import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingService
+import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.match.server.dao.MatchRepository
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.logger.DefaultKVLogger
@@ -251,6 +253,23 @@ class VisitServiceTest {
         service.sendCancelledEmail(1L)
 
         verify(coBrokerageVisitMailet).sendCancelled(any(), eq(coBrokerageListing), eq(agent20))
+    }
+
+    @Test
+    fun `cancelled after the listing mandate ended - the listing agent is not mailed`() {
+        doReturn(Optional.of(visit.copy(status = VisitStatus.CANCELLED, cancelledBy = VisitParty.SYSTEM, scheduledAt = date(2026, 12, 2, 10, 0))))
+            .whenever(dao).findById(1L)
+        doReturn(
+            ListingEntity(
+                id = 101L,
+                mandate = MandateEntity(id = 11L, status = MandateStatus.CANCELLED),
+                agent = owner,
+            ),
+        ).whenever(listingService).findById(101L)
+
+        service.sendCancelledEmail(1L)
+
+        verify(coBrokerageVisitMailet, never()).sendCancelled(any(), any(), any())
     }
 
     @Test
