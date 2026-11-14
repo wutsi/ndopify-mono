@@ -29,7 +29,7 @@
   On top, whatever the state: the listing (photo, title, neighbourhood, price; links to the proposition) and the agent
   (name, WhatsApp). Then a 3-step progress (Demande, Date confirmée, Visite; not for an ended visit) and one block per
   state, the server renders only the current one:
-    - REQUESTED: the type, the requested slot and note; the agent confirms within 48 h (else EXPIRED). Cancel.
+    - REQUESTED: the type, the requested slot and note; the agent confirms before the requested slot (else EXPIRED). Cancel.
     - CONFIRMED: the agent confirmed the type and the date (they may differ from the requested ones, same slot rules:
       one of the 7 days starting tomorrow, 8h00–20h00, every 30 minutes); the 4-digit visit code is generated and
       e-mailed. The type, date and time (and the requested ones when they changed), the code (only ever shown to the
@@ -46,7 +46,7 @@
       optional comment (≤ 1000). Once only: then the thanks (interested → the agent follows up: file, lease).
     - CANCELLED: by the customer or by the agent, from REQUESTED or CONFIRMED, any time before the check-in. A new visit
       can be requested from the proposition.
-    - EXPIRED: the agent didn't confirm within 48 h.
+    - EXPIRED: the agent didn't confirm in time.
     - NO_SHOW: the customer was absent / didn't answer the call, or refused the code; or the agent didn't come / didn't
       call (no check-in within 4 h of the time): ask for another visit, or contact us.
   The #cancel popup: the agent is told, an optional reason (≤ 500), the confirm button.
@@ -156,9 +156,7 @@
             </dl>
             <p class="notice notice--info">
                 <svg aria-hidden="true" class="icon"><use href="#i-clock"/></svg>
-                <span>Serge confirme la visite sous 48&nbsp;h, par e-mail : il peut vous proposer une autre heure ou un
-                    autre type de visite. Sans
-                    réponse de sa part avant le mercredi 4 novembre 2026 à 14h10, la demande expire.</span>
+                <span>L'agent vous confirme la visite par e-mail : il peut vous proposer une autre heure.</span>
             </p>
             <p data-visit-type="ON_SITE">Une fois la date confirmée, vous recevez par e-mail votre code de visite et l'adresse
                 exacte.</p>
@@ -343,11 +341,11 @@
             <a class="btn btn-primary" href="proposition.html?state=accepted">Demander une autre visite</a>
         </section>
 
-        <!-- ============================================================ EXPIRED: not confirmed within 48 h -->
+        <!-- ============================================================ EXPIRED: not confirmed in time -->
         <section aria-labelledby="expired-title" class="visit-state" data-visit-state="EXPIRED" hidden>
             <h2 id="expired-title">Cette demande a expiré</h2>
             <p class="visit-ended"><span data-visit-type="ON_SITE">Sur place</span><span data-visit-type="VIDEO" hidden>Visite vidéo</span> · samedi 7 novembre 2026 à 10h30.</p>
-            <p>Serge n'a pas confirmé votre demande sous 48&nbsp;h : elle a expiré.</p>
+            <p>Votre agent n'a pas confirmé votre demande à temps : elle a expiré.</p>
             <p>Le logement vous intéresse toujours&nbsp;? Vous pouvez demander une autre visite.</p>
             <a class="btn btn-primary" href="proposition.html?state=accepted">Demander une autre visite</a>
         </section>

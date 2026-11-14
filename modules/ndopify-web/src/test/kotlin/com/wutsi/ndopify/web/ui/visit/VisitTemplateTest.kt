@@ -205,6 +205,23 @@ class VisitTemplateTest {
     }
 
     @Test
+    fun `requested promises no delay`() {
+        val doc = render(of(visit(VisitStatus.REQUESTED, VisitType.ON_SITE)))
+
+        val notice = doc.selectFirst("[data-visit-state=REQUESTED] .notice")?.text()
+        assertEquals("L'agent vous confirme la visite par e-mail : il peut vous proposer une autre heure.", notice)
+    }
+
+    @Test
+    fun `expired says the agent did not confirm in time`() {
+        val doc = render(of(visit(VisitStatus.EXPIRED, VisitType.ON_SITE)))
+
+        val text = doc.selectFirst("[data-visit-state=EXPIRED]")!!.text()
+        assertTrue(text.contains("Votre agent n'a pas confirmé votre demande à temps : elle a expiré."))
+        assertFalse(text.contains("48"))
+    }
+
+    @Test
     fun `no feedback form and no prototype links`() {
         val doc = render(of(visit(VisitStatus.COMPLETED, VisitType.ON_SITE)))
         assertNull(doc.selectFirst("[name=interest]"))

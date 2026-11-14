@@ -123,8 +123,7 @@
             </dl>
             <p class="notice notice--info">
                 <svg aria-hidden="true" class="icon"><use href="#i-clock"/></svg>
-                <span>L'agent confirme la visite sous 48&nbsp;h, par e-mail : il peut vous proposer une autre
-                    heure.</span>
+                <span>L'agent vous confirme la visite par e-mail : il peut vous proposer une autre heure.</span>
             </p>
             <p th:if="${page.type.name() != 'VIDEO'}">Une fois la date confirmée, vous recevez par e-mail votre code de
                 visite et la localisation du bien.</p>
@@ -244,7 +243,7 @@
                  th:if="${page.status.name() == 'EXPIRED'}">
             <h2 id="expired-title">Cette demande a expiré</h2>
             <p class="visit-ended" th:text="${page.requestedSlot}">Sur place · samedi 7 novembre 2026 à 10h30</p>
-            <p>Votre agent n'a pas confirmé votre demande sous 48&nbsp;h : elle a expiré.</p>
+            <p>Votre agent n'a pas confirmé votre demande à temps : elle a expiré.</p>
             <p>Le logement vous intéresse toujours&nbsp;? Vous pouvez demander une autre visite.</p>
             <a class="btn btn-primary" th:href="${page.matchUrl}">Demander une autre visite</a>
         </section>
