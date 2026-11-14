@@ -2,8 +2,9 @@
 
 Maven monorepo for Ndopify — a multi-tenant rental platform built on mobile-money agents: agents and their KYC
 verification, mandates (tenants searching for a property, owners offering one for rent) dispatched to those agents,
-the listings those mandates produce, the matching of listings to searches, customer visits, contracts signed online,
-and mobile-money payment integrations across Africa.
+the listings those mandates produce, the matching of listings to searches (an agent's own inventory first, then the
+other agents' published listings: co-brokerage), customer visits, contracts signed online, and mobile-money payment
+integrations across Africa.
 
 [![main](https://github.com/wutsi/ndopify-mono/actions/workflows/_main.yml/badge.svg)](https://github.com/wutsi/ndopify-mono/actions/workflows/_main.yml)
 [![pr](https://github.com/wutsi/ndopify-mono/actions/workflows/_pr.yml/badge.svg)](https://github.com/wutsi/ndopify-mono/actions/workflows/_pr.yml)
@@ -14,14 +15,14 @@ Early-stage. Six modules exist today — there is no SDK, admin console or track
 
 ## Modules
 
-| Module                                                     | Description                                                                                                                                                                                                                                                           |
-|------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [ndopify-dto](modules/ndopify-dto)                         | Shared request/response DTOs and contracts — no business logic                                                                                                                                                                                                        |
-| [ndopify-server](modules/ndopify-server)                   | REST API backend (Spring Boot): agents and KYC, mandates and dispatch, contracts and e-signature, listings, matching, visits and mobile money                                                                                                                         |
-| [ndopify-partner-central](modules/ndopify-partner-central) | Agent-facing web app (Spring Boot + Thymeleaf, French): sign-up, e-mail OTP sign-in, KYC, mandate offers and follow-up, listings, matched properties, their visits (confirm, check in/out, no-show), plus the public *Trouver un bien* and *Proposer un bien* wizards |
-| [ndopify-esignature](modules/ndopify-esignature)           | Signer-facing contract sign page (Spring Boot + Thymeleaf, French): e-mail OTP sign-in, read and sign a contract, plus the public verify page of a signature's QR code                                                                                                |
-| [ndopify-web](modules/ndopify-web)                         | Public marketing site (Spring Boot + Thymeleaf, French): tenant pages, a published listing's public page, the match-proposal page and its answer, plus links to Partner Central's public wizards                                                                      |
-| [ndopify-web-core](modules/ndopify-web-core)               | Library of the infrastructure shared by the three web apps: tenant resolution and formatting, access-token cookie and JWT decoding, REST interceptors and the tenant client                                                                                           |
+| Module                                                     | Description                                                                                                                                                                                                                                                                                                                                                                        |
+|------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [ndopify-dto](modules/ndopify-dto)                         | Shared request/response DTOs and contracts — no business logic                                                                                                                                                                                                                                                                                                                     |
+| [ndopify-server](modules/ndopify-server)                   | REST API backend (Spring Boot): agents and KYC, mandates and dispatch, contracts and e-signature, listings, matching, visits and mobile money                                                                                                                                                                                                                                      |
+| [ndopify-partner-central](modules/ndopify-partner-central) | Agent-facing web app (Spring Boot + Thymeleaf, French): sign-up, e-mail OTP sign-in, KYC, mandate offers and follow-up, listings, matched properties (co-brokerage ones open the other agent's listing read-only), their visits (confirm, check in/out, no-show), the other agents' visits of their own listings, plus the public *Trouver un bien* and *Proposer un bien* wizards |
+| [ndopify-esignature](modules/ndopify-esignature)           | Signer-facing contract sign page (Spring Boot + Thymeleaf, French): e-mail OTP sign-in, read and sign a contract, plus the public verify page of a signature's QR code                                                                                                                                                                                                             |
+| [ndopify-web](modules/ndopify-web)                         | Public marketing site (Spring Boot + Thymeleaf, French): tenant pages, a published listing's public page, the match-proposal page and its answer, plus links to Partner Central's public wizards                                                                                                                                                                                   |
+| [ndopify-web-core](modules/ndopify-web-core)               | Library of the infrastructure shared by the three web apps: tenant resolution and formatting, access-token cookie and JWT decoding, REST interceptors and the tenant client                                                                                                                                                                                                        |
 
 ### Module Dependency
 
@@ -73,10 +74,14 @@ layering (`endpoint` → `service` → `dao` → `domain`, plus `mapper` for ent
 - **listing** — the property a `LISTING` mandate offers, checked on site by its agent: checklist and photos,
   asynchronous verification, LLM-generated title/summary/description and hero image, then a public page; closed when
   its mandate closes.
-- **match** — the listings of an agent's inventory that match its `APPROVED` `SEARCH` mandates: scored, notified to
-  the agent, proposed to the customer, then accepted or rejected by the customer and expired if unanswered.
+- **match** — the listings that match an agent's `APPROVED` `SEARCH` mandates: its own inventory, or, when that has
+  no viable match, the other agents' published listings of the same city and type (co-brokerage: the two agents are
+  put in touch by e-mail). Scored, notified to the agent, proposed to the customer, then accepted or rejected by the
+  customer and expired if unanswered.
 - **visit** — a customer's on-site or video visit of a matched listing: requested, scheduled with a code, checked in
-  and out, no-show or cancelled, then rated; reminded and expired by scheduled jobs.
+  and out, no-show or cancelled, then rated; reminded and expired by scheduled jobs. A visit still requested or
+  confirmed is cancelled when its search or listing mandate closes. On a co-brokerage listing, the listing's agent
+  follows the other agent's confirmed visits read-only (and is e-mailed about them), without the customer's details.
 - **error** — shared exception types and a global error handler.
 
 A non-domain **`platform`** package holds shared infrastructure: the mobile-money gateway integration
