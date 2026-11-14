@@ -389,9 +389,11 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   agent (`agentId != listing.agent.id`), as `CoBrokerageVisitSummary` (no customer, note, code, address, report or
   feedback), to the listing's agent only. `CoBrokerageVisitMailet` mails B on confirmation, the 24 h reminder, a
   cancellation after confirmation and a customer-caused no-show, never on `REQUESTED`/`EXPIRED`/`COMPLETED`/agent
-  no-show or an own-inventory visit. `MandateClosedEvent` now also reaches `VisitMandateEventListener`, which cancels
-  the mandate's `REQUESTED`/`CONFIRMED` visits (search side and listing side) as `SYSTEM` with no mandate reason;
-  `CHECKED_IN` stays. B never learns A's customer. `VisitJobs`: `expire` hourly moves a `REQUESTED` visit older than
+  no-show or an own-inventory visit. `MandateClosedEvent` now also reaches `VisitMandateEventListener`, an async
+  after-commit listener that cancels the mandate's `REQUESTED`/`CONFIRMED` visits (search side and listing side) as
+  `SYSTEM` with no mandate reason; `CHECKED_IN` stays. A failed async cancellation never fails the closing:
+  `VisitJobs.cancelEndedMandates` sweeps the open visits of ended mandates hourly (100/tenant/run, first run back-fills
+  and e-mails). B never learns A's customer. `VisitJobs`: `expire` hourly moves a `REQUESTED` visit older than
   48 h to
   `EXPIRED`, `reminder` every 15 min e-mails both sides 24 h ahead (once), `noShow` hourly marks the `CONFIRMED` visits
   whose agent didn't check in 4 h after the time as `NO_SHOW` (both sides e-mailed). The delays and tolerances above are

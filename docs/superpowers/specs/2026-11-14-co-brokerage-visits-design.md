@@ -447,3 +447,37 @@ to its new agent, which is the correct operational owner.
   listener; the visit cancellation plugs into the same event, no new event.
 - `VisitParty.SYSTEM` already exists in the DTO, so the system cancellation needs no enum change.
 - `ndopify-dto` is at 0.0.88; this slice releases 0.0.89.
+
+## Revision 2026-11-14 — asynchronous cancellation and catch-up sweep
+
+This revision supersedes the synchronous mandate-ending decision above ("Runs synchronously, inside the mandate's
+transaction… a mandate never commits with an open visit it just ended") and the matching plan task.
+
+**Why:** closing or cancelling a mandate must never fail or slow down because a visit could not be cancelled. The
+event is a side effect; a visit left open is recoverable, a mandate closing rolled back is not.
+
+**What changed**
+
+- `VisitMandateEventListener.onMandateClosed` is now `@Async @TransactionalEventListener(phase = AFTER_COMMIT)`, shaped
+  like `VisitEventListener`: it sets the event's tenant, logs the outcome, and swallows failures. It runs after the
+  mandate transaction commits, so the cancellation can no longer roll the closing back.
+- `VisitService.cancelForEndedMandate` is no longer one batch transaction: it cancels each visit through the existing
+  `update()` helper (one transaction per visit, optimistic-lock-safe), the same pattern as `expireDue` /
+  `markAgentNoShows`. A bad visit is skipped and retried by the sweep, never overwriting a concurrent change.
+- New catch-up: `VisitRepository.findOpenByEndedMandate` finds up to 100 open (`REQUESTED`/`CONFIRMED`) visits whose
+  search mandate, or whose listing's mandate, is `CLOSED`/`CANCELLED`. `VisitJobs.cancelEndedMandates` runs it hourly
+  per tenant (`ndopify.visit.cancel-ended-mandates.cron`) and cancels through the same path. It catches a failed async
+  task, a crash, or a mandate ended before the listener existed.
+
+**Trade-offs accepted**
+
+- A mandate can commit with a `CONFIRMED` visit still open for a few seconds until the async task (or the next sweep)
+  cancels it. A check-in that slips into that window wins and is left `CHECKED_IN`, as before.
+- The first sweep after deploy back-fills: stale open visits on already-ended mandates are cancelled and their neutral
+  cancellation e-mails **are** sent. This is accepted (the earlier "no back-fill" non-goal is lifted).
+- The sweep is bounded (100 per tenant per run, hourly), so a large backlog drains over several runs instead of
+  e-mailing everything at once.
+
+**Unchanged:** the cancellation is `VisitParty.SYSTEM`, `cancelled_at = now`, `cancellation_reason = null`; `CHECKED_IN`
+stays; both sides get the neutral « La visite est annulée. » and B gets the co-brokerage mail when the visit was
+confirmed and organized by another agent.

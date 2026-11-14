@@ -1,5 +1,9 @@
 # Co-Brokerage Visits Implementation Plan
 
+> **Revision (2026-11-14):** the mandate-ending cancellation below is now asynchronous, with an hourly catch-up sweep.
+> See `2026-11-14-co-brokerage-visit-cancellation-sweep.md` and the spec's revision section; this plan stays as the
+> record of the original slice.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Make the listing agent (B) a read-only backstage participant in a visit another agent (A) organizes on B's co-brokered listing: B is notified, sees the visit on his listing page, and hosts it — without ever learning A's customer.
