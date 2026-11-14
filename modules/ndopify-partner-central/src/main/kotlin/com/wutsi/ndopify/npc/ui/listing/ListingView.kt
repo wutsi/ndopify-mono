@@ -205,4 +205,12 @@ data class ListingVisitView(
     val agentUrl: String?,
     /** A's wa.me link; null without a number. */
     val whatsappUrl: String?,
+    /** The listing's "type rooms · place", on the home and mandate blocks; null on the listing page. */
+    val listingTitle: String? = null,
+    /** The listing's page, when [listingTitle] is shown. */
+    val listingUrl: String? = null,
+    /** The organizer's initials, for the card's avatar; null when the agent can't be read. */
+    val agentInitials: String? = null,
+    /** A video visit: the card shows the video icon instead of the house. */
+    val video: Boolean = false,
 )

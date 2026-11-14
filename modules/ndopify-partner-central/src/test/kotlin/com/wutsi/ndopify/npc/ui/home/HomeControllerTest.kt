@@ -31,6 +31,7 @@ import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.ASSIGNMENT
 import com.wutsi.ndopify.npc.ui.home.AssignmentViewsTest.Companion.MANDATE
 import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
+import com.wutsi.ndopify.npc.ui.listing.ListingVisitView
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardView
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest
 import com.wutsi.ndopify.npc.ui.mandate.MandateSummariesTest
@@ -42,7 +43,10 @@ import com.wutsi.ndopify.npc.ui.visit.VisitRules
 import com.wutsi.ndopify.party.dto.KycCase
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.Party
+import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
+import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitSummary
+import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -60,6 +64,7 @@ import java.time.Clock
 import java.util.Date
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class HomeControllerTest {
     private val currentAgent = mock<CurrentAgent>()
@@ -615,6 +620,90 @@ class HomeControllerTest {
         assertEquals("un autre agent", card.agentName)
         assertNull(card.agentUrl)
     }
+
+    @Test
+    fun `a hosted co-brokerage visit is on the home block`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        doReturn(
+            listOf(
+                CoBrokerageVisitSummary(
+                    id = 8001,
+                    listingId = 501,
+                    agentId = VisitFixtures.OTHER_AGENT_ID,
+                    status = VisitStatus.CONFIRMED,
+                    type = VisitType.ON_SITE,
+                    scheduledAt = Date(VisitFixtures.NOW),
+                ),
+            ),
+        ).whenever(visitClient).coBrokerage()
+        doReturn(listOf(VisitFixtures.listingSummary().copy(id = 501)))
+            .whenever(listingClient).searchByIds(listOf(501L))
+        doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        @Suppress("UNCHECKED_CAST")
+        val visits = model(result)["coBrokerageVisits"] as List<ListingVisitView>
+        val visit = visits.single()
+        assertEquals("Clarisse Mbarga", visit.agentName)
+        assertEquals("CM", visit.agentInitials)
+        assertEquals(false, visit.video)
+        assertEquals("Appartement 3 chambres · Bonapriso", visit.listingTitle)
+        assertEquals(1, model(result)["todayCount"])
+    }
+
+    @Test
+    fun `a failed co-brokerage read leaves the block out`() {
+        doThrow(ResourceAccessException("timeout")).whenever(visitClient).coBrokerage()
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        assertEquals("index", result.modelAndView?.viewName)
+        @Suppress("UNCHECKED_CAST")
+        assertTrue((model(result)["coBrokerageVisits"] as List<ListingVisitView>).isEmpty())
+    }
+
+    @Test
+    fun `a co-brokerage visit keeps its row when the listing cannot be read`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        doReturn(listOf(hostedVisit())).whenever(visitClient).coBrokerage()
+        doThrow(ResourceAccessException("down")).whenever(listingClient).searchByIds(listOf(501L))
+        doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        @Suppress("UNCHECKED_CAST")
+        val visits = model(result)["coBrokerageVisits"] as List<ListingVisitView>
+        assertEquals(1, visits.size)
+        assertEquals("Clarisse Mbarga", visits.single().agentName)
+        assertNull(visits.single().listingTitle)
+    }
+
+    @Test
+    fun `a co-brokerage visit keeps its row when the agent cannot be read`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        doReturn(listOf(hostedVisit())).whenever(visitClient).coBrokerage()
+        doReturn(listOf(VisitFixtures.listingSummary().copy(id = 501)))
+            .whenever(listingClient).searchByIds(listOf(501L))
+        doThrow(ResourceAccessException("down")).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        @Suppress("UNCHECKED_CAST")
+        val visits = model(result)["coBrokerageVisits"] as List<ListingVisitView>
+        assertEquals(1, visits.size)
+        assertNull(visits.single().agentName)
+        assertNull(visits.single().agentInitials)
+    }
+
+    private fun hostedVisit() = CoBrokerageVisitSummary(
+        id = 8001,
+        listingId = 501,
+        agentId = VisitFixtures.OTHER_AGENT_ID,
+        status = VisitStatus.CONFIRMED,
+        type = VisitType.ON_SITE,
+        scheduledAt = Date(VisitFixtures.NOW),
+    )
 
     @Test
     fun `visits unavailable`() {

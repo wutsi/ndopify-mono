@@ -30,6 +30,7 @@ import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.npc.ui.listing.ListingClientsView
 import com.wutsi.ndopify.npc.ui.listing.ListingStatsView
 import com.wutsi.ndopify.npc.ui.listing.ListingViews
+import com.wutsi.ndopify.npc.ui.listing.ListingVisitView
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.npc.ui.match.MatchController
 import com.wutsi.ndopify.npc.ui.match.MatchRules
@@ -403,6 +404,10 @@ class MandateController(
         val listingId = listingId(mandate)
         val listing = listingId?.let { listing(mandate, it) }
         val clients = listing?.let { listingClients(agent, it) }
+        val coBrokerage = listing
+            ?.takeIf { it.status in setOf(ListingStatus.PUBLISHED, ListingStatus.RENTED, ListingStatus.SOLD) }
+            ?.let { coBrokerageVisits(mandate, it) }
+            .orEmpty()
         val listingStats = clients?.let {
             ListingStatsView(MatchRules.interest(it.interested), it.stats ?: visitStats)
         }
@@ -411,6 +416,7 @@ class MandateController(
             ListingViews.forMandate(mandate, listingId, listing, formatter(), listingStats),
         )
         model.addAttribute("listingProposals", clients?.proposals)
+        model.addAttribute("coBrokerageVisits", coBrokerage)
         pendingVisit = clients?.proposals?.let { proposals ->
             PendingVisit.of(
                 proposals.rows.mapNotNull { row ->
@@ -720,6 +726,39 @@ class MandateController(
             TenantFormatter(tenant),
             agentNames,
             "/mandates/${listing.mandateId}#proposals-title",
+        )
+    }
+
+    /**
+     * The other agents' visits on the mandate's listing, soonest first, with their agents read in parallel. Secondary:
+     * a failed visits read leaves the block out; an unreadable agent keeps its row as "un autre agent".
+     */
+    private fun coBrokerageVisits(mandate: Mandate, listing: Listing): List<ListingVisitView> {
+        val visits = lookup("co-brokerage visits of listing ${listing.id}") {
+            visitClient.coBrokerageOnListing(listing.id)
+        } ?: return emptyList()
+        if (visits.isEmpty()) return emptyList()
+
+        val calls = visits.map { it.agentId }.filter { it > 0 }.distinct()
+            .associateWith { id -> parallel.async { lookup("agent $id") { agentClient.get(id) } } }
+        val agents = calls.mapNotNull { (id, call) ->
+            val agent = try {
+                call.join()
+            } catch (ex: Exception) {
+                null
+            }
+            agent?.let { id to it }
+        }.toMap()
+        val locations = lookup("location names of listing ${listing.id}") {
+            sector.locations(listOfNotNull(listing.cityId, listing.neighborhoodId))
+        } ?: emptyMap()
+        return ListingViews.visits(
+            visits,
+            agents,
+            tenantContext.getTenant(),
+            TenantFormatter(tenantContext.getTenant()),
+            "/mandates/${mandate.id}#co-brokerage-visits-title",
+            mapOf(listing.id to ListingViews.listingLabel(listing, locations)),
         )
     }
 

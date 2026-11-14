@@ -44,7 +44,10 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BONAPRISO
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.DOUALA
 import com.wutsi.ndopify.npc.ui.visit.VisitFixtures
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
+import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
+import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitSummary
+import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -68,6 +71,7 @@ import org.thymeleaf.spring6.SpringTemplateEngine
 import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
 import java.time.Clock
+import java.util.Date
 import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
@@ -435,6 +439,35 @@ class MandateTemplateTest {
         val pending = page.selectFirst("[data-mandate-pending-visit]")!!
         assertEquals("1 visite à confirmer · 47 h — Sandrine Eboa", pending.text())
         assertEquals("#proposal-9002", pending.attr("href"))
+    }
+
+    @Test
+    fun `approved - landlord with listing published - hosted visits block`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        publishedListing()
+        doReturn(
+            listOf(
+                CoBrokerageVisitSummary(
+                    id = 8001,
+                    listingId = 501,
+                    agentId = VisitFixtures.OTHER_AGENT_ID,
+                    status = VisitStatus.CONFIRMED,
+                    type = VisitType.ON_SITE,
+                    scheduledAt = Date(VisitFixtures.NOW),
+                ),
+            ),
+        ).whenever(visitClient).coBrokerageOnListing(501)
+        doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
+
+        val page = render(APPROVED.copy(mandateType = MandateType.LISTING))
+
+        val block = page.selectFirst("[data-co-brokerage-visits]")!!
+        val card = block.selectFirst(".co-visit-card")!!
+        assertEquals("Visites d'autres agents", block.selectFirst("#co-brokerage-visits-title")?.text())
+        assertEquals("CM", card.selectFirst(".co-visit-card__avatar")?.text())
+        assertEquals("Clarisse Mbarga", card.selectFirst("[data-co-brokerage-agent-name]")?.text())
+        assertEquals("https://wa.me/237699000002", card.selectFirst("[data-co-brokerage-whatsapp]")?.attr("href"))
+        assertFalse(card.text().contains("Sandrine Eboa"))
     }
 
     @Test

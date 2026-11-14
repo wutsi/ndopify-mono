@@ -39,7 +39,10 @@ import com.wutsi.ndopify.npc.ui.visit.VisitFixtures
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.party.dto.Party
+import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
+import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitSummary
+import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -539,6 +542,36 @@ class HomeTemplateTest {
 
         assertEquals("Clarisse Mbarga", card.selectFirst("[data-visit-agent-name]")?.text())
         assertEquals("/agent?id=30&back=/%23visits-title", card.selectFirst("[data-visit-agent-link]")?.attr("href"))
+    }
+
+    @Test
+    fun `a hosted co-brokerage visit is on the home block`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        doReturn(
+            listOf(
+                CoBrokerageVisitSummary(
+                    id = 8001,
+                    listingId = 501,
+                    agentId = VisitFixtures.OTHER_AGENT_ID,
+                    status = VisitStatus.CONFIRMED,
+                    type = VisitType.ON_SITE,
+                    scheduledAt = Date(VisitFixtures.NOW),
+                ),
+            ),
+        ).whenever(visitClient).coBrokerage()
+        doReturn(listOf(VisitFixtures.listingSummary().copy(id = 501)))
+            .whenever(listingClient).searchByIds(listOf(501L))
+        doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
+
+        val page = render(get("/"))
+        val card = page.selectFirst("[data-co-brokerage-visits] .co-visit-card")!!
+
+        assertEquals("Visites d'autres agents", page.selectFirst("#co-brokerage-visits-title")?.text())
+        assertEquals("CM", card.selectFirst(".co-visit-card__avatar")?.text())
+        assertEquals("Clarisse Mbarga", card.selectFirst("[data-co-brokerage-agent-name]")?.text())
+        assertEquals("https://wa.me/237699000002", card.selectFirst("[data-co-brokerage-whatsapp]")?.attr("href"))
+        assertEquals("/listings/501#visits-title", card.selectFirst(".co-visit-card__listing a")?.attr("href"))
+        assertFalse(card.text().contains("Sandrine Eboa"))
     }
 
     @Test

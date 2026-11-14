@@ -35,6 +35,7 @@ import com.wutsi.ndopify.refdata.dto.Tenant
 import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitSummary
+import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import java.util.Date
 import java.util.Locale
@@ -165,29 +166,57 @@ object ListingViews {
 
     /**
      * The owner's visits block: soonest first, the agent's name/profile/WhatsApp when it could be read, "un autre agent"
-     * (null name) otherwise. Never a customer field.
+     * (null name) otherwise. Never a customer field. [back] is where the agent's profile link returns; [listingLabels]
+     * names the listing on the home and mandate blocks (null on the listing page).
      */
     fun visits(
         visits: List<CoBrokerageVisitSummary>,
         agents: Map<Long, Agent>,
-        listingId: Long,
         tenant: Tenant,
         formatter: TenantFormatter,
+        back: String,
+        listingLabels: Map<Long, String> = emptyMap(),
     ): List<ListingVisitView> =
         visits
             .sortedWith(compareBy<CoBrokerageVisitSummary> { it.scheduledAt?.time }.thenBy { it.id })
             .map { visit ->
                 val agent = agents[visit.agentId]
                 val name = agent?.let { ProfileRules.fullName(it) }?.ifBlank { null }
+                val initials = agent?.let { KycRules.initials(it.party.firstName, it.party.lastName) }?.ifBlank { null }
+                val title = listingLabels[visit.listingId]
                 ListingVisitView(
                     at = visit.scheduledAt?.let { VisitSlots.dateTimeLabel(it, tenant, formatter) }.orEmpty(),
                     typeLabel = VisitRules.typeLabel(visit.type),
                     inProgress = visit.status == VisitStatus.CHECKED_IN,
                     agentName = name,
-                    agentUrl = name?.let { AgentProfileRules.profileUrl(visit.agentId, "/listings/$listingId#visits-title") },
+                    agentUrl = name?.let { AgentProfileRules.profileUrl(visit.agentId, back) },
                     whatsappUrl = name?.let { AgentProfileRules.whatsappUrl(agent?.whatsappNumber) },
+                    listingTitle = title,
+                    listingUrl = title?.let { "/listings/${visit.listingId}#visits-title" },
+                    agentInitials = initials,
+                    video = visit.type == VisitType.VIDEO,
                 )
             }
+
+    /** "Appartement 2 chambres · Bonapriso": the listing's line on the co-brokerage blocks. */
+    fun listingLabel(summary: ListingSummary, locations: Map<Long, Location>): String =
+        label(summary.propertyType, summary.rooms, summary.neighborhoodId, summary.cityId, locations)
+
+    fun listingLabel(listing: Listing, locations: Map<Long, Location>): String =
+        label(listing.propertyType, listing.rooms, listing.neighborhoodId, listing.cityId, locations)
+
+    private fun label(
+        type: PropertyType?,
+        rooms: Int?,
+        neighborhoodId: Long?,
+        cityId: Long?,
+        locations: Map<Long, Location>,
+    ): String {
+        val typeLabel = MandateLabels.shortPropertyType(type) ?: "Bien"
+        val roomsLabel = rooms?.let { MatchRules.rooms(it) }
+        val place = listOfNotNull(neighborhoodId, cityId).firstNotNullOfOrNull { locations[it]?.name }
+        return listOfNotNull(typeLabel, roomsLabel, place?.let { "· $it" }).joinToString(" ")
+    }
 
     // The prototype's labels of *Le bien*'s types (listing/bien.html), not the mandates'
     private val TYPE_LABELS: Map<PropertyType, String> =

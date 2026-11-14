@@ -350,6 +350,17 @@
                     </p>
                 </section>
 
+                <section class="home-section listing-visits" aria-labelledby="co-brokerage-visits-title"
+                         th:if="${!#lists.isEmpty(coBrokerageVisits)}" data-co-brokerage-visits>
+                    <h2 id="co-brokerage-visits-title">Visites d'autres agents</h2>
+                    <p>Un autre agent organise ces visites de votre bien : vous accueillez l'agent et son client sur place.</p>
+                    <ul>
+                        <th:block th:each="v : ${coBrokerageVisits}">
+                            <li th:replace="~{fragments/co-brokerage-visit :: coBrokerageVisit(${v})}"></li>
+                        </th:block>
+                    </ul>
+                </section>
+
                 <!--
                     Biens correspondants: a signed search's matches (MatchSectionView), only for an APPROVED SEARCH
                     mandate. The cards are grouped by what the agent does next, the visit the client asked for sits in

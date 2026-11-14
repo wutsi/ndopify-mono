@@ -36,6 +36,7 @@ import com.wutsi.ndopify.npc.config.Parallel
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest
+import com.wutsi.ndopify.npc.ui.listing.ListingVisitView
 import com.wutsi.ndopify.npc.ui.listing.MandateListingView
 import com.wutsi.ndopify.npc.ui.listing.ProposalGroup
 import com.wutsi.ndopify.npc.ui.listing.ProposalsView
@@ -60,8 +61,10 @@ import com.wutsi.ndopify.npc.ui.visit.PendingVisitView
 import com.wutsi.ndopify.npc.ui.visit.VisitFixtures
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
 import com.wutsi.ndopify.party.dto.Party
+import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitSummary
+import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -77,6 +80,7 @@ import org.springframework.web.client.HttpServerErrorException
 import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.servlet.view.InternalResourceViewResolver
 import java.time.Clock
+import java.util.Date
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -188,6 +192,80 @@ class MandateControllerTest {
         val view = model(mvc.perform(get("/mandates/201")).andReturn())["mandateListing"] as MandateListingView
 
         assertEquals("2 personnes intéressées", view.stats)
+    }
+
+    @Test
+    fun `approved landlord - published listing - hosted visits`() {
+        publishedListing()
+        doReturn(
+            listOf(
+                CoBrokerageVisitSummary(
+                    id = 8001,
+                    listingId = 501,
+                    agentId = VisitFixtures.OTHER_AGENT_ID,
+                    status = VisitStatus.CONFIRMED,
+                    type = VisitType.ON_SITE,
+                    scheduledAt = Date(VisitFixtures.NOW),
+                ),
+            ),
+        ).whenever(visitClient).coBrokerageOnListing(501)
+        doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
+
+        val result = mvc.perform(get("/mandates/201")).andReturn()
+
+        @Suppress("UNCHECKED_CAST")
+        val visits = model(result)["coBrokerageVisits"] as List<ListingVisitView>
+        assertEquals("Clarisse Mbarga", visits.single().agentName)
+        assertEquals("CM", visits.single().agentInitials)
+        verify(visitClient).coBrokerageOnListing(501)
+    }
+
+    @Test
+    fun `approved landlord - draft listing - no hosted visits`() {
+        doReturn(APPROVED.copy(mandateType = MandateType.LISTING)).whenever(mandateClient).get(201)
+        doReturn(501L).whenever(listingClient).findIdByMandate(201, APPROVED.agentId!!)
+        doReturn(ListingViewsTest.LISTING).whenever(listingClient).get(501)
+
+        mvc.perform(get("/mandates/201")).andReturn()
+
+        verify(visitClient, never()).coBrokerageOnListing(any())
+    }
+
+    @Test
+    fun `approved landlord - hosted visits unavailable`() {
+        publishedListing()
+        doThrow(ResourceAccessException("down")).whenever(visitClient).coBrokerageOnListing(501)
+
+        val result = mvc.perform(get("/mandates/201")).andReturn()
+
+        @Suppress("UNCHECKED_CAST")
+        assertTrue((model(result)["coBrokerageVisits"] as List<ListingVisitView>).isEmpty())
+        assertEquals("mandate", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun `approved landlord - hosted visits with unreadable locations`() {
+        publishedListing()
+        doReturn(
+            listOf(
+                CoBrokerageVisitSummary(
+                    id = 8001,
+                    listingId = 501,
+                    agentId = VisitFixtures.OTHER_AGENT_ID,
+                    status = VisitStatus.CONFIRMED,
+                    type = VisitType.ON_SITE,
+                    scheduledAt = Date(VisitFixtures.NOW),
+                ),
+            ),
+        ).whenever(visitClient).coBrokerageOnListing(501)
+        doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
+        doThrow(ResourceAccessException("down")).whenever(locationClient).search(any())
+
+        val result = mvc.perform(get("/mandates/201")).andReturn()
+
+        @Suppress("UNCHECKED_CAST")
+        val visits = model(result)["coBrokerageVisits"] as List<ListingVisitView>
+        assertEquals(1, visits.size)
     }
 
     private fun publishedListing() {
