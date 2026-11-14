@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.match.server.job
 
 import com.wutsi.ndopify.match.server.service.CoBrokerageNotificationService
+import com.wutsi.ndopify.match.server.service.MatchAutoProposalService
 import com.wutsi.ndopify.match.server.service.MatchNotificationService
 import com.wutsi.ndopify.match.server.service.MatchProposalService
 import com.wutsi.ndopify.match.server.service.MatchService
@@ -20,6 +21,7 @@ class MatchJobs(
     private val notificationService: MatchNotificationService,
     private val coBrokerageNotificationService: CoBrokerageNotificationService,
     private val proposalService: MatchProposalService,
+    private val autoProposalService: MatchAutoProposalService,
     private val matchService: MatchService,
     private val tenantService: TenantService,
 ) {
@@ -47,6 +49,12 @@ class MatchJobs(
     @Scheduled(cron = "\${ndopify.match.expire.cron}")
     fun expire() {
         forEachTenant("expire", "match(es)") { proposalService.expireDue() }
+    }
+
+    /** Proposes the matches the agents left untouched for 24h: the customers receive them without waiting. */
+    @Scheduled(cron = "\${ndopify.match.auto-propose.cron}")
+    fun autoPropose() {
+        forEachTenant("autoPropose", "match(es)") { autoProposalService.autoProposeDue() }
     }
 
     private fun forEachTenant(job: String, unit: String, run: () -> Int) {

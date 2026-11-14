@@ -76,6 +76,8 @@ ndopify:
         expire:
             days: 7                     # A proposal the customer doesn't answer within 7 days expires
             cron: "0 0 2 * * ?"         # Every day at 02:00: expires the proposals not answered in time
+        auto-propose:
+            cron: "0 45 * * * ?"        # Every hour at 45 minutes: a 24h delay needs no finer cadence
 
     mobile-money:
         mtn:
