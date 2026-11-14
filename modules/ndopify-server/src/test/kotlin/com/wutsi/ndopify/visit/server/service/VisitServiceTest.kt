@@ -9,12 +9,17 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.agent.server.service.AgentService
+import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.customer.server.service.CustomerService
+import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingService
 import com.wutsi.ndopify.match.server.dao.MatchRepository
+import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.logger.DefaultKVLogger
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
@@ -25,6 +30,7 @@ import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.visit.server.dao.VisitRepository
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
+import com.wutsi.ndopify.visit.server.mail.CoBrokerageVisitMailet
 import com.wutsi.ndopify.visit.server.mail.VisitCancelledMailet
 import com.wutsi.ndopify.visit.server.mail.VisitCompletedMailet
 import com.wutsi.ndopify.visit.server.mail.VisitConfirmedMailet
@@ -42,6 +48,7 @@ import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Date
+import java.util.Optional
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -61,6 +68,7 @@ class VisitServiceTest {
     private val cancelledMailet = mock<VisitCancelledMailet>()
     private val reminderMailet = mock<VisitReminderMailet>()
     private val expiredMailet = mock<VisitExpiredMailet>()
+    private val coBrokerageVisitMailet = mock<CoBrokerageVisitMailet>()
     private val codeGenerator = mock<VisitCodeGenerator>()
     private val transactionManager = mock<PlatformTransactionManager>()
     private val tx = TransactionTemplate(transactionManager)
@@ -84,6 +92,7 @@ class VisitServiceTest {
         cancelledMailet,
         reminderMailet,
         expiredMailet,
+        coBrokerageVisitMailet,
         codeGenerator,
         eventPublisher,
         tx,
@@ -105,11 +114,32 @@ class VisitServiceTest {
         type = VisitType.ON_SITE,
     )
 
+    // A, the search agent organizing the visit
+    private val agent20 = AgentEntity(
+        id = 20L,
+        party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible"),
+    )
+
+    // B, the listing's owner agent
+    private val owner = AgentEntity(
+        id = 30L,
+        party = PartyEntity(id = 300L, firstName = "John", lastName = "Doe"),
+    )
+    private val coBrokerageListing = ListingEntity(id = 101L, agent = owner)
+    private val customer = CustomerEntity(
+        id = 10L,
+        party = PartyEntity(id = 100L, firstName = "Secret", lastName = "Client"),
+    )
+
     @BeforeTest
     fun setUp() {
         doReturn(visit).whenever(dao).findByIdForUpdate(1L)
+        doReturn(Optional.of(visit)).whenever(dao).findById(1L)
         doReturn(tenant).whenever(tenantService).findById(1L)
         doReturn("1234").whenever(codeGenerator).generate()
+        doReturn(coBrokerageListing).whenever(listingService).findById(101L)
+        doReturn(agent20).whenever(agentService).findById(20L)
+        doReturn(customer).whenever(customerService).findById(10L)
         doAnswer { it.arguments[0] }.whenever(dao).save(any())
         doReturn(mock<TransactionStatus>()).whenever(transactionManager).getTransaction(any())
     }
@@ -177,6 +207,83 @@ class VisitServiceTest {
         assertEquals(VisitStatus.NO_SHOW, saved.status)
         assertEquals(VisitParty.AGENT, saved.noShowParty)
         assertEquals(VisitNoShowReason.AGENT_ABSENT, saved.noShowReason)
+    }
+
+    @Test
+    fun `confirmed - the listing agent is mailed when the visit belongs to another agent`() {
+        doReturn(Optional.of(visit.copy(status = VisitStatus.CONFIRMED, scheduledAt = date(2026, 12, 2, 10, 0))))
+            .whenever(dao).findById(1L)
+
+        service.sendConfirmedEmails(1L)
+
+        verify(coBrokerageVisitMailet).sendConfirmed(any(), eq(coBrokerageListing), eq(agent20))
+    }
+
+    @Test
+    fun `confirmed - an own-inventory visit does not mail the listing agent`() {
+        doReturn(Optional.of(visit.copy(status = VisitStatus.CONFIRMED, scheduledAt = date(2026, 12, 2, 10, 0))))
+            .whenever(dao).findById(1L)
+        doReturn(ListingEntity(id = 101L, agent = agent20)).whenever(listingService).findById(101L)
+
+        service.sendConfirmedEmails(1L)
+
+        verify(coBrokerageVisitMailet, never()).sendConfirmed(any(), any(), any())
+    }
+
+    @Test
+    fun `reminder - the listing agent is mailed when the visit belongs to another agent`() {
+        doReturn(Optional.of(visit.copy(status = VisitStatus.CONFIRMED, scheduledAt = date(2026, 12, 2, 10, 0))))
+            .whenever(dao).findById(1L)
+
+        service.sendReminderEmails(1L)
+
+        verify(coBrokerageVisitMailet).sendReminder(any(), eq(coBrokerageListing), eq(agent20))
+    }
+
+    @Test
+    fun `cancelled after confirmed - the listing agent is mailed`() {
+        doReturn(Optional.of(visit.copy(status = VisitStatus.CANCELLED, cancelledBy = VisitParty.AGENT, scheduledAt = date(2026, 12, 2, 10, 0))))
+            .whenever(dao).findById(1L)
+
+        service.sendCancelledEmail(1L)
+
+        verify(coBrokerageVisitMailet).sendCancelled(any(), eq(coBrokerageListing), eq(agent20))
+    }
+
+    @Test
+    fun `cancelled while requested - the listing agent was never told`() {
+        doReturn(Optional.of(visit.copy(status = VisitStatus.CANCELLED, cancelledBy = VisitParty.CUSTOMER, scheduledAt = null)))
+            .whenever(dao).findById(1L)
+
+        service.sendCancelledEmail(1L)
+
+        verify(coBrokerageVisitMailet, never()).sendCancelled(any(), any(), any())
+    }
+
+    @Test
+    fun `customer no-show - the listing agent is mailed`() {
+        doReturn(Optional.of(visit.copy(status = VisitStatus.NO_SHOW, noShowParty = VisitParty.CUSTOMER, noShowReason = VisitNoShowReason.CUSTOMER_ABSENT)))
+            .whenever(dao).findById(1L)
+
+        service.sendNoShowEmails(1L)
+
+        verify(coBrokerageVisitMailet).sendNoShow(any(), eq(coBrokerageListing), eq(agent20))
+    }
+
+    @Test
+    fun `agent no-show, completion and expiry - no listing-agent mail`() {
+        listOf(
+            visit.copy(status = VisitStatus.NO_SHOW, noShowParty = VisitParty.AGENT),
+            visit.copy(status = VisitStatus.COMPLETED),
+            visit.copy(status = VisitStatus.EXPIRED),
+        ).forEach { current ->
+            doReturn(Optional.of(current)).whenever(dao).findById(1L)
+            service.sendNoShowEmails(1L)
+            service.sendCompletedEmail(1L)
+            service.sendExpiredEmails(1L)
+        }
+
+        verify(coBrokerageVisitMailet, never()).sendNoShow(any(), any(), any())
     }
 
     private fun saved(): VisitEntity {

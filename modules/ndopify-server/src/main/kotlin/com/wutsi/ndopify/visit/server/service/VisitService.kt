@@ -41,6 +41,7 @@ import com.wutsi.ndopify.visit.server.event.VisitExpiredEvent
 import com.wutsi.ndopify.visit.server.event.VisitNoShowEvent
 import com.wutsi.ndopify.visit.server.event.VisitReminderEvent
 import com.wutsi.ndopify.visit.server.event.VisitRequestedEvent
+import com.wutsi.ndopify.visit.server.mail.CoBrokerageVisitMailet
 import com.wutsi.ndopify.visit.server.mail.VisitCancelledMailet
 import com.wutsi.ndopify.visit.server.mail.VisitCompletedMailet
 import com.wutsi.ndopify.visit.server.mail.VisitConfirmedMailet
@@ -82,6 +83,7 @@ class VisitService(
     private val cancelledMailet: VisitCancelledMailet,
     private val reminderMailet: VisitReminderMailet,
     private val expiredMailet: VisitExpiredMailet,
+    private val coBrokerageVisitMailet: CoBrokerageVisitMailet,
     private val codeGenerator: VisitCodeGenerator,
     private val eventPublisher: ApplicationEventPublisher,
     private val tx: TransactionTemplate,
@@ -538,12 +540,17 @@ class VisitService(
             return
         }
         logger.add("visit_id", visitId)
+        val agent = agentService.findById(visit.agentId)
+        val listing = listingService.findById(visit.listingId)
         confirmedMailet.send(
             visit = visit,
             customer = customerService.findById(visit.customerId),
-            agent = agentService.findById(visit.agentId),
-            listing = listingService.findById(visit.listingId),
+            agent = agent,
+            listing = listing,
         )
+        if (visit.agentId != listing.agent.id) {
+            coBrokerageVisitMailet.sendConfirmed(visit, listing, agent)
+        }
     }
 
     /** E-mails the customer that the visit is over. Called by `VisitEventListener`; nothing when not COMPLETED. */
@@ -573,12 +580,17 @@ class VisitService(
             return
         }
         logger.add("visit_id", visitId)
+        val agent = agentService.findById(visit.agentId)
+        val listing = listingService.findById(visit.listingId)
         noShowMailet.send(
             visit = visit,
             customer = customerService.findById(visit.customerId),
-            agent = agentService.findById(visit.agentId),
-            listing = listingService.findById(visit.listingId),
+            agent = agent,
+            listing = listing,
         )
+        if (visit.agentId != listing.agent.id && visit.noShowParty == VisitParty.CUSTOMER) {
+            coBrokerageVisitMailet.sendNoShow(visit, listing, agent)
+        }
     }
 
     /** E-mails the other side of a cancellation. Called by `VisitEventListener`; nothing when not CANCELLED. */
@@ -589,12 +601,17 @@ class VisitService(
             return
         }
         logger.add("visit_id", visitId)
+        val agent = agentService.findById(visit.agentId)
+        val listing = listingService.findById(visit.listingId)
         cancelledMailet.send(
             visit = visit,
             customer = customerService.findById(visit.customerId),
-            agent = agentService.findById(visit.agentId),
-            listing = listingService.findById(visit.listingId),
+            agent = agent,
+            listing = listing,
         )
+        if (visit.agentId != listing.agent.id && visit.scheduledAt != null) {
+            coBrokerageVisitMailet.sendCancelled(visit, listing, agent)
+        }
     }
 
     /** E-mails both sides the 24 h reminder. Called by `VisitEventListener`; nothing when no longer CONFIRMED. */
@@ -605,12 +622,17 @@ class VisitService(
             return
         }
         logger.add("visit_id", visitId)
+        val agent = agentService.findById(visit.agentId)
+        val listing = listingService.findById(visit.listingId)
         reminderMailet.send(
             visit = visit,
             customer = customerService.findById(visit.customerId),
-            agent = agentService.findById(visit.agentId),
-            listing = listingService.findById(visit.listingId),
+            agent = agent,
+            listing = listing,
         )
+        if (visit.agentId != listing.agent.id) {
+            coBrokerageVisitMailet.sendReminder(visit, listing, agent)
+        }
     }
 
     /** E-mails both sides an expired request. Called by `VisitEventListener`; nothing when not EXPIRED. */
