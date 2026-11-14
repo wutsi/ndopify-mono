@@ -30,6 +30,7 @@ class GetMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(1.0, match.availabilityScore)
         assertEquals(1.0, match.furnitureScore)
         assertEquals(101L, match.listingId)
+        assertEquals(20L, match.agentId)
         assertEquals(160000L, match.listingPrice)
     }
 

@@ -1765,6 +1765,7 @@
             {
                 id: "9009", listingId: "5001", propertyType: "APARTMENT", rooms: 2, neighbourhood: "Bonapriso",
                 price: 250000, availableIn: 0, score: 0.72, coBrokerage: true,
+                agent: { id: "1001", name: "Clarisse Mbarga" },
                 fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"],
                     [false, "2 chambres, une de moins que demandé"], [true, "Les 3 équipements demandés"],
                     [true, "Disponible dès maintenant"], [false, "Meublé : le client le veut vide"]]
@@ -2049,9 +2050,10 @@
                     expiresInHours: 8 } },
             { mandateId: "207", client: "Hervé Mbarga", sentAt: -4, answer: "ACCEPTED", answeredAt: -4,
                 visit: { id: "7302", in: 1, time: "09h30", type: "IN_PERSON", status: "CONFIRMED" } },
-            { otherAgent: true, sentAt: -2, answer: "ACCEPTED", answeredAt: -1 },
+            { otherAgent: true, agent: { id: "1001", name: "Clarisse Mbarga" }, sentAt: -2, answer: "ACCEPTED",
+                answeredAt: -1 },
             { mandateId: "208", client: "Carine Ndongo", sentAt: -1 },
-            { otherAgent: true, sentAt: -5 },
+            { otherAgent: true, agent: { id: "1002", name: "Paul Etame" }, sentAt: -5 },
             { mandateId: "209", client: "Rodrigue Essomba", sentAt: -6, answer: "REJECTED", answeredAt: -5,
                 reason: "PRICE" }
         ]
@@ -2063,6 +2065,7 @@
             var match = initialMatchState({ initial: p });
             match.status = "PROPOSED";
             match.otherAgent = !!p.otherAgent;
+            match.agent = p.agent || null;
             match.mandateId = p.mandateId;
             match.client = p.client;
             // The visit asked on the public portal, with the status it reached on visit.html. Its 48 h window is
@@ -2148,6 +2151,14 @@
                 var plain = document.createElement("span");
                 plain.textContent = "Client d'un autre agent";
                 row.replaceWith(plain);
+                // Their agent may be named: a link to the profile, back to this section.
+                if (m.agent) {
+                    var agentLink = $("[data-proposal-agent-link]", item);
+                    agentLink.textContent = m.agent.name;
+                    agentLink.href = "agent.html?id=" + encodeURIComponent(m.agent.id) + "&back=" +
+                        encodeURIComponent("mandate.html?id=" + encodeURIComponent(mandateId) + "#proposals-title");
+                    $("[data-proposal-agent]", item).hidden = false;
+                }
             } else {
                 row.href = "mandate.html?id=" + encodeURIComponent(m.mandateId) + "#matches-title";
                 $("[data-proposal-client]", item).textContent = m.client;
@@ -2742,7 +2753,19 @@
             fact(facts, "Correspondance", Math.round(match.score * 100) + " %");
             fact(facts, "Quartier", match.neighbourhood + (match.distanceKm
                 ? " (à " + String(match.distanceKm).replace(".", ",") + " km)" : ""));
-            if (match.coBrokerage) fact(facts, "Origine", "Bien d'un autre agent");
+            // Co-brokerage: the listing agent's name, linked to their profile (back to this section).
+            var origin = $("[data-match-origin]", item);
+            origin.hidden = !match.coBrokerage;
+            if (match.coBrokerage) {
+                var agentLink = $("[data-match-agent]", origin);
+                agentLink.textContent = match.agent ? match.agent.name : "Bien d'un autre agent";
+                if (match.agent) {
+                    agentLink.href = "agent.html?id=" + encodeURIComponent(match.agent.id) + "&back=" +
+                        encodeURIComponent("mandate.html?id=" + encodeURIComponent(id) + "#matches-title");
+                } else {
+                    agentLink.removeAttribute("href");
+                }
+            }
             // In bold: what the agent looks at first
             fact(facts, "Loyer", formatCompactRent(match.price), "match__rent");
             fact(facts, "Disponibilité", matchAvailability(match));

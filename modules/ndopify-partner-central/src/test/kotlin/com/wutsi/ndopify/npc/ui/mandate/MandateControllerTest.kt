@@ -215,6 +215,31 @@ class MandateControllerTest {
     }
 
     @Test
+    fun `approved landlord - published listing - another agent's client names that agent`() {
+        publishedListing()
+        doReturn(
+            AGENT.copy(id = 30, party = AGENT.party.copy(id = 130, firstName = "Clarisse", lastName = "Mbarga")),
+        ).whenever(agentClient).get(30)
+
+        val view = proposals()!!
+
+        assertEquals("Clarisse Mbarga", view.rows[0].agentName)
+        assertEquals("/agent?id=30&back=/mandates/203%23proposals-title", view.rows[0].agentUrl)
+        verify(agentClient, never()).get(AGENT.id)
+    }
+
+    @Test
+    fun `approved landlord - published listing - another agent that can't be read`() {
+        publishedListing()
+        doThrow(HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR)).whenever(agentClient).get(30)
+
+        val view = proposals()!!
+
+        assertEquals("Client d'un autre agent", view.rows[0].client)
+        assertNull(view.rows[0].agentName)
+    }
+
+    @Test
     fun `approved landlord - published listing - open visit stays in its proposal card`() {
         doReturn(VisitFixtures.NOW).whenever(clock).millis()
         publishedListing()

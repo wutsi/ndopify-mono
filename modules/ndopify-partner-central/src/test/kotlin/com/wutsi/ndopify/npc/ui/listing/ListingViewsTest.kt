@@ -88,10 +88,11 @@ class ListingViewsTest {
 
         /** The published listing's matches sent to a client: 204 and 207 are the agent's searches, 305 another agent's. */
         val PROPOSALS = listOf(
-            Match(id = 9001, mandateId = 207, listingId = 501, status = MatchStatus.PROPOSED, proposedAt = day(31)),
-            Match(id = 9002, mandateId = 204, listingId = 501, status = MatchStatus.ACCEPTED, proposedAt = day(28), answeredAt = day(29)),
-            Match(id = 9003, mandateId = 305, listingId = 501, status = MatchStatus.ACCEPTED, proposedAt = day(29), answeredAt = day(30)),
-            Match(id = 9004, mandateId = 204, listingId = 501, status = MatchStatus.REJECTED, proposedAt = day(25), answeredAt = day(26)),
+            Match(id = 9001, mandateId = 207, listingId = 501, agentId = ProfileFixtures.AGENT.id, status = MatchStatus.PROPOSED, proposedAt = day(31)),
+            Match(id = 9002, mandateId = 204, listingId = 501, agentId = ProfileFixtures.AGENT.id, status = MatchStatus.ACCEPTED, proposedAt = day(28), answeredAt = day(29)),
+            // Another agent's search (agent 30)
+            Match(id = 9003, mandateId = 305, listingId = 501, agentId = 30, status = MatchStatus.ACCEPTED, proposedAt = day(29), answeredAt = day(30)),
+            Match(id = 9004, mandateId = 204, listingId = 501, agentId = ProfileFixtures.AGENT.id, status = MatchStatus.REJECTED, proposedAt = day(25), answeredAt = day(26)),
         )
 
         /** The agent's own mandates among the matches' (305 isn't: another agent's). */
@@ -809,6 +810,39 @@ class ListingViewsTest {
         assertTrue(view.rows.all { it.visit == null })
         assertEquals(3, view.rows.size)
         assertNull(view.rows[0].url)
+    }
+
+    @Test
+    fun `proposals - another agent's client names that agent, linked to its profile`() {
+        val view = ListingViews.clients(
+            PROPOSALS,
+            SEARCHES,
+            CUSTOMERS,
+            emptyList(),
+            ProfileFixtures.AGENT.id,
+            TENANT,
+            VisitFixtures.NOW,
+            formatter,
+            mapOf(30L to "Clarisse Mbarga", ProfileFixtures.AGENT.id to "Moi"),
+            "/mandates/203#proposals-title",
+        ).proposals
+
+        assertEquals(listOf("Clarisse Mbarga", null, null), view.rows.map { it.agentName })
+        assertEquals(
+            listOf("/agent?id=30&back=/mandates/203%23proposals-title", null, null),
+            view.rows.map { it.agentUrl },
+        )
+        // Still protected: no client, no mandate
+        assertEquals("Client d'un autre agent", view.rows[0].client)
+        assertNull(view.rows[0].url)
+    }
+
+    @Test
+    fun `proposals - another agent's client without that agent's name`() {
+        val view = clients().proposals
+
+        assertNull(view.rows[0].agentName)
+        assertNull(view.rows[0].agentUrl)
     }
 
     @Test

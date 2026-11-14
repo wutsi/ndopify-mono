@@ -328,7 +328,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `PROPOSED`, `ACCEPTED`, `REJECTED`, `EXPIRED`) is never touched. Each row keeps
   `listingPrice` (when last scored, or dismissed, proposed or rejected): the
   price a match was turned down at, to tell a price drop later (re-proposing after one isn't built yet). The run isn't one transaction (each save is its own, a conflict skips
-  the pair), so it reads the mandates with their neighbourhoods (`@EntityGraph`). `/v1/matches`: search
+  the pair), so it reads the mandates with their neighbourhoods (`@EntityGraph`). `Match.agentId` is the search mandate's agent (`T_MATCH.agent_id`, never
+  the listing's), so a listing agent can name whose client a co-brokerage match was sent to. `/v1/matches`: search
   (`mandate-id` and / or `listing-id`, repeatable, at least one of them, else 400 `HTTP_MISSING_PARAMETER`, each one
   checked: a mandate as below, a listing by its agent or an admin, `ListingAccessService`: 404 `LISTING_NOT_FOUND`
   then 403 `HTTP_ACCESS_DENIED`, ex: who a published listing interests with `status=ACCEPTED`; `status` default

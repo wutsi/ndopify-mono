@@ -14,6 +14,8 @@ data class MatchView(
     val coBrokerage: Boolean = false,
     /** The publisher line under the title of a co-brokerage card; null on the agent's own listings. */
     val origin: String? = null,
+    /** The listing agent's profile, back to this section; null when the agent's name isn't known. */
+    val originUrl: String? = null,
     val title: String,
     val tag: MandateRules.Tag,
     val listingUrl: String,

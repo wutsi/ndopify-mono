@@ -207,7 +207,9 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   ignored. The activity line replaces the WIP `visitStats` line when it is shown. **Another agent's mandate is protected**: only the agent's own mandates among the
   matches' are looked up (`NdMandateClient.searchByIds`, `id=&agent-id=`, checked again on `agentId`), and only their
   customers (`NdCustomerClient.search`); any other match is "Client d'un autre agent", never named nor linked, its
-  customer never asked of ndopify-server. The matches or mandates failing leave the section out (rather than mislabel
+  customer never asked of ndopify-server; only that agent (`Match.agentId`, the search's agent) is named under it,
+  linked to `/agent?id=&back=/mandates/{id}#proposals-title` (`ProposalRow.agentName` / `agentUrl`, read in parallel;
+  an agent that can't be read leaves the line out). The matches or mandates failing leave the section out (rather than mislabel
   a client); the customers failing show the mandate's number instead of the name. The listing
   page, `GET /listings/{id}` (`templates/listing.html`, `ListingViews` → `ListingView`), is the checklist of the visit:
   one row per `ListingSection` (`ListingRules.SECTIONS`, linking to its page),
@@ -288,7 +290,8 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   (`NdVisitClient.search`, the same `VisitCards` as the Espace agent; past visits aren't shown). A listing whose
   client has an open visit leaves *Biens correspondants*, so it isn't shown twice, and comes back once the visit
   closes (cancelled, missed, expired or completed); if only such visits remain, the section says where they went.
-  A co-brokerage match shows `Origine · Bien d'un autre agent`, and its title link carries
+  A co-brokerage match shows its listing agent's name, linked to `/agent?id=&back=/mandates/{id}#matches-title`
+  (`MatchView.originUrl`; "Bien d'un autre agent", unlinked, when the agent can't be read), and its title link carries
   `?back=/mandates/{searchMandateId}#matches-title`; an agent-profile listing card carries `?back=` to its profile page.
 - The Espace agent's *Visites* section (`HomeController`, `ui/visit/`) lists the agent's open visits:
   `GET /v1/visits?agent-id=&status=REQUESTED&status=CONFIRMED&status=CHECKED_IN` (`NdVisitClient.search`,

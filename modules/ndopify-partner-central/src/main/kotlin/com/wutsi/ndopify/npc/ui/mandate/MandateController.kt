@@ -470,15 +470,23 @@ class MandateController(
         agent: Agent,
         matches: List<Match>,
         listings: Map<Long, ListingSummary>,
-    ): Map<Long, String> {
-        val ids = matches
-            .filter { it.coBrokerage && it.status in MatchRules.ORDER }
-            .mapNotNull { listings[it.listingId]?.agentId }
-            .filter { it > 0 && it != agent.id }
-            .distinct()
+    ): Map<Long, String> =
+        otherAgentNames(
+            agent,
+            matches
+                .filter { it.coBrokerage && it.status in MatchRules.ORDER }
+                .mapNotNull { listings[it.listingId]?.agentId },
+        )
+
+    /**
+     * Other agents' names, by id, read in parallel; the signed-in agent and unknown ids are skipped. Secondary: an
+     * agent that can't be read, or without a name, is left out.
+     */
+    private fun otherAgentNames(agent: Agent, agentIds: Collection<Long>): Map<Long, String> {
+        val ids = agentIds.filter { it > 0 && it != agent.id }.distinct()
         val calls = ids.associateWith { id ->
             parallel.async {
-                lookup("agent $id of a co-brokerage listing") { agentClient.get(id) }
+                lookup("agent $id") { agentClient.get(id) }
             }
         }
         return calls.mapNotNull { (id, call) ->
@@ -662,6 +670,14 @@ class MandateController(
                 visitClient.searchByListings(agentId, VisitRules.COUNTED, listOf(listing.id), limit = 100)
             }
         }
+        // Secondary: the agents of the other agents' searches, named on their clients' cards.
+        val own = candidates.mapNotNull { it.mandate }.filter { it.agentId == agentId }.map { it.id }.toSet()
+        val agentNames = otherAgentNames(
+            agent,
+            candidates.map { it.match }
+                .filter { it.mandateId !in own && it.status in ListingViews.PROPOSAL_ROWS }
+                .map { it.agentId },
+        )
         val tenant = tenantContext.getTenant()
         return ListingViews.clients(
             candidates.map { it.match },
@@ -672,6 +688,8 @@ class MandateController(
             tenant,
             clock.millis(),
             TenantFormatter(tenant),
+            agentNames,
+            "/mandates/${listing.mandateId}#proposals-title",
         )
     }
 

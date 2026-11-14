@@ -11,6 +11,7 @@ class MatchMapper {
             id = entity.id ?: -1,
             mandateId = entity.mandate.id ?: -1,
             listingId = entity.listing.id ?: -1,
+            agentId = entity.agentId,
             coBrokerage = entity.coBrokerage,
             status = entity.status,
             score = entity.score,

@@ -1135,6 +1135,17 @@ h1.alert__title {
     flex: none;
 }
 
+.match__origin a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.match__origin a:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
 .match__facts {
     display: flex;
     flex-wrap: wrap;
