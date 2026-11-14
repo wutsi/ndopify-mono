@@ -101,6 +101,7 @@ class MandateEditTemplateTest {
                     listingClient,
                     mock(),
                     mock(),
+                    mock(),
                     locationClient,
                     tenantContext,
                     clock,

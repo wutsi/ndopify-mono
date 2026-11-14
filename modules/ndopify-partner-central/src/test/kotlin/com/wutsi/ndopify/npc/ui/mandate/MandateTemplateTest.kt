@@ -13,6 +13,7 @@ import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.match.dto.MatchStatus
+import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
@@ -78,6 +79,7 @@ class MandateTemplateTest {
     private val customerClient = mock<NdCustomerClient>()
     private val assignmentClient = mock<NdAssignmentClient>()
     private val listingClient = mock<NdListingClient>()
+    private val agentClient = mock<NdAgentClient>()
     private val matchClient = mock<NdMatchClient>()
     private val visitClient = mock<NdVisitClient>()
     private val locationClient = mock<NdLocationClient>()
@@ -120,6 +122,7 @@ class MandateTemplateTest {
                     customerClient,
                     assignmentClient,
                     listingClient,
+                    agentClient,
                     matchClient,
                     visitClient,
                     locationClient,
@@ -811,6 +814,101 @@ class MandateTemplateTest {
         assertEquals(
             "/listings/3012?match=9001",
             page.selectFirst("[data-match-id=9001] [data-match-link]")?.attr("href"),
+        )
+    }
+
+    @Test
+    fun `co-brokerage match - the listing agent's name`() {
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201, coBrokerage = true))
+        doReturn(listOf(MatchFixtures.LISTING_A.copy(agentId = 30))).whenever(listingClient).searchByIds(any())
+        doReturn(
+            ProfileFixtures.AGENT.copy(
+                id = 30,
+                party = ProfileFixtures.AGENT.party.copy(id = 130, firstName = "Clarisse", lastName = "Mbarga"),
+            ),
+        ).whenever(agentClient).get(30)
+
+        val page = render(APPROVED)
+        val card = page.selectFirst("[data-match-id=9001]")!!
+
+        assertEquals("Clarisse Mbarga", card.selectFirst("[data-match-origin]")?.text())
+        assertTrue(card.selectFirst("[data-match-origin] svg")!!.hasAttr("aria-hidden"))
+    }
+
+    @Test
+    fun `co-brokerage match - generic label when the agent can't be read`() {
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201, coBrokerage = true))
+        doReturn(listOf(MatchFixtures.LISTING_A.copy(agentId = 30))).whenever(listingClient).searchByIds(any())
+
+        val page = render(APPROVED)
+
+        assertEquals(
+            "Bien d'un autre agent",
+            page.selectFirst("[data-match-id=9001] [data-match-origin]")?.text(),
+        )
+    }
+
+    @Test
+    fun `own-inventory match - no origin line`() {
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201))
+
+        val page = render(APPROVED)
+
+        assertNull(page.selectFirst("[data-match-id=9001] [data-match-origin]"))
+    }
+
+    @Test
+    fun `co-brokerage match with a visit keeps its origin line`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        withMatches(
+            MatchFixtures.MATCH_A.copy(
+                mandateId = 201,
+                status = MatchStatus.ACCEPTED,
+                coBrokerage = true,
+                proposedAt = proposedAt,
+            ),
+        )
+        doReturn(listOf(MatchFixtures.LISTING_A.copy(agentId = 30))).whenever(listingClient).searchByIds(any())
+        doReturn(
+            ProfileFixtures.AGENT.copy(
+                id = 30,
+                party = ProfileFixtures.AGENT.party.copy(id = 130, firstName = "Clarisse", lastName = "Mbarga"),
+            ),
+        ).whenever(agentClient).get(30)
+        doReturn(listOf(VisitFixtures.summary(VisitFixtures.requested().copy(mandateId = 201, matchId = 9001))))
+            .whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
+
+        val page = render(APPROVED)
+        val card = page.selectFirst("[data-match-id=9001]")!!
+
+        assertNull(card.selectFirst("[data-match-tag]"))
+        assertEquals("Clarisse Mbarga", card.selectFirst("[data-match-origin]")?.text())
+    }
+
+    @Test
+    fun `co-brokerage line stays when visits are unavailable`() {
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201, coBrokerage = true))
+        doReturn(listOf(MatchFixtures.LISTING_A.copy(agentId = 30))).whenever(listingClient).searchByIds(any())
+        doThrow(ResourceAccessException("timeout")).whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
+
+        val page = render(APPROVED)
+
+        assertEquals(
+            "Bien d'un autre agent",
+            page.selectFirst("[data-match-id=9001] [data-match-origin]")?.text(),
+        )
+    }
+
+    @Test
+    fun `matches intro covers other agents' listings`() {
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201))
+
+        val page = render(APPROVED)
+
+        assertEquals(
+            "Les biens qui correspondent à la recherche du client, les vôtres comme ceux publiés par d'autres " +
+                "agents. Envoyez-les-lui ou écartez-les.",
+            page.selectFirst("[data-matches-intro]")?.text(),
         )
     }
 

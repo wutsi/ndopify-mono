@@ -23,6 +23,7 @@ import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.dto.MatchStatus
+import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
@@ -86,6 +87,7 @@ class MandateControllerTest {
     private val customerClient = mock<NdCustomerClient>()
     private val assignmentClient = mock<NdAssignmentClient>()
     private val listingClient = mock<NdListingClient>()
+    private val agentClient = mock<NdAgentClient>()
     private val matchClient = mock<NdMatchClient>()
     private val visitClient = mock<NdVisitClient>()
     private val locationClient = mock<NdLocationClient>()
@@ -112,6 +114,7 @@ class MandateControllerTest {
             customerClient,
             assignmentClient,
             listingClient,
+            agentClient,
             matchClient,
             visitClient,
             locationClient,

@@ -1119,6 +1119,22 @@ h1.alert__title {
 }
 
 /* Score · neighbourhood · rent · availability, on one line where it fits; the terms are visually hidden. */
+/* A co-brokerage card's publisher, between the head and the facts: a name, not a status. */
+.match__origin {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+    color: var(--color-info-fg);
+    font-size: var(--step-hint);
+    font-weight: 600;
+}
+
+.match__origin .icon {
+    width: 1rem;
+    height: 1rem;
+    flex: none;
+}
+
 .match__facts {
     display: flex;
     flex-wrap: wrap;

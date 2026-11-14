@@ -14,6 +14,7 @@ import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.match.dto.Match
+import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
@@ -101,6 +102,7 @@ class MandateController(
     private val customerClient: NdCustomerClient,
     private val assignmentClient: NdAssignmentClient,
     private val listingClient: NdListingClient,
+    private val agentClient: NdAgentClient,
     private val matchClient: NdMatchClient,
     private val visitClient: NdVisitClient,
     locationClient: NdLocationClient,
@@ -342,6 +344,11 @@ class MandateController(
             ?.let { loadVisitListings(mandate, it) }
         val visitStats = if (matched) VisitStats.of(visits, now) else null
         val listings = matches?.let { listings(mandate, it) }
+        val agentNames = if (matches != null && listings != null) {
+            listingAgentNames(agent, matches, listings)
+        } else {
+            emptyMap()
+        }
         val locations = locations(mandate, listings?.values.orEmpty() + visitListings?.values.orEmpty())
         val view = view(mandate, locations)
         model.addAttribute("mandate", view)
@@ -364,8 +371,16 @@ class MandateController(
             val byMatch = (cards.requested + cards.upcoming)
                 .mapNotNull { visit -> visit.matchId?.let { it to visit } }
                 .toMap()
-            val section = MatchViews.section(mandate, matches, listings, byMatch, locations, today(), formatter)
-                .copy(visitsUnavailable = cards.unavailable)
+            val section = MatchViews.section(
+                mandate,
+                matches,
+                listings,
+                byMatch,
+                locations,
+                today(),
+                formatter,
+                agentNames,
+            ).copy(visitsUnavailable = cards.unavailable)
             model.addAttribute("matchSection", section)
             model.addAttribute("dismissing", dismissing(section, dismiss))
             pendingVisit = PendingVisit.of(
@@ -443,6 +458,27 @@ class MandateController(
         return lookup("listings of the matches of mandate ${mandate.id}") {
             listingClient.searchByIds(ids).associateBy { it.id }
         }
+    }
+
+    /**
+     * The co-brokerage matches' listing agents, by id: another agent's identity is allowed, its customer never is.
+     * Secondary: a failed or missing agent leaves the card its generic "Bien d'un autre agent" line.
+     */
+    private fun listingAgentNames(
+        agent: Agent,
+        matches: List<Match>,
+        listings: Map<Long, ListingSummary>,
+    ): Map<Long, String> {
+        val ids = matches
+            .filter { it.coBrokerage && it.status in MatchRules.ORDER }
+            .mapNotNull { listings[it.listingId]?.agentId }
+            .filter { it > 0 && it != agent.id }
+            .distinct()
+        return ids.mapNotNull { id ->
+            lookup("agent $id of a co-brokerage listing") { agentClient.get(id) }
+                ?.let { owner -> id to ProfileRules.fullName(owner) }
+                ?.takeIf { (_, name) -> name.isNotBlank() }
+        }.toMap()
     }
 
     /**

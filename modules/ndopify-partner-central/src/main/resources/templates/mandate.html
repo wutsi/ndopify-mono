@@ -357,8 +357,8 @@
                     <div class="matches__head">
                         <h2 id="matches-title">Biens correspondants</h2>
                     </div>
-                    <p>Les biens de vos annonces publiées qui correspondent à la recherche du client. Envoyez-les-lui
-                        ou écartez-les.</p>
+                    <p data-matches-intro>Les biens qui correspondent à la recherche du client, les vôtres comme ceux
+                        publiés par d'autres agents. Envoyez-les-lui ou écartez-les.</p>
 
                     <div class="alert alert--warning" th:if="${ms.visitsUnavailable and !ms.unavailable}" data-visits-unavailable>
                         <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
@@ -402,6 +402,10 @@
                                                    th:class="|status-tag status-tag--${match.tag.style}|"
                                                    th:text="${match.tag.label}" data-match-tag>Nouveau</p>
                                             </div>
+                                            <p class="match__origin" th:if="${match.origin}" data-match-origin>
+                                                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="6.5" r="3.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                                                <span th:text="${match.origin}">Clarisse Mbarga</span>
+                                            </p>
                                             <dl class="match__facts" data-match-facts>
                                                 <div th:each="fact : ${match.facts}">
                                                     <dt class="visually-hidden" th:text="${fact.first}">Quartier</dt>
