@@ -63,25 +63,26 @@ Give the fixture's `LISTINGS` entry for `2987` an owner other than the signed-in
 
 - [ ] **Step 2: Render the "Avec B" line on the cards**
 
-In `assets/js/visit.js`'s `renderHomeVisits` card builder, after the listing line, fill a new `<p class="visit-card__agent" data-visit-agent>` when `v.agent` is set:
+In `assets/js/visit.js`'s `renderHomeVisits` card builder, after the listing line, fill a new `<p class="visit-card__agent" data-visit-agent>` when `v.agent` is set. The markup is a footer (top rule) with a person icon, the word "Avec" on its own, and a link holding the agent's name plus an external-arrow icon:
 
 ```javascript
 var agent = $("[data-visit-agent]", item);
 if (agent) {
     agent.hidden = !v.agent;
     if (v.agent) {
+        var name = [v.agent.firstName, v.agent.lastName].filter(Boolean).join(" ");
         $("[data-visit-agent-link]", agent).href = "agent.html?id=" + encodeURIComponent(v.agent.id) +
             "&back=" + encodeURIComponent("index.html#visits-title");
-        $("[data-visit-agent-name]", agent).textContent = "Avec " + v.agent.name;
+        $("[data-visit-agent-name]", agent).textContent = name;
     }
 }
 ```
 
-Add the same line to the static cards and to `<template data-visit-card-template>` in `index.html`. In `assets/js/partner-central.js`'s `fillVisit`, add the same line to the mandate page's inline visit detail (`visit-detail.html`'s prototype counterpart), reading `visit.agent`.
+Add the same line to `<template data-visit-card-template>` in `index.html`. In `assets/js/partner-central.js`'s `fillVisit`, add the same line to the mandate page's inline visit detail (`visit-detail.html`'s prototype counterpart), reading `visit.agent`; its "Avec" is a separate span in the markup.
 
 - [ ] **Step 3: Add the *Visites d'autres agents* block to the prototype home page**
 
-In `index.html`, after the `data-visits-section` section, add:
+In `index.html`, after the `data-visits-section` section, add the section and its card template:
 
 ```html
 <section class="home-section listing-visits" aria-labelledby="co-brokerage-visits-title" data-co-brokerage-visits
@@ -89,14 +90,40 @@ In `index.html`, after the `data-visits-section` section, add:
     <h2 id="co-brokerage-visits-title">Visites d'autres agents</h2>
     <p>Un autre agent organise ces visites de votre bien : vous accueillez l'agent et son client sur place.</p>
     <ul data-co-brokerage-visit-list></ul>
+    <template data-co-brokerage-visit-template>
+        <li class="co-visit-card">
+            <article>
+                <div class="co-visit-card__head">
+                    <p class="co-visit-card__when"><svg calendar/><span data-co-brokerage-at></span></p>
+                    <p class="status-tag status-tag--info" data-co-brokerage-progress hidden>En cours</p>
+                </div>
+                <p class="co-visit-card__listing">
+                    <svg house data-co-brokerage-type-icon="ON_SITE"></svg>
+                    <svg video hidden data-co-brokerage-type-icon="VIDEO"></svg>
+                    <span data-co-brokerage-type></span><span aria-hidden="true">·</span>
+                    <a data-co-brokerage-listing></a>
+                </p>
+                <div class="co-visit-card__agent">
+                    <span class="co-visit-card__avatar" data-co-brokerage-initials aria-hidden="true"></span>
+                    <div class="co-visit-card__agent-info">
+                        <p class="co-visit-card__agent-line">
+                            <span>Avec</span>
+                            <a data-co-brokerage-agent><span data-co-brokerage-agent-name></span><svg external/></a>
+                        </p>
+                        <a class="co-visit-card__whatsapp" data-co-brokerage-whatsapp>WhatsApp</a>
+                    </div>
+                </div>
+            </article>
+        </li>
+    </template>
 </section>
 ```
 
-Add `assets/css/listing.css` to `index.html`'s `<head>` (the block uses `.listing-visits`; `visit.html` and `mandate.html` already link it). Add a `renderCoBrokerageVisits()` function in `assets/js/visit.js` that fills the list from two mock `CoBrokerageVisitSummary`s (one `CONFIRMED`, one `CHECKED_IN`), each row: the date/time, the type, "En cours" when checked in, A's name linked to `agent.html`, A's WhatsApp link, and the listing line.
+Add `assets/css/listing.css` to `index.html`'s `<head>` and add the `.co-visit-card` styles there (the same ones the served `listing.css` gets in Task 4): a bordered card, the when + "En cours" head, the type/listing line, and the organizer footer (avatar, "Avec …" link, WhatsApp) under a top rule. Add a `renderCoBrokerageVisits()` function in `assets/js/visit.js` that fills the list from two mock `CoBrokerageVisitSummary`s (one `CONFIRMED`, one `CHECKED_IN`): the date/time, the type and its icon, "En cours" when checked in, the listing, the agent's initials and name linked to `agent.html`, and the WhatsApp link.
 
 - [ ] **Step 4: Add the block to the prototype mandate page**
 
-In `mandate.html`, add the same section (same classes, `data-co-brokerage-visits`) after `data-listing-proposals`, with `data-listing-proposals`'s section id unchanged. Fill it with the same mock rows; A's profile link returns to `mandate.html?id=203#co-brokerage-visits-title`.
+In `mandate.html`, add the same section and card template (same classes, `data-co-brokerage-visits`) after `data-listing-proposals`, with `data-listing-proposals`'s section id unchanged. Fill it with the same cards; A's profile link returns to `mandate.html?id=203#co-brokerage-visits-title`.
 
 - [ ] **Step 5: Add the boxed agent card to the prototype visit page**
 
@@ -615,12 +642,16 @@ In `fragments/visit-card.html`, after the `visit-card__listing` paragraph of bot
 ```html
 <p class="visit-card__agent" th:if="${v.agentName != null}" data-visit-agent>
     <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false"><circle cx="10" cy="6.5" r="3.25"/><path d="M4 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" stroke-linecap="round"/></svg>
-    <a th:if="${v.agentUrl}" th:href="${v.agentUrl}" data-visit-agent-link th:text="|Avec ${v.agentName}|">Avec Clarisse Mbarga</a>
-    <span th:unless="${v.agentUrl}" th:text="|Avec ${v.agentName}|">Avec un autre agent</span>
+    <span>Avec</span>
+    <a th:if="${v.agentUrl}" th:href="${v.agentUrl}" data-visit-agent-link>
+        <span th:text="${v.agentName}">Clarisse Mbarga</span>
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
+    </a>
+    <span th:unless="${v.agentUrl}" th:text="${v.agentName}">un autre agent</span>
 </p>
 ```
 
-Add the same line to `fragments/visit-detail.html`, after the `visit-detail__when` paragraph.
+Add the same line to `fragments/visit-detail.html`, after the `visit-detail__when` paragraph (without the top rule).
 
 In `visit.html`, after `div.visit-header`, add the boxed card (same `listing-agent` markup as `listing.html`, eyebrow `Visite organisée avec`, names `data-visit-agent`, no new CSS needed because `listing.css` is already linked):
 
@@ -649,7 +680,7 @@ In `visit.html`, after `div.visit-header`, add the boxed card (same `listing-age
 </section>
 ```
 
-Add `.visit-card__agent` (same layout as `.visit-card__listing`) and `.visit-detail__agent` to `public/assets/css/visit.css`.
+Add to `public/assets/css/visit.css`: `.visit-card__agent` is a footer under a top rule (person icon, "Avec", a semibold name link with a small external-arrow icon); `.visit-detail__agent` is the same line without the rule. Both keep the 44px target on the link and an info-coloured arrow.
 
 - [ ] **Step 8: Update the controller and template tests**
 
@@ -710,6 +741,7 @@ git commit -m "feat(npc): show the listing agent on co-brokerage visit cards and
 - Modify: `modules/ndopify-partner-central/src/main/resources/templates/index.html`
 - Modify: `modules/ndopify-partner-central/src/main/resources/templates/mandate.html`
 - Modify: `modules/ndopify-partner-central/src/main/resources/templates/listing.html`
+- Modify: `modules/ndopify-partner-central/src/main/resources/public/assets/css/listing.css`
 - Test: `modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/client/ndopify/NdVisitClientTest.kt`
 - Test: `modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/ui/listing/ListingViewsTest.kt`
 - Test: `modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/ui/listing/ListingControllerTest.kt`
@@ -724,6 +756,7 @@ git commit -m "feat(npc): show the listing agent on co-brokerage visit cards and
 - Produces:
   - `NdVisitClient.coBrokerage(): List<CoBrokerageVisitSummary>` → `GET /v1/visits/co-brokerage` (no query)
   - `ListingVisitView.listingTitle: String? = null`, `ListingVisitView.listingUrl: String? = null`
+  - `ListingVisitView.agentInitials: String? = null`, `ListingVisitView.video: Boolean = false`
   - `ListingViews.visits(visits: List<CoBrokerageVisitSummary>, agents: Map<Long, Agent>, tenant: Tenant, formatter: TenantFormatter, back: String, listingLabels: Map<Long, String> = emptyMap()): List<ListingVisitView>`
   - `ListingViews.listingLabel(summary: ListingSummary, locations: Map<Long, Location>): String` and `listingLabel(listing: Listing, locations: Map<Long, Location>): String`
   - `HomeController` model `coBrokerageVisits: List<ListingVisitView>`
@@ -763,6 +796,8 @@ fun `co-brokerage visits carry the listing on the home block`() {
     assertEquals("Appartement 2 chambres · Bonapriso", rows.single().listingTitle)
     assertEquals("/listings/501#visits-title", rows.single().listingUrl)
     assertEquals("/agent?id=20&back=/%23co-brokerage-visits-title", rows.single().agentUrl)
+    assertEquals("SN", rows.single().agentInitials)
+    assertFalse(rows.single().video)
 }
 
 @Test
@@ -783,7 +818,7 @@ fun `listing labels read the type, rooms and place`() {
 }
 ```
 
-Use the existing `date` and `agent` fixtures in `ListingViewsTest`.
+Use the existing `date` and `agent` fixtures in `ListingViewsTest`. In the existing co-brokerage tests, also assert the card's avatar and icon: `agentInitials == "SN"` for a readable agent, `null` for an unreadable one, and `video == true` for the `VIDEO` row.
 
 - [ ] **Step 2: Run them to verify they fail**
 
@@ -817,9 +852,13 @@ fun coBrokerage(): List<CoBrokerageVisitSummary> =
 val listingTitle: String? = null,
 /** The listing's page, when [listingTitle] is shown. */
 val listingUrl: String? = null,
+/** The organizer's initials, for the card's avatar; null when the agent can't be read. */
+val agentInitials: String? = null,
+/** A video visit: the card shows the video icon instead of the house. */
+val video: Boolean = false,
 ```
 
-`ListingViews.visits` becomes:
+`ListingViews.visits` becomes (import `com.wutsi.ndopify.visit.dto.VisitType`):
 
 ```kotlin
 fun visits(
@@ -835,6 +874,7 @@ fun visits(
         .map { visit ->
             val agent = agents[visit.agentId]
             val name = agent?.let { ProfileRules.fullName(it) }?.ifBlank { null }
+            val initials = agent?.let { KycRules.initials(it.party.firstName, it.party.lastName) }?.ifBlank { null }
             val title = listingLabels[visit.listingId]
             ListingVisitView(
                 at = visit.scheduledAt?.let { VisitSlots.dateTimeLabel(it, tenant, formatter) }.orEmpty(),
@@ -845,6 +885,8 @@ fun visits(
                 whatsappUrl = name?.let { AgentProfileRules.whatsappUrl(agent?.whatsappNumber) },
                 listingTitle = title,
                 listingUrl = title?.let { "/listings/${visit.listingId}#visits-title" },
+                agentInitials = initials,
+                video = visit.type == VisitType.VIDEO,
             )
         }
 ```
@@ -887,24 +929,55 @@ Create `templates/fragments/co-brokerage-visit.html`:
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
 <body>
-<!-- One row of *Visites d'autres agents*: never A's customer, note, code, address, report or feedback. -->
-<li th:fragment="coBrokerageVisit(v)">
-    <p><strong th:text="${v.at}">dimanche 22 novembre 2026 à 10:30</strong> ·
-        <span th:text="${v.typeLabel}">Sur place</span>
-        <span class="status-tag status-tag--info" th:if="${v.inProgress}">En cours</span></p>
-    <p th:if="${v.listingTitle != null}">
-        <a th:if="${v.listingUrl != null}" th:href="@{${v.listingUrl}}" th:text="${v.listingTitle}">Appartement 2 chambres · Bonapriso</a>
-        <span th:unless="${v.listingUrl != null}" th:text="${v.listingTitle}">Appartement 2 chambres · Bonapriso</span>
-    </p>
-    <p>avec
-        <a th:if="${v.agentUrl}" th:href="${v.agentUrl}" th:text="${v.agentName}" data-co-brokerage-agent>Serge Ngono</a>
-        <span th:unless="${v.agentUrl}" th:text="${v.agentName} ?: 'un autre agent'" data-co-brokerage-agent>un autre agent</span>
-        <a th:if="${v.whatsappUrl}" th:href="${v.whatsappUrl}" rel="noopener" target="_blank" data-co-brokerage-whatsapp>WhatsApp</a>
-    </p>
+<!-- One card of *Visites d'autres agents*: never A's customer, note, code, address, report or feedback. -->
+<li th:fragment="coBrokerageVisit(v)" class="co-visit-card">
+    <article>
+        <div class="co-visit-card__head">
+            <p class="co-visit-card__when">
+                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                <span th:text="${v.at}">dimanche 22 novembre 2026 à 10:30</span>
+            </p>
+            <p class="status-tag status-tag--info" th:if="${v.inProgress}">En cours</p>
+        </div>
+        <p class="co-visit-card__listing">
+            <svg class="icon" th:unless="${v.video}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg>
+            <svg class="icon" th:if="${v.video}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m16 10 6-3v10l-6-3z"/></svg>
+            <span th:text="${v.typeLabel}">Sur place</span>
+            <th:block th:if="${v.listingTitle != null}">
+                <span aria-hidden="true">·</span>
+                <a th:if="${v.listingUrl != null}" th:href="@{${v.listingUrl}}" th:text="${v.listingTitle}">Appartement 2 chambres · Bonapriso</a>
+                <span th:unless="${v.listingUrl != null}" th:text="${v.listingTitle}">Appartement 2 chambres · Bonapriso</span>
+            </th:block>
+        </p>
+        <div class="co-visit-card__agent">
+            <span class="co-visit-card__avatar" th:if="${v.agentInitials != null}" th:text="${v.agentInitials}"
+                  aria-hidden="true">CM</span>
+            <span class="co-visit-card__avatar" th:unless="${v.agentInitials != null}" aria-hidden="true">
+                <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" focusable="false"><circle cx="10" cy="6.5" r="3.25"/><path d="M4 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" stroke-linecap="round"/></svg>
+            </span>
+            <div class="co-visit-card__agent-info">
+                <p class="co-visit-card__agent-line">
+                    <span>Avec</span>
+                    <a th:if="${v.agentUrl}" th:href="${v.agentUrl}" data-co-brokerage-agent>
+                        <span th:text="${v.agentName}">Serge Ngono</span>
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
+                    </a>
+                    <span th:unless="${v.agentUrl}" th:text="${v.agentName} ?: 'un autre agent'" data-co-brokerage-agent>un autre agent</span>
+                </p>
+                <a class="co-visit-card__whatsapp" th:if="${v.whatsappUrl}" th:href="${v.whatsappUrl}" rel="noopener"
+                   target="_blank" data-co-brokerage-whatsapp>
+                    <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+                    WhatsApp
+                </a>
+            </div>
+        </div>
+    </article>
 </li>
 </body>
 </html>
 ```
+
+Add the `.co-visit-card` rules to `public/assets/css/listing.css`: keep the `.listing-visits ul` reset, then the bordered card, the when + "En cours" head, the type/listing line, and the organizer footer (avatar, "Avec …" link, WhatsApp) under a top rule. Replace the old `.listing-visits li` row rules (padding-block + `border-top` between rows) — the cards carry their own borders and spacing now.
 
 Replace the inline `<li>` loop in `listing.html` with the fragment (keep the `th:block` pattern the other pages use, so `th:each` and `th:replace` don't fight):
 
@@ -1084,10 +1157,10 @@ In `mandate.html`, after `data-listing-proposals`, add the same section as the h
 
 - [ ] **Step 8: Write/complete the page tests**
 
-- `HomeControllerTest`: stub `visitClient.coBrokerage()` with one `CoBrokerageVisitSummary` (listing 501, agent 30, CONFIRMED, today), `listingClient.searchByIds` with `LISTING` 501, `agentClient.get(30)` with `OTHER_AGENT`; assert `coBrokerageVisits.single().agentName == "Clarisse Mbarga"`, `listingTitle` and `todayCount == 1`. Add `a failed co-brokerage read leaves the block out` (doThrow `ResourceAccessException`; the model has an empty list and the view is "index").
-- `HomeTemplateTest`: the rendered home contains the section, `Visites d'autres agents`, `Clarisse Mbarga`, `https://wa.me/237699000002` and `/listings/501#visits-title`; no `Sandrine Eboa`/`sandrine@gmail.com`/`1234` in the block.
-- `MandateControllerTest`: a PUBLISHED listing mandate stubs `visitClient.coBrokerageOnListing(501)`, `agentClient.get(30)`; asserts `coBrokerageVisits.single().agentName`; a DRAFT or a search mandate never calls `coBrokerageOnListing`; a failure leaves an empty list and still renders "mandate".
-- `MandateTemplateTest`: the block renders for a listing mandate, with A's link and WhatsApp, and nothing of A's customer.
+- `HomeControllerTest`: stub `visitClient.coBrokerage()` with one `CoBrokerageVisitSummary` (listing 501, agent 30, CONFIRMED, today), `listingClient.searchByIds` with `LISTING` 501, `agentClient.get(30)` with `OTHER_AGENT`; assert `coBrokerageVisits.single().agentName == "Clarisse Mbarga"`, `agentInitials == "CM"`, `video == false`, `listingTitle` and `todayCount == 1`. Add `a failed co-brokerage read leaves the block out` (doThrow `ResourceAccessException`; the model has an empty list and the view is "index").
+- `HomeTemplateTest`: the rendered home contains the section, `Visites d'autres agents`, the `co-visit-card` card with `CM` avatar, `Clarisse Mbarga`, `https://wa.me/237699000002` and `/listings/501#visits-title`; no `Sandrine Eboa`/`sandrine@gmail.com`/`1234` in the block. A `VIDEO` visit renders the video icon, not the house.
+- `MandateControllerTest`: a PUBLISHED listing mandate stubs `visitClient.coBrokerageOnListing(501)`, `agentClient.get(30)`; asserts `coBrokerageVisits.single().agentName` and `agentInitials`; a DRAFT or a search mandate never calls `coBrokerageOnListing`; a failure leaves an empty list and still renders "mandate".
+- `MandateTemplateTest`: the block renders the `co-visit-card`, A's avatar/link and WhatsApp, and nothing of A's customer.
 - `ListingControllerTest` / `ListingTemplateTest`: the listing page's block still renders through the fragment (unchanged expected output).
 
 - [ ] **Step 9: Run the tests to verify they pass**
@@ -1117,6 +1190,7 @@ git add modules/ndopify-partner-central/src/main/kotlin/com/wutsi/ndopify/npc/cl
     modules/ndopify-partner-central/src/main/resources/templates/index.html \
     modules/ndopify-partner-central/src/main/resources/templates/mandate.html \
     modules/ndopify-partner-central/src/main/resources/templates/listing.html \
+    modules/ndopify-partner-central/src/main/resources/public/assets/css/listing.css \
     modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/client/ndopify/NdVisitClientTest.kt \
     modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/ui/listing \
     modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/ui/home \
