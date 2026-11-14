@@ -90,6 +90,7 @@ object MatchViews {
         return MatchView(
             id = match.id,
             listingId = listing.id,
+            coBrokerage = match.coBrokerage,
             title = listOfNotNull(type, listing.rooms?.let { MatchRules.rooms(it) }).joinToString(" · "),
             tag = MatchRules.tag(match),
             listingUrl = if (match.coBrokerage) "/listings/${listing.id}?match=${match.id}" else "/listings/${listing.id}",

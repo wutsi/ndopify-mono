@@ -11,6 +11,7 @@ data class FitLine(val full: Boolean, val text: String)
 data class MatchView(
     val id: Long,
     val listingId: Long,
+    val coBrokerage: Boolean = false,
     val title: String,
     val tag: MandateRules.Tag,
     val listingUrl: String,

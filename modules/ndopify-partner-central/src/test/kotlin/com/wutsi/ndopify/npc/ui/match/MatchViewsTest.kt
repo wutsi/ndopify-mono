@@ -91,6 +91,14 @@ class MatchViewsTest {
     }
 
     @Test
+    fun `co-brokerage card is flagged for the template`() {
+        val section = section(listOf(MATCH_A.copy(coBrokerage = true), MATCH_B))
+
+        assertTrue(section.matches.first { it.id == 9001L }.coBrokerage)
+        assertFalse(section.matches.first { it.id == 9003L }.coBrokerage)
+    }
+
+    @Test
     fun `refused - left out, counted in the outcomes`() {
         val matches = listOf(
             MATCH_A,
