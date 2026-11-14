@@ -174,7 +174,6 @@ object MandateViews {
         return ContactView(
             name = partyName(customer),
             email = customer.party.email,
-            whatsapp = whatsapp,
             whatsappDisplay = whatsapp?.let { displayPhone(it) },
             whatsappDigits = whatsapp?.filter { it.isDigit() },
             period = MandateLabels.CONTACT_PERIOD_LABELS[mandate.preferredContactPeriod],

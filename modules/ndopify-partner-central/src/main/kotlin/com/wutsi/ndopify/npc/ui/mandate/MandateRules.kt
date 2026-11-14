@@ -55,10 +55,12 @@ object MandateRules {
         val searchUpper: String,
         /** "envoyé au client". */
         val to: String,
+        /** "Client": the label before the customer's name on the contact card. */
+        val role: String,
     )
 
-    private val OWNER = PartyWords("le bailleur", "Le bailleur", "du bailleur", "son bien", "Son bien", "au bailleur")
-    private val CLIENT = PartyWords("le client", "Le client", "du client", "sa recherche", "Sa recherche", "au client")
+    private val OWNER = PartyWords("le bailleur", "Le bailleur", "du bailleur", "son bien", "Son bien", "au bailleur", "Bailleur")
+    private val CLIENT = PartyWords("le client", "Le client", "du client", "sa recherche", "Sa recherche", "au client", "Client")
 
     /** An unknown status reads as the neutral "Fermé" tag: the page never shows one anyway (see [SHOWN]). */
     fun tag(status: MandateStatus): Tag = TAGS[status] ?: TAGS.getValue(MandateStatus.CLOSED)

@@ -265,6 +265,7 @@ class MandateTemplateTest {
 
         assertEquals("listing", page.selectFirst("h1 [data-mandate-kind]")?.attr("data-mandate-kind"))
         assertEquals("Le bailleur", page.selectFirst("#contact-title")?.text())
+        assertEquals("Bailleur", page.selectFirst("[data-contact-role]")?.text())
         assertEquals("Son bien", page.selectFirst("#search-title")?.text())
         assertTrue(page.text().contains("Présentez le bien aux locataires et organisez les visites."))
     }
@@ -568,18 +569,21 @@ class MandateTemplateTest {
     fun contact() {
         val page = render(PENDING.copy(preferredContactPeriod = com.wutsi.ndopify.listing.dto.ContactPeriodType.MORNING))
 
-        val card = page.selectFirst(".contact-card")!!
+        val card = page.selectFirst(".contact-person")!!
         assertEquals("Le client", page.selectFirst("#contact-title")?.text())
         assertEquals("visually-hidden", page.selectFirst("#contact-title")?.className()) // For screen readers only
         // Right under the title, above the progress
         val contact = page.selectFirst("section[aria-labelledby=contact-title]")!!
         assertEquals("mandate-progress", contact.nextElementSiblings().first { it.tagName() == "section" }.className())
-        assertEquals("Ray Sponsible · à appeler le matin", card.selectFirst("p")?.text())
-        assertEquals("tel:+237699123456", card.selectFirst("a[data-contact=whatsapp]")?.attr("href"))
+        assertEquals("Client Ray Sponsible à appeler le matin", card.selectFirst(".listing-agent__headline")?.text())
+        assertEquals("strong", card.selectFirst("[data-contact=name]")?.tagName()) // Not a link: a customer has no page
+        // The number is the WhatsApp link; no photo, no tel: link, no e-mail
+        assertEquals("https://wa.me/237699123456", card.selectFirst("a[data-contact=whatsapp]")?.attr("href"))
         assertEquals("+237 6 99 12 34 56", card.selectFirst("[data-contact-number]")?.text())
-        assertEquals("https://wa.me/237699123456", card.selectFirst("a[data-contact-whatsapp]")?.attr("href"))
-        assertEquals("btn btn--secondary btn--compact", card.selectFirst("a[data-contact-whatsapp]")?.className())
-        assertEquals("mailto:ray@gmail.com", card.selectFirst("a[data-contact=email]")?.attr("href"))
+        assertNull(card.selectFirst(".listing-agent__photo"))
+        assertNull(card.selectFirst("a[href^=tel:]"))
+        assertNull(card.selectFirst("[data-contact=email]"))
+        assertEquals(1, card.select("a").size)
     }
 
     @Test
@@ -588,7 +592,7 @@ class MandateTemplateTest {
 
         val page = render(get("/mandates/201"))
 
-        assertNull(page.selectFirst(".contact-card"))
+        assertNull(page.selectFirst(".contact-person"))
         assertNotNull(page.selectFirst("[data-contact-unavailable]"))
         assertTrue(page.selectFirst("[data-panel=PENDING_APPROVAL]")!!.text().contains("Le mandat a été envoyé au client."))
     }
@@ -764,7 +768,7 @@ class MandateTemplateTest {
         assertNull(page.selectFirst("[data-match-in-visit]"))
         assertNull(page.selectFirst("[data-listing-visits]"))
         assertNull(page.selectFirst("[data-mandate-visit-stats]"))
-        assertTrue(page.selectFirst("[data-contact-whatsapp]")!!.hasClass("btn--secondary"))
+        assertNull(page.selectFirst("section[aria-labelledby=contact-title] .btn")) // The number is a plain link
     }
 
     @Test

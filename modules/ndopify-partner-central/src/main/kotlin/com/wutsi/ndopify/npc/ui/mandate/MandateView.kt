@@ -59,8 +59,6 @@ data class StepView(
 data class ContactView(
     val name: String,
     val email: String,
-    /** E.164, for `tel:`. */
-    val whatsapp: String?,
     /** "+237 6 99 12 34 56". */
     val whatsappDisplay: String?,
     /** "237699123456", for `https://wa.me/`. */

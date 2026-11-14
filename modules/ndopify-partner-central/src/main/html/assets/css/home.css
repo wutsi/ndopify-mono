@@ -956,6 +956,24 @@ h1.alert__title {
 
 /* ---------- Mandate (mandate.html): contact and search ---------- */
 
+/*
+ * The customer: the co-agent's condensed card of listing.html (.listing-agent, listing.css) without its photo, so one
+ * column, with the best time to call after the name.
+ */
+.contact-person {
+    grid-template-columns: minmax(0, 1fr);
+}
+
+/* Plain text, not the co-agent's profile link: no hover underline, no arrow. */
+.contact-person__name {
+    font-weight: 600;
+}
+
+.contact-person__period {
+    font-size: var(--step-hint);
+    color: var(--color-info-fg);
+}
+
 /* The client's contact, unlabelled: name and best time to call, then the number and the e-mail. */
 .contact-card > * + * {
     margin-top: var(--space-2);

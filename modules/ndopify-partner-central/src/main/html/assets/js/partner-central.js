@@ -2414,16 +2414,14 @@
             ? "Créez l'annonce et visitez le bien pour la compléter ; une fois publiée, organisez les visites."
             : "Proposez des biens au client et organisez les visites.";
 
+        // The condensed card, like the co-agent's on listing.html without its photo: role and name, then the number
+        // as its WhatsApp link.
+        $("[data-contact-role]").textContent = mandate.party === "bailleur" ? "Bailleur" : "Client";
         $('[data-contact="name"]').textContent = c.name;
-        // The number calls; its WhatsApp button writes.
         var phone = $('[data-contact="whatsapp"]');
         $("[data-contact-number]", phone).textContent = displayPhone(c.whatsapp);
-        phone.href = "tel:" + c.whatsapp;
-        var email = $('[data-contact="email"]');
-        email.textContent = c.email;
-        email.href = "mailto:" + c.email;
+        phone.href = "https://wa.me/" + c.whatsapp.replace(/\D/g, "");
         $('[data-contact="period"]').textContent = CONTACT_PERIOD_PHRASES[c.period] || c.period;
-        $("[data-contact-whatsapp]").href = "https://wa.me/" + c.whatsapp.replace("+", "");
 
         function criterion(list, row) {
             var item = document.createElement("div");
