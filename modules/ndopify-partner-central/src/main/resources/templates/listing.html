@@ -28,11 +28,18 @@
   refused. "Envoyer pour vérification" (POST /listings/{id}/verify) stays inactive until every section but the
   remarks is done, and says what's left; without JS it still posts, and the controller refuses it. Sent, the listing
   is read-only while it's checked (PENDING_VERIFICATION, UNDER_VERIFICATION, VERIFIED, PUBLISHING), then published:
-  its date in the tag, its hero image, and a link to its public page under the title (also once SOLD or RENTED). A DRAFT the verification sent back
-  (its errorCodes) is "À corriger": the reasons, and the sections they're about, still editable and sent again.
+  the checklist becomes a read-only sheet (gallery, description, facts, property, place, amenities, terms, remarks)
+  and the verification trail folds into a closed disclosure. A DRAFT the verification sent back (its errorCodes) is
+  "À corriger": the reasons, and the sections they're about, still editable and sent again.
+
+  A co-broker (another agent's published listing, opened from a *Biens correspondants* card with ?match=) sees the
+  same page without the owner's blocks: no public link, share button, stats, exact position, access directions,
+  verification trail nor the mandate's customer. The listing agent's card replaces them; the exact address is shared
+  by that agent before the visit.
+
   "listing" is the ListingView, absent when "locked" (not found, or not the agent's) or "unavailable"
-  (ndopify-server couldn't answer). "outcomeText" / "outcomeStyle"
-  are the last action's outcome (flash attribute "outcome", worded by ListingController).
+  (ndopify-server couldn't answer). "outcomeText" / "outcomeStyle" are the last action's outcome (flash attribute
+  "outcome", worded by ListingController).
 */-->
 <body data-page="listing">
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -62,8 +69,8 @@
     </header>
     <main id="main" class="page">
         <div class="column column--wide">
-            <p class="back-link"><a th:href="${listing} ? @{/mandates/{id}(id=${listing.mandateId})} : @{/#mandates-title}"
-                                    th:text="${listing} ? '← Retour au mandat' : '← Retour à l\'espace agent'">← Retour au mandat</a></p>
+            <p class="back-link"><a th:href="${listing} ? ${listing.backUrl} : @{/#mandates-title}"
+                                    th:text="${listing} ? ${listing.backLabel} : '← Retour à l\'espace agent'">← Retour au mandat</a></p>
 
             <!--
                 Outcome of the last action (sent, or why it couldn't be): under the title, or first on the locked or
@@ -86,7 +93,7 @@
                 </div>
             </div>
 
-            <!-- Locked: no such listing, or not one of the agent's mandates. -->
+            <!-- Locked: no such listing, not one of the agent's mandates, or a co-broker without their match. -->
             <div class="alert alert--warning" th:if="${locked}" data-listing-locked>
                 <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
                 <div>
@@ -103,10 +110,13 @@
                            th:text="${l.status.name() == 'PUBLISHED' and l.publishedAt != null} ? |${l.tag.label} le ${l.publishedAt}| : ${l.tag.label}"
                            data-listing-tag>Brouillon</p>
                     </div>
-                    <p class="mandate__meta">Mandat n° <span th:text="${l.mandateId}">203</span> · créée le
+                    <p class="mandate__meta" th:if="${!l.coBrokerage}" data-listing-meta>Mandat n° <span th:text="${l.mandateId}">203</span> · créée le
                         <span th:text="${l.createdAt}">20 oct. 2026</span></p>
-                    <img class="listing-hero" th:if="${l.heroImageUrl}" th:src="${l.heroImageUrl}" th:alt="${l.title}"
-                         width="960" height="540" loading="lazy" data-listing-hero>
+                    <!-- Another agent's listing (co-brokerage): its mandate, customer, public link and share stay hidden. -->
+                    <p class="listing-origin" th:if="${l.coBrokerage}" data-listing-origin>
+                        <span class="status-tag status-tag--info">Bien d'un autre agent</span>
+                        <span>Ce bien est publié par un autre agent. Contactez-le pour organiser une visite.</span>
+                    </p>
                     <p class="listing-public" th:if="${l.publicUrl}" data-listing-public>
                         <a th:href="${l.publicUrl}" target="_blank" rel="noopener" data-listing-public-url>Voir l'annonce en ligne</a>
                         <button type="button" class="btn btn--secondary btn--compact listing-share" data-listing-share hidden
@@ -122,6 +132,47 @@
                         <span><span class="visually-hidden">Activité de l'annonce : </span><span th:text="${l.stats}">2 personnes intéressées · 3 visites</span></span>
                     </p>
                 </div>
+
+                <!-- The published listing's photos: the first five in a grid, the whole set in the viewer. -->
+                <section class="listing-gallery" aria-label="Photos du bien"
+                         th:if="${l.published != null and !#lists.isEmpty(l.published.photos)}" data-listing-gallery>
+                    <div class="listing-gallery__grid">
+                        <a class="listing-gallery__item"
+                           th:classappend="${photo.cssClass}"
+                           th:each="photo : ${l.published.photos}"
+                           th:href="${photo.url}" data-photo-link>
+                            <img th:src="${photo.url}" th:alt="${photo.alt}" width="900" height="600" loading="lazy">
+                        </a>
+                    </div>
+                    <a class="btn btn--secondary btn--compact listing-gallery__all"
+                       th:href="${l.published.photos[0].url}" data-photo-open
+                       th:text="|Voir les ${#lists.size(l.published.photos)} photos|">Voir les 5 photos</a>
+                </section>
+
+                <!-- Co-brokerage only: the agent who publishes this listing, never their customer. -->
+                <section class="home-section" aria-labelledby="listing-agent-title" th:if="${l.agent != null}" data-listing-agent>
+                    <h2 id="listing-agent-title" class="visually-hidden">L'agent qui publie ce bien</h2>
+                    <div class="listing-agent">
+                        <a class="listing-agent__photo" th:href="${l.agent.profileUrl}" aria-hidden="true" tabindex="-1">
+                            <img th:if="${l.agent.photoUrl}" th:src="${l.agent.photoUrl}" alt="">
+                            <span th:unless="${l.agent.photoUrl}" th:text="${l.agent.initials}">CM</span>
+                        </a>
+                        <div class="listing-agent__info">
+                            <p class="listing-agent__headline">
+                                <span class="listing-agent__eyebrow">Publié par</span>
+                                <a class="listing-agent__name" th:href="${l.agent.profileUrl}">
+                                    <span th:text="${l.agent.name}">Clarisse Mbarga</span>
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
+                                </a>
+                            </p>
+                            <p class="listing-agent__contact" th:if="${l.agent.whatsappUrl != null}">
+                                <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
+                                <a th:href="${l.agent.whatsappUrl}" target="_blank" rel="noopener"
+                                   th:text="${l.agent.whatsappNumber}">+237 6 99 12 34 56</a>
+                            </p>
+                        </div>
+                    </div>
+                </section>
 
                 <div th:replace="~{:: flash}"></div>
 
@@ -149,21 +200,126 @@
                         <p>Corrigez les sections signalées, puis renvoyez-la.</p>
                     </div>
                 </div>
-                <section class="home-section" aria-labelledby="checklist-title">
-                    <h2 id="checklist-title">Détails de la propriété</h2>
-                    <p class="checklist__progress" th:text="${l.progress}" data-checklist-progress>1 sections sur 6 vérifiées</p>
-                    <!-- One row per section: to edit it while a draft, to view it (read-only) once sent. -->
-                    <ol class="checklist" data-checklist>
-                        <li th:each="row : ${l.rows}">
-                            <a class="checklist__row" th:href="@{${row.url}}">
-                                <span class="checklist__title" th:text="${row.label}" data-section-title>Emplacement</span>
-                                <span th:class="|status-tag status-tag--${row.state.style}|" th:text="${row.state.label}"
-                                      data-section-state>À vérifier</span>
-                                <span class="checklist__summary" th:text="${row.summary}" data-section-summary></span>
-                            </a>
-                        </li>
-                    </ol>
+
+                <!-- The public words of the listing, once published. -->
+                <section class="home-section" aria-labelledby="listing-about-title"
+                         th:if="${l.published != null and l.published.description != null}" data-listing-about>
+                    <h2 id="listing-about-title">À propos de ce bien</h2>
+                    <div class="listing-description" th:text="${l.published.description}"></div>
                 </section>
+
+                <!--
+                    Once published: the property as a read-only sheet, not the listing agent's checklist. The GPS
+                    position and the access directions are owner-only; a co-broker only gets the neighbourhood, the
+                    public landmark and the "shared by the agent" note.
+                -->
+                <section class="home-section" aria-labelledby="listing-details-title"
+                         th:if="${l.published != null}" data-listing-details>
+                    <h2 id="listing-details-title">Détails de la propriété</h2>
+                    <ul class="listing-facts" th:if="${!#lists.isEmpty(l.published.facts)}" data-listing-facts>
+                        <li th:each="fact : ${l.published.facts}">
+                            <th:block th:switch="${fact.icon}">
+                                <svg th:case="'bed'" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 18v-5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v5"/><path d="M3 18h18"/><path d="M6 11V8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v3"/></svg>
+                                <svg th:case="'bath'" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M4 12h16v2a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z"/><path d="M6 12V6a2 2 0 0 1 4 0"/><path d="m7 20-1 2m11-2 1 2"/></svg>
+                                <svg th:case="'area'" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="4" y="4" width="16" height="16"/><path d="M9 4v5H4m11 11v-5h5"/></svg>
+                                <svg th:case="'furnished'" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 11V8a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3"/><path d="M4 11a2 2 0 0 0-2 2v3h20v-3a2 2 0 0 0-2-2 2 2 0 0 0-2 2v1H6v-1a2 2 0 0 0-2-2z"/><path d="M5 16v2m14-2v2"/></svg>
+                                <svg th:case="'parking'" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M5 17h14l1-5-2-4H6L4 12z"/><path d="M6 17v2m12-2v2"/><circle cx="8" cy="14" r=".75"/><circle cx="16" cy="14" r=".75"/></svg>
+                            </th:block>
+                            <strong th:text="${fact.value}">2 chambres</strong>
+                        </li>
+                    </ul>
+                    <div class="listing-sheet" data-listing-sheet>
+                        <section class="listing-sheet__block" th:if="${!#lists.isEmpty(l.published.property)}">
+                            <h3>Le bien</h3>
+                            <dl class="listing-specs">
+                                <div th:each="spec : ${l.published.property}">
+                                    <dt th:text="${spec.label}">Type de bien</dt>
+                                    <dd th:text="${spec.value}">Appartement</dd>
+                                </div>
+                            </dl>
+                        </section>
+
+                        <section class="listing-sheet__block">
+                            <h3>Emplacement</h3>
+                            <p class="listing-place">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+                                <strong th:text="${l.published.place.label}">Bonapriso, Douala</strong>
+                            </p>
+                            <p class="listing-place__landmark" th:if="${l.published.place.landmark != null}"
+                               th:text="|Point de repère : ${l.published.place.landmark}|">Point de repère : Derrière l'école publique</p>
+                            <div class="listing-private" th:if="${l.published.privateLocation != null}"
+                                 th:with="private=${l.published.privateLocation}">
+                                <p class="listing-private__title">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                                    <span>Accès et position</span>
+                                </p>
+                                <p class="listing-private__hint">Visible par vous uniquement</p>
+                                <p class="listing-private__coords" th:if="${private.coordinates != null}"
+                                   th:text="${private.coordinates}">4.03350, 9.69420</p>
+                                <a class="listing-private__map" th:if="${private.mapsUrl != null}" th:href="${private.mapsUrl}"
+                                   target="_blank" rel="noopener">Ouvrir dans Maps</a>
+                                <p class="listing-private__label" th:if="${private.accessDirections != null}">Comment y accéder</p>
+                                <p th:if="${private.accessDirections != null}" th:text="${private.accessDirections}">Immeuble bleu, 3e porte.</p>
+                            </div>
+                            <p class="listing-place__note" th:if="${l.published.placeNote != null}">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+                                <span th:text="${l.published.placeNote}">L'adresse exacte et l'itinéraire sont communiqués par l'agent avant la visite.</span>
+                            </p>
+                        </section>
+
+                        <section class="listing-sheet__block" th:if="${!#lists.isEmpty(l.published.amenities)}">
+                            <h3>Équipements</h3>
+                            <div class="listing-amenities">
+                                <div class="listing-amenities__group" th:each="group : ${l.published.amenities}">
+                                    <h4 th:text="${group.label}">Accès à l'eau</h4>
+                                    <ul>
+                                        <li th:each="item : ${group.items}">
+                                            <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m4 10.5 3.5 3.5L16 6.5"/></svg>
+                                            <span th:text="${item}">Compteur d'eau</span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </section>
+
+                        <section class="listing-sheet__block" th:if="${!#lists.isEmpty(l.published.terms)}">
+                            <h3>Loyer et conditions</h3>
+                            <dl class="listing-specs">
+                                <div th:each="spec : ${l.published.terms}">
+                                    <dt th:text="${spec.label}">Loyer</dt>
+                                    <dd th:text="${spec.value}">150 000 FCFA / mois</dd>
+                                </div>
+                            </dl>
+                        </section>
+
+                        <section class="listing-sheet__block" th:if="${l.published.remarks != null}">
+                            <h3>Remarques de l'agent</h3>
+                            <p class="listing-notes" th:text="${l.published.remarks}">Libre depuis le 1er novembre.</p>
+                        </section>
+                    </div>
+                </section>
+
+                <!-- The owner's audit trail: collapsed once published, open while the listing is being prepared. -->
+                <details class="listing-verification" th:if="${!l.coBrokerage}" data-listing-verification
+                         th:open="${l.published == null}"
+                         th:attr="data-mode=${l.published == null ? 'edit' : 'published'}">
+                    <summary>Vérification de l'annonce</summary>
+                    <section class="home-section" aria-labelledby="checklist-title">
+                        <h2 id="checklist-title">Sections vérifiées</h2>
+                        <p class="checklist__progress" th:text="${l.progress}" data-checklist-progress>1 sections sur 6 vérifiées</p>
+                        <!-- One row per section: to edit it while a draft, to view it (read-only) once sent. -->
+                        <ol class="checklist" data-checklist>
+                            <li th:each="row : ${l.rows}">
+                                <a class="checklist__row" th:href="@{${row.url}}">
+                                    <span class="checklist__title" th:text="${row.label}" data-section-title>Emplacement</span>
+                                    <span th:class="|status-tag status-tag--${row.state.style}|" th:text="${row.state.label}"
+                                          data-section-state>À vérifier</span>
+                                    <span class="checklist__summary" th:text="${row.summary}" data-section-summary></span>
+                                </a>
+                            </li>
+                        </ol>
+                    </section>
+                </details>
 
                 <section class="home-section listing-send" aria-label="Envoi de l'annonce" th:if="${l.editable}" data-listing-send>
                     <form method="post" th:action="@{/listings/{id}/verify(id=${l.id})}" data-listing-send-form>

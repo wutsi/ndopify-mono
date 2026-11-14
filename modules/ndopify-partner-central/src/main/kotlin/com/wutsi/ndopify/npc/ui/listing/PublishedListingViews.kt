@@ -57,6 +57,8 @@ object PublishedListingViews {
                 alt = image.title?.trim()?.ifEmpty { null }
                     ?: image.description?.trim()?.ifEmpty { null }
                     ?: "Photo ${index + 1}",
+                hero = index == 0,
+                extra = index >= 5,
             )
         }
     }

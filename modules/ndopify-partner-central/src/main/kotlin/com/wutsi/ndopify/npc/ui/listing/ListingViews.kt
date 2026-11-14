@@ -106,7 +106,6 @@ object ListingViews {
             sentAt = if (ListingRules.sent(listing.status)) formatter.date(listing.modifiedAt) else null,
             rejections = rejections.map { it.reason },
             publishedAt = listing.publishedAt?.let { formatter.date(it) },
-            heroImageUrl = listing.heroImageId?.let { id -> images?.firstOrNull { it.id == id }?.url?.ifBlank { null } },
             publicUrl = if (!coBrokerage && listing.status in PUBLIC) publicUrl(listing, publicPortalUrl) else null,
             stats = if (!coBrokerage && published) ListingStatsView.of(stats)?.label else null,
             rows = if (coBrokerage) {

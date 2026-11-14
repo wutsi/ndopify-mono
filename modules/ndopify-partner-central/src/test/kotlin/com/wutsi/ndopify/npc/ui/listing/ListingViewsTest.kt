@@ -281,18 +281,6 @@ class ListingViewsTest {
     }
 
     @Test
-    fun `hero image`() {
-        assertEquals("https://cdn/2.jpg", of(LISTING.copy(heroImageId = 2)).heroImageUrl)
-    }
-
-    @Test
-    fun `hero image - unavailable`() {
-        assertNull(of(LISTING).heroImageUrl)
-        assertNull(of(LISTING.copy(heroImageId = 99)).heroImageUrl)
-        assertNull(of(LISTING.copy(heroImageId = 2), null).heroImageUrl)
-    }
-
-    @Test
     fun `area in the tenant's format`() {
         val view = of(LISTING.copy(area = 1200))
 

@@ -5,9 +5,16 @@ import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.listing.dto.ImageStatus
 import com.wutsi.ndopify.listing.dto.Listing
+import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingStats
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.mandate.dto.Mandate
+import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.match.dto.Match
+import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
@@ -36,10 +43,12 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.HttpServerErrorException
+import org.springframework.web.client.ResourceAccessException
 import org.thymeleaf.spring6.SpringTemplateEngine
 import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -98,10 +107,11 @@ class ListingTemplateTest {
         SecurityContextHolder.clearContext()
     }
 
-    private fun render(listing: Listing? = null, outcome: String? = null): Document {
+    private fun render(listing: Listing? = null, outcome: String? = null, match: String? = null): Document {
         listing?.let { doReturn(it).whenever(listingClient).get(501) }
         val request = get("/listings/501")
         outcome?.let { request.flashAttr(ListingController.OUTCOME, it) }
+        match?.let { request.param("match", it) }
         return Jsoup.parse(mvc.perform(request).andReturn().response.contentAsString)
     }
 
@@ -205,17 +215,142 @@ class ListingTemplateTest {
     }
 
     @Test
-    fun `published - hero image`() {
-        val page = render(COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT, heroImageId = 2))
+    fun `published - gallery, about and sheet`() {
+        val page = render(
+            COMPLETE.copy(
+                status = ListingStatus.PUBLISHED,
+                publishedAt = SENT,
+                heroImageId = 2,
+                description = "Un appartement lumineux.\n\nLibre en novembre.",
+            ),
+        )
 
-        val hero = page.selectFirst("[data-listing-hero]")!!
-        assertEquals("https://cdn/2.jpg", hero.attr("src"))
-        assertEquals("Annonce · Appartement, Bonapriso", hero.attr("alt"))
+        val gallery = page.selectFirst("[data-listing-gallery]")!!
+        assertEquals("https://cdn/2.jpg", gallery.selectFirst("[data-photo-link] img")?.attr("src"))
+        assertEquals("Voir les 2 photos", gallery.selectFirst("[data-photo-open]")?.text())
+        assertEquals("https://cdn/2.jpg", gallery.selectFirst("[data-photo-open]")?.attr("href"))
+        assertNotNull(page.selectFirst("[data-listing-about]"))
+        assertEquals(
+            "Un appartement lumineux.\n\nLibre en novembre.",
+            page.selectFirst("[data-listing-about] .listing-description")?.wholeText(),
+        )
+        assertNotNull(page.selectFirst("[data-listing-details]"))
+        assertNotNull(page.selectFirst("[data-listing-sheet]"))
+        assertEquals("2 chambres", page.selectFirst("[data-listing-facts] li")?.text())
     }
 
     @Test
-    fun `draft - no hero image`() {
-        assertNull(render().selectFirst("[data-listing-hero]"))
+    fun `published - more than five photos are in the viewer, five in the grid`() {
+        val images = (1L..7L).map { ListingImage(id = it, url = "https://cdn/$it.jpg", status = ImageStatus.VERIFIED) }
+        doReturn(images).whenever(listingClient).images(501)
+        val page = render(COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT))
+
+        assertEquals(7, page.select("[data-photo-link]").size)
+        assertEquals(2, page.select("[data-photo-link].listing-gallery__item--extra").size)
+        assertEquals("Voir les 7 photos", page.selectFirst("[data-photo-open]")?.text())
+    }
+
+    @Test
+    fun `published - images unavailable leaves the sheet, without a gallery`() {
+        doThrow(ResourceAccessException("down")).whenever(listingClient).images(501)
+        val page = render(COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT))
+
+        assertNull(page.selectFirst("[data-listing-gallery]"))
+        assertNotNull(page.selectFirst("[data-listing-details]"))
+    }
+
+    @Test
+    fun `published owner - no gps, no access, no private block`() {
+        val page = render(
+            COMPLETE.copy(
+                status = ListingStatus.PUBLISHED,
+                publishedAt = SENT,
+                latitude = null,
+                longitude = null,
+                accessDirections = null,
+            ),
+        )
+
+        assertNull(page.selectFirst(".listing-private"))
+        assertNull(page.selectFirst(".listing-place__note"))
+    }
+
+    @Test
+    fun `published - owner keeps the public link, share, stats and private location`() {
+        doReturn(TENANT.copy(publicPortalUrl = "https://ndopify.com")).whenever(tenantContext).getTenant()
+        doReturn(mapOf(501L to ListingStats(501, 2, 1, 2))).whenever(listingClient).stats(listOf(501L))
+        val page = render(
+            COMPLETE.copy(
+                status = ListingStatus.PUBLISHED,
+                publishedAt = SENT,
+                url = "/douala/bonapriso/listing/501/appartement",
+                accessDirections = "Porte de droite",
+            ),
+        )
+
+        assertNotNull(page.selectFirst("[data-listing-public-url]"))
+        assertNotNull(page.selectFirst("[data-listing-share]"))
+        assertEquals(
+            "2 personnes intéressées · 3 visites",
+            page.selectFirst("[data-listing-stats] > span > span:last-child")?.text(),
+        )
+        assertNotNull(page.selectFirst(".listing-private"))
+        assertTrue(page.selectFirst(".listing-private")!!.text().contains("4.03350, 9.69420"))
+        assertTrue(page.selectFirst(".listing-private")!!.text().contains("Porte de droite"))
+    }
+
+    @Test
+    fun `published - verification is collapsed`() {
+        val page = render(COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT))
+
+        val details = page.selectFirst("[data-listing-verification]")!!
+        assertFalse(details.hasAttr("open"))
+        assertEquals("published", details.attr("data-mode"))
+        assertEquals("Vérification de l'annonce", details.selectFirst("summary")?.text())
+        assertEquals("Sections vérifiées", details.selectFirst("h2")?.text())
+    }
+
+    @Test
+    fun `draft - verification stays open and the checklist is the page`() {
+        val details = render().selectFirst("[data-listing-verification]")!!
+
+        assertTrue(details.hasAttr("open"))
+        assertEquals("edit", details.attr("data-mode"))
+        assertEquals(7, render().select("a.checklist__row").size)
+        assertNull(render().selectFirst("[data-listing-gallery]"))
+    }
+
+    @Test
+    fun `co-broker - no owner-only block, agent card instead`() {
+        doReturn(
+            COMPLETE.copy(
+                status = ListingStatus.PUBLISHED,
+                agentId = 999,
+                publishedAt = SENT,
+                description = "Public",
+                url = "/douala/bonapriso/listing/501/appartement",
+            ),
+        ).whenever(listingClient).get(501)
+        doReturn(Match(id = 9009, mandateId = 204, listingId = 501, coBrokerage = true, status = MatchStatus.ACTIVE))
+            .whenever(matchClient).get(9009)
+        doReturn(Mandate(id = 204, agentId = AGENT.id, mandateType = MandateType.SEARCH, status = MandateStatus.APPROVED))
+            .whenever(mandateClient).get(204)
+        doReturn(ProfileFixtures.AGENT.copy(id = 999)).whenever(agentClient).get(999)
+
+        val page = render(match = "9009")
+
+        assertNull(page.selectFirst("[data-listing-public-url]"))
+        assertNull(page.selectFirst("[data-listing-share]"))
+        assertNull(page.selectFirst("[data-listing-stats]"))
+        assertNull(page.selectFirst("[data-listing-verification]"))
+        assertNull(page.selectFirst(".listing-private"))
+        assertEquals("/mandates/204#matches-title", page.selectFirst(".back-link a")?.attr("href"))
+        assertEquals("← Retour aux biens correspondants", page.selectFirst(".back-link a")?.text())
+        assertNotNull(page.selectFirst("[data-listing-agent]"))
+        assertNotNull(page.selectFirst("[data-listing-origin]"))
+        assertNull(page.selectFirst("[data-listing-meta]"))
+        assertNotNull(page.selectFirst("[data-listing-gallery]"))
+        assertNotNull(page.selectFirst("[data-listing-details]"))
     }
 
     @Test
