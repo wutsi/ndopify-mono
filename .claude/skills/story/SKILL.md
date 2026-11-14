@@ -1,6 +1,6 @@
 ---
 name: story
-description: Use to take an ndopify story through its lifecycle - `groom <story-id>` (enrich a Backlog story and write its plan), `implement <story-id>` (code a Ready story on its branch), `push <story-id>` (release its library changes from `main`, then push the branch and open its PR), `review <pr-number>` (review a story's PR and approve or reject it; close the story once merged). Triggers on "groom story", "implement story", "push story", "review story PR" for this repo - not for a generic PR review.
+description: Use to take an ndopify story through its lifecycle - `groom <story-id>` (enrich a Backlog story and write its plan), `implement <story-id>` (code a Ready story on its branch), `push <story-id>` (release its library changes from `main`, then push the branch and open its PR), `review <pr-number>` (review a story's PR and resolve its findings, up to 3 times, then merge it and close the story), `ship <story-id>` (run implement, push and review in sequence, each in a fresh subagent). Triggers on "groom story", "implement story", "push story", "review story PR", "ship story" for this repo - not for a generic PR review.
 ---
 
 # Story workflow
@@ -9,11 +9,11 @@ You are a senior engineer on `ndopify-mono`. This skill moves a story through
 `Backlog → Ready → In progress → In review → Done`.
 
 **Arguments:** `$ARGUMENTS` is `<mode> <id>`. Modes: `groom <story-id>`, `implement <story-id>`,
-`push <story-id>`, `review <pr-number>`.
+`push <story-id>`, `review <pr-number>`, `ship <story-id>`.
 If the mode or id is missing, ask for it — never guess the story.
 
-**Merging and releases:** this skill never merges a PR — a story has one PR, `review` approves or rejects it and the
-user merges it. The library changes (`ndopify-dto`, `ndopify-web-core`) get no PR: `push` pushes them to `main`, which
+**Merging and releases:** a story has one PR, and only `review` merges it: once a review finds nothing, after at most
+3 rounds of review → resolve. The library changes (`ndopify-dto`, `ndopify-web-core`) get no PR: `push` pushes them to `main`, which
 releases them. A release can't be undone, so each library push to `main` waits for the user's OK on its diff.
 
 ## Story tracker
@@ -99,8 +99,8 @@ user knows to run `push <story-id>`.
 ## Mode `push <story-id>`
 
 Precondition: the story is `In progress` and `implement` is done: `feat/<scope>-<topic>` has the plan's steps
-committed. Or it is `In review`, its PR was rejected by `review`, and the fixes are committed on the branch: the same
-steps release the library fixes, then update the open PR (step 4 is skipped, the story stays `In review`). Find the
+committed. Or it is `In review` and fixes are committed on the branch (`review` step 4 runs steps 1–3 for its fixes): the
+same steps release the library fixes, then update the open PR (step 4 is skipped, the story stays `In review`). Find the
 branch's worktree with `git worktree list` and work from it. Otherwise stop.
 
 Resume: skip what's done. `git cherry -v origin/main <branch>` marks with `-` the commits already on `main` (a
@@ -145,7 +145,7 @@ databaseId --jq '.[0].databaseId'` (retry until it appears), then `gh run watch 
    it and stop), close the story (`gh issue close <id> --comment "<commit links>"`), move it to `Done`, remove the
    worktree and the branch, and stop.
 4. **PR** — `gh pr create`: conventional-commit title (`feat(<scope>): …`), body linking the plan and the library
-   releases, with `Refs #<id>` — never `Closes`/`Fixes`: the story is closed by `review` step 4, once the main build
+   releases, with `Refs #<id>` — never `Closes`/`Fixes`: the story is closed by `review` step 5, once the main build
    is green. Comment the PR link on the story and move it to `In review`. Wait for the checks (`gh pr checks <pr>
    --watch`; if red, read the failing log, fix, push, wait again), then tell the user to run `review <pr-number>`.
 
@@ -155,40 +155,109 @@ with the links — or, for a library-only story, the story is `Done`.
 ## Mode `review <pr-number>`
 
 Precondition: the PR's body has `Refs #<id>`, and that story is `In review`. Otherwise stop and ask which story it
-belongs to. If the PR is already merged, go to step 4. This mode only reviews: it never changes the code, pushes or
-merges.
+belongs to. If the PR is already merged, go to step 5. Work from the branch's worktree (`git worktree list`).
+
+The mode loops on **review → resolve** while issues are left, at most **3 times**:
+
+- Round 1, 2, 3: review; no finding → merge; findings → resolve them, next round.
+- After the 3rd resolve, one last review checks the fixes: no finding → merge; findings → stop, nothing more resolved.
+
+Each review's body starts with `Round <n>` (1 to 3, then `Final`): on a re-run, resume from the PR's reviews
+(`gh pr view <pr> --json reviews`) — the last round, and whether its findings were resolved (commits after it, replies
+on its comments).
 
 1. **CI** — wait for every check to finish: `gh pr checks <pr> --watch`. The review starts only once they're all
-   green; no check reported (a PR whose paths start no workflow) counts as green. If one is red, report it to the user
-   (`gh run view <run-id> --log-failed`) and stop — no review, no verdict.
-2. **Review** — run `/code-review high <pr>` (without `--comment`: step 3 posts the findings, in one review), and check the PR against the story's acceptance criteria, its plan and
-   the repo rules.
-3. **Verdict** — then stop:
-    - No finding: approve it (`gh pr review <pr> --approve --body "<what was checked>"`) and tell the user it's ready
-      to merge.
-    - Any finding: reject it in one review, with each finding as an inline comment where it makes sense, and tell
-      the user the findings. A finding goes inline when it's about a line the PR adds or changes (a line of the
-      diff, on its `RIGHT` side): the comment is on that line, or that range (`start_line` + `line`). A finding
-      about something the PR misses (an acceptance criterion, a missing test, a file it doesn't touch) or a line
-      outside the diff goes in the review body, with its `file:line`. Write the payload to a file and post it:
+   green; no check reported (a PR whose paths start no workflow) counts as green. If one is red after a resolve, it's
+   a finding of that round: fix it (step 4) without counting a new round. Red before round 1: report it to the user
+   (`gh run view <run-id> --log-failed`) and stop.
+2. **Review** — run `/code-review high <pr>` (without `--comment`: step 3 posts the findings, in one review), and
+   check the PR against the story's acceptance criteria, its plan and the repo rules. From round 2, also check that
+   the previous round's findings are fixed.
+3. **Verdict**:
+    - No finding: approve it (`gh pr review <pr> --approve --body "Round <n> — Approved: <what was checked>"`), then
+      merge it: `gh pr merge <pr> --merge` (the repo's merge commits). Go to step 5.
+    - Any finding: post them in one review, with each finding as an inline comment where it makes sense. A finding
+      goes inline when it's about a line the PR adds or changes (a line of the diff, on its `RIGHT` side): the comment
+      is on that line, or that range (`start_line` + `line`). A finding about something the PR misses (an acceptance
+      criterion, a missing test, a file it doesn't touch) or a line outside the diff goes in the review body, with its
+      `file:line`. Write the payload to a file and post it:
 
       ```bash
-      # review.json: {"event": "REQUEST_CHANGES", "body": "<summary + findings not inline>",
+      # review.json: {"event": "REQUEST_CHANGES", "body": "Round <n> — Changes requested: <summary + findings not inline>",
       #   "comments": [{"path": "<file>", "line": <n>, "side": "RIGHT", "body": "<finding>"}, …]}
       gh api repos/wutsi/ndopify-mono/pulls/<pr>/reviews --method POST --input review.json
       ```
 
-      A 422 means a comment's line isn't in the diff: move that finding to the body and post again. The findings
-      are fixed outside this mode, on the branch, with the `implement` commit rules; a fix that touches a library is
-      released by `push <story-id>`, which also updates the PR. Then re-run `review <pr-number>`.
+      A 422 means a comment's line isn't in the diff: move that finding to the body and post again. Then go to
+      step 4 — or, on the `Final` review, stop: tell the user the findings left and the PR link. The PR stays open,
+      the story `In review`; once fixed by hand, re-running `review <pr-number>` starts a new count.
 
    GitHub refuses `APPROVE` and `REQUEST_CHANGES` on a PR the user authored (every PR `push` opens): then post the
    same verdict with `gh pr review <pr> --comment` (approval) or `"event": "COMMENT"` (findings, inline comments
-   kept), its body starting with `Approved` or `Changes requested`.
-4. **After the merge** — on a re-run once the user merged it: watch every run the merge commit started
+   kept), keeping the `Round <n> — Approved` / `Changes requested` body.
+4. **Fix** — address every finding of the round, following `superpowers:receiving-code-review`: check each one
+   against the code before changing it.
+    - A finding that's right: fix it on the branch with the `implement` rules (a test for a behavior change, one
+      library module per commit, conventional commits, `mvn verify` green in each touched module).
+    - A finding that's wrong: don't change the code, reply why (below); the next review must not raise it again.
+    - A finding that needs a decision of the user (a product choice, a change to the plan or the acceptance
+      criteria): stop and ask; resume the round with their answer.
+
+   Ship the fixes with `push <story-id>` steps 1–3: a fix that touches a library is released from `main` first
+   (with the user's OK on its diff, as always), then the branch is rebased if needed and pushed. Reply to each inline
+   comment with the commit that fixes it, or why it isn't changed
+   (`gh api repos/wutsi/ndopify-mono/pulls/<pr>/comments/<comment-id>/replies --method POST -f body="…"`), then go to
+   step 1 for the next round.
+5. **After the merge** — watch every run the merge commit started
    (`gh pr view <pr> --json mergeCommit --jq .mergeCommit.oid`, then `gh run list --commit <sha>` and
    `gh run watch <run-id> --exit-status` for each). If one is red, report it and stop. Once all are green, close the
    issue (`gh issue close <id> --comment "<PR link>"`), move the story to `Done`, and remove the story's worktree and
-   local branch (not from inside that worktree).
+   local branch (`git worktree remove <dir>`, then `git branch -D <branch>`, from the main worktree — not from inside
+   the story's).
 
-Done when: the verdict is posted and the user knows it — or, after the merge, the story is closed and `Done`.
+Done when: the PR is merged, its main runs are green, the story is closed and `Done`, and its worktree and local
+branch are removed — or the mode stopped with findings left on the `Final` review (or a question), and the user knows
+them.
+
+## Mode `ship <story-id>`
+
+Runs `implement`, `push` and `review` in sequence, each in its own fresh subagent: the effect of a `/clear` between
+phases (which a skill can't run). Each phase rebuilds its state from git, the story and the PR, so nothing is carried
+over but the ids; and the review isn't anchored on having written the code. `groom` stays a mode of its own: it's a
+conversation with the user.
+
+Precondition: the story is `Ready` (links a plan), `In progress` or `In review`. Otherwise stop and report its status.
+
+**The main thread only orchestrates**: it starts the phases, relays the gates and reports. It never does a phase's
+work itself (no code, commit, push, review or merge), and keeps only the phases' reports, not their tool output.
+
+1. **Start point** — from the story's status and state: `Ready`, or `In progress` with plan steps not yet committed
+   on the branch → `implement`. `In progress` with `implement` done (see its *Done when*) → `push`. `In review` →
+   `review`, with the PR whose body has `Refs #<id>`
+   (`gh pr list --state all --search "Refs #<id> in:body" --json number,state`).
+2. **Phase** — start a new subagent (Agent tool, `subagent_type: general-purpose` — never `fork`, which inherits this
+   context), then wait for its completion notification. Its prompt:
+
+   ```text
+   Invoke the `story` skill with `<mode> <id>` (ndopify-mono, <repo path>) and run that mode to its "Done when".
+   You run as a subagent and can't talk to the user. Wherever the mode says to wait for the user's OK or to ask
+   them, stop instead and end your report with:
+     GATE: <prototype | library-release | question>
+     <what's needed: the question, or the worktree dir + the command showing the diff / the prototype files>
+   Report, short: the mode's outcome (done, gate, or stopped and why), the branch and worktree, the PR number and
+   link, the released library versions, the story status, and anything left for the user.
+   ```
+
+   A phase that dispatches its own subagents (`superpowers:subagent-driven-development`) and can't, from a
+   subagent, uses `superpowers:executing-plans` instead.
+3. **Gate** — the phase stopped on a gate: put it to the user as the mode would. For a `library-release`, show the
+   diff yourself (`git -C <worktree> log -p origin/main..HEAD`) — the user OKs what is actually pushed, never a
+   summary. For a `prototype`, point at its files. Then send the user's answer to the **same** subagent
+   (`SendMessage`, its context kept) and wait again; a new subagent would lose the phase's progress.
+4. **Next** — the phase reached its *Done when*: start the next one in a new subagent — `implement` → `push` →
+   `review <pr-number>` (the PR from `push`'s report). A library-only story ends with `push` (it's `Done`, no PR).
+   The phase stopped (a red build, a failing release, findings left on the `Final` review, a step its mode doesn't
+   cover): report it to the user with what's left, and stop. A re-run of `ship <story-id>` resumes from step 1.
+
+Done when: the story is `Done` (its PR merged and the local branch removed, or a library-only story), or the chain
+stopped on a phase and the user knows why and what's left.
