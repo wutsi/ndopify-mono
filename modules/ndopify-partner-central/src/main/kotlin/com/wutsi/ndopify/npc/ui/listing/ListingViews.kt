@@ -33,6 +33,7 @@ import com.wutsi.ndopify.refdata.dto.Tenant
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.web.core.service.TenantFormatter
+import org.springframework.web.util.UriComponentsBuilder
 import java.util.Date
 import java.util.Locale
 
@@ -53,7 +54,7 @@ object ListingViews {
 
     private const val OTHER_AGENT = "Client d'un autre agent"
 
-    private val CAMEROON_PHONE = Regex("""^\+237(\d)(\d{2})(\d{2})(\d{2})(\d{2})$""")
+    private const val TITLE_PREFIX = "Annonce · "
 
     // A listing that keeps its public page once it leaves the market
     private val PUBLIC = setOf(ListingStatus.PUBLISHED, ListingStatus.RENTED, ListingStatus.SOLD)
@@ -61,7 +62,9 @@ object ListingViews {
     /**
      * [images] is null when they couldn't be loaded: the photos' row and the hero image then have no URL.
      * [publicPortalUrl] is the tenant's, the host of a published or closed listing's `url`. [stats] is a published
-     * listing's activity, null when it can't be had: no line then.
+     * listing's activity, null when it can't be had: no line then. [coBrokerage] is the co-broker's lens: the same
+     * published sheet, without the public link, the stats, the checklist or the private location. [agent], [backUrl]
+     * and [backLabel] place the card and the return link of that lens.
      */
     fun of(
         listing: Listing,
@@ -70,10 +73,12 @@ object ListingViews {
         formatter: TenantFormatter,
         publicPortalUrl: String? = null,
         stats: ListingStats? = null,
-        shared: Boolean = false,
-        agent: Agent? = null,
+        coBrokerage: Boolean = false,
+        agent: ListingAgentView? = null,
+        backUrl: String = "/mandates/${listing.mandateId}",
+        backLabel: String = "← Retour au mandat",
     ): ListingView {
-        val editable = !shared && ListingRules.editable(listing)
+        val editable = ListingRules.editable(listing) && !coBrokerage
         val required = ListingRules.SECTIONS.filter { ListingRules.required(listing, it) }
         val done = required.count { ListingRules.done(listing, it) }
         val left = required.filter { !ListingRules.done(listing, it) }.map { missing(it, images) }
@@ -81,52 +86,80 @@ object ListingViews {
         val rejections = ListingRules.rejections(listing)
         val toFix = rejections.mapNotNull { it.section }.toSet()
         val neighborhood = listing.neighborhoodId?.let { locations[it]?.name }
+        val title = title(listing, neighborhood ?: locations[listing.cityId]?.name)
 
         return ListingView(
             id = listing.id,
             mandateId = listing.mandateId,
-            title = title(listing, neighborhood ?: locations[listing.cityId]?.name, shared),
+            title = if (coBrokerage) title.removePrefix(TITLE_PREFIX) else title,
             tag = ListingRules.tag(listing),
             status = listing.status,
             createdAt = formatter.date(listing.createdAt),
-            panel = if (shared) {
-                null
-            } else {
-                when {
-                    editable && rejections.isNotEmpty() -> ListingView.PANEL_TO_FIX
-                    editable -> ListingView.PANEL_DRAFT
-                    ListingRules.sent(listing.status) -> ListingView.PANEL_SENT
-                    else -> null
-                }
+            panel = when {
+                coBrokerage -> null
+                editable && rejections.isNotEmpty() -> ListingView.PANEL_TO_FIX
+                editable -> ListingView.PANEL_DRAFT
+                ListingRules.sent(listing.status) -> ListingView.PANEL_SENT
+                else -> null
             },
             // No "sent at" on the server: nothing changes a listing while it's checked, so its last change is it
             sentAt = if (ListingRules.sent(listing.status)) formatter.date(listing.modifiedAt) else null,
             rejections = rejections.map { it.reason },
             publishedAt = listing.publishedAt?.let { formatter.date(it) },
-            heroImageUrl = listing.heroImageId?.let { id -> images?.firstOrNull { it.id == id }?.url?.ifBlank { null } },
-            publicUrl = if (listing.status in PUBLIC) publicUrl(listing, publicPortalUrl) else null,
-            stats = if (!shared && published) ListingStatsView.of(stats)?.label else null,
-            rows = ListingRules.SECTIONS.map { section ->
-                ChecklistRow(
-                    section = section,
-                    label = ListingRules.LABELS.getValue(section),
-                    url = if (shared) null else "/listings/${listing.id}/${ListingRules.slug(section)}",
-                    summary = summary(listing, section, neighborhood, images, formatter),
-                    state = if (section in toFix) TO_FIX else state(listing, section),
-                )
-            },
-            progress = "$done sections sur ${required.size} vérifiées",
-            missing = if (left.isEmpty()) {
-                "Tout est vérifié : vous pouvez envoyer l'annonce."
+            publicUrl = if (!coBrokerage && listing.status in PUBLIC) publicUrl(listing, publicPortalUrl) else null,
+            stats = if (!coBrokerage && published) ListingStatsView.of(stats)?.label else null,
+            rows = if (coBrokerage) {
+                emptyList()
             } else {
-                "Encore à faire : ${left.joinToString(", ")}."
+                ListingRules.SECTIONS.map { section ->
+                    ChecklistRow(
+                        section = section,
+                        label = ListingRules.LABELS.getValue(section),
+                        url = "/listings/${listing.id}/${ListingRules.slug(section)}",
+                        summary = summary(listing, section, neighborhood, images, formatter),
+                        state = if (section in toFix) TO_FIX else state(listing, section),
+                    )
+                }
+            },
+            progress = if (coBrokerage) "" else "$done sections sur ${required.size} vérifiées",
+            missing = when {
+                coBrokerage -> ""
+                left.isEmpty() -> "Tout est vérifié : vous pouvez envoyer l'annonce."
+                else -> "Encore à faire : ${left.joinToString(", ")}."
             },
             editable = editable,
-            sendable = !shared && editable && left.isEmpty(),
-            shared = shared,
-            agent = agent?.let { agentCard(it, listing) },
+            sendable = editable && left.isEmpty(),
+            coBrokerage = coBrokerage,
+            published = if (listing.status in PUBLIC) {
+                PublishedListingViews.of(listing, images, locations, formatter, owner = !coBrokerage)
+            } else {
+                null
+            },
+            agent = agent,
+            backUrl = backUrl,
+            backLabel = backLabel,
         )
     }
+
+    /**
+     * The listing agent's card on a co-broker's page, from the profile page's helpers. Its profile link returns to the
+     * co-brokered listing, [match] included.
+     */
+    fun agent(agent: Agent, listing: Listing, match: Match): ListingAgentView =
+        ListingAgentView(
+            id = agent.id,
+            name = ProfileRules.fullName(agent),
+            initials = KycRules.initials(agent.party.firstName, agent.party.lastName),
+            photoUrl = agent.party.photoUrl?.ifBlank { null },
+            whatsappUrl = AgentProfileRules.whatsappUrl(agent.whatsappNumber),
+            whatsappNumber = agent.whatsappNumber,
+            profileUrl = UriComponentsBuilder.fromPath("/agent")
+                .queryParam("id", agent.id)
+                .queryParam("back", "/listings/${listing.id}?match=${match.id}")
+                .build()
+                .encode()
+                .toUriString(),
+        )
 
     // The prototype's labels of *Le bien*'s types (listing/bien.html), not the mandates'
     private val TYPE_LABELS: Map<PropertyType, String> =
@@ -477,27 +510,10 @@ object ListingViews {
         return host + (if (path.startsWith("/")) path else "/$path")
     }
 
-    // Another agent's listing isn't "the agent's ad": no "Annonce · " prefix
-    private fun title(listing: Listing, place: String?, shared: Boolean = false): String {
+    private fun title(listing: Listing, place: String?): String {
         val type = MandateLabels.shortPropertyType(listing.propertyType) ?: "Bien"
-        val label = listOfNotNull(type, place).joinToString(", ")
-        return if (shared) label else "Annonce · $label"
+        return "Annonce · " + listOfNotNull(type, place).joinToString(", ")
     }
-
-    /** The boxed card of the agent who publishes a shared listing. */
-    private fun agentCard(agent: Agent, listing: Listing): ListingAgentView =
-        ListingAgentView(
-            name = ProfileRules.fullName(agent),
-            photoUrl = agent.party.photoUrl?.ifBlank { null },
-            initials = KycRules.initials(agent.party.firstName, agent.party.lastName),
-            whatsappUrl = AgentProfileRules.whatsappUrl(agent.whatsappNumber),
-            whatsappDisplay = agent.whatsappNumber?.takeIf { it.isNotBlank() }?.let { displayPhone(it) },
-            profileUrl = AgentProfileRules.pageUrl(agent.id, 1, "/listings/${listing.id}"),
-        )
-
-    /** "+237699123456" → "+237 6 99 12 34 56" (Cameroon numbers; others are shown as they are). */
-    private fun displayPhone(e164: String): String =
-        CAMEROON_PHONE.matchEntire(e164)?.groupValues?.drop(1)?.joinToString(" ", prefix = "+237 ") ?: e164
 
     // "Emplacement", or what the photos lack: "la photo refusée, 3 photos"
     private fun missing(section: ListingSection, images: List<ListingImage>?): String {

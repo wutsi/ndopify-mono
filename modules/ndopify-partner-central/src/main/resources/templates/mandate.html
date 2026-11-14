@@ -394,7 +394,7 @@
                                         <article th:attr="aria-labelledby=|match-${match.id}-title|">
                                             <div class="assignment__head">
                                                 <h3 class="assignment__type match__title" th:id="|match-${match.id}-title|"><a
-                                                        target="_blank" rel="noopener" th:href="@{${match.listingUrl}}" data-match-link><span
+                                                        target="_blank" rel="noopener" th:href="${match.listingUrl}" data-match-link><span
                                                         th:text="${match.title}" data-match-title>Appartement · 3 chambres</span><span
                                                         class="visually-hidden">, annonce n°&nbsp;<span th:text="${match.listingId}"
                                                         data-match-ref>3012</span> (s'ouvre dans un nouvel onglet)</span></a></h3>

@@ -169,7 +169,6 @@ class ListingPhotoController(
     private fun draft(id: Long, agent: Agent, redirect: RedirectAttributes): Listing? {
         val outcome = when (val result = access.load(id, agent)) {
             is ListingAccess.Found -> if (ListingRules.editable(result.listing)) return result.listing else ListingController.CHANGED
-            is ListingAccess.ReadOnly -> ListingController.CHANGED
             ListingAccess.Locked -> ListingController.CHANGED
             ListingAccess.Unavailable -> ListingController.FAILED
         }

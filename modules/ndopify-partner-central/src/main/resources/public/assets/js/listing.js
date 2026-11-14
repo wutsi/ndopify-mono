@@ -132,6 +132,7 @@
 
     function initListing() {
         initShare();
+        initViewer();
         focusFlash("[data-listing-flash]");
         var form = $("[data-listing-send-form]");
         if (!form) return;
@@ -273,6 +274,8 @@
         // The photo shown, and the one the strip is moving to (a second press while it slides goes one further)
         var current = 0;
         var target = 0;
+        // What opened the viewer: the photo clicked or "Voir les N photos", never a hidden extra photo
+        var opener = null;
 
         function el(tag, className, text) {
             var node = document.createElement(tag);
@@ -302,14 +305,17 @@
 
         links.forEach(function (link, i) {
             var thumb = $("img", link);
-            var note = $("[data-photo-note]", link.closest("li"));
+            // The photos page puts its note in the item; the listing's gallery has none
+            var item = link.closest("li");
+            var note = item ? $("[data-photo-note]", item) : null;
             var slide = el("figure", "viewer__slide");
             var img = el("img");
             img.src = link.href;
             img.alt = thumb.alt;
             img.loading = "lazy";
             slide.appendChild(img);
-            if (note) slide.appendChild(el("figcaption", null, note.textContent));
+            var caption = (note && note.textContent) || thumb.alt;
+            if (caption) slide.appendChild(el("figcaption", null, caption));
             track.appendChild(slide);
 
             // With JS the photo opens here: the "(nouvel onglet)" hint is for browsers without it
@@ -320,7 +326,16 @@
                 // Ctrl/Cmd/Shift-click still opens the photo in a tab
                 if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
                 event.preventDefault();
-                open(i);
+                open(i, link);
+            });
+        });
+        // "Voir les N photos": the first one here, in a tab without this script
+        $all("[data-photo-open]").forEach(function (button) {
+            button.setAttribute("aria-haspopup", "dialog");
+            button.addEventListener("click", function (event) {
+                if (event.ctrlKey || event.metaKey || event.shiftKey || event.button !== 0) return;
+                event.preventDefault();
+                open(0, button);
             });
         });
         [count, track, prev, next, close].forEach(function (node) {
@@ -347,7 +362,8 @@
             track.scrollTo({ left: i * track.clientWidth, behavior: smooth ? "smooth" : "auto" });
         }
 
-        function open(i) {
+        function open(i, trigger) {
+            opener = trigger || links[i];
             dialog.showModal();
             track.scrollLeft = i * track.clientWidth;
             target = i;
@@ -381,9 +397,9 @@
             else return;
             event.preventDefault();
         });
-        // Back on the page, the focus is on the photo the agent stopped on
+        // Back on the page, the focus is on what opened the viewer: a hidden extra photo is never focused
         dialog.addEventListener("close", function () {
-            links[current].focus();
+            (opener || links[current]).focus();
         });
     }
 

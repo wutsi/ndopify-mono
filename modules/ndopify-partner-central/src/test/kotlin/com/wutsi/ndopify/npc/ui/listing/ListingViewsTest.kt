@@ -37,6 +37,7 @@ import java.time.LocalDate
 import java.util.Date
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -277,18 +278,6 @@ class ListingViewsTest {
 
         assertNull(view.panel)
         assertFalse(view.editable)
-    }
-
-    @Test
-    fun `hero image`() {
-        assertEquals("https://cdn/2.jpg", of(LISTING.copy(heroImageId = 2)).heroImageUrl)
-    }
-
-    @Test
-    fun `hero image - unavailable`() {
-        assertNull(of(LISTING).heroImageUrl)
-        assertNull(of(LISTING.copy(heroImageId = 99)).heroImageUrl)
-        assertNull(of(LISTING.copy(heroImageId = 2), null).heroImageUrl)
     }
 
     @Test
@@ -848,48 +837,63 @@ class ListingViewsTest {
     }
 
     @Test
-    fun `shared - read-only, no section links, agent card`() {
+    fun `published owner - the sheet, the public url and the stats`() {
+        val listing = COMPLETE.copy(
+            status = ListingStatus.PUBLISHED,
+            publishedAt = SENT,
+            description = "Texte public",
+            url = "/douala/bonapriso/listing/501/appartement",
+        )
         val view = ListingViews.of(
-            COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT),
-            IMAGES,
-            locations,
-            formatter,
-            shared = true,
-            agent = ProfileFixtures.AGENT,
+            listing, IMAGES, locations, formatter, "https://ndopify.com",
+            ListingStats(501, 2, 1, 2),
         )
 
-        assertTrue(view.shared)
+        assertNotNull(view.published)
+        assertEquals("Texte public", view.published.description)
+        assertEquals("https://ndopify.com/douala/bonapriso/listing/501/appartement", view.publicUrl)
+        assertEquals("2 personnes intéressées · 3 visites", view.stats)
+        assertEquals(7, view.rows.size)
+        assertEquals("/mandates/203", view.backUrl)
+        assertFalse(view.coBrokerage)
+    }
+
+    @Test
+    fun `published co-broker - no public url, stats, checklist or private location`() {
+        val listing = COMPLETE.copy(
+            status = ListingStatus.PUBLISHED,
+            publishedAt = SENT,
+            description = "Texte public",
+            accessDirections = "Porte de droite",
+            url = "/douala/bonapriso/listing/501/appartement",
+        )
+        val agent = ListingAgentView(30, "Clarisse Mbarga", "CM", null, null, "+237699123456", "/agent?id=30")
+        val view = ListingViews.of(
+            listing, IMAGES, locations, formatter, "https://ndopify.com", ListingStats(501, 2, 1, 2),
+            coBrokerage = true, agent = agent, backUrl = "/mandates/204#matches-title",
+            backLabel = "← Retour aux biens correspondants",
+        )
+
         assertEquals("Appartement, Bonapriso", view.title)
+        assertTrue(view.coBrokerage)
+        assertNull(view.publicUrl)
+        assertNull(view.stats)
+        assertTrue(view.rows.isEmpty())
+        assertEquals("", view.progress)
+        assertEquals("", view.missing)
         assertFalse(view.editable)
-        assertFalse(view.sendable)
-        assertTrue(view.rows.all { it.url == null })
-        assertEquals("Serge Ngono", view.agent?.name)
-        assertEquals("SN", view.agent?.initials)
-        assertEquals("https://cdn.ndopify.com/party/100/photo/a.jpg", view.agent?.photoUrl)
-        assertEquals("https://wa.me/237670000001", view.agent?.whatsappUrl)
-        assertEquals("+237 6 70 00 00 01", view.agent?.whatsappDisplay)
-        assertEquals("/agent?id=20&page=1&back=/listings/501", view.agent?.profileUrl)
+        assertNull(view.published?.privateLocation)
+        assertEquals(agent, view.agent)
+        assertEquals("/mandates/204#matches-title", view.backUrl)
+        assertEquals("← Retour aux biens correspondants", view.backLabel)
     }
 
     @Test
-    fun `shared - the agent may be unknown`() {
-        val view = ListingViews.of(
-            COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT),
-            IMAGES,
-            locations,
-            formatter,
-            shared = true,
-        )
+    fun `draft - the checklist stays the page`() {
+        val view = of()
 
-        assertNull(view.agent)
-    }
-
-    @Test
-    fun `own listing - title and section links unchanged`() {
-        val view = ListingViews.of(LISTING, IMAGES, locations, formatter)
-
-        assertFalse(view.shared)
-        assertEquals("Annonce · Appartement, Bonapriso", view.title)
-        assertEquals("/listings/501/location", view.rows.first().url)
+        assertNull(view.published)
+        assertFalse(view.coBrokerage)
+        assertEquals(7, view.rows.size)
     }
 }

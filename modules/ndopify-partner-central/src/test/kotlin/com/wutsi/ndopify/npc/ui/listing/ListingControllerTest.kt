@@ -15,10 +15,13 @@ import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.match.dto.Match
+import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
+import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.COMPLETE
@@ -42,16 +45,18 @@ import org.springframework.web.client.HttpServerErrorException
 import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.servlet.view.InternalResourceViewResolver
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ListingControllerTest {
     private val currentAgent = mock<CurrentAgent>()
     private val listingClient = mock<NdListingClient>()
-    private val agentClient = mock<NdAgentClient>()
     private val mandateClient = mock<NdMandateClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
+    private val matchClient = mock<NdMatchClient>()
+    private val agentClient = mock<NdAgentClient>()
     private lateinit var mvc: MockMvc
 
     private val mandate = Mandate(
@@ -74,10 +79,11 @@ class ListingControllerTest {
         val controller = ListingController(
             currentAgent,
             listingClient,
-            agentClient,
             mandateClient,
             locationClient,
             tenantContext,
+            matchClient,
+            agentClient,
         )
         mvc = MockMvcBuilders.standaloneSetup(controller)
             .setControllerAdvice(HttpClientErrorHandler(mock()))
@@ -103,7 +109,7 @@ class ListingControllerTest {
         val view = model(result)["listing"] as ListingView
         assertEquals(501L, view.id)
         assertEquals("Annonce · Appartement, Bonapriso", view.title)
-        assertEquals("2 photos · 5 au moins", view.rows.first { it.url.orEmpty().endsWith("/photos") }.summary)
+        assertEquals("2 photos · 5 au moins", view.rows.first { it.url.endsWith("/photos") }.summary)
         assertEquals("SN", model(result)["initials"])
         assertNull(model(result)["locked"])
     }
@@ -141,7 +147,7 @@ class ListingControllerTest {
 
         val view = model(mvc.perform(get("/listings/501")).andReturn())["listing"] as ListingView
 
-        assertEquals("", view.rows.first { it.url.orEmpty().endsWith("/photos") }.summary)
+        assertEquals("", view.rows.first { it.url.endsWith("/photos") }.summary)
     }
 
     @Test
@@ -185,6 +191,35 @@ class ListingControllerTest {
         doReturn(LISTING.copy(status = ListingStatus.UNKNOWN)).whenever(listingClient).get(501)
 
         assertEquals(true, model(mvc.perform(get("/listings/501")).andReturn())["locked"])
+    }
+
+    @Test
+    fun `show - co-brokerage listing`() {
+        doReturn(COMPLETE.copy(status = ListingStatus.PUBLISHED, agentId = 999, publishedAt = SENT, description = "Public"))
+            .whenever(listingClient).get(501)
+        doReturn(Match(id = 9009, mandateId = 204, listingId = 501, coBrokerage = true, status = MatchStatus.ACTIVE))
+            .whenever(matchClient).get(9009)
+        doReturn(Mandate(id = 204, agentId = AGENT.id, mandateType = MandateType.SEARCH, status = MandateStatus.APPROVED))
+            .whenever(mandateClient).get(204)
+        doReturn(ProfileFixtures.AGENT.copy(id = 999)).whenever(agentClient).get(999)
+
+        val view = model(mvc.perform(get("/listings/501?match=9009")).andReturn())["listing"] as ListingView
+
+        assertTrue(view.coBrokerage)
+        assertNotNull(view.agent)
+        assertNull(view.publicUrl)
+        assertNull(view.stats)
+        assertEquals("/mandates/204#matches-title", view.backUrl)
+        verify(listingClient, never()).stats(any())
+    }
+
+    @Test
+    fun `show - co-brokerage listing without a match is locked`() {
+        doReturn(COMPLETE.copy(status = ListingStatus.PUBLISHED, agentId = 999)).whenever(listingClient).get(501)
+
+        val result = mvc.perform(get("/listings/501")).andReturn()
+
+        assertEquals(true, model(result)["locked"])
     }
 
     @Test
@@ -407,76 +442,5 @@ class ListingControllerTest {
 
         assertEquals("redirect:/mandates/203", result.modelAndView?.viewName)
         assertEquals(MandateController.FAILED, result.flashMap[MandateController.OUTCOME])
-    }
-
-    @Test
-    fun `another agent's published listing is read-only`() {
-        doReturn(LISTING.copy(agentId = 999, status = ListingStatus.PUBLISHED, publishedAt = SENT))
-            .whenever(listingClient).get(501)
-        doReturn(AGENT.copy(id = 999)).whenever(agentClient).get(999)
-
-        val result = mvc.perform(get("/listings/501")).andReturn()
-        val view = model(result)["listing"] as ListingView
-
-        assertTrue(view.shared)
-        assertEquals("Serge Ngono", view.agent?.name)
-        assertNull(model(result)["locked"])
-        assertEquals("/#mandates-title", model(result)["backUrl"])
-        assertEquals("← Retour à l'espace agent", model(result)["backLabel"])
-        verify(listingClient, never()).stats(any())
-    }
-
-    @Test
-    fun `another agent's published listing honours a back path`() {
-        doReturn(LISTING.copy(agentId = 999, status = ListingStatus.PUBLISHED))
-            .whenever(listingClient).get(501)
-        doReturn(AGENT.copy(id = 999)).whenever(agentClient).get(999)
-
-        // MockMvc doesn't decode query escapes like a servlet container: pass the value the controller receives
-        val result = mvc.perform(get("/listings/501").param("back", "/mandates/204#matches-title")).andReturn()
-
-        assertEquals("/mandates/204#matches-title", model(result)["backUrl"])
-        assertEquals("← Retour", model(result)["backLabel"])
-    }
-
-    @Test
-    fun `another agent's published listing ignores an external back`() {
-        doReturn(LISTING.copy(agentId = 999, status = ListingStatus.PUBLISHED))
-            .whenever(listingClient).get(501)
-        doReturn(AGENT.copy(id = 999)).whenever(agentClient).get(999)
-
-        val result = mvc.perform(get("/listings/501?back=https://evil.example")).andReturn()
-
-        assertEquals("/#mandates-title", model(result)["backUrl"])
-    }
-
-    @Test
-    fun `another agent's rented listing is locked`() {
-        doReturn(LISTING.copy(agentId = 999, status = ListingStatus.RENTED))
-            .whenever(listingClient).get(501)
-
-        assertEquals(true, model(mvc.perform(get("/listings/501")).andReturn())["locked"])
-    }
-
-    @Test
-    fun `shared - the agent read fails`() {
-        doReturn(LISTING.copy(agentId = 999, status = ListingStatus.PUBLISHED))
-            .whenever(listingClient).get(501)
-        doThrow(ResourceAccessException("down")).whenever(agentClient).get(999)
-
-        val result = mvc.perform(get("/listings/501")).andReturn()
-        val view = model(result)["listing"] as ListingView
-
-        assertTrue(view.shared)
-        assertNull(view.agent)
-        assertNull(model(result)["locked"])
-    }
-
-    @Test
-    fun `own listing - ignores back`() {
-        val result = mvc.perform(get("/listings/501?back=/agent?id=30")).andReturn()
-
-        assertEquals("/mandates/203", model(result)["backUrl"])
-        assertEquals("← Retour au mandat", model(result)["backLabel"])
     }
 }

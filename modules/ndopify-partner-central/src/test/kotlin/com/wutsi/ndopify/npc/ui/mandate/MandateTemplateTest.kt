@@ -803,6 +803,18 @@ class MandateTemplateTest {
     }
 
     @Test
+    fun `co-brokerage match links to the listing with its match id`() {
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201, coBrokerage = true))
+
+        val page = render(APPROVED)
+
+        assertEquals(
+            "/listings/3012?match=9001",
+            page.selectFirst("[data-match-id=9001] [data-match-link]")?.attr("href"),
+        )
+    }
+
+    @Test
     fun matches() {
         withMatches(
             MatchFixtures.MATCH_B.copy(mandateId = 201, status = MatchStatus.PROPOSED, proposedAt = proposedAt),

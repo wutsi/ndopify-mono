@@ -24,8 +24,6 @@ data class ListingView(
     /** Why the verification sent the DRAFT back (ListingRules.rejections), empty otherwise. */
     val rejections: List<String>,
     val publishedAt: String?,
-    /** The listing's hero image, when it has one and its photo could be loaded. */
-    val heroImageUrl: String?,
     /** The published or closed listing's page on the public portal; null without its `url` or the tenant's portal. */
     val publicUrl: String?,
     /** Published only: "2 personnes intéressées · 3 visites"; null else, or when its stats can't be had. */
@@ -38,10 +36,15 @@ data class ListingView(
     val editable: Boolean,
     /** Every required section done: "Envoyer pour vérification" is active. */
     val sendable: Boolean,
-    /** Another agent's published listing: read-only, with no mandate, stats, section links or send action. */
-    val shared: Boolean = false,
-    /** The agent who publishes a shared listing; null for the agent's own, or when it can't be read. */
+    /** A co-broker's view: the published sheet without the owner's blocks nor the checklist. */
+    val coBrokerage: Boolean = false,
+    /** The published sheet; null until PUBLISHED, RENTED or SOLD. */
+    val published: PublishedListingView? = null,
+    /** The listing agent's card, co-broker only. */
     val agent: ListingAgentView? = null,
+    /** The mandate for its agent, the search's *Biens correspondants* for a co-broker. */
+    val backUrl: String = "/mandates/$mandateId",
+    val backLabel: String = "← Retour au mandat",
 ) {
     companion object {
         const val PANEL_DRAFT = "DRAFT"
@@ -49,18 +52,6 @@ data class ListingView(
         const val PANEL_TO_FIX = "TO_FIX"
     }
 }
-
-/** The agent who publishes a co-brokerage listing, on its read-only page. */
-data class ListingAgentView(
-    val name: String,
-    val photoUrl: String?,
-    val initials: String,
-    val whatsappUrl: String?,
-    /** "+237 6 70 00 00 01", or the number as stored for a non-Cameroonian one. */
-    val whatsappDisplay: String?,
-    /** `/agent?id={id}&page=1&back=/listings/{listingId}`. */
-    val profileUrl: String,
-)
 
 /**
  * A published listing's clients (`ListingViews.clients`), on its mandate's page: its *Propositions et visites*.
@@ -110,8 +101,8 @@ data class ProposalRow(
 data class ChecklistRow(
     val section: ListingSection,
     val label: String,
-    /** The section page; null on another agent's listing, whose sections are not reachable. */
-    val url: String?,
+    /** The section page. */
+    val url: String,
     /** The section's main values, on one line. */
     val summary: String,
     val state: ListingRules.Tag,

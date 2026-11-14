@@ -10,9 +10,8 @@ import org.springframework.web.client.RestClientException
 
 /**
  * The signed-in agent's listing, for every listing page. ndopify-server doesn't check who reads or writes a listing,
- * so the pages do: another agent's `PUBLISHED` listing is [ReadOnly] (its public data), every other foreign status is
- * [Locked], like one that isn't found or has a status the pages don't know; one ndopify-server can't return (5xx,
- * network) is [Unavailable], since retrying may help.
+ * so the pages do: another agent's listing (`Listing.agentId`) is [Locked], like one that isn't found or has a status
+ * the pages don't know; one ndopify-server can't return (5xx, network) is [Unavailable], since retrying may help.
  */
 class ListingAccess(private val listingClient: NdListingClient) {
     companion object {
@@ -23,9 +22,6 @@ class ListingAccess(private val listingClient: NdListingClient) {
 
     data class Found(val listing: Listing) : Result
 
-    /** Another agent's published listing: readable, but never editable. */
-    data class ReadOnly(val listing: Listing) : Result
-
     data object Locked : Result
 
     data object Unavailable : Result
@@ -33,11 +29,7 @@ class ListingAccess(private val listingClient: NdListingClient) {
     fun load(id: Long, agent: Agent): Result =
         try {
             val listing = listingClient.get(id)
-            when {
-                listing.agentId == agent.id && listing.status != ListingStatus.UNKNOWN -> Found(listing)
-                listing.agentId != agent.id && listing.status == ListingStatus.PUBLISHED -> ReadOnly(listing)
-                else -> Locked
-            }
+            if (listing.agentId == agent.id && listing.status != ListingStatus.UNKNOWN) Found(listing) else Locked
         } catch (ex: HttpClientErrorException) {
             LOGGER.warn("No listing $id: ${ex.statusCode}")
             Locked

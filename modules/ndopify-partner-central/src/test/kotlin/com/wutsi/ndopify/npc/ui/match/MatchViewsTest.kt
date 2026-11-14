@@ -84,6 +84,13 @@ class MatchViewsTest {
     }
 
     @Test
+    fun `co-brokerage card links with its match`() {
+        val section = section(listOf(MATCH_A.copy(coBrokerage = true)))
+
+        assertEquals("/listings/3012?match=9001", section.matches.single().listingUrl)
+    }
+
+    @Test
     fun `refused - left out, counted in the outcomes`() {
         val matches = listOf(
             MATCH_A,
@@ -279,22 +286,5 @@ class MatchViewsTest {
         assertFalse(section.unavailable)
         assertTrue(section.matches.isEmpty())
         assertTrue(section.groups.isEmpty())
-    }
-
-    @Test
-    fun `co-brokerage match - origin and back to the search`() {
-        val section = section(listOf(MATCH_A.copy(coBrokerage = true)))
-
-        val view = section.matches.single()
-        assertEquals("/listings/3012?back=/mandates/204%23matches-title", view.listingUrl)
-        assertEquals("Bien d'un autre agent", view.facts.first { it.first == "Origine" }.second)
-    }
-
-    @Test
-    fun `own match - no origin and no back`() {
-        val view = section(listOf(MATCH_A)).matches.single()
-
-        assertEquals("/listings/3012", view.listingUrl)
-        assertTrue(view.facts.none { it.first == "Origine" })
     }
 }
