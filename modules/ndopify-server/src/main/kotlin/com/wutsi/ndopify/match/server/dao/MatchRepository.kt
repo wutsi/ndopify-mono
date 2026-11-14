@@ -49,6 +49,20 @@ interface MatchRepository : CrudRepository<MatchEntity, Long>, JpaSpecificationE
         listingStatus: ListingStatus,
     ): Boolean
 
+    // The matches an agent left untouched for too long (MatchAutoProposalService): oldest first, tenant-filtered
+    @Query(
+        "SELECT m FROM MatchEntity m WHERE m.status = :status AND m.createdAt <= :before " +
+            "AND m.mandate.status = :mandateStatus AND m.listing.status = :listingStatus " +
+            "ORDER BY m.createdAt ASC, m.id ASC"
+    )
+    fun findStalled(
+        @Param("status") status: MatchStatus,
+        @Param("before") before: Date,
+        @Param("mandateStatus") mandateStatus: MandateStatus,
+        @Param("listingStatus") listingStatus: ListingStatus,
+        page: Pageable,
+    ): List<MatchEntity>
+
     // A visit request locks the match, so that two requests for the same match can't both pass the open-visit check
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT m FROM MatchEntity m WHERE m.id = :id")
