@@ -75,7 +75,7 @@ object VisitViews {
             listingId = visit.listingId,
             listingTitle = title(listing, locations),
             listingMeta = listing?.let { meta(it, formatter) },
-            listingUrl = "/listings/${visit.listingId}",
+            listingUrl = "/listings/${visit.listingId}?match=${visit.matchId}",
             address = address,
             mapUrl = mapUrl(listing),
             requestedAt = VisitSlots.dateTimeLabel(visit.requestedAt, tenant, formatter),

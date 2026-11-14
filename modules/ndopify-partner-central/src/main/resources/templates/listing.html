@@ -37,6 +37,10 @@
   verification trail nor the mandate's customer. The listing agent's card replaces them; the exact address is shared
   by that agent before the visit.
 
+  Once published (or closed: RENTED/SOLD), the owner also sees the other agents' visits on the property — the slot,
+  the type and the organizing agent's name/profile/WhatsApp, never that agent's customer. The block is owner-only and
+  hidden when there is nothing to show.
+
   "listing" is the ListingView, absent when "locked" (not found, or not the agent's) or "unavailable"
   (ndopify-server couldn't answer). "outcomeText" / "outcomeStyle" are the last action's outcome (flash attribute
   "outcome", worded by ListingController).
@@ -200,6 +204,25 @@
                         <p>Corrigez les sections signalées, puis renvoyez-la.</p>
                     </div>
                 </div>
+
+                <!-- Another agent's visits on this property: the owner hosts them, never their customer. -->
+                <section class="home-section listing-visits" aria-labelledby="visits-title"
+                         th:if="${!l.coBrokerage and !#lists.isEmpty(l.visits)}" data-listing-visits>
+                    <h2 id="visits-title">Visites d'autres agents</h2>
+                    <p>Un autre agent organise ces visites de votre bien : vous accueillez l'agent et son client sur place.</p>
+                    <ul>
+                        <li th:each="v : ${l.visits}">
+                            <p><strong th:text="${v.at}">samedi 22 novembre 2026 à 10:30</strong> ·
+                                <span th:text="${v.typeLabel}">Sur place</span>
+                                <span class="status-tag status-tag--info" th:if="${v.inProgress}">En cours</span></p>
+                            <p>avec
+                                <a th:if="${v.agentUrl}" th:href="${v.agentUrl}" th:text="${v.agentName}">Serge Ngono</a>
+                                <span th:unless="${v.agentUrl}" th:text="${v.agentName} ?: 'un autre agent'">un autre agent</span>
+                                <a th:if="${v.whatsappUrl}" th:href="${v.whatsappUrl}" rel="noopener" target="_blank">WhatsApp</a>
+                            </p>
+                        </li>
+                    </ul>
+                </section>
 
                 <!-- The public words of the listing, once published. -->
                 <section class="home-section" aria-labelledby="listing-about-title"
