@@ -151,18 +151,22 @@ AI tooling for [Claude Code](https://claude.com/claude-code) lives in [`.claude/
 | [`/init-partner-central`](.claude/commands/init-partner-central.md) | Builds the French partner central pages in `modules/ndopify-partner-central/src/main/html/` using the same three-stage pipeline (`neo-user-journey` → `power-design` → `impeccable`).               |
 | [`/init-esignature`](.claude/commands/init-esignature.md)           | Builds the French e-signature prototype in `modules/ndopify-esignature/src/main/html/` with the same pipeline.                                                                                      |
 
-### Vendored third-party skills
+### Skills
 
-Used by `/init-website`, `/init-partner-central` and `/init-esignature`; not specific to Ndopify.
+| Skill                                    | Purpose                                                                                                                                                                                |
+|------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`story`](.claude/skills/story/SKILL.md) | Takes a story of the GitHub Project through its lifecycle: `groom <story-id>` (enrich it, write its plan), `implement <story-id>` (code it on one branch), `push <story-id>` (release its library changes, open its PR), `review <pr-number>` (approve or reject the PR, then close the story once merged). |
 
-| Skill                                                                | Purpose                                                                                 |
-|----------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
-| [`neo-user-journey`]( https://github.com/Cornjebus/neo-user-journey) | UX research: user journeys, personas, synthetic-user walkthroughs, accessibility audits |
-| [`power-design`](https://github.com/ItsssssJack/power-design)        | On-brand HTML decks and websites, using 20 codified web design rules                    |
-| [`impeccable`](https://github.com/pbakaus/impeccable)                | Design critique, audit, polish and anti-pattern detection                               |
+### Third-party skills
 
-The commands also use `impeccable` (design critique, audit, polish and an anti-pattern detector) from the AI
-environment's own skill set; it isn't vendored in this repository.
+Used by `/init-website`, `/init-partner-central` and `/init-esignature`; not specific to Ndopify and not vendored in
+this repository: install them in the AI environment.
+
+| Skill                                                               | Purpose                                                                                 |
+|---------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
+| [`neo-user-journey`](https://github.com/Cornjebus/neo-user-journey) | UX research: user journeys, personas, synthetic-user walkthroughs, accessibility audits |
+| [`power-design`](https://github.com/ItsssssJack/power-design)       | On-brand HTML decks and websites, using 20 codified web design rules                    |
+| [`impeccable`](https://github.com/pbakaus/impeccable)               | Design critique, audit, polish and anti-pattern detection                               |
 
 ## License
 

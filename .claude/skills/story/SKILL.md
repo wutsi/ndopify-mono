@@ -1,6 +1,6 @@
 ---
 name: story
-description: Use to take an ndopify story through its lifecycle - `groom <story-id>` (enrich a Backlog story and write its plan), `implement <story-id>` (code a Ready story and open its PRs), `review <pr-number>` (review and fix a story's PR until it is ready to merge). Triggers on "groom story", "implement story", "review PR" for this repo.
+description: Use to take an ndopify story through its lifecycle - `groom <story-id>` (enrich a Backlog story and write its plan), `implement <story-id>` (code a Ready story on its branch), `push <story-id>` (release its library changes from `main`, then push the branch and open its PR), `review <pr-number>` (review a story's PR and approve or reject it; close the story once merged). Triggers on "groom story", "implement story", "push story", "review story PR" for this repo - not for a generic PR review.
 ---
 
 # Story workflow
@@ -8,13 +8,13 @@ description: Use to take an ndopify story through its lifecycle - `groom <story-
 You are a senior engineer on `ndopify-mono`. This skill moves a story through
 `Backlog → Ready → In progress → In review → Done`.
 
-**Arguments:** `$ARGUMENTS` is `<mode> <id>`. Modes: `groom <story-id>`, `implement <story-id>`, `review <pr-number>`.
+**Arguments:** `$ARGUMENTS` is `<mode> <id>`. Modes: `groom <story-id>`, `implement <story-id>`,
+`push <story-id>`, `review <pr-number>`.
 If the mode or id is missing, ask for it — never guess the story.
 
-**Merging:** only the library PRs (`ndopify-dto`, `ndopify-web-core`) are merged by this skill, once their checks
-are green and nothing outside `modules/ndopify-dto/` / `modules/ndopify-web-core/` (and the root `pom.xml` version
-properties) is in the diff: `gh pr merge <pr> --merge --delete-branch`. Every other PR is merged manually: when it's
-ready, tell the user and wait for them to merge it.
+**Merging and releases:** this skill never merges a PR — a story has one PR, `review` approves or rejects it and the
+user merges it. The library changes (`ndopify-dto`, `ndopify-web-core`) get no PR: `push` pushes them to `main`, which
+releases them. A release can't be undone, so each library push to `main` waits for the user's OK on its diff.
 
 ## Story tracker
 
@@ -23,12 +23,12 @@ A story is an issue of `wutsi/ndopify-mono` (the story id is the issue number) o
 - Read: `gh issue view <id> --comments`
 - Update the description / title: `gh issue edit <id> --body-file <file> --title "<title>"`
 - Comment: `gh issue comment <id> --body "<text>"`
-- Read the status:
-  `gh project item-list 6 --owner wutsi --format json --jq '.items[] | select(.content.number==<id>) | .status'`
+- Read the status (`item-list` returns only 30 items without `--limit`):
+  `gh project item-list 6 --owner wutsi --limit 1000 --format json --jq '.items[] | select(.content.number==<id>) | .status'`
 - Change the status: find the item id, then set the `Status` field:
 
   ```bash
-  ITEM=$(gh project item-list 6 --owner wutsi --format json --jq '.items[] | select(.content.number==<id>) | .id')
+  ITEM=$(gh project item-list 6 --owner wutsi --limit 1000 --format json --jq '.items[] | select(.content.number==<id>) | .id')
   gh project item-edit --project-id PVT_kwHOAlySnc4BrmpM --id "$ITEM" \
     --field-id PVTSSF_lAHOAlySnc4BrmpMzhp4mHE --single-select-option-id <option>
   ```
@@ -37,8 +37,7 @@ A story is an issue of `wutsi/ndopify-mono` (the story id is the issue number) o
   If an id no longer matches, re-read them with `gh project field-list 6 --owner wutsi --format json`.
 
 **Before any mode:** read the root `CLAUDE.md`, the `CLAUDE.md` of every module the story touches, and `MEMORY.md`.
-Their rules win over this skill (ex: UI features are prototyped first and the plan validated before any
-DTO/server/BFF edit; schema changes go in a new Flyway script).
+Their rules win over this skill (ex: schema changes go in a new Flyway script).
 
 **Stop and ask the user** instead of guessing when: a requirement is ambiguous, the story conflicts with a repo rule,
 a build fails twice for the same reason, or a step would be irreversible and isn't listed here.
@@ -48,16 +47,19 @@ a build fails twice for the same reason, or a step would be irreversible and isn
 Precondition: the story is in `Backlog`. Otherwise stop and report its status.
 
 1. **Enrich** — read the story and use `superpowers:brainstorming` to explore it. Ask the user every open question
-   (one at a time); never answer one yourself. Add to the story:
-   - context (why, who, which modules/pages/endpoints),
-   - acceptance criteria, testable (Given/When/Then),
-   - dependencies, risks, assumptions, and what is out of scope,
-   - whether it changes `ndopify-dto` / `ndopify-web-core` (drives the PR order below).
+   (one at a time); never answer one yourself. The outcome goes into the story, not a spec file: don't write or
+   commit anything under `docs/superpowers/specs/`. Add to the story:
+    - context (why, who, which modules/pages/endpoints),
+    - acceptance criteria, testable (Given/When/Then),
+    - dependencies, risks, assumptions, and what is out of scope,
+    - whether it changes the UI (drives the prototype gate below),
+    - whether it changes `ndopify-dto` / `ndopify-web-core` (drives the library releases in `push`).
 
    Update the story description, and its title if a shorter, clearer one fits.
 2. **Plan** — use `superpowers:writing-plans`, keeping the path and filename it picks. Steps must be small enough for
-   a coding agent, each with its tests and the module it touches.
-3. **Publish the plan** — on an up-to-date `main`, commit only the plan file
+   a coding agent, each with its tests and the module it touches. For a UI story, the first step is the
+   `src/main/html/` prototype. Stop once the plan is written: don't offer to execute it.
+3. **Publish the plan** — on an up-to-date `main` (`git pull --rebase --autostash`), commit only the plan file
    (`docs(<scope>): add the <topic> plan`) and push. Never include other changes in that commit.
 4. Add the plan's GitHub link to the story and move it to `Ready`.
 
@@ -65,43 +67,116 @@ Done when: no open question left, the plan is on `origin/main`, the story is `Re
 
 ## Mode `implement <story-id>`
 
-Precondition: the story is `Ready` and links a plan. Otherwise stop.
+Precondition: the story is `Ready` and links a plan, or it is `In progress` and its branch exists (resume: skip the
+steps already done — read the branch's commits and the story's comments). Otherwise stop.
 
 1. Move the story to `In progress`.
-2. Read the story and its plan. Create a worktree with `superpowers:using-git-worktrees`, branch
-   `feat/<scope>-<topic>`.
-3. Execute the plan with `superpowers:subagent-driven-development` (independent steps) or `superpowers:executing-plans`,
+2. Read the story and its plan. Create a worktree with `superpowers:using-git-worktrees` on one branch,
+   `feat/<scope>-<topic>`, for the whole story — library changes included.
+3. **Prototype gate (UI stories)** — build the prototype in the module's `src/main/html/` first, then stop: show it
+   to the user and wait for their OK on it and on the plan before any DTO / server / BFF edit. If their feedback
+   changes the design, update the plan, commit and push it to `main` (as in `groom` step 3), and rebase on it.
+4. Execute the plan with `superpowers:subagent-driven-development` (independent steps) or `superpowers:executing-plans`,
    following `superpowers:test-driven-development`.
-4. Coding requirements:
-   - Follow the module's `CLAUDE.md` (code organization, test patterns, KDoc, French UI text, `kotlin.test`
-     assertions, `TenantFormatter` for dates/amounts).
-   - Every behavior change has a test; JaCoCo coverage of a touched module must not drop.
-   - Before any push, use `superpowers:verification-before-completion`: `mvn verify` in each touched module
-     (ktlint + tests + coverage gate; `ndopify-server` needs local MySQL). Don't push a red build.
-5. **PR order** when the story changes shared libraries (a web app's CI can only use a released version):
-   1. `ndopify-dto` PR → green checks → merge it → wait for `ndopify-dto-main.yml` to release
-      (`gh run watch`, tag `ndopify-dto-<version>`).
-   2. `ndopify-web-core` PR (if needed), with `<ndopify-dto.version>` in the root `pom.xml` set to that release →
-      green → merge it → wait for the `ndopify-web-core-<version>` release.
-   3. The PR for the other modules, with `<ndopify-dto.version>` / `<ndopify-web-core.version>` set to the released
-      versions — never a `-SNAPSHOT`.
-6. Each PR: conventional-commit title (`feat(<scope>): …`), body linking the plan, with `Refs #<id>` (`Closes #<id>` on
-   the last PR only). Comment the PR link on the story, then move the story to `In review`.
+5. Coding requirements:
+    - Follow the module's `CLAUDE.md` (code organization, test patterns, KDoc, French UI text, `kotlin.test`
+      assertions, `TenantFormatter` for dates/amounts).
+    - Every behavior change has a test; JaCoCo coverage of a touched module must not drop.
+    - Each commit touches one library module (`modules/ndopify-dto/` or `modules/ndopify-web-core/`) or none:
+      `push` moves the library commits to `main` on their own. Library commits are `<type>(dto): …` /
+      `<type>(web-core): …` (`feat`, `fix`, …), with `Refs #<id>` in the body.
+    - Unreleased library changes: the root `pom.xml` pins released versions, so to build a module against a local
+      `ndopify-dto` / `ndopify-web-core` change, `mvn install` the library and point its version property in the
+      root `pom.xml` at that `-SNAPSHOT` — a local, uncommitted change. Never commit the `-SNAPSHOT`.
+6. **Commit** — conventional commits (`feat(<scope>): …`, `test(…)`, `fix(…)`), nothing unrelated: `git status` is
+   clean except the root `pom.xml` version properties pointing at a local `-SNAPSHOT`. Use
+   `superpowers:verification-before-completion`: `mvn verify` in each touched module is green. Don't push: tell the
+   user the story is ready for `push <story-id>`, then stop.
 
-Done when: every PR is open with green checks, and the story is `In review` with the PR links.
+Done when: every plan step is done and committed on the branch with a green `mvn verify`, nothing is pushed, and the
+user knows to run `push <story-id>`.
+
+## Mode `push <story-id>`
+
+Precondition: the story is `In progress` and `implement` is done: `feat/<scope>-<topic>` has the plan's steps
+committed. Or it is `In review`, its PR was rejected by `review`, and the fixes are committed on the branch: the same
+steps release the library fixes, then update the open PR (step 4 is skipped, the story stays `In review`). Find the
+branch's worktree with `git worktree list` and work from it. Otherwise stop.
+
+Resume: skip what's done. `git cherry -v origin/main <branch>` marks with `-` the commits already on `main` (a
+cherry-picked commit has a new SHA, so `git log origin/main..<branch>` still lists it) and with `+` the ones to
+push; also read the release tags, the branch's PR and the story's comments.
+
+To wait for the run a push to `main` started: `gh run list --workflow <workflow>.yml --commit <pushed sha> --json
+databaseId --jq '.[0].databaseId'` (retry until it appears), then `gh run watch <run-id> --exit-status`.
+
+1. **Push gate** — before every push, to `main` or to the branch:
+    - Nothing unrelated is pushed: `git status` is clean, and `git diff origin/main --stat` touches only what this
+      push is for (a library push: only that library's module, plus the root `pom.xml` version properties).
+    - The root `pom.xml`'s `<ndopify-dto.version>` / `<ndopify-web-core.version>` are released versions, never a
+      `-SNAPSHOT` (`git diff origin/main -- pom.xml`). Revert the local `-SNAPSHOT` edit before the gate.
+    - Commits are conventional commits — except `fix dependencies: …`, the repo's message for a version bump.
+    - Use `superpowers:verification-before-completion`: `mvn verify` in each touched module, on the tree being pushed
+      (ktlint + tests + coverage gate; `ndopify-server` needs local MySQL). Don't push a red build.
+2. **Libraries** (skip if the story changes neither). Each goes to `main`, which releases it, in a separate worktree on
+   the latest `main` (`git fetch && git worktree add --detach <dir> origin/main`, removed afterwards). Before each
+   `git push origin HEAD:main`, show the user the commits and their diff (`git log -p origin/main..HEAD`) and wait for
+   their OK.
+    1. `ndopify-dto` — cherry-pick, oldest first, the branch's `+` commits (`git cherry -v origin/main <branch>`)
+       that touch `modules/ndopify-dto/` → push gate → user's OK → push → wait for its `ndopify-dto-main.yml` run to
+       release, tag `ndopify-dto-<version>`.
+    2. `ndopify-web-core` (if needed) — on a fresh worktree of the new `origin/main` (it has the release commits).
+       If the dto was just released, first commit `fix dependencies: ndopify-dto <version>` (root `pom.xml`) so
+       web-core builds against it. Cherry-pick the web-core `+` commits → push gate → user's OK → push → wait for its
+       `ndopify-web-core-main.yml` run to release, tag `ndopify-web-core-<version>`.
+    3. Comment the pushed commits' links and the released versions on the story.
+
+   A cherry-pick that doesn't apply cleanly, or a library commit that touches anything outside its module: stop and
+   ask the user. A red release run: report it and stop.
+3. **Branch** — revert the local `-SNAPSHOT` edit (`git checkout -- pom.xml`: `git rebase` refuses a dirty tree),
+   then rebase on `origin/main`: the library commits drop out, being already upstream (if git keeps one,
+   as a conflict or a non-empty commit, stop and ask). Commit `fix dependencies: ndopify-dto <version>,
+   ndopify-web-core <version>` with the released versions not yet on `main`. Push gate → `git push -u origin
+   <branch>`. Once the PR is open, rebase again only when needed (a conflict, or a new release it needs), then
+   `--force-with-lease`.
+
+   Library-only story (nothing left on the branch after the rebase): push the `fix dependencies` commit to `main`
+   instead (push gate, no release so no OK needed), wait for the `_main.yml` run it started to be green (red: report
+   it and stop), close the story (`gh issue close <id> --comment "<commit links>"`), move it to `Done`, remove the
+   worktree and the branch, and stop.
+4. **PR** — `gh pr create`: conventional-commit title (`feat(<scope>): …`), body linking the plan and the library
+   releases, with `Refs #<id>` — never `Closes`/`Fixes`: the story is closed by `review` step 4, once the main build
+   is green. Comment the PR link on the story and move it to `In review`. Wait for the checks (`gh pr checks <pr>
+   --watch`; if red, read the failing log, fix, push, wait again), then tell the user to run `review <pr-number>`.
+
+Done when: the library changes are released (if any), the PR is open with green checks, and the story is `In review`
+with the links — or, for a library-only story, the story is `Done`.
 
 ## Mode `review <pr-number>`
 
-1. Wait for the checks: `gh pr checks <pr> --watch`. If red, read the failing log (`gh run view --log-failed`), fix,
-   push, wait again.
-2. Review with a reader not anchored on the author's reasoning: `/code-review` or a fresh subagent given the diff,
-   the story and the plan — not this session's conclusions. Check the acceptance criteria and the repo rules.
-3. Post the findings as inline PR comments. For each one, use `superpowers:receiving-code-review`: fix it (push,
-   back to step 1) or reply why not.
-4. When nothing is left and checks are green: a library PR (see *Merging*) is merged; any other PR, tell the user
-   it's ready to merge, and stop. Don't merge it.
-5. Once the user says it's merged, watch its `*-main.yml` run. When all the story's PRs are merged and their main
-   builds are green, move the story to `Done`.
+Precondition: the PR's body has `Refs #<id>`, and that story is `In review`. Otherwise stop and ask which story it
+belongs to. If the PR is already merged, go to step 4. This mode only reviews: it never changes the code, pushes or
+merges.
 
-Done when: the PR is ready to merge with green checks, and the user knows it. The story is `Done` only after the user
-has merged all its PRs and the main builds are green.
+1. **CI** — wait for every check to finish: `gh pr checks <pr> --watch`. The review starts only once they're all
+   green; no check reported (a PR whose paths start no workflow) counts as green. If one is red, report it to the user
+   (`gh run view <run-id> --log-failed`) and stop — no review, no verdict.
+2. **Review** — run `/code-review high <pr>`, and check the PR against the story's acceptance criteria, its plan and
+   the repo rules.
+3. **Verdict** — then stop:
+    - No finding: approve it (`gh pr review <pr> --approve --body "<what was checked>"`) and tell the user it's ready
+      to merge.
+    - Any finding: reject it (`gh pr review <pr> --request-changes --body "<the findings, each with its file:line>"`)
+      and tell the user the findings. They're fixed outside this mode, on the branch, with the `implement` commit
+      rules; a fix that touches a library is released by `push <story-id>`, which also updates the PR. Then re-run
+      `review <pr-number>`.
+
+   GitHub refuses both on a PR the user authored (every PR `push` opens): then post the same verdict with
+   `gh pr review <pr> --comment`, its body starting with `Approved` or `Changes requested`.
+4. **After the merge** — on a re-run once the user merged it: watch every run the merge commit started
+   (`gh pr view <pr> --json mergeCommit --jq .mergeCommit.oid`, then `gh run list --commit <sha>` and
+   `gh run watch <run-id> --exit-status` for each). If one is red, report it and stop. Once all are green, close the
+   issue (`gh issue close <id> --comment "<PR link>"`), move the story to `Done`, and remove the story's worktree and
+   local branch (not from inside that worktree).
+
+Done when: the verdict is posted and the user knows it — or, after the merge, the story is closed and `Done`.
