@@ -12,6 +12,9 @@ import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import java.time.LocalDate
 
+/** The generic label of a co-brokerage card whose listing agent can't be read. */
+private const val OTHER_AGENT = "Bien d'un autre agent"
+
 /**
  * Builds the mandate page's *Biens correspondants* from the matches, their listings and the open visits. Each open
  * visit sits in the card of the match that led to it, and the cards are grouped by what the agent does next.
@@ -30,6 +33,7 @@ object MatchViews {
         locations: Map<Long, Location>,
         today: LocalDate,
         formatter: TenantFormatter,
+        agentNames: Map<Long, String> = emptyMap(),
     ): MatchSectionView {
         if (matches == null || listings == null) {
             return MatchSectionView(unavailable = true)
@@ -42,7 +46,7 @@ object MatchViews {
             )
         return MatchSectionView(
             matches = ordered.mapNotNull { match ->
-                listings[match.listingId]?.let { view(match, mandate, it, visits[match.id], locations, today, formatter) }
+                listings[match.listingId]?.let { view(match, mandate, it, visits[match.id], locations, today, formatter, agentNames) }
             },
             dismissed = matches.count { it.status == MatchStatus.DISMISSED },
             outcomes = MatchRules.outcomes(matches),
@@ -84,12 +88,15 @@ object MatchViews {
         locations: Map<Long, Location>,
         today: LocalDate,
         formatter: TenantFormatter,
+        agentNames: Map<Long, String>,
     ): MatchView {
         val type = MandateLabels.shortPropertyType(listing.propertyType) ?: "Bien"
         val available = listing.availableFrom?.takeIf { it.isAfter(today) }
         return MatchView(
             id = match.id,
             listingId = listing.id,
+            coBrokerage = match.coBrokerage,
+            origin = if (match.coBrokerage) agentNames[listing.agentId] ?: OTHER_AGENT else null,
             title = listOfNotNull(type, listing.rooms?.let { MatchRules.rooms(it) }).joinToString(" · "),
             tag = MatchRules.tag(match),
             listingUrl = if (match.coBrokerage) "/listings/${listing.id}?match=${match.id}" else "/listings/${listing.id}",

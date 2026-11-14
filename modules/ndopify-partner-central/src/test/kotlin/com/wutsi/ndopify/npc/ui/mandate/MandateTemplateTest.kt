@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.npc.ui.mandate
 
 import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
@@ -13,6 +14,7 @@ import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.match.dto.MatchStatus
+import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdContractClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
@@ -21,6 +23,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
+import com.wutsi.ndopify.npc.config.Parallel
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdviceTest
@@ -51,6 +54,7 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
+import org.mockito.ArgumentMatchers.anyLong
 import org.springframework.http.HttpStatus
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.test.web.servlet.MockMvc
@@ -64,6 +68,8 @@ import org.thymeleaf.spring6.SpringTemplateEngine
 import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
 import java.time.Clock
+import java.util.concurrent.CyclicBarrier
+import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
@@ -78,11 +84,13 @@ class MandateTemplateTest {
     private val customerClient = mock<NdCustomerClient>()
     private val assignmentClient = mock<NdAssignmentClient>()
     private val listingClient = mock<NdListingClient>()
+    private val agentClient = mock<NdAgentClient>()
     private val matchClient = mock<NdMatchClient>()
     private val visitClient = mock<NdVisitClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
+    private val parallel = Parallel()
     private lateinit var mvc: MockMvc
 
     @BeforeEach
@@ -120,12 +128,14 @@ class MandateTemplateTest {
                     customerClient,
                     assignmentClient,
                     listingClient,
+                    agentClient,
                     matchClient,
                     visitClient,
                     locationClient,
                     tenantContext,
                     clock,
                     MandateDealCandidates(matchClient, mandateClient, customerClient, listingClient),
+                    parallel,
                 ),
             )
             .setControllerAdvice(SignedInAdvice())
@@ -811,6 +821,128 @@ class MandateTemplateTest {
         assertEquals(
             "/listings/3012?match=9001",
             page.selectFirst("[data-match-id=9001] [data-match-link]")?.attr("href"),
+        )
+    }
+
+    @Test
+    fun `co-brokerage match - the listing agent's name`() {
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201, coBrokerage = true))
+        doReturn(listOf(MatchFixtures.LISTING_A.copy(agentId = 30))).whenever(listingClient).searchByIds(any())
+        doReturn(
+            ProfileFixtures.AGENT.copy(
+                id = 30,
+                party = ProfileFixtures.AGENT.party.copy(id = 130, firstName = "Clarisse", lastName = "Mbarga"),
+            ),
+        ).whenever(agentClient).get(30)
+
+        val page = render(APPROVED)
+        val card = page.selectFirst("[data-match-id=9001]")!!
+
+        assertEquals("Clarisse Mbarga", card.selectFirst("[data-match-origin]")?.text())
+        assertTrue(card.selectFirst("[data-match-origin] svg")!!.hasAttr("aria-hidden"))
+    }
+
+    @Test
+    fun `co-brokerage match - generic label when the agent can't be read`() {
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201, coBrokerage = true))
+        doReturn(listOf(MatchFixtures.LISTING_A.copy(agentId = 30))).whenever(listingClient).searchByIds(any())
+
+        val page = render(APPROVED)
+
+        assertEquals(
+            "Bien d'un autre agent",
+            page.selectFirst("[data-match-id=9001] [data-match-origin]")?.text(),
+        )
+    }
+
+    @Test
+    fun `own-inventory match - no origin line`() {
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201))
+
+        val page = render(APPROVED)
+
+        assertNull(page.selectFirst("[data-match-id=9001] [data-match-origin]"))
+        verify(agentClient, never()).get(anyLong())
+    }
+
+    @Test
+    fun `co-brokerage agents are read in parallel`() {
+        withMatches(
+            MatchFixtures.MATCH_A.copy(mandateId = 201, coBrokerage = true),
+            MatchFixtures.MATCH_C.copy(mandateId = 201, coBrokerage = true),
+        )
+        doReturn(
+            listOf(
+                MatchFixtures.LISTING_A.copy(agentId = 30),
+                MatchFixtures.LISTING_C.copy(agentId = 31),
+            ),
+        ).whenever(listingClient).searchByIds(any())
+        val barrier = CyclicBarrier(2)
+        doAnswer { invocation ->
+            barrier.await(2, TimeUnit.SECONDS)
+            ProfileFixtures.AGENT.copy(id = invocation.getArgument(0))
+        }.whenever(agentClient).get(anyLong())
+
+        val page = render(APPROVED)
+
+        assertEquals(
+            "Serge Ngono",
+            page.selectFirst("[data-match-id=9001] [data-match-origin]")?.text(),
+        )
+    }
+
+    @Test
+    fun `co-brokerage match with a visit keeps its origin line`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        withMatches(
+            MatchFixtures.MATCH_A.copy(
+                mandateId = 201,
+                status = MatchStatus.ACCEPTED,
+                coBrokerage = true,
+                proposedAt = proposedAt,
+            ),
+        )
+        doReturn(listOf(MatchFixtures.LISTING_A.copy(agentId = 30))).whenever(listingClient).searchByIds(any())
+        doReturn(
+            ProfileFixtures.AGENT.copy(
+                id = 30,
+                party = ProfileFixtures.AGENT.party.copy(id = 130, firstName = "Clarisse", lastName = "Mbarga"),
+            ),
+        ).whenever(agentClient).get(30)
+        doReturn(listOf(VisitFixtures.summary(VisitFixtures.requested().copy(mandateId = 201, matchId = 9001))))
+            .whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
+
+        val page = render(APPROVED)
+        val card = page.selectFirst("[data-match-id=9001]")!!
+
+        assertNull(card.selectFirst("[data-match-tag]"))
+        assertEquals("Clarisse Mbarga", card.selectFirst("[data-match-origin]")?.text())
+    }
+
+    @Test
+    fun `co-brokerage line stays when visits are unavailable`() {
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201, coBrokerage = true))
+        doReturn(listOf(MatchFixtures.LISTING_A.copy(agentId = 30))).whenever(listingClient).searchByIds(any())
+        doThrow(ResourceAccessException("timeout")).whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
+
+        val page = render(APPROVED)
+
+        assertEquals(
+            "Bien d'un autre agent",
+            page.selectFirst("[data-match-id=9001] [data-match-origin]")?.text(),
+        )
+    }
+
+    @Test
+    fun `matches intro covers other agents' listings`() {
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201))
+
+        val page = render(APPROVED)
+
+        assertEquals(
+            "Les biens qui correspondent à la recherche du client, les vôtres comme ceux publiés par d'autres " +
+                "agents. Envoyez-les-lui ou écartez-les.",
+            page.selectFirst("[data-matches-intro]")?.text(),
         )
     }
 
