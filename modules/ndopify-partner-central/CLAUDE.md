@@ -204,7 +204,10 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   *Propositions* while it is open; the summary leads with "1 visite". The visits are read in one
   `GET /v1/visits?listing-id=&agent-id=&status=REQUESTED|CONFIRMED|CHECKED_IN|COMPLETED` by the listing's id; that read
   failing shows the section's "unavailable" and leaves every proposal, and a stale visit or one of another agent's is
-  ignored. The activity line replaces the WIP `visitStats` line when it is shown. **Another agent's mandate is protected**: only the agent's own mandates among the
+  ignored. The same page renders *Visites d'autres agents* for a `PUBLISHED`/`RENTED`/`SOLD` listing
+  (`MandateController.coBrokerageVisits`, the shared `fragments/co-brokerage-visit.html`):
+  `GET /v1/visits/co-brokerage?listing-id=`, its organizer's avatar/name/WhatsApp and never A's customer; a failed read
+  or a DRAFT listing leaves it out. The activity line replaces the WIP `visitStats` line when it is shown. **Another agent's mandate is protected**: only the agent's own mandates among the
   matches' are looked up (`NdMandateClient.searchByIds`, `id=&agent-id=`, checked again on `agentId`), and only their
   customers (`NdCustomerClient.search`); any other match is "Client d'un autre agent", never named nor linked, its
   customer never asked of ndopify-server; only that agent (`Match.agentId`, the search's agent) is named under it,
@@ -261,8 +264,9 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   A valid same-origin `?back=` returns to where it was opened, otherwise the Espace agent; own listings still return to
   their mandate. The owner of a `PUBLISHED`/`RENTED`/`SOLD` listing also sees *Visites d'autres agents*
   (`ListingView.visits`, `ListingViews.visits`): `GET /v1/visits/co-brokerage?listing-id=`
-  (`NdVisitClient.coBrokerageOnListing`), owner lens only, with the slot, the type, an "En cours" tag, and A's
-  name/profile/WhatsApp; an unreadable agent keeps the row as "un autre agent", a failed visits read hides the block.
+  (`NdVisitClient.coBrokerageOnListing`), owner lens only, the shared `fragments/co-brokerage-visit.html` as a
+  `co-visit-card` (the slot + "En cours", the type and listing, the organizer's avatar/name/WhatsApp); an unreadable
+  agent keeps the row as "un autre agent", a failed visits read hides the block.
   No customer field ever reaches this block. A visit page's listing link now carries `?match={matchId}` so a
   co-brokerage listing opens instead of the locked page.
 - A signed search (APPROVED, SEARCH: `MatchRules.matched`) has *Biens correspondants* on its mandate page: the
@@ -309,12 +313,19 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `VisitScheduleForm.from=home` comes back to `/#visits-title` with the `visitOutcome` flash, and
   `templates/fragments/visit-card.html` renders the one-tap form (or the slot picker when the requested slot is
   outside the list). The upcoming visits are grouped by day and capped at four
-  (`VisitCardsView.ongoing/upcomingGroups/upcomingPreviewGroups/upcomingMoreGroups`); the rest is folded. `GET /visits/{id}` (`VisitController`,
+  (`VisitCardsView.ongoing/upcomingGroups/upcomingPreviewGroups/upcomingMoreGroups`); the rest is folded. A
+  co-brokerage visit's card names the listing agent ("Avec …", linked to `/agent?id=&back=/#visits-title`,
+  `VisitCardView.agentName/agentUrl`). The page also lists the visits other agents organize on the agent's live
+  listings (*Visites d'autres agents* from `GET /v1/visits/co-brokerage`, no `listing-id`, the shared `co-visit-card`):
+  they count in `todayCount`, not `requestedCount`, never show A's customer, and the block is left out when the read
+  fails. `GET /visits/{id}` (`VisitController`,
   `templates/visit.html`, `VisitViews` → `VisitPage`, `VisitRules`, `VisitSlots`) is the prototype's page: one panel per
   status (REQUESTED, CONFIRMED, WINDOW in the check-in window, CHECKED_IN, COMPLETED, CANCELLED, EXPIRED, NO_SHOW) and
   its forms: schedule (`POST /visits/{id}/schedule`), refuse / cancel (`/cancel`), check-in with the customer's code and
   an optional position (`/check-in`), no-show (`/no-show`), check-out with the private report (`/check-out`). The visit
   is required (another agent's visit, a 403, or a 404 is the locked view); the listing and customer are secondary. The
+  listing's agent, when the visit is on another agent's listing, is a third secondary read (`NdAgentClient`): a boxed
+  card ("Visite organisée avec", profile/WhatsApp) from `VisitPage.agent`; an unreadable agent leaves it out. The
   address comes from the listing (`landmark` + `accessDirections`), never `Visit.address`; the agent never receives the
   code, and the API exposes neither the code attempts nor the no-show position, so `VISIT_CODE_LOCKED` is kept in the
   session (`npc.visit.code-locked.<id>`) to hide the check-in form for this agent. Slots are the 7 days starting
