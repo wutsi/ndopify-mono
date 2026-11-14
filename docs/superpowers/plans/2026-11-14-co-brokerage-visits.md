@@ -881,11 +881,11 @@ In `VisitServiceTest`:
 
 ```kotlin
 @Test
-fun `an ended mandate cancels its requested and confirmed visits, never a checked-in one`() {
+fun `an ended mandate cancels the open visits the query returns`() {
     val requested = visit.copy(id = 2L, status = VisitStatus.REQUESTED, scheduledAt = null)
     val confirmed = visit.copy(id = 1L, status = VisitStatus.CONFIRMED, scheduledAt = date(2026, 12, 2, 10, 0))
-    val checkedIn = visit.copy(id = 3L, status = VisitStatus.CHECKED_IN, checkedInAt = date(2026, 12, 2, 10, 5))
-    doReturn(listOf(requested, confirmed, checkedIn)).whenever(dao)
+    // The repository query already excludes CHECKED_IN/COMPLETED; VisitRepositoryTest pins that exclusion.
+    doReturn(listOf(requested, confirmed)).whenever(dao)
         .findOpenByMandateOrListingMandate(eq(1L), any())
 
     assertEquals(2, service.cancelForEndedMandate(1L))
