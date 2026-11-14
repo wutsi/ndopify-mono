@@ -289,7 +289,8 @@
                     asked for a visit has its details and action in the same card, the requests to confirm first,
                     then the visits to come, then interested, then waiting. A refused one isn't listed. A client of
                     another agent's search is "Client d'un autre agent", not a link: that agent's mandate is
-                    protected, neither its client nor its mandate shown.
+                    protected, neither its client nor its mandate shown; only that agent's name, linked to their
+                    profile.
                 -->
                 <section class="home-section" aria-labelledby="proposals-title" hidden data-listing-proposals>
                     <h2 id="proposals-title">Propositions et visites</h2>
@@ -308,6 +309,11 @@
                                             data-proposal-client></span></a></h3>
                                     <p class="status-tag" data-proposal-tag></p>
                                 </div>
+                                <!-- Another agent's client only: that agent's name, linked to their profile. -->
+                                <p class="match__origin" hidden data-proposal-agent>
+                                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="6.5" r="3.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                                    <a data-proposal-agent-link></a>
+                                </p>
                                 <div class="visit-detail" data-proposal-visit hidden>
                                     <p class="visit-detail__when">
                                         <span class="visit-detail__icon" data-visit-icon aria-hidden="true"></span>
@@ -362,6 +368,11 @@
                                         onglet)</span></a></h3>
                                     <p class="status-tag" data-match-tag></p>
                                 </div>
+                                <!-- Co-brokerage only: the agent who publishes the listing, linked to their profile. -->
+                                <p class="match__origin" hidden data-match-origin>
+                                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="6.5" r="3.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                                    <a data-match-agent></a>
+                                </p>
                                 <dl class="match__facts" data-match-facts></dl>
                                 <p class="match__answer" hidden data-match-answer></p>
                                 <div class="visit-detail" data-match-visit hidden>
