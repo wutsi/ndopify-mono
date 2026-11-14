@@ -50,6 +50,28 @@
     font-size: var(--step-hint);
 }
 
+/* Another agent's listing: the organizer, named and linked; their customer never appears. */
+.visit-card__agent,
+.visit-detail__agent {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--step-hint);
+}
+
+.visit-card__agent a,
+.visit-detail__agent a {
+    color: inherit;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.visit-card__agent a:hover,
+.visit-detail__agent a:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
 .visit-card .icon {
     flex: none;
 }

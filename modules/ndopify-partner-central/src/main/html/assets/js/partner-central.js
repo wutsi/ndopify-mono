@@ -1627,6 +1627,13 @@
         return SHORT_DATE_FORMAT.format(new Date(ms));
     }
 
+    // "2 décembre 2026 à 10h30", for the co-brokerage visits block
+    function formatVisitAt(ms) {
+        var d = new Date(ms);
+        return formatDate(ms) + " à " + (d.getHours() < 10 ? "0" : "") + d.getHours() + "h" +
+            (d.getMinutes() < 10 ? "0" : "") + d.getMinutes();
+    }
+
     function addMonths(ms, months) {
         var d = new Date(ms);
         d.setMonth(d.getMonth() + months);
@@ -1766,6 +1773,11 @@
                 id: "9009", listingId: "5001", propertyType: "APARTMENT", rooms: 2, neighbourhood: "Bonapriso",
                 price: 250000, availableIn: 0, score: 0.72, coBrokerage: true,
                 agent: { id: "1001", name: "Clarisse Mbarga" },
+                // The client accepted and asked for a visit: the card names its organizer (Clarisse), never her customer.
+                initial: { status: "PROPOSED", sentAt: -2, answer: "ACCEPTED", answeredAt: -1,
+                    visit: { in: 2, time: "14h00", type: "IN_PERSON",
+                        agent: { id: "1001", firstName: "Clarisse", lastName: "Mbarga",
+                            whatsappNumber: "+237699123456", whatsappDisplay: "+237 6 99 12 34 56" } } },
                 fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"],
                     [false, "2 chambres, une de moins que demandé"], [true, "Les 3 équipements demandés"],
                     [true, "Disponible dès maintenant"], [false, "Meublé : le client le veut vide"]]
@@ -1863,6 +1875,20 @@
             timer.hidden = true;
             box.removeAttribute("data-urgent");
         }
+        // Another agent's listing: name the organizer, linked to their profile; they host the visit.
+        var agentLine = $("[data-visit-agent]", box);
+        if (agentLine) {
+            agentLine.hidden = !visit.agent;
+            if (visit.agent) {
+                var currentMandate = new URLSearchParams(window.location.search).get("id") || "";
+                var anchor = box.closest("[data-listing-proposals]") ? "#proposals-title" : "#matches-title";
+                var organizer = [visit.agent.firstName, visit.agent.lastName].filter(Boolean).join(" ");
+                var organizerLink = $("[data-visit-agent-link]", agentLine);
+                organizerLink.href = "agent.html?id=" + encodeURIComponent(visit.agent.id) + "&back=" +
+                    encodeURIComponent("mandate.html?id=" + encodeURIComponent(currentMandate) + anchor);
+                $("[data-visit-agent-name]", agentLine).textContent = "Avec " + organizer;
+            }
+        }
         var link = $("[data-visit-link]", box);
         if (visit.id) {
             link.hidden = false;
@@ -1946,6 +1972,7 @@
         if (initial.visit) {
             state.visit = { at: atTime(Date.now() + initial.visit.in * DAY_MS, initial.visit.time),
                 time: initial.visit.time, type: initial.visit.type };
+            if (initial.visit.agent) state.visit.agent = initial.visit.agent;
         }
         return state;
     }
@@ -2057,6 +2084,17 @@
                 reason: "PRICE" }
         ]
     };
+
+    // PROTOTYPE: the visits another agent organizes on the landlord's published listing (listing 501 of mandate 203),
+    // from GET /v1/visits/co-brokerage?listing-id=. A is named and contactable; A's customer never is.
+    var CO_BROKERAGE_LISTING_VISITS = [
+        { at: Date.now() + 25 * 60 * 60 * 1000, type: "IN_PERSON", status: "CONFIRMED",
+            agent: { id: "1001", firstName: "Clarisse", lastName: "Mbarga", whatsappNumber: "+237699123456",
+                whatsappDisplay: "+237 6 99 12 34 56" } },
+        { at: Date.now() - 30 * 60 * 1000, type: "VIDEO", status: "CHECKED_IN",
+            agent: { id: "1001", firstName: "Clarisse", lastName: "Mbarga", whatsappNumber: "+237699123456",
+                whatsappDisplay: "+237 6 99 12 34 56" } }
+    ];
 
     // The listing's proposals, as PROPOSED matches with their dates (see initialMatchState).
     function listingProposalsOf(mandateId) {
@@ -2192,6 +2230,36 @@
         var line = $("[data-proposal-outcomes]", box);
         line.hidden = outcomes.length === 0;
         line.textContent = outcomes.join(" · ");
+    }
+
+    // The listing agent's *Visites d'autres agents*: A's name, profile and WhatsApp, never A's customer.
+    function renderListingCoBrokerageVisits(mandateId, listing) {
+        var section = $("[data-co-brokerage-visits]");
+        if (!section) return;
+        var published = !!listing && listing.status === "PUBLISHED";
+        section.hidden = !published;
+        if (!published) return;
+        var list = $("[data-co-brokerage-visit-list]", section);
+        var template = $("[data-co-brokerage-visit-template]", section);
+        list.textContent = "";
+        CO_BROKERAGE_LISTING_VISITS.forEach(function (visit) {
+            var item = template.content.firstElementChild.cloneNode(true);
+            $("[data-co-brokerage-at]", item).textContent = formatVisitAt(visit.at);
+            $("[data-co-brokerage-type]", item).textContent = visit.type === "VIDEO" ? "Visite vidéo" : "Sur place";
+            $("[data-co-brokerage-progress]", item).hidden = visit.status !== "CHECKED_IN";
+            var listingLink = $("[data-co-brokerage-listing]", item);
+            listingLink.textContent = listing.fields ? listingTitle(listing) : "Appartement 3 chambres · Bonapriso";
+            listingLink.href = "listing.html?id=" + encodeURIComponent(listing.id);
+            var agent = visit.agent;
+            var name = [agent.firstName, agent.lastName].filter(Boolean).join(" ");
+            var agentLink = $("[data-co-brokerage-agent]", item);
+            agentLink.textContent = name;
+            agentLink.href = "agent.html?id=" + encodeURIComponent(agent.id) + "&back=" +
+                encodeURIComponent("mandate.html?id=" + encodeURIComponent(mandateId) + "#co-brokerage-visits-title");
+            $("[data-co-brokerage-whatsapp]", item).href =
+                "https://wa.me/" + agent.whatsappNumber.replace(/\D/g, "");
+            list.appendChild(item);
+        });
     }
 
     // PROTOTYPE: a published listing's audience, by mandate id — the page views of its public page
@@ -2621,6 +2689,7 @@
             if (!show) {
                 // Closed or cancelled: its Propositions go with the listing
                 $("[data-listing-proposals]").hidden = true;
+                $("[data-co-brokerage-visits]").hidden = true;
                 return;
             }
             var listing = cardListingOf(id);
@@ -2631,6 +2700,7 @@
             stats.hidden = !listing || listing.status !== "PUBLISHED";
             $("[data-listing-stats-text]", stats).textContent = statsSummary(id);
             renderListingProposals($("[data-listing-proposals]"), id, !!listing && listing.status === "PUBLISHED");
+            renderListingCoBrokerageVisits(id, listing);
             listingCreate.hidden = !!listing;
             listingLink.hidden = !listing;
             var text = $("[data-listing-text]", listingBox);

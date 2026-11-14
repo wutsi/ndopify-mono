@@ -156,7 +156,9 @@
         224: { name: "Aline Ebogo", whatsapp: "+237655617240" },
         225: { name: "Stéphane Ndjock", whatsapp: "+237698240573" },
         226: { name: "Clarisse Moukouri", whatsapp: "+237670481926" },
-        227: { name: "Thierry Onana", whatsapp: "+237694157308" }
+        227: { name: "Thierry Onana", whatsapp: "+237694157308" },
+        // The co-brokerage visit: another agent's client, on another agent's listing
+        228: { name: "Sandrine Eboa", whatsapp: "+237699887766" }
     };
 
     // PROTOTYPE: the agent's published listings (those of MATCHES in partner-central.js), with the exact address
@@ -280,6 +282,13 @@
             scheduledAt: at(-1, "11:00"), noShowParty: "CUSTOMER", noShowReason: "CUSTOMER_ABSENT",
             noShowAt: at(-1, "11:20"), noShowDistanceMeters: 18 },
 
+        // Co-brokerage: the listing is published by another agent (Clarisse Mbarga, agent.html?id=1001), who hosts the
+        // visit. The card and the visit page name her; their customer never reaches her.
+        7025: { mandateId: "228", listingId: "2987", status: "CONFIRMED", createdAt: NOW - 2 * DAY,
+            requestedAt: at(2, "14:00"), scheduledAt: at(2, "14:00"),
+            agent: { id: "1001", firstName: "Clarisse", lastName: "Mbarga", photoUrl: null,
+                whatsappNumber: "+237699123456", whatsappDisplay: "+237 6 99 12 34 56" } },
+
         // PROTOTYPE: the landlord's published listing's two visits (mandate 203, listing 501), reached from the
         // visit blocks of its Propositions et visites cards. Hidden from the Espace agent and from a search's
         // activity line: their card data lives in LISTING_PROPOSALS (partner-central.js).
@@ -288,6 +297,17 @@
         7302: { mandateId: "207", listingId: "501", status: "CONFIRMED", createdAt: NOW - 2 * DAY,
             requestedAt: at(1, "09:30"), scheduledAt: at(1, "09:30"), hidden: true }
     };
+
+    // PROTOTYPE: another agent's visits on the signed-in agent's published listings (the listing agent's side:
+    // the home page's *Visites d'autres agents*). A is named and contacted; A's customer never appears.
+    var CO_BROKERAGE_VISITS = [
+        { id: "8001", at: at(1, "10:30"), type: "IN_PERSON", status: "CONFIRMED", listingId: "3012",
+            agent: { id: "1001", firstName: "Clarisse", lastName: "Mbarga", photoUrl: null,
+                whatsappNumber: "+237699123456", whatsappDisplay: "+237 6 99 12 34 56" } },
+        { id: "8002", at: laterToday(), type: "VIDEO", status: "CHECKED_IN", listingId: "3027",
+            agent: { id: "1001", firstName: "Clarisse", lastName: "Mbarga", photoUrl: null,
+                whatsappNumber: "+237699123456", whatsappDisplay: "+237 6 99 12 34 56" } }
+    ];
 
     // MatchRejectionReason, as proposition.html words them.
     var REASON_LABELS = {
@@ -506,6 +526,38 @@
         var section = document.querySelector("[data-visits-section]");
         if (!section) return;
         renderHomeVisits(section);
+        renderCoBrokerageVisits();
+    }
+
+    // PROTOTYPE: the listing agent's *Visites d'autres agents* (GET /v1/visits/co-brokerage): the date, the type,
+    // the listing, and the organizer A — never A's customer.
+    function renderCoBrokerageVisits() {
+        var section = document.querySelector("[data-co-brokerage-visits]");
+        if (!section) return;
+        var $ = npc().$;
+        var list = $("[data-co-brokerage-visit-list]", section);
+        var template = $("[data-co-brokerage-visit-template]", section);
+        list.textContent = "";
+        CO_BROKERAGE_VISITS.forEach(function (visit) {
+            var item = template.content.firstElementChild.cloneNode(true);
+            $("[data-co-brokerage-at]", item).textContent = formatAt(visit.at);
+            $("[data-co-brokerage-type]", item).textContent = visit.type === "VIDEO" ? "Visite vidéo" : "Sur place";
+            $("[data-co-brokerage-progress]", item).hidden = visit.status !== "CHECKED_IN";
+            var listing = LISTINGS[visit.listingId];
+            var listingLink = $("[data-co-brokerage-listing]", item);
+            listingLink.textContent = listing.title + " · " + listing.neighbourhood;
+            listingLink.href = "listing.html?id=" + encodeURIComponent(visit.listingId);
+            var agent = visit.agent;
+            var name = [agent.firstName, agent.lastName].filter(Boolean).join(" ");
+            var agentLink = $("[data-co-brokerage-agent]", item);
+            agentLink.textContent = name;
+            agentLink.href = "agent.html?id=" + encodeURIComponent(agent.id) +
+                "&back=" + encodeURIComponent("index.html#co-brokerage-visits-title");
+            $("[data-co-brokerage-whatsapp]", item).href =
+                "https://wa.me/" + agent.whatsappNumber.replace(/\D/g, "");
+            list.appendChild(item);
+        });
+        section.hidden = CO_BROKERAGE_VISITS.length === 0;
     }
 
     // À confirmer (the soonest to expire first), then the visits to come (soonest first, so today's lead): each card
@@ -588,6 +640,18 @@
             var listing = $("[data-visit-listing]", item);
             listing.innerHTML = TYPE_ICONS[v.type] + "<span></span>";
             $("span", listing).textContent = TYPE_LABELS[v.type] + " · " + v.listing.title + " · " + v.listing.neighbourhood;
+            // Another agent's listing: name its agent, linked to their profile, back to this queue.
+            var agentLine = $("[data-visit-agent]", item);
+            if (agentLine) {
+                agentLine.hidden = !v.agent;
+                if (v.agent) {
+                    var agentName = [v.agent.firstName, v.agent.lastName].filter(Boolean).join(" ");
+                    var agentLink = $("[data-visit-agent-link]", agentLine);
+                    agentLink.href = "agent.html?id=" + encodeURIComponent(v.agent.id) +
+                        "&back=" + encodeURIComponent("index.html#visits-title");
+                    $("[data-visit-agent-name]", agentLine).textContent = "Avec " + agentName;
+                }
+            }
             return item;
         }
 
@@ -800,6 +864,45 @@
                 a.href = "https://www.openstreetmap.org/?mlat=" + v.listing.lat + "&mlon=" + v.listing.lng +
                     "#map=18/" + v.listing.lat + "/" + v.listing.lng;
             });
+            // Co-brokerage: the listing's agent, who hosts the visit; never their customer.
+            var agentSection = $("[data-visit-agent-section]");
+            if (agentSection) {
+                agentSection.hidden = !v.agent;
+                if (v.agent) {
+                    var agent = v.agent;
+                    var names = [agent.firstName, agent.lastName].filter(Boolean);
+                    var name = names.join(" ");
+                    var back = "visit.html?id=" + encodeURIComponent(v.id);
+                    var profile = "agent.html?id=" + encodeURIComponent(agent.id) +
+                        "&back=" + encodeURIComponent(back);
+                    $all("[data-visit-agent-profile]").forEach(function (a) {
+                        a.href = profile;
+                    });
+                    $("[data-visit-agent-name]").textContent = name;
+                    $("[data-visit-agent-initials]").textContent = names.map(function (part) {
+                        return part.charAt(0);
+                    }).join("");
+                    var photo = $("[data-visit-agent-photo]");
+                    var initials = $("[data-visit-agent-initials]");
+                    if (agent.photoUrl) {
+                        photo.src = agent.photoUrl;
+                        photo.hidden = false;
+                        initials.hidden = true;
+                    } else {
+                        photo.hidden = true;
+                        initials.hidden = false;
+                    }
+                    var whatsapp = agent.whatsappNumber
+                        ? "https://wa.me/" + agent.whatsappNumber.replace(/\D/g, "")
+                        : null;
+                    $("[data-visit-agent-contact]").hidden = !whatsapp;
+                    if (whatsapp) {
+                        $("[data-visit-agent-whatsapp]").href = whatsapp;
+                        $("[data-visit-agent-whatsapp]").textContent =
+                            agent.whatsappDisplay || agent.whatsappNumber;
+                    }
+                }
+            }
             setTag($("[data-visit-tag]"), panel);
         }
 

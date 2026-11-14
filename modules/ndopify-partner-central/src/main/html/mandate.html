@@ -319,6 +319,10 @@
                                         <span class="visit-detail__icon" data-visit-icon aria-hidden="true"></span>
                                         <span><strong data-visit-kind></strong> · <span data-visit-when></span></span>
                                     </p>
+                                    <p class="visit-detail__agent" hidden data-visit-agent>
+                                        <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false"><circle cx="10" cy="6.5" r="3.25"/><path d="M4 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" stroke-linecap="round"/></svg>
+                                        <a data-visit-agent-link><span data-visit-agent-name></span></a>
+                                    </p>
                                     <p class="visit-detail__timer" data-visit-timer hidden>
                                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                                         <span>Il reste <strong data-visit-left></strong> pour confirmer</span>
@@ -327,6 +331,27 @@
                                 </div>
                                 <p class="proposal-card__meta" data-proposal-summary></p>
                             </article>
+                        </li>
+                    </template>
+                </section>
+
+                <!--
+                    The landlord's published listing: the visits another agent organizes on it
+                    (GET /v1/visits/co-brokerage?listing-id=), soonest first. The organizer is named and contactable;
+                    their customer never is. PROTOTYPE: partner-central.js's CO_BROKERAGE_LISTING_VISITS.
+                -->
+                <section class="home-section listing-visits" aria-labelledby="co-brokerage-visits-title"
+                         hidden data-co-brokerage-visits>
+                    <h2 id="co-brokerage-visits-title">Visites d'autres agents</h2>
+                    <p>Un autre agent organise ces visites de votre bien : vous accueillez l'agent et son client sur place.</p>
+                    <ul data-co-brokerage-visit-list></ul>
+                    <template data-co-brokerage-visit-template>
+                        <li>
+                            <p><strong data-co-brokerage-at></strong> · <span data-co-brokerage-type></span>
+                                <span class="status-tag status-tag--info" data-co-brokerage-progress hidden>En cours</span></p>
+                            <p><a data-co-brokerage-listing></a></p>
+                            <p>avec <a data-co-brokerage-agent></a>
+                                <a data-co-brokerage-whatsapp rel="noopener" target="_blank">WhatsApp</a></p>
                         </li>
                     </template>
                 </section>
@@ -379,6 +404,10 @@
                                     <p class="visit-detail__when">
                                         <span class="visit-detail__icon" data-visit-icon aria-hidden="true"></span>
                                         <span><strong data-visit-kind></strong> · <span data-visit-when></span></span>
+                                    </p>
+                                    <p class="visit-detail__agent" hidden data-visit-agent>
+                                        <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false"><circle cx="10" cy="6.5" r="3.25"/><path d="M4 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" stroke-linecap="round"/></svg>
+                                        <a data-visit-agent-link><span data-visit-agent-name></span></a>
                                     </p>
                                     <p class="visit-detail__timer" data-visit-timer hidden>
                                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
