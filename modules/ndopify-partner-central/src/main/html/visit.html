@@ -38,8 +38,8 @@
       - REQUESTED ("À confirmer"): the client's slot and note. "Confirmer la visite": a day (the 7 days starting
         tomorrow) and a time (08h00–20h00, every 30 min), prefilled with the client's slot; any slot of the lists is
         valid; and the type ("Sur place" / "Vidéo WhatsApp", prefilled with the client's), which the agent may change. Confirmed, the visit is CONFIRMED at once: the client is e-mailed the date, the address and the code.
-        "Refuser la demande" (a reason, optional): the client is told by e-mail. Not confirmed within 48 h, the
-        request expires.
+        "Refuser la demande" (a reason, optional): the client is told by e-mail. Not confirmed before the requested
+        slot, the request expires.
       - CONFIRMED ("Confirmée"), before the check-in window: the slot, the address and its map; the client gives the
         agent a 4-digit code on the day: they start the visit (a video one: "À l'heure prévue, appelez le client en
         vidéo sur WhatsApp depuis le bien."). "Annuler la visite": the client is told by e-mail.
@@ -59,7 +59,7 @@
       - COMPLETED ("Terminée"): start, end, duration, distance, the agent's report, and the client's answer once
         given (intéressé, or pas intéressé and why) or "Le client n'a pas encore répondu".
       - CANCELLED (by the client or the agent, from REQUESTED or CONFIRMED, before the check-in), EXPIRED (only: not
-        confirmed within 48 h), NO_SHOW (the client absent or refusing the code; the agent not starting it within
+        confirmed in time), NO_SHOW (the client absent or refusing the code; the agent not starting it within
         4 h: counted as the agent's absence): what happened, with the slot.
     PROTOTYPE: ?id= one of visit.js's VISITS (dates relative to the page load), 7001 by default: 7001, 7002 À
     confirmer · 7003 Confirmée at another time than asked · 7004, 7005 Confirmée · 7006 À démarrer, before the time · 7007 À démarrer,
@@ -160,7 +160,7 @@
                     <p class="visit-deadline">
                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                         <span>À confirmer avant le <strong data-v="expiresAt">mer. 4 novembre 2026 à 08h00</strong>
-                            (<span data-v="expiresIn">dans 42 h</span>) : sans réponse sous 48 h, la demande expire.</span>
+                            (<span data-v="expiresIn">dans 42 h</span>) : sans réponse d'ici là, la demande expire.</span>
                     </p>
 
                     <form class="form visit-form" method="post" novalidate data-schedule-form>

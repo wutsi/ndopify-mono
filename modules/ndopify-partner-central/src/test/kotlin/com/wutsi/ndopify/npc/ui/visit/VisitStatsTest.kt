@@ -51,7 +51,25 @@ class VisitStatsTest {
 
     @Test
     fun `stale requested`() {
-        assertEquals("Aucune visite", of(requested().copy(createdAt = date("2026-11-03T09:00:00Z")))?.label)
+        assertEquals(
+            "Aucune visite",
+            of(
+                requested().copy(
+                    createdAt = date("2026-11-03T09:00:00Z"),
+                    requestedAt = date("2026-11-04T09:00:00Z"),
+                ),
+            )?.label,
+        )
+    }
+
+    @Test
+    fun `a request with a far slot is upcoming past the 48 h floor`() {
+        val visit = requested().copy(
+            createdAt = date("2026-11-01T09:00:00Z"),
+            requestedAt = date("2026-11-10T09:00:00Z"),
+        )
+
+        assertEquals("1 visite à venir", of(visit)?.label)
     }
 
     @Test

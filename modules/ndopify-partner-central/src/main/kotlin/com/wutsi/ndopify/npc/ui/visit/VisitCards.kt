@@ -17,8 +17,9 @@ import java.util.Date
 /**
  * Builds the visits' cards after the prototype's `renderVisits` and `fillVisit`: the Espace agent's *Visites* section,
  * and, on a mandate page, the visits attached to the cards of a signed search or of a landlord's published listing.
- * The requests still within their 48 h, soonest expiry first, and the visits to come. A requested visit past its 48 h
- * and a confirmed one past its `+ 4 h` window are dropped even when ndopify-server's job hasn't moved them yet.
+ * The requests still open (48 h floor and requested slot), soonest expiry first, and the visits to come. A requested
+ * visit past its expiry and a confirmed one past its `+ 4 h` window are dropped even when ndopify-server's job hasn't
+ * moved them yet.
  * [listings] and [customers] are secondary: null or a missing entry only leaves that line out.
  */
 object VisitCards {

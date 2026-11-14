@@ -17,7 +17,8 @@ import kotlin.math.roundToInt
  * The visit page's and the Espace agent's cards' rules, after the prototype's `visit.js`: the panel of a visit at a
  * given instant, the server's windows and deadlines, and the wording of each state. The windows mirror
  * ndopify-server's: check-in from `scheduledAt − 1 h` to `scheduledAt + 4 h`, the customer's no-show from
- * `scheduledAt + 15 min`, check-out 10 min after the check-in, a request expiring 48 h after its creation.
+ * `scheduledAt + 15 min`, check-out 10 min after the check-in, a request expiring at the later of 48 h after its
+ * creation and its requested slot.
  */
 object VisitRules {
     /** The visits shown on the Espace agent: every one still to confirm, to come or under way. */
@@ -61,8 +62,9 @@ object VisitRules {
     )
 
     /**
-     * True while the visit is still to confirm, to come or under way; a request past its 48 h or a confirmed visit past
-     * its `+ 4 h` window is stale (ndopify-server's job may not have moved it yet) and isn't open.
+     * True while the visit is still to confirm, to come or under way; a request past its expiry (48 h floor and
+     * requested slot) or a confirmed visit past its `+ 4 h` window is stale (ndopify-server's job may not have moved it
+     * yet) and isn't open.
      */
     fun isOpen(visit: Visit, now: Long): Boolean =
         when (visit.status) {
@@ -123,8 +125,9 @@ object VisitRules {
             else -> "Visite"
         }
 
-    /** A request expires 48 h after its creation. */
-    fun expiresAt(visit: Visit): Long = visit.createdAt.time + EXPIRES_AFTER
+    /** A request expires at the later of 48 h after its creation and its requested slot. */
+    fun expiresAt(visit: Visit): Long =
+        maxOf(visit.createdAt.time + EXPIRES_AFTER, visit.requestedAt?.time ?: Long.MIN_VALUE)
 
     /** The instant the visit is for: its scheduled slot, else when it was asked; null without either. */
     fun timeOf(visit: Visit): Long? = (visit.scheduledAt ?: visit.requestedAt)?.time

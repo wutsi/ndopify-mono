@@ -13,7 +13,7 @@
     var DAY = 24 * HOUR;
 
     // The design's rules.
-    var REQUEST_TTL = 48 * HOUR; // REQUESTED for 48 h → EXPIRED
+    var REQUEST_TTL = 48 * HOUR; // REQUESTED until max(createdAt + 48 h, requestedAt) → EXPIRED
     var CHECK_IN_FROM = -1 * HOUR; // check-in from scheduledAt − 1 h…
     var CHECK_IN_TO = 4 * HOUR; // …to scheduledAt + 4 h
     var NO_SHOW_FROM = 15 * MIN; // customer no-show from scheduledAt + 15 min
@@ -238,7 +238,7 @@
         7014: { mandateId: "218", listingId: "3010", status: "CANCELLED", createdAt: NOW - 4 * DAY,
             scheduledAt: at(1, "10:00"), cancelledBy: "AGENT", cancelledFrom: "CONFIRMED",
             cancelledAt: NOW - DAY, cancellationReason: "Le bailleur n'est pas disponible ce jour-là." },
-        // Not confirmed within 48 h
+        // Not confirmed in time
         7015: { mandateId: "219", listingId: "3002", status: "EXPIRED", createdAt: NOW - 3 * DAY,
             requestedAt: at(-1, "10:00"), expiredAt: NOW - DAY },
         // Cancelled by the client before the agent confirmed it
@@ -350,7 +350,7 @@
     }
 
     function expiresAt(v) {
-        return v.createdAt + REQUEST_TTL;
+        return Math.max(v.createdAt + REQUEST_TTL, v.requestedAt || v.createdAt + REQUEST_TTL);
     }
 
     // The time the visit is for: the agent's slot once scheduled, else the client's.
@@ -1160,7 +1160,7 @@
         }
 
         function renderExpired() {
-            text("expiredText", "Vous n'avez pas confirmé la demande sous 48 h : elle a expiré le " +
+            text("expiredText", "Vous n'avez pas confirmé la demande à temps : elle a expiré le " +
                 formatAt(v.expiredAt) + ". " + v.firstName + " peut en faire une nouvelle.");
             text("plannedAt", formatAt(timeOf(v)));
         }

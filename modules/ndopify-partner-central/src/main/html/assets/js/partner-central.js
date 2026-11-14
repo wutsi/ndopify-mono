@@ -2068,8 +2068,8 @@
             match.agent = p.agent || null;
             match.mandateId = p.mandateId;
             match.client = p.client;
-            // The visit asked on the public portal, with the status it reached on visit.html. Its 48 h window is
-            // relative to now in this prototype.
+            // The visit asked on the public portal, with the status it reached on visit.html. Its deadline follows
+            // the requested slot in this prototype.
             if (match.visit) {
                 match.visit.status = p.visit.status || "REQUESTED";
                 match.visit.id = p.visit.id;

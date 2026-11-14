@@ -513,7 +513,7 @@ class HomeTemplateTest {
         assertEquals("Sandrine Eboa", card.selectFirst("[data-visit-link]")?.text())
         assertEquals("sam. 7 novembre 2026 à 10:30", card.selectFirst("[data-visit-when]")?.text())
         assertEquals("Sur place · Appartement 3 chambres · Bonapriso", card.selectFirst("[data-visit-listing]")?.text())
-        assertEquals("42 h", card.selectFirst("[data-visit-left]")?.text())
+        assertEquals("47 h", card.selectFirst("[data-visit-left]")?.text())
         assertNull(card.selectFirst("[data-visit-next]"))
 
         val upcoming = page.selectFirst("[data-visit-group=upcoming]")!!

@@ -45,7 +45,7 @@ class VisitViewsTest {
         assertEquals("Annonce n° 3012 · 240K\u00a0FCFA / mois", page.listingMeta)
         assertEquals("sam. 7 novembre 2026 à 10:30", page.requestedAt)
         assertEquals("Je viendrai avec mon mari.", page.note)
-        assertEquals("42 h", page.expiresIn)
+        assertEquals("47 h", page.expiresIn)
         assertTrue(page.canCancel)
         assertFalse(page.canCheckIn)
         assertEquals("2026-11-07", page.selectedDay)
@@ -167,7 +167,7 @@ class VisitViewsTest {
 
         assertEquals(VisitRules.Panel.EXPIRED, page.panel)
         assertEquals(
-            "Vous n'avez pas confirmé la demande sous 48 h : elle a expiré le sam. 7 novembre 2026 à 05:00. " +
+            "Vous n'avez pas confirmé la demande à temps : elle a expiré le sam. 7 novembre 2026 à 10:30. " +
                 "Sandrine peut en faire une nouvelle.",
             page.expiredText,
         )
