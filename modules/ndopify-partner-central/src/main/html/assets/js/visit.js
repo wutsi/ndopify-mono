@@ -187,7 +187,7 @@
         7001: { matchId: "9001", mandateId: "204", listingId: "3012", status: "REQUESTED", createdAt: NOW - 6 * HOUR,
             requestedAt: at(5, "10:30"),
             note: "Je viendrai avec mon mari. Le matin nous arrange, mais nous pouvons nous adapter." },
-        // À confirmer, expiring in 8 h (its requested time is off the allowed half-hour slots)
+        // À confirmer, urgent (its requested time is off the allowed half-hour slots)
         7002: { mandateId: "208", listingId: "3002", status: "REQUESTED", createdAt: NOW - 40 * HOUR,
             requestedAt: at(0, "18:10") },
         // Confirmed 2 h ago at another time than the client asked
