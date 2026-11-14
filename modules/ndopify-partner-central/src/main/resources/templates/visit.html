@@ -137,7 +137,7 @@
                     <p class="visit-deadline">
                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                         <span>À confirmer avant le <strong th:text="${p.expiresAt}">mer. 4 novembre 2026 à 08:00</strong>
-                            (<span th:text="${p.expiresIn}">42 h</span>) : sans réponse sous 48 h, la demande expire.</span>
+                            (<span th:text="${p.expiresIn}">42 h</span>) : sans réponse d'ici là, la demande expire.</span>
                     </p>
 
                     <form class="form visit-form" method="post" novalidate data-schedule-form
@@ -488,7 +488,7 @@
                     <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
                     <div>
                         <h2 class="alert__title">Demande expirée</h2>
-                        <p th:text="${p.expiredText}">Vous n'avez pas confirmé la demande sous 48 h.</p>
+                        <p th:text="${p.expiredText}">Vous n'avez pas confirmé la demande à temps.</p>
                         <p>Visite prévue le <span th:text="${p.plannedAt}">sam. 7 novembre 2026 à 10:30</span>.</p>
                     </div>
                 </div>

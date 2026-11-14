@@ -101,7 +101,7 @@ ndopify:
 
     visit:
         expire:
-            cron: "0 0 */1 * * ?"      # Every hour: visit requests the agent didn't schedule in 48 h
+            cron: "0 0 */1 * * ?"      # Every hour: visit requests not scheduled, 48 h old and past their requested slot
         reminder:
             cron: "0 15 */1 * * ?"     # Every hour at 15 minutes: confirmed visits starting within 24 h
         no-show:

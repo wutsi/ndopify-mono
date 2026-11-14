@@ -33,6 +33,7 @@ class MandateStatsService(
             VisitStatus.CHECKED_IN,
             Date(now - policy.expireAfter.toMillis()),
             Date(now - policy.checkInAfter.toMillis()),
+            Date(now),
         ).associate { it.mandateId to it.total }
         val completed = visitDao.countByMandateIdsAndStatus(ids, VisitStatus.COMPLETED)
             .associate { it.mandateId to it.total }

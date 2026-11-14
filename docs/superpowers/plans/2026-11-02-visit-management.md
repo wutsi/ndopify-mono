@@ -25,8 +25,9 @@ The customer uses the public portal (ndopify-web, `/visits/{id}?token=`), and th
 REQUESTED ─schedule─▶ CONFIRMED ─check-in (code)─▶ CHECKED_IN ─check-out─▶ COMPLETED
     │                    │
     ├▶ CANCELLED         ├▶ CANCELLED
-    └▶ EXPIRED (not      ├▶ NO_SHOW (customer: absent / refused the code)
-       scheduled in 48 h)└▶ NO_SHOW (agent: no check-in 4 h after the time)
+    └▶ EXPIRED           ├▶ NO_SHOW (customer: absent / refused the code)
+       (48 h old and     └▶ NO_SHOW (agent: no check-in 4 h after the time)
+        past the slot)
 ```
 
 ### Rules
@@ -38,7 +39,7 @@ REQUESTED ─schedule─▶ CONFIRMED ─check-in (code)─▶ CHECKED_IN ─che
 | Requested slot | `requestedAt`: a date and time on one of the 7 days starting tomorrow, 08:00–20:00 in the tenant's `timeZone`, on a 30-minute boundary. An optional `note` (≤ 500). |
 | Who schedules / checks in / checks out | The mandate's agent (`match.agentId`). Schedule is also open to an admin; check-in, no-show and check-out never are. |
 | Schedule | `scheduledAt` and `type` (each may differ from the request; `VIDEO` needs the customer's `whatsappNumber`), same slot rules, checked against the time of the schedule → `CONFIRMED`, the code generated. |
-| Not scheduled | `REQUESTED` for 48 h → `EXPIRED` (job). |
+| Not scheduled | `REQUESTED` at least 48 h old **and** past `requestedAt` → `EXPIRED` (job). |
 | Visit code | 4 digits (`SecureRandom`), generated on `CONFIRMED`, stored, returned **only** to the visit's customer (`Visit.code` is null for anyone else, incl. the agent and admins). |
 | Check-in | `CONFIRMED`, from `scheduledAt` − 1 h to `scheduledAt` + 4 h. The agent enters the code (`VIDEO`: the customer reads it out during the call). A wrong code is 409 `VISIT_CODE_INVALID`, `codeAttempts` + 1; at 5 attempts, 409 `VISIT_CODE_LOCKED` for good (the agent marks a no-show or contacts support). The position is optional (no JS, no GPS): its distance to the listing's position is stored (`checkInDistanceMeters`), never refused. Over 300 m it's flagged (`checkInFlagged`). |
 | Customer no-show | `POST /no-show` by the agent, `CONFIRMED`, from `scheduledAt` + 15 min to + 4 h, reason `CUSTOMER_ABSENT` (`VIDEO`: doesn't answer the call) or `CODE_REFUSED`, position as check-in. |
@@ -210,7 +211,7 @@ haversine); `event/VisitCompletedEvent.kt`, `VisitNoShowEvent.kt`; `mail/VisitCo
 
 ### Task 7: Jobs: expiry, reminder, agent no-show
 
-**Files:** `visit/server/job/VisitJobs.kt` (`expire`, hourly: REQUESTED older than 48 h → EXPIRED; `remind`, every
+**Files:** `visit/server/job/VisitJobs.kt` (`expire`, hourly: REQUESTED at least 48 h old and past its requested slot → EXPIRED; `remind`, every
 15 min: CONFIRMED with `scheduledAt` within 24 h and `reminderSentAt` null; `noShow`, hourly: CONFIRMED 4 h past
 `scheduledAt` → NO_SHOW AGENT); `VisitService.expireDue`, `remindDue`, `markAgentNoShows`; `VisitReminderMailet.kt`,
 `VisitExpiredMailet.kt` + templates; `ndopify.visit.*` in `application.yml` (`-` cron in `application-qa.yml`).

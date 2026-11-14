@@ -403,9 +403,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   after-commit listener that cancels the mandate's `REQUESTED`/`CONFIRMED` visits (search side and listing side) as
   `SYSTEM` with no mandate reason; `CHECKED_IN` stays. A failed async cancellation never fails the closing:
   `VisitJobs.cancelEndedMandates` sweeps the open visits of ended mandates hourly (100/tenant/run, first run back-fills
-  and e-mails). B never learns A's customer. `VisitJobs`: `expire` hourly moves a `REQUESTED` visit older than
-  48 h to
-  `EXPIRED`, `reminder` every 15 min e-mails both sides 24 h ahead (once), `noShow` hourly marks the `CONFIRMED` visits
+  and e-mails). B never learns A's customer. `VisitJobs`: `expire` hourly moves a `REQUESTED` visit at least
+  48 h old and past its requested slot to `EXPIRED`, `reminder` every 15 min e-mails both sides 24 h ahead (once),
+  `noShow` hourly marks the `CONFIRMED` visits
   whose agent didn't check in 4 h after the time as `NO_SHOW` (both sides e-mailed). The delays and tolerances above are
   `ndopify.visit.policy.*` (overridable); the job crons are `ndopify.visit.*`. Tenant-scoped.
 - **error** — shared exception types (`WutsiException` subclasses: `BadRequestException`, `NotFoundException`,

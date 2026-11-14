@@ -18,7 +18,7 @@ class MandateStatsEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(listOf(1L, 3L), stats.map { it.mandateId })
         assertEquals(listOf(4, 0), stats.map { it.properties })
         assertEquals(listOf(1, 0), stats.map { it.interested })
-        assertEquals(listOf(3, 0), stats.map { it.upcomingVisits })
+        assertEquals(listOf(3, 1), stats.map { it.upcomingVisits })
         assertEquals(listOf(1, 1), stats.map { it.completedVisits })
     }
 

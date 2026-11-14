@@ -41,7 +41,7 @@ class VisitCardsTest {
         assertNull(card.tag)
         assertEquals("sam. 7 novembre 2026 à 10:30", card.whenLabel)
         assertEquals("Sur place · Appartement 3 chambres · Bonapriso", card.listing)
-        assertEquals("42 h", card.expiresIn)
+        assertEquals("47 h", card.expiresIn)
         assertFalse(card.urgent)
         assertTrue(cards.upcoming.isEmpty())
         assertFalse(cards.unavailable)
@@ -49,12 +49,31 @@ class VisitCardsTest {
 
     @Test
     fun `requested - urgent`() {
-        val visit = summary(requested().copy(createdAt = date("2026-11-03T20:00:00Z")))
+        val visit = summary(
+            requested().copy(
+                createdAt = date("2026-11-03T20:00:00Z"),
+                requestedAt = date("2026-11-05T20:00:00Z"),
+            ),
+        )
 
         val card = of(listOf(visit)).requested.single()
 
         assertTrue(card.urgent)
         assertEquals("10 h", card.expiresIn)
+    }
+
+    @Test
+    fun `requested - a far slot stays open past the 48 h floor`() {
+        val visit = summary(
+            requested().copy(
+                createdAt = date("2026-11-01T09:00:00Z"),
+                requestedAt = date("2026-11-10T09:00:00Z"),
+            ),
+        )
+
+        val card = of(listOf(visit)).requested.single()
+
+        assertEquals("119 h", card.expiresIn)
     }
 
     @Test
@@ -86,7 +105,12 @@ class VisitCardsTest {
 
     @Test
     fun `stale requested and confirmed are dropped`() {
-        val staleRequest = summary(requested().copy(createdAt = date("2026-11-03T09:00:00Z")))
+        val staleRequest = summary(
+            requested().copy(
+                createdAt = date("2026-11-03T09:00:00Z"),
+                requestedAt = date("2026-11-04T09:00:00Z"),
+            ),
+        )
         val staleConfirmed = summary(confirmed().copy(scheduledAt = date("2026-11-05T05:00:00Z")))
 
         val cards = of(listOf(staleRequest, staleConfirmed))

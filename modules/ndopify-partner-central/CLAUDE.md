@@ -301,7 +301,8 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
 - The Espace agent's *Visites* section (`HomeController`, `ui/visit/`) lists the agent's open visits:
   `GET /v1/visits?agent-id=&status=REQUESTED&status=CONFIRMED&status=CHECKED_IN` (`NdVisitClient.search`,
   `VisitRules.OPEN`), their listings in one `GET /v1/listings?id=` and their customers in one `GET /v1/customers?id=`,
-  into `VisitCards` → `VisitCardsView`: requested by expiry (soonest first, a request past its 48 h dropped) and
+  into `VisitCards` → `VisitCardsView`: requested by expiry (soonest first, a request past
+  `max(createdAt + 48 h, requestedAt)` dropped) and
   upcoming by scheduled time (a confirmed visit past its `+ 4 h` window dropped). The search failing is the section's
   "unavailable"; a missing listing or customer only leaves its line out. The home page confirms a requested visit
   inline: `VisitCardView` carries the slot lists and the requested slot, `POST /visits/{id}/schedule` with
@@ -318,7 +319,8 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   code, and the API exposes neither the code attempts nor the no-show position, so `VISIT_CODE_LOCKED` is kept in the
   session (`npc.visit.code-locked.<id>`) to hide the check-in form for this agent. Slots are the 7 days starting
   tomorrow, 08:00–20:00 every 30 min in the tenant's time zone (`VisitSlots`), and the server's windows are mirrored
-  (check-in `scheduledAt − 1 h` → `+ 4 h`, no-show from `+ 15 min`, check-out from `+ 10 min`, expiry at 48 h). Actions
+  (check-in `scheduledAt − 1 h` → `+ 4 h`, no-show from `+ 15 min`, check-out from `+ 10 min`, expiry at
+  `max(createdAt + 48 h, requestedAt)`). Actions
   are post-redirect-get back to `/visits/{id}` with the `visitOutcome` flash, worded by the controller; 403/404/409 and
   an action whose visit moved on are `changed` without a call. The page is behind the default authentication rule (no
   security matcher). `public/assets/js/visit.js` only enhances (flash focus, digits-only code, type hint, comment

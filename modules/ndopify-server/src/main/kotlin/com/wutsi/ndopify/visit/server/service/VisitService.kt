@@ -392,13 +392,17 @@ class VisitService(
     }
 
     /**
-     * Expires the REQUESTED visits older than [VisitPolicyProperties.expireAfter], each in its own transaction: a visit
-     * scheduled meanwhile fails on its `@Version` and is skipped. E-mails both sides after commit. Returns how many
-     * expired.
+     * Expires the REQUESTED visits at least [VisitPolicyProperties.expireAfter] old **and** whose requested slot passed,
+     * each in its own transaction: a visit scheduled meanwhile fails on its `@Version` and is skipped. E-mails both
+     * sides after commit. Returns how many expired.
      */
     fun expireDue(): Int {
-        val before = Date(clock.millis() - policy.expireAfter.toMillis())
-        val due = dao.findByStatusAndCreatedAtBefore(VisitStatus.REQUESTED, before)
+        val now = clock.millis()
+        val due = dao.findByStatusAndCreatedAtBeforeAndRequestedAtBefore(
+            VisitStatus.REQUESTED,
+            Date(now - policy.expireAfter.toMillis()),
+            Date(now),
+        )
         return due.count { visit ->
             update(visit) { current ->
                 val saved = dao.save(current.copy(status = VisitStatus.EXPIRED))

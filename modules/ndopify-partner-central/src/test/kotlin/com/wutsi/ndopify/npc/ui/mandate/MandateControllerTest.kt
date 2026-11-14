@@ -745,6 +745,7 @@ class MandateControllerTest {
                     mandateId = 201,
                     matchId = 9001,
                     createdAt = VisitFixtures.date("2026-10-15T10:00:00Z"),
+                    requestedAt = VisitFixtures.date("2026-10-10T10:00:00Z"),
                 ),
             ),
         )

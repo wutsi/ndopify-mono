@@ -154,7 +154,7 @@ object MatchPages {
     /** The outcome of a visit request, from its redirect's `visit` parameter; "requested" only with an open visit. */
     private fun visitFlash(visit: String?, panel: VisitPanel?): String? = when (visit) {
         "requested" -> if (panel?.open != null) {
-            "Votre demande de visite est envoyée. L'agent vous confirme la date par e-mail sous 48 h."
+            "Votre demande de visite est envoyée. L'agent vous confirme la date par e-mail."
         } else {
             null
         }

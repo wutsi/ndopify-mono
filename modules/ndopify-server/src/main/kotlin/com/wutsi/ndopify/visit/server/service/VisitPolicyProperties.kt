@@ -17,7 +17,7 @@ data class VisitPolicyProperties(
     val noShowDelay: Duration = Duration.ofMinutes(15),
     /** The minimum length of a visit, before the agent may check out. */
     val checkOutMinimum: Duration = Duration.ofMinutes(10),
-    /** A visit request not scheduled within this delay expires. */
+    /** The minimum delay before a request not scheduled can expire: it expires once also past its requested slot. */
     val expireAfter: Duration = Duration.ofHours(48),
     /** A confirmed visit starting within this delay is reminded. */
     val remindBefore: Duration = Duration.ofHours(24),

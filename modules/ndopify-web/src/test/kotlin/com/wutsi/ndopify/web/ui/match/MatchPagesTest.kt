@@ -338,7 +338,7 @@ class MatchPagesTest {
 
     @Test
     fun `visit flashes`() {
-        assertEquals("Votre demande de visite est envoyée. L'agent vous confirme la date par e-mail sous 48 h.",
+        assertEquals("Votre demande de visite est envoyée. L'agent vous confirme la date par e-mail.",
             page(match = match.copy(status = MatchStatus.ACCEPTED), openVisit = VisitSummary(id = 9), visit = "requested").visitFlash)
         assertEquals("Ce créneau n'est plus disponible. Choisissez-en un autre.", page(visit = "invalid-slot").visitFlash)
         assertEquals("La visite n'a pas pu être demandée. Rechargez la page ou contactez votre agent.", page(visit = "conflict").visitFlash)

@@ -84,12 +84,23 @@ class VisitRulesTest {
     @Test
     fun `expires`() {
         val visit = requested()
-        assertEquals(date("2026-11-07T04:00:00Z").time, VisitRules.expiresAt(visit))
-        assertEquals("42 h", VisitRules.expiresIn(VisitRules.expiresAt(visit) - NOW))
+        assertEquals(date("2026-11-07T09:30:00Z").time, VisitRules.expiresAt(visit))
+        assertEquals("47 h", VisitRules.expiresIn(VisitRules.expiresAt(visit) - NOW))
         assertEquals("45 min", VisitRules.expiresIn(45 * minute))
         assertEquals("1 h", VisitRules.expiresIn(hour))
         assertEquals("1 min", VisitRules.expiresIn(0))
         assertEquals("1 min", VisitRules.expiresIn(-5 * minute))
+    }
+
+    @Test
+    fun `a request expires at its requested slot when it is later than the floor`() {
+        val visit = requested().copy(
+            createdAt = date("2026-11-01T10:00:00Z"),
+            requestedAt = date("2026-11-10T08:00:00Z"),
+        )
+
+        assertEquals(date("2026-11-10T08:00:00Z").time, VisitRules.expiresAt(visit))
+        assertTrue(VisitRules.isOpen(visit, NOW))
     }
 
     @Test
@@ -113,7 +124,15 @@ class VisitRulesTest {
     @Test
     fun `is open`() {
         assertTrue(VisitRules.isOpen(requested(), NOW))
-        assertFalse(VisitRules.isOpen(requested().copy(createdAt = date("2026-10-15T10:00:00Z")), NOW))
+        assertFalse(
+            VisitRules.isOpen(
+                requested().copy(
+                    createdAt = date("2026-10-15T10:00:00Z"),
+                    requestedAt = date("2026-10-16T10:00:00Z"),
+                ),
+                NOW,
+            ),
+        )
 
         val confirmed = confirmed()
         val at = confirmed.scheduledAt!!.time

@@ -424,7 +424,7 @@ class MandateTemplateTest {
         assertNull(card.selectFirst("[data-proposal-tag]"))
         assertEquals("Visite demandée", card.selectFirst("[data-visit-kind]")?.text())
         assertEquals("pour le sam. 7 novembre 2026 à 10:30", card.selectFirst("[data-visit-when]")?.text())
-        assertEquals("Il reste 42 h pour confirmer", card.selectFirst("[data-visit-timer]")?.text())
+        assertEquals("Il reste 47 h pour confirmer", card.selectFirst("[data-visit-timer]")?.text())
         assertEquals("Confirmer la visite", card.selectFirst("[data-visit-link]")?.text())
         assertEquals("/visits/7001", card.selectFirst("[data-visit-link]")?.attr("href"))
         assertEquals("Envoyé le 28 oct. 2026", card.selectFirst("[data-proposal-summary]")?.text())
@@ -433,7 +433,7 @@ class MandateTemplateTest {
         assertNull(page.selectFirst("[data-proposals-in-visit]"))
 
         val pending = page.selectFirst("[data-mandate-pending-visit]")!!
-        assertEquals("1 visite à confirmer · 42 h — Sandrine Eboa", pending.text())
+        assertEquals("1 visite à confirmer · 47 h — Sandrine Eboa", pending.text())
         assertEquals("#proposal-9002", pending.attr("href"))
     }
 
@@ -748,7 +748,7 @@ class MandateTemplateTest {
         assertNull(card.selectFirst("[data-match-tag]"))
         assertEquals("Visite demandée", card.selectFirst("[data-visit-kind]")?.text())
         assertEquals("pour le sam. 7 novembre 2026 à 10:30", card.selectFirst("[data-visit-when]")?.text())
-        assertEquals("Il reste 42 h pour confirmer", card.selectFirst("[data-visit-timer]")?.text())
+        assertEquals("Il reste 47 h pour confirmer", card.selectFirst("[data-visit-timer]")?.text())
         assertEquals("Confirmer la visite", card.selectFirst("[data-visit-link]")?.text())
         assertEquals("/visits/7001", card.selectFirst("[data-visit-link]")?.attr("href"))
         assertEquals("Envoyé le 28 oct. 2026", card.selectFirst("[data-match-answer]")?.text())
@@ -758,7 +758,7 @@ class MandateTemplateTest {
         assertEquals("btn btn--secondary", send.className())
 
         val pending = page.selectFirst("[data-mandate-pending-visit]")!!
-        assertEquals("1 visite à confirmer · 42 h — Appartement · 3 chambres · annonce n° 3012", pending.text())
+        assertEquals("1 visite à confirmer · 47 h — Appartement · 3 chambres · annonce n° 3012", pending.text())
         assertEquals("#match-9001", pending.attr("href"))
 
         assertEquals("À confirmer (1)", page.selectFirst("[data-matches-section] .assignments__group-title")?.text())

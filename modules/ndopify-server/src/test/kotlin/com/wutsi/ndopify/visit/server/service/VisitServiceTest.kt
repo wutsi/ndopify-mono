@@ -167,9 +167,13 @@ class VisitServiceTest {
     }
 
     @Test
-    fun `expire the requests older than 48h`() {
+    fun `expire the requests at least 48h old whose slot passed`() {
         val other = visit.copy(id = 2L)
-        doReturn(listOf(visit, other)).whenever(dao).findByStatusAndCreatedAtBefore(eq(VisitStatus.REQUESTED), any())
+        doReturn(listOf(visit, other)).whenever(dao).findByStatusAndCreatedAtBeforeAndRequestedAtBefore(
+            eq(VisitStatus.REQUESTED),
+            eq(Date.from(Instant.parse("2026-11-29T09:00:00Z"))),
+            eq(Date.from(Instant.parse("2026-12-01T09:00:00Z"))),
+        )
 
         assertEquals(2, service.expireDue())
 
@@ -179,7 +183,11 @@ class VisitServiceTest {
     @Test
     fun `a visit changed meanwhile is skipped when expiring`() {
         val other = visit.copy(id = 2L)
-        doReturn(listOf(visit, other)).whenever(dao).findByStatusAndCreatedAtBefore(eq(VisitStatus.REQUESTED), any())
+        doReturn(listOf(visit, other)).whenever(dao).findByStatusAndCreatedAtBeforeAndRequestedAtBefore(
+            eq(VisitStatus.REQUESTED),
+            any(),
+            any(),
+        )
         doThrow(ObjectOptimisticLockingFailureException(VisitEntity::class.java, 1L))
             .whenever(dao).save(argThat { id == 1L })
 

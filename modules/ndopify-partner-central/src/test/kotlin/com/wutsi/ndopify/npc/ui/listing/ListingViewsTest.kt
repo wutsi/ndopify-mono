@@ -801,7 +801,12 @@ class ListingViewsTest {
 
     @Test
     fun `a stale visit is not attached`() {
-        val view = clients(listOf(visit(createdAt = VisitFixtures.date("2026-10-15T10:00:00Z")))).proposals
+        val view = clients(
+            listOf(
+                visit(createdAt = VisitFixtures.date("2026-10-15T10:00:00Z"))
+                    .copy(requestedAt = VisitFixtures.date("2026-10-10T10:00:00Z")),
+            ),
+        ).proposals
 
         assertTrue(view.rows.all { it.visit == null })
         assertEquals(3, view.rows.size)

@@ -124,7 +124,7 @@ object VisitViews {
             cancellationReason = visit.cancellationReason?.trim()?.ifEmpty { null }?.let { "« $it »" },
             plannedAt = plannedAt,
             expiredText = if (panel == VisitRules.Panel.EXPIRED) {
-                "Vous n'avez pas confirmé la demande sous 48 h : elle a expiré le " +
+                "Vous n'avez pas confirmé la demande à temps : elle a expiré le " +
                     "${date(Date(VisitRules.expiresAt(visit)), tenant, formatter)}. " +
                     "$customerFirstName peut en faire une nouvelle."
             } else {
