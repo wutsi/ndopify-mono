@@ -32,6 +32,7 @@ class SearchMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(listOf(11L, 12L), matches.map { it.id })
         assertEquals(listOf(false, true), matches.map { it.coBrokerage })
         assertEquals(0.99, matches[1].score) // Higher score, but another agent's listing still comes second
+        assertEquals(listOf(20L, 20L), matches.map { it.agentId }) // The search's agent, not listing 109's
     }
 
     @Test
@@ -113,6 +114,7 @@ class SearchMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
         assertEquals(listOf(10L), matches.map { it.id })
         assertEquals(listOf(101L), matches.map { it.listingId })
+        assertEquals(listOf(20L), matches.map { it.agentId })
     }
 
     @Test
