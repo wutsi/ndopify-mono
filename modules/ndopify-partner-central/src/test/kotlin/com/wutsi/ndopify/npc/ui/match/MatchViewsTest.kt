@@ -24,7 +24,8 @@ class MatchViewsTest {
     private fun section(
         matches: List<com.wutsi.ndopify.match.dto.Match> = listOf(MATCH_B, MATCH_A, MATCH_C),
         visits: Map<Long, VisitCardView> = emptyMap(),
-    ) = MatchViews.section(MANDATE, matches, LISTINGS, visits, LOCATIONS, TODAY, FORMATTER)
+        agentNames: Map<Long, String> = emptyMap(),
+    ) = MatchViews.section(MANDATE, matches, LISTINGS, visits, LOCATIONS, TODAY, FORMATTER, agentNames)
 
     private fun visitCard(
         matchId: Long = 9001,
@@ -96,6 +97,30 @@ class MatchViewsTest {
 
         assertTrue(section.matches.first { it.id == 9001L }.coBrokerage)
         assertFalse(section.matches.first { it.id == 9003L }.coBrokerage)
+    }
+
+    @Test
+    fun `co-brokerage card - the listing agent's name`() {
+        val section = section(
+            listOf(MATCH_A.copy(coBrokerage = true)),
+            agentNames = mapOf(20L to "Clarisse Mbarga"),
+        )
+
+        assertEquals("Clarisse Mbarga", section.matches.single().origin)
+    }
+
+    @Test
+    fun `co-brokerage card - generic label without the agent name`() {
+        val section = section(listOf(MATCH_A.copy(coBrokerage = true)))
+
+        assertEquals("Bien d'un autre agent", section.matches.single().origin)
+    }
+
+    @Test
+    fun `own-inventory card - no origin line`() {
+        val section = section(listOf(MATCH_A))
+
+        assertNull(section.matches.single().origin)
     }
 
     @Test
