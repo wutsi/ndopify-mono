@@ -425,23 +425,29 @@
                     (OPEN.indexOf(v.status) !== -1 || v.status === "COMPLETED");
             }).length;
         },
-        // The home header's counts: the visits waiting for an answer, and those of the day.
+        // The home header's counts: the visits waiting for an answer, and those of the day, hosted visits included.
         homeCounts: function () {
             if (new URLSearchParams(window.location.search).get("visits") === "empty") {
-                return { requested: 0, today: 0 };
+                return { requested: 0, today: 0, todayOwn: 0 };
             }
             var now = Date.now();
             var open = allVisits().filter(function (v) {
                 return OPEN.indexOf(v.status) !== -1;
             });
+            var todayOwn = open.filter(function (v) {
+                return v.status === "CHECKED_IN" ||
+                    (v.status === "CONFIRMED" && sameDay(v.scheduledAt, now));
+            }).length;
+            var todayHosted = CO_BROKERAGE_VISITS.filter(function (v) {
+                return v.status === "CHECKED_IN" ||
+                    (v.status === "CONFIRMED" && sameDay(v.at, now));
+            }).length;
             return {
                 requested: open.filter(function (v) {
                     return v.status === "REQUESTED" && expiresAt(v) > now;
                 }).length,
-                today: open.filter(function (v) {
-                    return v.status === "CHECKED_IN" ||
-                        (v.status === "CONFIRMED" && sameDay(v.scheduledAt, now));
-                }).length
+                today: todayOwn + todayHosted,
+                todayOwn: todayOwn
             };
         },
         formatAt: formatAt,

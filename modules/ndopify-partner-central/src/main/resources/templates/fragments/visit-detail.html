@@ -7,7 +7,7 @@
   and "Confirmer la visite"; a confirmed, started or completed one says when and opens the visit.
   v: VisitCardView; label: the card's name, for the link's screen-reader wording.
 */-->
-<div th:fragment="detail(v, label)" class="visit-detail"
+<div th:fragment="detail(v, label, withAgent)" class="visit-detail"
      th:attr="data-state=${v.status.name().toLowerCase()},data-urgent=${v.urgent} ? '' : null">
     <p class="visit-detail__when">
         <span class="visit-detail__icon" aria-hidden="true" th:if="${!v.video}">
@@ -19,7 +19,7 @@
         <span><strong data-visit-kind th:text="${v.kindLabel}">Visite demandée</strong> ·
             <span data-visit-when th:text="${v.whenText}">pour le sam. 7 novembre 2026 à 10:30</span></span>
     </p>
-    <p class="visit-detail__agent" th:if="${v.agentName != null}" data-visit-agent>
+    <p class="visit-detail__agent" th:if="${v.agentName != null and withAgent}" data-visit-agent>
         <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false"><circle cx="10" cy="6.5" r="3.25"/><path d="M4 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" stroke-linecap="round"/></svg>
         <span>Avec</span>
         <a th:if="${v.agentUrl}" th:href="${v.agentUrl}" data-visit-agent-link>

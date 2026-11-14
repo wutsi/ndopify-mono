@@ -297,6 +297,27 @@ class VisitCardsTest {
     }
 
     @Test
+    fun `a readable agent without a name stays unlinked`() {
+        val unnamed = VisitFixtures.OTHER_AGENT.copy(
+            party = VisitFixtures.OTHER_AGENT.party.copy(firstName = " ", lastName = ""),
+        )
+        val cards = VisitCards.of(
+            listOf(summary(VisitFixtures.confirmed())),
+            mapOf(3012L to listingSummary().copy(agentId = VisitFixtures.OTHER_AGENT_ID)),
+            mapOf(300L to customerSummary()),
+            LOCATIONS,
+            VisitFixtures.NOW,
+            VisitFixtures.TENANT,
+            VisitFixtures.FORMATTER,
+            agents = mapOf(VisitFixtures.OTHER_AGENT_ID to unnamed),
+            back = "/#visits-title",
+        )
+
+        assertEquals("un autre agent", cards.upcoming.single().agentName)
+        assertNull(cards.upcoming.single().agentUrl)
+    }
+
+    @Test
     fun `an unreadable listing agent keeps the line as un autre agent`() {
         val cards = VisitCards.of(
             listOf(summary(VisitFixtures.confirmed())),

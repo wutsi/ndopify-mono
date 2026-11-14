@@ -1067,4 +1067,21 @@ class ListingViewsTest {
             ),
         )
     }
+
+    @Test
+    fun `listing labels read a full listing's type, rooms and place`() {
+        assertEquals(
+            "Appartement 2 chambres · Bonapriso",
+            ListingViews.listingLabel(
+                Listing(
+                    id = 501,
+                    cityId = 1000,
+                    neighborhoodId = 1001,
+                    propertyType = PropertyType.APARTMENT,
+                    rooms = 2,
+                ),
+                mapOf(1001L to Location(id = 1001, name = "Bonapriso")),
+            ),
+        )
+    }
 }

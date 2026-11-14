@@ -330,7 +330,7 @@
                                             <span th:unless="${row.agentUrl}" th:text="${row.agentName}">Clarisse Mbarga</span>
                                         </p>
                                         <th:block th:if="${row.visit != null}">
-                                            <div th:replace="~{fragments/visit-detail :: detail(${row.visit}, ${row.client})}"></div>
+                                            <div th:replace="~{fragments/visit-detail :: detail(${row.visit}, ${row.client}, ${row.agentName == null})}"></div>
                                         </th:block>
                                         <p class="proposal-card__meta" th:if="${!#strings.isEmpty(row.sent)}"
                                            th:text="${row.sent}" data-proposal-summary>Envoyé le 28 oct. 2026</p>
@@ -437,7 +437,7 @@
                                                th:text="${match.visit != null ? match.sent : match.answer}"
                                                data-match-answer>Envoyé le 28 octobre 2026</p>
                                             <th:block th:if="${match.visit != null}">
-                                                <div th:replace="~{fragments/visit-detail :: detail(${match.visit}, ${match.title + ' · annonce n° ' + match.listingId})}"></div>
+                                                <div th:replace="~{fragments/visit-detail :: detail(${match.visit}, ${match.title + ' · annonce n° ' + match.listingId}, ${match.origin == null})}"></div>
                                             </th:block>
                                             <details class="assignment__details">
                                                 <summary>Pourquoi ce bien&nbsp;?</summary>

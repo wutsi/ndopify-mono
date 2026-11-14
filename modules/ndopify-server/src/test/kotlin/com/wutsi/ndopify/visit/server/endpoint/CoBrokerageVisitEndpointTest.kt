@@ -86,6 +86,14 @@ class CoBrokerageVisitEndpointTest : AuthorizationAwareEndpointIntegrationTest()
     }
 
     @Test
+    fun `a blank listing id is 400`() {
+        val response = rest.getForEntity("/v1/visits/co-brokerage?listing-id=", ErrorResponse::class.java)
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
+    }
+
+    @Test
     fun `no listing id answers the caller's co-brokerage visits across its listings`() {
         val response = rest.getForEntity("/v1/visits/co-brokerage", SearchCoBrokerageVisitResponse::class.java)
 
@@ -140,6 +148,16 @@ class CoBrokerageVisitEndpointTest : AuthorizationAwareEndpointIntegrationTest()
         assertEquals(
             HttpStatus.UNAUTHORIZED,
             rest.getForEntity("/v1/visits/co-brokerage?listing-id=101", Any::class.java).statusCode,
+        )
+    }
+
+    @Test
+    fun `anonymous - no listing id`() {
+        anonymousUser = true
+
+        assertEquals(
+            HttpStatus.UNAUTHORIZED,
+            rest.getForEntity("/v1/visits/co-brokerage", Any::class.java).statusCode,
         )
     }
 }

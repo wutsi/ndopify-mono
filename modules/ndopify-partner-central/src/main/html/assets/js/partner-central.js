@@ -1185,10 +1185,17 @@
             return item.hasAttribute("data-urgent");
         }).length;
         var visits = window.NpcVisits && window.NpcVisits.homeCounts
-            ? window.NpcVisits.homeCounts() : { requested: 0, today: 0 };
+            ? window.NpcVisits.homeCounts() : { requested: 0, today: 0, todayOwn: 0 };
         setHomeCount("offers", offers.length, "mandat à traiter", "mandats à traiter", urgent);
         setHomeCount("requested", visits.requested, "visite à confirmer", "visites à confirmer", 0);
         setHomeCount("today", visits.today, "visite aujourd'hui", "visites aujourd'hui", 0);
+        // An agent whose only visit today is hosted lands on the hosted block, not on an empty Visites one.
+        var todayItem = $('[data-home-count="today"]');
+        var todayLink = todayItem ? $("a", todayItem) : null;
+        if (todayLink) {
+            todayLink.setAttribute("href",
+                visits.todayOwn > 0 ? "#visits-title" : "#co-brokerage-visits-title");
+        }
         $("[data-home-counts]").hidden = offers.length + visits.requested + visits.today === 0;
     }
 

@@ -27,6 +27,7 @@ import com.wutsi.ndopify.npc.ui.mandate.MandateRules
 import com.wutsi.ndopify.npc.ui.mandate.MandateSummaries
 import com.wutsi.ndopify.npc.ui.match.MatchRules
 import com.wutsi.ndopify.npc.ui.profile.ProfileRules
+import com.wutsi.ndopify.npc.ui.visit.VisitAgents
 import com.wutsi.ndopify.npc.ui.visit.VisitCards
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
 import com.wutsi.ndopify.npc.ui.visit.VisitSlots
@@ -206,13 +207,17 @@ class HomeController(
             model.addAttribute("offerCount", assignments?.size ?: 0)
             model.addAttribute("urgentOfferCount", assignments?.count { it.urgent } ?: 0)
             model.addAttribute("requestedCount", visitsView.requested.size)
+            val todayOwnCount = visitsView.upcoming.count { card ->
+                card.at?.let { VisitSlots.localDate(Date(it), tenant) == today } == true
+            }
+            val todayHostedCount = coBrokerage.orEmpty().count { visit ->
+                visit.scheduledAt?.let { VisitSlots.localDate(it, tenant) == today } == true
+            }
+            model.addAttribute("todayCount", todayOwnCount + todayHostedCount)
+            // An agent whose only visit today is hosted lands on the hosted block, not on an empty *Visites* one.
             model.addAttribute(
-                "todayCount",
-                visitsView.upcoming.count { card ->
-                    card.at?.let { VisitSlots.localDate(Date(it), tenant) == today } == true
-                } + coBrokerage.orEmpty().count { visit ->
-                    visit.scheduledAt?.let { VisitSlots.localDate(it, tenant) == today } == true
-                },
+                "todayHref",
+                if (todayOwnCount > 0 || todayHostedCount == 0) "/#visits-title" else "/#co-brokerage-visits-title",
             )
         }
         return VIEW
@@ -337,31 +342,7 @@ class HomeController(
         agent: Agent,
         visits: List<VisitSummary>?,
         listings: Map<Long, ListingSummary>?,
-    ): Map<Long, Agent> {
-        val ids = visits.orEmpty()
-            .mapNotNull { listings?.get(it.listingId) }
-            .filter { it.agentId > 0 && it.agentId != agent.id }
-            .map { it.agentId }
-            .distinct()
-        val calls = ids.associateWith { id ->
-            parallel.async {
-                try {
-                    agentClient.get(id)
-                } catch (ex: RestClientException) {
-                    LOGGER.warn("No agent $id for a visit: ${ex.message}")
-                    null
-                }
-            }
-        }
-        return calls.mapNotNull { (id, call) ->
-            val found = try {
-                call.join()
-            } catch (ex: Exception) {
-                null
-            }
-            found?.let { id to it }
-        }.toMap()
-    }
+    ): Map<Long, Agent> = VisitAgents.ofVisits(agentClient, parallel, agent, visits, listings)
 
     /** The caller's co-brokerage visits; null when they can't be read (the block is left out). */
     private fun loadCoBrokerage(): List<CoBrokerageVisitSummary>? =
@@ -386,27 +367,8 @@ class HomeController(
         }
 
     /** The agents of the co-brokerage visits, by id, read in parallel; an unreadable one is left out. */
-    private fun loadCoBrokerageAgents(visits: List<CoBrokerageVisitSummary>?): Map<Long, Agent> {
-        val ids = visits.orEmpty().map { it.agentId }.filter { it > 0 }.distinct()
-        val calls = ids.associateWith { id ->
-            parallel.async {
-                try {
-                    agentClient.get(id)
-                } catch (ex: RestClientException) {
-                    LOGGER.warn("No agent $id for a co-brokerage visit: ${ex.message}")
-                    null
-                }
-            }
-        }
-        return calls.mapNotNull { (id, call) ->
-            val found = try {
-                call.join()
-            } catch (ex: Exception) {
-                null
-            }
-            found?.let { id to it }
-        }.toMap()
-    }
+    private fun loadCoBrokerageAgents(visits: List<CoBrokerageVisitSummary>?): Map<Long, Agent> =
+        VisitAgents.ofCoBrokerage(agentClient, parallel, visits)
 
     /**
      * The mandates' customers by id, in one search, for the cards' titles; empty when there are none or they can't be

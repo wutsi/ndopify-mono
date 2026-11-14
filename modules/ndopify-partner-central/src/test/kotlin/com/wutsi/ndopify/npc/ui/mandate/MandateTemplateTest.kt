@@ -1006,6 +1006,8 @@ class MandateTemplateTest {
 
         assertNull(card.selectFirst("[data-match-tag]"))
         assertEquals("Clarisse Mbarga", card.selectFirst("[data-match-origin]")?.text())
+        // The origin line already names the agent: the visit does not repeat it.
+        assertNull(card.selectFirst("[data-visit-agent]"))
     }
 
     @Test

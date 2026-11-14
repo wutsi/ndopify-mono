@@ -249,6 +249,7 @@ class HomeControllerTest {
         assertEquals(1, model(result)["urgentOfferCount"])
         assertEquals(1, model(result)["requestedCount"])
         assertEquals(1, model(result)["todayCount"])
+        assertEquals("/#visits-title", model(result)["todayHref"])
         assertEquals("jeudi 5 novembre", model(result)["todayLabel"])
     }
 
@@ -650,6 +651,25 @@ class HomeControllerTest {
         assertEquals(false, visit.video)
         assertEquals("Appartement 3 chambres · Bonapriso", visit.listingTitle)
         assertEquals(1, model(result)["todayCount"])
+        assertEquals(0, model(result)["requestedCount"])
+        assertEquals("/#co-brokerage-visits-title", model(result)["todayHref"])
+    }
+
+    @Test
+    fun `an own visit today keeps the today link on the Visites section`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        doReturn(listOf(VisitFixtures.summary(VisitFixtures.window())))
+            .whenever(visitClient).search(AGENT.id, VisitRules.OPEN)
+        doReturn(listOf(hostedVisit())).whenever(visitClient).coBrokerage()
+        doReturn(listOf(VisitFixtures.listingSummary())).whenever(listingClient).searchByIds(listOf(3012L))
+        doReturn(listOf(VisitFixtures.listingSummary().copy(id = 501)))
+            .whenever(listingClient).searchByIds(listOf(501L))
+        doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        assertEquals(2, model(result)["todayCount"])
+        assertEquals("/#visits-title", model(result)["todayHref"])
     }
 
     @Test

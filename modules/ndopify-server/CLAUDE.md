@@ -397,7 +397,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   agent (`agentId != listing.agent.id`), as `CoBrokerageVisitSummary` (no customer, note, code, address, report or
   feedback), to the listing's agent only. Without `listing-id`, the same endpoint returns the caller agent's
   `CONFIRMED`/`CHECKED_IN` co-brokerage visits across all its `PUBLISHED`/`RENTED`/`SOLD` listings, soonest first (a
-  caller without an agent is 403 `VISIT_ACCESS_DENIED`); the payload is the same and never A's customer. `CoBrokerageVisitMailet` mails B on confirmation, the 24 h reminder,
+  caller without an agent is 403 `VISIT_ACCESS_DENIED`); a present but blank or non-positive `listing-id` is 400
+  `HTTP_INVALID_PARAMETER`, never the agent-wide list; the payload is the same and never A's customer. `CoBrokerageVisitMailet` mails B on confirmation, the 24 h reminder,
   a cancellation after confirmation (only while the listing's mandate is still live: B is not re-mailed a cancellation
   B caused by ending the listing mandate) and a customer-caused no-show; never on
   `REQUESTED`/`EXPIRED`/`COMPLETED`/agent no-show or an own-inventory visit. `MandateClosedEvent` now also reaches

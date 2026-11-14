@@ -40,10 +40,12 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import com.wutsi.ndopify.npc.ui.visit.PendingVisit
 import com.wutsi.ndopify.npc.ui.visit.PendingVisitCandidate
 import com.wutsi.ndopify.npc.ui.visit.PendingVisitView
+import com.wutsi.ndopify.npc.ui.visit.VisitAgents
 import com.wutsi.ndopify.npc.ui.visit.VisitCards
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
 import com.wutsi.ndopify.npc.ui.visit.VisitStats
 import com.wutsi.ndopify.refdata.dto.Location
+import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
 import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.web.core.service.TenantContext
 import com.wutsi.ndopify.web.core.service.TenantFormatter
@@ -154,6 +156,9 @@ class MandateController(
 
         // Not a reason the agent can choose: UNKNOWN is no answer, EXPIRED is the server's own.
         private val CANCELLATION_CODES = MandateRules.CANCELLATION_LABELS.keys
+
+        // The listings that still host visits: their owner sees *Visites d'autres agents*.
+        private val HOSTED_STATUSES = setOf(ListingStatus.PUBLISHED, ListingStatus.RENTED, ListingStatus.SOLD)
     }
 
     private val sector = SectorValidator(locationClient, tenantContext)
@@ -345,7 +350,7 @@ class MandateController(
         val visitListings = visits
             ?.filter { VisitRules.isOpen(VisitRules.asVisit(it), now) }
             ?.let { loadVisitListings(mandate, it) }
-        val visitAgents = visitAgents(agent, visits, visitListings)
+        val visitAgents = VisitAgents.ofVisits(agentClient, parallel, agent, visits, visitListings)
         val visitStats = if (matched) VisitStats.of(visits, now) else null
         val listings = matches?.let { listings(mandate, it) }
         val agentNames = if (matches != null && listings != null) {
@@ -353,7 +358,24 @@ class MandateController(
         } else {
             emptyMap()
         }
-        val locations = locations(mandate, listings?.values.orEmpty() + visitListings?.values.orEmpty())
+        val listingId = listingId(mandate)
+        val listing = listingId?.let { listing(mandate, it) }
+        // The hosted visits read starts here, before the page's other secondary reads, and is joined at the end.
+        val hostedVisits = listing
+            ?.takeIf { it.status in HOSTED_STATUSES }
+            ?.let { hosted ->
+                parallel.async {
+                    lookup("co-brokerage visits of listing ${hosted.id}") {
+                        visitClient.coBrokerageOnListing(hosted.id)
+                    }
+                }
+            }
+        // One lookup for the whole page, the listing's place included: the hosted block reuses it.
+        val locations = locations(
+            mandate,
+            listing,
+            listings?.values.orEmpty() + visitListings?.values.orEmpty(),
+        )
         val view = view(mandate, locations)
         model.addAttribute("mandate", view)
         model.addAttribute(
@@ -401,13 +423,17 @@ class MandateController(
         model.addAttribute("form", form)
         model.addAttribute("errors", errors)
         model.addAttribute("currency", formatter().currency())
-        val listingId = listingId(mandate)
-        val listing = listingId?.let { listing(mandate, it) }
         val clients = listing?.let { listingClients(agent, it) }
-        val coBrokerage = listing
-            ?.takeIf { it.status in setOf(ListingStatus.PUBLISHED, ListingStatus.RENTED, ListingStatus.SOLD) }
-            ?.let { coBrokerageVisits(mandate, it) }
-            .orEmpty()
+        val coBrokerage = if (hostedVisits != null && listing != null) {
+            val hosted = try {
+                hostedVisits.join()
+            } catch (ex: Exception) {
+                null
+            }
+            coBrokerageVisits(mandate, listing, hosted.orEmpty(), locations)
+        } else {
+            emptyList()
+        }
         val listingStats = clients?.let {
             ListingStatsView(MatchRules.interest(it.interested), it.stats ?: visitStats)
         }
@@ -526,33 +552,6 @@ class MandateController(
                 listingClient.searchByIds(visits.map { it.listingId }.distinct()).associateBy { it.id }
             }
         }
-
-    /**
-     * The listing agents of the co-brokerage visits, by id, read in parallel; the signed-in agent and unreadable ids
-     * are left out.
-     */
-    private fun visitAgents(
-        agent: Agent,
-        visits: List<VisitSummary>?,
-        listings: Map<Long, ListingSummary>?,
-    ): Map<Long, Agent> {
-        val ids = visits.orEmpty()
-            .mapNotNull { listings?.get(it.listingId) }
-            .filter { it.agentId > 0 && it.agentId != agent.id }
-            .map { it.agentId }
-            .distinct()
-        val calls = ids.associateWith { id ->
-            parallel.async { lookup("agent $id") { agentClient.get(id) } }
-        }
-        return calls.mapNotNull { (id, call) ->
-            val found = try {
-                call.join()
-            } catch (ex: Exception) {
-                null
-            }
-            found?.let { id to it }
-        }.toMap()
-    }
 
     /** The flash outcome of the last action, worded after the mandate as it is now. */
     private fun outcome(outcome: String, view: MandateView, model: Model) {
@@ -730,28 +729,18 @@ class MandateController(
     }
 
     /**
-     * The other agents' visits on the mandate's listing, soonest first, with their agents read in parallel. Secondary:
-     * a failed visits read leaves the block out; an unreadable agent keeps its row as "un autre agent".
+     * The other agents' visits on the mandate's listing, soonest first, with their agents read in parallel and the
+     * page's location names. Secondary: a failed visits read leaves the block out; an unreadable agent keeps its row as
+     * "un autre agent".
      */
-    private fun coBrokerageVisits(mandate: Mandate, listing: Listing): List<ListingVisitView> {
-        val visits = lookup("co-brokerage visits of listing ${listing.id}") {
-            visitClient.coBrokerageOnListing(listing.id)
-        } ?: return emptyList()
+    private fun coBrokerageVisits(
+        mandate: Mandate,
+        listing: Listing,
+        visits: List<CoBrokerageVisitSummary>,
+        locations: Map<Long, Location>,
+    ): List<ListingVisitView> {
         if (visits.isEmpty()) return emptyList()
-
-        val calls = visits.map { it.agentId }.filter { it > 0 }.distinct()
-            .associateWith { id -> parallel.async { lookup("agent $id") { agentClient.get(id) } } }
-        val agents = calls.mapNotNull { (id, call) ->
-            val agent = try {
-                call.join()
-            } catch (ex: Exception) {
-                null
-            }
-            agent?.let { id to it }
-        }.toMap()
-        val locations = lookup("location names of listing ${listing.id}") {
-            sector.locations(listOfNotNull(listing.cityId, listing.neighborhoodId))
-        } ?: emptyMap()
+        val agents = VisitAgents.ofCoBrokerage(agentClient, parallel, visits)
         return ListingViews.visits(
             visits,
             agents,
@@ -813,12 +802,20 @@ class MandateController(
         return null
     }
 
-    /** The names of the mandate's city and neighbourhoods, and of its matched [listings]', in one lookup. */
-    private fun locations(mandate: Mandate, listings: Collection<ListingSummary>): Map<Long, Location> =
+    /**
+     * The names of the mandate's city and neighbourhoods, of its matched [listings]' and of its [listing]'s, in one
+     * lookup.
+     */
+    private fun locations(
+        mandate: Mandate,
+        listing: Listing?,
+        listings: Collection<ListingSummary>,
+    ): Map<Long, Location> =
         lookup("location names of mandate ${mandate.id}") {
             sector.locations(
                 listOf(mandate.cityId) + mandate.neighborhoodIds +
-                    listings.flatMap { listOfNotNull(it.cityId, it.neighborhoodId) },
+                    listings.flatMap { listOfNotNull(it.cityId, it.neighborhoodId) } +
+                    listOfNotNull(listing?.cityId, listing?.neighborhoodId),
             )
         } ?: emptyMap()
 

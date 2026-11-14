@@ -854,6 +854,30 @@ class MandateControllerTest {
     }
 
     @Test
+    fun `approved search - a co-brokerage visit keeps its card when the agent cannot be read`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        doReturn(APPROVED).whenever(mandateClient).get(201)
+        doReturn(
+            listOf(
+                matchB,
+                matchA.copy(status = MatchStatus.ACCEPTED),
+                matchA.copy(id = 9009, listingId = 3099, status = MatchStatus.DISMISSED),
+            ),
+        ).whenever(matchClient).search(any(), any(), any())
+        doReturn(listOf(listingA.copy(agentId = VisitFixtures.OTHER_AGENT_ID), listingB))
+            .whenever(listingClient).searchByIds(any())
+        doReturn(listOf(VisitFixtures.summary(VisitFixtures.requested().copy(mandateId = 201, matchId = 9001))))
+            .whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
+        doThrow(ResourceAccessException("down")).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
+
+        val result = mvc.perform(get("/mandates/201")).andReturn()
+
+        val visit = section(result).matches.first { it.id == 9001L }.visit!!
+        assertEquals("un autre agent", visit.agentName)
+        assertNull(visit.agentUrl)
+    }
+
+    @Test
     fun `approved search - visits unavailable keeps every match`() {
         withMatches()
         doThrow(ResourceAccessException("timeout")).whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)

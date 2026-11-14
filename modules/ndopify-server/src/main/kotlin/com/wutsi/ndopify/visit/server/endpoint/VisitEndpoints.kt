@@ -118,11 +118,13 @@ class VisitEndpoints(
 
     // The listing agent sees the visits another agent organizes on its property, never their customer
     @GetMapping("/co-brokerage")
-    fun coBrokerage(@RequestParam(name = "listing-id", required = false) listingId: Long?): SearchCoBrokerageVisitResponse {
+    fun coBrokerage(@RequestParam(name = "listing-id", required = false) listingId: String?): SearchCoBrokerageVisitResponse {
         val visits = if (listingId == null) {
             service.findCoBrokerageForAgent(access.requireAgent())
         } else {
-            if (listingId <= 0) {
+            // A present but blank or non-positive id is a bad request: it never widens to the agent-wide list.
+            val id = listingId.trim().toLongOrNull()
+            if (id == null || id <= 0) {
                 throw BadRequestException(
                     error = Error(
                         code = ErrorCode.HTTP_INVALID_PARAMETER,
@@ -130,7 +132,7 @@ class VisitEndpoints(
                     ),
                 )
             }
-            val listing = listingService.findById(listingId)
+            val listing = listingService.findById(id)
             access.ensureIsListingAgent(listing)
             service.findCoBrokerageOnListing(listing)
         }

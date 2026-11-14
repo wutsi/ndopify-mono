@@ -78,6 +78,26 @@ class VisitRepositoryTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
+    @Sql(
+        value = [
+            "/db/test/clean.sql",
+            "/db/test/visit/VisitFixtures.sql",
+            "/db/test/visit/CoBrokerageVisitEndpoint.sql",
+            "/db/test/visit/CoBrokerageVisitStatuses.sql",
+        ],
+    )
+    fun `co-brokerage visits of an agent include rented and sold listings`() {
+        assertEquals(
+            listOf(2L, 1L, 6L, 10L),
+            dao.findCoBrokerageByListingAgent(
+                20L,
+                setOf(VisitStatus.CONFIRMED, VisitStatus.CHECKED_IN),
+                setOf(ListingStatus.PUBLISHED, ListingStatus.RENTED, ListingStatus.SOLD),
+            ).map { it.id },
+        )
+    }
+
+    @Test
     @Sql(value = ["/db/test/clean.sql", "/db/test/visit/VisitFixtures.sql", "/db/test/visit/CoBrokerageVisitEndpoint.sql"])
     fun `open visits by mandate or listing mandate`() {
         // Search side: mandate 4 has visits 1..4 and 6 (CONFIRMED, CHECKED_IN, REQUESTED, COMPLETED, CONFIRMED)

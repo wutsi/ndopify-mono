@@ -91,7 +91,7 @@
                         </a>
                     </li>
                     <li th:if="${todayCount > 0}">
-                        <a th:href="@{/#visits-title}">
+                        <a th:href="@{${todayHref}}">
                             <strong th:text="${todayCount}">5</strong>
                             <span th:if="${todayCount > 1}">visites aujourd'hui</span>
                             <span th:unless="${todayCount > 1}">visite aujourd'hui</span>

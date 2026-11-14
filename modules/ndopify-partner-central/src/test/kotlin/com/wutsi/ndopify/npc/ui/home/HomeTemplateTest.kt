@@ -567,6 +567,10 @@ class HomeTemplateTest {
         val card = page.selectFirst("[data-co-brokerage-visits] .co-visit-card")!!
 
         assertEquals("Visites d'autres agents", page.selectFirst("#co-brokerage-visits-title")?.text())
+        assertEquals(
+            "/#co-brokerage-visits-title",
+            page.selectFirst(".home-intro__counts li:last-child a")?.attr("href"),
+        )
         assertEquals("CM", card.selectFirst(".co-visit-card__avatar")?.text())
         assertEquals("Clarisse Mbarga", card.selectFirst("[data-co-brokerage-agent-name]")?.text())
         assertEquals("https://wa.me/237699000002", card.selectFirst("[data-co-brokerage-whatsapp]")?.attr("href"))
@@ -574,6 +578,34 @@ class HomeTemplateTest {
         assertFalse(card.text().contains("Sandrine Eboa"))
         assertFalse(card.text().contains("sandrine@gmail.com"))
         assertFalse(card.text().contains("1234"))
+    }
+
+    @Test
+    fun `a hosted visit in progress shows the tag and the person icon when the agent cannot be read`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        doReturn(
+            listOf(
+                CoBrokerageVisitSummary(
+                    id = 8003,
+                    listingId = 501,
+                    agentId = VisitFixtures.OTHER_AGENT_ID,
+                    status = VisitStatus.CHECKED_IN,
+                    type = VisitType.ON_SITE,
+                    scheduledAt = Date(VisitFixtures.NOW),
+                ),
+            ),
+        ).whenever(visitClient).coBrokerage()
+        doReturn(listOf(VisitFixtures.listingSummary().copy(id = 501)))
+            .whenever(listingClient).searchByIds(listOf(501L))
+        doThrow(ResourceAccessException("down")).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
+
+        val card = render(get("/")).selectFirst("[data-co-brokerage-visits] .co-visit-card")!!
+
+        assertEquals("En cours", card.selectFirst(".status-tag")?.text())
+        assertEquals("un autre agent", card.selectFirst("[data-co-brokerage-agent]")?.text())
+        assertNull(card.selectFirst("[data-co-brokerage-agent] a"))
+        assertTrue(card.selectFirst(".co-visit-card__avatar")!!.text().isBlank())
+        assertNotNull(card.selectFirst(".co-visit-card__avatar svg"))
     }
 
     @Test

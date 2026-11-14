@@ -221,8 +221,9 @@ object VisitCards {
         val listing = listings?.get(visit.listingId) ?: return null to null
         if (listing.agentId == visit.agentId) return null to null
         val agent = agents[listing.agentId]
-        val name = agent?.let { ProfileRules.fullName(it) }?.ifBlank { null } ?: "un autre agent"
-        return name to agent?.let { AgentProfileRules.profileUrl(listing.agentId, back) }
+        val name = agent?.let { ProfileRules.fullName(it) }?.ifBlank { null }
+        // Both keyed off the resolved name: a readable agent without one stays unlinked, like an unreadable agent.
+        return (name ?: "un autre agent") to name?.let { AgentProfileRules.profileUrl(listing.agentId, back) }
     }
 
     private fun name(customer: CustomerSummary?): String =
