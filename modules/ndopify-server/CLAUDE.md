@@ -60,7 +60,8 @@ Scheduled jobs live in `<domain>/server/job/`: `KycJobs` (party), `MandateJobs` 
 (contract), `ListingJobs` (listing, every 15 minutes: `verify`, the UNDER_VERIFICATION listings through
 `ListingVerifierService`; `publish`, the VERIFIED ones sent for publication, then the PUBLISHING ones through `ListingPublisherService`;
 `close`, daily, the PUBLISHED listings of closed mandates) and
-`MatchJobs` (match: `notifyAgents` hourly, `rematch` and `expire` daily, see *match* below), and
+`MatchJobs` (match: `notifyAgents` hourly, `autoPropose` every 15 minutes (hourly in prod), `rematch` and `expire`
+daily, see *match* below), and
 `VisitJobs` (visit: `expire` hourly, `reminder` every 15 minutes, `noShow` hourly, see *visit* below). They loop over the
 active tenants, setting `TenantContext` for each.
 
@@ -368,6 +369,13 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   per run; each save is its own transaction, so a match answered meanwhile fails on its `@Version` and is skipped. No
   e-mail, no event. The customer can no longer answer it (409 `MATCH_NOT_PROPOSED`); the agent may propose it again
   (new `proposedAt` and e-mail) or dismiss it. Config: `ndopify.match.*`. Tenant-scoped.
+  **Auto-proposal**: `MatchJobs.autoPropose` (every 15 minutes, hourly in prod, `ndopify.match.auto-propose.cron`)
+  has `MatchAutoProposalService.autoProposeDue` propose the `ACTIVE` matches of an `APPROVED` search whose listing is
+  `PUBLISHED` and that the agent hasn't touched for `after-hours` (24): `batch-size` (100) matches per run, grouped by
+  mandate, at most 20 per proposal, through `MatchProposalService.propose` — so the customer gets the normal proposal
+  e-mail and can accept/reject it. `SHORTLISTED`, `DISMISSED`, `PROPOSED`, `ACCEPTED`, `REJECTED` and `EXPIRED` are
+  never touched; an agent answering meanwhile fails on `@Version` and skips that mandate. No new status nor flag:
+  auto-proposals look like manual ones (logged per mandate).
 - **visit** — a customer's visit of a listing an agent matched to its search (`VisitEntity`, `T_VISIT`, `V10_0`,
   `@Version`-ed), see `docs/superpowers/plans/2026-11-02-visit-management.md`. The customer requests an `ON_SITE` or
   `VIDEO` visit (the agent, at the property, calls it on WhatsApp video) of one of its ACCEPTED matches, on a slot in the
