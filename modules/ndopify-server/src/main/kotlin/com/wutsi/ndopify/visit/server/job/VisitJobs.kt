@@ -8,7 +8,7 @@ import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Service
 
 /**
- * The visits' jobs, for each active tenant: a request not scheduled in 48 h expires, a confirmed visit in the next 24 h is
+ * The visits' jobs, for each active tenant: a request not scheduled expires once 48 h old and past its requested slot, a confirmed visit in the next 24 h is
  * reminded, a confirmed visit whose agent didn't check in 4 h after the time is a no-show, and the open visits of a
  * mandate that ended without its async listener doing it are cancelled. A scheduler thread has no tenant of its own:
  * each tenant is processed with it set in [TenantContext], removed afterwards since the threads are reused.

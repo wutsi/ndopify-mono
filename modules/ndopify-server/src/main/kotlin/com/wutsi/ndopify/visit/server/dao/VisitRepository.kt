@@ -84,8 +84,12 @@ interface VisitRepository : CrudRepository<VisitEntity, Long>, JpaSpecificationE
     // The confirmed visits that start before [before]: the agent's no-show (4h past the time)
     fun findByStatusAndScheduledAtBefore(status: VisitStatus, before: Date): List<VisitEntity>
 
-    // The requests started before [before]: expired when not scheduled in time
-    fun findByStatusAndCreatedAtBefore(status: VisitStatus, before: Date): List<VisitEntity>
+    // The requests old enough and whose slot passed: expired when not scheduled in time
+    fun findByStatusAndCreatedAtBeforeAndRequestedAtBefore(
+        status: VisitStatus,
+        createdBefore: Date,
+        requestedBefore: Date,
+    ): List<VisitEntity>
 
     // The confirmed visits starting in [from, to] whose reminder wasn't sent
     fun findByStatusAndScheduledAtBetweenAndReminderSentAtIsNull(

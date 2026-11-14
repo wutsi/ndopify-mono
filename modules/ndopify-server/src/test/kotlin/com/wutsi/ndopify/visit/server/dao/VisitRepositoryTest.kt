@@ -9,6 +9,8 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.domain.Sort
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.jdbc.Sql
+import java.time.Duration
+import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -31,6 +33,19 @@ class VisitRepositoryTest : TenantAwareEndpointIntegrationTest() {
         )
 
         assertEquals(1, count)
+    }
+
+    @Test
+    @Sql(value = ["/db/test/clean.sql", "/db/test/visit/VisitFixtures.sql", "/db/test/visit/ExpireDueVisits.sql"])
+    fun `due requests are past both the minimum delay and the requested slot`() {
+        val now = System.currentTimeMillis()
+        val due = dao.findByStatusAndCreatedAtBeforeAndRequestedAtBefore(
+            VisitStatus.REQUESTED,
+            Date(now - Duration.ofHours(48).toMillis()),
+            Date(now),
+        )
+
+        assertEquals(listOf(7201L), due.map { it.id })
     }
 
     @Test
