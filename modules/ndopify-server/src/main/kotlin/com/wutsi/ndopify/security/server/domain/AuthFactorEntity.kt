@@ -30,9 +30,16 @@ data class AuthFactorEntity(
     val modifiedAt: Date = Date(),
     val lastLoggedInAt: Date? = null,
     val expiresAt: Date? = null,
+    val failedAttempts: Int = 0,
+    val lockedUntil: Date? = null,
 ) {
     fun hasExpired(clock: Clock): Boolean {
         return expiresAt != null && expiresAt.time < clock.millis()
+    }
+
+    /** Whether a wrong-code streak locked this account: true until [lockedUntil] passes. */
+    fun isLocked(clock: Clock): Boolean {
+        return lockedUntil != null && lockedUntil.time > clock.millis()
     }
 
     /**
