@@ -456,6 +456,45 @@ class VisitTemplateTest {
     }
 
     @Test
+    fun `requested close is a quiet link`() {
+        val close = panel(render(requested()), "REQUESTED")!!.selectFirst("[data-visit-close]")!!
+        val opener = close.selectFirst("[data-close-open=refuse]")!!
+        assertEquals("A", opener.tagName().uppercase())
+        assertEquals("/visits/7001?close=refuse#close-title-refuse", opener.attr("href"))
+        assertEquals("link-button", opener.className())
+    }
+
+    @Test
+    fun `window problem chooser opens with close=problem`() {
+        doReturn(window()).whenever(visitClient).get(7001)
+        val page = render(get("/visits/7001?close=problem"))
+        val close = panel(page, "WINDOW")!!.selectFirst("[data-visit-close]")!!
+        val trigger = close.selectFirst("[data-problem-toggle]")!!
+
+        assertEquals("true", trigger.attr("aria-expanded"))
+        assertFalse(close.selectFirst("[data-problem-options]")!!.hasAttr("hidden"))
+        assertEquals(
+            "/visits/7001?close=no-show#close-title-noshow",
+            close.selectFirst("[data-close-open=no-show]")?.attr("href"),
+        )
+        assertEquals(
+            "/visits/7001?close=cancel#close-title-cancel",
+            close.selectFirst("[data-close-open=cancel]")?.attr("href"),
+        )
+    }
+
+    @Test
+    fun `the problem chooser has no absent choice before the no-show time`() {
+        doReturn(window().copy(scheduledAt = date("2026-11-05T09:50:00Z"))).whenever(visitClient).get(7001)
+        val panel = panel(render(get("/visits/7001?close=problem")), "WINDOW")!!
+        val close = panel.selectFirst("[data-visit-close]")!!
+
+        assertNull(close.selectFirst("[data-close-open=no-show]"))
+        assertNotNull(close.selectFirst("[data-close-open=cancel]"))
+        assertTrue(panel.text().contains("15 min après l'heure prévue"))
+    }
+
+    @Test
     fun `a moved slot is stated in the date band`() {
         doReturn(confirmed().copy(scheduledAt = date("2026-11-07T10:00:00Z")))
             .whenever(visitClient).get(7001)

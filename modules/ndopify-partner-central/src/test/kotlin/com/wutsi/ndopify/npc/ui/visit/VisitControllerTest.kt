@@ -650,6 +650,22 @@ class VisitControllerTest {
     }
 
     @Test
+    fun `close problem on a window`() {
+        doReturn(window()).whenever(visitClient).get(7001)
+
+        val result = mvc.perform(get("/visits/7001").param("close", "problem")).andReturn()
+
+        assertEquals(VisitController.CLOSE_PROBLEM, model(result)[VisitController.CLOSE])
+    }
+
+    @Test
+    fun `close problem is ignored outside a window`() {
+        val result = mvc.perform(get("/visits/7001").param("close", "problem")).andReturn()
+
+        assertNull(model(result)[VisitController.CLOSE])
+    }
+
+    @Test
     fun `unknown close is ignored`() {
         val result = mvc.perform(get("/visits/7001").param("close", "hack")).andReturn()
 

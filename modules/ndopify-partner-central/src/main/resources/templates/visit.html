@@ -218,13 +218,13 @@
                     </form>
 
                     <div class="visit-close" data-visit-close>
-                        <div class="mandate-panel__actions visit-close__buttons" data-close-buttons
-                             th:attr="hidden=${close} ? 'hidden' : null">
-                            <a class="btn btn--danger"
+                        <p class="visit-close__trigger" data-close-buttons
+                           th:attr="hidden=${close} ? 'hidden' : null">
+                            <a class="link-button"
                                th:href="@{|/visits/${p.id}?close=refuse#close-title-refuse|}"
                                aria-controls="close-form-refuse" data-close-open="refuse"
-                               th:attr="aria-expanded=${close == 'refuse'} ? 'true' : 'false'">Refuser la demande</a>
-                        </div>
+                               th:attr="aria-expanded=${close == 'refuse'} ? 'true' : 'false'">Refuser la demande…</a>
+                        </p>
                         <form id="close-form-refuse" class="form visit-close__form" method="post" novalidate
                               th:action="@{/visits/{id}/cancel(id=${p.id})}"
                               th:attr="hidden=${close == 'refuse'} ? null : 'hidden'"
@@ -268,13 +268,13 @@
                         <span>Vous n'avez rien à faire d'ici là.</span>
                     </p>
                     <div class="visit-close" data-visit-close>
-                        <div class="mandate-panel__actions visit-close__buttons" data-close-buttons
-                             th:attr="hidden=${close} ? 'hidden' : null">
-                            <a class="btn btn--danger"
+                        <p class="visit-close__trigger" data-close-buttons
+                           th:attr="hidden=${close} ? 'hidden' : null">
+                            <a class="link-button"
                                th:href="@{|/visits/${p.id}?close=cancel#close-title-cancel|}"
                                aria-controls="close-form-cancel" data-close-open="cancel"
-                               th:attr="aria-expanded=${close == 'cancel'} ? 'true' : 'false'">Annuler la visite</a>
-                        </div>
+                               th:attr="aria-expanded=${close == 'cancel'} ? 'true' : 'false'">Annuler la visite…</a>
+                        </p>
                         <form id="close-form-cancel" class="form visit-close__form" method="post" novalidate
                               th:action="@{/visits/{id}/cancel(id=${p.id})}"
                               th:attr="hidden=${close == 'cancel'} ? null : 'hidden'"
@@ -351,19 +351,38 @@
                         </div>
                     </div>
 
+                    <p class="visit-later" data-noshow-later th:if="${!p.canNoShow and p.noShowFrom != null}">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                        <span><span th:if="${p.type.name() == 'ON_SITE'}">Le client n'est pas là&nbsp;?</span><span
+                            th:unless="${p.type.name() == 'ON_SITE'}">Le client ne répond pas&nbsp;?</span> À partir de
+                            <strong th:text="${p.noShowFrom}">jeu. 5 novembre 2026 à 10:45</strong>, 15 min après l'heure prévue, vous pourrez le déclarer absent.</span>
+                    </p>
                     <div class="visit-close" data-visit-close>
-                        <div class="mandate-panel__actions visit-close__buttons" data-close-buttons
-                             th:attr="hidden=${close} ? 'hidden' : null">
-                            <a class="btn btn--danger" th:if="${p.canNoShow}"
-                               th:href="@{|/visits/${p.id}?close=no-show#close-title-noshow|}"
-                               aria-controls="close-form-no-show" data-close-open="no-show"
-                               th:attr="aria-expanded=${close == 'no-show'} ? 'true' : 'false'"><span
-                                    th:if="${p.type.name() == 'ON_SITE'}">Le client est absent ou refuse de donner le code</span><span
-                                    th:unless="${p.type.name() == 'ON_SITE'}">Le client ne répond pas ou refuse de donner le code</span></a>
-                            <a class="btn btn--danger"
-                               th:href="@{|/visits/${p.id}?close=cancel#close-title-cancel|}"
-                               aria-controls="close-form-cancel" data-close-open="cancel"
-                               th:attr="aria-expanded=${close == 'cancel'} ? 'true' : 'false'">Vous ne pouvez pas venir&nbsp;?</a>
+                        <div class="visit-problem" data-close-buttons
+                             th:attr="hidden=${close == 'cancel' or close == 'no-show'} ? 'hidden' : null">
+                            <a class="btn btn--outline visit-problem__toggle"
+                               th:href="@{|/visits/${p.id}?close=problem#visit-problem-options|}"
+                               aria-controls="visit-problem-options" data-problem-toggle
+                               th:attr="aria-expanded=${close == 'problem'} ? 'true' : 'false'">Un problème avec cette visite&nbsp;?</a>
+                            <div class="visit-problem__options" id="visit-problem-options" data-problem-options
+                                 th:attr="hidden=${close == 'problem'} ? null : 'hidden'">
+                                <div class="visit-problem__choice" th:if="${p.canNoShow}">
+                                    <a class="visit-problem__option"
+                                       th:href="@{|/visits/${p.id}?close=no-show#close-title-noshow|}"
+                                       aria-controls="close-form-no-show" data-close-open="no-show"
+                                       th:attr="aria-expanded=${close == 'no-show'} ? 'true' : 'false'"><span
+                                            th:if="${p.type.name() == 'ON_SITE'}">Le client est absent ou ne répond pas</span><span
+                                            th:unless="${p.type.name() == 'ON_SITE'}">Le client ne répond pas</span></a>
+                                    <p class="visit-problem__consequence">L'absence ou le refus du code sera enregistré avec votre position.</p>
+                                </div>
+                                <div class="visit-problem__choice">
+                                    <a class="visit-problem__option"
+                                       th:href="@{|/visits/${p.id}?close=cancel#close-title-cancel|}"
+                                       aria-controls="close-form-cancel" data-close-open="cancel"
+                                       th:attr="aria-expanded=${close == 'cancel'} ? 'true' : 'false'">Je ne peux pas assurer cette visite</a>
+                                    <p class="visit-problem__consequence">La visite sera annulée&nbsp;; le client est prévenu par e-mail.</p>
+                                </div>
+                            </div>
                         </div>
 
                         <form id="close-form-no-show" class="form visit-close__form" method="post" novalidate
@@ -385,7 +404,7 @@
                             </fieldset>
                             <div class="alert alert--warning">
                                 <div>
-                                    <p class="alert__title">L'absence du client est enregistrée, votre position aussi</p>
+                                    <p class="alert__title">L'absence du client sera enregistrée avec votre position</p>
                                     <p>Faites la déclaration devant le bien.</p>
                                 </div>
                             </div>

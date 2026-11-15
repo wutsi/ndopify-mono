@@ -118,6 +118,17 @@
         var buttons = $("[data-close-buttons]", box);
         var openers = $all("[data-close-open]", box);
         var opener = null;
+        var problemToggle = $("[data-problem-toggle]", box);
+        var problemOptions = $("[data-problem-options]", box);
+
+        if (problemToggle && problemOptions) {
+            problemToggle.addEventListener("click", function (event) {
+                event.preventDefault();
+                var open = problemToggle.getAttribute("aria-expanded") === "true";
+                problemToggle.setAttribute("aria-expanded", open ? "false" : "true");
+                problemOptions.hidden = open;
+            });
+        }
 
         function formOf(mode) {
             return $('[data-close-form="' + mode + '"]', box);
@@ -139,6 +150,10 @@
             $all("[data-close-form]", box).forEach(function (form) {
                 form.hidden = true;
             });
+            if (problemToggle && problemOptions) {
+                problemToggle.setAttribute("aria-expanded", "false");
+                problemOptions.hidden = true;
+            }
             buttons.hidden = false;
             openers.forEach(function (link) {
                 link.setAttribute("aria-expanded", "false");
