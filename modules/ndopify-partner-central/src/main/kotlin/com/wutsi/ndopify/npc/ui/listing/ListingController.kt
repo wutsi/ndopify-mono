@@ -80,8 +80,8 @@ class ListingController(
 
     /**
      * [id] is a String so that a hand-edited value is the locked view instead of failing the page. [match] is the
-     * co-brokerage match a *Biens correspondants* card opened with: its owner doesn't need one, and a co-broker without
-     * it (or with one that isn't theirs) is locked.
+     * co-brokerage match a *Biens correspondants* card opened with: it only keeps the search's return link, a stale or
+     * bogus one is ignored. Any agent may open a listing that keeps its public page; the other statuses stay locked.
      */
     @GetMapping("/listings/{id}")
     fun show(
@@ -96,19 +96,21 @@ class ListingController(
         val result = id.toLongOrNull()?.let { load(it, agent, match?.toLongOrNull(), model) } ?: return locked(model)
         val listing = when (result) {
             is PublishedListingAccess.Owner -> result.listing
-            is PublishedListingAccess.CoBroker -> result.listing
+            is PublishedListingAccess.ReadOnly -> result.listing
             else -> return locked(model)
         }
-        val coBrokerage = result is PublishedListingAccess.CoBroker
+        val readOnly = result is PublishedListingAccess.ReadOnly
+        val match = (result as? PublishedListingAccess.ReadOnly)?.match
         val images = lookup("images of listing ${listing.id}") { listingClient.images(listing.id) }
-        val stats = if (!coBrokerage && listing.status == ListingStatus.PUBLISHED) {
+        val stats = if (!readOnly && listing.status == ListingStatus.PUBLISHED) {
             lookup("stats of listing ${listing.id}") { listingClient.stats(listOf(listing.id)) }?.get(listing.id)
         } else {
             null
         }
-        val agentCard = if (result is PublishedListingAccess.CoBroker) {
+        // Task 3 builds the card for every read-only lens; the listing URL it returns to is Task 4's.
+        val agentCard = if (match != null) {
             lookup("listing agent ${listing.agentId}") { agentClient.get(listing.agentId) }
-                ?.let { AgentCardViews.of(it, "/listings/${listing.id}?match=${result.match.id}") }
+                ?.let { AgentCardViews.of(it, "/listings/${listing.id}?match=${match.id}") }
                 ?.takeIf { it.name.isNotBlank() }
         } else {
             null
@@ -120,14 +122,18 @@ class ListingController(
             formatter(),
             tenantContext.getTenant().publicPortalUrl,
             stats,
-            coBrokerage = coBrokerage,
+            coBrokerage = readOnly,
             agent = agentCard,
-            backUrl = if (result is PublishedListingAccess.CoBroker) {
-                "/mandates/${result.match.mandateId}#matches-title"
-            } else {
-                "/mandates/${listing.mandateId}"
+            backUrl = when {
+                match != null -> "/mandates/${match.mandateId}#matches-title"
+                readOnly -> "/"
+                else -> "/mandates/${listing.mandateId}"
             },
-            backLabel = if (coBrokerage) "← Retour aux biens correspondants" else "← Retour au mandat",
+            backLabel = when {
+                match != null -> "← Retour aux biens correspondants"
+                readOnly -> "← Retour à l'espace agent"
+                else -> "← Retour au mandat"
+            },
         )
         model.addAttribute("listing", view)
         return VIEW
@@ -244,7 +250,7 @@ class ListingController(
     /** The admitted listing; null when it can't be had, with the view to show instead ([UNAVAILABLE] or locked). */
     private fun load(id: Long, agent: Agent, matchId: Long?, model: Model): PublishedListingAccess.Result? =
         when (val result = publishedAccess.load(id, agent, matchId)) {
-            is PublishedListingAccess.Owner, is PublishedListingAccess.CoBroker -> result
+            is PublishedListingAccess.Owner, is PublishedListingAccess.ReadOnly -> result
             PublishedListingAccess.Locked -> null
             PublishedListingAccess.Unavailable -> {
                 model.addAttribute(UNAVAILABLE, true)

@@ -239,12 +239,20 @@ class ListingControllerTest {
     }
 
     @Test
-    fun `show - co-brokerage listing without a match is locked`() {
-        doReturn(COMPLETE.copy(status = ListingStatus.PUBLISHED, agentId = 999)).whenever(listingClient).get(501)
+    fun `show - another agent's published listing is read-only without a match`() {
+        doReturn(COMPLETE.copy(status = ListingStatus.PUBLISHED, agentId = 999, publishedAt = SENT)).whenever(listingClient).get(501)
 
         val result = mvc.perform(get("/listings/501")).andReturn()
 
-        assertEquals(true, model(result)["locked"])
+        assertNull(model(result)["locked"])
+        val view = model(result)["listing"] as ListingView
+        assertTrue(view.coBrokerage)
+        assertNull(view.publicUrl)
+        assertNull(view.stats)
+        assertEquals("/", view.backUrl)
+        assertEquals("← Retour à l'espace agent", view.backLabel)
+        verify(listingClient, never()).stats(any())
+        verify(mandateClient, never()).get(any())
     }
 
     @Test

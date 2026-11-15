@@ -61,9 +61,6 @@ object ListingViews {
 
     private const val TITLE_PREFIX = "Annonce · "
 
-    // A listing that keeps its public page once it leaves the market
-    private val PUBLIC = setOf(ListingStatus.PUBLISHED, ListingStatus.RENTED, ListingStatus.SOLD)
-
     /**
      * [images] is null when they couldn't be loaded: the photos' row and the hero image then have no URL.
      * [publicPortalUrl] is the tenant's, the host of a published or closed listing's `url`. [stats] is a published
@@ -111,7 +108,7 @@ object ListingViews {
             sentAt = if (ListingRules.sent(listing.status)) formatter.date(listing.modifiedAt) else null,
             rejections = rejections.map { it.reason },
             publishedAt = listing.publishedAt?.let { formatter.date(it) },
-            publicUrl = if (!coBrokerage && listing.status in PUBLIC) publicUrl(listing, publicPortalUrl) else null,
+            publicUrl = if (!coBrokerage && listing.status in ListingRules.PUBLIC_STATUSES) publicUrl(listing, publicPortalUrl) else null,
             stats = if (!coBrokerage && published) ListingStatsView.of(stats)?.label else null,
             rows = if (coBrokerage) {
                 emptyList()
@@ -135,7 +132,7 @@ object ListingViews {
             editable = editable,
             sendable = editable && left.isEmpty(),
             coBrokerage = coBrokerage,
-            published = if (listing.status in PUBLIC) {
+            published = if (listing.status in ListingRules.PUBLIC_STATUSES) {
                 PublishedListingViews.of(listing, images, locations, formatter, owner = !coBrokerage)
             } else {
                 null

@@ -56,65 +56,115 @@ class PublishedListingAccessTest {
     }
 
     @Test
-    fun `co-broker - a visible match of one of the agent's searches`() {
-        val other = listing.copy(agentId = 999)
-        stub(listing = other)
+    fun `another agent's published listing - read-only without a match`() {
+        stub(listing = listing.copy(agentId = 999))
 
-        assertEquals(PublishedListingAccess.CoBroker(other, match), access.load(501, AGENT, 9009))
+        assertEquals(PublishedListingAccess.ReadOnly(listing.copy(agentId = 999)), access.load(501, AGENT, null))
+        verify(matchClient, never()).get(any())
+        verify(mandateClient, never()).get(any())
     }
 
     @Test
-    fun `no match id - locked`() {
+    fun `another agent's rented and sold listings - read-only`() {
+        for (status in listOf(ListingStatus.RENTED, ListingStatus.SOLD)) {
+            val other = listing.copy(agentId = 999, status = status)
+            doReturn(other).whenever(listingClient).get(501)
+
+            assertEquals(PublishedListingAccess.ReadOnly(other), access.load(501, AGENT, null))
+        }
+        verify(matchClient, never()).get(any())
+        verify(mandateClient, never()).get(any())
+    }
+
+    @Test
+    fun `another agent's non-public listing - locked`() {
+        val statuses = listOf(
+            ListingStatus.DRAFT,
+            ListingStatus.PENDING_VERIFICATION,
+            ListingStatus.UNDER_VERIFICATION,
+            ListingStatus.VERIFIED,
+            ListingStatus.PUBLISHING,
+        )
+        for (status in statuses) {
+            val other = listing.copy(agentId = 999, status = status)
+            doReturn(other).whenever(listingClient).get(501)
+
+            assertEquals(PublishedListingAccess.Locked, access.load(501, AGENT, null))
+        }
+        verify(matchClient, never()).get(any())
+        verify(mandateClient, never()).get(any())
+    }
+
+    @Test
+    fun `a valid co-brokerage match - read-only with its context`() {
         stub(listing = listing.copy(agentId = 999))
 
-        assertEquals(PublishedListingAccess.Locked, access.load(501, AGENT, null))
+        assertEquals(PublishedListingAccess.ReadOnly(listing.copy(agentId = 999), match), access.load(501, AGENT, 9009))
+    }
+
+    @Test
+    fun `a stale or bogus match - ignored, still read-only`() {
+        val cases = listOf(
+            match.copy(coBrokerage = false),
+            match.copy(listingId = 502),
+            match.copy(status = MatchStatus.DISMISSED),
+            match.copy(status = MatchStatus.REJECTED),
+        )
+        for (candidate in cases) {
+            stub(listing = listing.copy(agentId = 999), match = candidate)
+
+            assertEquals(PublishedListingAccess.ReadOnly(listing.copy(agentId = 999)), access.load(501, AGENT, 9009))
+        }
+    }
+
+    @Test
+    fun `a match of another agent or a non-search mandate - ignored`() {
+        stub(listing = listing.copy(agentId = 999), search = search.copy(agentId = 999))
+        assertEquals(PublishedListingAccess.ReadOnly(listing.copy(agentId = 999)), access.load(501, AGENT, 9009))
+
+        stub(listing = listing.copy(agentId = 999), search = search.copy(mandateType = MandateType.LISTING))
+        assertEquals(PublishedListingAccess.ReadOnly(listing.copy(agentId = 999)), access.load(501, AGENT, 9009))
+    }
+
+    @Test
+    fun `a match or mandate read failure - ignored, still read-only`() {
+        val other = listing.copy(agentId = 999)
+        stub(listing = other)
+
+        doThrow(notFound()).whenever(matchClient).get(9009)
+        assertEquals(PublishedListingAccess.ReadOnly(other), access.load(501, AGENT, 9009))
+
+        doThrow(HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR)).whenever(matchClient).get(9009)
+        assertEquals(PublishedListingAccess.ReadOnly(other), access.load(501, AGENT, 9009))
+
+        doThrow(ResourceAccessException("down")).whenever(matchClient).get(9009)
+        assertEquals(PublishedListingAccess.ReadOnly(other), access.load(501, AGENT, 9009))
+
+        stub(listing = other)
+        doThrow(notFound()).whenever(mandateClient).get(204)
+        assertEquals(PublishedListingAccess.ReadOnly(other), access.load(501, AGENT, 9009))
+
+        doThrow(HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR)).whenever(mandateClient).get(204)
+        assertEquals(PublishedListingAccess.ReadOnly(other), access.load(501, AGENT, 9009))
+    }
+
+    @Test
+    fun `a valid match on a rented listing - the context stays`() {
+        val rented = listing.copy(agentId = 999, status = ListingStatus.RENTED)
+        stub(listing = rented)
+
+        assertEquals(PublishedListingAccess.ReadOnly(rented, match), access.load(501, AGENT, 9009))
+    }
+
+    @Test
+    fun `a non-positive id - locked without a read`() {
+        assertEquals(PublishedListingAccess.Locked, access.load(0, AGENT, 9009))
+        verify(listingClient, never()).get(any())
     }
 
     @Test
     fun `unknown status - locked`() {
         stub(listing = listing.copy(status = ListingStatus.UNKNOWN))
-
-        assertEquals(PublishedListingAccess.Locked, access.load(501, AGENT, 9009))
-    }
-
-    @Test
-    fun `not a co-brokerage match - locked`() {
-        stub(listing = listing.copy(agentId = 999), match = match.copy(coBrokerage = false))
-
-        assertEquals(PublishedListingAccess.Locked, access.load(501, AGENT, 9009))
-    }
-
-    @Test
-    fun `match of another listing - locked`() {
-        stub(listing = listing.copy(agentId = 999), match = match.copy(listingId = 502))
-
-        assertEquals(PublishedListingAccess.Locked, access.load(501, AGENT, 9009))
-    }
-
-    @Test
-    fun `dismissed match - locked`() {
-        stub(listing = listing.copy(agentId = 999), match = match.copy(status = MatchStatus.DISMISSED))
-
-        assertEquals(PublishedListingAccess.Locked, access.load(501, AGENT, 9009))
-    }
-
-    @Test
-    fun `rejected match - locked`() {
-        stub(listing = listing.copy(agentId = 999), match = match.copy(status = MatchStatus.REJECTED))
-
-        assertEquals(PublishedListingAccess.Locked, access.load(501, AGENT, 9009))
-    }
-
-    @Test
-    fun `another agent's search - locked`() {
-        stub(listing = listing.copy(agentId = 999), search = search.copy(agentId = 999))
-
-        assertEquals(PublishedListingAccess.Locked, access.load(501, AGENT, 9009))
-    }
-
-    @Test
-    fun `unpublished listing for a co-broker - locked`() {
-        stub(listing = listing.copy(agentId = 999, status = ListingStatus.RENTED))
 
         assertEquals(PublishedListingAccess.Locked, access.load(501, AGENT, 9009))
     }
@@ -136,38 +186,6 @@ class PublishedListingAccessTest {
     @Test
     fun `listing network failure - unavailable`() {
         doThrow(ResourceAccessException("down")).whenever(listingClient).get(501)
-
-        assertEquals(PublishedListingAccess.Unavailable, access.load(501, AGENT, 9009))
-    }
-
-    @Test
-    fun `match not found - locked`() {
-        stub(listing = listing.copy(agentId = 999))
-        doThrow(notFound()).whenever(matchClient).get(9009)
-
-        assertEquals(PublishedListingAccess.Locked, access.load(501, AGENT, 9009))
-    }
-
-    @Test
-    fun `match failure - unavailable`() {
-        stub(listing = listing.copy(agentId = 999))
-        doThrow(HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR)).whenever(matchClient).get(9009)
-
-        assertEquals(PublishedListingAccess.Unavailable, access.load(501, AGENT, 9009))
-    }
-
-    @Test
-    fun `mandate not found - locked`() {
-        stub(listing = listing.copy(agentId = 999))
-        doThrow(notFound()).whenever(mandateClient).get(204)
-
-        assertEquals(PublishedListingAccess.Locked, access.load(501, AGENT, 9009))
-    }
-
-    @Test
-    fun `mandate failure - unavailable`() {
-        stub(listing = listing.copy(agentId = 999))
-        doThrow(HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR)).whenever(mandateClient).get(204)
 
         assertEquals(PublishedListingAccess.Unavailable, access.load(501, AGENT, 9009))
     }
