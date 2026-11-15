@@ -208,10 +208,6 @@ open class TelegramConfiguration(
     private val objectMapper: JsonMapper,
     private val httpClientSettings: HttpClientSettings,
 ) {
-    init {
-        check(token.isNotBlank()) { "ndopify.telegram.token is required" }
-    }
-
     @Bean
     open fun telegramClient(): TelegramClient = TelegramClient(token, telegramHttp())
 
