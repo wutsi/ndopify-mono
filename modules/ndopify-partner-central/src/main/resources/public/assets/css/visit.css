@@ -513,16 +513,27 @@
 }
 
 .visit-call__button {
+    display: flex;
     width: 100%;
+    margin-inline: auto;
+    margin-bottom: var(--space-3);
 }
 
 .visit-call__button .icon {
     flex: none;
 }
 
+.visit-call__steps {
+    display: grid;
+    gap: var(--space-1);
+    margin: 0;
+    padding-left: var(--space-4);
+    font-size: var(--step-hint);
+}
+
 @media (min-width: 640px) {
     .visit-call__button {
-        width: auto;
+        width: fit-content;
     }
 }
 

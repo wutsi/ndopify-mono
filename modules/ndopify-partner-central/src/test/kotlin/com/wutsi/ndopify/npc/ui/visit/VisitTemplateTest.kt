@@ -136,6 +136,7 @@ class VisitTemplateTest {
         assertEquals(listOf("ON_SITE", "VIDEO"), panel.select("input[name=type]").map { it.attr("value") })
         assertEquals("/visits/7001/cancel", panel.selectFirst("form[data-cancel-form]")?.attr("action"))
         assertTrue(panel.text().contains("Je viendrai avec mon mari."))
+        assertTrue(panel.text().contains("le client sera prévenu par e-mail"))
 
         val close = panel.selectFirst("[data-visit-close]")!!
         assertEquals("/visits/7001?close=refuse#close-title-refuse",
@@ -492,6 +493,58 @@ class VisitTemplateTest {
         assertNull(close.selectFirst("[data-close-open=no-show]"))
         assertNotNull(close.selectFirst("[data-close-open=cancel]"))
         assertTrue(panel.text().contains("15 min après l'heure prévue"))
+    }
+
+    @Test
+    fun `a video window hides the header whatsapp`() {
+        doReturn(window().copy(type = VisitType.VIDEO)).whenever(visitClient).get(7001)
+        val page = render(get("/visits/7001"))
+
+        assertNull(page.selectFirst("[data-header-whatsapp]"))
+        assertTrue(page.selectFirst("[data-panel=WINDOW]")!!.text().contains("Ouvrir WhatsApp"))
+        assertEquals(3, page.select("[data-panel=WINDOW] .visit-call__steps li").size)
+    }
+
+    @Test
+    fun `an on-site window keeps the header whatsapp`() {
+        doReturn(window()).whenever(visitClient).get(7001)
+        assertNotNull(render(get("/visits/7001")).selectFirst("[data-header-whatsapp]"))
+    }
+
+    @Test
+    fun `the code field states the attempt limit`() {
+        doReturn(window()).whenever(visitClient).get(7001)
+        val panel = panel(render(get("/visits/7001")), "WINDOW")!!
+        val code = panel.selectFirst("input[name=code]")!!
+
+        assertEquals("", code.attr("placeholder"))
+        assertTrue(code.attr("aria-describedby").contains("code-attempts"))
+        assertTrue(panel.text().contains("5 essais maximum"))
+    }
+
+    @Test
+    fun `the locked code offers the support and a conditional no-show`() {
+        doReturn(window()).whenever(visitClient).get(7001)
+        val session = MockHttpSession().apply { setAttribute("npc.visit.code-locked.7001", true) }
+
+        val panel = panel(render(get("/visits/7001").session(session)), "WINDOW")!!
+
+        assertTrue(panel.text().contains("Code bloqué après 5 essais"))
+        assertTrue(
+            panel.selectFirst("a[href^=mailto:contact@ndopify.com]")!!.attr("href")
+                .startsWith("mailto:contact@ndopify.com"),
+        )
+        assertEquals(
+            "/visits/7001?close=no-show#close-title-noshow",
+            panel.selectFirst("[data-locked-noshow]")?.attr("href"),
+        )
+    }
+
+    @Test
+    fun `the no-show warning is future tense`() {
+        doReturn(window()).whenever(visitClient).get(7001)
+        val panel = panel(render(get("/visits/7001?close=no-show")), "WINDOW")!!
+        assertTrue(panel.text().contains("L'absence du client sera enregistrée avec votre position"))
     }
 
     @Test
