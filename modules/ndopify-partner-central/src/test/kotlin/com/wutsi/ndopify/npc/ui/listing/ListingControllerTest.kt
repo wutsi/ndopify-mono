@@ -218,6 +218,27 @@ class ListingControllerTest {
     }
 
     @Test
+    fun `show - co-brokerage listing whose agent has no name has no card`() {
+        doReturn(COMPLETE.copy(status = ListingStatus.PUBLISHED, agentId = 999, publishedAt = SENT, description = "Public"))
+            .whenever(listingClient).get(501)
+        doReturn(Match(id = 9009, mandateId = 204, listingId = 501, coBrokerage = true, status = MatchStatus.ACTIVE))
+            .whenever(matchClient).get(9009)
+        doReturn(Mandate(id = 204, agentId = AGENT.id, mandateType = MandateType.SEARCH, status = MandateStatus.APPROVED))
+            .whenever(mandateClient).get(204)
+        doReturn(
+            ProfileFixtures.AGENT.copy(
+                id = 999,
+                party = ProfileFixtures.AGENT.party.copy(firstName = "", lastName = ""),
+            ),
+        ).whenever(agentClient).get(999)
+
+        val view = model(mvc.perform(get("/listings/501?match=9009")).andReturn())["listing"] as ListingView
+
+        assertTrue(view.coBrokerage)
+        assertNull(view.agent)
+    }
+
+    @Test
     fun `show - co-brokerage listing without a match is locked`() {
         doReturn(COMPLETE.copy(status = ListingStatus.PUBLISHED, agentId = 999)).whenever(listingClient).get(501)
 

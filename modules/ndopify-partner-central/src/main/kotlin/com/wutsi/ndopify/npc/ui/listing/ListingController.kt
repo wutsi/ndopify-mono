@@ -109,6 +109,7 @@ class ListingController(
         val agentCard = if (result is PublishedListingAccess.CoBroker) {
             lookup("listing agent ${listing.agentId}") { agentClient.get(listing.agentId) }
                 ?.let { AgentCardViews.of(it, "/listings/${listing.id}?match=${result.match.id}") }
+                ?.takeIf { it.name.isNotBlank() }
         } else {
             null
         }
