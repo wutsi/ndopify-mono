@@ -7,6 +7,8 @@ import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 @Sql(
     scripts = ["/db/test/clean.sql", "/db/test/agent/GetAgentEndpoint.sql"],
@@ -28,6 +30,32 @@ class GetAgentMeEndpointTest : AbstractAgentEndpointTest() {
         assertEquals("Top agent in town", agent.biography)
         assertEquals(listOf(111L, 222L), agent.neighborhoodIds.sorted())
         assertEquals(4.5, agent.rating)
+        assertFalse(agent.telegramConnected)
+    }
+
+    @Test
+    @Sql(
+        statements = [
+            "INSERT INTO T_AGENT_TELEGRAM(tenant_id, agent_id, chat_id, linked_at) VALUES (1, 1, 777, NOW())",
+        ],
+    )
+    fun `telegram connected`() {
+        val response = rest.getForEntity("/v1/agents/me", GetAgentResponse::class.java)
+
+        assertTrue(response.body!!.agent.telegramConnected)
+    }
+
+    @Test
+    @Sql(
+        statements = [
+            "INSERT INTO T_AGENT_TELEGRAM(tenant_id, agent_id, code, code_expires_at) " +
+                "VALUES (1, 1, '123456', DATE_ADD(UTC_TIMESTAMP(), INTERVAL 10 MINUTE))",
+        ],
+    )
+    fun `a pending code is not connected`() {
+        val response = rest.getForEntity("/v1/agents/me", GetAgentResponse::class.java)
+
+        assertFalse(response.body!!.agent.telegramConnected)
     }
 
     @Test

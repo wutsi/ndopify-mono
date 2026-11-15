@@ -6,6 +6,7 @@ import com.wutsi.ndopify.agent.dto.UpdateAgentRequest
 import com.wutsi.ndopify.agent.server.dao.AgentRepository
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.agent.server.event.AgentCreatedEvent
+import com.wutsi.ndopify.agent.server.mail.AgentTelegramCodeMailet
 import com.wutsi.ndopify.agent.server.mail.WelcomeMailet
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
@@ -45,6 +46,7 @@ class AgentService(
     private val userService: UserService,
     private val membershipService: MembershipService,
     private val mailet: WelcomeMailet,
+    private val telegramMailet: AgentTelegramCodeMailet,
     private val eventPublisher: ApplicationEventPublisher,
 ) {
     companion object {
@@ -198,6 +200,15 @@ class AgentService(
         kyc?.let {
             mailet.send(kyc)
         }
+    }
+
+    /**
+     * Sends the Telegram connection code of an agent. Called by `AgentTelegramCodeEventListener` on its own thread,
+     * with `TenantContext` set: the transaction gives the mailet a session to load the membership.
+     */
+    @Transactional
+    fun sendTelegramCode(agentId: Long, code: String, ttlMinutes: Long) {
+        telegramMailet.send(findById(agentId), code, ttlMinutes)
     }
 
     /**

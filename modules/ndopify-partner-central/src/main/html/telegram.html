@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Connecter Telegram — Ndopify Partner Central</title>
+    <meta name="description" content="Connectez votre compte Telegram pour recevoir vos notifications Ndopify.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="assets/images/icon.png">
+    <link rel="apple-touch-icon" href="assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="assets/css/partner-central.css">
+    <link rel="stylesheet" href="assets/css/telegram.css?v=2">
+    <script src="assets/js/partner-central.js" defer></script>
+    <script src="assets/js/telegram.js?v=2" defer></script>
+</head>
+<body data-page="telegram">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" href="index.html">
+                <img src="assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <span aria-hidden="true" data-user-initials>NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li class="user-menu__email" data-user-email></li>
+                    <li><a class="user-menu__item" href="profile/edit.html">Profil</a></li>
+                    <li><a class="user-menu__item" href="login.html" data-logout>Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="connect-back"><a href="index.html">Retour à l'espace agent</a></p>
+
+            <div class="page-intro">
+                <h1>Connecter Telegram</h1>
+                <p>Recevez vos notifications Ndopify directement dans Telegram.</p>
+            </div>
+
+            <div class="alert alert--success" role="status" data-telegram-sent hidden>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                    <circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor"
+                          stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <div>
+                    <p class="alert__title">Code envoyé</p>
+                    <p>Consultez l'adresse e-mail de votre compte, puis envoyez <code>/connect</code> suivi du
+                        code au bot Ndopify. Il expire dans 15&nbsp;minutes.</p>
+                </div>
+            </div>
+
+            <div class="alert alert--error" role="alert" data-telegram-error hidden>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                    <circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor"
+                          stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <div>
+                    <p class="alert__title">Connexion impossible</p>
+                    <p data-telegram-error-text></p>
+                </div>
+            </div>
+
+            <ol class="connect-steps">
+                <li>
+                    <div>
+                        <p class="connect-steps__title">Recevez un code par e-mail</p>
+                        <p>Le code à 6&nbsp;chiffres arrive à l'adresse e-mail de votre compte et expire dans
+                            15&nbsp;minutes.</p>
+                    </div>
+                </li>
+                <li>
+                    <div>
+                        <p class="connect-steps__title">
+                            <a href="https://t.me/ndopify_bot" target="_blank" rel="noopener">Ouvrez le bot Ndopify</a>
+                        </p>
+                        <p>Le bot s'ouvre dans Telegram&nbsp;: appuyez sur <em>Démarrer</em> s'il le propose.</p>
+                    </div>
+                </li>
+                <li>
+                    <div>
+                        <p class="connect-steps__title">Envoyez-lui le code</p>
+                        <p>Dans la conversation, envoyez <code>/connect</code> suivi du code reçu, par exemple
+                            <code>/connect 123456</code>. Le bot confirme la connexion.</p>
+                    </div>
+                </li>
+            </ol>
+
+            <div class="connect-cta">
+                <button class="btn btn--primary" type="button">Recevoir mon code par e-mail</button>
+                <p class="connect-cta__hint">Le code est envoyé à l'adresse e-mail de votre compte.</p>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

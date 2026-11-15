@@ -126,8 +126,18 @@ class HomeControllerTest {
         assertEquals("https://cdn.ndopify.com/party/100/photo/a.jpg", model(result)["userPhotoUrl"])
         assertEquals(false, model(result)["photoMissing"])
         assertEquals(false, model(result)["biographyMissing"])
+        assertEquals(false, model(result)["telegramConnected"])
         assertNull(model(result)["kyc"])
         verify(kycClient, never()).current(any())
+    }
+
+    @Test
+    fun `telegram connected`() {
+        doReturn(AGENT.copy(telegramConnected = true)).whenever(currentAgent).get()
+
+        val result = mvc.perform(get("/")).andReturn()
+
+        assertEquals(true, model(result)["telegramConnected"])
     }
 
     @Test

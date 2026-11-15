@@ -90,6 +90,7 @@ class HomeController(
         ProfileRules.header(agent, model)
         model.addAttribute("photoMissing", agent.party.photoUrl.isNullOrBlank())
         model.addAttribute("biographyMissing", agent.biography.isNullOrBlank())
+        model.addAttribute("telegramConnected", agent.telegramConnected)
         model.addAttribute("kyc", kyc(agent))
         // The triage header has no counts until the sections are loaded (or for an agent who isn't verified).
         model.addAttribute("offerCount", 0)

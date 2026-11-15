@@ -74,4 +74,12 @@ class NdAgentClient(
             .retrieve()
             .toBodilessEntity()
     }
+
+    /** Asks the server to e-mail a Telegram connection code to the signed-in agent. */
+    fun requestTelegramCode() {
+        rest.post()
+            .uri("/v1/agents/me/telegram/code")
+            .retrieve()
+            .toBodilessEntity()
+    }
 }

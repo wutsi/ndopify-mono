@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Connecter Telegram — Ndopify Partner Central</title>
+    <meta name="description" content="Connectez votre compte Telegram pour recevoir vos notifications Ndopify.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/telegram.css}">
+    <script th:src="@{/assets/js/partner-central.js}" defer></script>
+</head>
+<!--/*
+  The Telegram connection page (TelegramController): the three steps, the bot's link in a new tab and the button
+  that asks ndopify-server for a code. "telegramConnected" is the agent's link state; "telegramCodeSent" confirms the
+  e-mail, "telegramError" a failure (already connected, server down). Everything is server-rendered: the page works
+  without JavaScript.
+*/-->
+<body data-page="telegram">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" th:href="@{/}">
+                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte" th:if="${signedIn}">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <img class="user-menu__photo" th:if="${userPhotoUrl}" th:src="${userPhotoUrl}" alt="" width="44" height="44"
+                         data-user-photo>
+                    <span aria-hidden="true" data-user-initials th:unless="${userPhotoUrl}" th:text="${initials}">NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li><a class="user-menu__item" th:href="@{/profile}">Profil</a></li>
+                    <li>
+                        <form method="post" th:action="@{/logout}" data-logout>
+                            <button class="user-menu__item" type="submit">Déconnexion</button>
+                        </form>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="connect-back"><a th:href="@{/}">Retour à l'espace agent</a></p>
+
+            <div class="page-intro">
+                <h1>Connecter Telegram</h1>
+                <p>Recevez vos notifications Ndopify directement dans Telegram.</p>
+            </div>
+
+            <div class="alert alert--success" role="status" data-telegram-sent th:if="${telegramCodeSent}">
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                    <circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor"
+                          stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <div>
+                    <p class="alert__title">Code envoyé</p>
+                    <p>Consultez l'adresse e-mail de votre compte, puis envoyez <code>/connect</code> suivi du
+                        code au bot Ndopify. Il expire dans 15&nbsp;minutes.</p>
+                </div>
+            </div>
+
+            <div class="alert alert--error" role="alert" data-telegram-error th:if="${telegramError}">
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                    <circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor"
+                          stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <div>
+                    <p class="alert__title">Connexion impossible</p>
+                    <p th:text="${telegramError}">L'envoi du code a échoué.</p>
+                </div>
+            </div>
+
+            <div class="alert alert--success" role="status" data-telegram-connected th:if="${telegramConnected}">
+                <p>Votre compte Telegram est connecté.</p>
+            </div>
+
+            <th:block th:unless="${telegramConnected}">
+                <ol class="connect-steps">
+                    <li>
+                        <div>
+                            <p class="connect-steps__title">Recevez un code par e-mail</p>
+                            <p>Le code à 6&nbsp;chiffres arrive à l'adresse e-mail de votre compte et expire dans
+                                15&nbsp;minutes.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <div>
+                            <p class="connect-steps__title">
+                                <a th:href="${telegramBotUrl}" target="_blank" rel="noopener">Ouvrez le bot Ndopify</a>
+                            </p>
+                            <p>Le bot s'ouvre dans Telegram&nbsp;: appuyez sur <em>Démarrer</em> s'il le propose.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <div>
+                            <p class="connect-steps__title">Envoyez-lui le code</p>
+                            <p>Dans la conversation, envoyez <code>/connect</code> suivi du code reçu, par exemple
+                                <code>/connect 123456</code>. Le bot confirme la connexion.</p>
+                        </div>
+                    </li>
+                </ol>
+
+                <form class="connect-cta" method="post" th:action="@{/telegram/code}" data-telegram-form>
+                    <button class="btn btn--primary" type="submit">Recevoir mon code par e-mail</button>
+                    <p class="connect-cta__hint">Le code est envoyé à l'adresse e-mail de votre compte.</p>
+                </form>
+            </th:block>
+        </div>
+    </main>
+</body>
+</html>

@@ -74,3 +74,5 @@ ndopify:
     server:
         api:
             base-url: http://localhost:8080
+    telegram:
+        username: ${TELEGRAM_BOT_USERNAME:ndopify_bot}   # The bot's public username, for https://t.me/<bot>

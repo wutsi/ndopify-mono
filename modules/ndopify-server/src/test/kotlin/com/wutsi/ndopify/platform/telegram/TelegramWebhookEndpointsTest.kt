@@ -12,7 +12,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders
 
 class TelegramWebhookEndpointsTest {
     private val client = mock<TelegramClient>()
-    private val handler = TelegramUpdateHandler(client)
+    private val handler = TelegramUpdateHandler(client, emptyList())
     private val mockMvc = MockMvcBuilders
         .standaloneSetup(TelegramWebhookEndpoints(handler, "secret"))
         .build()

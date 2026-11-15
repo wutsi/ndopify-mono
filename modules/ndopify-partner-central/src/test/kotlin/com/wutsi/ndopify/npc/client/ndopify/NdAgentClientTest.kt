@@ -113,7 +113,7 @@ class NdAgentClientTest {
             .andRespond(
                 withSuccess(
                     """{"agent":{"id":30,"party":{"id":300,"firstName":"Clarisse","lastName":"Mbarga","email":"clarisse@gmail.com","kycStatus":"VERIFIED","createdAt":0,"modifiedAt":0},""" +
-                        """"agentType":"INDEPENDANT","experienceLevel":"SENIOR","biography":"Bio","cityId":1,"neighborhoodIds":[1,2],"whatsappNumber":"+237699123456",""" +
+                        """"agentType":"INDEPENDANT","experienceLevel":"SENIOR","biography":"Bio","cityId":1,"neighborhoodIds":[1,2],"whatsappNumber":"+237699123456","telegramConnected":false,""" +
                         """"createdAt":0,"modifiedAt":0,"rating":4.5,"version":1}}""",
                     MediaType.APPLICATION_JSON,
                 ),
@@ -141,7 +141,7 @@ class NdAgentClientTest {
             .andRespond(
                 withSuccess(
                     """{"agent":{"id":20,"party":{"id":100,"firstName":"Ray","lastName":"Sponsible","email":"ray@gmail.com","kycStatus":"VERIFIED","createdAt":0,"modifiedAt":0},"agentType":"INDEPENDANT","biography":"Bio","cityId":1,""" +
-                        """"neighborhoodIds":[1,2],"experienceLevel":"SENIOR","whatsappNumber":"+237670000001",""" +
+                        """"neighborhoodIds":[1,2],"experienceLevel":"SENIOR","whatsappNumber":"+237670000001","telegramConnected":false,""" +
                         """"createdAt":0,"modifiedAt":0,"rating":3.0,"version":2}}""",
                     MediaType.APPLICATION_JSON,
                 ),

@@ -245,6 +245,7 @@ ndopify:
         ops: true                          # @OpsEndpoint endpoints (unauthenticated): off in prod
     telegram:
         token: ${TELEGRAM_TOKEN}           # No default: the server doesn't start without it
+        username: ${TELEGRAM_BOT_USERNAME} # No default: the bot's public username, used in the connection e-mail's link
         transport: polling                  # polling (local) | webhook (TEST/PROD)
         webhook:
             url: ""                         # ${SERVER_URL}/telegram/webhook in TEST/PROD
@@ -275,6 +276,10 @@ ndopify:
         health: # /actuator/health/llm is public and each check is a paid call: the result is cached
             up-ttl-minutes: 5
             down-ttl-minutes: 1
+
+    agent:
+        telegram:
+            code-ttl-minutes: 15          # How long the 6-digit connection code stays valid
 
     contract:
         signature:
