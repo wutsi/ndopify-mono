@@ -468,8 +468,10 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `SYSTEM` with no mandate reason; `CHECKED_IN` stays. A failed async cancellation never fails the closing:
   `VisitJobs.cancelEndedMandates` sweeps the open visits of ended mandates hourly (100/tenant/run, first run back-fills
   and e-mails). B never learns A's customer. `VisitJobs`: `expire` hourly moves a `REQUESTED` visit at least
-  48 h old and past its requested slot to `EXPIRED`, `reminder` every 15 min e-mails both sides 24 h ahead (once),
-  `noShow` hourly marks the `CONFIRMED` visits
+  48 h old and past its requested slot to `EXPIRED`, `reminder` every 15 min notifies both sides 24 h ahead (once): the
+  customer by e-mail (`VisitReminderMailet.sendCustomer`), the agent over Telegram when its chat is linked
+  (`VisitReminderNotifier` / `VisitReminderBotlet`) or by e-mail (`VisitReminderMailet.sendAgent`) otherwise and as the
+  fallback of a failed send — the co-brokerage reminder stays an e-mail —, `noShow` hourly marks the `CONFIRMED` visits
   whose agent didn't check in 4 h after the time as `NO_SHOW` (both sides e-mailed). The delays and tolerances above are
   `ndopify.visit.policy.*` (overridable); the job crons are `ndopify.visit.*`. Tenant-scoped.
 - **error** — shared exception types (`WutsiException` subclasses: `BadRequestException`, `NotFoundException`,
@@ -488,10 +490,11 @@ executor thread has no request, so the listener sets `TenantContext` and a `Defa
 `OtpService.sendEmail`, `KycService.sendStatusEmail`, `AssignmentService.sendOfferNotification` / `sendAssignedEmail`, `MandateService.sendApprovedNotification`,
 `ContractService.sendSignatureRequestEmails`, `ListingService.sendPublishedNotification`, `MatchProposalService.sendProposedEmail`,
 `VisitService.sendRequestedNotification` / `sendConfirmedEmails` / `sendCompletedEmail` / `sendCancelledEmail` / `sendNoShowEmails` /
-`sendExpiredEmails` / `sendReminderEmails`); the signed PDF (`ContractSignedEvent` → `SignedContractService.generate`,
-not an e-mail, not transactional) follows the same listener pattern. The requested-visit and mandate-approval entries
-are the ones that don't always go by e-mail: `VisitRequestedNotifier` (see *visit*) and `MandateApprovedNotifier`
-(see *mandate*) message a linked agent over Telegram, and e-mail the others or as the fallback. The service methods are
+`sendExpiredEmails` / `sendReminderNotifications`); the signed PDF (`ContractSignedEvent` → `SignedContractService.generate`,
+not an e-mail, not transactional) follows the same listener pattern. The requested-visit, reminder and mandate-approval
+entries are the ones that don't always go by e-mail: `VisitRequestedNotifier` / `VisitReminderNotifier` (see *visit*)
+and `MandateApprovedNotifier` (see *mandate*) message a linked agent over Telegram, and e-mail the others or as the
+fallback. The service methods are
 entered *after* `TenantContext` is set since Hibernate resolves the tenant when the session opens. Failures are
 logged, never rethrown. Tests must wait for the mail (`smtp.waitForIncomingEmail`);
 `BaseEndpointIntegrationTest.tearDown` waits for the running async tasks, so a test's mail can't reach the next one.
