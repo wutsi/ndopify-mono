@@ -41,7 +41,7 @@ class MandateServiceCloseDealTest {
         storageProvider = mock(),
         tx = mock(),
         access = mock(),
-        approvedMailet = mock(),
+        approvedNotifier = mock(),
         contractDurationMonths = 6,
     )
 

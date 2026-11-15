@@ -37,7 +37,6 @@ import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.mandate.server.event.MandateApprovedEvent
 import com.wutsi.ndopify.mandate.server.event.MandateClosedEvent
 import com.wutsi.ndopify.mandate.server.event.MandateCreatedEvent
-import com.wutsi.ndopify.mandate.server.mail.MandateApprovedMailet
 import com.wutsi.ndopify.party.dto.UpdatePartyRequest
 import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
@@ -73,7 +72,7 @@ class MandateService(
     private val storageProvider: StorageServiceProvider,
     private val tx: TransactionTemplate,
     private val access: MandateAccessService,
-    private val approvedMailet: MandateApprovedMailet,
+    private val approvedNotifier: MandateApprovedNotifier,
 
     @param:Value("\${ndopify.mandate.contract.duration-months}") private val contractDurationMonths: Int,
 ) {
@@ -376,11 +375,12 @@ class MandateService(
     }
 
     /**
-     * E-mails the agent that its mandate is approved. Nothing is sent once the mandate has moved on (closed or
-     * cancelled in the meantime), nor for a mandate without agent or contract. Returns whether it was sent.
+     * Tells the agent that its mandate is approved: over Telegram when its chat is linked, by e-mail otherwise or as
+     * the fallback of a failed send. Nothing is sent once the mandate has moved on (closed or cancelled in the
+     * meantime), nor for a mandate without agent or contract. Returns whether a channel delivered it.
      */
     @Transactional
-    fun sendApprovedEmail(id: Long): Boolean {
+    fun sendApprovedNotification(id: Long): Boolean {
         val mandate = findById(id)
         val agentId = mandate.agentId
         val contractId = mandate.contractId
@@ -388,7 +388,7 @@ class MandateService(
             return false
         }
 
-        approvedMailet.send(
+        approvedNotifier.send(
             mandate = mandate,
             contract = contractService.findById(contractId),
             customer = customerService.findById(mandate.customerId),

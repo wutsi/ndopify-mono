@@ -27,9 +27,9 @@ import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.mandate.server.event.MandateApprovedEvent
 import com.wutsi.ndopify.mandate.server.event.MandateClosedEvent
-import com.wutsi.ndopify.mandate.server.mail.MandateApprovedMailet
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.dto.Money
+import org.mockito.Mockito.verifyNoInteractions
 import org.springframework.context.ApplicationEventPublisher
 import java.time.Clock
 import java.util.Date
@@ -43,7 +43,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** Approving, closing and cancelling: the age, the events and the e-mail, that the endpoint tests can't see. */
+/** Approving, closing and cancelling: the age, the events and the notification, that the endpoint tests can't see. */
 class MandateServiceTest {
     private val dao = mock<MandateRepository>()
     private val assignmentDao = mock<AssignmentRepository>()
@@ -52,7 +52,7 @@ class MandateServiceTest {
     private val customerService = mock<CustomerService>()
     private val agentService = mock<AgentService>()
     private val contractService = mock<ContractService>()
-    private val approvedMailet = mock<MandateApprovedMailet>()
+    private val approvedNotifier = mock<MandateApprovedNotifier>()
     private val service = MandateService(
         dao = dao,
         assignmentDao = assignmentDao,
@@ -67,7 +67,7 @@ class MandateServiceTest {
         storageProvider = mock(),
         tx = mock(),
         access = mock(),
-        approvedMailet = approvedMailet,
+        approvedNotifier = approvedNotifier,
         contractDurationMonths = 6,
     )
 
@@ -309,7 +309,7 @@ class MandateServiceTest {
     }
 
     @Test
-    fun `approved email - sent to the agent`() {
+    fun `approved notification - sent to the agent`() {
         val mandate = mandate(MandateStatus.APPROVED).copy(customerId = 10L, agentId = 20L, contractId = "c-1")
         val contract = ContractEntity(id = "c-1")
         val customer = CustomerEntity(id = 10L)
@@ -319,28 +319,28 @@ class MandateServiceTest {
         doReturn(customer).whenever(customerService).findById(10L)
         doReturn(agent).whenever(agentService).findById(20L)
 
-        assertTrue(service.sendApprovedEmail(1L))
+        assertTrue(service.sendApprovedNotification(1L))
 
-        verify(approvedMailet).send(mandate, contract, customer, agent)
+        verify(approvedNotifier).send(mandate, contract, customer, agent)
     }
 
     @Test
-    fun `approved email - not sent once the mandate has moved on`() {
+    fun `approved notification - not sent once the mandate has moved on`() {
         val mandate = mandate(MandateStatus.CLOSED).copy(agentId = 20L, contractId = "c-1")
         doReturn(Optional.of(mandate)).whenever(dao).findById(1L)
 
-        assertFalse(service.sendApprovedEmail(1L))
+        assertFalse(service.sendApprovedNotification(1L))
 
-        verify(approvedMailet, never()).send(any(), any(), any(), any())
+        verifyNoInteractions(approvedNotifier)
     }
 
     @Test
-    fun `approved email - not sent without agent`() {
+    fun `approved notification - not sent without agent`() {
         val mandate = mandate(MandateStatus.APPROVED).copy(contractId = "c-1")
         doReturn(Optional.of(mandate)).whenever(dao).findById(1L)
 
-        assertFalse(service.sendApprovedEmail(1L))
+        assertFalse(service.sendApprovedNotification(1L))
 
-        verify(approvedMailet, never()).send(any(), any(), any(), any())
+        verifyNoInteractions(approvedNotifier)
     }
 }
