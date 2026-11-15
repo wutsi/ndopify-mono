@@ -8,6 +8,7 @@
 
     var OTP_TTL_MS = 5 * 60 * 1000;
     var OTP_MAX_ATTEMPTS = 5;
+    var OTP_LOCK_MS = 60 * 60 * 1000;
     var MAX_FILE_BYTES = 5 * 1024 * 1024;
     var ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
     var EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -21,6 +22,8 @@
         email: "npc.email",
         otpExpiry: "npc.otpExpiry",
         otpAttempts: "npc.otpAttempts",
+        // While the account is locked, the instant (ms) the lock ends (see initLoginCode).
+        otpLockedUntil: "npc.otpLockedUntil",
         front: "npc.kyc.front",
         back: "npc.kyc.back",
         // Status of the submitted dossier: attente, verifie or rejete.
@@ -139,6 +142,24 @@
         return h + " h " + m;
     }
 
+    // PROTOTYPE: the account lock, told the way the served page tells it from the error's data.
+    function otpLockedUntil() {
+        return Number(store.get(KEYS.otpLockedUntil)) || 0;
+    }
+
+    function isOtpLocked() {
+        return Date.now() < otpLockedUntil();
+    }
+
+    function otpLockMessage() {
+        var minutes = Math.max(1, Math.ceil((otpLockedUntil() - Date.now()) / 60000));
+        return "Trop de tentatives. Réessayez dans " + minutes + (minutes > 1 ? " minutes." : " minute.");
+    }
+
+    function otpRemainingMessage(left) {
+        return "Code incorrect. Encore " + left + (left > 1 ? " tentatives" : " tentative") + " avant le blocage de votre compte.";
+    }
+
     function initialsFromEmail(email) {
         if (!email) return "NP";
         var name = email.split("@")[0].replace(/[^a-zA-Z.\-_]/g, "");
@@ -253,9 +274,21 @@
                 return;
             }
 
+            // The count is per account: another address starts with attempts of its own.
+            if (store.get(KEYS.email) !== email) {
+                store.remove(KEYS.otpAttempts);
+                store.remove(KEYS.otpLockedUntil);
+            }
+
+            // PROTOTYPE: a locked account gets no code — POST /v1/otp answers AUTH_ACCOUNT_LOCKED.
+            if (isOtpLocked()) {
+                setFieldError(input, error, otpLockMessage());
+                input.focus();
+                return;
+            }
+
             store.set(KEYS.email, email);
             store.set(KEYS.otpExpiry, String(Date.now() + OTP_TTL_MS));
-            store.set(KEYS.otpAttempts, "0");
             onCodeSent();
         });
 
@@ -292,14 +325,20 @@
             return Date.now() >= expiry();
         }
 
+        function codeError() {
+            if (isOtpLocked()) return otpLockMessage();
+            if (isExpired()) return "Ce code a expiré. Demandez un nouveau code ci-dessous.";
+            return "";
+        }
+
         function scheduleExpiry() {
             window.clearTimeout(expiryTimer);
             expiryEl.textContent = formatTime(expiry());
             var remaining = expiry() - Date.now();
             if (remaining <= 0) return;
             expiryTimer = window.setTimeout(function () {
-                setFieldError(input, error, "Ce code a expiré. Demandez un nouveau code ci-dessous.");
-                announce(status, "Votre code a expiré. Vous pouvez demander un nouveau code.");
+                setFieldError(input, error, codeError());
+                if (!isOtpLocked()) announce(status, "Votre code a expiré. Vous pouvez demander un nouveau code.");
                 sync();
             }, remaining);
         }
@@ -312,22 +351,29 @@
         }
 
         function sync() {
-            setActive(submit, validity() === "" && !isExpired() && attempts() < OTP_MAX_ATTEMPTS);
+            setActive(submit, validity() === "" && !isExpired() && !isOtpLocked());
         }
 
         input.addEventListener("input", function () {
             var digits = input.value.replace(/\D/g, "").slice(0, 6);
             if (digits !== input.value) input.value = digits;
-            if (input.getAttribute("aria-invalid") === "true" && !isExpired()) setFieldError(input, error, "");
+            if (input.getAttribute("aria-invalid") === "true" && !isExpired() && !isOtpLocked()) {
+                setFieldError(input, error, "");
+            }
             sync();
         });
 
         form.addEventListener("submit", function (event) {
             event.preventDefault();
-            if (attempts() >= OTP_MAX_ATTEMPTS) {
-                setFieldError(input, error, "Trop d'essais pour ce code. Demandez un nouveau code ci-dessous.");
+            if (isOtpLocked()) {
+                setFieldError(input, error, otpLockMessage());
                 input.focus();
                 return;
+            }
+            if (otpLockedUntil() && !isOtpLocked()) {
+                // An expired lock starts the count over.
+                store.remove(KEYS.otpAttempts);
+                store.remove(KEYS.otpLockedUntil);
             }
             if (isExpired()) {
                 setFieldError(input, error, "Ce code a expiré. Demandez un nouveau code ci-dessous.");
@@ -344,14 +390,13 @@
             if (input.value === WRONG_CODE) {
                 var used = attempts() + 1;
                 store.set(KEYS.otpAttempts, String(used));
-                var left = OTP_MAX_ATTEMPTS - used;
-                setFieldError(
-                    input,
-                    error,
-                    left > 0
-                        ? "Code incorrect. Il vous reste " + left + (left > 1 ? " essais." : " essai.")
-                        : "Trop d'essais pour ce code. Demandez un nouveau code ci-dessous."
-                );
+                if (used >= OTP_MAX_ATTEMPTS) {
+                    // PROTOTYPE: the 5th wrong code locks the account, whatever the code asked next (POST /v1/auth).
+                    store.set(KEYS.otpLockedUntil, String(Date.now() + OTP_LOCK_MS));
+                    setFieldError(input, error, otpLockMessage());
+                } else {
+                    setFieldError(input, error, otpRemainingMessage(OTP_MAX_ATTEMPTS - used));
+                }
                 input.select();
                 input.focus();
                 sync();
@@ -360,13 +405,19 @@
 
             store.remove(KEYS.otpExpiry);
             store.remove(KEYS.otpAttempts);
+            store.remove(KEYS.otpLockedUntil);
             window.location.href = "kyc.html";
         });
 
         resend.addEventListener("click", function () {
-            // PROTOTYPE: a real resend calls the API, which applies its own rate limit.
+            // PROTOTYPE: a locked account gets no code — POST /v1/otp answers AUTH_ACCOUNT_LOCKED.
+            if (isOtpLocked()) {
+                announce(status, otpLockMessage());
+                return;
+            }
+            // PROTOTYPE: a real resend calls the API, which applies its own rate limit. A new code buys no
+            // attempts, so the count and the lock are kept.
             store.set(KEYS.otpExpiry, String(Date.now() + OTP_TTL_MS));
-            store.set(KEYS.otpAttempts, "0");
             input.value = "";
             setFieldError(input, error, "");
             scheduleExpiry();
@@ -380,7 +431,7 @@
                 $("[data-masked-email]", root).textContent = maskEmail(email());
                 input.value = "";
                 status.textContent = "";
-                setFieldError(input, error, isExpired() ? "Ce code a expiré. Demandez un nouveau code ci-dessous." : "");
+                setFieldError(input, error, codeError());
                 scheduleExpiry();
                 sync();
             },
