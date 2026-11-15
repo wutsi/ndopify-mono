@@ -33,6 +33,7 @@ import org.springframework.web.servlet.view.InternalResourceViewResolver
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
@@ -230,6 +231,49 @@ class LoginControllerTest {
     }
 
     @Test
+    fun verifyLocked() {
+        assertVerifyError(
+            ErrorCode.AUTH_ACCOUNT_LOCKED,
+            "Trop de tentatives. Réessayez dans 42 minutes.",
+            mapOf("lockedUntil" to Instant.ofEpochMilli(now.toEpochMilli()).plus(42, ChronoUnit.MINUTES).toString()),
+        )
+    }
+
+    @Test
+    fun verifyWrongCodeShowsRemainingAttempts() {
+        assertVerifyError(
+            ErrorCode.AUTH_INVALID_CREDENTIALS,
+            "Code incorrect. Encore 2 tentatives avant le blocage de votre compte.",
+            mapOf("remainingAttempts" to 2),
+        )
+    }
+
+    @Test
+    fun submitLocked() {
+        doThrow(conflict(ErrorCode.AUTH_ACCOUNT_LOCKED, mapOf("lockedUntil" to lockedUntil()))).whenever(otpClient)
+            .create(any())
+
+        val result = mvc.perform(post("/login").param("email", "ray@gmail.com").session(session)).andReturn()
+
+        assertEquals("login", result.modelAndView?.viewName)
+        assertEquals("email", model(result)["step"])
+        assertEquals("Trop de tentatives. Réessayez dans 42 minutes.", model(result)["error"])
+        assertNull(session.getAttribute(PendingLogin.SESSION_ATTRIBUTE))
+    }
+
+    @Test
+    fun resendLocked() {
+        session.setAttribute(PendingLogin.SESSION_ATTRIBUTE, pending)
+        doThrow(conflict(ErrorCode.AUTH_ACCOUNT_LOCKED, mapOf("lockedUntil" to lockedUntil()))).whenever(otpClient)
+            .create(any())
+
+        val result = mvc.perform(post("/login").param("resend", "true").session(session)).andReturn()
+
+        assertEquals("Trop de tentatives. Réessayez dans 42 minutes.", model(result)["error"])
+        assertNull(session.getAttribute(PendingLogin.SESSION_ATTRIBUTE))
+    }
+
+    @Test
     fun verifyUnexpectedError() {
         session.setAttribute(PendingLogin.SESSION_ATTRIBUTE, pending)
         doThrow(HttpClientErrorException(HttpStatus.CONFLICT)).whenever(authClient).authenticate(any())
@@ -242,11 +286,9 @@ class LoginControllerTest {
         )
     }
 
-    private fun assertVerifyError(code: String, message: String) {
+    private fun assertVerifyError(code: String, message: String, data: Map<String, Any>? = null) {
         session.setAttribute(PendingLogin.SESSION_ATTRIBUTE, pending)
-        val ex = HttpClientErrorException(HttpStatus.CONFLICT)
-        ex.setBodyConvertFunction { ErrorResponse(Error(code = code)) }
-        doThrow(ex).whenever(authClient).authenticate(any())
+        doThrow(conflict(code, data)).whenever(authClient).authenticate(any())
 
         val result = mvc.perform(post("/login/verify").param("code", "123456").session(session)).andReturn()
 
@@ -259,6 +301,15 @@ class LoginControllerTest {
         // A wrong code keeps the sign-in pending, so the agent can try again or resend.
         assertEquals(pending, session.getAttribute(PendingLogin.SESSION_ATTRIBUTE))
     }
+
+    private fun conflict(code: String, data: Map<String, Any>? = null): HttpClientErrorException {
+        val ex = HttpClientErrorException(HttpStatus.CONFLICT)
+        ex.setBodyConvertFunction { ErrorResponse(Error(code = code, data = data)) }
+        return ex
+    }
+
+    private fun lockedUntil(): String =
+        Instant.ofEpochMilli(now.toEpochMilli()).plus(42, ChronoUnit.MINUTES).toString()
 
     private fun model(result: MvcResult): Map<String, Any?> = result.modelAndView?.model ?: emptyMap()
 }
