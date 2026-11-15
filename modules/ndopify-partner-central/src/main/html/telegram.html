@@ -13,9 +13,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
     <link rel="stylesheet" href="assets/css/partner-central.css">
-    <link rel="stylesheet" href="assets/css/telegram.css?v=2">
+    <link rel="stylesheet" href="assets/css/telegram.css?v=4">
     <script src="assets/js/partner-central.js" defer></script>
-    <script src="assets/js/telegram.js?v=2" defer></script>
+    <script src="assets/js/telegram.js?v=4" defer></script>
 </head>
 <body data-page="telegram">
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -75,17 +75,27 @@
             <ol class="connect-steps">
                 <li>
                     <div>
-                        <p class="connect-steps__title">Recevez un code par e-mail</p>
+                        <p class="connect-steps__title">Demandez votre code</p>
                         <p>Le code à 6&nbsp;chiffres arrive à l'adresse e-mail de votre compte et expire dans
                             15&nbsp;minutes.</p>
+                        <div class="connect-cta connect-cta--step">
+                            <button class="btn btn--primary" type="button" data-telegram-code>Recevoir mon code par
+                                e-mail</button>
+                        </div>
                     </div>
                 </li>
                 <li>
                     <div>
-                        <p class="connect-steps__title">
-                            <a href="https://t.me/ndopify_bot" target="_blank" rel="noopener">Ouvrez le bot Ndopify</a>
-                        </p>
-                        <p>Le bot s'ouvre dans Telegram&nbsp;: appuyez sur <em>Démarrer</em> s'il le propose.</p>
+                        <p class="connect-steps__title">Ouvrez Telegram</p>
+                        <p>Le bot Ndopify s'ouvre dans Telegram&nbsp;: appuyez sur <em>Démarrer</em> s'il le propose.</p>
+                        <div class="connect-cta connect-cta--step">
+                            <!--
+                              The served page renders this as a disabled <button> until the code is sent. Here,
+                              ?sent=1 enables the link.
+                            -->
+                            <a class="btn btn--outline" href="https://t.me/ndopify_bot" target="_blank" rel="noopener"
+                               data-telegram-open aria-disabled="true" tabindex="-1">Ouvrir le bot Ndopify</a>
+                        </div>
                     </div>
                 </li>
                 <li>
@@ -96,11 +106,6 @@
                     </div>
                 </li>
             </ol>
-
-            <div class="connect-cta">
-                <button class="btn btn--primary" type="button">Recevoir mon code par e-mail</button>
-                <p class="connect-cta__hint">Le code est envoyé à l'adresse e-mail de votre compte.</p>
-            </div>
         </div>
     </main>
 </body>

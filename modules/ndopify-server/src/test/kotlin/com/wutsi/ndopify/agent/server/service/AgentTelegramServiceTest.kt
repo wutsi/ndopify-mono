@@ -23,7 +23,9 @@ import java.util.Date
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class AgentTelegramServiceTest {
     private val dao = mock<AgentTelegramRepository>()
@@ -141,6 +143,21 @@ class AgentTelegramServiceTest {
         doReturn(1).whenever(dao).link("123456", 777L, Date(now))
 
         assertEquals(AgentTelegramLinkResult.CONNECTED, service.connect("123456", 777L))
+    }
+
+    @Test
+    fun `a linked chat is recognized`() {
+        doReturn(AgentTelegramEntity(id = 9L, tenantId = 1L, agentId = 20L, chatId = 777L))
+            .whenever(dao).findByChatId(777L)
+
+        assertTrue(service.isLinked(777L))
+    }
+
+    @Test
+    fun `an unknown chat is not linked`() {
+        doReturn(null).whenever(dao).findByChatId(777L)
+
+        assertFalse(service.isLinked(777L))
     }
 
     private fun row(code: String? = "123456", expiresAt: Date? = Date(now + 60_000)) =

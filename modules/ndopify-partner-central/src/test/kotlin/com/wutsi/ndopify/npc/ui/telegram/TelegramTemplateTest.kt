@@ -21,6 +21,9 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.thymeleaf.spring6.SpringTemplateEngine
 import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -50,7 +53,15 @@ class TelegramTemplateTest {
             characterEncoding = "UTF-8"
         }
         mvc = MockMvcBuilders
-            .standaloneSetup(TelegramController(currentAgent, mock<NdAgentClient>(), "ndopify_bot"))
+            .standaloneSetup(
+                TelegramController(
+                    currentAgent,
+                    mock<NdAgentClient>(),
+                    "ndopify_bot",
+                    Clock.fixed(Instant.parse("2026-11-15T10:00:00Z"), ZoneOffset.UTC),
+                    15,
+                ),
+            )
             .setControllerAdvice(SignedInAdvice())
             .setViewResolvers(viewResolver)
             .build()
@@ -65,19 +76,37 @@ class TelegramTemplateTest {
         Jsoup.parse(mvc.perform(request).andReturn().response.contentAsString)
 
     @Test
-    fun `not connected - the three steps and the button`() {
+    fun `not connected - the code action is in step 1 and the bot button is disabled`() {
         val page = render(get("/telegram"))
 
         assertEquals(3, page.select(".connect-steps > li").size)
-        val botLink = page.selectFirst("a[href=https://t.me/ndopify_bot]")!!
-        assertEquals("_blank", botLink.attr("target"))
-        assertEquals("noopener", botLink.attr("rel"))
-
-        val form = page.selectFirst("form[data-telegram-form]")!!
+        val form = page.selectFirst(".connect-steps > li:first-child form[data-telegram-form]")!!
         assertEquals("/telegram/code", form.attr("action"))
         assertEquals("Recevoir mon code par e-mail", form.selectFirst("button")?.text())
+        assertTrue(form.selectFirst("button")!!.hasClass("btn--primary"))
+
+        val disabled = page.selectFirst("[data-telegram-open-disabled]")!!
+        assertEquals("Ouvrir le bot Ndopify", disabled.text())
+        assertTrue(disabled.hasAttr("disabled"))
+        assertNull(page.selectFirst("a[data-telegram-open]"))
 
         assertNull(page.selectFirst("[data-telegram-connected]"))
+    }
+
+    @Test
+    fun `a pending code flips the emphasis to the bot button`() {
+        val page = render(get("/telegram").flashAttr(TelegramRules.SENT, true))
+
+        val code = page.selectFirst(".connect-steps > li:first-child form[data-telegram-form] button")!!
+        assertEquals("Recevoir un nouveau code", code.text())
+        assertTrue(code.hasClass("btn--outline"))
+
+        val open = page.selectFirst("a[data-telegram-open]")!!
+        assertEquals("https://t.me/ndopify_bot", open.attr("href"))
+        assertEquals("_blank", open.attr("target"))
+        assertEquals("noopener", open.attr("rel"))
+        assertTrue(open.hasClass("btn--primary"))
+        assertNull(page.selectFirst("[data-telegram-open-disabled]"))
     }
 
     @Test

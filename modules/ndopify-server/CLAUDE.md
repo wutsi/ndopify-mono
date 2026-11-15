@@ -124,7 +124,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `mail/agent/telegram_code.mjml`); an agent whose chat is linked gets 409 `AGENT_TELEGRAM_ALREADY_CONNECTED`, and
   `Agent.telegramConnected` reports the link. The bot's `/connect <code>` (`AgentTelegramCommand`) links the chat
   through `AgentTelegramService.connect` (code found without a tenant, single use, one chat per account; a chat linked
-  to another account is refused). No reconnect nor disconnect. Tenant-scoped but for the link row.
+  to another account is refused); its `/start` (`AgentTelegramStartCommand`) welcomes the chat with those two steps, or
+  tells a linked chat it is already connected (`AgentTelegramService.isLinked`). No reconnect nor disconnect.
+  Tenant-scoped but for the link row.
 - **customer** — the people behind the mandates: tenants searching for a property and owners offering one
   (`CustomerEntity`, linked to a `Party`; `/v1/customers`). `CustomerService.findOrCreate` reuses the party and
   customer of an e-mail. `POST /v1/mandates/{id}/customer` (`MandateService.updateCustomer`) corrects the mandate's
@@ -487,7 +489,8 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
 - `platform/util` — small helpers (`PhoneNumberUtils`, `MimeUtils`, `UrlUtils`, `KycUtils`, HTTP utilities).
 - `platform/telegram` — the Telegram bot, wired by `config/platform/TelegramConfiguration`: `TelegramClient` (a thin
   Bot API client over `platform/util/http/Http`), `TelegramUpdateHandler` (gives a `message` the reply of the first
-  `TelegramCommand` bean that recognizes it — the agent domain's `/connect` — else `OK`, and ignores every other
+  `TelegramCommand` bean that recognizes it — the agent domain's `/start` and `/connect` — else `OK`, and ignores
+  every other
   update type), two transports (`TelegramPollingTransport` locally: long polling on a virtual thread,
   clearing the webhook first; `TelegramWebhookTransport` in TEST/PROD: registers
   `${SERVER_URL}/telegram/webhook` at startup) and `TelegramHealthIndicator` (cached `getMe`, health id `telegram` in

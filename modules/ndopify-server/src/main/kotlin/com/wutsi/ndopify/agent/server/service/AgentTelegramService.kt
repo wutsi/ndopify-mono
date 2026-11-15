@@ -56,6 +56,9 @@ class AgentTelegramService(
     /** True once the agent's chat is linked: a row with a pending code only isn't connected. */
     fun isConnected(agentId: Long): Boolean = dao.findByAgentId(agentId)?.chatId != null
 
+    /** True when the chat is linked to an agent account. */
+    fun isLinked(chatId: Long): Boolean = dao.findByChatId(chatId) != null
+
     /**
      * Links the chat of a `/connect <code>` to the agent account that code was issued to.
      *

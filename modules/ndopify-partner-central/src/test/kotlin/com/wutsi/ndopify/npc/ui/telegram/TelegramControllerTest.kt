@@ -21,23 +21,31 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.servlet.view.InternalResourceViewResolver
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class TelegramControllerTest {
     private val currentAgent = mock<CurrentAgent>()
     private val agentClient = mock<NdAgentClient>()
+    private val now = Instant.parse("2026-11-15T10:00:00Z").toEpochMilli()
+    private val clock: Clock = Clock.fixed(Instant.ofEpochMilli(now), ZoneOffset.UTC)
     private lateinit var mvc: MockMvc
 
     @BeforeEach
     fun setUp() {
         doReturn(AGENT).whenever(currentAgent).get()
 
-        val controller = TelegramController(currentAgent, agentClient, "ndopify_bot")
-        mvc = MockMvcBuilders.standaloneSetup(controller)
+        val controller = TelegramController(currentAgent, agentClient, "ndopify_bot", clock, 15)
+        mvc = mockMvc(controller)
+    }
+
+    private fun mockMvc(controller: TelegramController): MockMvc =
+        MockMvcBuilders.standaloneSetup(controller)
             .setViewResolvers(InternalResourceViewResolver("/templates/", ".html"))
             .build()
-    }
 
     @Test
     fun `the page shows the bot url`() {
@@ -45,6 +53,43 @@ class TelegramControllerTest {
 
         assertEquals("telegram", result.modelAndView!!.viewName)
         assertEquals(false, result.modelAndView!!.model["telegramConnected"])
+        assertEquals("https://t.me/ndopify_bot", result.modelAndView!!.model["telegramBotUrl"])
+    }
+
+    @Test
+    fun `a successful request remembers the code for its ttl`() {
+        val result = mvc.perform(post("/telegram/code")).andReturn()
+
+        assertEquals(now + 15 * 60_000, result.request.getSession().getAttribute(TelegramRules.SENT_UNTIL))
+    }
+
+    @Test
+    fun `a pending code keeps step 2 open after a refresh`() {
+        val result = mvc.perform(
+            get("/telegram").sessionAttr(TelegramRules.SENT_UNTIL, now + 60_000),
+        ).andReturn()
+
+        assertEquals(true, result.modelAndView!!.model["telegramCodePending"])
+        assertNull(result.flashMap[TelegramRules.SENT])
+    }
+
+    @Test
+    fun `an expired code closes step 2 again`() {
+        val result = mvc.perform(
+            get("/telegram").sessionAttr(TelegramRules.SENT_UNTIL, now - 1),
+        ).andReturn()
+
+        assertEquals(false, result.modelAndView!!.model["telegramCodePending"])
+        assertNull(result.request.getSession().getAttribute(TelegramRules.SENT_UNTIL))
+    }
+
+    @Test
+    fun `a blank bot username falls back to the default bot`() {
+        val blank = TelegramController(currentAgent, agentClient, "", clock, 15)
+        val mvc = mockMvc(blank)
+
+        val result = mvc.perform(get("/telegram")).andReturn()
+
         assertEquals("https://t.me/ndopify_bot", result.modelAndView!!.model["telegramBotUrl"])
     }
 

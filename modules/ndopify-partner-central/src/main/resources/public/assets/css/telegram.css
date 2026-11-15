@@ -70,7 +70,7 @@
     background: var(--color-bg);
 }
 
-/* The page's one action: full width on a phone, its natural width above 640px. */
+/* A step's action: under its text, full width on a phone, natural width above 640px. */
 .connect-cta {
     display: flex;
     flex-direction: column;
@@ -79,12 +79,13 @@
     margin-top: var(--space-5);
 }
 
-.connect-cta .btn {
-    width: 100%;
+/* Inside a step the action belongs to the paragraph above it, not to the page's foot. */
+.connect-cta--step {
+    margin-top: var(--space-3);
 }
 
-.connect-cta__hint {
-    font-size: var(--step-hint);
+.connect-cta .btn {
+    width: 100%;
 }
 
 @media (min-width: 640px) {

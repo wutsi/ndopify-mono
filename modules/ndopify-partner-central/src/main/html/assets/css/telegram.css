@@ -70,7 +70,7 @@
     background: var(--color-bg);
 }
 
-/* The page's one action: full width on a phone, its natural width above 640px. */
+/* A step's action: under its text, full width on a phone, natural width above 640px. */
 .connect-cta {
     display: flex;
     flex-direction: column;
@@ -79,12 +79,18 @@
     margin-top: var(--space-5);
 }
 
+/* Inside a step the action belongs to the paragraph above it, not to the page's foot. */
+.connect-cta--step {
+    margin-top: var(--space-3);
+}
+
 .connect-cta .btn {
     width: 100%;
 }
 
-.connect-cta__hint {
-    font-size: var(--step-hint);
+/* A disabled link keeps the button's grey but takes no click and no tab stop. */
+.connect-cta .btn[aria-disabled="true"] {
+    pointer-events: none;
 }
 
 @media (min-width: 640px) {
