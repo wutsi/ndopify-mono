@@ -7,24 +7,31 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.server.exception.ConflictException
+import com.wutsi.ndopify.error.server.exception.ForbiddenException
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.server.dao.AssignmentRepository
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.mandate.server.domain.AssignmentEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.mandate.server.event.AssignmentAcceptedEvent
 import com.wutsi.ndopify.mandate.server.event.AssignmentClosedEvent
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.PageRequest
 import java.time.Clock
 import java.util.Date
+import java.util.Optional
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 
 /** The batch methods behind `MandateJobs`, which no endpoint exposes. */
 class AssignmentServiceTest {
@@ -50,9 +57,10 @@ class AssignmentServiceTest {
 
     private fun offer(id: Long, mandateId: Long) = AssignmentEntity(
         id = id,
-        mandate = MandateEntity(id = mandateId),
+        mandate = MandateEntity(id = mandateId, status = MandateStatus.PENDING_ASSIGNMENT),
         agentId = 20L,
         status = AssignmentStatus.PENDING,
+        expiresAt = Date(now + 60_000),
     )
 
     private fun offered(id: Long, mandateId: Long) = DispatchResult.Offered(
@@ -112,6 +120,47 @@ class AssignmentServiceTest {
             Date(now),
             PageRequest.of(0, AssignmentService.BATCH_SIZE),
         )
+    }
+
+    // --- acceptForAgent / declineForAgent (the Telegram path: no JWT)
+
+    @Test
+    fun `acceptForAgent - accepts the offer of that agent`() {
+        doReturn(Optional.of(offer(1, 10))).whenever(dao).findById(1L)
+
+        val accepted = service.acceptForAgent(agentId = 20L, id = 1L)
+
+        assertEquals(AssignmentStatus.ACCEPTED, accepted.status)
+        verify(eventPublisher).publishEvent(AssignmentAcceptedEvent(assignmentId = 1L, tenantId = 1L))
+    }
+
+    @Test
+    fun `acceptForAgent - another agent's offer is forbidden, before the status`() {
+        doReturn(Optional.of(offer(1, 10).copy(status = AssignmentStatus.ACCEPTED))).whenever(dao).findById(1L)
+
+        val ex = assertFailsWith<ForbiddenException> { service.acceptForAgent(agentId = 30L, id = 1L) }
+
+        assertEquals(ErrorCode.ASSIGNMENT_ACCESS_DENIED, ex.error.code)
+        verify(dao, never()).save(any())
+    }
+
+    @Test
+    fun `acceptForAgent - an offer past its TTL is not pending`() {
+        doReturn(Optional.of(offer(1, 10).copy(expiresAt = Date(now - 1)))).whenever(dao).findById(1L)
+
+        val ex = assertFailsWith<ConflictException> { service.acceptForAgent(agentId = 20L, id = 1L) }
+
+        assertEquals(ErrorCode.ASSIGNMENT_NOT_PENDING, ex.error.code)
+    }
+
+    @Test
+    fun `declineForAgent - declines the offer of that agent`() {
+        doReturn(Optional.of(offer(1, 10))).whenever(dao).findById(1L)
+
+        val declined = service.declineForAgent(agentId = 20L, id = 1L)
+
+        assertEquals(AssignmentStatus.DECLINED, declined.status)
+        verify(eventPublisher).publishEvent(AssignmentClosedEvent(assignmentId = 1L, mandateId = 10L, tenantId = 1L))
     }
 
     // --- dispatchPending

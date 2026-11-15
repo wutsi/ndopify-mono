@@ -82,7 +82,21 @@ class AssignmentService(
 
     @Transactional
     fun accept(id: Long): AssignmentEntity {
-        val assignment = findPendingForAssignee(id)
+        findById(id) // 404 before 401 / 403, then 409 (see findPendingForAgent)
+        return acceptForAgent(callerAgentId(), id)
+    }
+
+    /**
+     * Accepts an offer on behalf of its agent. Takes the agent id because its caller has no JWT (the Telegram bot):
+     * [accept] is the API's entry point and answers 401 / 403 through `CallerService`.
+     *
+     * 404 `ASSIGNMENT_NOT_FOUND` → 403 `ASSIGNMENT_ACCESS_DENIED` for another agent's offer → 409
+     * `ASSIGNMENT_NOT_PENDING` once it is no longer PENDING or past its TTL, or its mandate is no longer
+     * PENDING_ASSIGNMENT.
+     */
+    @Transactional
+    fun acceptForAgent(agentId: Long, id: Long): AssignmentEntity {
+        val assignment = findPendingForAgent(id, agentId)
         if (assignment.mandate.status != MandateStatus.PENDING_ASSIGNMENT) {
             // Ex: cancelled meanwhile. Accepting would revive it
             throw ConflictException(error = Error(code = ErrorCode.ASSIGNMENT_NOT_PENDING))
@@ -124,8 +138,19 @@ class AssignmentService(
     }
 
     @Transactional
-    fun decline(id: Long): AssignmentEntity =
-        close(findPendingForAssignee(id), AssignmentStatus.DECLINED)
+    fun decline(id: Long): AssignmentEntity {
+        findById(id) // 404 before 401 / 403, then 409 (see findPendingForAgent)
+        return declineForAgent(callerAgentId(), id)
+    }
+
+    /**
+     * Declines an offer on behalf of its agent, and re-dispatches its mandate after commit. Takes the agent id because
+     * its caller has no JWT (the Telegram bot); [decline] is the API's entry point. Same errors as
+     * [acceptForAgent].
+     */
+    @Transactional
+    fun declineForAgent(agentId: Long, id: Long): AssignmentEntity =
+        close(findPendingForAgent(id, agentId), AssignmentStatus.DECLINED)
 
     /** Expires a PENDING offer now, even before its TTL; its mandate is re-dispatched after commit. */
     @Transactional
@@ -212,23 +237,26 @@ class AssignmentService(
         return closed
     }
 
-    // 404 → 401/403 → 409: someone else's offer is refused before its status is revealed
-    private fun findPendingForAssignee(id: Long): AssignmentEntity {
+    // 404 → 403 → 409: someone else's offer is refused before its status is revealed
+    private fun findPendingForAgent(id: Long, agentId: Long): AssignmentEntity {
         val assignment = findById(id)
-        ensureAssignee(assignment)
+        if (assignment.agentId != agentId) {
+            throw ForbiddenException(error = Error(code = ErrorCode.ASSIGNMENT_ACCESS_DENIED))
+        }
         return ensurePending(assignment)
     }
 
     /**
-     * Only the agent the mandate is offered to can answer the offer: the caller's user (JWT), through its membership
-     * of the current tenant, must have the agent's party. 401 without a token, 403 otherwise.
+     * The caller's agent: its user (JWT), through its membership of the current tenant, must have an agent account.
+     * 401 without a token, 403 otherwise.
      */
-    private fun ensureAssignee(assignment: AssignmentEntity) {
+    private fun callerAgentId(): Long {
         val partyId = callerService.findPartyIdOrNull(callerService.getPrincipal())
-        val agent = agentService.findById(assignment.agentId)
-        if (partyId == null || agent.party.id != partyId) {
+        val agent = partyId?.let { agentService.findByPartyIdOrNull(it) }
+        if (agent == null) {
             throw ForbiddenException(error = Error(code = ErrorCode.ASSIGNMENT_ACCESS_DENIED))
         }
+        return agent.id!!
     }
 
     private fun ensurePending(assignment: AssignmentEntity, ignoreTtl: Boolean = false): AssignmentEntity {
