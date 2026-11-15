@@ -18,8 +18,12 @@ import com.wutsi.ndopify.visit.server.domain.VisitEntity
 import org.springframework.stereotype.Service
 
 /**
- * The 24 h reminder, to both sides, as the confirmation: type, date, the property's city and neighbourhood (never its
- * exact address, which can be forwarded), the WhatsApp call and the code.
+ * The 24 h reminder, one copy per recipient, as the confirmation: type, date, the property's city and neighbourhood
+ * (never its exact address, which can be forwarded), the WhatsApp call and the code.
+ *
+ * [sendCustomer] is the customer's copy, the only one with the code, the exact address and the public-portal link;
+ * [sendAgent] mirrors it for the agent, without them. A channel that fails for one side must never resend the other
+ * side's copy, hence two methods rather than one shared one.
  */
 @Service
 class VisitReminderMailet(
@@ -37,21 +41,16 @@ class VisitReminderMailet(
         const val TEMPLATE_AGENT = "/mail/visit/reminder_agent.mjml"
     }
 
-    fun send(visit: VisitEntity, customer: CustomerEntity, agent: AgentEntity, listing: ListingEntity) {
+    fun sendCustomer(visit: VisitEntity, customer: CustomerEntity, agent: AgentEntity, listing: ListingEntity) {
         val tenant = tenantService.findById(visit.tenantId!!)
         val formatter = TenantFormatter(tenant)
         val imageUrl = imageService.cover(listing)?.url?.ifBlank { null }
         val customerName = customer.party.fullName()
-        val agentName = agent.party.fullName()
-        val onSite = visit.type == VisitType.ON_SITE
-        val place = placeOf(listing)
-        val landmark = landmarkOf(listing)
         val token = tenant.publicPortalUrl?.let { linkTokenService.create(customer) }
         val customerUrl = tenant.publicPortalUrl?.removeSuffix("/")?.let { base ->
             val url = "$base/visits/${visit.id}"
             token?.let { "$url?token=$it" } ?: url
         }
-        val agentUrl = tenant.partnerCentralUrl?.removeSuffix("/")?.let { "$it/visits/${visit.id}" }
 
         mailService.send(
             Email(
@@ -65,20 +64,30 @@ class VisitReminderMailet(
                         "tenant_name" to tenant.name,
                         "recipient_name" to customerName,
                         "listing_title" to listingTitle(listing),
-                        "place" to place,
-                        "landmark" to landmark,
+                        "place" to placeOf(listing),
+                        "landmark" to landmarkOf(listing),
                         "image_url" to imageUrl,
-                        "agent_full_name" to agentName,
+                        "agent_full_name" to agent.party.fullName(),
                         "agent_whatsapp" to formatter.phone(agent.whatsappNumber),
                         "visit_date" to formatter.date(visit.scheduledAt!!),
                         "visit_time" to formatter.time(visit.scheduledAt),
-                        "on_site" to onSite,
+                        "on_site" to (visit.type == VisitType.ON_SITE),
                         "code" to visit.code,
                         "visit_url" to customerUrl,
                     ) + AgentMailContext.of(agent, formatter),
                 ),
             ),
         )
+    }
+
+    fun sendAgent(visit: VisitEntity, customer: CustomerEntity, agent: AgentEntity, listing: ListingEntity) {
+        val tenant = tenantService.findById(visit.tenantId!!)
+        val formatter = TenantFormatter(tenant)
+        val imageUrl = imageService.cover(listing)?.url?.ifBlank { null }
+        val customerName = customer.party.fullName()
+        val agentName = agent.party.fullName()
+        val agentUrl = tenant.partnerCentralUrl?.removeSuffix("/")?.let { "$it/visits/${visit.id}" }
+
         mailService.send(
             Email(
                 recipient = Receipient(email = agent.party.email, displayName = agentName),
@@ -96,7 +105,7 @@ class VisitReminderMailet(
                         "image_url" to imageUrl,
                         "visit_date" to formatter.date(visit.scheduledAt!!),
                         "visit_time" to formatter.time(visit.scheduledAt),
-                        "on_site" to onSite,
+                        "on_site" to (visit.type == VisitType.ON_SITE),
                         "visit_url" to agentUrl,
                     ),
                 ),

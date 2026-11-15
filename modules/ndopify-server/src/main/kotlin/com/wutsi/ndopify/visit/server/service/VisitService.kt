@@ -704,7 +704,7 @@ class VisitService(
         logger.add("visit_id", visitId)
         val agent = agentService.findById(visit.agentId)
         val listing = listingService.findById(visit.listingId)
-        reminderMailet.send(
+        reminderMailet.sendCustomer(
             visit = visit,
             customer = customerService.findById(visit.customerId),
             agent = agent,

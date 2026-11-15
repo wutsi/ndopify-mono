@@ -5,7 +5,6 @@ import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
-import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
@@ -96,15 +95,13 @@ class VisitReminderMailetTest {
     }
 
     @Test
-    fun send() {
-        mailet.send(visit, customer, agent, listing)
+    fun `sendCustomer sends only the customer copy`() {
+        mailet.sendCustomer(visit, customer, agent, listing)
 
-        val customerEmail = email("ray.sponsible@gmail.com")
-        assertEquals("Ndopify: rappel de votre visite", customerEmail.subject)
-        assertEquals("Kim Possible", customerEmail.sender?.displayName)
-        val agentEmail = email("kim.possible@gmail.com")
-        assertEquals("Ndopify: rappel de la visite avec Ray Sponsible", agentEmail.subject)
-        assertNull(agentEmail.sender)
+        val email = email()
+        assertEquals("ray.sponsible@gmail.com", email.recipient.email)
+        assertEquals("Ndopify: rappel de votre visite", email.subject)
+        assertEquals("Kim Possible", email.sender?.displayName)
 
         val customerContext = context(VisitReminderMailet.TEMPLATE_CUSTOMER)
         assertEquals("02/12/2026", customerContext["visit_date"])
@@ -114,6 +111,16 @@ class VisitReminderMailetTest {
         assertEquals("près de Rue 1.234", customerContext["landmark"])
         assertFalse(customerContext.containsKey("address"))
         assertEquals("https://www.ndopify.com/visits/1?token=xxx.yyy.zzz", customerContext["visit_url"])
+    }
+
+    @Test
+    fun `sendAgent sends only the agent copy`() {
+        mailet.sendAgent(visit, customer, agent, listing)
+
+        val email = email()
+        assertEquals("kim.possible@gmail.com", email.recipient.email)
+        assertEquals("Ndopify: rappel de la visite avec Ray Sponsible", email.subject)
+        assertNull(email.sender)
 
         val agentContext = context(VisitReminderMailet.TEMPLATE_AGENT)
         assertEquals("+237 6 00 00 00 01", agentContext["customer_whatsapp"])
@@ -122,7 +129,7 @@ class VisitReminderMailetTest {
 
     @Test
     fun `a VIDEO reminder has no address in the e-mail`() {
-        mailet.send(visit.copy(type = VisitType.VIDEO, code = "5678"), customer, agent, listing)
+        mailet.sendCustomer(visit.copy(type = VisitType.VIDEO, code = "5678"), customer, agent, listing)
 
         val context = context(VisitReminderMailet.TEMPLATE_CUSTOMER)
         assertEquals(false, context["on_site"])
@@ -131,15 +138,15 @@ class VisitReminderMailetTest {
 
     @Test
     fun `blank title`() {
-        mailet.send(visit, customer, agent, listing.copy(title = " "))
+        mailet.sendCustomer(visit, customer, agent, listing.copy(title = " "))
 
         assertEquals("Bien n° 101", context(VisitReminderMailet.TEMPLATE_CUSTOMER)["listing_title"])
     }
 
-    private fun email(address: String): Email {
+    private fun email(): Email {
         val captor = argumentCaptor<Email>()
-        verify(mailService, times(2)).send(captor.capture())
-        return captor.allValues.single { it.recipient.email == address }
+        verify(mailService).send(captor.capture())
+        return captor.firstValue
     }
 
     private fun context(template: String): Map<*, *> {
