@@ -53,6 +53,9 @@ the sign or verify page may show (see the rules below) needs a template test ass
   `contractPartyId`, e-mail, expiry) in the session, and `?step=code` only shows while it's there for **this** link;
   `POST /verify` reads the e-mail from it (never the form) and authenticates with `ApplicationCode.E_SIGNATURE`.
   A 404 `USER_NOT_FOUND` (OTP) or 409 `AUTH_ACCESS_DENIED` (auth) is "Aucun contrat n'a été envoyé à cette adresse".
+  Both `/otp` and `/verify` answer a locked account's 409 `AUTH_ACCOUNT_LOCKED` with the wait
+  (`OtpLockMessage.locked`, from `error.data.lockedUntil`), and a wrong code with the attempts it leaves
+  (`OtpLockMessage.invalid`, from `error.data.remainingAttempts`).
   Signed in (a `JwtAuthentication`), the contract is found by `search(contract-party-id)`, which ndopify-server
   restricts to the caller's party: none is the `not-yours` blocked view, with no contract data. `SignViews.build` then
   picks the step: done (signed, `?step=done`), blocked (`signed`, `not-required`, `cancelled`, `expired` incl. a

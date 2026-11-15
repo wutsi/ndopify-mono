@@ -77,7 +77,14 @@ Current domains:
   `OtpGenerator`) and e-mailed by `OtpMailet`, asynchronously (see *Asynchronous e-mails* below): the tenant is
   resolved (`OtpMailet.resolveTenant`) before the hand-off, so a missing/unknown tenant still fails the request,
   but an SMTP failure no longer does — the code is committed and the user asks for a new one; a user who isn't a
-  member of the tenant gets 404 `USER_NOT_FOUND`. `POST /v1/auth` exchanges credentials for a JWT:
+  member of the tenant gets 404 `USER_NOT_FOUND`. **OTP lockout**: `ndopify.security.otp.max-failed-attempts` (5)
+  wrong codes lock the account for `lock-duration` (1h), counted on the user's `OTP` row (`failed_attempts`,
+  `locked_until`, `V11_0`). While locked, `POST /v1/auth` answers 409 `AUTH_ACCOUNT_LOCKED` with `data.lockedUntil`
+  whatever the code (a right one included, and it isn't consumed), and `POST /v1/otp` the same without sending an
+  e-mail nor touching the stored code. A wrong code before the lock answers 409 `AUTH_INVALID_CREDENTIALS` with
+  `data.remainingAttempts`; the count survives a new code, a successful login clears it, a lock that expired starts
+  it over, and password logins count nothing (`AuthenticationService` is `noRollbackFor` `ConflictException`, so the
+  409 doesn't undo the count). `POST /v1/auth` exchanges credentials for a JWT:
   `AbstractAuthenticator` requires a tenant (400 `HTTP_MISSING_PARAMETER` otherwise), finds the user by e-mail
   (global), then its membership of the tenant (`AUTH_ACCESS_DENIED` without one), whose roles go in the token, with
   its party's id (`partyId` claim, `JwtPrincipal.getPartyId`; none for a party-less member): for clients only:
