@@ -10,10 +10,10 @@ import org.springframework.transaction.event.TransactionPhase
 import org.springframework.transaction.event.TransactionalEventListener
 
 /**
- * Tells the agent of a listing that it's published (not the customer, for now), once the publication is committed, so no e-mail
- * goes out for a rolled-back one. A failure is only logged: the listing is already published, and isn't sent again.
- * The executor thread has no request: the tenant and a logger are set on it for the duration of the call, and removed
- * afterwards since the executor threads are reused.
+ * Tells the agent of a listing that it's published (not the customer, for now), once the publication is committed, so
+ * no notification goes out for a rolled-back one. A failure is only logged: the listing is already published, and isn't
+ * sent again. The executor thread has no request: the tenant and a logger are set on it for the duration of the call,
+ * and removed afterwards since the executor threads are reused.
  */
 @Component
 class ListingEventListener(
@@ -30,8 +30,8 @@ class ListingEventListener(
             logger.add("tenant_id", event.tenantId)
             logger.add("listing_id", event.listingId)
 
-            val sent = service.sendPublishedEmails(event.listingId)
-            logger.add("email_sent", sent)
+            val sent = service.sendPublishedNotification(event.listingId)
+            logger.add("notification_sent", sent)
             logger.add("success", true)
         } catch (ex: Exception) {
             logger.add("success", false)

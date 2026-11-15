@@ -19,7 +19,6 @@ import com.wutsi.ndopify.listing.dto.SearchListingRequest
 import com.wutsi.ndopify.listing.dto.UpdateListingRequest
 import com.wutsi.ndopify.listing.server.dao.ListingRepository
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
-import com.wutsi.ndopify.listing.server.mail.ListingPublishedMailet
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.mandate.server.service.MandateService
@@ -42,7 +41,7 @@ class ListingService(
     private val mandateService: MandateService,
     private val agentService: AgentService,
     private val customerService: CustomerService,
-    private val publishedMailet: ListingPublishedMailet,
+    private val publishedNotifier: ListingPublishedNotifier,
     private val sectionService: ListingSectionService,
     private val locationService: LocationService,
     private val accessService: ListingAccessService,
@@ -335,17 +334,18 @@ class ListingService(
     }
 
     /**
-     * E-mails the agent of a PUBLISHED listing that it's published (not the customer, for now). Nothing is sent once the listing
-     * has moved on (no longer PUBLISHED). Returns whether it was sent.
+     * Notifies the agent of a PUBLISHED listing that it's published: over Telegram when #135's link gives it a chat, by
+     * e-mail otherwise (not the customer, for now). Nothing is sent once the listing has moved on (no longer
+     * PUBLISHED). Returns whether it was sent.
      */
     @Transactional
-    fun sendPublishedEmails(id: Long): Boolean {
+    fun sendPublishedNotification(id: Long): Boolean {
         val listing = findById(id)
         if (listing.status != ListingStatus.PUBLISHED) {
             return false
         }
 
-        publishedMailet.send(
+        publishedNotifier.send(
             listing = listing,
             customer = customerService.findById(listing.mandate.customerId),
             agent = listing.agent,

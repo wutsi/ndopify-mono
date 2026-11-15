@@ -17,16 +17,16 @@ class ListingEventListenerTest {
     private val listener = ListingEventListener(service)
 
     @Test
-    fun `published - the e-mails are sent, in its tenant`() {
+    fun `published - the agent is notified, in its tenant`() {
         var tenantId: Long? = null
         doAnswer {
             tenantId = TenantContext.get()
             true
-        }.whenever(service).sendPublishedEmails(10L)
+        }.whenever(service).sendPublishedNotification(10L)
 
         listener.onListingPublished(ListingPublishedEvent(listingId = 10L, tenantId = 7L))
 
-        verify(service).sendPublishedEmails(10L)
+        verify(service).sendPublishedNotification(10L)
         assertEquals(7L, tenantId)
         assertNull(TenantContext.get()) // Removed: the executor threads are reused
         assertNull(KVLoggerThreadLocal.get())
@@ -34,7 +34,7 @@ class ListingEventListenerTest {
 
     @Test
     fun `published - a failure is only logged`() {
-        doThrow(IllegalStateException("boom")).whenever(service).sendPublishedEmails(10L)
+        doThrow(IllegalStateException("boom")).whenever(service).sendPublishedNotification(10L)
 
         listener.onListingPublished(ListingPublishedEvent(listingId = 10L, tenantId = 7L))
 
