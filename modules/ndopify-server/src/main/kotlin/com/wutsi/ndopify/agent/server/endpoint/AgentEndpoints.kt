@@ -8,6 +8,7 @@ import com.wutsi.ndopify.agent.dto.SearchAgentResponse
 import com.wutsi.ndopify.agent.dto.UpdateAgentRequest
 import com.wutsi.ndopify.agent.server.mapper.AgentMapper
 import com.wutsi.ndopify.agent.server.service.AgentService
+import com.wutsi.ndopify.agent.server.service.AgentTelegramService
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.NotFoundException
@@ -28,13 +29,14 @@ class AgentEndpoints(
     private val service: AgentService,
     private val mapper: AgentMapper,
     private val callerService: CallerService,
+    private val telegramService: AgentTelegramService,
 ) {
     @GetMapping("/{id}")
     fun get(
         @PathVariable id: Long,
     ): GetAgentResponse {
         val agent = service.findById(id)
-        return GetAgentResponse(agent = mapper.toAgent(agent))
+        return GetAgentResponse(agent = mapper.toAgent(agent, telegramService.isConnected(agent.id!!)))
     }
 
     /**
@@ -47,7 +49,7 @@ class AgentEndpoints(
             ?: throw NotFoundException(error = Error(code = ErrorCode.AGENT_NOT_FOUND))
         val agent = service.findByPartyIdOrNull(partyId)
             ?: throw NotFoundException(error = Error(code = ErrorCode.AGENT_NOT_FOUND))
-        return GetAgentResponse(agent = mapper.toAgent(agent))
+        return GetAgentResponse(agent = mapper.toAgent(agent, telegramService.isConnected(agent.id!!)))
     }
 
     @GetMapping

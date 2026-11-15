@@ -52,4 +52,7 @@ class AgentTelegramService(
             AgentTelegramCodeCreatedEvent(membershipService.currentTenantId(), agent.id!!, code, ttlMinutes)
         )
     }
+
+    /** True once the agent's chat is linked: a row with a pending code only isn't connected. */
+    fun isConnected(agentId: Long): Boolean = dao.findByAgentId(agentId)?.chatId != null
 }

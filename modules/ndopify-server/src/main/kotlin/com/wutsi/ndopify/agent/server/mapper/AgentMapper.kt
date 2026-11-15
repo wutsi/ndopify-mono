@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service
 
 @Service
 class AgentMapper(private val partyMapper: PartyMapper) {
-    fun toAgent(entity: AgentEntity): Agent {
+    fun toAgent(entity: AgentEntity, telegramConnected: Boolean): Agent {
         return Agent(
             id = entity.id ?: -1,
             party = partyMapper.toParty(entity.party),
@@ -18,6 +18,7 @@ class AgentMapper(private val partyMapper: PartyMapper) {
             cityId = entity.cityId,
             neighborhoodIds = entity.neighborhoodIds,
             whatsappNumber = entity.whatsappNumber,
+            telegramConnected = telegramConnected,
             createdAt = entity.createdAt,
             modifiedAt = entity.modifiedAt,
             lastAssignedAt = entity.lastAssignedAt,
