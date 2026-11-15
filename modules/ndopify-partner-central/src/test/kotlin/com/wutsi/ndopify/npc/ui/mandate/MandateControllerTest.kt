@@ -879,6 +879,8 @@ class MandateControllerTest {
         val visit = section(result).matches.first { it.id == 9001L }.visit!!
         assertEquals("Clarisse Mbarga", visit.agentName)
         assertEquals("/agent?id=30&back=/mandates/201%23matches-title", visit.agentUrl)
+        // The visit and the match origin share the agent: one read for the page.
+        verify(agentClient, times(1)).get(VisitFixtures.OTHER_AGENT_ID)
     }
 
     @Test

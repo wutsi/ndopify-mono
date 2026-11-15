@@ -354,7 +354,7 @@ class MandateController(
         val visitStats = if (matched) VisitStats.of(visits, now) else null
         val listings = matches?.let { listings(mandate, it) }
         val agentNames = if (matches != null && listings != null) {
-            listingAgentNames(agent, matches, listings)
+            listingAgentNames(agent, matches, listings, visitAgents)
         } else {
             emptyMap()
         }
@@ -505,26 +505,37 @@ class MandateController(
         agent: Agent,
         matches: List<Match>,
         listings: Map<Long, ListingSummary>,
+        known: Map<Long, Agent>,
     ): Map<Long, String> =
         otherAgentNames(
             agent,
             matches
                 .filter { it.coBrokerage && it.status in MatchRules.ORDER }
                 .mapNotNull { listings[it.listingId]?.agentId },
+            known,
         )
 
     /**
-     * Other agents' names, by id, read in parallel; the signed-in agent and unknown ids are skipped. Secondary: an
-     * agent that can't be read, or without a name, is left out.
+     * Other agents' names, by id, read in parallel; the signed-in agent and unknown ids are skipped, and [known] ones
+     * aren't read again. Secondary: an agent that can't be read, or without a name, is left out.
      */
-    private fun otherAgentNames(agent: Agent, agentIds: Collection<Long>): Map<Long, String> {
+    private fun otherAgentNames(
+        agent: Agent,
+        agentIds: Collection<Long>,
+        known: Map<Long, Agent> = emptyMap(),
+    ): Map<Long, String> {
         val ids = agentIds.filter { it > 0 && it != agent.id }.distinct()
-        val calls = ids.associateWith { id ->
+        val cached = ids.mapNotNull { id ->
+            known[id]?.let { owner -> ProfileRules.fullName(owner) }
+                ?.takeIf { name -> name.isNotBlank() }
+                ?.let { name -> id to name }
+        }.toMap()
+        val calls = ids.filter { it !in known }.associateWith { id ->
             parallel.async {
                 lookup("agent $id") { agentClient.get(id) }
             }
         }
-        return calls.mapNotNull { (id, call) ->
+        return cached + calls.mapNotNull { (id, call) ->
             val owner = try {
                 call.join()
             } catch (ex: Exception) {
