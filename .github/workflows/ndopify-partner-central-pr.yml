@@ -6,6 +6,7 @@ on:
             - 'modules/ndopify-partner-central/**'
             - '.github/workflows/ndopify-partner-central-pr.yml'
             - '!modules/ndopify-partner-central/*.md'
+            - '!modules/ndopify-partner-central/src/main/html/**'
 
 jobs:
     build:

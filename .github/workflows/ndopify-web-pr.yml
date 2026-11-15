@@ -6,6 +6,7 @@ on:
             - 'modules/ndopify-web/**'
             - '.github/workflows/ndopify-web-pr.yml'
             - '!modules/ndopify-web/*.md'
+            - '!modules/ndopify-web/src/main/html/**'
 
 jobs:
     build:

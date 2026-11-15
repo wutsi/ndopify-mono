@@ -9,6 +9,7 @@ on:
             - 'modules/ndopify-web/**'
             - '.github/workflows/ndopify-web-main.yml'
             - '!modules/ndopify-web/*.md'
+            - '!modules/ndopify-web/src/main/html/**'
 
 permissions:
     contents: write

@@ -6,6 +6,7 @@ on:
             - 'modules/ndopify-esignature/**'
             - '.github/workflows/ndopify-esignature-pr.yml'
             - '!modules/ndopify-esignature/*.md'
+            - '!modules/ndopify-esignature/src/main/html/**'
 
 jobs:
     build:

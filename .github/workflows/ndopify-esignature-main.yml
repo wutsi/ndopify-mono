@@ -9,6 +9,7 @@ on:
             - 'modules/ndopify-esignature/**'
             - '.github/workflows/ndopify-esignature-main.yml'
             - '!modules/ndopify-esignature/*.md'
+            - '!modules/ndopify-esignature/src/main/html/**'
 
 permissions:
     contents: write
