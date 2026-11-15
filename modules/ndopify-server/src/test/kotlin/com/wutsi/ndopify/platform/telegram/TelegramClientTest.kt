@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.platform.telegram
 
 import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.argThat
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
@@ -269,5 +270,48 @@ class TelegramClientTest {
 
         assertEquals("Unauthorized", ex.message)
         assertFalse(ex.message!!.contains("123:token"))
+    }
+
+    @Test
+    fun `sendPhoto posts the image, its caption and its button`() {
+        val bytes = byteArrayOf(1, 2, 3)
+        doReturn(TelegramMessageResponse(ok = true))
+            .whenever(http).postMultipart(
+                eq("$base/sendPhoto"),
+                eq(
+                    mapOf(
+                        "chat_id" to 123L,
+                        "caption" to "En ligne",
+                        "reply_markup" to mapOf(
+                            "inline_keyboard" to listOf(
+                                listOf(mapOf("text" to "Voir l'annonce", "url" to "https://www.ndopify.com/listing")),
+                            ),
+                        ),
+                    ),
+                ),
+                argThat {
+                    fieldName == "photo" && filename == "1.jpg" && contentType == "image/jpeg" &&
+                        content.contentEquals(bytes)
+                },
+                eq(TelegramMessageResponse::class.java),
+                eq(emptyMap()),
+            )
+
+        client.sendPhoto(
+            123L,
+            bytes,
+            "1.jpg",
+            "image/jpeg",
+            "En ligne",
+            listOf(TelegramButton("Voir l'annonce", url = "https://www.ndopify.com/listing")),
+        )
+
+        verify(http).postMultipart(
+            eq("$base/sendPhoto"),
+            any(),
+            argThat { content.contentEquals(bytes) },
+            eq(TelegramMessageResponse::class.java),
+            eq(emptyMap()),
+        )
     }
 }
