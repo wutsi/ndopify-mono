@@ -110,11 +110,17 @@ class ListingTemplateTest {
         SecurityContextHolder.clearContext()
     }
 
-    private fun render(listing: Listing? = null, outcome: String? = null, match: String? = null): Document {
+    private fun render(
+        listing: Listing? = null,
+        outcome: String? = null,
+        match: String? = null,
+        back: String? = null,
+    ): Document {
         listing?.let { doReturn(it).whenever(listingClient).get(501) }
         val request = get("/listings/501")
         outcome?.let { request.flashAttr(ListingController.OUTCOME, it) }
         match?.let { request.param("match", it) }
+        back?.let { request.param("back", it) }
         return Jsoup.parse(mvc.perform(request).andReturn().response.contentAsString)
     }
 
@@ -360,6 +366,80 @@ class ListingTemplateTest {
         assertNull(page.selectFirst("[data-listing-meta]"))
         assertNotNull(page.selectFirst("[data-listing-gallery]"))
         assertNotNull(page.selectFirst("[data-listing-details]"))
+    }
+
+    @Test
+    fun `another agent's published listing - read-only, back to the Espace agent`() {
+        doReturn(
+            COMPLETE.copy(
+                status = ListingStatus.PUBLISHED,
+                agentId = 999,
+                publishedAt = SENT,
+                description = "Texte public",
+                accessDirections = "Porte de droite",
+            ),
+        ).whenever(listingClient).get(501)
+        doReturn(ProfileFixtures.AGENT.copy(id = 999)).whenever(agentClient).get(999)
+
+        val page = render()
+
+        assertEquals("/", page.selectFirst(".back-link a")?.attr("href"))
+        assertEquals("← Retour à l'espace agent", page.selectFirst(".back-link a")?.text())
+        assertNotNull(page.selectFirst("[data-listing-gallery]"))
+        assertNotNull(page.selectFirst("[data-listing-sheet]"))
+        assertEquals(
+            "L'adresse exacte et l'itinéraire sont communiqués par l'agent avant la visite.",
+            page.selectFirst(".listing-place__note span")?.text(),
+        )
+        assertNotNull(page.selectFirst("[data-listing-agent]"))
+        assertTrue(page.selectFirst("[data-listing-origin]")!!.text().contains("Bien d'un autre agent"))
+        assertNull(page.selectFirst("[data-listing-meta]"))
+        assertNull(page.selectFirst("[data-listing-public-url]"))
+        assertNull(page.selectFirst("[data-listing-share]"))
+        assertNull(page.selectFirst("[data-listing-stats]"))
+        assertNull(page.selectFirst("[data-listing-verification]"))
+        assertNull(page.selectFirst(".listing-private"))
+        assertNull(page.selectFirst("[data-listing-visits]"))
+        assertNull(page.selectFirst("[data-listing-send]"))
+        assertFalse(page.text().contains("Mandat n°"))
+        assertFalse(page.text().contains("Porte de droite"))
+        assertFalse(page.text().contains("4.03350"))
+    }
+
+    @Test
+    fun `another agent's rented and sold listings - read-only`() {
+        doReturn(ProfileFixtures.AGENT.copy(id = 999)).whenever(agentClient).get(999)
+
+        for (status in listOf(ListingStatus.RENTED, ListingStatus.SOLD)) {
+            val page = render(COMPLETE.copy(status = status, agentId = 999, publishedAt = SENT))
+
+            assertNotNull(page.selectFirst("[data-listing-sheet]"))
+            assertNull(page.selectFirst("[data-listing-public-url]"))
+            assertNotNull(page.selectFirst("[data-listing-agent]"))
+        }
+    }
+
+    @Test
+    fun `opened from the agent profile - back to the profile`() {
+        doReturn(COMPLETE.copy(status = ListingStatus.PUBLISHED, agentId = 999, publishedAt = SENT))
+            .whenever(listingClient).get(501)
+        doReturn(ProfileFixtures.AGENT.copy(id = 999)).whenever(agentClient).get(999)
+
+        val page = render(back = "/agent?id=30&page=1")
+
+        assertEquals("/agent?id=30&page=1", page.selectFirst(".back-link a")?.attr("href"))
+        assertEquals("← Retour", page.selectFirst(".back-link a")?.text())
+    }
+
+    @Test
+    fun `another agent's draft - locked, no sheet`() {
+        doReturn(COMPLETE.copy(status = ListingStatus.DRAFT, agentId = 999)).whenever(listingClient).get(501)
+
+        val page = render()
+
+        assertNotNull(page.selectFirst("[data-listing-locked]"))
+        assertNull(page.selectFirst("[data-listing-sheet]"))
+        assertNull(page.selectFirst("[data-listing-agent]"))
     }
 
     @Test

@@ -32,10 +32,10 @@
   and the verification trail folds into a closed disclosure. A DRAFT the verification sent back (its errorCodes) is
   "À corriger": the reasons, and the sections they're about, still editable and sent again.
 
-  A co-broker (another agent's published listing, opened from a *Biens correspondants* card with ?match=) sees the
-  same page without the owner's blocks: no public link, share button, stats, exact position, access directions,
-  verification trail nor the mandate's customer. The listing agent's card replaces them; the exact address is shared
-  by that agent before the visit.
+  Another agent's listing (any agent, no co-brokerage match needed) sees the same page without the owner's blocks:
+  no public link, share button, stats, exact position, access directions, verification trail nor the mandate's
+  customer. The listing agent's card replaces them; the exact address is shared by that agent before the visit.
+  A ?match= (a *Biens correspondants* card) and a ?back= (an agent profile's card) only choose the return link.
 
   Once published (or closed: RENTED/SOLD), the owner also sees the other agents' visits on the property — the slot,
   the type and the organizing agent's name/profile/WhatsApp, never that agent's customer. The block is owner-only and
@@ -97,7 +97,7 @@
                 </div>
             </div>
 
-            <!-- Locked: no such listing, not one of the agent's mandates, or a co-broker without their match. -->
+            <!-- Locked: no such listing, another agent's non-public one, or one ndopify-server can't answer for. -->
             <div class="alert alert--warning" th:if="${locked}" data-listing-locked>
                 <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
                 <div>
@@ -116,7 +116,7 @@
                     </div>
                     <p class="mandate__meta" th:if="${!l.readOnly}" data-listing-meta>Mandat n° <span th:text="${l.mandateId}">203</span> · créée le
                         <span th:text="${l.createdAt}">20 oct. 2026</span></p>
-                    <!-- Another agent's listing (co-brokerage): its mandate, customer, public link and share stay hidden. -->
+                    <!-- Another agent's listing: its mandate, customer, public link and share stay hidden. -->
                     <p class="listing-origin" th:if="${l.readOnly}" data-listing-origin>
                         <span class="status-tag status-tag--info">Bien d'un autre agent</span>
                         <span>Ce bien est publié par un autre agent. Contactez-le pour organiser une visite.</span>
@@ -153,7 +153,7 @@
                        th:text="|Voir les ${#lists.size(l.published.photos)} photos|">Voir les 5 photos</a>
                 </section>
 
-                <!-- Co-brokerage only: the agent who publishes this listing, never their customer. -->
+                <!-- Another agent's listing: the agent who publishes it, never their customer. -->
                 <section class="home-section" aria-labelledby="listing-agent-title" th:if="${l.agent != null}" data-listing-agent>
                     <h2 id="listing-agent-title" class="visually-hidden">L'agent qui publie ce bien</h2>
                     <div th:replace="~{fragments/agent-card :: agentCard(${l.agent}, true)}"></div>
