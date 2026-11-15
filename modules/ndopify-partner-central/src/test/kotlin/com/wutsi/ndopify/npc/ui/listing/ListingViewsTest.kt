@@ -835,15 +835,14 @@ class ListingViewsTest {
             TENANT,
             VisitFixtures.NOW,
             formatter,
-            mapOf(30L to "Clarisse Mbarga", ProfileFixtures.AGENT.id to "Moi"),
+            mapOf(30L to agent30, ProfileFixtures.AGENT.id to ProfileFixtures.AGENT),
             "/mandates/203#proposals-title",
         ).proposals
 
-        assertEquals(listOf("Clarisse Mbarga", null, null), view.rows.map { it.agentName })
-        assertEquals(
-            listOf("/agent?id=30&back=/mandates/203%23proposals-title", null, null),
-            view.rows.map { it.agentUrl },
-        )
+        assertEquals(listOf(true, false, false), view.rows.map { it.otherAgent })
+        assertEquals("Clarisse Mbarga", view.rows[0].agent?.name)
+        assertEquals("/agent?id=30&back=/mandates/203%23proposals-title", view.rows[0].agent?.profileUrl)
+        assertEquals(listOf(null, null), view.rows.drop(1).map { it.agent })
         // Still protected: no client, no mandate
         assertEquals("Client d'un autre agent", view.rows[0].client)
         assertNull(view.rows[0].url)
@@ -853,8 +852,8 @@ class ListingViewsTest {
     fun `proposals - another agent's client without that agent's name`() {
         val view = clients().proposals
 
-        assertNull(view.rows[0].agentName)
-        assertNull(view.rows[0].agentUrl)
+        assertTrue(view.rows[0].otherAgent)
+        assertNull(view.rows[0].agent)
     }
 
     @Test
@@ -942,6 +941,11 @@ class ListingViewsTest {
         assertFalse(view.coBrokerage)
         assertEquals(7, view.rows.size)
     }
+
+    private val agent30 = ProfileFixtures.AGENT.copy(
+        id = 30,
+        party = ProfileFixtures.AGENT.party.copy(firstName = "Clarisse", lastName = "Mbarga"),
+    )
 
     private fun agent(id: Long, firstName: String, lastName: String, whatsappNumber: String?): Agent =
         Agent(id = id, party = Party(firstName = firstName, lastName = lastName), whatsappNumber = whatsappNumber)

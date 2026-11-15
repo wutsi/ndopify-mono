@@ -1,10 +1,11 @@
 package com.wutsi.ndopify.npc.ui.match
 
+import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.dto.MatchStatus
-import com.wutsi.ndopify.npc.ui.agent.AgentProfileRules
+import com.wutsi.ndopify.npc.ui.agent.AgentCardViews
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.npc.ui.visit.VisitCardView
 import com.wutsi.ndopify.refdata.dto.Location
@@ -12,9 +13,6 @@ import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import java.time.LocalDate
-
-/** The generic label of a co-brokerage card whose listing agent can't be read. */
-private const val OTHER_AGENT = "Bien d'un autre agent"
 
 /**
  * Builds the mandate page's *Biens correspondants* from the matches, their listings and the open visits. Each open
@@ -25,6 +23,8 @@ object MatchViews {
      * [matches] or [listings] null (their search failed) is [MatchSectionView.unavailable]. A match whose listing isn't
      * in [listings] (unpublished meanwhile) is left out; REJECTED and DISMISSED ones are only counted. [visits] maps a
      * match id to its open visit: a requested one leads *À confirmer*, a confirmed or started one *Visites à venir*.
+     * [agents] holds the co-brokerage cards' listing agents by id: an unreadable one leaves a null card, which the
+     * footer renders as "un autre agent".
      */
     fun section(
         mandate: Mandate,
@@ -34,7 +34,7 @@ object MatchViews {
         locations: Map<Long, Location>,
         today: LocalDate,
         formatter: TenantFormatter,
-        agentNames: Map<Long, String> = emptyMap(),
+        agents: Map<Long, Agent> = emptyMap(),
     ): MatchSectionView {
         if (matches == null || listings == null) {
             return MatchSectionView(unavailable = true)
@@ -47,7 +47,7 @@ object MatchViews {
             )
         return MatchSectionView(
             matches = ordered.mapNotNull { match ->
-                listings[match.listingId]?.let { view(match, mandate, it, visits[match.id], locations, today, formatter, agentNames) }
+                listings[match.listingId]?.let { view(match, mandate, it, visits[match.id], locations, today, formatter, agents) }
             },
             dismissed = matches.count { it.status == MatchStatus.DISMISSED },
             outcomes = MatchRules.outcomes(matches),
@@ -89,7 +89,7 @@ object MatchViews {
         locations: Map<Long, Location>,
         today: LocalDate,
         formatter: TenantFormatter,
-        agentNames: Map<Long, String>,
+        agents: Map<Long, Agent>,
     ): MatchView {
         val type = MandateLabels.shortPropertyType(listing.propertyType) ?: "Bien"
         val available = listing.availableFrom?.takeIf { it.isAfter(today) }
@@ -97,9 +97,10 @@ object MatchViews {
             id = match.id,
             listingId = listing.id,
             coBrokerage = match.coBrokerage,
-            origin = if (match.coBrokerage) agentNames[listing.agentId] ?: OTHER_AGENT else null,
-            originUrl = if (match.coBrokerage && agentNames.containsKey(listing.agentId)) {
-                AgentProfileRules.profileUrl(listing.agentId, "/mandates/${mandate.id}#matches-title")
+            agent = if (match.coBrokerage) {
+                agents[listing.agentId]
+                    ?.let { AgentCardViews.of(it, "/mandates/${mandate.id}#matches-title") }
+                    ?.takeIf { it.name.isNotBlank() }
             } else {
                 null
             },
@@ -123,7 +124,8 @@ object MatchViews {
             answer = MatchRules.answer(match, formatter),
             fit = MatchRules.fit(match, mandate, listing),
             actionable = match.status in MatchRules.ACTIONABLE,
-            visit = visit,
+            // The listing agent appears once: in the card's footer, not again inside its visit block.
+            visit = if (match.coBrokerage) visit?.copy(coBrokerage = false, agent = null) else visit,
             sent = match.proposedAt?.let { "Envoyé le ${formatter.date(it)}" },
             group = group(match, visit),
         )

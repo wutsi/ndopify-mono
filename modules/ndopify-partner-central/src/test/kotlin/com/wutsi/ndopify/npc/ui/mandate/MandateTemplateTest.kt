@@ -367,13 +367,15 @@ class MandateTemplateTest {
         val card = render(APPROVED.copy(mandateType = MandateType.LISTING))
             .selectFirst("[data-listing-proposals] [data-proposal-protected]")!!.parents().first { it.hasAttr("data-proposal") }
 
-        val line = card.selectFirst("[data-proposal-agent]")!!
-        assertEquals("Clarisse Mbarga", line.text())
-        assertTrue(line.selectFirst("svg")!!.hasAttr("aria-hidden"))
+        val footer = card.selectFirst("[data-agent-card]")!!
+        assertEquals("Clarisse Mbarga", footer.selectFirst(".agent-card__name")?.text())
         assertEquals(
             "/agent?id=30&back=/mandates/203%23proposals-title",
-            line.selectFirst("a[data-proposal-agent-link]")?.attr("href"),
+            footer.selectFirst("a.agent-card__name")?.attr("href"),
         )
+        assertEquals("https://wa.me/237670000001", footer.selectFirst("a.agent-card__whatsapp")?.attr("href"))
+        // At the bottom of the card, not under its title.
+        assertEquals("agent-card", card.selectFirst("article")!!.children().last()!!.className())
     }
 
     @Test
@@ -391,8 +393,8 @@ class MandateTemplateTest {
         )
         // Another agent's client: not a link
         assertEquals("span", section.selectFirst("[data-proposal-protected]")?.tagName())
-        // ...and its agent unknown here: no agent line
-        assertNull(section.selectFirst("[data-proposal-agent]"))
+        // ...and its agent unknown here: the footer's generic wording
+        assertEquals("un autre agent", section.selectFirst("[data-proposal] [data-agent-card] .agent-card__name")?.text())
         assertEquals(
             listOf("/mandates/204#matches-title", "/mandates/207#matches-title"),
             section.select("a[data-proposal-link]").map { it.attr("href") },
@@ -847,7 +849,8 @@ class MandateTemplateTest {
         val page = render(APPROVED)
 
         val card = page.selectFirst("[data-match-id=9001]")!!
-        val footer = card.selectFirst(".visit-detail [data-agent-card]")!!
+        assertNull(card.selectFirst(".visit-detail [data-agent-card]"))
+        val footer = card.selectFirst("article > .agent-card")!!
         assertEquals("Clarisse Mbarga", footer.selectFirst(".agent-card__name")?.text())
         assertEquals(
             "/agent?id=30&back=/mandates/201%23matches-title",
@@ -856,8 +859,6 @@ class MandateTemplateTest {
         assertEquals("https://wa.me/237699000002", footer.selectFirst("a.agent-card__whatsapp")?.attr("href"))
         assertFalse(footer.text().contains("Avec"))
         assertFalse(footer.text().contains("237699000002"))
-        // The visit names the agent: the card does not repeat it on an origin line.
-        assertNull(card.selectFirst("[data-match-origin]"))
     }
 
     @Test
@@ -939,12 +940,14 @@ class MandateTemplateTest {
         val page = render(APPROVED)
         val card = page.selectFirst("[data-match-id=9001]")!!
 
-        assertEquals("Clarisse Mbarga", card.selectFirst("[data-match-origin]")?.text())
-        assertTrue(card.selectFirst("[data-match-origin] svg")!!.hasAttr("aria-hidden"))
+        val footer = card.selectFirst("[data-agent-card]")!!
+        assertEquals("Clarisse Mbarga", footer.selectFirst(".agent-card__name")?.text())
         assertEquals(
             "/agent?id=30&back=/mandates/201%23matches-title",
-            card.selectFirst("[data-match-origin] a[data-match-agent]")?.attr("href"),
+            footer.selectFirst("a.agent-card__name")?.attr("href"),
         )
+        assertEquals("https://wa.me/237670000001", footer.selectFirst("a.agent-card__whatsapp")?.attr("href"))
+        assertEquals("agent-card", card.selectFirst("article")!!.children().last()!!.className())
     }
 
     @Test
@@ -954,11 +957,10 @@ class MandateTemplateTest {
 
         val page = render(APPROVED)
 
-        assertEquals(
-            "Bien d'un autre agent",
-            page.selectFirst("[data-match-id=9001] [data-match-origin]")?.text(),
-        )
-        assertNull(page.selectFirst("[data-match-id=9001] [data-match-origin] a"))
+        val footer = page.selectFirst("[data-match-id=9001] [data-agent-card]")!!
+        assertEquals("un autre agent", footer.selectFirst(".agent-card__name")?.text())
+        assertNull(footer.selectFirst("a.agent-card__name"))
+        assertNull(footer.selectFirst("a.agent-card__whatsapp"))
     }
 
     @Test
@@ -967,7 +969,7 @@ class MandateTemplateTest {
 
         val page = render(APPROVED)
 
-        assertNull(page.selectFirst("[data-match-id=9001] [data-match-origin]"))
+        assertNull(page.selectFirst("[data-match-id=9001] [data-agent-card]"))
         verify(agentClient, never()).get(anyLong())
     }
 
@@ -993,7 +995,7 @@ class MandateTemplateTest {
 
         assertEquals(
             "Serge Ngono",
-            page.selectFirst("[data-match-id=9001] [data-match-origin]")?.text(),
+            page.selectFirst("[data-match-id=9001] [data-agent-card] .agent-card__name")?.text(),
         )
     }
 
@@ -1022,9 +1024,9 @@ class MandateTemplateTest {
         val card = page.selectFirst("[data-match-id=9001]")!!
 
         assertNull(card.selectFirst("[data-match-tag]"))
-        // The visit names the agent: the card does not repeat it on an origin line.
-        assertNull(card.selectFirst("[data-match-origin]"))
-        assertEquals("Clarisse Mbarga", card.selectFirst(".visit-detail .agent-card__name")?.text())
+        // The listing agent appears once: in the card's own footer, not inside the visit block.
+        assertNull(card.selectFirst(".visit-detail [data-agent-card]"))
+        assertEquals("Clarisse Mbarga", card.selectFirst("article > .agent-card .agent-card__name")?.text())
     }
 
     @Test
@@ -1036,8 +1038,8 @@ class MandateTemplateTest {
         val page = render(APPROVED)
 
         assertEquals(
-            "Bien d'un autre agent",
-            page.selectFirst("[data-match-id=9001] [data-match-origin]")?.text(),
+            "un autre agent",
+            page.selectFirst("[data-match-id=9001] [data-agent-card] .agent-card__name")?.text(),
         )
     }
 

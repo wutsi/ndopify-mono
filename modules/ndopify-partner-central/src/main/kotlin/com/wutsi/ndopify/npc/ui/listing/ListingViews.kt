@@ -18,7 +18,6 @@ import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.ui.agent.AgentCardView
 import com.wutsi.ndopify.npc.ui.agent.AgentCardViews
-import com.wutsi.ndopify.npc.ui.agent.AgentProfileRules
 import com.wutsi.ndopify.npc.ui.mandate.Amenity
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.npc.ui.mandate.MandateRules
@@ -353,7 +352,7 @@ object ListingViews {
         tenant: Tenant,
         now: Long,
         formatter: TenantFormatter,
-        agentNames: Map<Long, String> = emptyMap(),
+        agents: Map<Long, Agent> = emptyMap(),
         back: String? = null,
     ): ListingClientsView {
         val own = mandates.filter { it.agentId == agentId }.associateBy { it.id }
@@ -383,8 +382,7 @@ object ListingViews {
             .map { match ->
                 val mandate = own[match.mandateId]
                 val visit = byMatch[match.id]
-                // Another agent's client: that agent may be named and linked, never its client nor its mandate.
-                val otherAgent = if (mandate == null) agentNames[match.agentId] else null
+                // Another agent's client: only that agent may be named and linked, never its client nor its mandate.
                 ProposalRow(
                     matchId = match.id,
                     client = when (mandate) {
@@ -392,8 +390,14 @@ object ListingViews {
                         else -> names[mandate.customerId] ?: "Mandat n° ${mandate.id}"
                     },
                     url = mandate?.let { "/mandates/${it.id}#matches-title" },
-                    agentName = otherAgent,
-                    agentUrl = otherAgent?.let { back?.let { AgentProfileRules.profileUrl(match.agentId, it) } },
+                    otherAgent = mandate == null,
+                    agent = if (mandate == null && back != null) {
+                        agents[match.agentId]
+                            ?.let { AgentCardViews.of(it, back) }
+                            ?.takeIf { it.name.isNotBlank() }
+                    } else {
+                        null
+                    },
                     tag = MatchRules.tag(match),
                     sent = if (visit != null) {
                         match.proposedAt?.let { "Envoyé le ${formatter.date(it)}" }.orEmpty()

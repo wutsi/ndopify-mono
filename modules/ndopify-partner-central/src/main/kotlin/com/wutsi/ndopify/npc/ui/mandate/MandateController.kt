@@ -353,8 +353,8 @@ class MandateController(
         val visitAgents = VisitAgents.ofVisits(agentClient, parallel, agent, visits, visitListings)
         val visitStats = if (matched) VisitStats.of(visits, now) else null
         val listings = matches?.let { listings(mandate, it) }
-        val agentNames = if (matches != null && listings != null) {
-            listingAgentNames(agent, matches, listings, visitAgents)
+        val matchAgents = if (matches != null && listings != null) {
+            listingAgents(agent, matches, listings, visitAgents)
         } else {
             emptyMap()
         }
@@ -407,7 +407,7 @@ class MandateController(
                 locations,
                 today(),
                 formatter,
-                agentNames,
+                matchAgents,
             ).copy(visitsUnavailable = cards.unavailable)
             model.addAttribute("matchSection", section)
             model.addAttribute("dismissing", dismissing(section, dismiss))
@@ -499,15 +499,15 @@ class MandateController(
 
     /**
      * The co-brokerage matches' listing agents, by id: another agent's identity is allowed, its customer never is.
-     * Secondary: a failed or missing agent leaves the card its generic "Bien d'un autre agent" line.
+     * Secondary: a failed or missing agent leaves the card its generic "un autre agent" footer.
      */
-    private fun listingAgentNames(
+    private fun listingAgents(
         agent: Agent,
         matches: List<Match>,
         listings: Map<Long, ListingSummary>,
         known: Map<Long, Agent>,
-    ): Map<Long, String> =
-        otherAgentNames(
+    ): Map<Long, Agent> =
+        otherAgents(
             agent,
             matches
                 .filter { it.coBrokerage && it.status in MatchRules.ORDER }
@@ -516,20 +516,16 @@ class MandateController(
         )
 
     /**
-     * Other agents' names, by id, read in parallel; the signed-in agent and unknown ids are skipped, and [known] ones
-     * aren't read again. Secondary: an agent that can't be read, or without a name, is left out.
+     * Other agents, by id, read in parallel; the signed-in agent and unknown ids are skipped, and [known] ones aren't
+     * read again. Secondary: an agent that can't be read is left out, and its card renders as "un autre agent".
      */
-    private fun otherAgentNames(
+    private fun otherAgents(
         agent: Agent,
         agentIds: Collection<Long>,
         known: Map<Long, Agent> = emptyMap(),
-    ): Map<Long, String> {
+    ): Map<Long, Agent> {
         val ids = agentIds.filter { it > 0 && it != agent.id }.distinct()
-        val cached = ids.mapNotNull { id ->
-            known[id]?.let { owner -> ProfileRules.fullName(owner) }
-                ?.takeIf { name -> name.isNotBlank() }
-                ?.let { name -> id to name }
-        }.toMap()
+        val cached = ids.mapNotNull { id -> known[id]?.let { id to it } }.toMap()
         val calls = ids.filter { it !in known }.associateWith { id ->
             parallel.async {
                 lookup("agent $id") { agentClient.get(id) }
@@ -541,7 +537,7 @@ class MandateController(
             } catch (ex: Exception) {
                 null
             }
-            owner?.let { id to ProfileRules.fullName(it) }?.takeIf { (_, name) -> name.isNotBlank() }
+            owner?.let { id to it }
         }.toMap()
     }
 
@@ -720,7 +716,7 @@ class MandateController(
         }
         // Secondary: the agents of the other agents' searches, named on their clients' cards.
         val own = candidates.mapNotNull { it.mandate }.filter { it.agentId == agentId }.map { it.id }.toSet()
-        val agentNames = otherAgentNames(
+        val agents = otherAgents(
             agent,
             candidates.map { it.match }
                 .filter { it.mandateId !in own && it.status in ListingViews.PROPOSAL_ROWS }
@@ -736,7 +732,7 @@ class MandateController(
             tenant,
             clock.millis(),
             TenantFormatter(tenant),
-            agentNames,
+            agents,
             "/mandates/${listing.mandateId}#proposals-title",
         )
     }

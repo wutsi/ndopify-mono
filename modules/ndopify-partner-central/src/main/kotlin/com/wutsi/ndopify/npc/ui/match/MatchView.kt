@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.match
 
+import com.wutsi.ndopify.npc.ui.agent.AgentCardView
 import com.wutsi.ndopify.npc.ui.mandate.MandateRules
 import com.wutsi.ndopify.npc.ui.visit.VisitCardView
 import com.wutsi.ndopify.visit.dto.VisitStatus
@@ -12,10 +13,8 @@ data class MatchView(
     val id: Long,
     val listingId: Long,
     val coBrokerage: Boolean = false,
-    /** The publisher line under the title of a co-brokerage card; null on the agent's own listings. */
-    val origin: String? = null,
-    /** The listing agent's profile, back to this section; null when the agent's name isn't known. */
-    val originUrl: String? = null,
+    /** The listing agent's standard card at the bottom of a co-brokerage card; null when it can't be read. */
+    val agent: AgentCardView? = null,
     val title: String,
     val tag: MandateRules.Tag,
     val listingUrl: String,
