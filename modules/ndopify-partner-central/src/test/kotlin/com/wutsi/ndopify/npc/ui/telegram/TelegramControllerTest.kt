@@ -87,6 +87,16 @@ class TelegramControllerTest {
         assertNull(result.flashMap[TelegramRules.SENT])
     }
 
+    @Test
+    fun `another conflict is a server failure, not an already-connected account`() {
+        doThrow(conflict(ErrorCode.AGENT_VERSION_CONFLICT)).whenever(agentClient).requestTelegramCode()
+
+        val result = mvc.perform(post("/telegram/code")).andReturn()
+
+        assertEquals(TelegramRules.SEND_FAILED, result.flashMap[TelegramRules.ERROR])
+        assertNull(result.flashMap[TelegramRules.SENT])
+    }
+
     private fun conflict(code: String): HttpClientErrorException {
         val ex = HttpClientErrorException(HttpStatus.CONFLICT)
         ex.setBodyConvertFunction { ErrorResponse(Error(code = code)) }

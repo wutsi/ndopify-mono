@@ -1,12 +1,13 @@
 package com.wutsi.ndopify.npc.ui.telegram
 
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.GetMapping
@@ -54,7 +55,7 @@ class TelegramController(
             agentClient.requestTelegramCode()
             redirect.addFlashAttribute(TelegramRules.SENT, true)
         } catch (ex: HttpClientErrorException) {
-            if (ex.statusCode == HttpStatus.CONFLICT) {
+            if (errorCode(ex) == ErrorCode.AGENT_TELEGRAM_ALREADY_CONNECTED) {
                 redirect.addFlashAttribute(TelegramRules.ERROR, TelegramRules.ALREADY_CONNECTED)
             } else {
                 LOGGER.error("Server error: ${ex.message}", ex)
@@ -67,4 +68,11 @@ class TelegramController(
 
         return REDIRECT
     }
+
+    private fun errorCode(ex: HttpClientErrorException): String? =
+        try {
+            ex.getResponseBodyAs(ErrorResponse::class.java)?.error?.code
+        } catch (ignored: Exception) {
+            null
+        }
 }
