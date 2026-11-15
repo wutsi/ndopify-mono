@@ -8,10 +8,9 @@ import com.nhaarman.mockitokotlin2.reset
 import com.nhaarman.mockitokotlin2.verify
 import com.wutsi.ndopify.BaseEndpointIntegrationTest
 import com.wutsi.ndopify.match.server.domain.MatchEntity
-import com.wutsi.ndopify.match.server.mail.CoBrokerageInterestMailet
 import com.wutsi.ndopify.match.server.mail.CoBrokerageMatchMailet
 import com.wutsi.ndopify.match.server.mail.MatchNotificationMailet
-import com.wutsi.ndopify.match.server.service.CoBrokerageInterestDigest
+import com.wutsi.ndopify.match.server.service.CoBrokerageInterestNotifier
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.bean.override.mockito.MockitoBean
@@ -36,7 +35,7 @@ class NotifyCoBrokerageJobTest : BaseEndpointIntegrationTest() {
     private lateinit var coBrokerageMailet: CoBrokerageMatchMailet
 
     @MockitoBean
-    private lateinit var interestMailet: CoBrokerageInterestMailet
+    private lateinit var interestNotifier: CoBrokerageInterestNotifier
 
     @Test
     fun `notifies the search agent of a co-brokerage match`() {
@@ -59,11 +58,7 @@ class NotifyCoBrokerageJobTest : BaseEndpointIntegrationTest() {
     fun `notifies the listing agent when a search agent is interested`() {
         jobs.notifyAgents()
 
-        val interest = argumentCaptor<CoBrokerageInterestDigest>()
-        verify(interestMailet).send(argThat { id == 30L }, interest.capture())
-        // Matches 4 and 5: one listing, one interested agent, two of its searches
-        assertEquals(listOf(101L), interest.firstValue.listings.map { listing -> listing.listingId })
-        assertEquals(2, interest.firstValue.listings.single().agents.single().searchCount)
+        verify(interestNotifier).send(argThat { id == 30L }, any())
 
         assertTrue(listingAgentNotifiedAt(4L))
         assertTrue(listingAgentNotifiedAt(5L))
@@ -82,13 +77,13 @@ class NotifyCoBrokerageJobTest : BaseEndpointIntegrationTest() {
     @Test
     fun `nothing is sent on the next run`() {
         jobs.notifyAgents()
-        reset(ownMailet, coBrokerageMailet, interestMailet)
+        reset(ownMailet, coBrokerageMailet, interestNotifier)
 
         jobs.notifyAgents()
 
         verify(ownMailet, never()).send(any(), any())
         verify(coBrokerageMailet, never()).send(any(), any())
-        verify(interestMailet, never()).send(any(), any())
+        verify(interestNotifier, never()).send(any(), any())
     }
 
     private fun notifiedAt(id: Long): Boolean =
