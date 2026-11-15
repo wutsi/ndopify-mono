@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.config.platform
 
 import com.wutsi.ndopify.platform.telegram.TelegramClient
+import com.wutsi.ndopify.platform.telegram.TelegramUpdateHandler
 import com.wutsi.ndopify.platform.util.http.Http
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.http.client.HttpClientSettings
@@ -22,6 +23,9 @@ class TelegramConfiguration(
 ) {
     @Bean
     fun telegramClient(): TelegramClient = TelegramClient(token, telegramHttp())
+
+    @Bean
+    fun telegramUpdateHandler(client: TelegramClient): TelegramUpdateHandler = TelegramUpdateHandler(client)
 
     private fun telegramHttp() = Http(
         client = JdkHttpClientBuilder()
