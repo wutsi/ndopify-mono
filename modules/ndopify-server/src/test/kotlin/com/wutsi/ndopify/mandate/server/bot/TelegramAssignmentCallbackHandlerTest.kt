@@ -131,6 +131,17 @@ class TelegramAssignmentCallbackHandlerTest {
     }
 
     @Test
+    fun `a failing link lookup is contained and the tap answered`() {
+        doThrow(RuntimeException("db down")).whenever(telegramService).findByChatId(1000L)
+
+        handler.handle(callback("accept:99"))
+
+        verify(client).answerCallbackQuery("cb-1", "Action impossible.")
+        verifyNoInteractions(service)
+        verify(client, never()).editMessageText(any(), any(), any(), any())
+    }
+
+    @Test
     fun `malformed data is only answered`() {
         handler.handle(callback("open:99"))
 

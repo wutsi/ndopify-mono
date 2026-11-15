@@ -55,30 +55,29 @@ class TelegramAssignmentCallbackHandler(
             TenantContext.set(link.tenantId)
             tenantSession.reopen()
 
-            try {
-                when (call.action) {
-                    TelegramOfferCallback.Action.ACCEPT -> {
-                        val accepted = service.acceptForAgent(link.agentId, call.assignmentId)
-                        toast = ACCEPTED
-                        edit(callback, toast, mandateButtons(link.tenantId, accepted))
-                    }
-
-                    TelegramOfferCallback.Action.DECLINE -> {
-                        service.declineForAgent(link.agentId, call.assignmentId)
-                        toast = DECLINED
-                        edit(callback, toast)
-                    }
+            when (call.action) {
+                TelegramOfferCallback.Action.ACCEPT -> {
+                    val accepted = service.acceptForAgent(link.agentId, call.assignmentId)
+                    toast = ACCEPTED
+                    edit(callback, toast, mandateButtons(link.tenantId, accepted))
                 }
-            } catch (ex: ConflictException) {
-                // Expired, already answered, mandate cancelled: the offer's buttons go, nothing changes
-                toast = UNAVAILABLE
-                edit(callback, toast)
-            } catch (ex: WutsiException) {
-                // 404 / 403: changing or editing anything would reveal that the assignment exists
-                LOGGER.warn("Telegram callback refused: ${ex.error.code}")
-            } catch (ex: Exception) {
-                LOGGER.error("Telegram callback failed", ex)
+
+                TelegramOfferCallback.Action.DECLINE -> {
+                    service.declineForAgent(link.agentId, call.assignmentId)
+                    toast = DECLINED
+                    edit(callback, toast)
+                }
             }
+        } catch (ex: ConflictException) {
+            // Expired, already answered, mandate cancelled: the offer's buttons go, nothing changes
+            toast = UNAVAILABLE
+            edit(callback, toast)
+        } catch (ex: WutsiException) {
+            // 404 / 403: changing or editing anything would reveal that the assignment exists
+            LOGGER.warn("Telegram callback refused: ${ex.error.code}")
+        } catch (ex: Exception) {
+            // The link lookup, the session, the transition: logged and contained, so the webhook answers 200
+            LOGGER.error("Telegram callback failed", ex)
         } finally {
             answer(callback, toast)
             TenantContext.remove()
