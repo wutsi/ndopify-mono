@@ -84,7 +84,7 @@ class VisitCancelledMailetTest {
 
     @Test
     fun `the customer cancelled - the agent is told`() {
-        mailet.send(visit, customer, agent, listing)
+        mailet.sendToAgent(visit, customer, agent, listing)
 
         val email = argumentCaptor<Email>()
         verify(mailService, times(1)).send(email.capture())
@@ -113,7 +113,7 @@ class VisitCancelledMailetTest {
 
     @Test
     fun `the agent cancelled - the customer is told`() {
-        mailet.send(visit.copy(cancelledBy = VisitParty.AGENT), customer, agent, listing)
+        mailet.sendToCustomer(visit.copy(cancelledBy = VisitParty.AGENT), customer, agent, listing)
 
         val email = argumentCaptor<Email>()
         verify(mailService, times(1)).send(email.capture())
@@ -126,19 +126,16 @@ class VisitCancelledMailetTest {
 
     @Test
     fun `no reason`() {
-        mailet.send(visit.copy(cancellationReason = null), customer, agent, listing)
+        mailet.sendToAgent(visit.copy(cancellationReason = null), customer, agent, listing)
 
         assertNull(context()["cancellation_reason"])
     }
 
     @Test
     fun `the system cancelled - both sides get the neutral wording, never the mandate reason`() {
-        mailet.send(
-            visit.copy(cancelledBy = VisitParty.SYSTEM, cancellationReason = "Mandat clôturé"),
-            customer,
-            agent,
-            listing,
-        )
+        val cancelled = visit.copy(cancelledBy = VisitParty.SYSTEM, cancellationReason = "Mandat clôturé")
+        mailet.sendToCustomer(cancelled, customer, agent, listing)
+        mailet.sendToAgent(cancelled, customer, agent, listing)
 
         val emails = argumentCaptor<Email>()
         verify(mailService, times(2)).send(emails.capture())

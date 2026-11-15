@@ -630,12 +630,15 @@ class VisitService(
         logger.add("visit_id", visitId)
         val agent = agentService.findById(visit.agentId)
         val listing = listingService.findById(visit.listingId)
-        cancelledMailet.send(
-            visit = visit,
-            customer = customerService.findById(visit.customerId),
-            agent = agent,
-            listing = listing,
-        )
+        val customer = customerService.findById(visit.customerId)
+        when (visit.cancelledBy) {
+            VisitParty.CUSTOMER -> cancelledMailet.sendToAgent(visit, customer, agent, listing)
+            VisitParty.AGENT -> cancelledMailet.sendToCustomer(visit, customer, agent, listing)
+            else -> {
+                cancelledMailet.sendToCustomer(visit, customer, agent, listing)
+                cancelledMailet.sendToAgent(visit, customer, agent, listing)
+            }
+        }
         if (notifyListingAgentOfCancellation(visit, listing)) {
             coBrokerageVisitNotifier.sendCancelled(visit, listing, agent)
         }
