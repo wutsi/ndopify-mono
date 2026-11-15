@@ -13,6 +13,8 @@
     var STEPS = ["intro", "code", "sign", "done"];
     var CODE_LENGTH = 6;
     var CODE_TTL_MS = 5 * 60 * 1000;
+    var OTP_MAX_ATTEMPTS = 5;
+    var OTP_LOCK_MS = 60 * 60 * 1000;
     var PARAMS = new URL(window.location.href).searchParams;
     var STORAGE_KEY = "ndopify.esignature." + (PARAMS.get("contract-id") || "") + "." + (PARAMS.get("party-id") || "");
     var LATENCY_MS = 600; // Fake network delay: shows the busy state
@@ -23,7 +25,14 @@
 
     var MESSAGES = {
         codeExpired: "Ce code a expiré. Demandez-en un nouveau ci-dessous.",
-        codeWrong: "Code incorrect. Vérifiez les 6 chiffres reçus par e-mail.",
+        // A wrong code while the account can still try: how many attempts the lock leaves.
+        codeWrongRemaining: function (left) {
+            return "Code incorrect. Encore " + left + (left > 1 ? " tentatives" : " tentative") + " avant le blocage de votre compte.";
+        },
+        // The lock itself: how long the signer waits.
+        codeLocked: function (minutes) {
+            return "Trop de tentatives. Réessayez dans " + minutes + (minutes > 1 ? " minutes." : " minute.");
+        },
         codeSent: "Un nouveau code a été envoyé. Il remplace le précédent.",
         sending: "Envoi du code…",
         verifying: "Vérification…",
@@ -63,6 +72,15 @@
             state[key] = changes[key];
         });
         save(state);
+    }
+
+    // The account lock, kept with the signer like the code: a new code buys no attempts.
+    function isLocked() {
+        return Number(state.lockedUntil) > Date.now();
+    }
+
+    function lockedMinutes() {
+        return Math.max(1, Math.ceil((Number(state.lockedUntil) - Date.now()) / 60000));
     }
 
     // The furthest slide the signer may see
@@ -146,7 +164,10 @@
         column.classList.toggle("column--wide", step === "sign");
         $("[data-page-intro]").classList.toggle("page-intro--center", step === "done");
 
-        if (step === "code") renderExpiry();
+        if (step === "code") {
+            renderExpiry();
+            if (isLocked()) showCodeError(MESSAGES.codeLocked(lockedMinutes()));
+        }
         if (step === "sign") renderSignature();
         if (step === "done") renderDone();
 
@@ -200,12 +221,24 @@
         }, LATENCY_MS);
     }
 
+    function showIntroError(message) {
+        var box = $("[data-intro-error]");
+        $("span", box).textContent = message;
+        box.hidden = false;
+    }
+
     function bindIntro() {
         var form = $("[data-intro-form]");
         var submit = $("[data-submit]", form);
         form.addEventListener("submit", function (event) {
             event.preventDefault();
             if (!isEnabled(submit)) return;
+            if (isLocked()) {
+                // PROTOTYPE: a locked account gets no code — POST /otp answers AUTH_ACCOUNT_LOCKED.
+                showIntroError(MESSAGES.codeLocked(lockedMinutes()));
+                return;
+            }
+            $("[data-intro-error]").hidden = true;
             sendCode(submit, function () {
                 go("code");
             });
@@ -226,7 +259,6 @@
         $("[data-error-text]", codeError).textContent = message;
         codeError.hidden = false;
         codeInput.setAttribute("aria-invalid", "true");
-        codeInput.focus();
     }
 
     function clearCodeError() {
@@ -238,7 +270,22 @@
         // Digits only, whatever was typed or pasted ("123 456", "123-456")
         var digits = codeInput.value.replace(/\D/g, "").slice(0, CODE_LENGTH);
         if (digits !== codeInput.value) codeInput.value = digits;
-        setEnabled(codeSubmit, digits.length === CODE_LENGTH);
+        setEnabled(codeSubmit, digits.length === CODE_LENGTH && !isLocked());
+    }
+
+    // Counts a wrong code: the last one allowed locks the account, the earlier ones say what's left. The count
+    // survives a new code (a new code buys no attempts); a lock that expired starts it over.
+    function wrongCode() {
+        var previous = state.lockedUntil && !isLocked() ? 0 : Number(state.failedAttempts) || 0;
+        var used = previous + 1;
+        if (used >= OTP_MAX_ATTEMPTS) {
+            // PROTOTYPE: the 5th wrong code locks the account, whatever code is asked next (POST /verify).
+            update({ failedAttempts: used, lockedUntil: Date.now() + OTP_LOCK_MS });
+            showCodeError(MESSAGES.codeLocked(lockedMinutes()));
+        } else {
+            update({ failedAttempts: used, lockedUntil: null });
+            showCodeError(MESSAGES.codeWrongRemaining(OTP_MAX_ATTEMPTS - used));
+        }
     }
 
     function bindCode() {
@@ -246,13 +293,17 @@
         var status = $("[data-status]", form);
 
         codeInput.addEventListener("input", function () {
-            clearCodeError();
+            if (!isLocked()) clearCodeError();
             syncCode();
         });
 
         form.addEventListener("submit", function (event) {
             event.preventDefault();
             if (!isEnabled(codeSubmit)) return;
+            if (isLocked()) {
+                showCodeError(MESSAGES.codeLocked(lockedMinutes()));
+                return;
+            }
             var code = codeInput.value;
             setBusy(codeSubmit, MESSAGES.verifying);
             window.setTimeout(function () {
@@ -260,9 +311,10 @@
                 if (code === EXPIRED_CODE || (state.codeExpiresAt && Date.now() > state.codeExpiresAt)) {
                     showCodeError(MESSAGES.codeExpired);
                 } else if (code === WRONG_CODE) {
-                    showCodeError(MESSAGES.codeWrong);
+                    wrongCode();
+                    syncCode();
                 } else {
-                    update({ authenticated: true });
+                    update({ authenticated: true, failedAttempts: 0, lockedUntil: null });
                     go("sign");
                 }
             }, LATENCY_MS);
@@ -272,6 +324,11 @@
             var button = this;
             if (button.getAttribute("aria-busy") === "true") return;
             status.textContent = "";
+            if (isLocked()) {
+                // PROTOTYPE: no e-mail to a locked account, and the row is left as it is (POST /otp).
+                status.textContent = MESSAGES.codeLocked(lockedMinutes());
+                return;
+            }
             setBusy(button, MESSAGES.sending);
             window.setTimeout(function () {
                 setBusy(button, null);
