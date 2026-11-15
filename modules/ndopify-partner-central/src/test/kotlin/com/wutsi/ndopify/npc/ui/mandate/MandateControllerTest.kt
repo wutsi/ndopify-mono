@@ -215,8 +215,9 @@ class MandateControllerTest {
 
         @Suppress("UNCHECKED_CAST")
         val visits = model(result)["coBrokerageVisits"] as List<ListingVisitView>
-        assertEquals("Clarisse Mbarga", visits.single().agentName)
-        assertEquals("CM", visits.single().agentInitials)
+        assertEquals("Clarisse Mbarga", visits.single().agent?.name)
+        assertEquals("CM", visits.single().agent?.initials)
+        assertEquals("/agent?id=30&back=/mandates/201%23co-brokerage-visits-title", visits.single().agent?.profileUrl)
         verify(visitClient).coBrokerageOnListing(501)
     }
 
@@ -290,8 +291,7 @@ class MandateControllerTest {
         @Suppress("UNCHECKED_CAST")
         val visits = model(result)["coBrokerageVisits"] as List<ListingVisitView>
         assertEquals(1, visits.size)
-        assertNull(visits.single().agentName)
-        assertNull(visits.single().agentInitials)
+        assertNull(visits.single().agent)
     }
 
     @Test
@@ -319,7 +319,7 @@ class MandateControllerTest {
         @Suppress("UNCHECKED_CAST")
         val visits = model(result)["coBrokerageVisits"] as List<ListingVisitView>
         assertEquals(1, visits.size)
-        assertEquals("Clarisse Mbarga", visits.single().agentName)
+        assertEquals("Clarisse Mbarga", visits.single().agent?.name)
     }
 
     private fun publishedListing() {

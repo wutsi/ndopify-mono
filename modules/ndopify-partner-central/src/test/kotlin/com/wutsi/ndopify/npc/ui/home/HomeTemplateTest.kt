@@ -586,10 +586,13 @@ class HomeTemplateTest {
             "/#co-brokerage-visits-title",
             page.selectFirst(".home-intro__counts li:last-child a")?.attr("href"),
         )
-        assertEquals("CM", card.selectFirst(".co-visit-card__avatar")?.text())
-        assertEquals("Clarisse Mbarga", card.selectFirst("[data-co-brokerage-agent-name]")?.text())
-        assertEquals("https://wa.me/237699000002", card.selectFirst("[data-co-brokerage-whatsapp]")?.attr("href"))
+        val footer = card.selectFirst(".agent-card")!!
+        assertEquals("https://cdn.ndopify.com/clarisse.jpg", footer.selectFirst(".agent-card__avatar img")?.attr("src"))
+        assertEquals("Clarisse Mbarga", footer.selectFirst(".agent-card__name")?.text())
+        assertEquals("/agent?id=30&back=/%23co-brokerage-visits-title", footer.selectFirst("a.agent-card__name")?.attr("href"))
+        assertEquals("https://wa.me/237699000002", footer.selectFirst("a.agent-card__whatsapp")?.attr("href"))
         assertEquals("/listings/501#visits-title", card.selectFirst(".co-visit-card__listing a")?.attr("href"))
+        assertFalse(card.text().contains("Avec"))
         assertFalse(card.text().contains("Sandrine Eboa"))
         assertFalse(card.text().contains("sandrine@gmail.com"))
         assertFalse(card.text().contains("1234"))
@@ -617,10 +620,12 @@ class HomeTemplateTest {
         val card = render(get("/")).selectFirst("[data-co-brokerage-visits] .co-visit-card")!!
 
         assertEquals("En cours", card.selectFirst(".status-tag")?.text())
-        assertEquals("un autre agent", card.selectFirst("[data-co-brokerage-agent]")?.text())
-        assertNull(card.selectFirst("[data-co-brokerage-agent] a"))
-        assertTrue(card.selectFirst(".co-visit-card__avatar")!!.text().isBlank())
-        assertNotNull(card.selectFirst(".co-visit-card__avatar svg"))
+        val footer = card.selectFirst(".agent-card")!!
+        assertEquals("un autre agent", footer.selectFirst(".agent-card__name")?.text())
+        assertNull(footer.selectFirst("a.agent-card__name"))
+        assertNull(footer.selectFirst("a.agent-card__whatsapp"))
+        assertTrue(footer.selectFirst(".agent-card__avatar")!!.text().isBlank())
+        assertNotNull(footer.selectFirst(".agent-card__avatar svg"))
     }
 
     @Test

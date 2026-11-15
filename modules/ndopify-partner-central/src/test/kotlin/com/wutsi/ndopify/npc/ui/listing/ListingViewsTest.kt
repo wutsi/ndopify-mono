@@ -22,6 +22,7 @@ import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
+import com.wutsi.ndopify.npc.ui.agent.AgentCardView
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BONAPRISO
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.DOUALA
@@ -912,7 +913,7 @@ class ListingViewsTest {
             accessDirections = "Porte de droite",
             url = "/douala/bonapriso/listing/501/appartement",
         )
-        val agent = ListingAgentView(30, "Clarisse Mbarga", "CM", null, null, "+237699123456", "/agent?id=30")
+        val agent = AgentCardView(30, "Clarisse Mbarga", "CM", null, null, "/agent?id=30")
         val view = ListingViews.of(
             listing, IMAGES, locations, formatter, "https://ndopify.com", ListingStats(501, 2, 1, 2),
             coBrokerage = true, agent = agent, backUrl = "/mandates/204#matches-title",
@@ -981,18 +982,15 @@ class ListingViewsTest {
         assertEquals("dim. 22 novembre 2026 à 10:30", rows[0].at)
         assertEquals("Sur place", rows[0].typeLabel)
         assertFalse(rows[0].inProgress)
-        assertEquals("Serge Ngono", rows[0].agentName)
-        assertEquals("/agent?id=20&back=/listings/501%23visits-title", rows[0].agentUrl)
-        assertEquals("https://wa.me/237699000001", rows[0].whatsappUrl)
-        assertEquals("SN", rows[0].agentInitials)
+        assertEquals("Serge Ngono", rows[0].agent?.name)
+        assertEquals("/agent?id=20&back=/listings/501%23visits-title", rows[0].agent?.profileUrl)
+        assertEquals("https://wa.me/237699000001", rows[0].agent?.whatsappUrl)
+        assertEquals("SN", rows[0].agent?.initials)
         assertFalse(rows[0].video)
 
         assertEquals("Visite vidéo", rows[1].typeLabel)
         assertTrue(rows[1].inProgress)
-        assertNull(rows[1].agentName) // unreadable agent: the row stays
-        assertNull(rows[1].agentUrl)
-        assertNull(rows[1].whatsappUrl)
-        assertNull(rows[1].agentInitials)
+        assertNull(rows[1].agent) // unreadable agent: the row stays, with the generic card
         assertTrue(rows[1].video)
     }
 
@@ -1006,8 +1004,8 @@ class ListingViewsTest {
             "/listings/501#visits-title",
         )
 
-        assertEquals("Serge Ngono", rows.single().agentName)
-        assertNull(rows.single().whatsappUrl)
+        assertEquals("Serge Ngono", rows.single().agent?.name)
+        assertNull(rows.single().agent?.whatsappUrl)
     }
 
     @Test
@@ -1020,9 +1018,7 @@ class ListingViewsTest {
             "/listings/501#visits-title",
         )
 
-        assertNull(rows.single().agentName)
-        assertNull(rows.single().agentUrl)
-        assertNull(rows.single().whatsappUrl)
+        assertNull(rows.single().agent)
     }
 
     @Test
@@ -1046,8 +1042,8 @@ class ListingViewsTest {
 
         assertEquals("Appartement 2 chambres · Bonapriso", rows.single().listingTitle)
         assertEquals("/listings/501#visits-title", rows.single().listingUrl)
-        assertEquals("/agent?id=20&back=/%23co-brokerage-visits-title", rows.single().agentUrl)
-        assertEquals("SN", rows.single().agentInitials)
+        assertEquals("/agent?id=20&back=/%23co-brokerage-visits-title", rows.single().agent?.profileUrl)
+        assertEquals("SN", rows.single().agent?.initials)
         assertFalse(rows.single().video)
     }
 

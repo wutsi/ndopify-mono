@@ -464,9 +464,12 @@ class MandateTemplateTest {
         val block = page.selectFirst("[data-co-brokerage-visits]")!!
         val card = block.selectFirst(".co-visit-card")!!
         assertEquals("Visites d'autres agents", block.selectFirst("#co-brokerage-visits-title")?.text())
-        assertEquals("CM", card.selectFirst(".co-visit-card__avatar")?.text())
-        assertEquals("Clarisse Mbarga", card.selectFirst("[data-co-brokerage-agent-name]")?.text())
-        assertEquals("https://wa.me/237699000002", card.selectFirst("[data-co-brokerage-whatsapp]")?.attr("href"))
+        val footer = card.selectFirst(".agent-card")!!
+        assertEquals("https://cdn.ndopify.com/clarisse.jpg", footer.selectFirst(".agent-card__avatar img")?.attr("src"))
+        assertEquals("Clarisse Mbarga", footer.selectFirst(".agent-card__name")?.text())
+        assertEquals("/agent?id=30&back=/mandates/201%23co-brokerage-visits-title", footer.selectFirst("a.agent-card__name")?.attr("href"))
+        assertEquals("https://wa.me/237699000002", footer.selectFirst("a.agent-card__whatsapp")?.attr("href"))
+        assertFalse(card.text().contains("Avec"))
         assertFalse(card.text().contains("Sandrine Eboa"))
     }
 

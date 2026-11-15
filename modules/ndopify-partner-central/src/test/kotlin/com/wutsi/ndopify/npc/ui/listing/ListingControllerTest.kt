@@ -5,7 +5,6 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
-import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.error.dto.Error
@@ -23,8 +22,6 @@ import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMandateClient
 import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
-import com.wutsi.ndopify.npc.client.ndopify.NdVisitClient
-import com.wutsi.ndopify.npc.config.Parallel
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
 import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.COMPLETE
@@ -34,7 +31,6 @@ import com.wutsi.ndopify.npc.ui.listing.ListingViewsTest.Companion.SENT
 import com.wutsi.ndopify.npc.ui.mandate.MandateController
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
-import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -62,8 +58,6 @@ class ListingControllerTest {
     private val tenantContext = mock<TenantContext>()
     private val matchClient = mock<NdMatchClient>()
     private val agentClient = mock<NdAgentClient>()
-    private val visitClient = mock<NdVisitClient>()
-    private val parallel = Parallel()
     private lateinit var mvc: MockMvc
 
     private val mandate = Mandate(
@@ -91,17 +85,12 @@ class ListingControllerTest {
             tenantContext,
             matchClient,
             agentClient,
-            visitClient,
-            parallel,
         )
         mvc = MockMvcBuilders.standaloneSetup(controller)
             .setControllerAdvice(HttpClientErrorHandler(mock()))
             .setViewResolvers(InternalResourceViewResolver("/templates/", ".html"))
             .build()
     }
-
-    @AfterEach
-    fun closeParallel() = parallel.close()
 
     private fun model(result: MvcResult) = result.modelAndView!!.model
 
@@ -218,7 +207,10 @@ class ListingControllerTest {
         val view = model(mvc.perform(get("/listings/501?match=9009")).andReturn())["listing"] as ListingView
 
         assertTrue(view.coBrokerage)
-        assertNotNull(view.agent)
+        val agent = view.agent!!
+        assertEquals("Serge Ngono", agent.name)
+        assertEquals("/agent?id=999&back=/listings/501?match%3D9009", agent.profileUrl)
+        assertEquals("https://wa.me/237670000001", agent.whatsappUrl)
         assertNull(view.publicUrl)
         assertNull(view.stats)
         assertEquals("/mandates/204#matches-title", view.backUrl)
@@ -235,65 +227,16 @@ class ListingControllerTest {
     }
 
     @Test
-    fun `owner of a published listing sees the co-brokerage visits`() {
+    fun `a published owner listing no longer reads nor shows the hosted visits`() {
         val published = LISTING.copy(status = ListingStatus.PUBLISHED)
         doReturn(published).whenever(listingClient).get(501)
-        doReturn(listOf(CoBrokerageVisitSummary(id = 1, listingId = 501, agentId = 20, scheduledAt = SENT)))
-            .whenever(visitClient).coBrokerageOnListing(501)
-        doReturn(AGENT).whenever(agentClient).get(20)
 
-        val view = model(mvc.perform(get("/listings/501")).andReturn())["listing"] as ListingView
+        val result = mvc.perform(get("/listings/501")).andReturn()
 
-        assertEquals(1, view.visits.size)
-        assertEquals("Serge Ngono", view.visits.single().agentName)
-        assertEquals("https://wa.me/237670000001", view.visits.single().whatsappUrl)
-        verify(agentClient, times(1)).get(20)
-    }
-
-    @Test
-    fun `a co-broker lens does not read the co-brokerage visits`() {
-        doReturn(COMPLETE.copy(status = ListingStatus.PUBLISHED, agentId = 999, publishedAt = SENT, description = "Public"))
-            .whenever(listingClient).get(501)
-        doReturn(Match(id = 9009, mandateId = 204, listingId = 501, coBrokerage = true, status = MatchStatus.ACTIVE))
-            .whenever(matchClient).get(9009)
-        doReturn(Mandate(id = 204, agentId = AGENT.id, mandateType = MandateType.SEARCH, status = MandateStatus.APPROVED))
-            .whenever(mandateClient).get(204)
-        doReturn(ProfileFixtures.AGENT.copy(id = 999)).whenever(agentClient).get(999)
-
-        mvc.perform(get("/listings/501").param("match", "9009"))
-
-        verify(visitClient, never()).coBrokerageOnListing(any())
-    }
-
-    @Test
-    fun `a draft does not read the co-brokerage visits`() {
-        mvc.perform(get("/listings/501"))
-
-        verify(visitClient, never()).coBrokerageOnListing(any())
-    }
-
-    @Test
-    fun `a visits read failure leaves the block empty`() {
-        doReturn(LISTING.copy(status = ListingStatus.PUBLISHED)).whenever(listingClient).get(501)
-        doThrow(ResourceAccessException("timeout")).whenever(visitClient).coBrokerageOnListing(501)
-
-        val view = model(mvc.perform(get("/listings/501")).andReturn())["listing"] as ListingView
-
-        assertTrue(view.visits.isEmpty())
-    }
-
-    @Test
-    fun `an unreadable agent keeps the row without contact`() {
-        doReturn(LISTING.copy(status = ListingStatus.PUBLISHED)).whenever(listingClient).get(501)
-        doReturn(listOf(CoBrokerageVisitSummary(id = 1, listingId = 501, agentId = 20, scheduledAt = SENT)))
-            .whenever(visitClient).coBrokerageOnListing(501)
-        doThrow(ResourceAccessException("timeout")).whenever(agentClient).get(20)
-
-        val view = model(mvc.perform(get("/listings/501")).andReturn())["listing"] as ListingView
-
-        assertEquals(1, view.visits.size)
-        assertNull(view.visits.single().agentName)
-        assertNull(view.visits.single().agentUrl)
+        val view = model(result)["listing"] as ListingView
+        assertEquals("listing", result.modelAndView?.viewName)
+        assertNotNull(view.published)
+        verify(agentClient, never()).get(any())
     }
 
     @Test

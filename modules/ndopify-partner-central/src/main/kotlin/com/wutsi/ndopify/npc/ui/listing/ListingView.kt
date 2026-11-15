@@ -2,6 +2,7 @@ package com.wutsi.ndopify.npc.ui.listing
 
 import com.wutsi.ndopify.listing.dto.ListingSection
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.npc.ui.agent.AgentCardView
 import com.wutsi.ndopify.npc.ui.mandate.MandateRules
 import com.wutsi.ndopify.npc.ui.visit.VisitCardView
 import com.wutsi.ndopify.npc.ui.visit.VisitStats
@@ -28,8 +29,6 @@ data class ListingView(
     val publicUrl: String?,
     /** Published only: "2 personnes intéressées · 3 visites"; null else, or when its stats can't be had. */
     val stats: String? = null,
-    /** The other agents' upcoming visits on this listing, owner lens only; empty when none or unreadable. */
-    val visits: List<ListingVisitView> = emptyList(),
     val rows: List<ChecklistRow>,
     /** "4 sections sur 6 vérifiées". */
     val progress: String,
@@ -42,8 +41,8 @@ data class ListingView(
     val coBrokerage: Boolean = false,
     /** The published sheet; null until PUBLISHED, RENTED or SOLD. */
     val published: PublishedListingView? = null,
-    /** The listing agent's card, co-broker only. */
-    val agent: ListingAgentView? = null,
+    /** The listing agent's standard card, co-broker only; null when it can't be read. */
+    val agent: AgentCardView? = null,
     /** The mandate for its agent, the search's *Biens correspondants* for a co-broker. */
     val backUrl: String = "/mandates/$mandateId",
     val backLabel: String = "← Retour au mandat",
@@ -189,8 +188,8 @@ data class PhotoView(
 )
 
 /**
- * A visit another agent organizes on the owner's listing, on `listing.html`: never the customer, the note, the code
- * or the report.
+ * A visit another agent organizes on the owner's listing: the home block and the mandate page (the listing page no
+ * longer shows them). Never the customer, the note, the code or the report.
  */
 data class ListingVisitView(
     /** "dimanche 22 novembre 2026 à 10:30", in the tenant's time zone. */
@@ -199,18 +198,12 @@ data class ListingVisitView(
     val typeLabel: String,
     /** CHECKED_IN: the "En cours" tag. */
     val inProgress: Boolean,
-    /** A's full name; null when the agent can't be read. */
-    val agentName: String?,
-    /** A's profile, back to the visits block; null without a name. */
-    val agentUrl: String?,
-    /** A's wa.me link; null without a number. */
-    val whatsappUrl: String?,
-    /** The listing's "type rooms · place", on the home and mandate blocks; null on the listing page. */
+    /** The organizer's standard card; null when the agent can't be read ("un autre agent"). */
+    val agent: AgentCardView? = null,
+    /** The listing's "type rooms · place", on the home and mandate blocks. */
     val listingTitle: String? = null,
     /** The listing's page, when [listingTitle] is shown. */
     val listingUrl: String? = null,
-    /** The organizer's initials, for the card's avatar; null when the agent can't be read. */
-    val agentInitials: String? = null,
     /** A video visit: the card shows the video icon instead of the house. */
     val video: Boolean = false,
 )
