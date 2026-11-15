@@ -437,10 +437,17 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   feedback), to the listing's agent only. Without `listing-id`, the same endpoint returns the caller agent's
   `CONFIRMED`/`CHECKED_IN` co-brokerage visits across all its `PUBLISHED`/`RENTED`/`SOLD` listings, soonest first (a
   caller without an agent is 403 `VISIT_ACCESS_DENIED`); a present but blank or non-positive `listing-id` is 400
-  `HTTP_INVALID_PARAMETER`, never the agent-wide list; the payload is the same and never A's customer. `CoBrokerageVisitMailet` mails B on confirmation, the 24 h reminder,
-  a cancellation after confirmation (only while the listing's mandate is still live: B is not re-mailed a cancellation
-  B caused by ending the listing mandate) and a customer-caused no-show; never on
-  `REQUESTED`/`EXPIRED`/`COMPLETED`/agent no-show or an own-inventory visit. **Request notification**:
+  `HTTP_INVALID_PARAMETER`, never the agent-wide list; the payload is the same and never A's customer.
+  `CoBrokerageVisitNotifier` Telegram-messages a linked B (`CoBrokerageVisitBotlet`, via
+  `AgentTelegramService.chatId(listing.agent.id)`) and e-mails the others (`CoBrokerageVisitMailet`), falling back to
+  the e-mail on a failed send. It keeps the mailet's four triggers and exclusions exactly: confirmation, the 24 h
+  reminder, a cancellation after confirmation while the listing's mandate is still live, and a customer-caused
+  no-show; never `REQUESTED`/`EXPIRED`/`COMPLETED`/agent no-show or an own-inventory visit. The message mirrors the
+  e-mail in French plain text and closes with `Visite organisée par <A>.`, because the bot is the sender (the e-mail's
+  agent footer has no equivalent); it carries one `Voir l'annonce` URL button to
+  `{partnerCentralUrl}/listings/{id}#visits-title`, or none without a `partnerCentralUrl`, and never A's customer nor
+  its data. The cancellation / no-show / type wording is shared by the e-mail and the message through
+  `CoBrokerageVisitLabels`. **Request notification**:
   `VisitRequestedNotifier` messages the agent over Telegram when its chat is linked (`VisitRequestedBotlet`, via
   `AgentTelegramService.chatId`), e-mails it otherwise (`VisitRequestedMailet`, `mail/visit/requested.mjml`), and
   falls back to the e-mail on a failed send (the failure is logged, without the token nor the URL). The message
