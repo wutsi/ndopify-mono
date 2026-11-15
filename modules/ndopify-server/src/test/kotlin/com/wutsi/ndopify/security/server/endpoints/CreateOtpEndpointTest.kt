@@ -217,6 +217,23 @@ class CreateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `a new code keeps the count`() {
+        val response = rest.postForEntity(
+            "/v1/otp",
+            CreateOtpRequest(email = "counted-otp@gmail.com", ttl = 300),
+            Void::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+
+        // A new code buys no attempt: otherwise every resend would give an attacker 5 fresh guesses
+        val authFactor = authFactorRepository.findById(23L).get()
+        assertEquals(2, authFactor.failedAttempts)
+        assertNull(authFactor.lockedUntil)
+        assertNotEquals("old-otp-hash", authFactor.data)
+    }
+
+    @Test
     fun `other auth factors are left untouched`() {
         rest.postForEntity("/v1/otp", CreateOtpRequest(email = "has-otp@gmail.com"), Void::class.java)
 
@@ -359,7 +376,7 @@ class CreateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
         assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
-        assertEquals(3, authFactorRepository.findAll().count { it.authType == AuthType.OTP }) // the fixture's OTPs only
+        assertEquals(4, authFactorRepository.findAll().count { it.authType == AuthType.OTP }) // the fixture's OTPs only
         assertEquals(0, smtp.receivedMessages.size)
     }
 
