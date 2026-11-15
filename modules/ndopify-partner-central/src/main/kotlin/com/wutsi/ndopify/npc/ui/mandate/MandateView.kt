@@ -44,6 +44,8 @@ data class MandateView(
     /** Under "Voir tous les critères". */
     val moreCriteria: List<Pair<String, String>>,
     val editable: Boolean,
+    /** "Modifier" on the contact block: the customer's details can still be corrected. */
+    val customerEditable: Boolean,
     val closable: Boolean,
     val cancellable: Boolean,
     val signatureTtlDays: Int?, // Null without a request for signature
@@ -59,6 +61,8 @@ data class StepView(
 data class ContactView(
     val name: String,
     val email: String,
+    /** The stored number ("+237699123456"), for the `tel:` link. */
+    val whatsapp: String?,
     /** "+237 6 99 12 34 56". */
     val whatsappDisplay: String?,
     /** "237699123456", for `https://wa.me/`. */

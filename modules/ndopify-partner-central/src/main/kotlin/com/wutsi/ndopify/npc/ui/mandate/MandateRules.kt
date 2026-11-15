@@ -19,6 +19,9 @@ object MandateRules {
     /** The criteria can still change: the customer hasn't signed. */
     val EDITABLE: Set<MandateStatus> = setOf(MandateStatus.ASSIGNED, MandateStatus.PENDING_APPROVAL)
 
+    /** The customer's contact details can be corrected: the mandate isn't CLOSED or CANCELLED. */
+    val CUSTOMER_EDITABLE: Set<MandateStatus> = ACTIVE
+
     /** A landlord's signed mandate: the only one with a listing. */
     fun listed(mandate: Mandate): Boolean =
         mandate.mandateType == MandateType.LISTING && mandate.status == MandateStatus.APPROVED
