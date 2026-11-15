@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.visit
 
+import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.visit.dto.Visit
@@ -19,6 +20,7 @@ class VisitViewsTest {
         customer: Customer? = VisitFixtures.CUSTOMER,
         listing: Listing? = VisitFixtures.LISTING,
         now: Long = VisitFixtures.NOW,
+        agent: Agent? = null,
     ) = VisitViews.of(
         visit,
         customer,
@@ -27,6 +29,7 @@ class VisitViewsTest {
         now,
         VisitFixtures.TENANT,
         VisitFixtures.FORMATTER,
+        agent,
     )
 
     @Test
@@ -301,5 +304,16 @@ class VisitViewsTest {
         )
 
         assertEquals("/listings/501?match=9001", page.listingUrl)
+    }
+
+    @Test
+    fun `a co-brokerage visit carries the listing agent's card`() {
+        val page = of(agent = VisitFixtures.OTHER_AGENT)
+
+        assertEquals("Clarisse Mbarga", page.agent?.name)
+        assertEquals("CM", page.agent?.initials)
+        assertEquals("https://cdn.ndopify.com/clarisse.jpg", page.agent?.photoUrl)
+        assertEquals("/agent?id=30&back=/visits/7001", page.agent?.profileUrl)
+        assertEquals("https://wa.me/237699000002", page.agent?.whatsappUrl)
     }
 }

@@ -17,6 +17,7 @@ import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.agent.server.service.AgentService
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.customer.server.service.CustomerService
+import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingService
 import com.wutsi.ndopify.mandate.dto.MandateStatus
@@ -355,6 +356,20 @@ class VisitServiceTest {
             assertNull(it.cancellationReason)
         }
         verify(eventPublisher, times(2)).publishEvent(any<VisitCancelledEvent>())
+    }
+
+    @Test
+    fun `the co-brokerage read covers the agent's live listings`() {
+        val agent = AgentEntity(id = 20L, party = PartyEntity(id = 200L))
+        doReturn(listOf(visit)).whenever(dao).findCoBrokerageByListingAgent(eq(20L), any(), any())
+
+        assertEquals(listOf(visit), service.findCoBrokerageForAgent(agent))
+
+        verify(dao).findCoBrokerageByListingAgent(
+            20L,
+            setOf(VisitStatus.CONFIRMED, VisitStatus.CHECKED_IN),
+            setOf(ListingStatus.PUBLISHED, ListingStatus.RENTED, ListingStatus.SOLD),
+        )
     }
 
     private fun saved(): VisitEntity {

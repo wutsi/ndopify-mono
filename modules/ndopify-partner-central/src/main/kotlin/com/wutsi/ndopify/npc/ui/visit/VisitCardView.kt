@@ -40,6 +40,10 @@ data class VisitCardView(
     val selectedTime: String? = null,
     /** True when the customer's requested date and time are both in the allowed slot lists. */
     val requestedSlotValid: Boolean = false,
+    /** The listing's agent when this is a co-brokerage visit; "un autre agent" when unreadable. */
+    val agentName: String? = null,
+    /** The listing agent's profile, back to the page the card is on. */
+    val agentUrl: String? = null,
 )
 
 /** A day of the upcoming visits ("Aujourd'hui", "Demain", "sam. 8 novembre"). */

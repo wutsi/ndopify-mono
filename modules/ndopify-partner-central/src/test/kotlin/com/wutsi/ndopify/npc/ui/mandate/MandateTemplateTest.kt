@@ -44,7 +44,10 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BONAPRISO
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.DOUALA
 import com.wutsi.ndopify.npc.ui.visit.VisitFixtures
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
+import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
+import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitSummary
+import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
@@ -68,6 +71,7 @@ import org.thymeleaf.spring6.SpringTemplateEngine
 import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
 import java.time.Clock
+import java.util.Date
 import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
@@ -438,6 +442,35 @@ class MandateTemplateTest {
     }
 
     @Test
+    fun `approved - landlord with listing published - hosted visits block`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        publishedListing()
+        doReturn(
+            listOf(
+                CoBrokerageVisitSummary(
+                    id = 8001,
+                    listingId = 501,
+                    agentId = VisitFixtures.OTHER_AGENT_ID,
+                    status = VisitStatus.CONFIRMED,
+                    type = VisitType.ON_SITE,
+                    scheduledAt = Date(VisitFixtures.NOW),
+                ),
+            ),
+        ).whenever(visitClient).coBrokerageOnListing(501)
+        doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
+
+        val page = render(APPROVED.copy(mandateType = MandateType.LISTING))
+
+        val block = page.selectFirst("[data-co-brokerage-visits]")!!
+        val card = block.selectFirst(".co-visit-card")!!
+        assertEquals("Visites d'autres agents", block.selectFirst("#co-brokerage-visits-title")?.text())
+        assertEquals("CM", card.selectFirst(".co-visit-card__avatar")?.text())
+        assertEquals("Clarisse Mbarga", card.selectFirst("[data-co-brokerage-agent-name]")?.text())
+        assertEquals("https://wa.me/237699000002", card.selectFirst("[data-co-brokerage-whatsapp]")?.attr("href"))
+        assertFalse(card.text().contains("Sandrine Eboa"))
+    }
+
+    @Test
     fun `approved - landlord with listing published - visits unavailable`() {
         publishedListing()
         doThrow(ResourceAccessException("down")).whenever(visitClient).searchByListings(any(), any(), any(), any())
@@ -726,10 +759,15 @@ class MandateTemplateTest {
      * A signed search with a requested visit on its ACCEPTED match (9001), a proposal awaiting an answer (9003), and
      * one refused and one unanswered match (to fill the outcomes line).
      */
-    private fun withVisits(vararg visits: VisitSummary) {
+    private fun withVisits(vararg visits: VisitSummary, coBrokerage: Boolean = false) {
         withMatches(
             MatchFixtures.MATCH_B.copy(mandateId = 201, status = MatchStatus.PROPOSED, proposedAt = proposedAt),
-            MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.ACCEPTED, proposedAt = proposedAt),
+            MatchFixtures.MATCH_A.copy(
+                mandateId = 201,
+                status = MatchStatus.ACCEPTED,
+                proposedAt = proposedAt,
+                coBrokerage = coBrokerage,
+            ),
             MatchFixtures.MATCH_C.copy(mandateId = 201, status = MatchStatus.REJECTED),
             MatchFixtures.MATCH_C.copy(id = 9005, mandateId = 201, status = MatchStatus.EXPIRED, proposedAt = proposedAt),
             MatchFixtures.MATCH_C.copy(id = 9006, mandateId = 201, status = MatchStatus.DISMISSED),
@@ -785,6 +823,34 @@ class MandateTemplateTest {
         assertEquals("Voir la visite", card.selectFirst("[data-visit-link]")?.text())
         assertEquals("Visites à venir (1)", page.selectFirst("[data-matches-section] .assignments__group-title")?.text())
         assertNull(page.selectFirst("[data-mandate-pending-visit]"))
+    }
+
+    @Test
+    fun `visits - a co-brokerage visit names the listing agent`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        withVisits(
+            VisitFixtures.summary(VisitFixtures.confirmed().copy(mandateId = 201, matchId = 9001)),
+            coBrokerage = true,
+        )
+        doReturn(
+            listOf(
+                MatchFixtures.LISTING_A.copy(agentId = VisitFixtures.OTHER_AGENT_ID),
+                MatchFixtures.LISTING_B,
+                MatchFixtures.LISTING_C,
+            ),
+        ).whenever(listingClient).searchByIds(any())
+        doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
+
+        val page = render(APPROVED)
+
+        val card = page.selectFirst("[data-match-id=9001]")!!
+        assertEquals("Clarisse Mbarga", card.selectFirst("[data-visit-agent-name]")?.text())
+        // The visit names the agent: the card does not repeat it on an origin line.
+        assertNull(card.selectFirst("[data-match-origin]"))
+        assertEquals(
+            "/agent?id=30&back=/mandates/201%23matches-title",
+            card.selectFirst("[data-visit-agent-link]")?.attr("href"),
+        )
     }
 
     @Test
@@ -925,7 +991,7 @@ class MandateTemplateTest {
     }
 
     @Test
-    fun `co-brokerage match with a visit keeps its origin line`() {
+    fun `co-brokerage match with a visit names the agent once`() {
         doReturn(VisitFixtures.NOW).whenever(clock).millis()
         withMatches(
             MatchFixtures.MATCH_A.copy(
@@ -949,7 +1015,9 @@ class MandateTemplateTest {
         val card = page.selectFirst("[data-match-id=9001]")!!
 
         assertNull(card.selectFirst("[data-match-tag]"))
-        assertEquals("Clarisse Mbarga", card.selectFirst("[data-match-origin]")?.text())
+        // The visit names the agent ("Avec …"): the card does not repeat it on an origin line.
+        assertNull(card.selectFirst("[data-match-origin]"))
+        assertEquals("Clarisse Mbarga", card.selectFirst("[data-visit-agent-name]")?.text())
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.visit
 
+import com.wutsi.ndopify.npc.ui.listing.ListingAgentView
 import com.wutsi.ndopify.visit.dto.VisitInterest
 import com.wutsi.ndopify.visit.dto.VisitType
 
@@ -62,4 +63,6 @@ data class VisitPage(
     val selectedDay: String,
     val selectedTime: String,
     val videoPossible: Boolean,
+    /** The listing's agent when the visit is on another agent's listing; null on own inventory. */
+    val agent: ListingAgentView? = null,
 )

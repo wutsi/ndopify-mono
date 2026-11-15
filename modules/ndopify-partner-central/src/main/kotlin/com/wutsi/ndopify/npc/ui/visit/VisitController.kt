@@ -3,6 +3,7 @@ package com.wutsi.ndopify.npc.ui.visit
 import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
@@ -50,6 +51,7 @@ class VisitController(
     private val visitClient: NdVisitClient,
     private val listingClient: NdListingClient,
     private val customerClient: NdCustomerClient,
+    private val agentClient: NdAgentClient,
     locationClient: NdLocationClient,
     private val tenantContext: TenantContext,
     private val clock: Clock,
@@ -126,6 +128,11 @@ class VisitController(
         }
 
         val listing = lookup("listing ${visit.listingId} of visit $visitId") { listingClient.get(visit.listingId) }
+        val listingAgent = if (listing != null && listing.agentId != agent.id) {
+            lookup("agent ${listing.agentId} of visit $visitId") { agentClient.get(listing.agentId) }
+        } else {
+            null
+        }
         val customer = lookup("customer ${visit.customerId} of visit $visitId") { customerClient.get(visit.customerId) }
         val locations = lookup("location names of visit $visitId") {
             sector.locations(listOfNotNull(listing?.cityId, listing?.neighborhoodId))
@@ -133,7 +140,7 @@ class VisitController(
         val tenant = tenantContext.getTenant()
         val formatter = TenantFormatter(tenant)
 
-        val page = VisitViews.of(visit, customer, listing, locations, clock.millis(), tenant, formatter)
+        val page = VisitViews.of(visit, customer, listing, locations, clock.millis(), tenant, formatter, listingAgent)
         model.addAttribute("page", page)
         model.addAttribute(CLOSE, closeFor(page, close))
         model.addAttribute(CHECK_IN_LOCKED, session.getAttribute(SESSION_CODE_LOCKED + visitId) == true)

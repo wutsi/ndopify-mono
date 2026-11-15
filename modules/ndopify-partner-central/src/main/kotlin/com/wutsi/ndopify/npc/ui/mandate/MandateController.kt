@@ -30,6 +30,7 @@ import com.wutsi.ndopify.npc.ui.findproperty.FindPropertyRules
 import com.wutsi.ndopify.npc.ui.listing.ListingClientsView
 import com.wutsi.ndopify.npc.ui.listing.ListingStatsView
 import com.wutsi.ndopify.npc.ui.listing.ListingViews
+import com.wutsi.ndopify.npc.ui.listing.ListingVisitView
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.npc.ui.match.MatchController
 import com.wutsi.ndopify.npc.ui.match.MatchRules
@@ -39,10 +40,12 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import com.wutsi.ndopify.npc.ui.visit.PendingVisit
 import com.wutsi.ndopify.npc.ui.visit.PendingVisitCandidate
 import com.wutsi.ndopify.npc.ui.visit.PendingVisitView
+import com.wutsi.ndopify.npc.ui.visit.VisitAgents
 import com.wutsi.ndopify.npc.ui.visit.VisitCards
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
 import com.wutsi.ndopify.npc.ui.visit.VisitStats
 import com.wutsi.ndopify.refdata.dto.Location
+import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
 import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.web.core.service.TenantContext
 import com.wutsi.ndopify.web.core.service.TenantFormatter
@@ -153,6 +156,9 @@ class MandateController(
 
         // Not a reason the agent can choose: UNKNOWN is no answer, EXPIRED is the server's own.
         private val CANCELLATION_CODES = MandateRules.CANCELLATION_LABELS.keys
+
+        // The listings that still host visits: their owner sees *Visites d'autres agents*.
+        private val HOSTED_STATUSES = setOf(ListingStatus.PUBLISHED, ListingStatus.RENTED, ListingStatus.SOLD)
     }
 
     private val sector = SectorValidator(locationClient, tenantContext)
@@ -344,15 +350,33 @@ class MandateController(
         val visitListings = visits
             ?.filter { VisitRules.isOpen(VisitRules.asVisit(it), now) }
             ?.let { loadVisitListings(mandate, it) }
+        val visitAgents = VisitAgents.ofVisits(agentClient, parallel, agent, visits, visitListings)
         val visitStats = if (matched) VisitStats.of(visits, now) else null
         val listings = matches?.let { listings(mandate, it) }
         val agentNames = if (matches != null && listings != null) {
-            listingAgentNames(agent, matches, listings)
+            listingAgentNames(agent, matches, listings, visitAgents)
         } else {
             emptyMap()
         }
-        val locations = locations(mandate, listings?.values.orEmpty() + visitListings?.values.orEmpty())
-        val view = view(mandate, locations)
+        val listingId = listingId(mandate)
+        val listing = listingId?.let { listing(mandate, it) }
+        // The hosted visits read starts here, before the page's other secondary reads, and is joined at the end.
+        val hostedVisits = listing
+            ?.takeIf { it.status in HOSTED_STATUSES }
+            ?.let { hosted ->
+                parallel.async {
+                    lookup("co-brokerage visits of listing ${hosted.id}") {
+                        visitClient.coBrokerageOnListing(hosted.id)
+                    }
+                }
+            }
+        // One lookup for the whole page, the listing's place included: the hosted block reuses it.
+        val locations = locations(
+            mandate,
+            listing,
+            listings?.values.orEmpty() + visitListings?.values.orEmpty(),
+        )
+        val view = view(mandate, locations, listingId)
         model.addAttribute("mandate", view)
         model.addAttribute(
             "searchStats",
@@ -369,6 +393,8 @@ class MandateController(
                 now,
                 tenantContext.getTenant(),
                 formatter,
+                agents = visitAgents,
+                back = "/mandates/${mandate.id}#matches-title",
             )
             val byMatch = (cards.requested + cards.upcoming)
                 .mapNotNull { visit -> visit.matchId?.let { it to visit } }
@@ -397,9 +423,17 @@ class MandateController(
         model.addAttribute("form", form)
         model.addAttribute("errors", errors)
         model.addAttribute("currency", formatter().currency())
-        val listingId = listingId(mandate)
-        val listing = listingId?.let { listing(mandate, it) }
         val clients = listing?.let { listingClients(agent, it) }
+        val coBrokerage = if (hostedVisits != null && listing != null) {
+            val hosted = try {
+                hostedVisits.join()
+            } catch (ex: Exception) {
+                null
+            }
+            coBrokerageVisits(mandate, listing, hosted.orEmpty(), locations)
+        } else {
+            emptyList()
+        }
         val listingStats = clients?.let {
             ListingStatsView(MatchRules.interest(it.interested), it.stats ?: visitStats)
         }
@@ -408,6 +442,7 @@ class MandateController(
             ListingViews.forMandate(mandate, listingId, listing, formatter(), listingStats),
         )
         model.addAttribute("listingProposals", clients?.proposals)
+        model.addAttribute("coBrokerageVisits", coBrokerage)
         pendingVisit = clients?.proposals?.let { proposals ->
             PendingVisit.of(
                 proposals.rows.mapNotNull { row ->
@@ -470,26 +505,37 @@ class MandateController(
         agent: Agent,
         matches: List<Match>,
         listings: Map<Long, ListingSummary>,
+        known: Map<Long, Agent>,
     ): Map<Long, String> =
         otherAgentNames(
             agent,
             matches
                 .filter { it.coBrokerage && it.status in MatchRules.ORDER }
                 .mapNotNull { listings[it.listingId]?.agentId },
+            known,
         )
 
     /**
-     * Other agents' names, by id, read in parallel; the signed-in agent and unknown ids are skipped. Secondary: an
-     * agent that can't be read, or without a name, is left out.
+     * Other agents' names, by id, read in parallel; the signed-in agent and unknown ids are skipped, and [known] ones
+     * aren't read again. Secondary: an agent that can't be read, or without a name, is left out.
      */
-    private fun otherAgentNames(agent: Agent, agentIds: Collection<Long>): Map<Long, String> {
+    private fun otherAgentNames(
+        agent: Agent,
+        agentIds: Collection<Long>,
+        known: Map<Long, Agent> = emptyMap(),
+    ): Map<Long, String> {
         val ids = agentIds.filter { it > 0 && it != agent.id }.distinct()
-        val calls = ids.associateWith { id ->
+        val cached = ids.mapNotNull { id ->
+            known[id]?.let { owner -> ProfileRules.fullName(owner) }
+                ?.takeIf { name -> name.isNotBlank() }
+                ?.let { name -> id to name }
+        }.toMap()
+        val calls = ids.filter { it !in known }.associateWith { id ->
             parallel.async {
                 lookup("agent $id") { agentClient.get(id) }
             }
         }
-        return calls.mapNotNull { (id, call) ->
+        return cached + calls.mapNotNull { (id, call) ->
             val owner = try {
                 call.join()
             } catch (ex: Exception) {
@@ -614,7 +660,7 @@ class MandateController(
         }
 
     /** Each secondary lookup that fails leaves its lines out: only the mandate itself is required. */
-    private fun view(mandate: Mandate, locations: Map<Long, Location>): MandateView =
+    private fun view(mandate: Mandate, locations: Map<Long, Location>, listingId: Long?): MandateView =
         MandateViews.of(
             mandate,
             contract(mandate),
@@ -623,7 +669,7 @@ class MandateController(
             locations,
             clock.millis(),
             formatter(),
-            deal(mandate),
+            deal(mandate, listingId),
         )
 
     private fun formatter(): TenantFormatter = TenantFormatter(tenantContext.getTenant())
@@ -637,11 +683,13 @@ class MandateController(
     }
 
     /**
-     * A landlord's signed mandate only: the id of its listing, null before it's created or when it can't be searched.
-     * The mandate's agent is the signed-in one (ndopify-server refuses another's mandate), so its DRAFT is found.
+     * A landlord's mandate: the id of its listing, null before it's created or when it can't be searched. A closed
+     * mandate's listing (RENTED / SOLD) is resolved too, so its hosted visits still show; the *Actif* panel itself
+     * stays for the signed (APPROVED) mandate only.
      */
     private fun listingId(mandate: Mandate): Long? {
-        if (mandate.mandateType != MandateType.LISTING || mandate.status != MandateStatus.APPROVED) return null
+        val listed = mandate.status == MandateStatus.APPROVED || mandate.status == MandateStatus.CLOSED
+        if (mandate.mandateType != MandateType.LISTING || !listed) return null
         val agentId = mandate.agentId ?: return null
         return lookup("listing of mandate ${mandate.id}") { listingClient.findIdByMandate(mandate.id, agentId) }
     }
@@ -693,6 +741,29 @@ class MandateController(
         )
     }
 
+    /**
+     * The other agents' visits on the mandate's listing, soonest first, with their agents read in parallel and the
+     * page's location names. Secondary: a failed visits read leaves the block out; an unreadable agent keeps its row as
+     * "un autre agent".
+     */
+    private fun coBrokerageVisits(
+        mandate: Mandate,
+        listing: Listing,
+        visits: List<CoBrokerageVisitSummary>,
+        locations: Map<Long, Location>,
+    ): List<ListingVisitView> {
+        if (visits.isEmpty()) return emptyList()
+        val agents = VisitAgents.ofCoBrokerage(agentClient, parallel, visits)
+        return ListingViews.visits(
+            visits,
+            agents,
+            tenantContext.getTenant(),
+            TenantFormatter(tenantContext.getTenant()),
+            "/mandates/${mandate.id}#co-brokerage-visits-title",
+            mapOf(listing.id to ListingViews.listingLabel(listing, locations)),
+        )
+    }
+
     /** Null when it can't be loaded. */
     private fun listing(mandate: Mandate, id: Long): Listing? =
         lookup("listing $id of mandate ${mandate.id}") { listingClient.get(id) }
@@ -709,7 +780,7 @@ class MandateController(
      * property's listing id (the match's, or found by mandate id for an outside listing closure). A failed read leaves
      * its line out; another agent's listing or mandate is only ever read for its public number.
      */
-    private fun deal(mandate: Mandate): MandateDeal? {
+    private fun deal(mandate: Mandate, resolvedListingId: Long?): MandateDeal? {
         if (mandate.status != MandateStatus.CLOSED) return null
         val owner = mandate.mandateType == MandateType.LISTING
         val matchId = mandate.dealMatchId
@@ -733,23 +804,26 @@ class MandateController(
         }
 
         if (mandate.dealOutside) {
-            val listingId = if (owner) {
-                mandate.agentId?.let { lookup("listing of mandate ${mandate.id}") { listingClient.findIdByMandate(mandate.id, it) } }
-            } else {
-                null
-            }
-            return MandateDeal(null, null, listingId)
+            return MandateDeal(null, null, resolvedListingId)
         }
 
         return null
     }
 
-    /** The names of the mandate's city and neighbourhoods, and of its matched [listings]', in one lookup. */
-    private fun locations(mandate: Mandate, listings: Collection<ListingSummary>): Map<Long, Location> =
+    /**
+     * The names of the mandate's city and neighbourhoods, of its matched [listings]' and of its [listing]'s, in one
+     * lookup.
+     */
+    private fun locations(
+        mandate: Mandate,
+        listing: Listing?,
+        listings: Collection<ListingSummary>,
+    ): Map<Long, Location> =
         lookup("location names of mandate ${mandate.id}") {
             sector.locations(
                 listOf(mandate.cityId) + mandate.neighborhoodIds +
-                    listings.flatMap { listOfNotNull(it.cityId, it.neighborhoodId) },
+                    listings.flatMap { listOfNotNull(it.cityId, it.neighborhoodId) } +
+                    listOfNotNull(listing?.cityId, listing?.neighborhoodId),
             )
         } ?: emptyMap()
 

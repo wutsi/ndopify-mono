@@ -255,6 +255,34 @@ class NdVisitClientTest {
         server.verify()
     }
 
+    @Test
+    fun `co-brokerage without a listing reads the caller's visits`() {
+        server.expect(requestTo("http://localhost:8080/v1/visits/co-brokerage"))
+            .andRespond(
+                withSuccess(
+                    json(
+                        SearchCoBrokerageVisitResponse(
+                            visits = listOf(
+                                CoBrokerageVisitSummary(
+                                    id = 1,
+                                    listingId = 501,
+                                    agentId = 30,
+                                    status = VisitStatus.CONFIRMED,
+                                ),
+                            ),
+                        ),
+                    ),
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val visits = client.coBrokerage()
+
+        assertEquals(listOf(1L), visits.map { it.id })
+        assertEquals(501L, visits.single().listingId)
+        server.verify()
+    }
+
     private fun json(value: Any): String = JsonMapper.builder().build().writeValueAsString(value)
 
     @Test

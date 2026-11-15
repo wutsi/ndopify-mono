@@ -291,7 +291,13 @@ class ListingController(
             }
             agent?.let { id to it }
         }.toMap()
-        return ListingViews.visits(visits, agents, listing.id, tenantContext.getTenant(), formatter())
+        return ListingViews.visits(
+            visits,
+            agents,
+            tenantContext.getTenant(),
+            formatter(),
+            "/listings/${listing.id}#visits-title",
+        )
     }
 
     private fun errorCode(ex: HttpClientErrorException): String? =

@@ -8,6 +8,7 @@ import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.mandate.dto.AssignmentSummary
 import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStats
+import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdAssignmentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
@@ -19,17 +20,20 @@ import com.wutsi.ndopify.npc.config.Parallel
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.kyc.KycRules
+import com.wutsi.ndopify.npc.ui.listing.ListingViews
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.npc.ui.mandate.MandateCards
 import com.wutsi.ndopify.npc.ui.mandate.MandateRules
 import com.wutsi.ndopify.npc.ui.mandate.MandateSummaries
 import com.wutsi.ndopify.npc.ui.match.MatchRules
 import com.wutsi.ndopify.npc.ui.profile.ProfileRules
+import com.wutsi.ndopify.npc.ui.visit.VisitAgents
 import com.wutsi.ndopify.npc.ui.visit.VisitCards
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
 import com.wutsi.ndopify.npc.ui.visit.VisitSlots
 import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.refdata.dto.Location
+import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
 import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.web.core.service.TenantContext
 import com.wutsi.ndopify.web.core.service.TenantFormatter
@@ -60,6 +64,7 @@ class HomeController(
     private val listingClient: NdListingClient,
     private val visitClient: NdVisitClient,
     private val customerClient: NdCustomerClient,
+    private val agentClient: NdAgentClient,
     locationClient: NdLocationClient,
     private val tenantContext: TenantContext,
     private val clock: Clock,
@@ -102,9 +107,11 @@ class HomeController(
             val openCall = parallel.async { openAssignments(agent, now) }
             val mandatesCall = parallel.async { mandates(agent) }
             val visitsCall = parallel.async { loadVisits(agent) }
+            val coBrokerageCall = parallel.async { loadCoBrokerage() }
             val open = openCall.join()
             val mandates = mandatesCall.join()
             val visits = visitsCall.join()
+            val coBrokerage = coBrokerageCall.join()
 
             // Wave 2: what the first wave unlocks.
             val offersCall = parallel.async { offers(agent, open) }
@@ -113,24 +120,33 @@ class HomeController(
             val mandateCustomersCall = parallel.async { mandates?.let { loadMandateCustomers(it) } ?: emptyMap() }
             val visitListingsCall = parallel.async { visits?.let { loadVisitListings(it) } }
             val visitCustomersCall = parallel.async { visits?.let { loadVisitCustomers(it) } ?: emptyMap() }
+            val coBrokerageListingsCall = parallel.async { coBrokerage?.let { loadCoBrokerageListings(agent, it) } }
             val offers = offersCall.join()
             val mandateStats = mandateStatsCall.join()
             val listings = listingsCall.join()
             val mandateCustomers = mandateCustomersCall.join()
             val visitListings = visitListingsCall.join()
             val visitCustomers = visitCustomersCall.join()
+            val coBrokerageListings = coBrokerageListingsCall.join()
 
             // Wave 3: the two reads that join the rest.
             val namesCall = parallel.async {
                 names(
                     (offers.orEmpty().map { (_, mandate) -> mandate } + mandates.orEmpty())
                         .flatMap { mandate -> listOf(mandate.cityId) + mandate.neighborhoodIds } +
-                        visitListings.orEmpty().values.flatMap { list -> listOfNotNull(list.cityId, list.neighborhoodId) },
+                        visitListings.orEmpty().values.flatMap { list -> listOfNotNull(list.cityId, list.neighborhoodId) } +
+                        coBrokerageListings.orEmpty().values.flatMap { list ->
+                            listOfNotNull(list.cityId, list.neighborhoodId)
+                        },
                 )
             }
             val listingStatsCall = parallel.async { listings?.let { listingStats(it.values) } }
+            val visitAgentsCall = parallel.async { visitAgents(agent, visits, visitListings) }
+            val coBrokerageAgentsCall = parallel.async { loadCoBrokerageAgents(coBrokerage) }
             val names = namesCall.join()
             val stats = listingStatsCall.join()
+            val visitAgents = visitAgentsCall.join()
+            val coBrokerageAgents = coBrokerageAgentsCall.join()
 
             // The Model and the view stay on the request thread.
             val assignments = offers?.map { (assignment, mandate) ->
@@ -156,8 +172,34 @@ class HomeController(
                 if (folded.size == 1) "Voir l'autre mandat" else "Voir les ${folded.size} autres mandats",
             )
             model.addAttribute("mandatesUnavailable", mandates == null)
-            val visitsView = VisitCards.of(visits, visitListings, visitCustomers, names, now, tenant, formatter)
+            val visitsView = VisitCards.of(
+                visits,
+                visitListings,
+                visitCustomers,
+                names,
+                now,
+                tenant,
+                formatter,
+                agents = visitAgents,
+                back = "/#visits-title",
+            )
             model.addAttribute("visits", visitsView)
+
+            val coBrokerageLabels = coBrokerageListings.orEmpty()
+                .mapValues { (_, listing) -> ListingViews.listingLabel(listing, names) }
+            model.addAttribute(
+                "coBrokerageVisits",
+                coBrokerage?.let {
+                    ListingViews.visits(
+                        it,
+                        coBrokerageAgents,
+                        tenant,
+                        formatter,
+                        "/#co-brokerage-visits-title",
+                        coBrokerageLabels,
+                    )
+                }.orEmpty(),
+            )
 
             // The triage header: the agent's day and what is waiting, so the first screen answers "what now?".
             val today = VisitSlots.localDate(Date(now), tenant)
@@ -165,11 +207,17 @@ class HomeController(
             model.addAttribute("offerCount", assignments?.size ?: 0)
             model.addAttribute("urgentOfferCount", assignments?.count { it.urgent } ?: 0)
             model.addAttribute("requestedCount", visitsView.requested.size)
+            val todayOwnCount = visitsView.upcoming.count { card ->
+                card.at?.let { VisitSlots.localDate(Date(it), tenant) == today } == true
+            }
+            val todayHostedCount = coBrokerage.orEmpty().count { visit ->
+                visit.scheduledAt?.let { VisitSlots.localDate(it, tenant) == today } == true
+            }
+            model.addAttribute("todayCount", todayOwnCount + todayHostedCount)
+            // An agent whose only visit today is hosted lands on the hosted block, not on an empty *Visites* one.
             model.addAttribute(
-                "todayCount",
-                visitsView.upcoming.count { card ->
-                    card.at?.let { VisitSlots.localDate(Date(it), tenant) == today } == true
-                },
+                "todayHref",
+                if (todayOwnCount > 0 || todayHostedCount == 0) "/#visits-title" else "/#co-brokerage-visits-title",
             )
         }
         return VIEW
@@ -285,6 +333,45 @@ class HomeController(
             LOGGER.warn("No customers for the visits of agent: ${ex.message}")
             emptyMap()
         }
+
+    /**
+     * The listing agents of the co-brokerage visits, by id, read in parallel; the signed-in agent and unreadable ids
+     * are left out.
+     */
+    private fun visitAgents(
+        agent: Agent,
+        visits: List<VisitSummary>?,
+        listings: Map<Long, ListingSummary>?,
+    ): Map<Long, Agent> = VisitAgents.ofVisits(agentClient, parallel, agent, visits, listings)
+
+    /** The caller's co-brokerage visits; null when they can't be read (the block is left out). */
+    private fun loadCoBrokerage(): List<CoBrokerageVisitSummary>? =
+        try {
+            visitClient.coBrokerage()
+        } catch (ex: RestClientException) {
+            LOGGER.warn("No co-brokerage visits: ${ex.message}")
+            null
+        }
+
+    /** The visits' listings by id, the agent's own (RENTED / SOLD included); null when they can't be read (the rows keep their number only). */
+    private fun loadCoBrokerageListings(
+        agent: Agent,
+        visits: List<CoBrokerageVisitSummary>,
+    ): Map<Long, ListingSummary>? =
+        if (visits.isEmpty()) {
+            emptyMap()
+        } else {
+            try {
+                listingClient.searchOwnByIds(visits.map { it.listingId }.distinct(), agent.id).associateBy { it.id }
+            } catch (ex: RestClientException) {
+                LOGGER.warn("No listings for the co-brokerage visits: ${ex.message}")
+                null
+            }
+        }
+
+    /** The agents of the co-brokerage visits, by id, read in parallel; an unreadable one is left out. */
+    private fun loadCoBrokerageAgents(visits: List<CoBrokerageVisitSummary>?): Map<Long, Agent> =
+        VisitAgents.ofCoBrokerage(agentClient, parallel, visits)
 
     /**
      * The mandates' customers by id, in one search, for the cards' titles; empty when there are none or they can't be

@@ -169,6 +169,145 @@
     }
 }
 
+/* ---------- Co-brokerage visits: *Visites d'autres agents* ---------- */
+.listing-visits ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.co-visit-card {
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+.co-visit-card + .co-visit-card {
+    margin-top: var(--space-2);
+}
+
+.co-visit-card__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-2);
+}
+
+.co-visit-card__when {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-weight: 600;
+}
+
+.co-visit-card__when .icon {
+    flex: none;
+}
+
+/* The type and the property on one line, like the agent's own visit card. */
+.co-visit-card__listing {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0 var(--space-2);
+    margin-top: var(--space-1);
+    font-size: var(--step-hint);
+}
+
+.co-visit-card__listing .icon {
+    flex: none;
+}
+
+.co-visit-card__listing a {
+    color: inherit;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.co-visit-card__listing a:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
+/* The organizer: a small avatar, their name, and WhatsApp, under a rule. */
+.co-visit-card__agent {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: var(--space-2);
+    align-items: center;
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+}
+
+.co-visit-card__avatar {
+    display: grid;
+    width: 2.25rem;
+    height: 2.25rem;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--color-surface-alt);
+    color: var(--color-info-fg);
+    font: 600 var(--step-hint) / 1 var(--font-body);
+}
+
+.co-visit-card__agent-info {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-1) var(--space-2);
+    min-width: 0;
+}
+
+.co-visit-card__agent-line {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 var(--space-1);
+    font-size: var(--step-hint);
+}
+
+.co-visit-card__agent-line a {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    color: inherit;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.co-visit-card__agent-line a:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
+.co-visit-card__agent-line .icon {
+    width: 0.85em;
+    height: 0.85em;
+    color: var(--color-info-fg);
+}
+
+.co-visit-card__whatsapp {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    min-height: var(--target);
+    color: var(--color-success-fg);
+    font-size: var(--step-hint);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.co-visit-card__whatsapp:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
+.co-visit-card__whatsapp .icon {
+    flex: none;
+}
+
 /* ---------- The checklist (listing.html) ---------- */
 .checklist {
     margin: 0;

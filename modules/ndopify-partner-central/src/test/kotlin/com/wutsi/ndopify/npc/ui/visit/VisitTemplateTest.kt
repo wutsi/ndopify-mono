@@ -4,6 +4,7 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
@@ -57,6 +58,7 @@ class VisitTemplateTest {
     private val visitClient = mock<NdVisitClient>()
     private val listingClient = mock<NdListingClient>()
     private val customerClient = mock<NdCustomerClient>()
+    private val agentClient = mock<NdAgentClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
@@ -92,6 +94,7 @@ class VisitTemplateTest {
                     visitClient,
                     listingClient,
                     customerClient,
+                    agentClient,
                     locationClient,
                     tenantContext,
                     clock,
@@ -402,5 +405,24 @@ class VisitTemplateTest {
 
         assertFalse(close.selectFirst("[data-close-buttons]")!!.hasAttr("hidden"))
         assertNull(close.selectFirst("[data-close-form=no-show]"))
+    }
+
+    @Test
+    fun `a co-brokerage visit renders the listing agent's card`() {
+        doReturn(LISTING.copy(agentId = 30)).whenever(listingClient).get(3012)
+        doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(30L)
+
+        val page = render(get("/visits/7001"))
+        val card = page.selectFirst("[data-visit-agent]")!!
+
+        assertEquals("Clarisse Mbarga", card.selectFirst("[data-visit-agent-name]")?.text())
+        assertEquals("/agent?id=30&back=/visits/7001", card.selectFirst("[data-visit-agent-profile]")?.attr("href"))
+        assertTrue(card.text().contains("Visite organisée avec"))
+        assertTrue(page.html().contains("https://wa.me/237699000002"))
+    }
+
+    @Test
+    fun `an own-inventory visit has no listing agent card`() {
+        assertNull(render(get("/visits/7001")).selectFirst("[data-visit-agent]"))
     }
 }

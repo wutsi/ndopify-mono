@@ -27,6 +27,7 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BONAPRISO
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.DOUALA
 import com.wutsi.ndopify.npc.ui.visit.VisitFixtures
 import com.wutsi.ndopify.party.dto.Party
+import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
@@ -971,9 +972,9 @@ class ListingViewsTest {
         val rows = ListingViews.visits(
             visits,
             mapOf(20L to agent(20, "Serge", "Ngono", "+237699000001")),
-            501,
             TENANT,
             TenantFormatter(TENANT),
+            "/listings/501#visits-title",
         )
 
         assertEquals(2, rows.size)
@@ -983,12 +984,16 @@ class ListingViewsTest {
         assertEquals("Serge Ngono", rows[0].agentName)
         assertEquals("/agent?id=20&back=/listings/501%23visits-title", rows[0].agentUrl)
         assertEquals("https://wa.me/237699000001", rows[0].whatsappUrl)
+        assertEquals("SN", rows[0].agentInitials)
+        assertFalse(rows[0].video)
 
         assertEquals("Visite vidéo", rows[1].typeLabel)
         assertTrue(rows[1].inProgress)
         assertNull(rows[1].agentName) // unreadable agent: the row stays
         assertNull(rows[1].agentUrl)
         assertNull(rows[1].whatsappUrl)
+        assertNull(rows[1].agentInitials)
+        assertTrue(rows[1].video)
     }
 
     @Test
@@ -996,9 +1001,9 @@ class ListingViewsTest {
         val rows = ListingViews.visits(
             listOf(CoBrokerageVisitSummary(id = 1, listingId = 501, agentId = 20, scheduledAt = date(2026, 11, 22, 10, 30))),
             mapOf(20L to agent(20, "Serge", "Ngono", null)),
-            501,
             TENANT,
             TenantFormatter(TENANT),
+            "/listings/501#visits-title",
         )
 
         assertEquals("Serge Ngono", rows.single().agentName)
@@ -1010,9 +1015,9 @@ class ListingViewsTest {
         val rows = ListingViews.visits(
             listOf(CoBrokerageVisitSummary(id = 1, listingId = 501, agentId = 20, scheduledAt = date(2026, 11, 22, 10, 30))),
             mapOf(20L to agent(20, "", "", "+237699000001")),
-            501,
             TENANT,
             TenantFormatter(TENANT),
+            "/listings/501#visits-title",
         )
 
         assertNull(rows.single().agentName)
@@ -1022,6 +1027,61 @@ class ListingViewsTest {
 
     @Test
     fun `co-brokerage visits - empty stays empty`() {
-        assertTrue(ListingViews.visits(emptyList(), emptyMap(), 501, TENANT, TenantFormatter(TENANT)).isEmpty())
+        assertTrue(
+            ListingViews.visits(emptyList(), emptyMap(), TENANT, TenantFormatter(TENANT), "/listings/501#visits-title")
+                .isEmpty(),
+        )
+    }
+
+    @Test
+    fun `co-brokerage visits carry the listing on the home block`() {
+        val rows = ListingViews.visits(
+            listOf(CoBrokerageVisitSummary(id = 1, listingId = 501, agentId = 20, scheduledAt = date(2026, 11, 22, 10, 30))),
+            mapOf(20L to agent(20, "Serge", "Ngono", "+237699000001")),
+            TENANT,
+            TenantFormatter(TENANT),
+            "/#co-brokerage-visits-title",
+            mapOf(501L to "Appartement 2 chambres · Bonapriso"),
+        )
+
+        assertEquals("Appartement 2 chambres · Bonapriso", rows.single().listingTitle)
+        assertEquals("/listings/501#visits-title", rows.single().listingUrl)
+        assertEquals("/agent?id=20&back=/%23co-brokerage-visits-title", rows.single().agentUrl)
+        assertEquals("SN", rows.single().agentInitials)
+        assertFalse(rows.single().video)
+    }
+
+    @Test
+    fun `listing labels read the type, rooms and place`() {
+        assertEquals(
+            "Appartement 2 chambres · Bonapriso",
+            ListingViews.listingLabel(
+                ListingSummary(
+                    id = 501,
+                    cityId = 1000,
+                    neighborhoodId = 1001,
+                    propertyType = PropertyType.APARTMENT,
+                    rooms = 2,
+                ),
+                mapOf(1001L to Location(id = 1001, name = "Bonapriso")),
+            ),
+        )
+    }
+
+    @Test
+    fun `listing labels read a full listing's type, rooms and place`() {
+        assertEquals(
+            "Appartement 2 chambres · Bonapriso",
+            ListingViews.listingLabel(
+                Listing(
+                    id = 501,
+                    cityId = 1000,
+                    neighborhoodId = 1001,
+                    propertyType = PropertyType.APARTMENT,
+                    rooms = 2,
+                ),
+                mapOf(1001L to Location(id = 1001, name = "Bonapriso")),
+            ),
+        )
     }
 }

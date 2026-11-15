@@ -96,6 +96,15 @@ class NdVisitClient(
             ?.visits
             ?: emptyList()
 
+    /** The caller's co-brokerage visits across all its listings; the home page's block. */
+    fun coBrokerage(): List<CoBrokerageVisitSummary> =
+        rest.get()
+            .uri("/v1/visits/co-brokerage")
+            .retrieve()
+            .body<SearchCoBrokerageVisitResponse>()
+            ?.visits
+            ?: emptyList()
+
     /** Confirms a REQUESTED visit at [request]'s slot and type. */
     fun schedule(id: Long, request: ScheduleVisitRequest) {
         rest.post().uri("/v1/visits/{id}/schedule", id).body(request).retrieve().toBodilessEntity()

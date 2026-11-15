@@ -11,6 +11,7 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.npc.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
 import com.wutsi.ndopify.npc.client.ndopify.NdLocationClient
@@ -61,6 +62,7 @@ class VisitControllerTest {
     private val visitClient = mock<NdVisitClient>()
     private val listingClient = mock<NdListingClient>()
     private val customerClient = mock<NdCustomerClient>()
+    private val agentClient = mock<NdAgentClient>()
     private val locationClient = mock<NdLocationClient>()
     private val tenantContext = mock<TenantContext>()
     private val clock = mock<Clock>()
@@ -83,6 +85,7 @@ class VisitControllerTest {
                     visitClient,
                     listingClient,
                     customerClient,
+                    agentClient,
                     locationClient,
                     tenantContext,
                     clock,
@@ -119,6 +122,38 @@ class VisitControllerTest {
         assertEquals("Appartement 3 chambres · Bonapriso", page.listingTitle)
         verify(listingClient).get(3012)
         verify(customerClient).get(300)
+    }
+
+    @Test
+    fun `a co-brokerage visit loads the listing agent`() {
+        doReturn(LISTING.copy(agentId = 30)).whenever(listingClient).get(3012)
+        doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(30L)
+
+        val result = mvc.perform(get("/visits/7001")).andReturn()
+
+        val page = model(result)["page"] as VisitPage
+        assertEquals("Clarisse Mbarga", page.agent?.name)
+        assertEquals("CM", page.agent?.initials)
+        verify(agentClient).get(30)
+    }
+
+    @Test
+    fun `an own-inventory visit does not load another agent`() {
+        val result = mvc.perform(get("/visits/7001")).andReturn()
+
+        assertNull((model(result)["page"] as VisitPage).agent)
+        verify(agentClient, never()).get(any())
+    }
+
+    @Test
+    fun `an unreadable listing agent leaves the page without the card`() {
+        doReturn(LISTING.copy(agentId = 30)).whenever(listingClient).get(3012)
+        doThrow(ResourceAccessException("down")).whenever(agentClient).get(30L)
+
+        val result = mvc.perform(get("/visits/7001")).andReturn()
+
+        assertEquals("visit", result.modelAndView?.viewName)
+        assertNull((model(result)["page"] as VisitPage).agent)
     }
 
     @Test

@@ -211,16 +211,9 @@
                     <h2 id="visits-title">Visites d'autres agents</h2>
                     <p>Un autre agent organise ces visites de votre bien : vous accueillez l'agent et son client sur place.</p>
                     <ul>
-                        <li th:each="v : ${l.visits}">
-                            <p><strong th:text="${v.at}">samedi 22 novembre 2026 à 10:30</strong> ·
-                                <span th:text="${v.typeLabel}">Sur place</span>
-                                <span class="status-tag status-tag--info" th:if="${v.inProgress}">En cours</span></p>
-                            <p>avec
-                                <a th:if="${v.agentUrl}" th:href="${v.agentUrl}" th:text="${v.agentName}">Serge Ngono</a>
-                                <span th:unless="${v.agentUrl}" th:text="${v.agentName} ?: 'un autre agent'">un autre agent</span>
-                                <a th:if="${v.whatsappUrl}" th:href="${v.whatsappUrl}" rel="noopener" target="_blank">WhatsApp</a>
-                            </p>
-                        </li>
+                        <th:block th:each="v : ${l.visits}">
+                            <li th:replace="~{fragments/co-brokerage-visit :: coBrokerageVisit(${v})}"></li>
+                        </th:block>
                     </ul>
                 </section>
 

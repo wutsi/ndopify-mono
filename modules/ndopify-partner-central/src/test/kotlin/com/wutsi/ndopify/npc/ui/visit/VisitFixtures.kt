@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.visit
 
+import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.customer.dto.CustomerSummary
 import com.wutsi.ndopify.listing.dto.Listing
@@ -31,6 +32,13 @@ object VisitFixtures {
         id = CUSTOMER_ID,
         party = Party(firstName = "Sandrine", lastName = "Eboa", email = "sandrine@gmail.com"),
         whatsappNumber = "+237699887766",
+    )
+
+    val OTHER_AGENT_ID = 30L
+    val OTHER_AGENT = Agent(
+        id = OTHER_AGENT_ID,
+        party = Party(firstName = "Clarisse", lastName = "Mbarga", photoUrl = "https://cdn.ndopify.com/clarisse.jpg"),
+        whatsappNumber = "+237699000002",
     )
 
     val LISTING = Listing(

@@ -350,6 +350,17 @@
                     </p>
                 </section>
 
+                <section class="home-section listing-visits" aria-labelledby="co-brokerage-visits-title"
+                         th:if="${!#lists.isEmpty(coBrokerageVisits)}" data-co-brokerage-visits>
+                    <h2 id="co-brokerage-visits-title">Visites d'autres agents</h2>
+                    <p>Un autre agent organise ces visites de votre bien : vous accueillez l'agent et son client sur place.</p>
+                    <ul>
+                        <th:block th:each="v : ${coBrokerageVisits}">
+                            <li th:replace="~{fragments/co-brokerage-visit :: coBrokerageVisit(${v})}"></li>
+                        </th:block>
+                    </ul>
+                </section>
+
                 <!--
                     Biens correspondants: a signed search's matches (MatchSectionView), only for an APPROVED SEARCH
                     mandate. The cards are grouped by what the agent does next, the visit the client asked for sits in
@@ -409,7 +420,9 @@
                                                    th:class="|status-tag status-tag--${match.tag.style}|"
                                                    th:text="${match.tag.label}" data-match-tag>Nouveau</p>
                                             </div>
-                                            <p class="match__origin" th:if="${match.origin}" data-match-origin>
+                                            <p class="match__origin"
+                                               th:if="${match.origin != null and (match.visit == null or match.visit.agentName == null)}"
+                                               data-match-origin>
                                                 <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="6.5" r="3.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                                                 <a th:if="${match.originUrl}" th:href="${match.originUrl}"
                                                    th:text="${match.origin}" data-match-agent>Clarisse Mbarga</a>
