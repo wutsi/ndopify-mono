@@ -41,6 +41,11 @@
     margin-bottom: var(--space-4);
 }
 
+/* The Telegram invitation sits between the triage header and the sections, like the KYC banners. */
+[data-telegram-banner] {
+    margin-bottom: var(--space-4);
+}
+
 /* The Telegram mark is a filled logo: at the shared 1.25rem it reads smaller than the line icons. */
 [data-telegram-banner] .icon {
     width: 1.75rem;
