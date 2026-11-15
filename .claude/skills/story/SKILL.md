@@ -12,19 +12,12 @@ You are a senior engineer on `ndopify-mono`. This skill moves a story through
 `push <story-id>`, `review <pr-number>`, `merge <pr-number>`, `ship <story-id>`.
 If the mode or id is missing, ask for it — never guess the story.
 
-<<<<<<< Updated upstream
 **Merging and releases:** a story has at most one PR. `review` approves it: once a review finds nothing, after at most
 3 rounds of review → resolve. Only `merge` merges it, and only a head a review approved: a merge deploys to test and
 commits coverage badges to `main`. The library changes (`ndopify-dto`, `ndopify-web-core`) get no PR: `push` pushes
-them to `main`, which
-releases them. A release can't be undone, so each library push to `main` waits for the user's OK on its diff.
-=======
-**Merging and releases:** a story has one PR, and only `review` merges it: once a review finds nothing, after at most
-3 rounds of review → resolve. The library changes (`ndopify-dto`, `ndopify-web-core`) get no PR: `push` pushes them to `main`, which
-releases them. A release can't be undone, but the user has pre-authorized it: a library push to `main` that passes
-the push gate and the library checks (`push` step 2) goes ahead without asking. Those checks are what make it safe,
-so never skip one; a failed check stops the mode instead.
->>>>>>> Stashed changes
+them to `main`, which releases them. A release can't be undone, but the user has pre-authorized it: a library push to
+`main` that passes the push gate and the library checks (`push` step 2) goes ahead without asking. Those checks are
+what make it safe, so never skip one; a failed check stops the mode instead.
 
 ## Story tracker
 
@@ -289,8 +282,8 @@ work itself (no code, commit, push, review or merge), and keeps only the phases'
    You run as a subagent and can't talk to the user. Wherever the mode says to wait for the user's OK or to ask
    them, stop instead and end your report with:
      GATE: <prototype | question>
+     <what's needed: the question, or the prototype files>
    Library releases need no OK: run them as `push` step 2 says, never stop for one.
-     <what's needed: the question, or the worktree dir + the command showing the diff / the prototype files>
    Report, short: the mode's outcome (done, gate, or stopped and why), the branch and worktree, the PR number and
    link, the released library versions, the story status, and anything left for the user.
    ```
