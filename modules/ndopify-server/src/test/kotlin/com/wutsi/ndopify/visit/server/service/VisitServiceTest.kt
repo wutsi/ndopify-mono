@@ -35,7 +35,6 @@ import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.visit.server.dao.VisitRepository
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
 import com.wutsi.ndopify.visit.server.event.VisitCancelledEvent
-import com.wutsi.ndopify.visit.server.mail.CoBrokerageVisitMailet
 import com.wutsi.ndopify.visit.server.mail.VisitCancelledMailet
 import com.wutsi.ndopify.visit.server.mail.VisitCompletedMailet
 import com.wutsi.ndopify.visit.server.mail.VisitConfirmedMailet
@@ -74,7 +73,7 @@ class VisitServiceTest {
     private val cancelledMailet = mock<VisitCancelledMailet>()
     private val reminderMailet = mock<VisitReminderMailet>()
     private val expiredMailet = mock<VisitExpiredMailet>()
-    private val coBrokerageVisitMailet = mock<CoBrokerageVisitMailet>()
+    private val coBrokerageVisitNotifier = mock<CoBrokerageVisitNotifier>()
     private val codeGenerator = mock<VisitCodeGenerator>()
     private val transactionManager = mock<PlatformTransactionManager>()
     private val tx = TransactionTemplate(transactionManager)
@@ -98,7 +97,7 @@ class VisitServiceTest {
         cancelledMailet,
         reminderMailet,
         expiredMailet,
-        coBrokerageVisitMailet,
+        coBrokerageVisitNotifier,
         codeGenerator,
         eventPublisher,
         tx,
@@ -255,7 +254,7 @@ class VisitServiceTest {
 
         service.sendConfirmedEmails(1L)
 
-        verify(coBrokerageVisitMailet).sendConfirmed(any(), eq(coBrokerageListing), eq(agent20))
+        verify(coBrokerageVisitNotifier).sendConfirmed(any(), eq(coBrokerageListing), eq(agent20))
     }
 
     @Test
@@ -266,7 +265,7 @@ class VisitServiceTest {
 
         service.sendConfirmedEmails(1L)
 
-        verify(coBrokerageVisitMailet, never()).sendConfirmed(any(), any(), any())
+        verify(coBrokerageVisitNotifier, never()).sendConfirmed(any(), any(), any())
     }
 
     @Test
@@ -276,7 +275,7 @@ class VisitServiceTest {
 
         service.sendReminderEmails(1L)
 
-        verify(coBrokerageVisitMailet).sendReminder(any(), eq(coBrokerageListing), eq(agent20))
+        verify(coBrokerageVisitNotifier).sendReminder(any(), eq(coBrokerageListing), eq(agent20))
     }
 
     @Test
@@ -286,7 +285,7 @@ class VisitServiceTest {
 
         service.sendCancelledEmail(1L)
 
-        verify(coBrokerageVisitMailet).sendCancelled(any(), eq(coBrokerageListing), eq(agent20))
+        verify(coBrokerageVisitNotifier).sendCancelled(any(), eq(coBrokerageListing), eq(agent20))
     }
 
     @Test
@@ -303,7 +302,7 @@ class VisitServiceTest {
 
         service.sendCancelledEmail(1L)
 
-        verify(coBrokerageVisitMailet, never()).sendCancelled(any(), any(), any())
+        verify(coBrokerageVisitNotifier, never()).sendCancelled(any(), any(), any())
     }
 
     @Test
@@ -313,7 +312,7 @@ class VisitServiceTest {
 
         service.sendCancelledEmail(1L)
 
-        verify(coBrokerageVisitMailet, never()).sendCancelled(any(), any(), any())
+        verify(coBrokerageVisitNotifier, never()).sendCancelled(any(), any(), any())
     }
 
     @Test
@@ -323,7 +322,7 @@ class VisitServiceTest {
 
         service.sendNoShowEmails(1L)
 
-        verify(coBrokerageVisitMailet).sendNoShow(any(), eq(coBrokerageListing), eq(agent20))
+        verify(coBrokerageVisitNotifier).sendNoShow(any(), eq(coBrokerageListing), eq(agent20))
     }
 
     @Test
@@ -339,7 +338,7 @@ class VisitServiceTest {
             service.sendExpiredEmails(1L)
         }
 
-        verify(coBrokerageVisitMailet, never()).sendNoShow(any(), any(), any())
+        verify(coBrokerageVisitNotifier, never()).sendNoShow(any(), any(), any())
     }
 
     @Test
