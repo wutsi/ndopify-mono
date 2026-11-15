@@ -79,6 +79,7 @@ class VisitService(
     private val confirmedMailet: VisitConfirmedMailet,
     private val completedMailet: VisitCompletedMailet,
     private val noShowMailet: VisitNoShowMailet,
+    private val cancelledNotifier: VisitCancelledNotifier,
     private val cancelledMailet: VisitCancelledMailet,
     private val reminderMailet: VisitReminderMailet,
     private val expiredMailet: VisitExpiredMailet,
@@ -618,13 +619,15 @@ class VisitService(
     }
 
     /**
-     * Notifies the other side of a cancellation; the listing agent of a co-brokerage visit over Telegram or by e-mail.
-     * Called by `VisitEventListener`; nothing when not CANCELLED.
+     * Notifies the side a party left behind, once the visit had a slot: a customer cancellation reaches the agent over
+     * Telegram or e-mail, an agent cancellation reaches the customer by e-mail. A `SYSTEM` cancellation (the mandate
+     * ended) and a visit that was never scheduled notify nobody, while the listing agent's co-brokerage e-mail is
+     * untouched. Called by `VisitEventListener`; nothing when the visit isn't `CANCELLED`.
      */
     @Transactional
-    fun sendCancelledEmail(visitId: Long) {
+    fun sendCancelledNotification(visitId: Long) {
         val visit = dao.findById(visitId).orElse(null) ?: return
-        if (visit.status != VisitStatus.CANCELLED || visit.cancelledBy == null) {
+        if (visit.status != VisitStatus.CANCELLED || visit.cancelledBy == null || visit.scheduledAt == null) {
             return
         }
         logger.add("visit_id", visitId)
@@ -632,12 +635,9 @@ class VisitService(
         val listing = listingService.findById(visit.listingId)
         val customer = customerService.findById(visit.customerId)
         when (visit.cancelledBy) {
-            VisitParty.CUSTOMER -> cancelledMailet.sendToAgent(visit, customer, agent, listing)
+            VisitParty.CUSTOMER -> cancelledNotifier.send(visit, customer, agent, listing)
             VisitParty.AGENT -> cancelledMailet.sendToCustomer(visit, customer, agent, listing)
-            else -> {
-                cancelledMailet.sendToCustomer(visit, customer, agent, listing)
-                cancelledMailet.sendToAgent(visit, customer, agent, listing)
-            }
+            else -> Unit // SYSTEM: the platform's own cancellation is not notified
         }
         if (notifyListingAgentOfCancellation(visit, listing)) {
             coBrokerageVisitNotifier.sendCancelled(visit, listing, agent)
