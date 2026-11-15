@@ -17,10 +17,11 @@
     <script th:src="@{/assets/js/partner-central.js}" defer></script>
 </head>
 <!--/*
-  The Telegram connection page (TelegramController): the three steps, the bot's link in a new tab and the button
-  that asks ndopify-server for a code. "telegramConnected" is the agent's link state; "telegramCodeSent" confirms the
-  e-mail, "telegramError" a failure (already connected, server down). Everything is server-rendered: the page works
-  without JavaScript.
+  The Telegram connection page (TelegramController): the three steps and their two actions, each inside its step —
+  the code request in the first, the bot's link in the second, which stays disabled until a code is pending.
+  "telegramConnected" is the agent's link state; "telegramCodePending" flips the emphasis from step 1's button to
+  step 2's link for as long as a code is valid; "telegramCodeSent" confirms the e-mail once, "telegramError" a failure
+  (already connected, server down). Everything is server-rendered: the page works without JavaScript.
 */-->
 <body data-page="telegram">
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -90,17 +91,30 @@
                 <ol class="connect-steps">
                     <li>
                         <div>
-                            <p class="connect-steps__title">Recevez un code par e-mail</p>
+                            <p class="connect-steps__title">Demandez votre code</p>
                             <p>Le code à 6&nbsp;chiffres arrive à l'adresse e-mail de votre compte et expire dans
                                 15&nbsp;minutes.</p>
+                            <form class="connect-cta connect-cta--step" method="post" th:action="@{/telegram/code}"
+                                  data-telegram-form>
+                                <button class="btn" type="submit" data-telegram-code
+                                        th:classappend="${telegramCodePending} ? 'btn--outline' : 'btn--primary'"
+                                        th:text="${telegramCodePending} ? 'Recevoir un nouveau code' : 'Recevoir mon code par e-mail'">
+                                    Recevoir mon code par e-mail
+                                </button>
+                            </form>
                         </div>
                     </li>
                     <li>
                         <div>
-                            <p class="connect-steps__title">
-                                <a th:href="${telegramBotUrl}" target="_blank" rel="noopener">Ouvrez le bot Ndopify</a>
-                            </p>
-                            <p>Le bot s'ouvre dans Telegram&nbsp;: appuyez sur <em>Démarrer</em> s'il le propose.</p>
+                            <p class="connect-steps__title">Ouvrez Telegram</p>
+                            <p>Le bot Ndopify s'ouvre dans Telegram&nbsp;: appuyez sur <em>Démarrer</em> s'il le
+                                propose.</p>
+                            <div class="connect-cta connect-cta--step">
+                                <a th:if="${telegramCodePending}" class="btn btn--primary" th:href="${telegramBotUrl}"
+                                   target="_blank" rel="noopener" data-telegram-open>Ouvrir le bot Ndopify</a>
+                                <button th:unless="${telegramCodePending}" class="btn btn--outline" type="button"
+                                        disabled data-telegram-open-disabled>Ouvrir le bot Ndopify</button>
+                            </div>
                         </div>
                     </li>
                     <li>
@@ -111,11 +125,6 @@
                         </div>
                     </li>
                 </ol>
-
-                <form class="connect-cta" method="post" th:action="@{/telegram/code}" data-telegram-form>
-                    <button class="btn btn--primary" type="submit">Recevoir mon code par e-mail</button>
-                    <p class="connect-cta__hint">Le code est envoyé à l'adresse e-mail de votre compte.</p>
-                </form>
             </th:block>
         </div>
     </main>
