@@ -37,7 +37,8 @@
     font-size: var(--step-hint);
 }
 
-/* A compact boxed card: the photo on the left, the name and WhatsApp number on the right. */
+/* The mandate page's customer card, condensed from the boxed agent card (`agent-card--standalone`): the role and name,
+ * then the WhatsApp link, without a photo — a customer has none. */
 .listing-agent {
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
@@ -55,7 +56,7 @@
     min-width: 0;
 }
 
-/* "Publié par" and the name on one line; the profile link wraps below on the narrowest screens. */
+/* The role ("Client", "Bailleur") and the name on one line. */
 .listing-agent__headline {
     display: flex;
     flex-wrap: wrap;

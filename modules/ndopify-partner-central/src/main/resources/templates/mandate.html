@@ -114,9 +114,10 @@
                 <section class="home-section mandate-contact" aria-labelledby="contact-title">
                     <h2 id="contact-title" class="visually-hidden" th:text="${m.words.theUpper}">Le client</h2>
                     <!--
-                        Condensed, like the co-agent's card on listing.html, without its photo (a customer can't add
-                        one): "Client"/"Bailleur" and the name with the best time to call on one line, then the number
-                        as its WhatsApp link, the channel the agent uses with the customer. No e-mail, no profile link.
+                        Condensed, like the boxed agent card (`agent-card--standalone`), without its photo (a customer
+                        can't add one): "Client"/"Bailleur" and the name with the best time to call on one line, then the
+                        number as its WhatsApp link, the channel the agent uses with the customer. No e-mail, no profile
+                        link.
                     -->
                     <div class="listing-agent contact-person" th:if="${m.contact}" th:with="c=${m.contact}">
                         <div class="listing-agent__info">

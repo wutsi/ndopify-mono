@@ -1029,14 +1029,14 @@ h1.alert__title {
 /* ---------- Mandate (mandate.html): contact and search ---------- */
 
 /*
- * The customer: the co-agent's condensed card of listing.html (.listing-agent, listing.css) without its photo, so one
+ * The customer: the mandate page's condensed customer card (.listing-agent, listing.css) without its photo, so one
  * column, with the best time to call after the name.
  */
 .contact-person {
     grid-template-columns: minmax(0, 1fr);
 }
 
-/* Plain text, not the co-agent's profile link: no hover underline, no arrow. */
+/* Plain text, not the agent card's profile link: no hover underline, no arrow. */
 .contact-person__name {
     font-weight: 600;
 }
