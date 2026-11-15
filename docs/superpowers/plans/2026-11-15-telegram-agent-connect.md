@@ -60,7 +60,7 @@ In `index.html`, right after the `</header>` of `home-intro` and before the assi
 </div>
 ```
 
-Add only the CSS the banner needs (its margin below the header); reuse `alert` and `btn` otherwise.
+Add only the CSS the banner needs (its margin below the header, a larger Telegram logo); reuse `alert` and `btn` otherwise.
 
 - [ ] **Step 2: Check the prototype in a browser**
 
