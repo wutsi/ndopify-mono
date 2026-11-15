@@ -136,6 +136,7 @@ class VisitTemplateTest {
         assertEquals(listOf("ON_SITE", "VIDEO"), panel.select("input[name=type]").map { it.attr("value") })
         assertEquals("/visits/7001/cancel", panel.selectFirst("form[data-cancel-form]")?.attr("action"))
         assertTrue(panel.text().contains("Je viendrai avec mon mari."))
+        assertTrue(panel.text().contains("le client sera prévenu par e-mail"))
 
         val close = panel.selectFirst("[data-visit-close]")!!
         assertEquals("/visits/7001?close=refuse#close-title-refuse",
@@ -157,7 +158,7 @@ class VisitTemplateTest {
         assertNotNull(panel.selectFirst("[data-map-link]"))
         assertNotNull(panel.selectFirst("form[data-cancel-form]"))
         assertNull(panel.selectFirst("form[data-checkin-form]"))
-        assertTrue(panel.text().contains("sam. 7 novembre 2026 à 09:30"))
+        assertEquals("sam. 7 novembre 2026 à 10:30", page.selectFirst(".visit-when--lead")?.text())
 
         val close = panel.selectFirst("[data-visit-close]")!!
         assertEquals("/visits/7001?close=cancel#close-title-cancel",
@@ -408,23 +409,154 @@ class VisitTemplateTest {
     }
 
     @Test
-    fun `a co-brokerage visit renders the listing agent's card`() {
+    fun `header names the client and the date`() {
+        val page = render(requested())
+
+        val lead = page.selectFirst(".visit-when--lead")!!
+        assertEquals("sam. 7 novembre 2026 à 10:30", lead.text())
+        val contacts = page.select(".visit-contact__person")
+        assertEquals(1, contacts.size)
+        assertEquals("Client", contacts[0].selectFirst(".visit-contact__role")?.text())
+        assertEquals("Sandrine Eboa", contacts[0].selectFirst(".visit-contact__name")?.text())
+        assertEquals("tel:+237699887766", contacts[0].selectFirst("[data-phone-link]")?.attr("href"))
+        assertEquals(
+            "https://wa.me/237699887766",
+            contacts[0].selectFirst(".visit-contact__whatsapp")?.attr("href"),
+        )
+    }
+
+    @Test
+    fun `header names both people on a co-brokerage visit`() {
         doReturn(LISTING.copy(agentId = 30)).whenever(listingClient).get(3012)
         doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(30L)
 
         val page = render(get("/visits/7001"))
-        val section = page.selectFirst("[data-visit-agent]")!!
-        val card = section.selectFirst(".agent-card--standalone")!!
+        val contacts = page.select(".visit-contact__person")
 
-        assertEquals("Clarisse Mbarga", card.selectFirst(".agent-card__name")?.text())
-        assertEquals("/agent?id=30&back=/visits/7001", card.selectFirst("a.agent-card__name")?.attr("href"))
-        assertEquals("https://wa.me/237699000002", card.selectFirst("a.agent-card__whatsapp")?.attr("href"))
-        assertFalse(card.text().contains("Visite organisée avec"))
-        assertFalse(card.text().contains("237699000002")) // a link, never the number
+        assertEquals(2, contacts.size)
+        assertEquals("Client", contacts[0].selectFirst(".visit-contact__role")?.text())
+        assertEquals("Agent du bien", contacts[1].selectFirst(".visit-contact__role")?.text())
+        assertEquals("Clarisse Mbarga", contacts[1].selectFirst(".visit-contact__name")?.text())
+        assertEquals(
+            "/agent?id=30&back=/visits/7001",
+            contacts[1].selectFirst(".visit-contact__name a")?.attr("href"),
+        )
+        assertEquals("tel:+237699000002", contacts[1].selectFirst("[data-phone-link]")?.attr("href"))
+        assertEquals(
+            "https://wa.me/237699000002",
+            contacts[1].selectFirst(".visit-contact__whatsapp")?.attr("href"),
+        )
+        assertEquals("+237 6 99 00 00 02", contacts[1].selectFirst(".visit-contact__phone a")?.text())
+        assertNull(page.selectFirst("[data-visit-agent]"))
+        assertFalse(page.text().contains("Voir sa fiche"))
     }
 
     @Test
-    fun `an own-inventory visit has no listing agent card`() {
-        assertNull(render(get("/visits/7001")).selectFirst("[data-visit-agent]"))
+    fun `own-inventory visit has no agent contact`() {
+        assertEquals(1, render(get("/visits/7001")).select(".visit-contact__person").size)
+    }
+
+    @Test
+    fun `requested close is a quiet link`() {
+        val close = panel(render(requested()), "REQUESTED")!!.selectFirst("[data-visit-close]")!!
+        val opener = close.selectFirst("[data-close-open=refuse]")!!
+        assertEquals("A", opener.tagName().uppercase())
+        assertEquals("/visits/7001?close=refuse#close-title-refuse", opener.attr("href"))
+        assertEquals("link-button", opener.className())
+    }
+
+    @Test
+    fun `window problem chooser opens with close=problem`() {
+        doReturn(window()).whenever(visitClient).get(7001)
+        val page = render(get("/visits/7001?close=problem"))
+        val close = panel(page, "WINDOW")!!.selectFirst("[data-visit-close]")!!
+        val trigger = close.selectFirst("[data-problem-toggle]")!!
+
+        assertEquals("true", trigger.attr("aria-expanded"))
+        assertFalse(close.selectFirst("[data-problem-options]")!!.hasAttr("hidden"))
+        assertEquals(
+            "/visits/7001?close=no-show#close-title-noshow",
+            close.selectFirst("[data-close-open=no-show]")?.attr("href"),
+        )
+        assertEquals(
+            "/visits/7001?close=cancel#close-title-cancel",
+            close.selectFirst("[data-close-open=cancel]")?.attr("href"),
+        )
+    }
+
+    @Test
+    fun `the problem chooser has no absent choice before the no-show time`() {
+        doReturn(window().copy(scheduledAt = date("2026-11-05T09:50:00Z"))).whenever(visitClient).get(7001)
+        val panel = panel(render(get("/visits/7001?close=problem")), "WINDOW")!!
+        val close = panel.selectFirst("[data-visit-close]")!!
+
+        assertNull(close.selectFirst("[data-close-open=no-show]"))
+        assertNotNull(close.selectFirst("[data-close-open=cancel]"))
+        assertTrue(panel.text().contains("15 min après l'heure prévue"))
+    }
+
+    @Test
+    fun `a video window hides the header whatsapp`() {
+        doReturn(window().copy(type = VisitType.VIDEO)).whenever(visitClient).get(7001)
+        val page = render(get("/visits/7001"))
+
+        assertNull(page.selectFirst("[data-header-whatsapp]"))
+        assertTrue(page.selectFirst("[data-panel=WINDOW]")!!.text().contains("Ouvrir WhatsApp"))
+        assertEquals(3, page.select("[data-panel=WINDOW] .visit-call__steps li").size)
+    }
+
+    @Test
+    fun `an on-site window keeps the header whatsapp`() {
+        doReturn(window()).whenever(visitClient).get(7001)
+        assertNotNull(render(get("/visits/7001")).selectFirst("[data-header-whatsapp]"))
+    }
+
+    @Test
+    fun `the code field states the attempt limit`() {
+        doReturn(window()).whenever(visitClient).get(7001)
+        val panel = panel(render(get("/visits/7001")), "WINDOW")!!
+        val code = panel.selectFirst("input[name=code]")!!
+
+        assertEquals("", code.attr("placeholder"))
+        assertTrue(code.attr("aria-describedby").contains("code-attempts"))
+        assertTrue(panel.text().contains("5 essais maximum"))
+    }
+
+    @Test
+    fun `the locked code offers the support and a conditional no-show`() {
+        doReturn(window()).whenever(visitClient).get(7001)
+        val session = MockHttpSession().apply { setAttribute("npc.visit.code-locked.7001", true) }
+
+        val panel = panel(render(get("/visits/7001").session(session)), "WINDOW")!!
+
+        assertTrue(panel.text().contains("Code bloqué après 5 essais"))
+        assertTrue(
+            panel.selectFirst("a[href^=mailto:contact@ndopify.com]")!!.attr("href")
+                .startsWith("mailto:contact@ndopify.com"),
+        )
+        assertEquals(
+            "/visits/7001?close=no-show#close-title-noshow",
+            panel.selectFirst("[data-locked-noshow]")?.attr("href"),
+        )
+    }
+
+    @Test
+    fun `the no-show warning is future tense`() {
+        doReturn(window()).whenever(visitClient).get(7001)
+        val panel = panel(render(get("/visits/7001?close=no-show")), "WINDOW")!!
+        assertTrue(panel.text().contains("L'absence du client sera enregistrée avec votre position"))
+    }
+
+    @Test
+    fun `a moved slot is stated in the date band`() {
+        doReturn(confirmed().copy(scheduledAt = date("2026-11-07T10:00:00Z")))
+            .whenever(visitClient).get(7001)
+
+        val page = render(get("/visits/7001"))
+
+        assertTrue(
+            page.selectFirst(".visit-when__changed")!!.text()
+                .startsWith("Créneau modifié : la demande portait sur le sam. 7 novembre 2026 à 10:30."),
+        )
     }
 }

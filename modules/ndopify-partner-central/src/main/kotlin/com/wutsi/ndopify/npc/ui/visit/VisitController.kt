@@ -71,11 +71,12 @@ class VisitController(
         const val CHECK_IN_LOCKED = "checkInLocked"
         const val SESSION_CODE_LOCKED = "npc.visit.code-locked."
 
-        // GET /visits/{id}?close=refuse|cancel|no-show: the closure form open without JS.
+        // GET /visits/{id}?close=refuse|cancel|no-show|problem: the closure form (or the problem chooser) open without JS.
         const val CLOSE = "close"
         const val CLOSE_REFUSE = "refuse"
         const val CLOSE_CANCEL = "cancel"
         const val CLOSE_NO_SHOW = "no-show"
+        const val CLOSE_PROBLEM = "problem"
 
         const val CONFIRMED = "confirmed"
         const val REFUSED = "refused"
@@ -163,6 +164,8 @@ class VisitController(
             CLOSE_NO_SHOW -> close.takeIf {
                 page.panel == VisitRules.Panel.WINDOW && page.canNoShow
             }
+
+            CLOSE_PROBLEM -> close.takeIf { page.panel == VisitRules.Panel.WINDOW }
 
             else -> null
         }

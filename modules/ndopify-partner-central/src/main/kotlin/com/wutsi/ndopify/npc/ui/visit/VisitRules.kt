@@ -34,6 +34,7 @@ object VisitRules {
 
     private const val HOUR = 3_600_000L
     private const val MINUTE = 60_000L
+    private const val DAY = 24 * HOUR
     private const val CHECK_IN_BEFORE = HOUR
     private const val CHECK_IN_AFTER = 4 * HOUR
     private const val NO_SHOW_AFTER = 15 * MINUTE
@@ -132,13 +133,14 @@ object VisitRules {
     /** The instant the visit is for: its scheduled slot, else when it was asked; null without either. */
     fun timeOf(visit: Visit): Long? = (visit.scheduledAt ?: visit.requestedAt)?.time
 
-    /** "42 h", or the minutes left under an hour ("45 min", "1 min" at zero). */
+    /** "42 h", "5 j" from two days, or the minutes left under an hour ("45 min", "1 min" at zero). */
     fun expiresIn(left: Long): String {
+        val days = Math.floorDiv(left, DAY)
         val hours = Math.floorDiv(left, HOUR)
-        return if (hours >= 1) {
-            "$hours h"
-        } else {
-            "${maxOf(1L, ceil(left / MINUTE.toDouble()).toLong())} min"
+        return when {
+            left >= 2 * DAY -> "$days j"
+            hours >= 1 -> "$hours h"
+            else -> "${maxOf(1L, ceil(left / MINUTE.toDouble()).toLong())} min"
         }
     }
 

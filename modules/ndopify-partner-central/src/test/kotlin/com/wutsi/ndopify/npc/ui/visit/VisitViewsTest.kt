@@ -316,4 +316,50 @@ class VisitViewsTest {
         assertEquals("/agent?id=30&back=/visits/7001", page.agent?.profileUrl)
         assertEquals("https://wa.me/237699000002", page.agent?.whatsappUrl)
     }
+
+    @Test
+    fun `lead when for a request`() {
+        val page = of(VisitFixtures.requested())
+        assertEquals("sam. 7 novembre 2026 à 10:30", page.leadWhen)
+        assertNull(page.slotChanged)
+        assertNull(page.agentPhone)
+    }
+
+    @Test
+    fun `lead when and moved slot for a confirmed visit`() {
+        val page = of(VisitFixtures.confirmed().copy(scheduledAt = VisitFixtures.date("2026-11-07T10:00:00Z")))
+        assertEquals("sam. 7 novembre 2026 à 11:00", page.leadWhen)
+        assertEquals(
+            "Créneau modifié : la demande portait sur le sam. 7 novembre 2026 à 10:30. " +
+                "Le client a été prévenu par e-mail.",
+            page.slotChanged,
+        )
+    }
+
+    @Test
+    fun `no moved slot when the times are equal`() {
+        assertNull(of(VisitFixtures.confirmed()).slotChanged)
+    }
+
+    @Test
+    fun `lead when for a window is today`() {
+        assertEquals("Aujourd'hui · 10:30", of(VisitFixtures.window()).leadWhen)
+    }
+
+    @Test
+    fun `a finished visit has no lead when`() {
+        assertNull(of(VisitFixtures.checkedIn()).leadWhen)
+    }
+
+    @Test
+    fun `the listing agent's phone is formatted`() {
+        val page = of(agent = VisitFixtures.OTHER_AGENT)
+        assertEquals("+237 6 99 00 00 02", page.agentPhone)
+        assertEquals("+237699000002", page.agentPhoneDigits)
+    }
+
+    @Test
+    fun `the no-show time is formatted`() {
+        assertEquals("jeu. 5 novembre 2026 à 10:45", of(VisitFixtures.window()).noShowFrom)
+    }
 }

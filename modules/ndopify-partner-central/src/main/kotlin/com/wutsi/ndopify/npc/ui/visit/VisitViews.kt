@@ -64,6 +64,27 @@ object VisitViews {
         val checkedInAt = visit.checkedInAt
         val checkedOutAt = visit.checkedOutAt
 
+        val today = VisitSlots.localDate(Date(now), tenant)
+        val leadWhen = when (panel) {
+            VisitRules.Panel.REQUESTED -> VisitSlots.dateTimeLabel(visit.requestedAt, tenant, formatter)
+            VisitRules.Panel.CONFIRMED -> scheduledAt?.let { VisitSlots.dateTimeLabel(it, tenant, formatter) }
+            VisitRules.Panel.WINDOW -> scheduledAt?.let { VisitRules.whenLabel(it, today, tenant, formatter) }
+            else -> null
+        }
+        val slotChanged = if (
+            (panel == VisitRules.Panel.CONFIRMED || panel == VisitRules.Panel.WINDOW) &&
+            scheduledAt != null && scheduledAt.time != visit.requestedAt.time
+        ) {
+            "Créneau modifié : la demande portait sur le " +
+                VisitSlots.dateTimeLabel(visit.requestedAt, tenant, formatter) +
+                ". Le client a été prévenu par e-mail."
+        } else {
+            null
+        }
+        val agentNumber = agent?.whatsappNumber?.trim()?.ifEmpty { null }
+        val agentPhone = agentNumber?.let { displayPhone(it) }
+        val noShowFrom = VisitRules.noShowFrom(visit)?.let { VisitSlots.dateTimeLabel(Date(it), tenant, formatter) }
+
         return VisitPage(
             id = visit.id,
             panel = panel,
@@ -87,6 +108,11 @@ object VisitViews {
                 ?.let { VisitSlots.dateTimeLabel(Date(it), tenant, formatter) },
             expiresAt = VisitSlots.dateTimeLabel(Date(VisitRules.expiresAt(visit)), tenant, formatter),
             expiresIn = VisitRules.expiresIn(VisitRules.expiresAt(visit) - now),
+            leadWhen = leadWhen,
+            slotChanged = slotChanged,
+            agentPhone = agentPhone,
+            agentPhoneDigits = agentNumber,
+            noShowFrom = noShowFrom,
             note = visit.note,
             checkedInAt = checkedInAt?.let { formatter.time(it) },
             checkOutFrom = VisitRules.checkOutFrom(visit)?.let { formatter.time(Date(it)) },
