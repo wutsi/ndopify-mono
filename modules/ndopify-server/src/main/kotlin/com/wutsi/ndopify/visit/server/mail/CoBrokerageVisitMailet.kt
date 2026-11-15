@@ -10,8 +10,6 @@ import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.Receipient
 import com.wutsi.ndopify.refdata.server.service.TenantFormatter
 import com.wutsi.ndopify.refdata.server.service.TenantService
-import com.wutsi.ndopify.visit.dto.VisitNoShowReason
-import com.wutsi.ndopify.visit.dto.VisitParty
 import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
 import org.springframework.stereotype.Service
@@ -39,12 +37,6 @@ class CoBrokerageVisitMailet(
         const val TEMPLATE_REMINDER = "/mail/visit/co_brokerage_reminder.mjml"
         const val TEMPLATE_CANCELLED = "/mail/visit/co_brokerage_cancelled.mjml"
         const val TEMPLATE_NO_SHOW = "/mail/visit/co_brokerage_no_show.mjml"
-
-        const val LABEL_BY_AGENT = "J'ai annulé la visite."
-        const val LABEL_BY_CUSTOMER = "Le client a annulé la visite."
-        const val LABEL_BY_SYSTEM = "La visite est annulée."
-        const val LABEL_CUSTOMER_ABSENT = "Le client ne s'est pas présenté à la visite."
-        const val LABEL_CODE_REFUSED = "Le client a refusé de donner le code de visite."
     }
 
     fun sendConfirmed(visit: VisitEntity, listing: ListingEntity, agent: AgentEntity) =
@@ -61,11 +53,7 @@ class CoBrokerageVisitMailet(
             template = TEMPLATE_CANCELLED,
             subject = SUBJECT_CANCELLED,
             extra = mapOf(
-                "cancelled_by_label" to when (visit.cancelledBy) {
-                    VisitParty.AGENT -> LABEL_BY_AGENT
-                    VisitParty.CUSTOMER -> LABEL_BY_CUSTOMER
-                    else -> LABEL_BY_SYSTEM
-                },
+                "cancelled_by_label" to CoBrokerageVisitLabels.cancelledBy(visit.cancelledBy),
                 "cancellation_reason" to null,
             ),
         )
@@ -78,11 +66,7 @@ class CoBrokerageVisitMailet(
             template = TEMPLATE_NO_SHOW,
             subject = SUBJECT_NO_SHOW,
             extra = mapOf(
-                "reason_label" to if (visit.noShowReason == VisitNoShowReason.CODE_REFUSED) {
-                    LABEL_CODE_REFUSED
-                } else {
-                    LABEL_CUSTOMER_ABSENT
-                },
+                "reason_label" to CoBrokerageVisitLabels.noShowReason(visit.noShowReason),
             ),
         )
 
@@ -112,7 +96,7 @@ class CoBrokerageVisitMailet(
                         "image_url" to imageService.cover(listing)?.url?.ifBlank { null },
                         "visit_date" to visit.scheduledAt?.let { formatter.date(it) },
                         "visit_time" to visit.scheduledAt?.let { formatter.time(it) },
-                        "type_label" to if (visit.type == VisitType.ON_SITE) "Sur place" else "Visite vidéo",
+                        "type_label" to CoBrokerageVisitLabels.typeLabel(visit.type),
                         "on_site" to (visit.type == VisitType.ON_SITE),
                         "agent_profile_url" to tenant.partnerCentralUrl?.removeSuffix("/")?.let { "$it/agent?id=${agent.id}" },
                         "listing_url" to tenant.partnerCentralUrl?.removeSuffix("/")?.let { "$it/listings/${listing.id}#visits-title" },
