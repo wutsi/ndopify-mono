@@ -9,6 +9,7 @@ import com.wutsi.ndopify.platform.telegram.model.TelegramUpdatesResponse
 import com.wutsi.ndopify.platform.telegram.model.TelegramUser
 import com.wutsi.ndopify.platform.telegram.model.TelegramUserResponse
 import com.wutsi.ndopify.platform.util.http.Http
+import com.wutsi.ndopify.platform.util.http.HttpFile
 
 /**
  * The five Bot API calls ndopify-server makes, over [Http].
@@ -83,6 +84,35 @@ open class TelegramClient(
                     "inline_keyboard" to if (buttons.isEmpty()) emptyList<List<Any>>() else listOf(buttons.toPayload()),
                 ),
             ),
+            TelegramMessageResponse::class.java,
+            emptyMap(),
+        ).check()
+    }
+
+    /**
+     * Sends [photo] as a photo message whose caption is [caption] and whose keyboard is [buttons]. The image is
+     * uploaded by us (a `multipart/form-data` file), never a URL Telegram would fetch; Telegram caps the caption at
+     * 1024 characters.
+     */
+    open fun sendPhoto(
+        chatId: Long,
+        photo: ByteArray,
+        filename: String,
+        contentType: String,
+        caption: String,
+        buttons: List<TelegramButton> = emptyList(),
+    ) {
+        val fields = buildMap<String, Any> {
+            put("chat_id", chatId)
+            put("caption", caption)
+            if (buttons.isNotEmpty()) {
+                put("reply_markup", mapOf("inline_keyboard" to listOf(buttons.toPayload())))
+            }
+        }
+        http.postMultipart(
+            url("sendPhoto"),
+            fields,
+            HttpFile("photo", filename, contentType, photo),
             TelegramMessageResponse::class.java,
             emptyMap(),
         ).check()

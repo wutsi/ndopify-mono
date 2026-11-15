@@ -325,9 +325,13 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   model's, else the verified photo of highest quality, then largest), and its public `url`, the path `/<city>/<neighborhood>/listing/<id>/<slug of the title>` (no host: the
   tenant's `publicPortalUrl`; no neighbourhood nor title segment without them): `PUBLISHED`, or still `PUBLISHING` to be retried after a failure; after `MAX_RETRIES` failed attempts
   it's `PUBLISHED` without title, summary nor description (the UIs handle it), its last error kept. Either way it
-  publishes `ListingPublishedEvent`: `ListingPublishedMailet` e-mails the agent (not the customer, for now), with its
-  cover photo (`ListingImageService.cover`, no image without one) and a link to `{publicPortalUrl}{url}`
-  (`mail/listing/published_customer.mjml` / `published_agent.mjml`; no link without either). **Close**: a mandate's
+  publishes `ListingPublishedEvent`: `ListingPublishedNotifier` messages a linked agent (its link's chat) through
+  `ListingPublishedBotlet` — the cover photo (`ListingImageService.cover`, none without one) is read from the storage and
+  uploaded as a `sendPhoto` whose caption is the text and whose keyboard is a `Voir l'annonce` link to
+  `{publicPortalUrl}{url}`; a failed download or upload only drops the photo — and e-mails the others
+  (`ListingPublishedMailet`, `mail/listing/published_agent.mjml`; no link without either), falling back to the e-mail
+  when the text send fails. The customer (the property's owner) is told nothing for now
+  (`published_customer.mjml` is kept for when it is). **Close**: a mandate's
   closing (`MandateClosedEvent`, `ListingMandateEventListener`, synchronous, so it commits or rolls back with the
   mandate; a listing `@Version` conflict fails the closing) moves its listing, if
   PUBLISHED, to `SOLD` / `RENTED` (its `listingType`; an UNKNOWN one is left as is) once CLOSED, or `CANCELLED` once
@@ -470,7 +474,7 @@ executor thread has no request, so the listener sets `TenantContext` and a `Defa
 (which the injected `KVLogger` falls back to), calls `logger.log()` in `finally` to flush it, and removes both
 (threads are reused). The work runs in a `@Transactional` service method (`AgentService.sendWelcomeEmail`,
 `OtpService.sendEmail`, `KycService.sendStatusEmail`, `AssignmentService.sendOfferNotification` / `sendAssignedEmail`, `MandateService.sendApprovedEmail`,
-`ContractService.sendSignatureRequestEmails`, `ListingService.sendPublishedEmails`, `MatchProposalService.sendProposedEmail`,
+`ContractService.sendSignatureRequestEmails`, `ListingService.sendPublishedNotification`, `MatchProposalService.sendProposedEmail`,
 `VisitService.sendRequestedNotification` / `sendConfirmedEmails` / `sendCompletedEmail` / `sendCancelledEmail` / `sendNoShowEmails` /
 `sendExpiredEmails` / `sendReminderEmails`); the signed PDF (`ContractSignedEvent` → `SignedContractService.generate`,
 not an e-mail, not transactional) follows the same listener pattern. The requested-visit entry is the one that doesn't
@@ -512,9 +516,12 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
 - `platform/ai` — the two Spring AI `ChatClient`s (`ChatClients.VISION` for images, `ChatClients.TEXT` for text) and
   their cached health indicators, wired by `config/platform/AIConfiguration`.
 - `platform/util` — small helpers (`PhoneNumberUtils`, `MimeUtils`, `UrlUtils`, `KycUtils`, HTTP utilities).
+  `platform/util/http`'s `Http` has `postMultipart` (a `multipart/form-data` POST — `String` fields written as-is, the
+  others JSON-serialized, plus one `HttpFile`) beside its JSON `post`.
 - `platform/telegram` — the Telegram bot, wired by `config/platform/TelegramConfiguration`: `TelegramClient` (a thin
   Bot API client over `platform/util/http/Http`; `sendMessageRows` sends the keyboard's rows given explicitly, ex: one
-  row per listing of a digest), `TelegramUpdateHandler` (routes a `callback_query` to its
+  row per listing of a digest; `sendPhoto` uploads an image, never a URL Telegram would fetch, with its caption and
+  keyboard), `TelegramUpdateHandler` (routes a `callback_query` to its
   `TelegramCallbackHandler` — the mandate domain's offer buttons — gives a `message` the reply of the first
   `TelegramCommand` bean that recognizes it — the agent domain's `/start` and `/connect` — else `OK`, and ignores
   every other

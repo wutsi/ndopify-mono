@@ -26,6 +26,8 @@ management:
             enabled: false # No health call to Telegram in the tests
 
 ndopify:
+    database:
+        pool-size: 4 # Small: the suite caches many Spring contexts, each with its own pool, and CI's MySQL allows 151 connections
     security:
         jwt:
             secret: qa-secret-not-for-prod-0123456789abcdef
