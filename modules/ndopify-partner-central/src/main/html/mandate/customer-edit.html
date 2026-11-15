@@ -12,9 +12,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/css/intlTelInput.min.css">
     <link rel="stylesheet" href="../assets/css/partner-central.css">
     <link rel="stylesheet" href="../assets/css/rejoindre.css">
     <link rel="stylesheet" href="../assets/css/home.css">
+    <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/js/intlTelInput.min.js" defer></script>
+    <script src="../assets/js/util.js" defer></script>
     <script src="../assets/js/partner-central.js" defer></script>
 </head>
 <!--
@@ -26,7 +29,8 @@
     by all of the customer's mandates.
     PROTOTYPE: ?id=101 to 103 once accepted, or 201 to 207; a mandate closed or cancelled from its page shows the closed
     view, another agent's mandate or an unknown id the unavailable one. The changes are kept in the session
-    (KEYS.mandates, the copy's "contact").
+    (KEYS.mandates, the copy's "contact"). The WhatsApp field uses intl-tel-input (util.js), like the join wizard:
+    it formats as you type, keeps the country code, and posts E.164.
 -->
 <body data-page="customer-edit">
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -76,8 +80,8 @@
                             <p hidden data-customer-resend>Ce mandat attend la signature. Si l'adresse email change,
                                 le mandat revient à «&nbsp;Assigné&nbsp;»&nbsp;: renvoyez-le ensuite pour signature.</p>
                             <p>L'adresse email reçoit le mandat à signer et les propositions de biens.</p>
-                            <p>Le numéro WhatsApp s'écrit avec l'indicatif pays&nbsp;:
-                                +237&nbsp;6&nbsp;77&nbsp;12&nbsp;34&nbsp;56.</p>
+                            <p>Le numéro WhatsApp doit être un mobile&nbsp;: vous l'utilisez pour joindre votre
+                                contact.</p>
                         </div>
                     </div>
 
@@ -104,8 +108,9 @@
 
                     <div class="field">
                         <label class="field__label" for="whatsappNumber">Numéro WhatsApp</label>
-                        <input class="input" id="whatsappNumber" name="whatsappNumber" type="tel"
-                               autocomplete="tel" required aria-describedby="whatsappNumber-error">
+                        <!-- intl-tel-input (util.js) wraps this input and adds the hidden input that carries E.164. -->
+                        <input class="input" id="whatsappNumber" type="tel" autocomplete="tel" required
+                               aria-describedby="whatsappNumber-error">
                         <p class="field__error" id="whatsappNumber-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
                     </div>
 

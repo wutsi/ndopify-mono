@@ -3258,12 +3258,42 @@
     var CUSTOMER_EDITABLE_STATUSES = ["ASSIGNED", "PENDING_APPROVAL", "APPROVED"];
     var NAME_RE = /^\p{L}[\p{L}' .-]*$/u;
     var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-    var PHONE_RE = /^\+[1-9]\d{6,14}$/;
 
-    // "00237 699 12 34 56" → "+237699123456": the join wizard's normalization (JoinRules.normalizePhone).
-    function normalizePhone(value) {
-        var digits = (value || "").replace(/[\s.()-]/g, "");
-        return digits.indexOf("00") === 0 ? "+" + digits.slice(2) : digits;
+    // intl-tel-input's validation errors (util.js): the same wording as the join wizard.
+    var PHONE_ERRORS = {
+        1: "Cet indicatif de pays n'existe pas. Choisissez votre pays dans la liste.",
+        2: "Ce numéro est trop court. Vérifiez qu'il ne manque pas de chiffre.",
+        3: "Ce numéro est trop long. Vérifiez qu'il n'y a pas de chiffre en trop."
+    };
+    var PHONE_LOADING = "Vérification du numéro en cours de chargement. Réessayez dans un instant.";
+    var PHONE_UNAVAILABLE = "Nous ne pouvons pas vérifier ce numéro pour l'instant. Rechargez la page.";
+
+    /*
+     * A phone field whose intl-tel-input controller arrives later (util.js loads utils.js asynchronously).
+     * Until then — or for good, if it can't load — the number counts as invalid, so the form can't be saved.
+     */
+    function lazyPhone(input, options) {
+        var phone = null;
+        var failed = false;
+        return {
+            bind: function (i18n) {
+                options.i18n = i18n;
+                phone = window.NdUtil.bindPhone(input, options);
+            },
+            fail: function () {
+                failed = true;
+            },
+            e164: function () {
+                return phone ? phone.e164() : "";
+            },
+            validity: function (emptyMessage) {
+                if (!phone) return failed ? PHONE_UNAVAILABLE : PHONE_LOADING;
+                if (input.value.trim() === "") return emptyMessage;
+                if (phone.e164()) return "";
+                return PHONE_ERRORS[phone.validationError()] ||
+                    "Ce numéro n'est pas un numéro mobile valide. Exemple : 6 77 12 34 56";
+            }
+        };
     }
 
     function initCustomerEdit() {
@@ -3291,6 +3321,8 @@
         var p = partyWords(mandate);
         var form = $("[data-customer-form]");
         var submit = $("[data-customer-submit]", form);
+        var phoneInput = $("#whatsappNumber", form);
+        var whatsapp = lazyPhone(phoneInput, { name: "whatsappNumber", value: c.whatsapp || "" });
         var FIELDS = ["firstName", "lastName", "email", "whatsappNumber"];
 
         document.title = "Modifier les coordonnées " + p.of + " — Ndopify Partner Central";
@@ -3302,17 +3334,20 @@
             return form.elements[name];
         }
 
+        // The phone's visible input carries no name; intl-tel-input's hidden one does.
+        function target(name) {
+            return name === "whatsappNumber" ? phoneInput : field(name);
+        }
+
         form.elements.firstName.value = c.firstName || "";
         form.elements.lastName.value = c.lastName || "";
         form.elements.email.value = c.email || "";
-        form.elements.whatsappNumber.value = c.whatsapp || "";
 
         function errors() {
             var found = {};
             var firstName = field("firstName").value.trim();
             var lastName = field("lastName").value.trim();
             var email = field("email").value.trim();
-            var phone = normalizePhone(field("whatsappNumber").value);
             if (!firstName) found.firstName = "Saisissez le prénom.";
             else if (!NAME_RE.test(firstName)) found.firstName = "Le prénom ne peut contenir que des lettres.";
             if (!lastName) found.lastName = "Saisissez le nom.";
@@ -3321,16 +3356,14 @@
             else if (!EMAIL_RE.test(email)) {
                 found.email = "Cette adresse email semble incomplète. Exemple : nom@exemple.com";
             }
-            if (!phone) found.whatsappNumber = "Saisissez le numéro WhatsApp.";
-            else if (!PHONE_RE.test(phone)) {
-                found.whatsappNumber = "Indiquez le numéro avec son indicatif pays. Exemple : +237 6 77 12 34 56";
-            }
+            var phone = whatsapp.validity("Saisissez le numéro WhatsApp.");
+            if (phone) found.whatsappNumber = phone;
             return found;
         }
 
         function render(found) {
             FIELDS.forEach(function (name) {
-                setFieldError(field(name), $("#" + name + "-error", form), found[name]);
+                setFieldError(target(name), $("#" + name + "-error", form), found[name]);
             });
             setActive(submit, Object.keys(found).length === 0);
         }
@@ -3348,7 +3381,7 @@
                 return !!found[name];
             })[0];
             if (first) {
-                field(first).focus();
+                target(first).focus();
                 return;
             }
 
@@ -3364,7 +3397,7 @@
                 firstName: field("firstName").value.trim(),
                 lastName: field("lastName").value.trim(),
                 email: email,
-                whatsapp: normalizePhone(field("whatsappNumber").value),
+                whatsapp: whatsapp.e164(),
                 period: c.period
             };
             saveState(id, saved);
@@ -3374,6 +3407,26 @@
         });
 
         $("[data-customer]").hidden = false;
+
+        // intl-tel-input arrives with util.js's utils.js: until then the save button stays inactive.
+        if (!window.NdUtil) {
+            whatsapp.fail();
+            render(errors());
+        } else {
+            window.NdUtil.phoneReady().then(
+                function (i18n) {
+                    whatsapp.bind(i18n);
+                    phoneInput.addEventListener("countrychange", function () {
+                        render(errors());
+                    });
+                    render(errors());
+                },
+                function () {
+                    whatsapp.fail();
+                    render(errors());
+                }
+            );
+        }
     }
 
     /* ---------- mandate/edit.html — edit a mandate before its approval ---------- */
