@@ -8,15 +8,28 @@ import com.nhaarman.mockitokotlin2.whenever
 import org.junit.jupiter.api.Test
 import org.mockito.Mockito.verifyNoInteractions
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class TelegramWebhookTransportTest {
     private val client = mock<TelegramClient>()
 
     @Test
     fun `webhook mode registers the URL and the secret`() {
-        TelegramWebhookTransport(client, "webhook", "https://host/telegram/webhook", "secret").start()
+        val transport = TelegramWebhookTransport(client, "webhook", "https://host/telegram/webhook", "secret")
+
+        transport.start()
 
         verify(client).setWebhook("https://host/telegram/webhook", "secret")
+        assertTrue(transport.isRunning())
+        transport.stop()
+        assertFalse(transport.isRunning())
+    }
+
+    @Test
+    fun `not running before start`() {
+        // Spring skips start() on a Lifecycle that already reports itself running
+        assertFalse(TelegramWebhookTransport(client, "webhook", "https://host/telegram/webhook", "secret").isRunning())
     }
 
     @Test
@@ -35,9 +48,12 @@ class TelegramWebhookTransportTest {
 
     @Test
     fun `polling mode does nothing`() {
-        TelegramWebhookTransport(client, "polling", "https://host/telegram/webhook", "secret").start()
+        val transport = TelegramWebhookTransport(client, "polling", "https://host/telegram/webhook", "secret")
+
+        transport.start()
 
         verifyNoInteractions(client)
+        assertFalse(transport.isRunning())
     }
 
     @Test
