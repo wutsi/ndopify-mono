@@ -877,8 +877,9 @@ class MandateControllerTest {
         val result = mvc.perform(get("/mandates/201")).andReturn()
 
         val visit = section(result).matches.first { it.id == 9001L }.visit!!
-        assertEquals("Clarisse Mbarga", visit.agentName)
-        assertEquals("/agent?id=30&back=/mandates/201%23matches-title", visit.agentUrl)
+        assertTrue(visit.coBrokerage)
+        assertEquals("Clarisse Mbarga", visit.agent?.name)
+        assertEquals("/agent?id=30&back=/mandates/201%23matches-title", visit.agent?.profileUrl)
         // The visit and the match origin share the agent: one read for the page.
         verify(agentClient, times(1)).get(VisitFixtures.OTHER_AGENT_ID)
     }
@@ -903,8 +904,8 @@ class MandateControllerTest {
         val result = mvc.perform(get("/mandates/201")).andReturn()
 
         val visit = section(result).matches.first { it.id == 9001L }.visit!!
-        assertEquals("un autre agent", visit.agentName)
-        assertNull(visit.agentUrl)
+        assertTrue(visit.coBrokerage)
+        assertNull(visit.agent)
     }
 
     @Test

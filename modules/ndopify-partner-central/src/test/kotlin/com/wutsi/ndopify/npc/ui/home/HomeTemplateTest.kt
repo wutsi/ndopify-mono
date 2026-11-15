@@ -540,8 +540,23 @@ class HomeTemplateTest {
         val page = render(get("/"))
         val card = page.selectFirst("[data-visit-group=upcoming] [data-visit-card]")!!
 
-        assertEquals("Clarisse Mbarga", card.selectFirst("[data-visit-agent-name]")?.text())
-        assertEquals("/agent?id=30&back=/%23visits-title", card.selectFirst("[data-visit-agent-link]")?.attr("href"))
+        val footer = card.selectFirst("[data-agent-card]")!!
+        assertEquals("Clarisse Mbarga", footer.selectFirst(".agent-card__name")?.text())
+        assertEquals("/agent?id=30&back=/%23visits-title", footer.selectFirst("a.agent-card__name")?.attr("href"))
+        assertEquals("https://wa.me/237699000002", footer.selectFirst("a.agent-card__whatsapp")?.attr("href"))
+        assertFalse(card.text().contains("Avec"))
+        assertFalse(footer.text().contains("237699000002")) // a link, never the number
+    }
+
+    @Test
+    fun `an own-inventory visit has no agent footer`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        doReturn(listOf(VisitFixtures.summary(VisitFixtures.confirmed())))
+            .whenever(visitClient).search(AGENT.id, VisitRules.OPEN)
+        doReturn(listOf(VisitFixtures.listingSummary())).whenever(listingClient).searchByIds(listOf(3012L))
+        doReturn(listOf(VisitFixtures.customerSummary())).whenever(customerClient).search(listOf(300L))
+
+        assertNull(render(get("/")).selectFirst("[data-visit-card] [data-agent-card]"))
     }
 
     @Test

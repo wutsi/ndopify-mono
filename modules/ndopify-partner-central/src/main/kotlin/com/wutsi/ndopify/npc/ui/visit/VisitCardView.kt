@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.visit
 
+import com.wutsi.ndopify.npc.ui.agent.AgentCardView
 import com.wutsi.ndopify.visit.dto.VisitStatus
 
 /**
@@ -40,10 +41,10 @@ data class VisitCardView(
     val selectedTime: String? = null,
     /** True when the customer's requested date and time are both in the allowed slot lists. */
     val requestedSlotValid: Boolean = false,
-    /** The listing's agent when this is a co-brokerage visit; "un autre agent" when unreadable. */
-    val agentName: String? = null,
-    /** The listing agent's profile, back to the page the card is on. */
-    val agentUrl: String? = null,
+    /** True when the visit is on another agent's listing: the card ends with the standard agent footer. */
+    val coBrokerage: Boolean = false,
+    /** The listing's agent, by card; null when unreadable (the footer says "un autre agent"). */
+    val agent: AgentCardView? = null,
 )
 
 /** A day of the upcoming visits ("Aujourd'hui", "Demain", "sam. 8 novembre"). */

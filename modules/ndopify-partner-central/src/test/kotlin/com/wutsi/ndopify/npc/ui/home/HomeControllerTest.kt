@@ -601,8 +601,9 @@ class HomeControllerTest {
         val result = mvc.perform(get("/")).andReturn()
 
         val card = visitCards(result).upcoming.single()
-        assertEquals("Clarisse Mbarga", card.agentName)
-        assertEquals("/agent?id=30&back=/%23visits-title", card.agentUrl)
+        assertTrue(card.coBrokerage)
+        assertEquals("Clarisse Mbarga", card.agent?.name)
+        assertEquals("/agent?id=30&back=/%23visits-title", card.agent?.profileUrl)
         verify(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
     }
 
@@ -618,8 +619,8 @@ class HomeControllerTest {
         val result = mvc.perform(get("/")).andReturn()
 
         val card = visitCards(result).upcoming.single()
-        assertEquals("un autre agent", card.agentName)
-        assertNull(card.agentUrl)
+        assertTrue(card.coBrokerage)
+        assertNull(card.agent)
     }
 
     @Test

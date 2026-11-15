@@ -844,13 +844,17 @@ class MandateTemplateTest {
         val page = render(APPROVED)
 
         val card = page.selectFirst("[data-match-id=9001]")!!
-        assertEquals("Clarisse Mbarga", card.selectFirst("[data-visit-agent-name]")?.text())
-        // The visit names the agent: the card does not repeat it on an origin line.
-        assertNull(card.selectFirst("[data-match-origin]"))
+        val footer = card.selectFirst(".visit-detail [data-agent-card]")!!
+        assertEquals("Clarisse Mbarga", footer.selectFirst(".agent-card__name")?.text())
         assertEquals(
             "/agent?id=30&back=/mandates/201%23matches-title",
-            card.selectFirst("[data-visit-agent-link]")?.attr("href"),
+            footer.selectFirst("a.agent-card__name")?.attr("href"),
         )
+        assertEquals("https://wa.me/237699000002", footer.selectFirst("a.agent-card__whatsapp")?.attr("href"))
+        assertFalse(footer.text().contains("Avec"))
+        assertFalse(footer.text().contains("237699000002"))
+        // The visit names the agent: the card does not repeat it on an origin line.
+        assertNull(card.selectFirst("[data-match-origin]"))
     }
 
     @Test
@@ -1015,9 +1019,9 @@ class MandateTemplateTest {
         val card = page.selectFirst("[data-match-id=9001]")!!
 
         assertNull(card.selectFirst("[data-match-tag]"))
-        // The visit names the agent ("Avec …"): the card does not repeat it on an origin line.
+        // The visit names the agent: the card does not repeat it on an origin line.
         assertNull(card.selectFirst("[data-match-origin]"))
-        assertEquals("Clarisse Mbarga", card.selectFirst("[data-visit-agent-name]")?.text())
+        assertEquals("Clarisse Mbarga", card.selectFirst(".visit-detail .agent-card__name")?.text())
     }
 
     @Test

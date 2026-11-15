@@ -421,7 +421,7 @@
                                                    th:text="${match.tag.label}" data-match-tag>Nouveau</p>
                                             </div>
                                             <p class="match__origin"
-                                               th:if="${match.origin != null and (match.visit == null or match.visit.agentName == null)}"
+                                               th:if="${match.origin != null and (match.visit == null or !match.visit.coBrokerage)}"
                                                data-match-origin>
                                                 <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="6.5" r="3.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                                                 <a th:if="${match.originUrl}" th:href="${match.originUrl}"
