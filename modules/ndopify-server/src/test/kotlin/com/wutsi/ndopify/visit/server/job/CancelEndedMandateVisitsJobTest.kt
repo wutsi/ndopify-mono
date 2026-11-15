@@ -8,7 +8,6 @@ import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 @Sql(
     value = [
@@ -39,7 +38,7 @@ class CancelEndedMandateVisitsJobTest : BaseEndpointIntegrationTest() {
         )
         awaitAsyncTasks()
         val bodies = smtp.receivedMessages.toList().joinToString("\n") { it.content.toString() }
-        assertTrue(bodies.contains("La visite est annul"), "the neutral wording, to both sides")
+        assertFalse(bodies.contains("La visite est annul"), "a SYSTEM cancellation notifies neither side")
         assertFalse(
             smtp.receivedMessages.any { message ->
                 message.allRecipients.any { it.toString().contains("john.doe@gmail.com") }

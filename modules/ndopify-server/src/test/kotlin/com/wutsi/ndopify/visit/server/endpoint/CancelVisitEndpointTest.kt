@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -37,14 +38,9 @@ class CancelVisitEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals("Empêchement", visit.cancellationReason)
         assertNotNull(visit.cancelledAt)
 
-        // The other side is told: the agent
-        assertTrue(smtp.waitForIncomingEmail(5000, 1), "one email expected")
-        val message = smtp.receivedMessages.single()
-        assertEquals("Kim Possible <kim.possible@gmail.com>", message.allRecipients.single().toString())
-        assertEquals("Ndopify: la visite a été annulée", message.subject)
-        val body = message.content.toString()
-        assertTrue(body.contains("Ray Sponsible"))
-        assertTrue(body.contains("Emp"))
+        // Never scheduled, so no slot was reserved: neither side is told
+        awaitAsyncTasks()
+        assertFalse(smtp.waitForIncomingEmail(1000, 1), "no cancellation e-mail for a visit never scheduled")
     }
 
     @Test

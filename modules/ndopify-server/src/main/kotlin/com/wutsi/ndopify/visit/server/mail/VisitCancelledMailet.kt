@@ -19,8 +19,11 @@ import com.wutsi.ndopify.visit.server.domain.VisitEntity
 import org.springframework.stereotype.Service
 
 /**
- * Tells the other side of a cancelled visit: the agent when the customer cancelled, the customer when the agent did,
- * and both sides — with the neutral wording, never the mandate's reason — when the system ended the mandate.
+ * Tells the other side of a party-initiated cancelled visit: the agent when the customer cancelled, the customer when
+ * the agent did. Each copy has its own method, so that only the agent's can be rerouted to Telegram.
+ *
+ * A cancellation the platform caused (`SYSTEM`, ex: the mandate ended) e-mails nobody: the platform's own decision is
+ * not the other side's appointment problem.
  */
 @Service
 class VisitCancelledMailet(
@@ -36,76 +39,59 @@ class VisitCancelledMailet(
 
         const val LABEL_BY_CUSTOMER = "Le client a annulé la visite."
         const val LABEL_BY_AGENT = "J'ai annulé la visite."
-        const val LABEL_BY_SYSTEM = "La visite est annulée."
     }
 
-    fun send(visit: VisitEntity, customer: CustomerEntity, agent: AgentEntity, listing: ListingEntity) {
+    /**
+     * The customer's copy: the agent cancelled, so the customer has to know. Nothing when the customer or the system
+     * cancelled.
+     */
+    fun sendToCustomer(visit: VisitEntity, customer: CustomerEntity, agent: AgentEntity, listing: ListingEntity) {
+        if (visit.cancelledBy != VisitParty.AGENT) {
+            return
+        }
+
         val tenant = tenantService.findById(visit.tenantId!!)
         val formatter = TenantFormatter(tenant)
-        when (visit.cancelledBy) {
-            VisitParty.CUSTOMER -> send(
-                tenant = tenant,
-                formatter = formatter,
-                visit = visit,
-                listing = listing,
-                recipient = agent.party,
-                otherParty = customer.party.fullName(),
-                sender = null,
-                label = LABEL_BY_CUSTOMER,
-                visitUrl = partnerCentralUrl(tenant, visit),
-                reason = visit.cancellationReason,
-                footer = emptyMap(),
-            )
+        val token = tenant.publicPortalUrl?.let { linkTokenService.create(customer) }
+        send(
+            tenant = tenant,
+            formatter = formatter,
+            visit = visit,
+            listing = listing,
+            recipient = customer.party,
+            otherParty = agent.party.fullName(),
+            sender = AgentMailContext.from(agent),
+            label = LABEL_BY_AGENT,
+            visitUrl = publicPortalUrl(tenant, visit, token),
+            reason = visit.cancellationReason,
+            footer = AgentMailContext.of(agent, formatter),
+        )
+    }
 
-            VisitParty.AGENT -> {
-                val token = tenant.publicPortalUrl?.let { linkTokenService.create(customer) }
-                send(
-                    tenant = tenant,
-                    formatter = formatter,
-                    visit = visit,
-                    listing = listing,
-                    recipient = customer.party,
-                    otherParty = agent.party.fullName(),
-                    sender = AgentMailContext.from(agent),
-                    label = LABEL_BY_AGENT,
-                    visitUrl = publicPortalUrl(tenant, visit, token),
-                    reason = visit.cancellationReason,
-                    footer = AgentMailContext.of(agent, formatter),
-                )
-            }
-
-            VisitParty.SYSTEM -> {
-                val token = tenant.publicPortalUrl?.let { linkTokenService.create(customer) }
-                send(
-                    tenant = tenant,
-                    formatter = formatter,
-                    visit = visit,
-                    listing = listing,
-                    recipient = customer.party,
-                    otherParty = agent.party.fullName(),
-                    sender = AgentMailContext.from(agent),
-                    label = LABEL_BY_SYSTEM,
-                    visitUrl = publicPortalUrl(tenant, visit, token),
-                    reason = null,
-                    footer = AgentMailContext.of(agent, formatter),
-                )
-                send(
-                    tenant = tenant,
-                    formatter = formatter,
-                    visit = visit,
-                    listing = listing,
-                    recipient = agent.party,
-                    otherParty = customer.party.fullName(),
-                    sender = null,
-                    label = LABEL_BY_SYSTEM,
-                    visitUrl = partnerCentralUrl(tenant, visit),
-                    reason = null,
-                    footer = emptyMap(),
-                )
-            }
-
-            null -> Unit
+    /**
+     * The agent's copy: the customer cancelled, so the agent has to free the slot. Nothing when the agent or the system
+     * cancelled.
+     */
+    fun sendToAgent(visit: VisitEntity, customer: CustomerEntity, agent: AgentEntity, listing: ListingEntity) {
+        if (visit.cancelledBy != VisitParty.CUSTOMER) {
+            return
         }
+
+        val tenant = tenantService.findById(visit.tenantId!!)
+        val formatter = TenantFormatter(tenant)
+        send(
+            tenant = tenant,
+            formatter = formatter,
+            visit = visit,
+            listing = listing,
+            recipient = agent.party,
+            otherParty = customer.party.fullName(),
+            sender = null,
+            label = LABEL_BY_CUSTOMER,
+            visitUrl = partnerCentralUrl(tenant, visit),
+            reason = visit.cancellationReason,
+            footer = emptyMap(),
+        )
     }
 
     private fun send(

@@ -24,6 +24,7 @@ import com.wutsi.ndopify.visit.dto.VisitParty
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
+import org.mockito.Mockito.verifyNoInteractions
 import java.time.LocalDateTime
 import java.time.ZoneId
 import java.util.Date
@@ -84,7 +85,7 @@ class VisitCancelledMailetTest {
 
     @Test
     fun `the customer cancelled - the agent is told`() {
-        mailet.send(visit, customer, agent, listing)
+        mailet.sendToAgent(visit, customer, agent, listing)
 
         val email = argumentCaptor<Email>()
         verify(mailService, times(1)).send(email.capture())
@@ -113,7 +114,7 @@ class VisitCancelledMailetTest {
 
     @Test
     fun `the agent cancelled - the customer is told`() {
-        mailet.send(visit.copy(cancelledBy = VisitParty.AGENT), customer, agent, listing)
+        mailet.sendToCustomer(visit.copy(cancelledBy = VisitParty.AGENT), customer, agent, listing)
 
         val email = argumentCaptor<Email>()
         verify(mailService, times(1)).send(email.capture())
@@ -126,34 +127,25 @@ class VisitCancelledMailetTest {
 
     @Test
     fun `no reason`() {
-        mailet.send(visit.copy(cancellationReason = null), customer, agent, listing)
+        mailet.sendToAgent(visit.copy(cancellationReason = null), customer, agent, listing)
 
         assertNull(context()["cancellation_reason"])
     }
 
     @Test
-    fun `the system cancelled - both sides get the neutral wording, never the mandate reason`() {
-        mailet.send(
-            visit.copy(cancelledBy = VisitParty.SYSTEM, cancellationReason = "Mandat clôturé"),
-            customer,
-            agent,
-            listing,
-        )
+    fun `the agent is not told when it cancelled itself`() {
+        mailet.sendToAgent(visit.copy(cancelledBy = VisitParty.AGENT), customer, agent, listing)
+        mailet.sendToAgent(visit.copy(cancelledBy = VisitParty.SYSTEM), customer, agent, listing)
 
-        val emails = argumentCaptor<Email>()
-        verify(mailService, times(2)).send(emails.capture())
-        assertEquals(
-            setOf("ray.sponsible@gmail.com", "kim.possible@gmail.com"),
-            emails.allValues.map { it.recipient.email }.toSet(),
-        )
+        verifyNoInteractions(mailService)
+    }
 
-        val contexts = argumentCaptor<Map<String, Any?>>()
-        verify(mailBodyResolver, times(2)).resolve(eq(VisitCancelledMailet.TEMPLATE), contexts.capture())
-        contexts.allValues.forEach { context ->
-            assertEquals("La visite est annulée.", context["cancelled_by_label"])
-            assertNull(context["cancellation_reason"])
-            assertEquals(true, context["system_cancelled"])
-        }
+    @Test
+    fun `the customer is not told when it cancelled itself`() {
+        mailet.sendToCustomer(visit, customer, agent, listing)
+        mailet.sendToCustomer(visit.copy(cancelledBy = VisitParty.SYSTEM), customer, agent, listing)
+
+        verifyNoInteractions(mailService)
     }
 
     private fun context(): Map<String, Any?> {
