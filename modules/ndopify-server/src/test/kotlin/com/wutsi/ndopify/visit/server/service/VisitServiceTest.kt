@@ -67,6 +67,7 @@ class VisitServiceTest {
     private val listingService = mock<ListingService>()
     private val tenantService = mock<TenantService>()
     private val requestedNotifier = mock<VisitRequestedNotifier>()
+    private val reminderNotifier = mock<VisitReminderNotifier>()
     private val confirmedMailet = mock<VisitConfirmedMailet>()
     private val completedMailet = mock<VisitCompletedMailet>()
     private val noShowMailet = mock<VisitNoShowMailet>()
@@ -96,6 +97,7 @@ class VisitServiceTest {
         noShowMailet,
         cancelledMailet,
         reminderMailet,
+        reminderNotifier,
         expiredMailet,
         coBrokerageVisitNotifier,
         codeGenerator,
@@ -269,11 +271,41 @@ class VisitServiceTest {
     }
 
     @Test
+    fun `reminder - the customer is e-mailed and the agent notified`() {
+        doReturn(Optional.of(visit.copy(status = VisitStatus.CONFIRMED, scheduledAt = date(2026, 12, 2, 10, 0))))
+            .whenever(dao).findById(1L)
+
+        service.sendReminderNotifications(1L)
+
+        verify(reminderMailet).sendCustomer(any(), eq(customer), eq(agent20), eq(coBrokerageListing))
+        verify(reminderNotifier).send(any(), eq(customer), eq(agent20), eq(coBrokerageListing))
+    }
+
+    @Test
+    fun `reminder - nothing once no longer CONFIRMED`() {
+        doReturn(Optional.of(visit.copy(status = VisitStatus.CANCELLED, scheduledAt = date(2026, 12, 2, 10, 0))))
+            .whenever(dao).findById(1L)
+
+        service.sendReminderNotifications(1L)
+
+        verifyNoInteractions(reminderMailet, reminderNotifier)
+    }
+
+    @Test
+    fun `reminder - nothing for an unknown visit`() {
+        doReturn(Optional.empty<VisitEntity>()).whenever(dao).findById(999L)
+
+        service.sendReminderNotifications(999L)
+
+        verifyNoInteractions(reminderMailet, reminderNotifier)
+    }
+
+    @Test
     fun `reminder - the listing agent is mailed when the visit belongs to another agent`() {
         doReturn(Optional.of(visit.copy(status = VisitStatus.CONFIRMED, scheduledAt = date(2026, 12, 2, 10, 0))))
             .whenever(dao).findById(1L)
 
-        service.sendReminderEmails(1L)
+        service.sendReminderNotifications(1L)
 
         verify(coBrokerageVisitNotifier).sendReminder(any(), eq(coBrokerageListing), eq(agent20))
     }
