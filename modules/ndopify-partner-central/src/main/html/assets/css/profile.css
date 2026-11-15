@@ -61,14 +61,3 @@
     line-height: 1.5;
     resize: vertical;
 }
-
-/* The Telegram card closes the profile form: a section of its own, below the save actions. */
-.telegram {
-    margin-top: var(--space-6);
-    padding-top: var(--space-5);
-    border-top: 1px solid var(--color-border);
-}
-
-.telegram > * + * {
-    margin-top: var(--space-3);
-}
