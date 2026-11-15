@@ -175,9 +175,14 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   mandate changed since (2), else set the content, PENDING_APPROVAL, request the signature. A failure after (1) leaves
   the mandate ASSIGNED with its DRAFT contract, reused next time: an ASSIGNED mandate can have a `contractId`.
   The last signature of its contract approves it (`MandateEventListener.onContractSigned`, synchronous, in the
-  signature's transaction: `APPROVED`, `approvedAt`), publishing `MandateApprovedEvent`: `MandateApprovedMailet` e-mails
-  its agent that the customer signed, with the contract's validity and a link to `{partnerCentralUrl}/mandates/{id}`
-  (`mail/mandate/approved.mjml`; nothing for a mandate without agent, or no longer APPROVED).
+  signature's transaction: `APPROVED`, `approvedAt`), publishing `MandateApprovedEvent`: `MandateApprovedNotifier`
+  messages its agent over Telegram when its chat is linked (`MandateApprovedBotlet`, via
+  `AgentTelegramService.chatId`) and e-mails the others (`MandateApprovedMailet`, `mail/mandate/approved.mjml`),
+  falling back to the e-mail when Telegram fails (the failure is logged, without the token nor the URL; nothing for
+  a mandate without agent, or no longer APPROVED). The message carries the city, the mandate's type, its
+  neighbourhoods and its budget or price, with a `Voir le mandat` button to `{partnerCentralUrl}/mandates/{id}`
+  (none without a `partnerCentralUrl`); the customer's name, the contract number and the validity dates stay on the
+  mandate page (summary only).
   `POST /{id}/close` (APPROVED only, else 409 `MANDATE_NOT_APPROVED`) → `CLOSED` with `finalPrice`, `closedAt` and
   `age`: whole days from `approvedAt` to closing, the time a mandate takes to close. `POST /{id}/cancel` (any status but
   CLOSED / CANCELLED: 409 `MANDATE_ALREADY_CLOSED`) → `CANCELLED` with `cancellationCode` (default `OTHER`),
@@ -473,13 +478,13 @@ listener is `@Async @TransactionalEventListener(AFTER_COMMIT)`, so nothing is se
 executor thread has no request, so the listener sets `TenantContext` and a `DefaultKVLogger` in `KVLoggerThreadLocal`
 (which the injected `KVLogger` falls back to), calls `logger.log()` in `finally` to flush it, and removes both
 (threads are reused). The work runs in a `@Transactional` service method (`AgentService.sendWelcomeEmail`,
-`OtpService.sendEmail`, `KycService.sendStatusEmail`, `AssignmentService.sendOfferNotification` / `sendAssignedEmail`, `MandateService.sendApprovedEmail`,
+`OtpService.sendEmail`, `KycService.sendStatusEmail`, `AssignmentService.sendOfferNotification` / `sendAssignedEmail`, `MandateService.sendApprovedNotification`,
 `ContractService.sendSignatureRequestEmails`, `ListingService.sendPublishedNotification`, `MatchProposalService.sendProposedEmail`,
 `VisitService.sendRequestedNotification` / `sendConfirmedEmails` / `sendCompletedEmail` / `sendCancelledEmail` / `sendNoShowEmails` /
 `sendExpiredEmails` / `sendReminderEmails`); the signed PDF (`ContractSignedEvent` → `SignedContractService.generate`,
-not an e-mail, not transactional) follows the same listener pattern. The requested-visit entry is the one that doesn't
-always go by e-mail: `VisitRequestedNotifier` (see *visit*) messages a linked agent over Telegram, and e-mails the
-others or as the fallback. The service methods are
+not an e-mail, not transactional) follows the same listener pattern. The requested-visit and mandate-approval entries
+are the ones that don't always go by e-mail: `VisitRequestedNotifier` (see *visit*) and `MandateApprovedNotifier`
+(see *mandate*) message a linked agent over Telegram, and e-mail the others or as the fallback. The service methods are
 entered *after* `TenantContext` is set since Hibernate resolves the tenant when the session opens. Failures are
 logged, never rethrown. Tests must wait for the mail (`smtp.waitForIncomingEmail`);
 `BaseEndpointIntegrationTest.tearDown` waits for the running async tasks, so a test's mail can't reach the next one.
