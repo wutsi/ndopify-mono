@@ -34,7 +34,7 @@ the feature, ex: `profile/edit.html`; `error/403.html` / `404.html`; fragments s
 key for a landlord's listing, from the views' `owner`; `fragments/agent-card.html`, the one standard card that names
 another agent — photo or initials, name linked to `/agent?id=&back=…`, WhatsApp text link, no phone number — built by
 `ui/agent/AgentCardViews.of`, used as a card footer on the visit, proposal and match cards and boxed (`standalone`) on
-the visit and co-broker's listing pages; a null `AgentCardView` renders "un autre agent"), and page scripts in `public/assets/js/`, one per
+the visit and the read-only listing pages; a null `AgentCardView` renders "un autre agent"), and page scripts in `public/assets/js/`, one per
 page (`<page>.js`, picked by the body's `data-page`) plus `partner-central.js` / `util.js`. Every page works without
 JS: a script only enhances it, and the rules it mirrors are always re-checked server-side by `<Feature>Rules`.
 `src/main/html/` is the prototype (see below).
@@ -236,13 +236,15 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   verification sends the listing back to DRAFT with its `errorCodes`, which this page shows "À corriger" (tag, panel
   `TO_FIX` listing the reasons, `ListingRules.rejections`, an unknown code or `INTERNAL_ERROR` as a generic one, and
   their sections marked "À corriger"), editable and sent again like any DRAFT; the mandate's line says "Corriger
-  l'annonce". ndopify-server checks listing access itself (PUBLISHED listings are public; only an admin or the
-  listing's agent may read or change the others). The page still requires `Listing.agentId` to be the signed-in
-  agent's as a UI guard (else the locked view, or `changed` for an action), and create requires the mandate's agent.
+  l'annonce". ndopify-server checks listing access itself (PUBLISHED, SOLD and RENTED are public reads; only an admin
+  or the listing's agent may read or change the others). The BFF's `PublishedListingAccess` admits the listing's own
+  agent (the owner lens) or **any** agent on a `PUBLISHED`, `RENTED` or `SOLD` listing (the read-only lens), and locks
+  the other statuses; create requires the mandate's agent.
   A listing ndopify-server can't return (5xx, network) is the `unavailable` view, not the locked one. Outcomes (flash
   `outcome`, shown on the locked and unavailable views too): `sent`, `incomplete`, `changed` (403/404/409 or moved
   on), `error`, `saved-<section>` ("Emplacement enregistré."…); a hand-edited id on a POST goes back to `/`. The
-  ownership check is `ListingAccess` (found / locked / unavailable), shared by the three listing controllers.
+  ownership check of the write pages is `ListingAccess` (found / locked / unavailable), shared by the three listing
+  controllers; `PublishedListingAccess` is the read gate of the listing page itself.
   Each section is `ListingSectionController` (`GET|POST /listings/{id}/{slug}`, slug = the `ListingSection` in lower
   case: `location`, `gps`, `property`, `amenities`, `terms`, `remarks`; not `{section}`, which Spring would expose to
   the view over the `section` model attribute), one template for the six, `templates/listing/section.html`: the form
@@ -264,13 +266,19 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `listing-section`, `listing-photos`): the types and questions of the type, geolocation, photos shrunk and sent as
   soon as chosen, no double post. Prototype: `src/main/html/listing.html`, `listing/*.html`; its "Simuler" buttons
   have no server support, and its `REJECTED` panel is the `TO_FIX` one here.
-  Another agent's `PUBLISHED` listing opens read-only (`ListingAccess.ReadOnly`): no mandate number, no customer, no
-  stats, no section links and no send/upload/delete action. The publishing agent is a boxed standard `agent-card`
-  (`ListingView.agent`, no "Publié par", no phone number; unreadable: no card). A valid same-origin `?back=` returns to
-  where it was opened, otherwise the Espace agent; own listings still return to their mandate. The listing page has no
+  Another agent's `PUBLISHED`, `RENTED` or `SOLD` listing opens read-only (`PublishedListingAccess.ReadOnly`, the
+  `readOnly` lens): no mandate number, no customer, no public link or share, no stats, no exact position or access
+  directions, no verification trail or section links and no send/upload/delete action. It keeps the public place
+  (neighbourhood, city, landmark), the note that the agent shares the exact address before the visit, and the
+  publishing agent's boxed standard `agent-card` (`ListingView.agent`, no "Publié par", no phone number; unreadable:
+  no card), whose profile link returns to the same listing URL. A `?match=` is only a context hint: a visible
+  co-brokerage match of one of the agent's searches sets the return link to `/mandates/{id}#matches-title`; a stale or
+  bogus one (another listing's, dismissed, another agent's, a non-search mandate, or a failed read) is ignored. Else a
+  valid same-origin `?back=` (the agent profile's card) returns there with "← Retour", else the Espace agent with
+  "← Retour à l'espace agent"; own listings still return to their mandate. The listing page has no
   *Visites d'autres agents* block any more (neither does it read `GET /v1/visits/co-brokerage?listing-id=`): that block
   stays on the Espace agent and the mandate page. A visit page's listing link still carries `?match={matchId}` so a
-  co-brokerage listing opens instead of the locked page.
+  co-brokerage listing opens with that context.
 - A signed search (APPROVED, SEARCH: `MatchRules.matched`) has *Biens correspondants* on its mandate page: the
   PUBLISHED listings of the agent's inventory ndopify-server matched to it (`ui/match/`, see
   `docs/superpowers/plans/2026-10-31-partner-central-matches.md`). `MandateController` reads its matches in one
