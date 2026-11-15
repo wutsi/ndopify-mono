@@ -40,6 +40,11 @@
     margin-bottom: var(--space-4);
 }
 
+/* The Telegram invitation sits between the queue header and the assignments. */
+.home-intro + .alert {
+    margin-bottom: var(--space-4);
+}
+
 .home-intro__title {
     font-size: var(--step-h1);
 }
