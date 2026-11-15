@@ -42,6 +42,9 @@ endpoint tests, Maven.
   another tenant's a 404 — none writes anything.
 - **Odd phone numbers:** a blank or non-E.164 stored number still renders the name and e-mail, without a
   WhatsApp button or a broken `tel:` link.
+- **Contact parity:** the phone is a 44px/600 link like `visit.html`'s, the name is 600, the whole "à appeler"
+  phrase disappears with no period, the e-mail row disappears with no address, and "Modifier" and its row
+  disappear together on a terminal mandate.
 - **Unreadable customer / foreign mandate page:** the contact block shows its unavailable note and no
   "Modifier" link; the tests assert the customer is never fetched for another agent's mandate.
 
@@ -62,11 +65,14 @@ endpoint tests, Maven.
 
 Use the pre-`95bde7ca` unboxed markup as the base (still visible in `home.css`):
 `<div class="contact-card">` with `<strong data-contact="name">`, the role as a new
-`<span class="contact-card__role" data-contact-role>`, `contact-card__period` ("à appeler …"), a
+`<span class="contact-card__role" data-contact-role>`, a `contact-card__period` wrapper
+(`data-contact-period`, "à appeler …", hidden as a whole when there is no period), a
 `contact-card__line contact-card__phone` holding a `tel:` link (`data-contact="phone"`) plus a
-`btn btn--secondary btn--compact` WhatsApp button (`data-contact="whatsapp"`), a `contact-card__line` with the
-`mailto:` e-mail (`data-contact="email"`), and a "Modifier" button linking to
-`mandate/customer-edit.html?id=<id>`. The unavailable note stays.
+`btn btn--secondary btn--compact` WhatsApp button (`data-contact="whatsapp"`), a
+`contact-card__line contact-card__email` with the `mailto:` e-mail (`data-contact="email"`, hidden when empty),
+and a `contact-card__actions` row (`data-contact-actions`) holding the "Modifier" link to
+`mandate/customer-edit.html?id=<id>`. The unavailable note stays. The block must match `visit.html`'s contact
+treatment: 44px/600 phone link, 600 name, and explicit aria-labels for the phone, WhatsApp and edit links.
 
 - [ ] **Step 2: Add `mandate/customer-edit.html`**
 
@@ -75,7 +81,9 @@ fields (`firstName`, `lastName`, `email`, `whatsappNumber`), the profile edit pa
 and "Enregistrer" / "Annuler". The WhatsApp field follows DESIGN.md's phone-number rules: load intl-tel-input
 25.11.2 (CSS + JS) and `util.js`; the visible `type="tel"` input has no `name`, and the library's hidden input
 carries `name="whatsappNumber"` in E.164. Keep the hint about what the e-mail and the WhatsApp number are for (the
-library shows the country code and example number itself). Two locked states: unavailable, closed.
+library shows the country code and example number itself), and say that the correction applies to **all** of the
+contact's mandates. The intro's meta line carries `Mandat n° <id> · <mandate title>`, and the tab title carries
+the mandate number too. Two locked states: unavailable, closed.
 
 - [ ] **Step 3: Give the prototype data first/last names**
 
@@ -85,9 +93,13 @@ In `partner-central.js`, replace each `contact: { name: … }` (10 fixtures) wit
 
 - [ ] **Step 4: Render the contact block and wire the link**
 
-In `initMandate`, fill the role, full name, period, formatted phone, `tel:` href, WhatsApp href (digits only),
-e-mail, and hide `[data-contact-edit]` when the mandate's status is `CLOSED` or `CANCELLED`. Read the contact
-from the session's saved copy first (`mandateStates()[id].contact || MANDATES[id].contact`).
+In `initMandate`, fill the role, full name and period; hide the whole `[data-contact-period]` wrapper when there
+is no period; fill the formatted phone, its `tel:` href and aria-label, the WhatsApp href (digits only) and
+aria-label, and the e-mail. Hide the e-mail line when the address is empty, and hide the whole
+`[data-contact-actions]` row (not only the link) when the mandate is `CLOSED` or `CANCELLED`. The phone link is
+a 44px, 600-weight target and the name is 600, matching `visit.html`; the edit link's aria-label is
+"Modifier les coordonnées du client/du bailleur". Read the contact from the session's saved copy first
+(`mandateStates()[id].contact || MANDATES[id].contact`).
 
 - [ ] **Step 5: Add `initCustomerEdit`**
 
@@ -103,7 +115,9 @@ show the "cannot verify" error and keep the form unsavable.
 
 Delete `.contact-person`, `.contact-person__name`, `.contact-person__period` from
 `src/main/html/assets/css/home.css`; add `.contact-card__role` (the eyebrow's `font-size: var(--step-hint)` and
-`color: var(--color-info-fg)`).
+`color: var(--color-info-fg)`), the headline's baseline flex row, a `white-space: nowrap` period, the phone
+link's `min-height: var(--target)` and 600 weight, the e-mail link's block padding, and `overflow-wrap:
+break-word` on `.contact-card__line`. These keep the block aligned with the visit page without re-boxing it.
 
 - [ ] **Step 7: Check it in a browser**
 
@@ -459,13 +473,21 @@ assertEquals("+237 6 99 12 34 56", card.selectFirst("[data-contact-number]")?.te
 assertEquals("https://wa.me/237699123456", card.selectFirst("a[data-contact=whatsapp]")?.attr("href"))
 assertTrue(card.selectFirst("a[data-contact=whatsapp]")!!.hasClass("btn"))
 assertEquals("mailto:ray@gmail.com", card.selectFirst("a[data-contact=email]")?.attr("href"))
+assertEquals("Appeler Ray Sponsible au +237 6 99 12 34 56",
+    card.selectFirst("a[data-contact=phone]")?.attr("aria-label"))
+assertEquals("Écrire à Ray Sponsible sur WhatsApp",
+    card.selectFirst("a[data-contact=whatsapp]")?.attr("aria-label"))
+assertEquals("Modifier les coordonnées du client",
+    card.selectFirst("[data-contact-edit]")?.attr("aria-label"))
 assertEquals("/mandates/201/customer/edit", card.selectFirst("[data-contact-edit]")?.attr("href"))
 ```
 
-Add `contact - closed: no edit link` (render `CLOSED`, assert `null` for `[data-contact-edit]`) and
-`contact - no phone: no WhatsApp button or tel link` (`CUSTOMER.copy(whatsappNumber = "")`: both
-`[data-contact=whatsapp]` and `[data-contact=phone]` are null, the e-mail line stays). Update the old assertion
-that no `.btn` exists in the section: the `tel:` link is not a button, the WhatsApp link is.
+Add `contact - closed: no edit row` (render `CLOSED`, assert `null` for both `[data-contact-edit]` and
+`[data-contact-actions]`), `contact - no phone` (`CUSTOMER.copy(whatsappNumber = "")`: both
+`[data-contact=whatsapp]` and `[data-contact=phone]` are null, the e-mail line stays), `contact - no e-mail`
+(no `[data-contact-email-line]`, or its link is null), and `contact - no period` (the whole
+`[data-contact-period]` is null, never a bare "à appeler"). Update the old assertion that no `.btn` exists in the
+section: the `tel:` link is not a button, the WhatsApp link is.
 
 - [ ] **Step 3: Run the tests to watch them fail**
 
@@ -491,15 +513,19 @@ in `MandateView`/`MandateViews.of` next to `editable`.
 
 - [ ] **Step 5: Replace the template block**
 
-Render `.contact-card` as in the approved prototype (Task 1): role, full name, `contact-card__period`, a
-`contact-card__line contact-card__phone` with `a[data-contact=phone]` (`tel:${c.whatsapp}`) and the compact
-WhatsApp button (`th:if="${c.whatsappDigits}"`), the `mailto:` e-mail line, and the "Modifier" link wrapped in
+Render `.contact-card` as in the approved prototype (Task 1): role, full name, the whole `contact-card__period`
+phrase under `th:if="${c.period}"`, a `contact-card__line contact-card__phone` with `a[data-contact=phone]`
+(`tel:${c.whatsapp}`, `aria-label="Appeler ${c.name} au ${c.whatsappDisplay}"`) and the compact WhatsApp button
+(`th:if="${c.whatsappDigits}"`, `aria-label="Écrire à ${c.name} sur WhatsApp"`), the `mailto:` e-mail line
+(`contact-card__email`, `th:if="${c.email}"`), and the `contact-card__actions` row with the "Modifier" link under
 `th:if="${m.customerEditable}"`. Keep the unavailable note. No version, no hidden fields.
 
 - [ ] **Step 6: Update the served CSS**
 
 In `src/main/resources/public/assets/css/home.css` remove `.contact-person*` and add `.contact-card__role`
-(`font-size: var(--step-hint); color: var(--color-info-fg);`). `.contact-card`, `.contact-card__phone` and
+(`font-size: var(--step-hint); color: var(--color-info-fg);`), the headline's baseline flex row, the period's
+`white-space: nowrap`, the phone link's `min-height: var(--target)` / 600 weight, the e-mail link's block
+padding, and `overflow-wrap: break-word` on `.contact-card__line`. `.contact-card`, `.contact-card__phone` and
 `.btn--compact` already exist; do not re-add them.
 
 - [ ] **Step 7: Run the tests to verify they pass**
@@ -631,14 +657,17 @@ and the `customer-saved-unsent` sentence.
 `CustomerEditTemplateTest` renders through the controller with a real Thymeleaf engine (copy
 `MandateEditTemplateTest`'s setup). Assert: `#firstName`, `#lastName`, `#email`, `#whatsappNumber` values; the
 visible phone input still posts its E.164 value (`name="whatsappNumber"` in the HTML, before `mandate.js` moves
-the name to the hidden input intl-tel-input syncs); the submit button; the back link to `/mandates/201`;
-`errors["firstName"]` rendered when the form is shown again; the locked text for `closed` and `unavailable`.
+the name to the hidden input intl-tel-input syncs); the submit button; the back link to `/mandates/201`; the
+meta line `Mandat n° 201 · <mandate title>`; the hint's "tous les mandats" sentence; `errors["firstName"]`
+rendered when the form is shown again; the locked text for `closed` and `unavailable`.
 
 - [ ] **Step 6: Create the template**
 
 `templates/mandate/customer-edit.html`, copying `mandate/edit.html`'s shell and the profile edit page's
-field/error markup. One form, four fields, no hidden version; "Enregistrer" and "Annuler". The locked alert
-renders `locked == 'unavailable'` and `locked == 'closed'` separately.
+field/error markup. One form, four fields, no hidden version; "Enregistrer" and "Annuler". Render the meta line
+as `Mandat n° <id> · <mandate.title>`, the `<title>` as `Modifier les coordonnées <words.of> — Mandat n° <id> —
+Ndopify Partner Central`, and add "La correction s'applique à **tous les mandats** de ce contact." to the hint.
+The locked alert renders `locked == 'unavailable'` and `locked == 'closed'` separately.
 The WhatsApp field follows the profile edit page: load intl-tel-input 25.11.2 (CSS + JS) and `util.js` before
 `mandate.js`; the visible `type="tel"` input keeps `name="whatsappNumber"` and its E.164 value so the form still
 posts without JS. Extend `mandate.js` (which already owns the mandate pages) with a `customer-edit` initializer
