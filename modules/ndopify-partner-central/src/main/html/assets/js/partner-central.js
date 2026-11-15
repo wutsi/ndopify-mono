@@ -1779,7 +1779,7 @@
             {
                 id: "9009", listingId: "5001", propertyType: "APARTMENT", rooms: 2, neighbourhood: "Bonapriso",
                 price: 250000, availableIn: 0, score: 0.72, coBrokerage: true,
-                agent: { id: "1001", name: "Clarisse Mbarga" },
+                agent: { id: "1001", name: "Clarisse Mbarga", whatsappNumber: "+237699123456" },
                 // The client accepted and asked for a visit: the card names its organizer (Clarisse), never her customer.
                 initial: { status: "PROPOSED", sentAt: -2, answer: "ACCEPTED", answeredAt: -1,
                     visit: { in: 2, time: "14h00", type: "IN_PERSON",
@@ -1845,7 +1845,7 @@
         return video ? "Visité en vidéo" : "Visité";
     }
 
-    function fillVisit(box, visit, label) {
+    function fillVisit(box, visit, label, cardAgent, cardHasAgent) {
         if (!box) return;
         if (!visit) {
             box.hidden = true;
@@ -1882,18 +1882,17 @@
             timer.hidden = true;
             box.removeAttribute("data-urgent");
         }
-        // Another agent's listing: name the organizer, linked to their profile; they host the visit.
-        var agentLine = $("[data-visit-agent]", box);
-        if (agentLine) {
-            agentLine.hidden = !visit.agent;
-            if (visit.agent) {
-                var currentMandate = new URLSearchParams(window.location.search).get("id") || "";
-                var anchor = box.closest("[data-listing-proposals]") ? "#proposals-title" : "#matches-title";
-                var organizer = [visit.agent.firstName, visit.agent.lastName].filter(Boolean).join(" ");
-                var organizerLink = $("[data-visit-agent-link]", agentLine);
-                organizerLink.href = "agent.html?id=" + encodeURIComponent(visit.agent.id) + "&back=" +
-                    encodeURIComponent("mandate.html?id=" + encodeURIComponent(currentMandate) + anchor);
-                $("[data-visit-agent-name]", agentLine).textContent = organizer;
+        // Another agent's listing: the standard agent footer, unless the card above already names that same agent.
+        var agentCard = $("[data-visit-agent-card]", box);
+        if (agentCard) {
+            var currentMandate = new URLSearchParams(window.location.search).get("id") || "";
+            var anchor = box.closest("[data-listing-proposals]") ? "#proposals-title" : "#matches-title";
+            var showAgent = visit.agent && !cardHasAgent &&
+                (!cardAgent || String(cardAgent.id) !== String(visit.agent.id));
+            agentCard.hidden = !showAgent;
+            if (showAgent) {
+                fillAgentCard(agentCard, visit.agent,
+                    "mandate.html?id=" + encodeURIComponent(currentMandate) + anchor);
             }
         }
         var link = $("[data-visit-link]", box);
@@ -2083,10 +2082,11 @@
                 visit: { id: "7301", in: 2, time: "10h00", type: "IN_PERSON", status: "REQUESTED" } },
             { mandateId: "207", client: "Hervé Mbarga", sentAt: -4, answer: "ACCEPTED", answeredAt: -4,
                 visit: { id: "7302", in: 1, time: "09h30", type: "IN_PERSON", status: "CONFIRMED" } },
-            { otherAgent: true, agent: { id: "1001", name: "Clarisse Mbarga" }, sentAt: -2, answer: "ACCEPTED",
-                answeredAt: -1 },
+            { otherAgent: true, agent: { id: "1001", name: "Clarisse Mbarga", whatsappNumber: "+237699123456" },
+                sentAt: -2, answer: "ACCEPTED", answeredAt: -1 },
             { mandateId: "208", client: "Carine Ndongo", sentAt: -1 },
-            { otherAgent: true, agent: { id: "1002", name: "Paul Etame" }, sentAt: -5 },
+            { otherAgent: true, agent: { id: "1002", name: "Paul Etame", whatsappNumber: "+237699654321" },
+                sentAt: -5 },
             { mandateId: "209", client: "Rodrigue Essomba", sentAt: -6, answer: "REJECTED", answeredAt: -5,
                 reason: "PRICE" }
         ]
@@ -2191,18 +2191,10 @@
             $("article", item).setAttribute("aria-labelledby", titleId);
             var row = $("[data-proposal-link]", item);
             if (m.otherAgent) {
-                // Another agent's client: no name, no link to a mandate the agent can't open
+                // Another agent's client: no name, no link to a mandate the agent can't open.
                 var plain = document.createElement("span");
                 plain.textContent = "Client d'un autre agent";
                 row.replaceWith(plain);
-                // Their agent may be named: a link to the profile, back to this section.
-                if (m.agent) {
-                    var agentLink = $("[data-proposal-agent-link]", item);
-                    agentLink.textContent = m.agent.name;
-                    agentLink.href = "agent.html?id=" + encodeURIComponent(m.agent.id) + "&back=" +
-                        encodeURIComponent("mandate.html?id=" + encodeURIComponent(mandateId) + "#proposals-title");
-                    $("[data-proposal-agent]", item).hidden = false;
-                }
             } else {
                 row.href = "mandate.html?id=" + encodeURIComponent(m.mandateId) + "#matches-title";
                 $("[data-proposal-client]", item).textContent = m.client;
@@ -2222,7 +2214,14 @@
                 summary += " · intéressé le " + formatShortDate(m.answeredAt);
             }
             $("[data-proposal-summary]", item).textContent = summary;
-            fillVisit($("[data-proposal-visit]", item), visit, m.otherAgent ? "Client d'un autre agent" : m.client);
+            fillVisit($("[data-proposal-visit]", item), visit, m.otherAgent ? "Client d'un autre agent" : m.client, m.agent);
+            // Another agent's client: their agent sits in the standard footer, at the bottom of the card.
+            var agentCard = $("[data-agent-card]", item);
+            agentCard.hidden = !(m.otherAgent && m.agent);
+            if (m.otherAgent && m.agent) {
+                fillAgentCard(agentCard, m.agent,
+                    "mandate.html?id=" + encodeURIComponent(mandateId) + "#proposals-title");
+            }
             return item;
         });
 
@@ -2261,18 +2260,8 @@
             var listingLink = $("[data-co-brokerage-listing]", item);
             listingLink.textContent = listing.fields ? listingTitle(listing) : "Appartement 3 chambres · Bonapriso";
             listingLink.href = "listing.html?id=" + encodeURIComponent(listing.id);
-            var agent = visit.agent;
-            var names = [agent.firstName, agent.lastName].filter(Boolean);
-            var name = names.join(" ");
-            $("[data-co-brokerage-initials]", item).textContent = names.map(function (part) {
-                return part.charAt(0);
-            }).join("");
-            var agentLink = $("[data-co-brokerage-agent]", item);
-            $("[data-co-brokerage-agent-name]", item).textContent = name;
-            agentLink.href = "agent.html?id=" + encodeURIComponent(agent.id) + "&back=" +
-                encodeURIComponent("mandate.html?id=" + encodeURIComponent(mandateId) + "#co-brokerage-visits-title");
-            $("[data-co-brokerage-whatsapp]", item).href =
-                "https://wa.me/" + agent.whatsappNumber.replace(/\D/g, "");
+            fillAgentCard($("[data-agent-card]", item), visit.agent,
+                "mandate.html?id=" + encodeURIComponent(mandateId) + "#co-brokerage-visits-title");
             list.appendChild(item);
         });
     }
@@ -2451,6 +2440,42 @@
     function displayPhone(e164) {
         var m = /^\+237(\d)(\d{2})(\d{2})(\d{2})(\d{2})$/.exec(e164);
         return m ? "+237 " + m.slice(1).join(" ") : e164;
+    }
+
+    // The standard co-broker footer (the prototype of fragments/agent-card.html): photo or initials on the left, the
+    // hyperlinked name, WhatsApp on the right. Without a readable agent, the generic person icon and "un autre agent",
+    // unlinked and without WhatsApp. [back] is where the profile link returns; [agent] may carry only a name.
+    function fillAgentCard(box, agent, back) {
+        if (!box) return;
+        box.hidden = false;
+        var photo = $("[data-agent-photo]", box);
+        var initials = $("[data-agent-initials]", box);
+        var generic = $("[data-agent-generic]", box);
+        var nameLink = $("[data-agent-link]", box);
+        var fallback = $("[data-agent-fallback]", box);
+        var whatsapp = $("[data-agent-whatsapp]", box);
+        var fullName = agent
+            ? ([agent.firstName, agent.lastName].filter(Boolean).join(" ") || agent.name || "").trim()
+            : "";
+        var initialsText = fullName.split(/\s+/).filter(Boolean).map(function (part) {
+            return part.charAt(0);
+        }).join("").slice(0, 2).toUpperCase();
+
+        nameLink.hidden = !fullName;
+        fallback.hidden = !!fullName;
+        if (fullName) {
+            $("[data-agent-name]", box).textContent = fullName;
+            nameLink.href = "agent.html?id=" + encodeURIComponent(agent.id) + "&back=" + encodeURIComponent(back);
+        }
+        photo.hidden = !(agent && agent.photoUrl);
+        if (agent && agent.photoUrl) photo.src = agent.photoUrl;
+        initials.hidden = !fullName || !!(agent && agent.photoUrl);
+        initials.textContent = initialsText;
+        generic.hidden = !!fullName || !!(agent && agent.photoUrl);
+
+        var number = agent && agent.whatsappNumber;
+        whatsapp.hidden = !number;
+        if (number) whatsapp.href = "https://wa.me/" + number.replace(/\D/g, "");
     }
 
     // The status wizard: Assigné > En approbation > Actif > Fermé.
@@ -2827,6 +2852,8 @@
                 $("[data-match-visit]", item),
                 answer === "VISIT" ? match.visit : null,
                 matchTitle(match) + " · annonce n° " + match.listingId,
+                match.agent,
+                match.coBrokerage,
             );
             $("[data-match-ref]", item).textContent = match.listingId;
             $("[data-match-link]", item).href = "listing.html?id=" + encodeURIComponent(match.listingId);
@@ -2835,18 +2862,13 @@
             fact(facts, "Correspondance", Math.round(match.score * 100) + " %");
             fact(facts, "Quartier", match.neighbourhood + (match.distanceKm
                 ? " (à " + String(match.distanceKm).replace(".", ",") + " km)" : ""));
-            // Co-brokerage: the listing agent's name, linked to their profile (back to this section).
-            var origin = $("[data-match-origin]", item);
-            origin.hidden = !match.coBrokerage;
+            // Co-brokerage: the listing agent sits in the standard footer, at the bottom of the card, named once
+            // even when the client's visit is on that same listing.
+            var agentCard = $("[data-agent-card]", item);
+            agentCard.hidden = !match.coBrokerage;
             if (match.coBrokerage) {
-                var agentLink = $("[data-match-agent]", origin);
-                agentLink.textContent = match.agent ? match.agent.name : "Bien d'un autre agent";
-                if (match.agent) {
-                    agentLink.href = "agent.html?id=" + encodeURIComponent(match.agent.id) + "&back=" +
-                        encodeURIComponent("mandate.html?id=" + encodeURIComponent(id) + "#matches-title");
-                } else {
-                    agentLink.removeAttribute("href");
-                }
+                fillAgentCard(agentCard, match.agent,
+                    "mandate.html?id=" + encodeURIComponent(id) + "#matches-title");
             }
             // In bold: what the agent looks at first
             fact(facts, "Loyer", formatCompactRent(match.price), "match__rent");
@@ -3688,34 +3710,10 @@
         return [key === "photos" ? "À compléter" : "À vérifier", "warning"];
     }
 
-    // The co-agent's card: photo (or initials), name, WhatsApp, and a link to agent.html.
+    // The listing's agent card: the standard footer's contents, in its own box (photo or initials, name, WhatsApp).
     function renderCoBrokerageAgent(agent) {
-        var names = [agent.firstName, agent.lastName].filter(Boolean);
-        var name = names.join(" ");
-        $("[data-agent-name]").textContent = name;
-        $("[data-agent-initials]").textContent = names.map(function (part) {
-            return part.charAt(0);
-        }).join("");
-        if (agent.photoUrl) {
-            $("[data-agent-photo-image]").src = agent.photoUrl;
-            $("[data-agent-photo-image]").hidden = false;
-            $("[data-agent-initials]").hidden = true;
-        }
-        var back = "listing.html?id=" + encodeURIComponent(CO_BROKERAGE_LISTING.id);
-        var profile = "agent.html?id=" + encodeURIComponent(agent.id) +
-            "&back=" + encodeURIComponent(back);
-        $all("[data-agent-profile]").forEach(function (link) {
-            link.href = profile;
-        });
-        var whatsapp = agent.whatsappNumber
-            ? "https://wa.me/" + agent.whatsappNumber.replace(/\D/g, "")
-            : null;
-        var contact = $("[data-agent-contact]");
-        contact.hidden = !whatsapp;
-        if (whatsapp) {
-            $("[data-agent-phone-text]").textContent = agent.whatsappDisplay || agent.whatsappNumber;
-            $("[data-agent-whatsapp]").href = whatsapp;
-        }
+        fillAgentCard($("[data-agent-card]"), agent,
+            "listing.html?id=" + encodeURIComponent(CO_BROKERAGE_LISTING.id));
     }
 
     function initListing() {
@@ -4843,7 +4841,8 @@
         setFieldError: setFieldError,
         setActive: setActive,
         isActive: isActive,
-        displayPhone: displayPhone
+        displayPhone: displayPhone,
+        fillAgentCard: fillAgentCard
     };
 
     /* ---------- Boot ---------- */
