@@ -136,6 +136,23 @@ class VisitReminderBotletTest {
     }
 
     @Test
+    fun `the day follows the tenant's calendar, not UTC's`() {
+        // 2026-12-02 00:30 in Douala: the visit is later that tenant day, though still 2026-12-01 in UTC
+        val midnight = VisitReminderBotlet(
+            tenantService,
+            locationService,
+            client,
+            Clock.fixed(Instant.parse("2026-12-01T23:30:00Z"), ZoneId.of("UTC")),
+        )
+
+        midnight.send(visit.copy(scheduledAt = date(2026, 12, 2, 8, 0)), customer, agent, listing, 1000L)
+
+        val text = argumentCaptor<String>()
+        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        assertTrue(text.firstValue.contains("a lieu aujourd'hui, 02/12/2026 à 08:00"))
+    }
+
+    @Test
     fun `no WhatsApp number leaves no line`() {
         botlet.send(visit, customer.copy(whatsappNumber = null), agent, listing, 1000L)
 
