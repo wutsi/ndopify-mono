@@ -2,6 +2,7 @@ package com.wutsi.ndopify.security.server.service
 
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.refdata.dto.AuthType
 import com.wutsi.ndopify.security.dto.CreateOtpRequest
@@ -11,6 +12,7 @@ import com.wutsi.ndopify.security.server.mail.OtpMailet
 import jakarta.transaction.Transactional
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
+import java.time.Clock
 import java.util.UUID
 
 @Service
@@ -22,6 +24,7 @@ open class OtpService(
     private val passwordEncryptor: PasswordEncryptor,
     private val mailet: OtpMailet,
     private val eventPublisher: ApplicationEventPublisher,
+    private val clock: Clock,
 ) {
     companion object {
         const val SUBJECT = "Votre code de vérification {{tenant_name}}"
@@ -33,6 +36,7 @@ open class OtpService(
      * no longer fails the request: the user asks for a new code. The tenant is resolved here, before the hand-off,
      * so a missing or unknown tenant still fails the request (and rolls back) instead of failing silently later.
      * A user who isn't a member of the tenant is not found: it can't get a code branded by another tenant.
+     * A locked account gets no code: no email is sent, and the stored code is left as it is.
      * `rollbackOn` is needed because jakarta's @Transactional does not roll back on checked exceptions by default.
      */
     @Transactional(rollbackOn = [Exception::class])
@@ -47,6 +51,17 @@ open class OtpService(
                 )
             )
         }
+        authFactorService.findByUserAndAuthTypeOrNull(user, AuthType.OTP)
+            ?.takeIf { it.isLocked(clock) }
+            ?.let {
+                throw ConflictException(
+                    error = Error(
+                        code = ErrorCode.AUTH_ACCOUNT_LOCKED,
+                        data = mapOf("lockedUntil" to it.lockedUntil!!.toInstant().toString()),
+                    )
+                )
+            }
+
         val salt = UUID.randomUUID().toString()
         val code = otpGenerator.generate()
         val data = passwordEncryptor.encrypt(code, salt)

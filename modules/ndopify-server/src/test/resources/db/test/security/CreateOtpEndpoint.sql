@@ -9,17 +9,26 @@ INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name, created_at, mod
 -- user 1: has a party (display name)
 -- user 2: already has an OTP and a password, member of tenants 1 and 2
 -- user 3: member of tenant 2 only
+-- user 9: OTP account locked until 2099      user 10: OTP account whose lock ended in 2020
 INSERT INTO T_USER (id, email, deleted, created_at, deleted_at) VALUES
   (1, 'ray.sponsible@gmail.com', false, NOW(), NULL),
   (2, 'has-otp@gmail.com', false, NOW(), NULL),
-  (3, 'other-tenant@gmail.com', false, NOW(), NULL);
+  (3, 'other-tenant@gmail.com', false, NOW(), NULL),
+  (9, 'locked-otp@gmail.com', false, NOW(), NULL),
+  (10, 'expired-lock-otp@gmail.com', false, NOW(), NULL);
 
 INSERT INTO T_MEMBERSHIP (id, tenant_id, user_id, party_id) VALUES
   (1, 1, 1, 100),
   (2, 1, 2, NULL),
   (3, 2, 3, NULL),
-  (4, 2, 2, NULL);
+  (4, 2, 2, NULL),
+  (9, 1, 9, NULL),
+  (10, 1, 10, NULL);
 
 INSERT INTO T_AUTH_FACTOR (id, user_id, auth_type, data, salt, created_at, modified_at, expires_at) VALUES
   (21, 2, 'PASSWORD', 'secret-password', NULL, '2019-01-01 00:00:00', '2019-01-01 00:00:00', NULL),
   (22, 2, 'OTP', 'old-otp-hash', 'old-salt', '2019-01-01 00:00:00', '2019-01-01 00:00:00', '2020-01-01 00:00:00');
+
+INSERT INTO T_AUTH_FACTOR (id, user_id, auth_type, data, salt, created_at, modified_at, expires_at, failed_attempts, locked_until) VALUES
+  (9, 9, 'OTP', 'old-hash', 'old-salt', NOW(), NOW(), '2099-01-01 00:00:00', 5, '2099-01-01 00:00:00'),
+  (10, 10, 'OTP', 'old-hash', 'old-salt', NOW(), NOW(), '2099-01-01 00:00:00', 5, '2020-01-01 00:00:00');
