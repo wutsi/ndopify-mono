@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Modifier les coordonnées du client — Ndopify Partner Central</title>
+    <meta name="description" content="Corriger les coordonnées d'un client : prénom, nom, adresse email et numéro WhatsApp.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="../assets/images/icon.png">
+    <link rel="apple-touch-icon" href="../assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="../assets/css/partner-central.css">
+    <link rel="stylesheet" href="../assets/css/rejoindre.css">
+    <link rel="stylesheet" href="../assets/css/home.css">
+    <script src="../assets/js/partner-central.js" defer></script>
+</head>
+<!--
+    Correct a mandate's customer details (story #125): the name, e-mail and WhatsApp number the customer typed in the
+    public wizard and sometimes mistypes. Reached from the mandate page's "Modifier", until the mandate is closed.
+    Saved with POST /v1/mandates/{id}/customer (UpdateCustomerRequest): the customer's party gets the names and e-mail,
+    the customer its WhatsApp number. On a mandate out for signature, a changed e-mail cancels the contract and puts
+    the mandate back to Assigné (the agent sends it again); a name or phone change leaves it. The correction is shared
+    by all of the customer's mandates.
+    PROTOTYPE: ?id=101 to 103 once accepted, or 201 to 207; a mandate closed or cancelled from its page shows the closed
+    view, another agent's mandate or an unknown id the unavailable one. The changes are kept in the session
+    (KEYS.mandates, the copy's "contact").
+-->
+<body data-page="customer-edit">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" href="../index.html">
+                <img src="../assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <span aria-hidden="true" data-user-initials>NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li class="user-menu__email" data-user-email></li>
+                    <li><a class="user-menu__item" href="../profile/edit.html">Profil</a></li>
+                    <li><a class="user-menu__item" href="../login.html" data-logout>Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="back-link"><a href="../mandate.html" data-back-link>← Retour au mandat</a></p>
+
+            <!-- Locked: not the agent's mandate, or closed/cancelled since. -->
+            <div class="alert alert--warning" hidden data-customer-locked>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <h1 class="alert__title" data-customer-locked-title>Ce mandat n'est pas disponible</h1>
+                    <p data-customer-locked-text>Vous ne pouvez corriger que les coordonnées d'un client de vos
+                        propres mandats.</p>
+                </div>
+            </div>
+
+            <div hidden data-customer>
+                <div class="page-intro">
+                    <h1 data-customer-title>Coordonnées du client</h1>
+                    <p class="mandate__meta" data-customer-meta></p>
+                </div>
+
+                <form class="form" novalidate data-customer-form>
+                    <div class="hint">
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <p hidden data-customer-resend>Ce mandat attend la signature. Si l'adresse email change,
+                                le mandat revient à «&nbsp;Assigné&nbsp;»&nbsp;: renvoyez-le ensuite pour signature.</p>
+                            <p>L'adresse email reçoit le mandat à signer et les propositions de biens.</p>
+                            <p>Le numéro WhatsApp s'écrit avec l'indicatif pays&nbsp;:
+                                +237&nbsp;6&nbsp;77&nbsp;12&nbsp;34&nbsp;56.</p>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="field__label" for="firstName">Prénom</label>
+                        <input class="input" id="firstName" name="firstName" type="text" autocomplete="given-name"
+                               required aria-describedby="firstName-error">
+                        <p class="field__error" id="firstName-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                    </div>
+
+                    <div class="field">
+                        <label class="field__label" for="lastName">Nom</label>
+                        <input class="input" id="lastName" name="lastName" type="text" autocomplete="family-name"
+                               required aria-describedby="lastName-error">
+                        <p class="field__error" id="lastName-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                    </div>
+
+                    <div class="field">
+                        <label class="field__label" for="email">Adresse email</label>
+                        <input class="input" id="email" name="email" type="email" autocomplete="email" required
+                               aria-describedby="email-error">
+                        <p class="field__error" id="email-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                    </div>
+
+                    <div class="field">
+                        <label class="field__label" for="whatsappNumber">Numéro WhatsApp</label>
+                        <input class="input" id="whatsappNumber" name="whatsappNumber" type="tel"
+                               autocomplete="tel" required aria-describedby="whatsappNumber-error">
+                        <p class="field__error" id="whatsappNumber-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
+                    </div>
+
+                    <div class="form__actions">
+                        <a class="btn btn--outline" href="../mandate.html" data-back-link>Annuler</a>
+                        <button type="submit" class="btn btn--primary" aria-disabled="true"
+                                data-customer-submit>Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
