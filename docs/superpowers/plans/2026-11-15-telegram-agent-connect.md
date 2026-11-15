@@ -34,15 +34,14 @@
 
 ---
 
-### Task 1: Prototype the home banner and the profile card
+### Task 1: Prototype the home banner
 
 **Files:**
 - Modify: `modules/ndopify-partner-central/src/main/html/index.html` (after the `home-intro` header, before the assignments section)
-- Modify: `modules/ndopify-partner-central/src/main/html/profile/edit.html` (after the form, inside the column)
-- Modify if needed: `modules/ndopify-partner-central/src/main/html/assets/css/home.css`, `.../assets/css/profile.css`
+- Modify if needed: `modules/ndopify-partner-central/src/main/html/assets/css/home.css`
 
 **Interfaces:**
-- Produces: the approved markup and French copy both served pages copy in Tasks 13 and 14.
+- Produces: the approved markup and French copy the served page copies in Task 13.
 
 - [ ] **Step 1: Add the home banner**
 
@@ -62,35 +61,22 @@ In `index.html`, right after the `</header>` of `home-intro` and before the assi
 </div>
 ```
 
-- [ ] **Step 2: Add the profile card**
+Add only the CSS the banner needs (its margin below the header); reuse `alert` and `btn` otherwise.
 
-In `profile/edit.html`, after the profile `</form>` (line 147), add:
+- [ ] **Step 2: Check the prototype in a browser**
 
-```html
-<section class="telegram" id="telegram" aria-labelledby="telegram-title">
-    <h2 id="telegram-title">Telegram</h2>
-    <p>Connectez votre compte pour recevoir vos nouvelles missions sur Telegram.</p>
-    <p>Non connecté</p>
-    <button class="btn btn--primary" type="button">Recevoir mon code par e-mail</button>
-</section>
-```
+Open `modules/ndopify-partner-central/src/main/html/index.html` (without JavaScript, then with it). The banner must read well at phone width and keep the page usable without JavaScript.
 
-Add only the CSS the two blocks need (the `.telegram` section's spacing in `profile.css`, a button row); reuse `alert` and `btn` otherwise.
-
-- [ ] **Step 3: Check the prototype in a browser**
-
-Open `modules/ndopify-partner-central/src/main/html/index.html` and `.../profile/edit.html` (without JavaScript, then with it). Both blocks must read well at phone width and keep the page usable without JavaScript.
-
-- [ ] **Step 4: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
 git add modules/ndopify-partner-central/src/main/html
 git commit -m "feat(npc): prototype the telegram connection"
 ```
 
-- [ ] **Step 5: Stop for the prototype gate**
+- [ ] **Step 4: Stop for the prototype gate**
 
-Show the two files and their rendered copy to the user; wait for the OK on the prototype before Task 2. Any change to the design goes back into this plan first.
+Show the banner and its rendered copy to the user; wait for the OK on the prototype before Task 2. Any change to the design goes back into this plan first.
 
 ---
 
@@ -947,7 +933,7 @@ Use `mvn antrun:run@ktlint-format` for formatting, a conventional `fix(agent): �
 - Test: `modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/ui/telegram/TelegramControllerTest.kt`
 
 **Interfaces:**
-- Produces: `NdAgentClient.requestTelegramCode()`; `POST /telegram/code` (form parameter `page`, `home` or anything else → `/profile`), flash `telegramCodeSent = true` on success and `telegramError` otherwise.
+- Produces: `NdAgentClient.requestTelegramCode()`; `POST /telegram/code` → flash `telegramCodeSent = true` on success and `telegramError` otherwise.
 
 - [ ] **Step 1: Add the client call**
 
@@ -965,7 +951,7 @@ fun requestTelegramCode() {
 ```kotlin
 @Test
 fun `the home banner sends the code and comes back home`() {
-    val result = mvc.perform(post("/telegram/code").param("page", "home")).andReturn()
+    val result = mvc.perform(post("/telegram/code")).andReturn()
 
     assertEquals("redirect:/", result.response.redirectedUrl)
     assertEquals(true, result.flashMap[TelegramRules.SENT])
@@ -973,15 +959,9 @@ fun `the home banner sends the code and comes back home`() {
 }
 
 @Test
-fun `the profile card comes back to the profile`() {
-    val result = mvc.perform(post("/telegram/code").param("page", "profile")).andReturn()
-    assertEquals("redirect:/profile", result.response.redirectedUrl)
-}
-
-@Test
 fun `a connected agent gets the already-connected message`() {
     doThrow(conflict(ErrorCode.AGENT_TELEGRAM_ALREADY_CONNECTED)).whenever(agentClient).requestTelegramCode()
-    val result = mvc.perform(post("/telegram/code").param("page", "home")).andReturn()
+    val result = mvc.perform(post("/telegram/code")).andReturn()
     assertEquals(TelegramRules.ALREADY_CONNECTED, result.flashMap[TelegramRules.ERROR])
     assertNull(result.flashMap[TelegramRules.SENT])
 }
@@ -990,7 +970,7 @@ fun `a connected agent gets the already-connected message`() {
 fun `a server failure is reported`() {
     doThrow(ResourceAccessException("down")).whenever(agentClient).requestTelegramCode()
 
-    val result = mvc.perform(post("/telegram/code").param("page", "home")).andReturn()
+    val result = mvc.perform(post("/telegram/code")).andReturn()
 
     assertEquals(TelegramRules.SEND_FAILED, result.flashMap[TelegramRules.ERROR])
     assertNull(result.flashMap[TelegramRules.SENT])
@@ -1006,9 +986,9 @@ Expected: FAIL — the controller and rules are unresolved.
 
 - [ ] **Step 4: Implement the rules and controller**
 
-`TelegramRules`: `HOME = "home"`, `SENT = "telegramCodeSent"`, `ERROR = "telegramError"`, `ALREADY_CONNECTED = "Votre compte Telegram est déjà connecté."`, `SEND_FAILED = "L'envoi du code a échoué. Réessayez dans quelques instants."`.
+`TelegramRules`: `SENT = "telegramCodeSent"`, `ERROR = "telegramError"`, `ALREADY_CONNECTED = "Votre compte Telegram est déjà connecté."`, `SEND_FAILED = "L'envoi du code a échoué. Réessayez dans quelques instants."`.
 
-`TelegramController` (`@Controller @RequestMapping("/telegram")`): `POST /code` takes `@RequestParam(name = "page", required = false) page: String?`, requires `currentAgent.get()`, calls `agentClient.requestTelegramCode()`, flashes `SENT` on success; on `HttpClientErrorException` with 409 flashes `ALREADY_CONNECTED`, on any other `RestClientException` logs and flashes `SEND_FAILED`; returns `redirect:/` when `page == HOME`, else `redirect:/profile`. KDoc: the redirect target is fixed by `page`, never a URL from the request.
+`TelegramController` (`@Controller @RequestMapping("/telegram")`): `POST /code` requires `currentAgent.get()`, calls `agentClient.requestTelegramCode()`, flashes `SENT` on success; on `HttpClientErrorException` with 409 flashes `ALREADY_CONNECTED`, on any other `RestClientException` logs and flashes `SEND_FAILED`; returns `redirect:/`. KDoc: the redirect target is fixed, never a URL from the request.
 
 - [ ] **Step 5: Run it to verify it passes**
 
@@ -1033,18 +1013,17 @@ git commit -m "feat(npc): request a telegram connection code"
 - Modify: `modules/ndopify-partner-central/src/main/resources/templates/index.html`
 - Test: `modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/ui/home/HomeControllerTest.kt`
 - Test: `modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/ui/home/HomeTemplateTest.kt`
-- Create: `modules/ndopify-partner-central/src/main/resources/templates/fragments/telegram-connect.html` (the shared button form)
 
 **Interfaces:**
 - Consumes: `Agent.telegramConnected`, the flash attributes of Task 12.
-- Produces: the model attribute `telegramConnected`; a `th:fragment="form(page)"` fragment used by the profile card too.
+- Produces: the model attribute `telegramConnected`.
 
 - [ ] **Step 1: Write the failing tests**
 
 `HomeControllerTest`: `show()` puts `telegramConnected = false` on the model for `AGENT`, and `true` when `currentAgent.get()` returns `AGENT.copy(telegramConnected = true)`.
 
 `HomeTemplateTest`:
-- not connected → `doc.select("[data-telegram-banner]")` has one element, whose form action is `/telegram/code` with a hidden `page=home`;
+- not connected → `doc.select("[data-telegram-banner]")` has one element, whose form action is `/telegram/code`;
 - connected → no `[data-telegram-banner]`;
 - with the `telegramCodeSent` flash attribute (add it to the request: `.flashAttr(TelegramRules.SENT, true)`) → the banner shows the sent message and the `/connect` instruction;
 - with `telegramError` → the banner shows the message.
@@ -1056,7 +1035,7 @@ Expected: FAIL — no `telegramConnected` attribute, no banner.
 
 - [ ] **Step 3: Implement the banner**
 
-`HomeController.show` adds `model.addAttribute("telegramConnected", agent.telegramConnected)` next to the other profile flags. In `index.html`, render the approved Task 1 banner after the `home-intro` header, before the KYC banners: `th:if="${not telegramConnected}"`, the success line when `telegramCodeSent`, the error line from `telegramError`, and the button form from the fragment (`th:replace="~{fragments/telegram-connect :: form('home')}"`). Never show it for a connected agent.
+`HomeController.show` adds `model.addAttribute("telegramConnected", agent.telegramConnected)` next to the other profile flags. In `index.html`, render the approved Task 1 banner after the `home-intro` header, before the KYC banners: `th:if="${not telegramConnected}"`, the success line when `telegramCodeSent`, the error line from `telegramError`, and wrap the button in a `<form method="post" action="/telegram/code">`. Never show it for a connected agent.
 
 - [ ] **Step 4: Run them to verify they pass**
 
@@ -1068,7 +1047,6 @@ Expected: PASS.
 ```bash
 git add modules/ndopify-partner-central/src/main/kotlin/com/wutsi/ndopify/npc/ui/home/HomeController.kt \
         modules/ndopify-partner-central/src/main/resources/templates/index.html \
-        modules/ndopify-partner-central/src/main/resources/templates/fragments/telegram-connect.html \
         modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/ui/home/HomeControllerTest.kt \
         modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/ui/home/HomeTemplateTest.kt
 git commit -m "feat(npc): invite the agent to connect telegram"
@@ -1076,52 +1054,7 @@ git commit -m "feat(npc): invite the agent to connect telegram"
 
 ---
 
-### Task 14: The profile card
-
-**Files:**
-- Modify: `modules/ndopify-partner-central/src/main/kotlin/com/wutsi/ndopify/npc/ui/profile/ProfileController.kt`
-- Modify: `modules/ndopify-partner-central/src/main/resources/templates/profile/edit.html`
-- Test: `modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/ui/profile/ProfileControllerTest.kt`
-- Test: `modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/ui/profile/ProfileTemplateTest.kt`
-
-**Interfaces:**
-- Consumes: `Agent.telegramConnected`, `fragments/telegram-connect.html`.
-
-- [ ] **Step 1: Write the failing tests**
-
-`ProfileControllerTest.edit`: the model carries `telegramConnected = false` for `AGENT`, `true` for `AGENT.copy(telegramConnected = true)`.
-`ProfileTemplateTest`:
-- not connected → the page has `#telegram` with "Non connecté" and the form action `/telegram/code` with a hidden `page=profile`;
-- connected → `#telegram` says "Votre compte Telegram est connecté." and has no form;
-- with `telegramCodeSent` / `telegramError` → the card shows the sent message / the error.
-
-- [ ] **Step 2: Run them to verify they fail**
-
-Run: `cd modules/ndopify-partner-central && mvn test -Dtest='ProfileControllerTest,ProfileTemplateTest'`
-Expected: FAIL — the attribute and the card are missing.
-
-- [ ] **Step 3: Implement the card**
-
-`ProfileController.edit(agent, …)` adds `model.addAttribute("telegramConnected", agent.telegramConnected)` in its private `edit` method. In `profile/edit.html`, after the form, render the approved Task 1 card: connected → the status sentence; not connected → the intro, the sent/error lines, and the shared form fragment with `page='profile'`.
-
-- [ ] **Step 4: Run them to verify they pass**
-
-Run: `cd modules/ndopify-partner-central && mvn test -Dtest='ProfileControllerTest,ProfileTemplateTest'`
-Expected: PASS.
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add modules/ndopify-partner-central/src/main/kotlin/com/wutsi/ndopify/npc/ui/profile/ProfileController.kt \
-        modules/ndopify-partner-central/src/main/resources/templates/profile/edit.html \
-        modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/ui/profile/ProfileControllerTest.kt \
-        modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/ui/profile/ProfileTemplateTest.kt
-git commit -m "feat(npc): show the telegram card on the profile"
-```
-
----
-
-### Task 15: Partner Central verification
+### Task 14: Partner Central verification
 
 - [ ] **Step 1: Run the module's full verification**
 
