@@ -456,7 +456,13 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   agent footer has no equivalent); it carries one `Voir l'annonce` URL button to
   `{partnerCentralUrl}/listings/{id}#visits-title`, or none without a `partnerCentralUrl`, and never A's customer nor
   its data. The cancellation / no-show / type wording is shared by the e-mail and the message through
-  `CoBrokerageVisitLabels`. **Request notification**:
+  `CoBrokerageVisitLabels`. **Cancellation notification**:
+  a cancellation is notified only when a party cancelled a **scheduled** visit — the agent over Telegram
+  (`VisitCancelledBotlet` through `VisitCancelledNotifier`, via `AgentTelegramService.chatId`, with a `Voir la visite`
+  button to `{partnerCentralUrl}/visits/{id}`) or e-mail (`VisitCancelledMailet.sendToAgent`), the customer by e-mail
+  (`sendToCustomer`); a `SYSTEM` cancellation (mandate ended, sweep) and a cancelled `REQUESTED` visit notify nobody.
+  The message carries the date, the listing's title, city and neighbourhood, the customer and the reason, never the
+  check-in code, the exact address nor the customer's token. **Request notification**:
   `VisitRequestedNotifier` messages the agent over Telegram when its chat is linked (`VisitRequestedBotlet`, via
   `AgentTelegramService.chatId`), e-mails it otherwise (`VisitRequestedMailet`, `mail/visit/requested.mjml`), and
   falls back to the e-mail on a failed send (the failure is logged, without the token nor the URL). The message
@@ -487,11 +493,12 @@ executor thread has no request, so the listener sets `TenantContext` and a `Defa
 (threads are reused). The work runs in a `@Transactional` service method (`AgentService.sendWelcomeEmail`,
 `OtpService.sendEmail`, `KycService.sendStatusEmail`, `AssignmentService.sendOfferNotification` / `sendAssignedEmail`, `MandateService.sendApprovedNotification`,
 `ContractService.sendSignatureRequestEmails`, `ListingService.sendPublishedNotification`, `MatchProposalService.sendProposedEmail`,
-`VisitService.sendRequestedNotification` / `sendConfirmedEmails` / `sendCompletedEmail` / `sendCancelledEmail` / `sendNoShowEmails` /
+`VisitService.sendRequestedNotification` / `sendConfirmedEmails` / `sendCompletedEmail` / `sendCancelledNotification` / `sendNoShowEmails` /
 `sendExpiredEmails` / `sendReminderEmails`); the signed PDF (`ContractSignedEvent` → `SignedContractService.generate`,
-not an e-mail, not transactional) follows the same listener pattern. The requested-visit and mandate-approval entries
-are the ones that don't always go by e-mail: `VisitRequestedNotifier` (see *visit*) and `MandateApprovedNotifier`
-(see *mandate*) message a linked agent over Telegram, and e-mail the others or as the fallback. The service methods are
+not an e-mail, not transactional) follows the same listener pattern. The requested-visit, cancellation and
+mandate-approval entries are the ones that don't always go by e-mail: `VisitRequestedNotifier` and
+`VisitCancelledNotifier` (see *visit*) and `MandateApprovedNotifier` (see *mandate*) message a linked agent over
+Telegram, and e-mail the others or as the fallback. The service methods are
 entered *after* `TenantContext` is set since Hibernate resolves the tenant when the session opens. Failures are
 logged, never rethrown. Tests must wait for the mail (`smtp.waitForIncomingEmail`);
 `BaseEndpointIntegrationTest.tearDown` waits for the running async tasks, so a test's mail can't reach the next one.
