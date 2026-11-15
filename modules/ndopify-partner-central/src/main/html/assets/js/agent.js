@@ -165,9 +165,20 @@
         });
     }
 
-    // PROTOTYPE: the card opens NPC's listing page; the BFF will use /listings/{id}.
+    // The profile page as it is shown now (its page, and the origin it was opened from), for a card's ?back=.
+    function profileUrlOf() {
+        var query = new URLSearchParams();
+        query.set("id", current.id);
+        if (current.page > 1) query.set("page", String(current.page));
+        var back = new URLSearchParams(window.location.search).get("back");
+        if (back) query.set("back", back);
+        return "agent.html?" + query.toString();
+    }
+
+    // PROTOTYPE: the card opens NPC's listing page read-only, and its back link returns here.
     function listingUrlOf(listing) {
-        return "listing.html?id=" + encodeURIComponent(listing.id);
+        return "listing.html?id=" + encodeURIComponent(listing.id) +
+            "&back=" + encodeURIComponent(profileUrlOf());
     }
 
     function listingLine(className, value) {
@@ -259,6 +270,8 @@
         }
         var pages = Math.ceil(listings.length / PAGE_SIZE);
         var page = Math.min(Math.max(requestedPage || 1, 1), pages);
+        // Before the items: each card's ?back= carries the page being shown.
+        current.page = page;
         var start = (page - 1) * PAGE_SIZE;
         listings.slice(start, start + PAGE_SIZE).forEach(function (listing) {
             list.appendChild(listingItem(listing));

@@ -35,6 +35,9 @@
     stand for the check, which ndopify-server doesn't have yet.
     Co-brokerage: ?id=5001 opens another agent's published listing, matched to search 204. It is read-only, hides the
     other agent's mandate and customer, and shows that agent's card (photo, name, WhatsApp, link to agent.html).
+    Any agent: ?id=5001&back=… opens that same read-only sheet from the page named by back (an agent profile's
+    card), with "← Retour"; ?id=5001 alone keeps the co-brokerage demo, with "← Retour aux biens correspondants"
+    to the search. Own listings keep their mandate's back link.
 -->
 <body data-page="listing">
     <a class="skip-link" href="#main">Aller au contenu</a>
