@@ -41,6 +41,7 @@
 - Modify: `modules/ndopify-partner-central/src/main/html/index.html` (the banner after the `home-intro` header)
 - Create: `modules/ndopify-partner-central/src/main/html/telegram.html`
 - Create: `modules/ndopify-partner-central/src/main/html/assets/css/telegram.css`
+- Create: `modules/ndopify-partner-central/src/main/html/assets/js/telegram.js` (prototype states only)
 - Modify if needed: `modules/ndopify-partner-central/src/main/html/assets/css/home.css`
 
 **Interfaces:**
@@ -105,7 +106,9 @@ The served page uses `th:href="@{/telegram}"`; the prototype links `telegram.htm
 </div>
 ```
 
-The served template uses `th:href="${telegramBotUrl}"` on the bot link and wraps the button in `<form method="post" th:action="@{/telegram/code}">`. `telegram.css` copies the join confirmation's numbered-list style (`next-steps`) under `connect-steps`, plus the back link and a button that is full width on a phone; no new colours.
+Above the steps, the page has two hidden alerts: a success one (`role="status"`, *Code envoyé* + the `/connect` instruction) and an error one (`role="alert"`, *Connexion impossible* + the message). The prototype reveals them with `?sent=1` and `?error=already|failed` (`telegram.js`); the served page renders them from the flash attributes, without JavaScript.
+
+The served template uses `th:href="${telegramBotUrl}"` on the bot link and wraps the button in `<form method="post" th:action="@{/telegram/code}">`. `telegram.css` copies the join confirmation's numbered-list style (`next-steps`) under `connect-steps`, plus the back link, the alert spacing and a button that is full width on a phone; no new colours.
 
 - [ ] **Step 3: Check the prototype in a browser**
 
@@ -1059,8 +1062,8 @@ Use the `conflict(code)` helper of `ProfileControllerTest` for the 409.
 `TelegramTemplateTest` (real Thymeleaf engine, like `ProfileTemplateTest`):
 - not connected → the three steps, the bot link's `href` is `https://t.me/ndopify_bot` and `target="_blank"`, the form action `/telegram/code`;
 - connected → "Votre compte Telegram est connecté." and no form;
-- with `telegramCodeSent` → the sent message and the `/connect` instruction;
-- with `telegramError` → the message.
+- with `telegramCodeSent` → the `role="status"` success alert, *Code envoyé* and the `/connect` instruction;
+- with `telegramError` → the `role="alert"` error alert with the message.
 
 - [ ] **Step 4: Run them to verify they fail**
 
@@ -1075,7 +1078,7 @@ Expected: FAIL — the controller, rules and template are missing.
 - `@GetMapping` requires `currentAgent.get()`, adds `telegramConnected` and `telegramBotUrl = TelegramRules.botUrl(botUsername)`, returns `telegram`;
 - `@PostMapping("/code")` requires the agent, calls `agentClient.requestTelegramCode()`, flashes `SENT` on success; on `HttpClientErrorException` with 409 flashes `ALREADY_CONNECTED`, on any other `RestClientException` logs and flashes `SEND_FAILED`; returns `redirect:/telegram`. KDoc: the redirect target is fixed, never a URL from the request.
 
-`templates/telegram.html` renders the approved Task 1 page: the three steps, the bot link with `target="_blank" rel="noopener"`, the button in a `th:action="@{/telegram/code}"` form, the success line when `telegramCodeSent`, the error line from `telegramError`, and — when connected — "Votre compte Telegram est connecté." with no form.
+`templates/telegram.html` renders the approved Task 1 page: the three steps, the bot link with `target="_blank" rel="noopener"`, the button in a `th:action="@{/telegram/code}"` form, the success alert when `telegramCodeSent` (*Code envoyé* — *Consultez l'adresse e-mail de votre compte, puis envoyez `/connect` suivi du code au bot Ndopify. Il expire dans 15 minutes.*), the error alert from `telegramError`, and — when connected — "Votre compte Telegram est connecté." with no form.
 
 - [ ] **Step 6: Run them to verify they pass**
 
