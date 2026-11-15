@@ -3,12 +3,9 @@ package com.wutsi.ndopify.npc.ui.visit
 import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.listing.dto.Listing
-import com.wutsi.ndopify.npc.ui.agent.AgentProfileRules
-import com.wutsi.ndopify.npc.ui.kyc.KycRules
-import com.wutsi.ndopify.npc.ui.listing.ListingAgentView
+import com.wutsi.ndopify.npc.ui.agent.AgentCardViews
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.npc.ui.match.MatchRules
-import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.Tenant
@@ -146,17 +143,7 @@ object VisitViews {
             selectedDay = selectedDay,
             selectedTime = selectedTime,
             videoPossible = videoPossible,
-            agent = agent?.let {
-                ListingAgentView(
-                    id = it.id,
-                    name = ProfileRules.fullName(it),
-                    initials = KycRules.initials(it.party.firstName, it.party.lastName),
-                    photoUrl = it.party.photoUrl?.ifBlank { null },
-                    whatsappUrl = AgentProfileRules.whatsappUrl(it.whatsappNumber),
-                    whatsappNumber = it.whatsappNumber,
-                    profileUrl = AgentProfileRules.profileUrl(it.id, "/visits/${visit.id}"),
-                )
-            },
+            agent = agent?.let { AgentCardViews.of(it, "/visits/${visit.id}") }?.takeIf { it.name.isNotBlank() },
         )
     }
 
