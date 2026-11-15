@@ -17,5 +17,8 @@ object TelegramRules {
     const val ALREADY_CONNECTED = "Votre compte Telegram est déjà connecté."
     const val SEND_FAILED = "L'envoi du code a échoué. Réessayez dans quelques instants."
 
-    fun botUrl(username: String) = "https://t.me/$username"
+    /** The bot the page links to when `TELEGRAM_BOT_USERNAME` is blank: `https://t.me/` never opens any bot. */
+    const val DEFAULT_BOT_USERNAME = "ndopify_bot"
+
+    fun botUrl(username: String) = "https://t.me/" + username.ifBlank { DEFAULT_BOT_USERNAME }
 }

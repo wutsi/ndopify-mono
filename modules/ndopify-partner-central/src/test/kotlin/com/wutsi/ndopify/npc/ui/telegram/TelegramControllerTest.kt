@@ -39,10 +39,13 @@ class TelegramControllerTest {
         doReturn(AGENT).whenever(currentAgent).get()
 
         val controller = TelegramController(currentAgent, agentClient, "ndopify_bot", clock, 15)
-        mvc = MockMvcBuilders.standaloneSetup(controller)
+        mvc = mockMvc(controller)
+    }
+
+    private fun mockMvc(controller: TelegramController): MockMvc =
+        MockMvcBuilders.standaloneSetup(controller)
             .setViewResolvers(InternalResourceViewResolver("/templates/", ".html"))
             .build()
-    }
 
     @Test
     fun `the page shows the bot url`() {
@@ -78,6 +81,16 @@ class TelegramControllerTest {
 
         assertEquals(false, result.modelAndView!!.model["telegramCodePending"])
         assertNull(result.request.getSession().getAttribute(TelegramRules.SENT_UNTIL))
+    }
+
+    @Test
+    fun `a blank bot username falls back to the default bot`() {
+        val blank = TelegramController(currentAgent, agentClient, "", clock, 15)
+        val mvc = mockMvc(blank)
+
+        val result = mvc.perform(get("/telegram")).andReturn()
+
+        assertEquals("https://t.me/ndopify_bot", result.modelAndView!!.model["telegramBotUrl"])
     }
 
     @Test
