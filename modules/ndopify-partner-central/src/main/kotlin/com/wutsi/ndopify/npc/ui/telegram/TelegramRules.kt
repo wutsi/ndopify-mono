@@ -9,7 +9,7 @@ object TelegramRules {
      * Session attribute of the code's expiry (epoch millis): the state that outlives the flash, since the code
      * itself is valid that long. A refresh keeps the bot button enabled until it passes.
      */
-    const val SENT_UNTIL = "telegramCodeSentUntil"
+    const val SENT_UNTIL = "npc.telegram-code-sent-until"
 
     /** Flash attribute of a failed request, worded by the controller. */
     const val ERROR = "telegramError"
