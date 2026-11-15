@@ -40,6 +40,27 @@ open class TelegramClient(
         ).check()
     }
 
+    /**
+     * The same [sendMessage], with the keyboard's rows given explicitly: one row per button list. A digest labels its
+     * buttons per listing, so they can't share a row.
+     */
+    open fun sendMessageRows(chatId: Long, text: String, rows: List<List<TelegramButton>>) {
+        val keyboard = rows.filter { row -> row.isNotEmpty() }.map { row -> row.toPayload() }
+        val payload = buildMap<String, Any> {
+            put("chat_id", chatId)
+            put("text", text)
+            if (keyboard.isNotEmpty()) {
+                put("reply_markup", mapOf("inline_keyboard" to keyboard))
+            }
+        }
+        http.post(
+            url("sendMessage"),
+            payload,
+            TelegramMessageResponse::class.java,
+            emptyMap(),
+        ).check()
+    }
+
     /** Answers the tap of a button: Telegram shows [text] as a toast, once per tap. */
     open fun answerCallbackQuery(callbackQueryId: String, text: String) {
         http.post(

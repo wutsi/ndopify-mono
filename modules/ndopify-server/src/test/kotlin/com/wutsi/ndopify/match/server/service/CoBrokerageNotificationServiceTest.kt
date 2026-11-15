@@ -17,8 +17,8 @@ import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.dao.MatchRepository
 import com.wutsi.ndopify.match.server.domain.MatchEntity
-import com.wutsi.ndopify.match.server.mail.CoBrokerageInterestMailet
 import com.wutsi.ndopify.match.server.mail.CoBrokerageMatchMailet
+import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -30,10 +30,13 @@ class CoBrokerageNotificationServiceTest {
     private val dao = mock<MatchRepository>()
     private val agentService = mock<AgentService>()
     private val mailet = mock<CoBrokerageMatchMailet>()
-    private val interestMailet = mock<CoBrokerageInterestMailet>()
+    private val interestNotifier = mock<CoBrokerageInterestNotifier>()
+    private val digestBuilder = mock<CoBrokerageInterestDigestBuilder>()
+    private val digest = CoBrokerageInterestDigest(TenantEntity(id = 1L), 1, emptyList())
     private val clock = Clock.fixed(Instant.parse("2026-11-11T10:00:00Z"), ZoneOffset.UTC)
     private val now = Date(clock.millis())
-    private val service = CoBrokerageNotificationService(dao, agentService, mailet, interestMailet, clock)
+    private val service =
+        CoBrokerageNotificationService(dao, agentService, mailet, interestNotifier, digestBuilder, clock)
 
     private val agent20 = AgentEntity(id = 20L)
     private val agent21 = AgentEntity(id = 21L)
@@ -107,10 +110,11 @@ class CoBrokerageNotificationServiceTest {
             .findCoBrokerageInterestToNotify(any(), eq(MandateStatus.APPROVED), eq(ListingStatus.PUBLISHED))
         doReturn(agent20).whenever(agentService).findByIdOrNull(20L)
         doReturn(listingAgent).whenever(agentService).findByIdOrNull(30L)
+        doReturn(digest).whenever(digestBuilder).build(listOf(first, second))
 
         assertEquals(1, service.notifyListingAgents())
 
-        verify(interestMailet).send(listingAgent, listOf(first, second))
+        verify(interestNotifier).send(listingAgent, digest)
         verify(dao).markListingAgentNotified(eq(listOf(4L, 5L)), eq(now))
     }
 
@@ -123,7 +127,8 @@ class CoBrokerageNotificationServiceTest {
             .findCoBrokerageInterestToNotify(any(), eq(MandateStatus.APPROVED), eq(ListingStatus.PUBLISHED))
         doReturn(agent20).whenever(agentService).findByIdOrNull(20L)
         doReturn(listingAgent).whenever(agentService).findByIdOrNull(30L)
-        doThrow(RuntimeException("SMTP down")).whenever(interestMailet).send(eq(listingAgent), any())
+        doReturn(digest).whenever(digestBuilder).build(listOf(first))
+        doThrow(RuntimeException("SMTP down")).whenever(interestNotifier).send(eq(listingAgent), any())
 
         assertEquals(0, service.notifyListingAgents())
 
@@ -142,7 +147,7 @@ class CoBrokerageNotificationServiceTest {
 
         assertEquals(0, service.notifyListingAgents())
 
-        verify(interestMailet, never()).send(any(), any())
+        verify(interestNotifier, never()).send(any(), any())
         verify(dao, never()).markListingAgentNotified(any(), any())
     }
 
@@ -156,10 +161,11 @@ class CoBrokerageNotificationServiceTest {
             .findCoBrokerageInterestToNotify(any(), eq(MandateStatus.APPROVED), eq(ListingStatus.PUBLISHED))
         doReturn(agent20).whenever(agentService).findByIdOrNull(20L)
         doReturn(listingAgent).whenever(agentService).findByIdOrNull(30L)
+        doReturn(digest).whenever(digestBuilder).build(listOf(first))
 
         assertEquals(1, service.notifyListingAgents())
 
-        verify(interestMailet).send(listingAgent, listOf(first))
+        verify(interestNotifier).send(listingAgent, digest)
         verify(dao).markListingAgentNotified(eq(listOf(4L)), eq(now))
         verify(dao, never()).markListingAgentNotified(eq(listOf(5L)), any())
     }

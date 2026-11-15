@@ -7,7 +7,6 @@ import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.dao.MatchRepository
 import com.wutsi.ndopify.match.server.domain.MatchEntity
-import com.wutsi.ndopify.match.server.mail.CoBrokerageInterestMailet
 import com.wutsi.ndopify.match.server.mail.CoBrokerageMatchMailet
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -20,16 +19,18 @@ import java.util.Date
  * agent ([CoBrokerageMatchMailet]), then its matches are marked notified, each agent on its own: a failed e-mail is
  * logged, its matches left to the next run, and the other agents still sent.
  *
- * The reverse: tells the listing agents that other agents' searches showed interest in their listings
- * ([CoBrokerageInterestMailet]) — the INTEREST statuses for an APPROVED mandate on a PUBLISHED listing, not told yet,
- * grouped by listing agent, each on its own for the same reason.
+ * The reverse: tells the listing agents that other agents' searches showed interest in their listings — over Telegram
+ * when linked, by e-mail otherwise ([CoBrokerageInterestNotifier]), from one digest built per agent
+ * ([CoBrokerageInterestDigestBuilder]) — the INTEREST statuses for an APPROVED mandate on a PUBLISHED listing, not told
+ * yet, grouped by listing agent, each on its own for the same reason.
  */
 @Service
 class CoBrokerageNotificationService(
     private val dao: MatchRepository,
     private val agentService: AgentService,
     private val mailet: CoBrokerageMatchMailet,
-    private val interestMailet: CoBrokerageInterestMailet,
+    private val interestNotifier: CoBrokerageInterestNotifier,
+    private val digestBuilder: CoBrokerageInterestDigestBuilder,
     private val clock: Clock,
 ) {
     companion object {
@@ -79,7 +80,7 @@ class CoBrokerageNotificationService(
             pending = notifiable,
             label = "Listing agent",
             recipientId = { match -> match.listing.agent.id },
-            send = { agent, matches -> interestMailet.send(agent, matches) },
+            send = { agent, matches -> interestNotifier.send(agent, digestBuilder.build(matches)) },
             mark = { ids, now ->
                 dao.markListingAgentNotified(ids, now)
                 Unit

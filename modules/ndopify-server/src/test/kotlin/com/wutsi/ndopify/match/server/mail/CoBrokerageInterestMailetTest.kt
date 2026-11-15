@@ -20,6 +20,8 @@ import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.domain.MatchEntity
+import com.wutsi.ndopify.match.server.service.CoBrokerageInterestDigest
+import com.wutsi.ndopify.match.server.service.CoBrokerageInterestDigestBuilder
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
@@ -45,14 +47,8 @@ class CoBrokerageInterestMailetTest {
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
     private val imageService = mock<ListingImageService>()
-    private val mailet = CoBrokerageInterestMailet(
-        tenantService,
-        agentService,
-        locationService,
-        mailService,
-        mailBodyResolver,
-        imageService,
-    )
+    private val builder = CoBrokerageInterestDigestBuilder(tenantService, agentService, locationService, imageService)
+    private val mailet = CoBrokerageInterestMailet(mailService, mailBodyResolver)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -131,7 +127,7 @@ class CoBrokerageInterestMailetTest {
 
     @Test
     fun send() {
-        mailet.send(listingAgent, listOf(match))
+        send(listOf(match))
 
         val context = context()
         val listing = (context["listings"] as List<*>).single() as Map<*, *>
@@ -157,22 +153,22 @@ class CoBrokerageInterestMailetTest {
     }
 
     @Test
-    fun `no matches - no email`() {
-        mailet.send(listingAgent, emptyList())
+    fun `no listing - no email`() {
+        mailet.send(listingAgent, CoBrokerageInterestDigest(TenantEntity(), 0, emptyList()))
 
         verify(mailService, never()).send(any())
     }
 
     @Test
     fun `one room is singular`() {
-        mailet.send(listingAgent, listOf(match.copy(mandate = search.copy(rooms = "1"))))
+        send(listOf(match.copy(mandate = search.copy(rooms = "1"))))
 
         assertEquals("1 pièce", (agents().single() as Map<*, *>)["rooms_label"])
     }
 
     @Test
     fun `non-numeric rooms has no label`() {
-        mailet.send(listingAgent, listOf(match.copy(mandate = search.copy(rooms = "Studio"))))
+        send(listOf(match.copy(mandate = search.copy(rooms = "Studio"))))
 
         assertNull((agents().single() as Map<*, *>)["rooms_label"])
     }
@@ -180,7 +176,7 @@ class CoBrokerageInterestMailetTest {
     @Test
     fun `several searches of the same agent - one row`() {
         val other = match.copy(id = 2L, mandate = search.copy(id = 2L, price = 200000), score = 0.9)
-        mailet.send(listingAgent, listOf(match, other))
+        send(listOf(match, other))
 
         val rows = agents()
         assertEquals(1, rows.size)
@@ -198,7 +194,7 @@ class CoBrokerageInterestMailetTest {
         doReturn(second).whenever(agentService).findByIdOrNull(21L)
         val other = match.copy(id = 2L, mandate = search.copy(id = 2L, agentId = 21L))
 
-        mailet.send(listingAgent, listOf(match, other))
+        send(listOf(match, other))
 
         val email = argumentCaptor<Email>()
         verify(mailService).send(email.capture())
@@ -209,7 +205,7 @@ class CoBrokerageInterestMailetTest {
     fun `no WhatsApp - the email is the contact`() {
         doReturn(searchAgent.copy(whatsappNumber = null)).whenever(agentService).findByIdOrNull(20L)
 
-        mailet.send(listingAgent, listOf(match))
+        send(listOf(match))
 
         val row = agents().single() as Map<*, *>
         assertNull(row["agent_whatsapp_url"])
@@ -226,7 +222,7 @@ class CoBrokerageInterestMailetTest {
             )
         ).whenever(agentService).findByIdOrNull(20L)
 
-        mailet.send(listingAgent, listOf(match))
+        send(listOf(match))
 
         val row = agents().single() as Map<*, *>
         assertNull(row["agent_whatsapp_url"])
@@ -251,7 +247,7 @@ class CoBrokerageInterestMailetTest {
             )
         }
 
-        mailet.send(listingAgent, matches)
+        send(matches)
 
         val listing = listing()
         assertEquals(5, (listing["agents"] as List<*>).size)
@@ -262,7 +258,7 @@ class CoBrokerageInterestMailetTest {
     fun `no partner portal - no mandate link`() {
         doReturn(tenant.copy(partnerCentralUrl = null)).whenever(tenantService).findById(1L)
 
-        mailet.send(listingAgent, listOf(match))
+        send(listOf(match))
 
         assertNull(listing()["mandate_url"])
     }
@@ -306,6 +302,8 @@ class CoBrokerageInterestMailetTest {
         assertFalse(html.contains("Secret Client"))
         assertFalse(html.contains("secret@example.com"))
     }
+
+    private fun send(matches: List<MatchEntity>) = mailet.send(listingAgent, builder.build(matches))
 
     private fun context(): Map<String, Any?> {
         val context = argumentCaptor<Map<String, Any?>>()

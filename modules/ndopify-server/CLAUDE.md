@@ -343,8 +343,12 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   has no viable own match (`existsViableOwnMatch`: PUBLISHED, not `DISMISSED` nor `REJECTED`), against the other
   agents' PUBLISHED listings of the same city and listing type (co-brokerage, `coBrokerage`, `V10_5`). Co-brokerage
   notifications (`V10_6`): the search agent is e-mailed the other agent's listing and contact when the match is
-  created; the listing agent is e-mailed the interested agent's contact and anonymized search criteria only after a
-  shortlist/proposal (`SHORTLISTED`, `PROPOSED`, `ACCEPTED`, `EXPIRED`). Both ride `MatchJobs.notifyAgents`;
+  created; the listing agent is messaged over Telegram when its chat is linked (`CoBrokerageInterestBotlet`, one digest
+  built by `CoBrokerageInterestDigestBuilder`, split under Telegram's 4096 characters at listing boundaries, one
+  `Voir le mandat — <title>` button per listing on its own row), e-mailed otherwise (`CoBrokerageInterestMailet`), only
+  after a shortlist/proposal (`SHORTLISTED`, `PROPOSED`, `ACCEPTED`, `EXPIRED`); the e-mail is also the fallback of a
+  failed Telegram send, and `CoBrokerageInterestNotifier` throws when both fail, so `listingAgentNotifiedAt` stays null
+  for the next run. Both ride `MatchJobs.notifyAgents`;
   `notifiedAt` is the forward one-shot and `listingAgentNotifiedAt` the reverse one. Anti-sautage: a customer never
   learns the counterpart agent's identity/contact, and a counterpart agent never learns the customer's
   identity/contact/mandate; the customer-facing proposal still names only the search agent. The same
@@ -501,7 +505,8 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
   their cached health indicators, wired by `config/platform/AIConfiguration`.
 - `platform/util` — small helpers (`PhoneNumberUtils`, `MimeUtils`, `UrlUtils`, `KycUtils`, HTTP utilities).
 - `platform/telegram` — the Telegram bot, wired by `config/platform/TelegramConfiguration`: `TelegramClient` (a thin
-  Bot API client over `platform/util/http/Http`), `TelegramUpdateHandler` (routes a `callback_query` to its
+  Bot API client over `platform/util/http/Http`; `sendMessageRows` sends the keyboard's rows given explicitly, ex: one
+  row per listing of a digest), `TelegramUpdateHandler` (routes a `callback_query` to its
   `TelegramCallbackHandler` — the mandate domain's offer buttons — gives a `message` the reply of the first
   `TelegramCommand` bean that recognizes it — the agent domain's `/start` and `/connect` — else `OK`, and ignores
   every other
