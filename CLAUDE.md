@@ -141,6 +141,9 @@ Required for local development (see `application.yml` and the module POMs):
   `Telegram` bot's updates from TEST. Deployed environments have no default either: they read `TELEGRAM_TOKEN`, and
   (webhook mode) `SERVER_URL` and `TELEGRAM_WEBHOOK_SECRET` — the app registers `${SERVER_URL}/telegram/webhook` with
   that secret at startup. See *Telegram* in `modules/ndopify-server/CLAUDE.md`.
+- `TELEGRAM_BOT_USERNAME` for the bot's public username (`ndopify.telegram.username`, e.g. `ndopify_bot`), with no
+  default: it builds the `https://t.me/<bot>` links of the Telegram connection e-mail and of Partner Central's
+  `/telegram` page.
 
 No RabbitMQ or messaging broker is wired up in `ndopify-server` today — don't assume one exists. MTN Mobile Money
 credentials (`ndopify.mobile-money.mtn.*` in `application.yml`) default to dummy sandbox placeholders and don't need

@@ -117,7 +117,14 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   a welcome e-mail on registration when the tenant has a `partnerCentralUrl`, asynchronously (see *Asynchronous
   e-mails* below). `joinedAt` is set on the agent's first VERIFIED case by `AgentKycEventListener`, a
   synchronous `@EventListener` on `KycCaseCompletedEvent` (same transaction as the KYC), so the party domain never
-  depends on the agent one. Tenant-scoped.
+  depends on the agent one. **Telegram**: `AgentTelegramEntity` (`T_AGENT_TELEGRAM`) pairs an agent with its chat; a
+  global row like `T_USER` (no `@TenantId`), since the bot's webhook has no tenant. `POST /v1/agents/me/telegram/code`
+  stores a 6-digit code (`TelegramCodeGenerator`) valid `ndopify.agent.telegram.code-ttl-minutes` (15), replacing any
+  previous one, and `AgentTelegramCodeEventListener` e-mails it to the login address (`AgentTelegramCodeMailet`,
+  `mail/agent/telegram_code.mjml`); an agent whose chat is linked gets 409 `AGENT_TELEGRAM_ALREADY_CONNECTED`, and
+  `Agent.telegramConnected` reports the link. The bot's `/connect <code>` (`AgentTelegramCommand`) links the chat
+  through `AgentTelegramService.connect` (code found without a tenant, single use, one chat per account; a chat linked
+  to another account is refused). No reconnect nor disconnect. Tenant-scoped but for the link row.
 - **customer** — the people behind the mandates: tenants searching for a property and owners offering one
   (`CustomerEntity`, linked to a `Party`; `/v1/customers`). `CustomerService.findOrCreate` reuses the party and
   customer of an e-mail. `POST /v1/mandates/{id}/customer` (`MandateService.updateCustomer`) corrects the mandate's
@@ -479,8 +486,9 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
   their cached health indicators, wired by `config/platform/AIConfiguration`.
 - `platform/util` — small helpers (`PhoneNumberUtils`, `MimeUtils`, `UrlUtils`, `KycUtils`, HTTP utilities).
 - `platform/telegram` — the Telegram bot, wired by `config/platform/TelegramConfiguration`: `TelegramClient` (a thin
-  Bot API client over `platform/util/http/Http`), `TelegramUpdateHandler` (answers every `message` with `OK`, ignores
-  every other update type), two transports (`TelegramPollingTransport` locally: long polling on a virtual thread,
+  Bot API client over `platform/util/http/Http`), `TelegramUpdateHandler` (gives a `message` the reply of the first
+  `TelegramCommand` bean that recognizes it — the agent domain's `/connect` — else `OK`, and ignores every other
+  update type), two transports (`TelegramPollingTransport` locally: long polling on a virtual thread,
   clearing the webhook first; `TelegramWebhookTransport` in TEST/PROD: registers
   `${SERVER_URL}/telegram/webhook` at startup) and `TelegramHealthIndicator` (cached `getMe`, health id `telegram` in
   the default group). The webhook is public (`PublicEndpoints.GLOBAL`), protected only by the

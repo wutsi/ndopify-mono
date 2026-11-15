@@ -111,6 +111,7 @@ jobs:
                     JWT_SECRET: ${{secrets.JWT_SECRET}}
                     SERVER_URL: ${{secrets.SERVER_URL}}
                     TELEGRAM_TOKEN: ${{secrets.TELEGRAM_TOKEN}}
+                    TELEGRAM_BOT_USERNAME: ${{secrets.TELEGRAM_BOT_USERNAME}}
                     TELEGRAM_WEBHOOK_SECRET: ${{secrets.TELEGRAM_WEBHOOK_SECRET}}
                 run: |
                     curl https://cli-assets.heroku.com/install.sh | sh
@@ -132,5 +133,6 @@ jobs:
                     heroku config:set --app "$HEROKU_APP" JWT_SECRET="$JWT_SECRET"
                     heroku config:set --app "$HEROKU_APP" SERVER_URL="$SERVER_URL"
                     heroku config:set --app "$HEROKU_APP" TELEGRAM_TOKEN="$TELEGRAM_TOKEN"
+                    heroku config:set --app "$HEROKU_APP" TELEGRAM_BOT_USERNAME="$TELEGRAM_BOT_USERNAME"
                     heroku config:set --app "$HEROKU_APP" TELEGRAM_WEBHOOK_SECRET="$TELEGRAM_WEBHOOK_SECRET"
                     java -jar heroku-jvm-application-deployer-4.0.14.jar --app=${HEROKU_APP} ndopify-server.jar
