@@ -292,6 +292,17 @@ class ListingControllerTest {
     }
 
     @Test
+    fun `show - an own listing keeps its mandate whatever the hints`() {
+        val view = model(
+            mvc.perform(get("/listings/501").param("back", "/agent?id=30").param("match", "9009")).andReturn(),
+        )["listing"] as ListingView
+
+        assertEquals("/mandates/203", view.backUrl)
+        assertEquals("← Retour au mandat", view.backLabel)
+        verify(matchClient, never()).get(any())
+    }
+
+    @Test
     fun `show - an off-origin back is ignored`() {
         doReturn(COMPLETE.copy(status = ListingStatus.PUBLISHED, agentId = 999)).whenever(listingClient).get(501)
         doReturn(ProfileFixtures.AGENT.copy(id = 999)).whenever(agentClient).get(999)

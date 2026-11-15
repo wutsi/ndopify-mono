@@ -43,7 +43,10 @@ data class ListingView(
     val published: PublishedListingView? = null,
     /** The listing agent's standard card, read-only lens only; null when it can't be read. */
     val agent: AgentCardView? = null,
-    /** The mandate for its agent, the search's *Biens correspondants* for a co-broker. */
+    /**
+     * The return link: the mandate for its agent; for another agent, the search's *Biens correspondants* when a visible
+     * match was given, else a same-origin `?back=`, else `/` (the Espace agent).
+     */
     val backUrl: String = "/mandates/$mandateId",
     val backLabel: String = "← Retour au mandat",
 ) {

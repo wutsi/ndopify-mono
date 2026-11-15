@@ -83,9 +83,10 @@ class ListingController(
 
     /**
      * [id] is a String so that a hand-edited value is the locked view instead of failing the page. Any agent may open a
-     * listing that keeps its public page; the other statuses stay locked. [match] and [back] only choose the return
-     * link: a visible co-brokerage match of one of the agent's searches wins, else a same-origin [back], else the
-     * Espace agent — a stale or bogus hint is ignored, never a locked page.
+     * listing that keeps its public page; the other statuses stay locked. On another agent's page, [match] and [back]
+     * only choose the return link: a visible co-brokerage match of one of the agent's searches wins, else a same-origin
+     * [back], else the Espace agent — a stale or bogus hint is ignored, never a locked page. The owner's page keeps its
+     * mandate, whatever the hints.
      */
     @GetMapping("/listings/{id}")
     fun show(
@@ -106,7 +107,8 @@ class ListingController(
         }
         val readOnly = result is PublishedListingAccess.ReadOnly
         val match = (result as? PublishedListingAccess.ReadOnly)?.match
-        val backPath = AgentProfileRules.back(back)
+        // The owner's return link stays its mandate: only another agent's page is opened from a back path.
+        val backPath = AgentProfileRules.back(back).takeIf { readOnly }
         val images = lookup("images of listing ${listing.id}") { listingClient.images(listing.id) }
         val stats = if (!readOnly && listing.status == ListingStatus.PUBLISHED) {
             lookup("stats of listing ${listing.id}") { listingClient.stats(listOf(listing.id)) }?.get(listing.id)

@@ -3728,7 +3728,8 @@
         // Another agent's listing belongs to another agent's mandate: never link to it. ?match= (a co-brokerage
         // match) returns to the search it came from; a ?back= (the profile's card) returns there; else the Espace agent.
         var back = params.get("back");
-        var sameOrigin = back && back.indexOf("://") < 0 && back.indexOf("//") !== 0 && back.charAt(0) !== "\\" ? back : null;
+        // A same-origin path only: no scheme (`:`), no protocol-relative host, no backslash (the server's rule).
+        var sameOrigin = back && back.indexOf(":") < 0 && back.indexOf("//") !== 0 && back.charAt(0) !== "\\" ? back : null;
         var mandateLink = sameOrigin
             ? sameOrigin
             : readOnly
