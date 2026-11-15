@@ -973,3 +973,106 @@ h1.mandate-title .mandate-title__icon .icon {
     font-size: var(--step-hint);
     font-weight: 400;
 }
+
+/* ---------- Agent card: the standard co-broker footer of a card ---------- */
+/*
+ * One footer for every card that names another agent (the visit card, the visit inside a proposal or match, the
+ * proposal and match cards, the visit page): a photo or its initials on the left, the hyperlinked name in the
+ * middle, WhatsApp on the right, under a grey rule. No prefix ("Avec", "Publié par"): the card says what it is.
+ */
+.agent-card {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border);
+    font-size: var(--step-hint);
+}
+
+.agent-card__avatar {
+    display: grid;
+    width: 2.25rem;
+    height: 2.25rem;
+    place-items: center;
+    overflow: hidden;
+    border-radius: 50%;
+    background: var(--color-surface-alt);
+    color: var(--color-info-fg);
+    font: 600 var(--step-hint) / 1 var(--font-body);
+}
+
+.agent-card__avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.agent-card__avatar .icon {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+.agent-card__name {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+    min-height: var(--target);
+    overflow-wrap: anywhere;
+    color: inherit;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.agent-card__name .icon {
+    flex: none;
+    width: 0.85em;
+    height: 0.85em;
+    color: var(--color-info-fg);
+}
+
+.agent-card__name[href]:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
+.agent-card__whatsapp {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    min-height: var(--target);
+    color: var(--color-success-fg);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.agent-card__whatsapp:hover {
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
+.agent-card__whatsapp .icon {
+    flex: none;
+}
+
+.agent-card__name:focus-visible,
+.agent-card__whatsapp:focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+}
+
+/* The listing's own agent card (listing.html): its box, without the rule it would carry as a footer. */
+.agent-card--standalone {
+    margin-top: 0;
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+@media (min-width: 640px) {
+    .agent-card--standalone {
+        padding: var(--space-4);
+    }
+}
