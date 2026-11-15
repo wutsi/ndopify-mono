@@ -73,7 +73,7 @@ class VisitCardsTest {
 
         val card = of(listOf(visit)).requested.single()
 
-        assertEquals("119 h", card.expiresIn)
+        assertEquals("4 j", card.expiresIn)
     }
 
     @Test

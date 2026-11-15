@@ -157,7 +157,7 @@ class VisitTemplateTest {
         assertNotNull(panel.selectFirst("[data-map-link]"))
         assertNotNull(panel.selectFirst("form[data-cancel-form]"))
         assertNull(panel.selectFirst("form[data-checkin-form]"))
-        assertTrue(panel.text().contains("sam. 7 novembre 2026 à 09:30"))
+        assertEquals("sam. 7 novembre 2026 à 10:30", page.selectFirst(".visit-when--lead")?.text())
 
         val close = panel.selectFirst("[data-visit-close]")!!
         assertEquals("/visits/7001?close=cancel#close-title-cancel",
@@ -408,23 +408,63 @@ class VisitTemplateTest {
     }
 
     @Test
-    fun `a co-brokerage visit renders the listing agent's card`() {
+    fun `header names the client and the date`() {
+        val page = render(requested())
+
+        val lead = page.selectFirst(".visit-when--lead")!!
+        assertEquals("sam. 7 novembre 2026 à 10:30", lead.text())
+        val contacts = page.select(".visit-contact__person")
+        assertEquals(1, contacts.size)
+        assertEquals("Client", contacts[0].selectFirst(".visit-contact__role")?.text())
+        assertEquals("Sandrine Eboa", contacts[0].selectFirst(".visit-contact__name")?.text())
+        assertEquals("tel:+237699887766", contacts[0].selectFirst("[data-phone-link]")?.attr("href"))
+        assertEquals(
+            "https://wa.me/237699887766",
+            contacts[0].selectFirst(".visit-contact__whatsapp")?.attr("href"),
+        )
+    }
+
+    @Test
+    fun `header names both people on a co-brokerage visit`() {
         doReturn(LISTING.copy(agentId = 30)).whenever(listingClient).get(3012)
         doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(30L)
 
         val page = render(get("/visits/7001"))
-        val section = page.selectFirst("[data-visit-agent]")!!
-        val card = section.selectFirst(".agent-card--standalone")!!
+        val contacts = page.select(".visit-contact__person")
 
-        assertEquals("Clarisse Mbarga", card.selectFirst(".agent-card__name")?.text())
-        assertEquals("/agent?id=30&back=/visits/7001", card.selectFirst("a.agent-card__name")?.attr("href"))
-        assertEquals("https://wa.me/237699000002", card.selectFirst("a.agent-card__whatsapp")?.attr("href"))
-        assertFalse(card.text().contains("Visite organisée avec"))
-        assertFalse(card.text().contains("237699000002")) // a link, never the number
+        assertEquals(2, contacts.size)
+        assertEquals("Client", contacts[0].selectFirst(".visit-contact__role")?.text())
+        assertEquals("Agent du bien", contacts[1].selectFirst(".visit-contact__role")?.text())
+        assertEquals("Clarisse Mbarga", contacts[1].selectFirst(".visit-contact__name")?.text())
+        assertEquals(
+            "/agent?id=30&back=/visits/7001",
+            contacts[1].selectFirst(".visit-contact__name a")?.attr("href"),
+        )
+        assertEquals("tel:+237699000002", contacts[1].selectFirst("[data-phone-link]")?.attr("href"))
+        assertEquals(
+            "https://wa.me/237699000002",
+            contacts[1].selectFirst(".visit-contact__whatsapp")?.attr("href"),
+        )
+        assertEquals("+237 6 99 00 00 02", contacts[1].selectFirst(".visit-contact__phone a")?.text())
+        assertNull(page.selectFirst("[data-visit-agent]"))
+        assertFalse(page.text().contains("Voir sa fiche"))
     }
 
     @Test
-    fun `an own-inventory visit has no listing agent card`() {
-        assertNull(render(get("/visits/7001")).selectFirst("[data-visit-agent]"))
+    fun `own-inventory visit has no agent contact`() {
+        assertEquals(1, render(get("/visits/7001")).select(".visit-contact__person").size)
+    }
+
+    @Test
+    fun `a moved slot is stated in the date band`() {
+        doReturn(confirmed().copy(scheduledAt = date("2026-11-07T10:00:00Z")))
+            .whenever(visitClient).get(7001)
+
+        val page = render(get("/visits/7001"))
+
+        assertTrue(
+            page.selectFirst(".visit-when__changed")!!.text()
+                .startsWith("Créneau modifié : la demande portait sur le sam. 7 novembre 2026 à 10:30."),
+        )
     }
 }
