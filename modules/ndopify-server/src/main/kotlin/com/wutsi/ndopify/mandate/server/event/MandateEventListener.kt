@@ -36,9 +36,9 @@ class MandateEventListener(
     }
 
     /**
-     * E-mails the agent that its mandate is approved, once the signature is committed, so no e-mail goes out for a
-     * rolled-back signature, and the signer doesn't wait for SMTP. A failure is only logged — the mandate is already
-     * approved.
+     * Tells the agent that its mandate is approved, once the signature is committed, so nothing goes out for a
+     * rolled-back signature, and the signer doesn't wait for Telegram nor SMTP. A failure is only logged — the
+     * mandate is already approved.
      */
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -51,8 +51,8 @@ class MandateEventListener(
             logger.add("tenant_id", event.tenantId)
             logger.add("mandate_id", event.mandateId)
 
-            val sent = service.sendApprovedEmail(event.mandateId)
-            logger.add("email_sent", sent)
+            val sent = service.sendApprovedNotification(event.mandateId)
+            logger.add("notification_sent", sent)
             logger.add("success", true)
         } catch (ex: Exception) {
             logger.add("success", false)
