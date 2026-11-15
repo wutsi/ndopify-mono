@@ -24,8 +24,9 @@
     Visit page (source doc): one visit of a client of the agent, GET /visits/{id} (GET /v1/visits/{id} as the
     mandate's agent: never the client's code). Used on a phone, at the property: one panel per state, one main button,
     full width. The rules are the Design section of docs/superpowers/plans/2026-11-02-visit-management.md.
-    The header: the client (name, number calling, WhatsApp), the listing (title · neighbourhood linking to its page,
-    number, rent), the mandate (its matches) and the status tag. Dates are the tenant's dateFormat with the year,
+    The header: the status tag, then the date once (the page's key fact), then "Qui contacter" — each number named
+    with its owner's role, the client and, in co-brokerage, the listing's agent — then the listing (title ·
+    neighbourhood linking to its page, number, rent). Dates are the tenant's dateFormat with the year,
     "sam. 7 novembre 2026 à 10h30". Visits are free: no fee, no payment. Two types (VisitType), the client's
     choice, shown in the header (and on the home cards and mandate.html's match line): ON_SITE ("Sur place"), and
     VIDEO ("Visite vidéo"): at the time set, the agent, at the property, calls the client by WhatsApp video (the
@@ -42,16 +43,19 @@
         slot, the request expires.
       - CONFIRMED ("Confirmée"), before the check-in window: the slot, the address and its map; the client gives the
         agent a 4-digit code on the day: they start the visit (a video one: "À l'heure prévue, appelez le client en
-        vidéo sur WhatsApp depuis le bien."). "Annuler la visite": the client is told by e-mail.
-      - CONFIRMED in the check-in window ("À démarrer", scheduledAt − 1 h → + 4 h): a video one first has "Appeler
-        {client} sur WhatsApp" (wa.me, then the agent starts the video call) and "Au début de l'appel, demandez son
-        code au client."; then, for both, "Démarrer la visite" with the
-        client's code (one numeric field) and the position, taken at once (navigator.geolocation, high accuracy; over
-        50 m asks to take it again outside; never required: without it, or without JS, the hidden inputs stay empty
-        and the visit still starts; its distance to the listing is recorded, over 300 m flagged for review). A wrong
-        code: "Code incorrect. Il vous reste N essais."; after 5, the check-in is locked for good. From + 15 min:
-        "Le client est absent ou refuse de donner le code" (#no-show: Client absent / Code refusé; the client's
-        absence is recorded, with the agent's position). "Annuler la visite" stays (the client is told by e-mail).
+        vidéo sur WhatsApp depuis le bien."). "Annuler la visite…" is a quiet text link: the client is told by
+        e-mail.
+      - CONFIRMED in the check-in window ("À démarrer", scheduledAt − 1 h → + 4 h): a video one first has "Ouvrir
+        WhatsApp" (wa.me, then the three call steps, including asking for the code) — the header gives only the
+        number then; then, for both, "Démarrer la visite" with the client's code (one numeric field, no prefilled
+        placeholder, the 5-attempt limit stated up front) and the position, taken at once (navigator.geolocation,
+        high accuracy; over 50 m asks to take it again outside; never required: without it, or without JS, the
+        hidden inputs stay empty and the visit still starts; its distance to the listing is recorded, over 300 m
+        flagged for review). A wrong code: "Code incorrect. Il vous reste N essais."; after 5, the check-in is
+        locked for good, with "Contacter le support Ndopify". From + 15 min, one quiet "Un problème avec cette
+        visite ?" trigger opens "Le client est absent ou ne répond pas" or "Je ne peux pas assurer cette visite",
+        each with its consequence before the form (#no-show: Client absent / Code refusé; the client's absence is
+        recorded, with the agent's position).
       - CHECKED_IN ("En cours"): since when, how far the agent was from the listing (over 300 m: a warning, the
         visit is reviewed, not blocked). "Terminer la visite": the agent's report (required, 2 000 characters,
         private: never shown to the client), the position; "Terminer" only 10 min after the start (aria-disabled
@@ -116,13 +120,40 @@
                         <a href="mandate.html?id=204#matches-title" data-mandate-link>Mandat n° <span data-v="mandateId">204</span></a></p>
                 </div>
 
-                <!-- Who and what: the client to call, the listing to show. -->
+                <!-- The key fact of the visit: when. The status tag above says what state it is in. -->
+                <p class="visit-when visit-when--lead" hidden data-visit-lead>
+                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+                    <span>
+                        <span data-v="leadWhen"></span>
+                        <span class="visit-when__changed" hidden data-slot-changed></span>
+                    </span>
+                </p>
+
+                <!-- Who to contact, and in which role: the number's owner is always named. -->
                 <div class="visit-header">
-                    <div class="contact-card__line contact-card__phone">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>
-                        <a href="tel:+237699887766" data-phone-link><span class="visually-hidden">Appeler le client au </span><span data-v="phone">+237 6 99 88 77 66</span></a>
-                        <a class="btn btn--primary btn--compact" href="https://wa.me/237699887766" target="_blank" rel="noopener" data-whatsapp-link><svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>WhatsApp</a>
-                    </div>
+                    <section class="visit-contact" aria-labelledby="visit-contact-title">
+                        <h2 class="visit-contact__title" id="visit-contact-title">Qui contacter</h2>
+                        <ul class="visit-contact__list">
+                            <li class="visit-contact__person">
+                                <p class="visit-contact__role">Client</p>
+                                <p class="visit-contact__name" data-v="clientName">Sandrine Eboa</p>
+                                <p class="visit-contact__phone">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>
+                                    <a href="tel:+237699887766" data-phone-link><span class="visually-hidden" data-call-client-label>Appeler le client au </span><span data-v="phone">+237 6 99 88 77 66</span></a>
+                                    <a class="btn btn--secondary btn--compact visit-contact__whatsapp" href="https://wa.me/237699887766" target="_blank" rel="noopener" data-whatsapp-link data-client-whatsapp-header><svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg><span class="visually-hidden">Écrire à <span data-v="clientName">Sandrine Eboa</span> sur </span>WhatsApp</a>
+                                </p>
+                            </li>
+                            <li class="visit-contact__person" hidden data-visit-agent-person>
+                                <p class="visit-contact__role">Agent du bien</p>
+                                <p class="visit-contact__name"><a href="#" data-visit-agent-profile data-visit-agent-name>Clarisse Mbarga</a></p>
+                                <p class="visit-contact__phone">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>
+                                    <a href="#" data-visit-agent-phone><span class="visually-hidden" data-agent-call-label>Appeler l'agent du bien au </span><span data-visit-agent-phone-text></span></a>
+                                    <a class="btn btn--secondary btn--compact visit-contact__whatsapp" href="#" target="_blank" rel="noopener" data-visit-agent-whatsapp><svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg><span class="visually-hidden">Écrire à <span data-visit-agent-name>Clarisse Mbarga</span> sur </span>WhatsApp</a>
+                                </p>
+                            </li>
+                        </ul>
+                    </section>
                     <div class="visit-listing">
                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M3 10.5 12 3l9 7.5V21H3z"/><path d="M9 21v-6h6v6"/></svg>
                         <div>
@@ -137,26 +168,6 @@
                     </p>
                 </div>
 
-                <!-- Co-brokerage: the listing's agent, who hosts the visit; never their customer. -->
-                <section class="home-section" aria-labelledby="visit-agent-title" hidden data-visit-agent-section>
-                    <h2 id="visit-agent-title" class="visually-hidden">L'agent qui organise la visite</h2>
-                    <div class="agent-card agent-card--standalone" data-agent-card hidden>
-                        <span class="agent-card__avatar" aria-hidden="true">
-                            <img data-agent-photo hidden alt="">
-                            <span data-agent-initials></span>
-                            <svg class="icon" data-agent-generic viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" focusable="false" hidden><circle cx="10" cy="6.5" r="3.25"/><path d="M4 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" stroke-linecap="round"/></svg>
-                        </span>
-                        <a class="agent-card__name" data-agent-link hidden>
-                            <span data-agent-name></span>
-                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
-                        </a>
-                        <span class="agent-card__name" data-agent-fallback hidden>un autre agent</span>
-                        <a class="agent-card__whatsapp" data-agent-whatsapp target="_blank" rel="noopener" hidden>
-                            <svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>
-                            WhatsApp
-                        </a>
-                    </div>
-                </section>
 
                 <!-- Outcome of the last action. -->
                 <div class="alert alert--success" role="status" tabindex="-1" hidden data-visit-flash>
@@ -167,13 +178,7 @@
                 <!-- ===== REQUESTED: the client's slot, to confirm or move, or the request to refuse ===== -->
                 <section class="visit-panel" aria-labelledby="requested-title" data-panel="REQUESTED">
                     <h2 id="requested-title" class="visit-panel__title">Demande de visite</h2>
-                    <div>
-                        <p><span data-v="firstName">Sandrine</span> souhaite visiter le bien <strong data-v="requestedType">sur place</strong>, le</p>
-                        <p class="visit-when">
-                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-                            <span data-v="requestedAt">sam. 7 novembre 2026 à 10h30</span>
-                        </p>
-                    </div>
+                    <p><span data-v="firstName">Sandrine</span> souhaite visiter le bien <strong data-v="requestedType">sur place</strong>.</p>
                     <figure class="visit-note" data-note>
                         <blockquote><p data-v="note">Je viendrai avec mon mari. Le matin nous arrange, mais nous pouvons nous adapter.</p></blockquote>
                         <figcaption>Message de <span data-v="firstName">Sandrine</span></figcaption>
@@ -186,8 +191,8 @@
 
                     <form class="form visit-form" method="post" novalidate data-schedule-form>
                         <h3 class="visit-form__title">Confirmer la visite</h3>
-                        <p class="field__optional">Gardez le créneau et le type demandés, ou changez-les avec
-                            <span data-v="firstName">Sandrine</span>.</p>
+                        <p class="field__optional">Vous pouvez décaler le créneau ou changer le type&nbsp;: le client
+                            sera prévenu par e-mail.</p>
                         <div class="visit-slot">
                             <div class="field">
                                 <label class="field__label" for="visit-date">Jour</label>
@@ -259,10 +264,10 @@
                     </form>
 
                     <div class="visit-close" data-visit-close>
-                        <div class="mandate-panel__actions visit-close__buttons" data-close-buttons>
-                            <button type="button" class="btn btn--danger" aria-expanded="false"
-                                    aria-controls="refuse-form" data-close-open="refuse">Refuser la demande</button>
-                        </div>
+                        <p class="visit-close__trigger" data-close-buttons>
+                            <button type="button" class="link-button" aria-expanded="false"
+                                    aria-controls="refuse-form" data-close-open="refuse">Refuser la demande…</button>
+                        </p>
                         <form id="refuse-form" class="form visit-close__form" method="post" novalidate hidden
                               data-close-form="refuse" data-cancel-form>
                             <h2 class="visit-form__title">Refuser la demande</h2>
@@ -282,11 +287,7 @@
 
                 <!-- ===== CONFIRMED, before the check-in window ===== -->
                 <section class="visit-panel" aria-labelledby="confirmed-title" hidden data-panel="CONFIRMED">
-                    <h2 id="confirmed-title" class="visit-panel__title">Visite confirmée</h2>
-                    <p class="visit-when">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-                        <span data-v="scheduledAt"></span>
-                    </p>
+                    <h2 id="confirmed-title" class="visually-hidden">Visite confirmée</h2>
                     <div class="visit-address">
                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
                         <div>
@@ -302,11 +303,15 @@
                             le bien.</strong> Au début de l'appel, demandez-lui son code à 4 chiffres&nbsp;: c'est lui qui
                             démarre la visite. Vous le saisirez ici, à partir du <span data-v="windowFrom"></span>.</p>
                     </div>
+                    <p class="visit-later">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                        <span>Vous n'avez rien à faire d'ici là.</span>
+                    </p>
                     <div class="visit-close" data-visit-close>
-                        <div class="mandate-panel__actions visit-close__buttons" data-close-buttons>
-                            <button type="button" class="btn btn--danger" aria-expanded="false"
-                                    aria-controls="confirmed-cancel-form" data-close-open="cancel">Annuler la visite</button>
-                        </div>
+                        <p class="visit-close__trigger" data-close-buttons>
+                            <button type="button" class="link-button" aria-expanded="false"
+                                    aria-controls="confirmed-cancel-form" data-close-open="cancel">Annuler la visite…</button>
+                        </p>
                         <form id="confirmed-cancel-form" class="form visit-close__form" method="post" novalidate hidden
                               data-close-form="cancel" data-cancel-form>
                             <h2 class="visit-form__title">Annuler la visite</h2>
@@ -326,10 +331,6 @@
                 <!-- ===== CONFIRMED, in the check-in window: start it with the client's code, or the no-show ===== -->
                 <section class="visit-panel" aria-labelledby="window-title" hidden data-panel="WINDOW">
                     <h2 id="window-title" class="visit-panel__title">Démarrer la visite</h2>
-                    <p class="visit-when">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
-                        <span data-v="scheduledWhen"></span>
-                    </p>
                     <div class="visit-address">
                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
                         <div>
@@ -341,9 +342,12 @@
                     <!-- A video visit: the call first, from the property, to the client's WhatsApp (the mandate's number). -->
                     <div class="visit-call" hidden data-for-type="VIDEO">
                         <a class="btn btn--primary visit-call__button" href="https://wa.me/237699887766" target="_blank"
-                           rel="noopener" data-whatsapp-link><svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg><span>Appeler <span data-v="firstName"></span> sur WhatsApp</span></a>
-                        <p class="field__optional">puis lancez l'appel vidéo, depuis le bien.</p>
-                        <p><strong>Au début de l'appel, demandez son code au client.</strong></p>
+                           rel="noopener" data-whatsapp-link><svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg><span>Ouvrir WhatsApp<span class="visually-hidden"> avec <span data-v="firstName"></span></span></span></a>
+                        <ol class="visit-call__steps">
+                            <li>Ouvrez la discussion WhatsApp ci-dessus.</li>
+                            <li>Touchez l'icône vidéo en haut de la discussion.</li>
+                            <li>Demandez-lui son code et montrez-lui le bien.</li>
+                        </ol>
                     </div>
 
                     <form class="form visit-form" method="post" novalidate data-checkin-form>
@@ -354,9 +358,11 @@
                                 page de visite.</span><span hidden data-for-type="VIDEO"><span data-v="firstName"></span>
                                 vous le lit pendant l'appel&nbsp;: il est dans son e-mail de confirmation et sur sa page de
                                 visite.</span></p>
+                            <p class="field__optional" id="code-attempts">5 essais maximum&nbsp;: au-delà, le code est
+                                bloqué et la visite ne peut plus démarrer.</p>
                             <input class="input input--code visit-code" id="visit-code" name="code" type="text"
-                                   inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="one-time-code" placeholder="0000" required
-                                   aria-describedby="code-hint code-error">
+                                   inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="one-time-code" required
+                                   aria-describedby="code-hint code-attempts code-error">
                             <p class="field__error" id="code-error" hidden><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text></span></p>
                         </div>
                         <input type="hidden" name="latitude" data-position-input>
@@ -378,10 +384,11 @@
                     <div class="alert alert--error" hidden data-code-locked>
                         <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                         <div>
-                            <p class="alert__title">Trop d'essais&nbsp;: contactez le support ou déclarez le client absent.</p>
+                            <p class="alert__title">Code bloqué après 5 essais.</p>
                             <p>Le code ne peut plus être saisi pour cette visite.
-                                <a href="#no-show" data-locked-noshow>Déclarer le client absent</a><span data-locked-later>Vous
-                                pourrez déclarer le client absent à partir de <span data-v="noShowFrom"></span>.</span></p>
+                                <a href="mailto:contact@ndopify.com">Contacter le support Ndopify</a> pour la débloquer.</p>
+                            <p>Si le client est absent, <a href="#no-show" data-locked-noshow>signalez-le</a><span
+                                data-locked-later>&nbsp;à partir de <span data-v="noShowFrom"></span>.</span></p>
                         </div>
                     </div>
 
@@ -389,12 +396,22 @@
                         hidden data-for-type="VIDEO">Le client ne répond pas&nbsp;?</span> À partir de
                         <strong data-v="noShowFrom"></strong>, 15 min après l'heure prévue, vous pourrez le déclarer absent.</p>
                     <div class="visit-close" data-visit-close>
-                        <div class="mandate-panel__actions visit-close__buttons" data-close-buttons>
-                            <button id="no-show" type="button" class="btn btn--danger" aria-expanded="false"
-                                    aria-controls="noshow-form" hidden data-close-open="noshow"><span data-for-type="ON_SITE">Le client est absent ou refuse de donner le code</span><span
-                                hidden data-for-type="VIDEO">Le client ne répond pas ou refuse de donner le code</span></button>
-                            <button type="button" class="btn btn--danger" aria-expanded="false"
-                                    aria-controls="window-cancel-form" data-close-open="cancel">Vous ne pouvez pas venir&nbsp;?</button>
+                        <div class="visit-problem" data-close-buttons>
+                            <button type="button" class="btn btn--outline visit-problem__toggle" aria-expanded="false"
+                                    aria-controls="visit-problem-options" data-problem-toggle>Un problème avec cette visite&nbsp;?</button>
+                            <div class="visit-problem__options" id="visit-problem-options" hidden data-problem-options>
+                                <div class="visit-problem__choice" hidden data-problem-noshow>
+                                    <button id="no-show" type="button" class="visit-problem__option" aria-expanded="false"
+                                            aria-controls="noshow-form" hidden data-close-open="noshow"><span data-for-type="ON_SITE">Le client est absent ou ne répond pas</span><span
+                                        hidden data-for-type="VIDEO">Le client ne répond pas</span></button>
+                                    <p class="visit-problem__consequence">L'absence ou le refus du code sera enregistré avec votre position.</p>
+                                </div>
+                                <div class="visit-problem__choice">
+                                    <button type="button" class="visit-problem__option" aria-expanded="false"
+                                            aria-controls="window-cancel-form" data-close-open="cancel">Je ne peux pas assurer cette visite</button>
+                                    <p class="visit-problem__consequence">La visite sera annulée&nbsp;; le client est prévenu par e-mail.</p>
+                                </div>
+                            </div>
                         </div>
 
                         <form id="noshow-form" class="form visit-close__form" method="post" novalidate hidden
@@ -411,7 +428,7 @@
                             <div class="alert alert--warning">
                                 <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
                                 <div>
-                                    <p class="alert__title">L'absence du client est enregistrée, votre position aussi</p>
+                                    <p class="alert__title">L'absence du client sera enregistrée avec votre position</p>
                                     <p>Faites la déclaration devant le bien.</p>
                                 </div>
                             </div>

@@ -116,6 +116,102 @@
     padding-bottom: var(--space-4);
 }
 
+/* The date: the page's key fact, stated once under the status, never repeated in the panel. */
+.visit-when--lead {
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-alt);
+}
+
+.visit-when__changed {
+    display: block;
+    margin-top: var(--space-1);
+    font: 400 var(--step-hint) / 1.4 var(--font-body);
+    color: var(--color-info-fg);
+}
+
+/* Who to contact: every number is named with its owner's role, so no number is anonymous. */
+.visit-contact {
+    padding: var(--space-3);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+@media (min-width: 480px) {
+    .visit-contact {
+        padding: var(--space-4);
+    }
+}
+
+.visit-contact__title {
+    margin-bottom: var(--space-3);
+    font: 600 var(--step-body) / 1.4 var(--font-body);
+    color: var(--color-info-fg);
+}
+
+.visit-contact__list {
+    display: grid;
+    gap: var(--space-4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.visit-contact__person + .visit-contact__person {
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border);
+}
+
+.visit-contact__role {
+    font-size: var(--step-hint);
+    color: var(--color-info-fg);
+}
+
+.visit-contact__name {
+    margin-top: var(--space-1);
+    font-weight: 600;
+}
+
+.visit-contact__name a {
+    color: inherit;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+}
+
+.visit-contact__name a:hover {
+    text-decoration-thickness: 2px;
+}
+
+.visit-contact__phone {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: var(--space-2);
+    row-gap: var(--space-1);
+    overflow-wrap: anywhere;
+}
+
+.visit-contact__whatsapp {
+    flex: none;
+}
+
+.visit-contact__phone .icon {
+    flex: none;
+}
+
+.visit-contact__phone a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    color: inherit;
+    font-weight: 600;
+}
+
+/* Closing a visit: a rare, final act, so it reads as a link, not as the page's main button. */
+.visit-close__trigger {
+    margin: 0;
+}
+
 .visit-listing {
     display: flex;
     align-items: flex-start;
@@ -391,15 +487,80 @@
 }
 
 .visit-call__button {
+    display: flex;
     width: 100%;
+    margin-inline: auto;
+    margin-bottom: var(--space-3);
 }
 
 .visit-call__button .icon {
     flex: none;
 }
 
+.visit-call__steps {
+    display: grid;
+    gap: var(--space-1);
+    margin: 0;
+    padding-left: var(--space-4);
+    font-size: var(--step-hint);
+}
+
 @media (min-width: 640px) {
     .visit-call__button {
+        width: fit-content;
+    }
+}
+
+/* The rare alternatives to starting a visit: one quiet trigger, then each outcome spelled out. */
+.visit-problem {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+}
+
+.visit-problem__toggle {
+    width: 100%;
+}
+
+.visit-problem__options {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.visit-problem__choice {
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+}
+
+.visit-problem__option {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-fg);
+    font: 600 var(--step-body) / 1.35 var(--font-body);
+    text-align: left;
+    text-decoration: underline;
+    text-underline-offset: 0.2em;
+    cursor: pointer;
+}
+
+.visit-problem__option:hover {
+    text-decoration-thickness: 2px;
+}
+
+.visit-problem__consequence {
+    margin-top: var(--space-1);
+    font-size: var(--step-hint);
+}
+
+@media (min-width: 640px) {
+    .visit-problem__toggle {
         width: auto;
     }
 }

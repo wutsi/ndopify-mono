@@ -74,6 +74,7 @@
 
     // "42 h", "45 min"
     function formatLeft(ms) {
+        if (ms >= 2 * DAY) return Math.floor(ms / DAY) + " j";
         if (ms >= HOUR) return Math.floor(ms / HOUR) + " h";
         return Math.max(1, Math.ceil(ms / MIN)) + " min";
     }
@@ -778,6 +779,15 @@
         $all("[data-visit-close]").forEach(function (box) {
             var buttons = $("[data-close-buttons]", box);
             var opener = null;
+            var problemToggle = $("[data-problem-toggle]", box);
+            var problemOptions = $("[data-problem-options]", box);
+            if (problemToggle && problemOptions) {
+                problemToggle.addEventListener("click", function () {
+                    var open = problemToggle.getAttribute("aria-expanded") === "true";
+                    problemToggle.setAttribute("aria-expanded", open ? "false" : "true");
+                    problemOptions.hidden = open;
+                });
+            }
             $all("[data-close-open]", buttons).forEach(function (button) {
                 button.addEventListener("click", function () {
                     var form = $('[data-close-form="' + button.getAttribute("data-close-open") + '"]', box);
@@ -798,6 +808,14 @@
                     if (opener) {
                         opener.setAttribute("aria-expanded", "false");
                         opener.focus();
+                    }
+                    if (problemToggle && problemOptions) {
+                        problemToggle.setAttribute("aria-expanded", "false");
+                        problemOptions.hidden = true;
+                    }
+                    // The #no-show link opens the declaration; clear it so the 15 s tick does not reopen it.
+                    if (window.location.hash === "#no-show") {
+                        window.history.replaceState(null, "", window.location.pathname + window.location.search);
                     }
                     opener = null;
                 });
@@ -861,13 +879,56 @@
                 a.href = "https://www.openstreetmap.org/?mlat=" + v.listing.lat + "&mlon=" + v.listing.lng +
                     "#map=18/" + v.listing.lat + "/" + v.listing.lng;
             });
-            // Co-brokerage: the listing's agent, who hosts the visit; never their customer.
-            var agentSection = $("[data-visit-agent-section]");
-            if (agentSection) {
-                agentSection.hidden = !v.agent;
+            text("callClientLabel", "Appeler " + v.client.name + " au ");
+            // The page's key fact: when. Only while the visit is still to come; the tag above says what state it is in.
+            var when = panel === "REQUESTED" ? v.requestedAt
+                : (panel === "CONFIRMED" || panel === "WINDOW") ? v.scheduledAt : null;
+            $("[data-visit-lead]").hidden = !when;
+            if (when) {
+                // Today's visit reads "Aujourd'hui · 07h30"; a later one, its full date. Keep "à 14h00" together
+                // when the date wraps on a phone.
+                var label = panel === "WINDOW" ? formatWhen(when) : formatAt(when);
+                text("leadWhen", label.replace(/ (\d{2}h\d{2})$/, "\u00a0$1"));
+                var moved = panel !== "REQUESTED" && v.requestedAt &&
+                    Math.abs(v.scheduledAt - v.requestedAt) >= MIN;
+                var changed = $("[data-slot-changed]");
+                changed.hidden = !moved;
+                if (moved) {
+                    changed.textContent = "Créneau modifié : la demande portait sur le " +
+                        formatAt(v.requestedAt) + ". Le client a été prévenu par e-mail.";
+                }
+            }
+            // A video visit's panel owns the call: the header keeps only the number then.
+            var headerWhatsapp = $("[data-client-whatsapp-header]");
+            if (headerWhatsapp) headerWhatsapp.hidden = panel === "WINDOW" && v.video;
+            // Co-brokerage: the listing's agent, named in their role; never their customer.
+            var person = $("[data-visit-agent-person]");
+            if (person) {
+                person.hidden = !v.agent;
                 if (v.agent) {
-                    npc().fillAgentCard($("[data-agent-card]", agentSection), v.agent,
-                        "visit.html?id=" + encodeURIComponent(v.id));
+                    var agent = v.agent;
+                    var names = [agent.firstName, agent.lastName].filter(Boolean);
+                    var name = names.join(" ");
+                    var back = "visit.html?id=" + encodeURIComponent(v.id);
+                    var profile = "agent.html?id=" + encodeURIComponent(agent.id) +
+                        "&back=" + encodeURIComponent(back);
+                    $all("[data-visit-agent-profile]").forEach(function (a) {
+                        a.href = profile;
+                        a.setAttribute("aria-label", "Voir la fiche de " + name);
+                    });
+                    $all("[data-visit-agent-name]").forEach(function (el) {
+                        el.textContent = name;
+                    });
+                    var agentNumber = agent.whatsappNumber || "";
+                    $("[data-visit-agent-phone]").href = agentNumber ? "tel:" + agentNumber : "#";
+                    $("[data-agent-call-label]").textContent = agentNumber
+                        ? "Appeler " + name + " au " : "Agent du bien";
+                    $("[data-visit-agent-phone-text]").textContent =
+                        agent.whatsappDisplay || agentNumber;
+                    var whatsapp = agentNumber ? "https://wa.me/" + agentNumber.replace(/\D/g, "") : null;
+                    var agentWhatsapp = $("[data-visit-agent-whatsapp]");
+                    agentWhatsapp.hidden = !whatsapp;
+                    if (whatsapp) agentWhatsapp.href = whatsapp;
                 }
             }
             setTag($("[data-visit-tag]"), panel);
@@ -1128,6 +1189,7 @@
             if (panel === "WINDOW") {
                 var noShowAt = v.scheduledAt + NO_SHOW_FROM;
                 $("[data-noshow-later]").hidden = now >= noShowAt;
+                $("[data-problem-noshow]").hidden = now < noShowAt;
                 $("#no-show").hidden = now < noShowAt;
                 text("noShowFrom", formatTime(noShowAt));
                 var locked = (v.codeAttempts || 0) >= MAX_ATTEMPTS;
@@ -1155,7 +1217,6 @@
             });
 
             if (panel === "REQUESTED") {
-                text("requestedAt", formatAt(v.requestedAt));
                 text("expiresAt", formatAt(expiresAt(v)));
                 $("[data-note]").hidden = !v.note;
                 text("note", v.note || "");
@@ -1167,11 +1228,9 @@
                 syncTypeHint();
             }
             if (panel === "CONFIRMED") {
-                text("scheduledAt", formatAt(v.scheduledAt));
                 text("windowFrom", formatAt(v.scheduledAt + CHECK_IN_FROM));
             }
             if (panel === "WINDOW") {
-                text("scheduledWhen", formatWhen(v.scheduledAt));
                 var attempts = v.codeAttempts || 0;
                 N.setFieldError(codeInput, codeError, attempts > 0 && attempts < MAX_ATTEMPTS
                     ? attemptsLeftText(MAX_ATTEMPTS - attempts) : null);
