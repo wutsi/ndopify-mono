@@ -440,7 +440,13 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `HTTP_INVALID_PARAMETER`, never the agent-wide list; the payload is the same and never A's customer. `CoBrokerageVisitMailet` mails B on confirmation, the 24 h reminder,
   a cancellation after confirmation (only while the listing's mandate is still live: B is not re-mailed a cancellation
   B caused by ending the listing mandate) and a customer-caused no-show; never on
-  `REQUESTED`/`EXPIRED`/`COMPLETED`/agent no-show or an own-inventory visit. `MandateClosedEvent` now also reaches
+  `REQUESTED`/`EXPIRED`/`COMPLETED`/agent no-show or an own-inventory visit. **Request notification**:
+  `VisitRequestedNotifier` messages the agent over Telegram when its chat is linked (`VisitRequestedBotlet`, via
+  `AgentTelegramService.chatId`), e-mails it otherwise (`VisitRequestedMailet`, `mail/visit/requested.mjml`), and
+  falls back to the e-mail on a failed send (the failure is logged, without the token nor the URL). The message
+  carries the customer and its WhatsApp, the listing (or `Bien n° <id>` without a title), the requested date and time
+  in the tenant's `timeZone`, the requested type (`Sur place` / `Visite vidéo`) and the note, and a `Voir la visite`
+  button to `{partnerCentralUrl}/visits/{id}` (none without a `partnerCentralUrl`). `MandateClosedEvent` now also reaches
   `VisitMandateEventListener`, an async
   after-commit listener that cancels the mandate's `REQUESTED`/`CONFIRMED` visits (search side and listing side) as
   `SYSTEM` with no mandate reason; `CHECKED_IN` stays. A failed async cancellation never fails the closing:
@@ -465,9 +471,11 @@ executor thread has no request, so the listener sets `TenantContext` and a `Defa
 (threads are reused). The work runs in a `@Transactional` service method (`AgentService.sendWelcomeEmail`,
 `OtpService.sendEmail`, `KycService.sendStatusEmail`, `AssignmentService.sendOfferNotification` / `sendAssignedEmail`, `MandateService.sendApprovedEmail`,
 `ContractService.sendSignatureRequestEmails`, `ListingService.sendPublishedEmails`, `MatchProposalService.sendProposedEmail`,
-`VisitService.sendRequestedEmail` / `sendConfirmedEmails` / `sendCompletedEmail` / `sendCancelledEmail` / `sendNoShowEmails` /
+`VisitService.sendRequestedNotification` / `sendConfirmedEmails` / `sendCompletedEmail` / `sendCancelledEmail` / `sendNoShowEmails` /
 `sendExpiredEmails` / `sendReminderEmails`); the signed PDF (`ContractSignedEvent` → `SignedContractService.generate`,
-not an e-mail, not transactional) follows the same listener pattern. The service methods are
+not an e-mail, not transactional) follows the same listener pattern. The requested-visit entry is the one that doesn't
+always go by e-mail: `VisitRequestedNotifier` (see *visit*) messages a linked agent over Telegram, and e-mails the
+others or as the fallback. The service methods are
 entered *after* `TenantContext` is set since Hibernate resolves the tenant when the session opens. Failures are
 logged, never rethrown. Tests must wait for the mail (`smtp.waitForIncomingEmail`);
 `BaseEndpointIntegrationTest.tearDown` waits for the running async tasks, so a test's mail can't reach the next one.

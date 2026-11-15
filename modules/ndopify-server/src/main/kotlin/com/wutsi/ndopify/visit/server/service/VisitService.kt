@@ -49,7 +49,6 @@ import com.wutsi.ndopify.visit.server.mail.VisitConfirmedMailet
 import com.wutsi.ndopify.visit.server.mail.VisitExpiredMailet
 import com.wutsi.ndopify.visit.server.mail.VisitNoShowMailet
 import com.wutsi.ndopify.visit.server.mail.VisitReminderMailet
-import com.wutsi.ndopify.visit.server.mail.VisitRequestedMailet
 import jakarta.persistence.criteria.Predicate
 import org.slf4j.LoggerFactory
 import org.springframework.boot.context.properties.EnableConfigurationProperties
@@ -77,7 +76,7 @@ class VisitService(
     private val agentService: AgentService,
     private val listingService: ListingService,
     private val tenantService: TenantService,
-    private val requestedMailet: VisitRequestedMailet,
+    private val requestedNotifier: VisitRequestedNotifier,
     private val confirmedMailet: VisitConfirmedMailet,
     private val completedMailet: VisitCompletedMailet,
     private val noShowMailet: VisitNoShowMailet,
@@ -535,15 +534,18 @@ class VisitService(
         return dao.findAll(spec, OffsetLimitPageRequest(request.offset, request.limit, sort)).content
     }
 
-    /** E-mails the agent the request. Called by `VisitEventListener`; nothing when the visit is no longer REQUESTED. */
+    /**
+     * Notifies the agent of the request: Telegram when its chat is linked, the e-mail otherwise or as the fallback.
+     * Called by `VisitEventListener`; nothing when the visit is no longer REQUESTED.
+     */
     @Transactional
-    fun sendRequestedEmail(visitId: Long) {
+    fun sendRequestedNotification(visitId: Long) {
         val visit = dao.findById(visitId).orElse(null) ?: return
         if (visit.status != VisitStatus.REQUESTED) {
             return
         }
         logger.add("visit_id", visitId)
-        requestedMailet.send(
+        requestedNotifier.send(
             visit = visit,
             customer = customerService.findById(visit.customerId),
             agent = agentService.findById(visit.agentId),
