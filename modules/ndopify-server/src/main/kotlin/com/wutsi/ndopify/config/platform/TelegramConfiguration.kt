@@ -3,6 +3,7 @@ package com.wutsi.ndopify.config.platform
 import com.wutsi.ndopify.platform.telegram.TelegramClient
 import com.wutsi.ndopify.platform.telegram.TelegramPollingTransport
 import com.wutsi.ndopify.platform.telegram.TelegramUpdateHandler
+import com.wutsi.ndopify.platform.telegram.TelegramWebhookTransport
 import com.wutsi.ndopify.platform.util.http.Http
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.http.client.HttpClientSettings
@@ -22,6 +23,8 @@ class TelegramConfiguration(
     @param:Value("\${ndopify.telegram.transport}") private val transport: String,
     @param:Value("\${ndopify.telegram.polling.enabled:true}") private val pollingEnabled: Boolean,
     @param:Value("\${ndopify.telegram.polling.timeout-seconds:20}") private val pollingTimeoutSeconds: Int,
+    @param:Value("\${ndopify.telegram.webhook.url:}") private val webhookUrl: String,
+    @param:Value("\${ndopify.telegram.webhook.secret:}") private val webhookSecret: String,
     private val objectMapper: JsonMapper,
     private val httpClientSettings: HttpClientSettings,
 ) {
@@ -41,6 +44,10 @@ class TelegramConfiguration(
         pollingEnabled && transport == "polling",
         pollingTimeoutSeconds,
     )
+
+    @Bean
+    fun telegramWebhookTransport(client: TelegramClient): TelegramWebhookTransport =
+        TelegramWebhookTransport(client, transport, webhookUrl, webhookSecret)
 
     private fun telegramHttp() = Http(
         client = JdkHttpClientBuilder()
