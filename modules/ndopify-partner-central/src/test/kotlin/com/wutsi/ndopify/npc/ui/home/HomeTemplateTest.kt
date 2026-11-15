@@ -153,6 +153,25 @@ class HomeTemplateTest {
         Jsoup.parse(mvc.perform(request).andReturn().response.contentAsString)
 
     @Test
+    fun `the telegram banner links to the connect page`() {
+        val page = render(get("/"))
+
+        val banner = page.select("[data-telegram-banner]")
+        assertEquals(1, banner.size)
+        assertEquals("/telegram", banner.first()?.selectFirst("a")?.attr("href"))
+        assertEquals("Connecter Telegram", banner.first()?.selectFirst("a")?.text())
+    }
+
+    @Test
+    fun `a connected agent gets no telegram banner`() {
+        doReturn(AGENT.copy(telegramConnected = true)).whenever(currentAgent).get()
+
+        val page = render(get("/"))
+
+        assertNull(page.selectFirst("[data-telegram-banner]"))
+    }
+
+    @Test
     fun offer() {
         val page = render(get("/"))
 

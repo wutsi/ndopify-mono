@@ -41,6 +41,12 @@
     margin-bottom: var(--space-4);
 }
 
+/* The Telegram mark is a filled logo: at the shared 1.25rem it reads smaller than the line icons. */
+[data-telegram-banner] .icon {
+    width: 1.75rem;
+    height: 1.75rem;
+}
+
 .home-intro__title {
     font-size: var(--step-h1);
 }
