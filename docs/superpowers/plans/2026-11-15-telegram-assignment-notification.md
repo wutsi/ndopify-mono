@@ -4,7 +4,7 @@
 
 **Goal:** Offer a new mandate to its agent over Telegram, with `Accepter` / `Refuser` buttons that answer the offer from the chat, and no offer e-mail for a linked agent (falling back to it if Telegram fails).
 
-**Architecture:** `AssignmentService` calls an `AssignmentOfferNotifier` instead of the mailet: it picks the new `MandateOfferBotlet` when #135's global link has a chat id, the e-mail otherwise, and falls back to the e-mail on any Telegram failure. Telegram sends the taps as `callback_query` updates: the bot's update handler routes them to a `TelegramAssignmentCallbackHandler`, which reads the link's `tenant_id` and `agent_id` from the chat id and answers the assignment through agent-scoped `acceptForAgent` / `declineForAgent` entry points that need no JWT.
+**Architecture:** `AssignmentService` calls an `AssignmentOfferNotifier` instead of the mailet: it picks the new `MandateOfferBotlet` when #135's global link has a chat id, the e-mail otherwise, and falls back to the e-mail on any Telegram failure. Telegram sends the taps as `callback_query` updates: the bot's update handler routes them to a `TelegramAssignmentCallbackHandler`, which reads the link's `tenant_id` and `agent_id` from the chat id and answers the assignment through agent-scoped `acceptForAgent` / `declineForAgent` entry points that need no JWT. On accept, the same edit replaces the offer's buttons with a `Voir le mandat` URL button to the tenant's mandate page; no new message is sent.
 
 **Tech Stack:** Kotlin 2.3.10, JDK 25, Spring Boot 4.1.2, Jackson 3 (`tools.jackson`), JUnit 5 + `kotlin.test` + mockito-kotlin, MySQL for the server's integration tests.
 
@@ -32,6 +32,7 @@
 - An unlinked agent: the offer e-mail is sent as today and Telegram is never called (Task 5).
 - Malformed or unknown callback data, a callback without a message: no exception escapes the webhook (it answers 200), only a generic toast (Task 6).
 - Two taps in a row on one offer: exactly one transition, the second says the offer is no longer available (Task 3, Task 6).
+- Accepting from the chat replaces the offer's keyboard with a `Voir le mandat` URL button; declining, an expired offer, or a tenant without a `partnerCentralUrl` gets no button (Task 6, Task 7).
 
 ---
 
@@ -45,11 +46,11 @@
 **Interfaces:**
 - Consumes: #134's `TelegramClient(token, http)`, its private `check()` and `url(path)`; `Http.post(uri, payload: Any, responseType, headers)`.
 - Produces:
-  - `data class TelegramButton(val text: String, @get:JsonProperty("callback_data") val callbackData: String)`
+  - `data class TelegramButton(val text: String, @get:JsonProperty("callback_data") val callbackData: String? = null, @get:JsonProperty("url") val url: String? = null)` — a button carries either a callback or a URL
   - `data class TelegramCallbackQuery(val id: String, val data: String? = null, val message: TelegramMessage? = null)`, and `TelegramUpdate.callbackQuery: TelegramCallbackQuery?` (`callback_query`)
   - `TelegramClient.sendMessage(chatId: Long, text: String, buttons: List<TelegramButton> = emptyList())` — one row of buttons
   - `TelegramClient.answerCallbackQuery(callbackQueryId: String, text: String)`
-  - `TelegramClient.editMessageText(chatId: Long, messageId: Long, text: String)` — clears the keyboard
+  - `TelegramClient.editMessageText(chatId: Long, messageId: Long, text: String, buttons: List<TelegramButton> = emptyList())` — one row of buttons; the empty default clears the keyboard
 
 - [ ] **Step 1: Write the failing client tests**
 
@@ -124,6 +125,37 @@ fun `editMessageText clears the keyboard`() {
         eq(emptyMap()),
     )
 }
+
+@Test
+fun `editMessageText with a URL button replaces the keyboard`() {
+    doReturn(TelegramMessageResponse(ok = true))
+        .whenever(http).post(eq("$base/editMessageText"), any(), eq(TelegramMessageResponse::class.java), eq(emptyMap()))
+
+    client.editMessageText(
+        123L,
+        50L,
+        "Mandat accepté.",
+        listOf(TelegramButton("Voir le mandat", url = "https://npc.example/mandates/10")),
+    )
+
+    verify(http).post(
+        eq("$base/editMessageText"),
+        eq(
+            mapOf(
+                "chat_id" to 123L,
+                "message_id" to 50L,
+                "text" to "Mandat accepté.",
+                "reply_markup" to mapOf(
+                    "inline_keyboard" to listOf(
+                        listOf(mapOf("text" to "Voir le mandat", "url" to "https://npc.example/mandates/10")),
+                    ),
+                ),
+            ),
+        ),
+        eq(TelegramMessageResponse::class.java),
+        eq(emptyMap()),
+    )
+}
 ```
 
 The existing `sendMessage` test (2 arguments, no `reply_markup`) must stay unchanged and green: the payload carries no `reply_markup` when `buttons` is empty.
@@ -137,9 +169,9 @@ Expected: FAIL — `TelegramButton` is unresolved and `answerCallbackQuery` / `e
 
 In `TelegramModels.kt`, add the two data classes with `@get:JsonProperty` snake_case names (`callback_data`, `callback_query`), and `callbackQuery` as the last `TelegramUpdate` property with a `null` default. In `TelegramClient`:
 
-- `sendMessage(chatId, text, buttons = emptyList())`: payload is `mapOf("chat_id" to chatId, "text" to text)`, plus `"reply_markup" to mapOf("inline_keyboard" to listOf(buttons.toPayload()))` only when `buttons` isn't empty; each button maps to `mapOf("text" to it.text, "callback_data" to it.callbackData)`.
+- `sendMessage(chatId, text, buttons = emptyList())`: payload is `mapOf("chat_id" to chatId, "text" to text)`, plus `"reply_markup" to mapOf("inline_keyboard" to listOf(buttons.toPayload()))` only when `buttons` isn't empty; each button maps to `buildMap { put("text", it.text); it.callbackData?.let { data -> put("callback_data", data) }; it.url?.let { url -> put("url", url) } }`.
 - `answerCallbackQuery(callbackQueryId, text)`: POST `mapOf("callback_query_id" to callbackQueryId, "text" to text)` to `answerCallbackQuery`.
-- `editMessageText(chatId, messageId, text)`: POST `mapOf("chat_id" to chatId, "message_id" to messageId, "text" to text, "reply_markup" to mapOf("inline_keyboard" to emptyList<List<Any>>()))` to `editMessageText`.
+- `editMessageText(chatId, messageId, text, buttons = emptyList())`: POST `mapOf("chat_id" to chatId, "message_id" to messageId, "text" to text, "reply_markup" to mapOf("inline_keyboard" to if (buttons.isEmpty()) emptyList<List<Any>>() else listOf(buttons.toPayload())))` to `editMessageText`. Telegram accepts either a `callback_data` or a `url` per button; a button with both is never built.
 
 Every call goes through the existing `check()`; no exception carries the URL.
 
@@ -607,11 +639,11 @@ git commit -m "feat(mandate): route an offer to Telegram or e-mail"
 - Test: `modules/ndopify-server/src/test/kotlin/com/wutsi/ndopify/platform/telegram/TelegramUpdateHandlerTest.kt`
 
 **Interfaces:**
-- Consumes: Task 1's `TelegramClient.answerCallbackQuery` / `editMessageText`, `TelegramCallbackQuery`; Task 2's `AgentTelegramService.findByChatId(chatId)` returning #135's `AgentTelegramEntity` (`tenantId`, `agentId`); Task 3's `acceptForAgent` / `declineForAgent`; Task 4's `TelegramOfferCallback.parse`; #135's `TelegramUpdateHandler(client, commands)`.
+- Consumes: Task 1's `TelegramClient.answerCallbackQuery` / `editMessageText(... , buttons)`, `TelegramButton(text, url = ...)`, `TelegramCallbackQuery`; Task 2's `AgentTelegramService.findByChatId(chatId)` returning #135's `AgentTelegramEntity` (`tenantId`, `agentId`); Task 3's `acceptForAgent` / `declineForAgent` (the accepted `AssignmentEntity` carries its `mandate.id`); Task 4's `TelegramOfferCallback.parse`; #135's `TelegramUpdateHandler(client, commands)`; `TenantService.findById(tenantId)` for the tenant's `partnerCentralUrl`.
 - Produces:
   - `interface TelegramCallbackHandler { fun handle(callback: TelegramCallbackQuery) }` (`platform/telegram`)
   - `TelegramUpdateHandler(client, commands: List<TelegramCommand>, callbackHandler: TelegramCallbackHandler? = null)`: a `callbackQuery` update goes to the handler (and never gets the `OK` reply); a message keeps #135's command dispatch and `OK`.
-  - `TelegramAssignmentCallbackHandler(client, telegramService, service) : TelegramCallbackHandler`.
+  - `TelegramAssignmentCallbackHandler(client, telegramService, service, tenantService) : TelegramCallbackHandler`.
 
 - [ ] **Step 1: Write the failing handler tests**
 
@@ -620,9 +652,15 @@ class TelegramAssignmentCallbackHandlerTest {
     private val client = mock<TelegramClient>()
     private val telegramService = mock<AgentTelegramService>()
     private val service = mock<AssignmentService>()
-    private val handler = TelegramAssignmentCallbackHandler(client, telegramService, service)
+    private val tenantService = mock<TenantService>()
+    private val handler = TelegramAssignmentCallbackHandler(client, telegramService, service, tenantService)
 
     private val link = AgentTelegramEntity(id = 9L, tenantId = 1L, agentId = 20L, chatId = 1000L)
+    private val tenant = TenantEntity(id = 1L, name = "Ndopify", partnerCentralUrl = "https://npc.example")
+    private val accepted = AssignmentEntity(
+        id = 99L, agentId = 20L, status = AssignmentStatus.ACCEPTED,
+        mandate = MandateEntity(id = 10L, tenantId = 1L),
+    )
     private val message = TelegramMessage(messageId = 50L, chat = TelegramChat(id = 1000L), text = "Offre")
 
     private fun callback(data: String?, m: TelegramMessage? = message) =
@@ -631,6 +669,9 @@ class TelegramAssignmentCallbackHandlerTest {
     @BeforeTest
     fun setUp() {
         doReturn(link).whenever(telegramService).findByChatId(1000L)
+        doReturn(tenant).whenever(tenantService).findById(1L)
+        doReturn(accepted).whenever(service).acceptForAgent(20L, 99L)
+        doReturn(accepted.copy(status = AssignmentStatus.DECLINED)).whenever(service).declineForAgent(20L, 99L)
     }
 
     @AfterTest
@@ -639,16 +680,31 @@ class TelegramAssignmentCallbackHandlerTest {
     }
 
     @Test
-    fun `accept answers the offer and edits the message`() {
+    fun `accept answers the offer and edits it with the mandate link`() {
         handler.handle(callback("accept:99"))
 
         verify(service).acceptForAgent(20L, 99L)
+        verify(client).answerCallbackQuery("cb-1", "Mandat accepté.")
+        verify(client).editMessageText(
+            1000L,
+            50L,
+            "Offre\n\nMandat accepté.",
+            listOf(TelegramButton("Voir le mandat", url = "https://npc.example/mandates/10")),
+        )
+    }
+
+    @Test
+    fun `an accept without a Partner Central URL adds no button`() {
+        doReturn(tenant.copy(partnerCentralUrl = null)).whenever(tenantService).findById(1L)
+
+        handler.handle(callback("accept:99"))
+
         verify(client).answerCallbackQuery("cb-1", "Mandat accepté.")
         verify(client).editMessageText(1000L, 50L, "Offre\n\nMandat accepté.")
     }
 
     @Test
-    fun `decline answers the offer and edits the message`() {
+    fun `decline answers the offer and edits the message, without a button`() {
         handler.handle(callback("decline:99"))
 
         verify(service).declineForAgent(20L, 99L)
@@ -675,7 +731,7 @@ class TelegramAssignmentCallbackHandlerTest {
         handler.handle(callback("accept:99"))
 
         verify(client).answerCallbackQuery("cb-1", "Action impossible.")
-        verify(client, never()).editMessageText(any(), any(), any())
+        verify(client, never()).editMessageText(any(), any(), any(), any())
     }
 
     @Test
@@ -686,7 +742,7 @@ class TelegramAssignmentCallbackHandlerTest {
 
         verify(client).answerCallbackQuery("cb-1", "Action impossible.")
         verifyNoInteractions(service)
-        verify(client, never()).editMessageText(any(), any(), any())
+        verify(client, never()).editMessageText(any(), any(), any(), any())
     }
 
     @Test
@@ -695,7 +751,7 @@ class TelegramAssignmentCallbackHandlerTest {
 
         verify(client).answerCallbackQuery("cb-1", "Action impossible.")
         verifyNoInteractions(service)
-        verify(client, never()).editMessageText(any(), any(), any())
+        verify(client, never()).editMessageText(any(), any(), any(), any())
     }
 
     @Test
@@ -709,7 +765,7 @@ class TelegramAssignmentCallbackHandlerTest {
     @Test
     fun `a failing edit does not undo the answer`() {
         doThrow(RuntimeException("message to edit not found"))
-            .whenever(client).editMessageText(any(), any(), any())
+            .whenever(client).editMessageText(any(), any(), any(), any())
 
         handler.handle(callback("accept:99"))
 
@@ -756,13 +812,15 @@ Expected: FAIL — `TelegramAssignmentCallbackHandler` and `TelegramCallbackHand
 
 1. `var toast = "Action impossible."`; `val call = TelegramOfferCallback.parse(callback.data) ?: return`; `val chatId = callback.message?.chat?.id ?: return`.
 2. `val link = telegramService.findByChatId(chatId) ?: return`; `TenantContext.set(link.tenantId)` — the link table is global, and its row names the tenant the action runs in.
-3. `try { when (call.action) { ACCEPT -> service.acceptForAgent(link.agentId, call.assignmentId); DECLINE -> service.declineForAgent(link.agentId, call.assignmentId) }; toast = if (ACCEPT) "Mandat accepté." else "Mandat refusé."; edit(callback, toast) }`
+3. In the `try`: `ACCEPT` → `val accepted = service.acceptForAgent(link.agentId, call.assignmentId)`, `toast = "Mandat accepté."`, `edit(callback, toast, mandateButtons(link.tenantId, accepted))`; `DECLINE` → `service.declineForAgent(link.agentId, call.assignmentId)`, `toast = "Mandat refusé."`, `edit(callback, toast)`.
 4. `catch (ex: ConflictException) { toast = "Ce mandat n'est plus disponible."; edit(callback, toast) }`
 5. `catch (ex: WutsiException) { LOGGER.warn("Telegram callback refused: ${ex.error.code}") }` — a 404 / 403 changes nothing and edits nothing: it must not reveal that the assignment exists.
 6. `catch (ex: Exception) { LOGGER.error("Telegram callback failed", ex) }`
 7. `finally { client.answerCallbackQuery(callback.id, toast) }` — once per tap, whatever happened; and `TenantContext.remove()`.
 
-`edit(callback, outcome)`: `callback.message?.let { client.editMessageText(it.chat.id, it.messageId, listOfNotNull(it.text, outcome).joinToString("\n\n")) }`, in its own `try`/`catch` that logs a warning: a deleted message must not undo the transition.
+`mandateButtons(tenantId, accepted)`: `tenantService.findById(tenantId).partnerCentralUrl?.takeIf { it.isNotBlank() }?.removeSuffix("/")?.let { url -> listOf(TelegramButton("Voir le mandat", url = "$url/mandates/${accepted.mandate.id}")) } ?: emptyList()` — one URL button, or none for a tenant without a Partner Central URL.
+
+`edit(callback, outcome, buttons: List<TelegramButton> = emptyList())`: `callback.message?.let { client.editMessageText(it.chat.id, it.messageId, listOfNotNull(it.text, outcome).joinToString("\n\n"), buttons) }`, in its own `try`/`catch` that logs a warning: a deleted message must not undo the transition.
 
 Wire in `TelegramConfiguration`: `telegramUpdateHandler(client, commands: List<TelegramCommand>, callbackHandler: TelegramCallbackHandler)` → `TelegramUpdateHandler(client, commands, callbackHandler)`.
 
@@ -797,7 +855,7 @@ git commit -m "feat(mandate): answer an offer from the Telegram chat"
 
 - [ ] **Step 1: Write the seed**
 
-`clean.sql` then two tenants; agent 20 (party 200, user 11) in tenant 1 and agent 90 (party 900) in tenant 2, each with a `T_AGENT_TELEGRAM` link row (`tenant_id`, `agent_id`, `chat_id`, `linked_at`): chat 1000 for agent 20, chat 2000 for agent 90. Assignments: 1 PENDING for agent 20 (mandate 1), 4 PENDING for agent 20 but past its TTL (`expires_at = '2020-01-01'`), 9 PENDING for agent 90 (mandate 9, tenant 2). Model it on `db/test/mandate/DeclineAssignmentEndpoint.sql` plus #135's `T_AGENT_TELEGRAM` table.
+`clean.sql` then two tenants; agent 20 (party 200, user 11) in tenant 1 and agent 90 (party 900) in tenant 2, each with a `T_AGENT_TELEGRAM` link row (`tenant_id`, `agent_id`, `chat_id`, `linked_at`): chat 1000 for agent 20, chat 2000 for agent 90. Tenant 1's `partner_central_url` is `https://npc.example`, tenant 2's is null. Assignments: 1 PENDING for agent 20 (mandate 1), 4 PENDING for agent 20 but past its TTL (`expires_at = '2020-01-01'`), 9 PENDING for agent 90 (mandate 9, tenant 2). Model it on `db/test/mandate/DeclineAssignmentEndpoint.sql` plus #135's `T_AGENT_TELEGRAM` table.
 
 - [ ] **Step 2: Write the failing endpoint test**
 
@@ -839,7 +897,12 @@ class TelegramAssignmentCallbackEndpointTest : TenantAwareEndpointIntegrationTes
         assertEquals(AssignmentStatus.ACCEPTED, assignmentDao.findById(1L).get().status)
         assertEquals(MandateStatus.ASSIGNED, mandateDao.findById(1L).get().status)
         verify(client).answerCallbackQuery("cb-1", "Mandat accepté.")
-        verify(client).editMessageText(1000L, 50L, "Offre\n\nMandat accepté.")
+        verify(client).editMessageText(
+            1000L,
+            50L,
+            "Offre\n\nMandat accepté.",
+            listOf(TelegramButton("Voir le mandat", url = "https://npc.example/mandates/1")),
+        )
         awaitAsyncTasks() // the customer's assigned e-mail
         assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received")
     }
@@ -855,6 +918,7 @@ class TelegramAssignmentCallbackEndpointTest : TenantAwareEndpointIntegrationTes
             TenantContext.set(TENANT_ID)
         }
         verify(client).answerCallbackQuery("cb-1", "Mandat refusé.")
+        verify(client).editMessageText(2000L, 50L, "Offre\n\nMandat refusé.")
     }
 
     @Test
@@ -872,7 +936,7 @@ class TelegramAssignmentCallbackEndpointTest : TenantAwareEndpointIntegrationTes
 
         assertEquals(AssignmentStatus.PENDING, assignmentDao.findById(1L).get().status)
         verify(client).answerCallbackQuery("cb-1", "Action impossible.")
-        verify(client, never()).editMessageText(any(), any(), any())
+        verify(client, never()).editMessageText(any(), any(), any(), any())
     }
 }
 ```
@@ -914,7 +978,7 @@ git commit -m "test(telegram): cover an offer answered from the chat"
 
 In `modules/ndopify-server/CLAUDE.md`:
 - Add `bot/` to the domain layering next to `mail/`: a `*Botlet` is the Telegram counterpart of a `*Mailet` — a `@Service` that builds one message and hands it to the `platform/telegram` client; no shared interface. The offer `*Botlet` is `MandateOfferBotlet`; callback handlers that answer a bot message are `*CallbackHandler` in the same package.
-- In the **mandate** bullet's dispatch paragraph, replace "`MandateOfferMailet` e-mails the agent" with the channel rule: `AssignmentOfferNotifier` Telegram-messages a linked agent (`AgentTelegramService.chatId(agentId)`) through `MandateOfferBotlet`, e-mails the others, and falls back to the e-mail when Telegram fails; tapping `Accepter` / `Refuser` answers through the agent-scoped `acceptForAgent` / `declineForAgent` (no JWT), and an offer already closed is only reported as no longer available.
+- In the **mandate** bullet's dispatch paragraph, replace "`MandateOfferMailet` e-mails the agent" with the channel rule: `AssignmentOfferNotifier` Telegram-messages a linked agent (`AgentTelegramService.chatId(agentId)`) through `MandateOfferBotlet`, e-mails the others, and falls back to the e-mail when Telegram fails; tapping `Accepter` / `Refuser` answers through the agent-scoped `acceptForAgent` / `declineForAgent` (no JWT), an accepted offer's message is edited to carry a `Voir le mandat` URL button to the tenant's mandate page (one button, or none without a `partnerCentralUrl`), and an offer already closed is only reported as no longer available.
 - In the **agent** bullet, note that `AgentTelegramService.findByChatId` reads #135's global link and names the tenant, which is how a Telegram update (no JWT nor `X-Tenant-ID`) acts in it.
 - Rename `AssignmentService.sendOfferEmail` to `sendOfferNotification` wherever the *Asynchronous e-mails* list names it.
 
