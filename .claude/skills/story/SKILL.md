@@ -12,11 +12,19 @@ You are a senior engineer on `ndopify-mono`. This skill moves a story through
 `push <story-id>`, `review <pr-number>`, `merge <pr-number>`, `ship <story-id>`.
 If the mode or id is missing, ask for it — never guess the story.
 
+<<<<<<< Updated upstream
 **Merging and releases:** a story has at most one PR. `review` approves it: once a review finds nothing, after at most
 3 rounds of review → resolve. Only `merge` merges it, and only a head a review approved: a merge deploys to test and
 commits coverage badges to `main`. The library changes (`ndopify-dto`, `ndopify-web-core`) get no PR: `push` pushes
 them to `main`, which
 releases them. A release can't be undone, so each library push to `main` waits for the user's OK on its diff.
+=======
+**Merging and releases:** a story has one PR, and only `review` merges it: once a review finds nothing, after at most
+3 rounds of review → resolve. The library changes (`ndopify-dto`, `ndopify-web-core`) get no PR: `push` pushes them to `main`, which
+releases them. A release can't be undone, but the user has pre-authorized it: a library push to `main` that passes
+the push gate and the library checks (`push` step 2) goes ahead without asking. Those checks are what make it safe,
+so never skip one; a failed check stops the mode instead.
+>>>>>>> Stashed changes
 
 ## Story tracker
 
@@ -121,16 +129,23 @@ databaseId --jq '.[0].databaseId'` (retry until it appears), then `gh run watch 
     - Use `superpowers:verification-before-completion`: `mvn verify` in each touched module, on the tree being pushed
       (ktlint + tests + coverage gate; `ndopify-server` needs local MySQL). Don't push a red build.
 2. **Libraries** (skip if the story changes neither). Each goes to `main`, which releases it, in a separate worktree on
-   the latest `main` (`git fetch && git worktree add --detach <dir> origin/main`, removed afterwards). Before each
-   `git push origin HEAD:main`, show the user the commits and their diff (`git log -p origin/main..HEAD`) and wait for
-   their OK.
+   the latest `main` (`git fetch && git worktree add --detach <dir> origin/main`, removed afterwards). The release is
+   automatic — no user OK — once the push gate and these **library checks** pass, right before each
+   `git push origin HEAD:main`:
+    - `git diff --stat origin/main..HEAD` touches only `modules/<library>/` (plus the root `pom.xml` version
+      properties for a `fix dependencies` commit),
+    - every commit in `git log origin/main..HEAD` is a cherry-pick of this story's branch (or the `fix dependencies`
+      commit) — nothing else slipped in,
+    - `mvn verify` of that library is green on this worktree.
+
+   Print the pushed commits (`git log --oneline origin/main..HEAD`) in the mode's output, for the record.
     1. `ndopify-dto` — cherry-pick, oldest first, the branch's `+` commits (`git cherry -v origin/main <branch>`)
-       that touch `modules/ndopify-dto/` → push gate → user's OK → push → wait for its `ndopify-dto-main.yml` run to
-       release, tag `ndopify-dto-<version>`.
+       that touch `modules/ndopify-dto/` → push gate + library checks → push → wait for its `ndopify-dto-main.yml`
+       run to release, tag `ndopify-dto-<version>`.
     2. `ndopify-web-core` (if needed) — on a fresh worktree of the new `origin/main` (it has the release commits).
        If the dto was just released, first commit `fix dependencies: ndopify-dto <version>` (root `pom.xml`) so
-       web-core builds against it. Cherry-pick the web-core `+` commits → push gate → user's OK → push → wait for its
-       `ndopify-web-core-main.yml` run to release, tag `ndopify-web-core-<version>`.
+       web-core builds against it. Cherry-pick the web-core `+` commits → push gate + library checks → push → wait
+       for its `ndopify-web-core-main.yml` run to release, tag `ndopify-web-core-<version>`.
     3. Comment the pushed commits' links and the released versions on the story.
 
    A cherry-pick that doesn't apply cleanly, or a library commit that touches anything outside its module: stop and
@@ -210,7 +225,7 @@ is done.
       criteria): stop and ask; resume the round with their answer.
 
    Ship the fixes with `push <story-id>` steps 1–3: a fix that touches a library is released from `main` first
-   (with the user's OK on its diff, as always), then the branch is rebased if needed and pushed. Reply to each inline
+   (automatically, after the push gate and library checks), then the branch is rebased if needed and pushed. Reply to each inline
    comment with the commit that fixes it, or why it isn't changed
    (`gh api repos/wutsi/ndopify-mono/pulls/<pr>/comments/<comment-id>/replies --method POST -f body="…"`), then go to
    step 1 for the next round.
@@ -273,7 +288,8 @@ work itself (no code, commit, push, review or merge), and keeps only the phases'
    Invoke the `story` skill with `<mode> <id>` (ndopify-mono, <repo path>) and run that mode to its "Done when".
    You run as a subagent and can't talk to the user. Wherever the mode says to wait for the user's OK or to ask
    them, stop instead and end your report with:
-     GATE: <prototype | library-release | question>
+     GATE: <prototype | question>
+   Library releases need no OK: run them as `push` step 2 says, never stop for one.
      <what's needed: the question, or the worktree dir + the command showing the diff / the prototype files>
    Report, short: the mode's outcome (done, gate, or stopped and why), the branch and worktree, the PR number and
    link, the released library versions, the story status, and anything left for the user.
@@ -281,9 +297,8 @@ work itself (no code, commit, push, review or merge), and keeps only the phases'
 
    A phase that dispatches its own subagents (`superpowers:subagent-driven-development`) and can't, from a
    subagent, uses `superpowers:executing-plans` instead.
-3. **Gate** — the phase stopped on a gate: put it to the user as the mode would. For a `library-release`, show the
-   diff yourself (`git -C <worktree> log -p origin/main..HEAD`) — the user OKs what is actually pushed, never a
-   summary. For a `prototype`, point at its files. Then send the user's answer to the **same** subagent
+3. **Gate** — the phase stopped on a gate: put it to the user as the mode would. For a `prototype`, point at its
+   files. Then send the user's answer to the **same** subagent
    (`SendMessage`, its context kept) and wait again; a new subagent would lose the phase's progress.
 4. **Next** — the phase reached its *Done when*: start the next one in a new subagent — `implement` → `push` →
    `review <pr-number>` → `merge <pr-number>` (the PR from `push`'s report). A library-only story ends with `push`
