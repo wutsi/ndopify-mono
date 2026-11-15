@@ -36,6 +36,14 @@ jobs:
                     distribution: 'zulu'
                     java-version: 25
 
+            -   name: MySQL max_connections
+                run: |
+                    for i in $(seq 1 30); do
+                        mysql -h 127.0.0.1 -u root -proot -e "SELECT 1" && break
+                        sleep 2
+                    done
+                    mysql -h 127.0.0.1 -u root -proot -e "SET GLOBAL max_connections = 500"
+
             -   name: Build
                 env:
                     GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
