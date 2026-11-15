@@ -89,6 +89,27 @@ class AuthenticatePasswordEndpointTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `five wrong passwords never lock the account`() {
+        doReturn(false).whenever(passwordEncryptor).matches(any(), any(), anyOrNull())
+
+        repeat(5) {
+            val request = AuthenticateRequest(
+                email = "ray.sponsible@gmail.com",
+                secret = "secret",
+                applicationCode = ApplicationCode.PUBLIC_PORTAL,
+                authType = AuthType.PASSWORD
+            )
+            val response = rest.postForEntity("/v1/auth", request, ErrorResponse::class.java)
+
+            assertEquals(HttpStatus.CONFLICT, response.statusCode)
+            assertEquals(ErrorCode.AUTH_INVALID_CREDENTIALS, response.body?.error?.code)
+        }
+
+        // OTP counts only: a wrong password never touches an OTP row
+        assertEquals(0, authFactorService.findByIdOrNull(1L)?.failedAttempts)
+    }
+
+    @Test
     fun `no password`() {
         val request = AuthenticateRequest(
             email = "no-password@gmail.com",
