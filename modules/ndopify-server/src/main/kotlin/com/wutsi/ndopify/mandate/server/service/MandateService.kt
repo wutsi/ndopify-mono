@@ -11,6 +11,7 @@ import com.wutsi.ndopify.contract.server.domain.ContractEntity
 import com.wutsi.ndopify.contract.server.service.ContractHasher
 import com.wutsi.ndopify.contract.server.service.ContractService
 import com.wutsi.ndopify.customer.dto.CreateCustomerRequest
+import com.wutsi.ndopify.customer.dto.UpdateCustomerRequest
 import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
@@ -37,6 +38,8 @@ import com.wutsi.ndopify.mandate.server.event.MandateApprovedEvent
 import com.wutsi.ndopify.mandate.server.event.MandateClosedEvent
 import com.wutsi.ndopify.mandate.server.event.MandateCreatedEvent
 import com.wutsi.ndopify.mandate.server.mail.MandateApprovedMailet
+import com.wutsi.ndopify.party.dto.UpdatePartyRequest
+import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.dto.Money
@@ -61,6 +64,7 @@ class MandateService(
     private val assignmentDao: AssignmentRepository,
     private val clock: Clock,
     private val customerService: CustomerService,
+    private val partyService: PartyService,
     private val agentService: AgentService,
     private val eventPublisher: ApplicationEventPublisher,
     private val contractService: ContractService,
@@ -280,6 +284,46 @@ class MandateService(
                 modifiedAt = Date(clock.millis()),
             )
         )
+    }
+
+    /**
+     * Corrects the details of its customer, which every one of that customer's mandate pages shows: 404
+     * MANDATE_NOT_FOUND, 403 MANDATE_ACCESS_DENIED, 409 MANDATE_ALREADY_CLOSED (closed or cancelled), then 409
+     * PARTY_EMAIL_ALREADY_EXISTS when another party already owns the e-mail. A PENDING_APPROVAL mandate whose e-mail
+     * changes goes back to ASSIGNED and its contract is cancelled: the customer mustn't sign a contract sent to the
+     * old address, and request-approval creates a new one. A name or phone change leaves the contract. Like a
+     * signature, the contract is locked before the mandate.
+     */
+    @Transactional
+    fun updateCustomer(id: Long, request: UpdateCustomerRequest) {
+        val contractId = dao.findContractIdById(id)
+        contractId?.let { contractService.findByIdForUpdate(it) }
+
+        val mandate = findByIdForUpdate(id)
+        access.ensureCanUpdate(mandate)
+        ensureNotClosed(mandate)
+
+        val customer = customerService.findById(mandate.customerId)
+        val email = request.email.trim().lowercase()
+        val emailChanged = email != customer.party.email.lowercase()
+        if (emailChanged && mandate.status == MandateStatus.PENDING_APPROVAL) {
+            if (mandate.contractId != contractId) {
+                // Replaced meanwhile by request-approval's step 1: not the contract locked above
+                throw ConflictException(Error(ErrorCode.MANDATE_VERSION_CONFLICT))
+            }
+            mandate.contractId?.let { contractService.cancel(it) }
+            dao.save(mandate.copy(status = MandateStatus.ASSIGNED, modifiedAt = Date(clock.millis())))
+        }
+
+        partyService.update(
+            customer.party,
+            UpdatePartyRequest(
+                firstName = request.firstName.trim(),
+                lastName = request.lastName.trim(),
+                email = email,
+            ),
+        )
+        customerService.update(customer, request.whatsappNumber.trim())
     }
 
     /**

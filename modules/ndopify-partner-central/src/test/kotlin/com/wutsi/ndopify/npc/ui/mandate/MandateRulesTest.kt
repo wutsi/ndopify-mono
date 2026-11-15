@@ -29,6 +29,10 @@ class MandateRulesTest {
             MandateRules.ACTIVE,
         )
         assertEquals(setOf(MandateStatus.ASSIGNED, MandateStatus.PENDING_APPROVAL), MandateRules.EDITABLE)
+        assertEquals(
+            setOf(MandateStatus.ASSIGNED, MandateStatus.PENDING_APPROVAL, MandateStatus.APPROVED),
+            MandateRules.CUSTOMER_EDITABLE,
+        )
         assertEquals(MandateRules.ACTIVE + MandateStatus.CLOSED + MandateStatus.CANCELLED, MandateRules.SHOWN)
     }
 

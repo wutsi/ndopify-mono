@@ -110,6 +110,7 @@ object MandateViews {
             keyCriteria = key,
             moreCriteria = more,
             editable = status in MandateRules.EDITABLE,
+            customerEditable = status in MandateRules.CUSTOMER_EDITABLE,
             closable = status == MandateStatus.APPROVED,
             cancellable = status in MandateRules.ACTIVE,
             signatureTtlDays = MandateRules.signatureTtlDays(contract),
@@ -174,6 +175,7 @@ object MandateViews {
         return ContactView(
             name = partyName(customer),
             email = customer.party.email,
+            whatsapp = whatsapp,
             whatsappDisplay = whatsapp?.let { displayPhone(it) },
             whatsappDigits = whatsapp?.filter { it.isDigit() },
             period = MandateLabels.CONTACT_PERIOD_LABELS[mandate.preferredContactPeriod],

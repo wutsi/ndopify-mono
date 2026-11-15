@@ -120,7 +120,11 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   depends on the agent one. Tenant-scoped.
 - **customer** — the people behind the mandates: tenants searching for a property and owners offering one
   (`CustomerEntity`, linked to a `Party`; `/v1/customers`). `CustomerService.findOrCreate` reuses the party and
-  customer of an e-mail. Tenant-scoped.
+  customer of an e-mail. `POST /v1/mandates/{id}/customer` (`MandateService.updateCustomer`) corrects the mandate's
+  customer: its party's names and e-mail, and its WhatsApp number, for the mandate's agent or an admin. A
+  `PENDING_APPROVAL` mandate whose e-mail changes cancels its contract and returns to `ASSIGNED` (the customer must
+  not sign a contract sent to the old address); a closed or cancelled mandate is a 409 `MANDATE_ALREADY_CLOSED`, an
+  e-mail another party owns a 409 `PARTY_EMAIL_ALREADY_EXISTS` with nothing written. Tenant-scoped.
 - **mandate** — a customer's SEARCH (tenant) or LISTING (owner) mandate (`MandateEntity`; `/v1/mandates`: get,
   search, create, update).
   `MandateService.create` finds or creates the customer from the request's contact fields and starts the mandate

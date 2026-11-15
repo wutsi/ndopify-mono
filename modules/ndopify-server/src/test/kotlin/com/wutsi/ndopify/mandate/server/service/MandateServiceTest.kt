@@ -58,6 +58,7 @@ class MandateServiceTest {
         assignmentDao = assignmentDao,
         clock = clock,
         customerService = customerService,
+        partyService = mock(),
         agentService = agentService,
         eventPublisher = eventPublisher,
         contractService = contractService,

@@ -188,7 +188,18 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   loaded with (hidden field), and a 409 `MANDATE_VERSION_CONFLICT` shows the form again with the agent's answers, now
   based on the new version (the profile page does the same with `AGENT_VERSION_CONFLICT`); the city can't change, the
   neighbourhoods are checked by `SectorValidator`, and the rest by `FindPropertyRules` (the only validation a mandate
-  gets). `public/assets/js/mandate.js` only enhances both pages (`data-page` `mandate` / `mandate-edit`). ndopify-server
+  gets). The customer's contact block (`.contact-card`) is unboxed: role ("Client" / "Bailleur"), full name, "à appeler"
+  when the mandate has a call window, the number as a `tel:` link with a compact WhatsApp button beside it, and the
+  e-mail as a `mailto:` link. Its "Modifier" (only while `MandateRules.CUSTOMER_EDITABLE`, so not on a closed or
+  cancelled mandate) opens the customer edit page (`GET|POST /mandates/{id}/customer/edit`,
+  `templates/mandate/customer-edit.html`, `CustomerEditController`, `CustomerEditForm` / `CustomerEditRules`): first
+  name, last name, e-mail and WhatsApp number, the phone through intl-tel-input / `util.js` and posted E.164, saved
+  through `NdCustomerClient.update` (`POST /v1/mandates/{id}/customer`) so the correction shows on all of the
+  customer's mandates. Its outcomes are `customer-saved` and, when the e-mail of a PENDING_APPROVAL mandate changed,
+  `customer-saved-unsent` (ndopify-server cancelled the contract and put the mandate back to ASSIGNED); an e-mail
+  another party owns is the e-mail field's error, a 403/404/409 `changed`, a 5xx the form again with a generic error.
+  `public/assets/js/mandate.js` only enhances both pages (`data-page` `mandate` / `mandate-edit`), and the customer
+  edit one (`data-page` `customer-edit`). ndopify-server
   checks ownership (see the mandate domain in `modules/ndopify-server/CLAUDE.md`): another agent's mandate is a 403, which the page shows as the locked view
   (and an action as `changed`, like a 404/409). A 403 / 404 from ndopify-server that no page catches goes to
   `HttpClientErrorHandler` (`ui/layout/`), which answers the same status so that Spring Boot renders
