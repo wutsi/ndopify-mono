@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.platform.telegram
 
+import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.wutsi.ndopify.BaseEndpointIntegrationTest
@@ -47,6 +48,6 @@ class TelegramWebhookEndpointTest : BaseEndpointIntegrationTest() {
         val response = rest.postForEntity("/telegram/webhook", HttpEntity(body, headers), Void::class.java)
 
         assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
-        verify(client, never()).sendMessage(anyLong(), anyString())
+        verify(client, never()).sendMessage(anyLong(), anyString(), any())
     }
 }
