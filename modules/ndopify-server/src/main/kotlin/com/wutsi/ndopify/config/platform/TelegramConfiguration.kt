@@ -7,6 +7,7 @@ import com.wutsi.ndopify.platform.telegram.TelegramUpdateHandler
 import com.wutsi.ndopify.platform.telegram.TelegramWebhookTransport
 import com.wutsi.ndopify.platform.util.http.Http
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.http.client.HttpClientSettings
 import org.springframework.boot.http.client.JdkHttpClientBuilder
 import org.springframework.context.annotation.Bean
@@ -55,7 +56,14 @@ class TelegramConfiguration(
     fun telegramWebhookTransport(client: TelegramClient): TelegramWebhookTransport =
         TelegramWebhookTransport(client, transport, webhookUrl, webhookSecret)
 
+    /**
+     * The `telegram` health indicator is a plain `HealthIndicator` bean: Spring Boot registers every such bean in the
+     * health registry whatever `management.health.<id>.enabled` says (that property only gates its own
+     * auto-configured indicators). So it's gated here instead, and the `qa` profile's `false` really keeps the test
+     * suite offline: every `/actuator/health` would otherwise call Telegram.
+     */
     @Bean
+    @ConditionalOnProperty(name = ["management.health.telegram.enabled"], havingValue = "true", matchIfMissing = true)
     fun telegramHealthIndicator(client: TelegramClient): TelegramHealthIndicator =
         TelegramHealthIndicator(
             client,
