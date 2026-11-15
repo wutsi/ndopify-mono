@@ -12,6 +12,7 @@ data class Agent(
     val neighborhoodIds: List<Long> = emptyList(),
     val experienceLevel: ExperienceLevel = ExperienceLevel.UNKNOWN,
     val whatsappNumber: String? = null,
+    val telegramConnected: Boolean = false, // True once the agent has linked its Telegram account
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
     val lastAssignedAt: Date? = null,

@@ -5,6 +5,7 @@ object ErrorCode {
 
     val AGENT_NOT_FOUND = "$PREFIX:agent:not-found"
     val AGENT_ALREADY_EXISTS = "$PREFIX:agent:already-exists"
+    val AGENT_TELEGRAM_ALREADY_CONNECTED = "$PREFIX:agent:telegram-already-connected"
     val AGENT_VERSION_CONFLICT = "$PREFIX:agent:version-conflict"
 
     val APPLICATION_NOT_FOUND = "$PREFIX:application:not-found"
