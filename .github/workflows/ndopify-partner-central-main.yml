@@ -84,6 +84,7 @@ jobs:
                 env:
                     HEROKU_APP: ndopify-partner-central-test
                     HEROKU_API_KEY: ${{secrets.HEROKU_API_KEY}}
+                    TELEGRAM_BOT_USERNAME: ${{secrets.TELEGRAM_BOT_USERNAME}}
                 run: |
                     curl https://cli-assets.heroku.com/install.sh | sh
                     curl -L -O https://github.com/heroku/heroku-jvm-application-deployer/releases/download/v4.0.14/heroku-jvm-application-deployer-4.0.14.jar
@@ -91,4 +92,5 @@ jobs:
                     cp modules/ndopify-partner-central/Procfile .
                     heroku config:set --app ${HEROKU_APP} SPRING_PROFILES_ACTIVE=test
                     heroku config:set --app ${HEROKU_APP} NDOPIFY_SERVER_URL=${{secrets.NDOPIFY_SERVER_URL}}
+                    heroku config:set --app ${HEROKU_APP} TELEGRAM_BOT_USERNAME="$TELEGRAM_BOT_USERNAME"
                     java -jar heroku-jvm-application-deployer-4.0.14.jar --app=${HEROKU_APP} ndopify-partner-central.jar
