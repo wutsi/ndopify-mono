@@ -2,8 +2,14 @@ package com.wutsi.ndopify.npc.ui.telegram
 
 /** Rules and wording of the Telegram connection page, kept free of HTTP. */
 object TelegramRules {
-    /** Flash attribute of the "code sent" confirmation. */
+    /** Flash attribute of the "code sent" confirmation, shown once by the alert. */
     const val SENT = "telegramCodeSent"
+
+    /**
+     * Session attribute of the code's expiry (epoch millis): the state that outlives the flash, since the code
+     * itself is valid that long. A refresh keeps the bot button enabled until it passes.
+     */
+    const val SENT_UNTIL = "telegramCodeSentUntil"
 
     /** Flash attribute of a failed request, worded by the controller. */
     const val ERROR = "telegramError"

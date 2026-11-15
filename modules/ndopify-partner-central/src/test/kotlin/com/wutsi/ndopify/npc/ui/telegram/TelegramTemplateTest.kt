@@ -21,6 +21,9 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.thymeleaf.spring6.SpringTemplateEngine
 import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -50,7 +53,15 @@ class TelegramTemplateTest {
             characterEncoding = "UTF-8"
         }
         mvc = MockMvcBuilders
-            .standaloneSetup(TelegramController(currentAgent, mock<NdAgentClient>(), "ndopify_bot"))
+            .standaloneSetup(
+                TelegramController(
+                    currentAgent,
+                    mock<NdAgentClient>(),
+                    "ndopify_bot",
+                    Clock.fixed(Instant.parse("2026-11-15T10:00:00Z"), ZoneOffset.UTC),
+                    15,
+                ),
+            )
             .setControllerAdvice(SignedInAdvice())
             .setViewResolvers(viewResolver)
             .build()
