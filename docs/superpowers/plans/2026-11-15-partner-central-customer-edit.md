@@ -71,8 +71,11 @@ Use the pre-`95bde7ca` unboxed markup as the base (still visible in `home.css`):
 - [ ] **Step 2: Add `mandate/customer-edit.html`**
 
 Copy `mandate/edit.html`'s shell (header, back link, locked alert, page intro, form classes). One form with four
-fields (`firstName`, `lastName`, `email`, `whatsappNumber`), the profile edit page's label/input/error markup, a
-phone hint "+237 6 77 12 34 56", and "Enregistrer" / "Annuler". Two locked states: unavailable, closed.
+fields (`firstName`, `lastName`, `email`, `whatsappNumber`), the profile edit page's label/input/error markup,
+and "Enregistrer" / "Annuler". The WhatsApp field follows DESIGN.md's phone-number rules: load intl-tel-input
+25.11.2 (CSS + JS) and `util.js`; the visible `type="tel"` input has no `name`, and the library's hidden input
+carries `name="whatsappNumber"` in E.164. Keep the hint about what the e-mail and the WhatsApp number are for (the
+library shows the country code and example number itself). Two locked states: unavailable, closed.
 
 - [ ] **Step 3: Give the prototype data first/last names**
 
@@ -91,6 +94,10 @@ from the session's saved copy first (`mandateStates()[id].contact || MANDATES[id
 Register `"customer-edit": initCustomerEdit`. It reads `?id=`, shows the locked view when `!ownsMandate(id)` or
 the status is terminal, pre-fills the four inputs from the contact, and on submit stores the edited contact in
 the session's mandate copy (`mandateStates()[id].contact`) and navigates back to `mandate.html?id=…`.
+Bind the WhatsApp field through `NdUtil.phoneReady()` / `NdUtil.bindPhone()` (the `lazyPhone` helper used by
+`rejoindre.js`): pre-fill it in E.164, keep the save button inactive until `utils.js` is in, map
+`getValidationError()` to the existing French messages, and read `e164()` on submit. If `utils.js` can't load,
+show the "cannot verify" error and keep the form unsavable.
 
 - [ ] **Step 6: Remove the now-unused `.contact-person` rules**
 
@@ -515,6 +522,7 @@ git commit -m "feat(npc): unbox the mandate customer contact block"
 - Create: `modules/ndopify-partner-central/src/main/kotlin/com/wutsi/ndopify/npc/ui/mandate/CustomerEditController.kt`
 - Create: `modules/ndopify-partner-central/src/main/resources/templates/mandate/customer-edit.html`
 - Modify: `modules/ndopify-partner-central/src/main/kotlin/com/wutsi/ndopify/npc/ui/mandate/MandateController.kt:130-160,567-595`
+- Modify: `modules/ndopify-partner-central/src/main/resources/public/assets/js/mandate.js`
 - Test: `modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/ui/mandate/{CustomerEditControllerTest,CustomerEditTemplateTest,MandateControllerTest}.kt`
 
 **Interfaces:**
@@ -622,14 +630,21 @@ and the `customer-saved-unsent` sentence.
 
 `CustomerEditTemplateTest` renders through the controller with a real Thymeleaf engine (copy
 `MandateEditTemplateTest`'s setup). Assert: `#firstName`, `#lastName`, `#email`, `#whatsappNumber` values; the
-submit button; the back link to `/mandates/201`; `errors["firstName"]` rendered when the form is shown again; the
-locked text for `closed` and `unavailable`.
+visible phone input still posts its E.164 value (`name="whatsappNumber"` in the HTML, before `mandate.js` moves
+the name to the hidden input intl-tel-input syncs); the submit button; the back link to `/mandates/201`;
+`errors["firstName"]` rendered when the form is shown again; the locked text for `closed` and `unavailable`.
 
 - [ ] **Step 6: Create the template**
 
 `templates/mandate/customer-edit.html`, copying `mandate/edit.html`'s shell and the profile edit page's
 field/error markup. One form, four fields, no hidden version; "Enregistrer" and "Annuler". The locked alert
 renders `locked == 'unavailable'` and `locked == 'closed'` separately.
+The WhatsApp field follows the profile edit page: load intl-tel-input 25.11.2 (CSS + JS) and `util.js` before
+`mandate.js`; the visible `type="tel"` input keeps `name="whatsappNumber"` and its E.164 value so the form still
+posts without JS. Extend `mandate.js` (which already owns the mandate pages) with a `customer-edit` initializer
+using `join.js`'s `initPhones` pattern: move the name to a hidden input, `NdUtil.phoneReady()` then
+`NdUtil.bindPhone()`, map `getValidationError()` to the French messages, and re-check the phone on submit so a
+number the library can't read never reaches the server empty.
 
 - [ ] **Step 7: Run the tests to verify they pass**
 
@@ -657,8 +672,9 @@ git commit -m "feat(npc): edit a mandate's customer details"
 - [ ] **Step 1: Document the Partner Central page**
 
 Add to the mandate bullet: the unboxed contact block, its Modifier link only outside `CLOSED`/`CANCELLED`, the
-`CustomerEditController` route, the client call, the field rules, and the `customer-saved` /
-`customer-saved-unsent` outcomes (a pending contract is cancelled when the e-mail changes).
+`CustomerEditController` route, the client call, the field rules (the WhatsApp field via intl-tel-input /
+`util.js`, posting E.164), and the `customer-saved` / `customer-saved-unsent` outcomes (a pending contract is
+cancelled when the e-mail changes).
 
 - [ ] **Step 2: Document the server endpoint**
 
