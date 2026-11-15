@@ -14,6 +14,21 @@ interface TelegramResponse {
 data class TelegramUpdate(
     @get:JsonProperty("update_id") val updateId: Long = 0,
     @get:JsonProperty("message") val message: TelegramMessage? = null,
+    @get:JsonProperty("callback_query") val callbackQuery: TelegramCallbackQuery? = null,
+)
+
+/** The tap on an inline keyboard's button: [data] is the `callback_data` the button carried. */
+data class TelegramCallbackQuery(
+    @get:JsonProperty("id") val id: String = "",
+    @get:JsonProperty("data") val data: String? = null,
+    @get:JsonProperty("message") val message: TelegramMessage? = null,
+)
+
+/** An inline keyboard button: either a callback ([callbackData]) or a link ([url]), never both. */
+data class TelegramButton(
+    @get:JsonProperty("text") val text: String,
+    @get:JsonProperty("callback_data") val callbackData: String? = null,
+    @get:JsonProperty("url") val url: String? = null,
 )
 
 data class TelegramMessage(

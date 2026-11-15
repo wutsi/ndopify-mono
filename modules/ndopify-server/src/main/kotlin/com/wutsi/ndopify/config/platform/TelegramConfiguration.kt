@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.config.platform
 
+import com.wutsi.ndopify.platform.telegram.TelegramCallbackHandler
 import com.wutsi.ndopify.platform.telegram.TelegramClient
 import com.wutsi.ndopify.platform.telegram.TelegramCommand
 import com.wutsi.ndopify.platform.telegram.TelegramHealthIndicator
@@ -43,7 +44,8 @@ class TelegramConfiguration(
     fun telegramUpdateHandler(
         client: TelegramClient,
         commands: List<TelegramCommand>,
-    ): TelegramUpdateHandler = TelegramUpdateHandler(client, commands)
+        callbackHandler: TelegramCallbackHandler,
+    ): TelegramUpdateHandler = TelegramUpdateHandler(client, commands, callbackHandler)
 
     @Bean
     fun telegramPollingTransport(

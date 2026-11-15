@@ -162,4 +162,37 @@ class AgentTelegramServiceTest {
 
     private fun row(code: String? = "123456", expiresAt: Date? = Date(now + 60_000)) =
         AgentTelegramEntity(id = 9L, tenantId = 1L, agentId = 20L, code = code, codeExpiresAt = expiresAt)
+
+    // --- chatId / findByChatId
+
+    @Test
+    fun `chatId - the linked chat`() {
+        doReturn(AgentTelegramEntity(id = 9L, tenantId = 1L, agentId = 20L, chatId = 1000L))
+            .whenever(dao).findByAgentId(20L)
+
+        assertEquals(1000L, service.chatId(20L))
+    }
+
+    @Test
+    fun `chatId - null while only a code is pending`() {
+        doReturn(AgentTelegramEntity(id = 9L, tenantId = 1L, agentId = 20L, code = "123456"))
+            .whenever(dao).findByAgentId(20L)
+
+        assertNull(service.chatId(20L))
+    }
+
+    @Test
+    fun `chatId - null without a link row`() {
+        doReturn(null).whenever(dao).findByAgentId(20L)
+
+        assertNull(service.chatId(20L))
+    }
+
+    @Test
+    fun `findByChatId - the link of the chat, with its tenant`() {
+        val row = AgentTelegramEntity(id = 9L, tenantId = 2L, agentId = 90L, chatId = 2000L, linkedAt = Date(now))
+        doReturn(row).whenever(dao).findByChatId(2000L)
+
+        assertEquals(row, service.findByChatId(2000L))
+    }
 }

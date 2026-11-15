@@ -1,11 +1,13 @@
 package com.wutsi.ndopify.platform.telegram
 
+import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.platform.telegram.model.TelegramBooleanResponse
+import com.wutsi.ndopify.platform.telegram.model.TelegramButton
 import com.wutsi.ndopify.platform.telegram.model.TelegramMessageResponse
 import com.wutsi.ndopify.platform.telegram.model.TelegramUpdate
 import com.wutsi.ndopify.platform.telegram.model.TelegramUpdatesResponse
@@ -37,6 +39,106 @@ class TelegramClientTest {
         verify(http).post(
             eq("$base/sendMessage"),
             eq(mapOf("chat_id" to 123L, "text" to "OK")),
+            eq(TelegramMessageResponse::class.java),
+            eq(emptyMap()),
+        )
+    }
+
+    @Test
+    fun `sendMessage with buttons posts one keyboard row`() {
+        doReturn(TelegramMessageResponse(ok = true))
+            .whenever(http).post(eq("$base/sendMessage"), any(), eq(TelegramMessageResponse::class.java), eq(emptyMap()))
+
+        client.sendMessage(
+            123L,
+            "Offre",
+            listOf(TelegramButton("Accepter", "accept:9"), TelegramButton("Refuser", "decline:9")),
+        )
+
+        verify(http).post(
+            eq("$base/sendMessage"),
+            eq(
+                mapOf(
+                    "chat_id" to 123L,
+                    "text" to "Offre",
+                    "reply_markup" to mapOf(
+                        "inline_keyboard" to listOf(
+                            listOf(
+                                mapOf("text" to "Accepter", "callback_data" to "accept:9"),
+                                mapOf("text" to "Refuser", "callback_data" to "decline:9"),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            eq(TelegramMessageResponse::class.java),
+            eq(emptyMap()),
+        )
+    }
+
+    @Test
+    fun answerCallbackQuery() {
+        doReturn(TelegramBooleanResponse(ok = true))
+            .whenever(http).post(eq("$base/answerCallbackQuery"), any(), eq(TelegramBooleanResponse::class.java), eq(emptyMap()))
+
+        client.answerCallbackQuery("cb-1", "Mandat accepté.")
+
+        verify(http).post(
+            eq("$base/answerCallbackQuery"),
+            eq(mapOf("callback_query_id" to "cb-1", "text" to "Mandat accepté.")),
+            eq(TelegramBooleanResponse::class.java),
+            eq(emptyMap()),
+        )
+    }
+
+    @Test
+    fun `editMessageText clears the keyboard`() {
+        doReturn(TelegramMessageResponse(ok = true))
+            .whenever(http).post(eq("$base/editMessageText"), any(), eq(TelegramMessageResponse::class.java), eq(emptyMap()))
+
+        client.editMessageText(123L, 50L, "Mandat accepté.")
+
+        verify(http).post(
+            eq("$base/editMessageText"),
+            eq(
+                mapOf(
+                    "chat_id" to 123L,
+                    "message_id" to 50L,
+                    "text" to "Mandat accepté.",
+                    "reply_markup" to mapOf("inline_keyboard" to emptyList<List<TelegramButton>>()),
+                ),
+            ),
+            eq(TelegramMessageResponse::class.java),
+            eq(emptyMap()),
+        )
+    }
+
+    @Test
+    fun `editMessageText with a URL button replaces the keyboard`() {
+        doReturn(TelegramMessageResponse(ok = true))
+            .whenever(http).post(eq("$base/editMessageText"), any(), eq(TelegramMessageResponse::class.java), eq(emptyMap()))
+
+        client.editMessageText(
+            123L,
+            50L,
+            "Mandat accepté.",
+            listOf(TelegramButton("Voir le mandat", url = "https://npc.example/mandates/10")),
+        )
+
+        verify(http).post(
+            eq("$base/editMessageText"),
+            eq(
+                mapOf(
+                    "chat_id" to 123L,
+                    "message_id" to 50L,
+                    "text" to "Mandat accepté.",
+                    "reply_markup" to mapOf(
+                        "inline_keyboard" to listOf(
+                            listOf(mapOf("text" to "Voir le mandat", "url" to "https://npc.example/mandates/10")),
+                        ),
+                    ),
+                ),
+            ),
             eq(TelegramMessageResponse::class.java),
             eq(emptyMap()),
         )

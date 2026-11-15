@@ -47,6 +47,7 @@ Each domain under `com.wutsi.ndopify.<domain>.server` follows the same layering:
     io/         - import/export (refdata only, e.g. GeonamesImporter, NeighbourhoodImporter)
     event/      - application events + their listeners (agent, contract, listing, mandate, match, party, security, visit)
     mail/       - the domain's e-mails (*Mailet.kt: recipient, subject, template context), e.g. WelcomeMailet
+    bot/        - the domain's Telegram messages (*Botlet.kt) and the callbacks answering them (*CallbackHandler.kt)
 ```
 
 All of a domain's mail-related classes go in its `mail/` package, never in `service/`: a mailet builds the `Email`
@@ -55,6 +56,11 @@ and hands it to `platform/mail`'s `MailService`; its MJML template lives under `
 `service/`. Dates and amounts in e-mails (and generated contracts) go through `TenantFormatter`
 (`refdata/server/service/`): the tenant's `dateFormat` / `timeFormat` / `monetaryFormat` / `numberFormat`, first
 locale and `timeZone` — never a hard-coded pattern. Mailet unit tests mirror the package (`<domain>/server/mail/*MailetTest.kt`).
+
+A `*Botlet` is the Telegram counterpart of a `*Mailet`: a `@Service` that builds one French message and hands it to
+`platform/telegram`'s `TelegramClient`, with no shared interface and no template; its `send` takes the recipient's chat
+id and throws when Telegram refuses. A `*CallbackHandler` in the same package answers the taps on a bot message's
+buttons. Ex: `MandateOfferBotlet` / `TelegramAssignmentCallbackHandler`.
 
 Scheduled jobs live in `<domain>/server/job/`: `KycJobs` (party), `MandateJobs` (mandate), `ContractJobs`
 (contract), `ListingJobs` (listing, every 15 minutes: `verify`, the UNDER_VERIFICATION listings through
@@ -115,7 +121,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   resolves the caller's agent from its token (`CallerService`): 404 `AGENT_NOT_FOUND` when the caller has no party or
   isn't an agent. `WelcomeMailet` sends
   a welcome e-mail on registration when the tenant has a `partnerCentralUrl`, asynchronously (see *Asynchronous
-  e-mails* below). `joinedAt` is set on the agent's first VERIFIED case by `AgentKycEventListener`, a
+  e-mails* below). `AgentTelegramService.findByChatId` reads the bot link of a chat (#135's global `T_AGENT_TELEGRAM`):
+  its row names the tenant and the agent, which is how a Telegram update — no JWT, no `X-Tenant-ID` — acts in them. `joinedAt` is set on the agent's first VERIFIED case by `AgentKycEventListener`, a
   synchronous `@EventListener` on `KycCaseCompletedEvent` (same transaction as the KYC), so the party domain never
   depends on the agent one. **Telegram**: `AgentTelegramEntity` (`T_AGENT_TELEGRAM`) pairs an agent with its chat; a
   global row like `T_USER` (no `@TenantId`), since the bot's webhook has no tenant. `POST /v1/agents/me/telegram/code`
@@ -199,7 +206,13 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `AssignmentEventListener` on `AssignmentClosedEvent` (decline, expiry), and by `MandateJobs`: `expire` (PENDING
   offers past `expiresAt` → EXPIRED, re-dispatched) and `dispatch` (mandates waiting without a PENDING offer: came at
   night, had no candidate, or their re-dispatch failed). Each offer publishes `AssignmentCreatedEvent`:
-  `MandateOfferMailet` e-mails the agent the mandate and its deadline (`mail/mandate/offer.mjml`). The mandate e-mails
+  `AssignmentOfferNotifier` messages a linked agent (`AgentTelegramService.chatId(agentId)`) through
+  `MandateOfferBotlet`, e-mails the others (`MandateOfferMailet`, `mail/mandate/offer.mjml`), and falls back to the
+  e-mail when Telegram fails (the failure is logged, without the token nor the URL). Tapping `Accepter` / `Refuser`
+  answers through `AssignmentService.acceptForAgent` / `declineForAgent` (agent-scoped, no JWT): the offer's message is
+  edited, with a `Voir le mandat` URL button to the tenant's `{partnerCentralUrl}/mandates/{id}` page on accept (none
+  without a `partnerCentralUrl`), and an offer already closed is only reported as `Ce mandat n'est plus disponible.`;
+  the bot never acts on another agent's offer nor on an unknown assignment. The mandate e-mails
   (offer, assigned, approved) have a template per mandate type: a LISTING one uses `<name>_listing.mjml` (the owner's
   property, its rent or price), anything else `<name>.mjml`; type-specific wording goes in the template, not the mailet. The dispatch always
   runs: there's no switch to turn it off. Two ops endpoints (`@OpsEndpoint`, see `platform/endpoint`): `POST
@@ -446,7 +459,7 @@ listener is `@Async @TransactionalEventListener(AFTER_COMMIT)`, so nothing is se
 executor thread has no request, so the listener sets `TenantContext` and a `DefaultKVLogger` in `KVLoggerThreadLocal`
 (which the injected `KVLogger` falls back to), calls `logger.log()` in `finally` to flush it, and removes both
 (threads are reused). The work runs in a `@Transactional` service method (`AgentService.sendWelcomeEmail`,
-`OtpService.sendEmail`, `KycService.sendStatusEmail`, `AssignmentService.sendOfferEmail` / `sendAssignedEmail`, `MandateService.sendApprovedEmail`,
+`OtpService.sendEmail`, `KycService.sendStatusEmail`, `AssignmentService.sendOfferNotification` / `sendAssignedEmail`, `MandateService.sendApprovedEmail`,
 `ContractService.sendSignatureRequestEmails`, `ListingService.sendPublishedEmails`, `MatchProposalService.sendProposedEmail`,
 `VisitService.sendRequestedEmail` / `sendConfirmedEmails` / `sendCompletedEmail` / `sendCancelledEmail` / `sendNoShowEmails` /
 `sendExpiredEmails` / `sendReminderEmails`); the signed PDF (`ContractSignedEvent` → `SignedContractService.generate`,
@@ -488,7 +501,8 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
   their cached health indicators, wired by `config/platform/AIConfiguration`.
 - `platform/util` — small helpers (`PhoneNumberUtils`, `MimeUtils`, `UrlUtils`, `KycUtils`, HTTP utilities).
 - `platform/telegram` — the Telegram bot, wired by `config/platform/TelegramConfiguration`: `TelegramClient` (a thin
-  Bot API client over `platform/util/http/Http`), `TelegramUpdateHandler` (gives a `message` the reply of the first
+  Bot API client over `platform/util/http/Http`), `TelegramUpdateHandler` (routes a `callback_query` to its
+  `TelegramCallbackHandler` — the mandate domain's offer buttons — gives a `message` the reply of the first
   `TelegramCommand` bean that recognizes it — the agent domain's `/start` and `/connect` — else `OK`, and ignores
   every other
   update type), two transports (`TelegramPollingTransport` locally: long polling on a virtual thread,
@@ -496,7 +510,9 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
   `${SERVER_URL}/telegram/webhook` at startup) and `TelegramHealthIndicator` (cached `getMe`, health id `telegram` in
   the default group). The webhook is public (`PublicEndpoints.GLOBAL`), protected only by the
   `X-Telegram-Bot-Api-Secret-Token` header (403 without it); `ndopify.telegram.transport` picks one transport, never
-  both. Config under `ndopify.telegram.*`; the token is required and never logged.
+  both. Config under `ndopify.telegram.*`; the token is required and never logged. A callback acts in the tenant its
+  chat's link names, which the request got without a token: `TenantSessionScope.reopen()` replaces the request's
+  session (opened before that tenant was known) so the tenant-scoped services that follow run in it.
 - `platform/endpoint` — `@OpsEndpoint`: marks an operational endpoint method (ex: dispatching a mandate by hand).
   `OpsEndpointHandlerMapping` (wired by `EndpointConfiguration`) doesn't map them unless `ndopify.endpoints.ops` is
   `true` (default config; `false` in `application-prod.yml`, and when missing): the route doesn't exist, and

@@ -54,7 +54,16 @@ class AgentTelegramService(
     }
 
     /** True once the agent's chat is linked: a row with a pending code only isn't connected. */
-    fun isConnected(agentId: Long): Boolean = dao.findByAgentId(agentId)?.chatId != null
+    fun isConnected(agentId: Long): Boolean = chatId(agentId) != null
+
+    /** The agent's linked chat, or null while it isn't linked. */
+    fun chatId(agentId: Long): Long? = dao.findByAgentId(agentId)?.chatId
+
+    /**
+     * The link row of a chat: the global link table names its tenant and agent, which is what a Telegram update acts
+     * in (it carries no JWT and no `X-Tenant-ID`).
+     */
+    fun findByChatId(chatId: Long): AgentTelegramEntity? = dao.findByChatId(chatId)
 
     /** True when the chat is linked to an agent account. */
     fun isLinked(chatId: Long): Boolean = dao.findByChatId(chatId) != null

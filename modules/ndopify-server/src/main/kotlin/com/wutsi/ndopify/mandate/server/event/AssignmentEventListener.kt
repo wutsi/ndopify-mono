@@ -49,8 +49,8 @@ class AssignmentEventListener(
     }
 
     /**
-     * E-mails the agent the mandate it's offered, once the offer is committed, so no e-mail goes out for a
-     * rolled-back dispatch. Same thread handling as [onAssignmentAccepted].
+     * Notifies the agent the mandate it's offered (Telegram or e-mail), once the offer is committed, so nothing goes
+     * out for a rolled-back dispatch. Same thread handling as [onAssignmentAccepted].
      */
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -63,7 +63,7 @@ class AssignmentEventListener(
             logger.add("tenant_id", event.tenantId)
             logger.add("assignment_id", event.assignmentId)
 
-            service.sendOfferEmail(event.assignmentId)
+            service.sendOfferNotification(event.assignmentId)
             logger.add("success", true)
         } catch (ex: Exception) {
             logger.add("success", false)

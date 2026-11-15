@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.platform.telegram
 
 import com.wutsi.ndopify.platform.telegram.model.TelegramBooleanResponse
+import com.wutsi.ndopify.platform.telegram.model.TelegramButton
 import com.wutsi.ndopify.platform.telegram.model.TelegramMessageResponse
 import com.wutsi.ndopify.platform.telegram.model.TelegramResponse
 import com.wutsi.ndopify.platform.telegram.model.TelegramUpdate
@@ -23,10 +24,44 @@ open class TelegramClient(
         private const val BASE_URL = "https://api.telegram.org"
     }
 
-    open fun sendMessage(chatId: Long, text: String) {
+    open fun sendMessage(chatId: Long, text: String, buttons: List<TelegramButton> = emptyList()) {
+        val payload = buildMap<String, Any> {
+            put("chat_id", chatId)
+            put("text", text)
+            if (buttons.isNotEmpty()) {
+                put("reply_markup", mapOf("inline_keyboard" to listOf(buttons.toPayload())))
+            }
+        }
         http.post(
             url("sendMessage"),
-            mapOf("chat_id" to chatId, "text" to text),
+            payload,
+            TelegramMessageResponse::class.java,
+            emptyMap(),
+        ).check()
+    }
+
+    /** Answers the tap of a button: Telegram shows [text] as a toast, once per tap. */
+    open fun answerCallbackQuery(callbackQueryId: String, text: String) {
+        http.post(
+            url("answerCallbackQuery"),
+            mapOf("callback_query_id" to callbackQueryId, "text" to text),
+            TelegramBooleanResponse::class.java,
+            emptyMap(),
+        ).check()
+    }
+
+    /** Replaces a message's text and its keyboard: the empty default removes the buttons. */
+    open fun editMessageText(chatId: Long, messageId: Long, text: String, buttons: List<TelegramButton> = emptyList()) {
+        http.post(
+            url("editMessageText"),
+            mapOf(
+                "chat_id" to chatId,
+                "message_id" to messageId,
+                "text" to text,
+                "reply_markup" to mapOf(
+                    "inline_keyboard" to if (buttons.isEmpty()) emptyList<List<Any>>() else listOf(buttons.toPayload()),
+                ),
+            ),
             TelegramMessageResponse::class.java,
             emptyMap(),
         ).check()
@@ -69,6 +104,14 @@ open class TelegramClient(
     }
 
     private fun url(path: String) = "$BASE_URL/bot$token/$path"
+
+    private fun List<TelegramButton>.toPayload(): List<Map<String, String>> = map { button ->
+        buildMap {
+            put("text", button.text)
+            button.callbackData?.let { put("callback_data", it) }
+            button.url?.let { put("url", it) }
+        }
+    }
 
     private fun <T : TelegramResponse> T?.check(): T {
         if (this == null) {

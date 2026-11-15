@@ -4,6 +4,7 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.platform.telegram.model.TelegramCallbackQuery
 import com.wutsi.ndopify.platform.telegram.model.TelegramChat
 import com.wutsi.ndopify.platform.telegram.model.TelegramMessage
 import com.wutsi.ndopify.platform.telegram.model.TelegramUpdate
@@ -32,6 +33,17 @@ class TelegramUpdateHandlerTest {
     fun `an update without a message is ignored`() {
         handler.handle(TelegramUpdate(updateId = 1L, message = null))
 
+        verifyNoInteractions(client)
+    }
+
+    @Test
+    fun `a callback goes to the callback handler, not to OK`() {
+        val callbacks = mock<TelegramCallbackHandler>()
+        val routed = TelegramUpdateHandler(client, emptyList(), callbacks)
+
+        routed.handle(TelegramUpdate(updateId = 1L, callbackQuery = TelegramCallbackQuery(id = "cb-1", data = "accept:9")))
+
+        verify(callbacks).handle(TelegramCallbackQuery(id = "cb-1", data = "accept:9", message = null))
         verifyNoInteractions(client)
     }
 
