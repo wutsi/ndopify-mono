@@ -82,6 +82,7 @@ class VisitService(
     private val cancelledNotifier: VisitCancelledNotifier,
     private val cancelledMailet: VisitCancelledMailet,
     private val reminderMailet: VisitReminderMailet,
+    private val reminderNotifier: VisitReminderNotifier,
     private val expiredMailet: VisitExpiredMailet,
     private val coBrokerageVisitNotifier: CoBrokerageVisitNotifier,
     private val codeGenerator: VisitCodeGenerator,
@@ -695,11 +696,12 @@ class VisitService(
     }
 
     /**
-     * Notifies both sides of the 24 h reminder; the listing agent of a co-brokerage visit over Telegram or by e-mail.
-     * Called by `VisitEventListener`; nothing when no longer CONFIRMED.
+     * Notifies both sides of the 24 h reminder: the customer by e-mail, the agent over Telegram when its chat is
+     * linked, the e-mail otherwise or as the fallback; the listing agent of a co-brokerage visit over Telegram or by
+     * e-mail. Called by `VisitEventListener`; nothing when the visit is no longer CONFIRMED.
      */
     @Transactional
-    fun sendReminderEmails(visitId: Long) {
+    fun sendReminderNotifications(visitId: Long) {
         val visit = dao.findById(visitId).orElse(null) ?: return
         if (visit.status != VisitStatus.CONFIRMED || visit.scheduledAt == null) {
             return
@@ -707,12 +709,9 @@ class VisitService(
         logger.add("visit_id", visitId)
         val agent = agentService.findById(visit.agentId)
         val listing = listingService.findById(visit.listingId)
-        reminderMailet.send(
-            visit = visit,
-            customer = customerService.findById(visit.customerId),
-            agent = agent,
-            listing = listing,
-        )
+        val customer = customerService.findById(visit.customerId)
+        reminderMailet.sendCustomer(visit, customer, agent, listing)
+        reminderNotifier.send(visit, customer, agent, listing)
         if (visit.agentId != listing.agent.id) {
             coBrokerageVisitNotifier.sendReminder(visit, listing, agent)
         }
