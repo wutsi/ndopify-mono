@@ -69,6 +69,10 @@ class CustomerService(
             ?: create(party, request)
     }
 
+    @Transactional
+    fun update(customer: CustomerEntity, whatsappNumber: String): CustomerEntity =
+        dao.save(customer.copy(whatsappNumber = whatsappNumber, modifiedAt = Date(clock.millis())))
+
     private fun create(party: PartyEntity, request: CreateCustomerRequest): CustomerEntity {
         val now = Date(clock.millis())
         return dao.save(

@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.mandate.server.endpoint
 
+import com.wutsi.ndopify.customer.dto.UpdateCustomerRequest
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
@@ -92,6 +93,14 @@ class MandateEndpoints(
         @RequestBody @Valid request: UpdateMandateRequest,
     ) {
         service.update(id, request)
+    }
+
+    @PostMapping("/{id}/customer")
+    fun updateCustomer(
+        @PathVariable id: Long,
+        @RequestBody @Valid request: UpdateCustomerRequest,
+    ) {
+        service.updateCustomer(id, request)
     }
 
     // Offers the mandate now. The same rules apply: nothing offered at night, MANUAL_ASSIGNMENT if overdue, nothing if
