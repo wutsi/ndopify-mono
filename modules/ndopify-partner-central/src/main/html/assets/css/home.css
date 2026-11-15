@@ -961,6 +961,18 @@ h1.alert__title {
     margin-top: var(--space-2);
 }
 
+/* Role, name and call window wrap as units: the period never breaks after "appeler". */
+.contact-card__headline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 var(--space-2);
+}
+
+.contact-card__headline strong {
+    font-weight: 600;
+}
+
 /* "Client" / "Bailleur", before the name: a small, quiet word. */
 .contact-card__role {
     font-size: var(--step-hint);
@@ -969,6 +981,7 @@ h1.alert__title {
 
 .contact-card__period {
     font-size: var(--step-hint);
+    white-space: nowrap;
 }
 
 /* "Modifier", apart from the contact lines: the card's only action. */
@@ -980,7 +993,7 @@ h1.alert__title {
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    overflow-wrap: anywhere;
+    overflow-wrap: break-word;
 }
 
 /* "Voir tous les critères": folded under the key facts. */
@@ -993,6 +1006,21 @@ h1.alert__title {
     flex-wrap: wrap;
     column-gap: var(--space-3);
     row-gap: var(--space-1);
+}
+
+/* The number is the agent's main mobile action: the same 44px, 600 link as visit.html's contact. */
+.contact-card__phone a:not(.btn) {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    color: inherit;
+    font-weight: 600;
+}
+
+/* A real box around the address, without turning the link into a flex item that overflows on long addresses. */
+.contact-card__email a {
+    display: inline-block;
+    padding-block: var(--space-3);
 }
 
 /* A smaller button for a row of text: same 44px tap target, less padding and a smaller font. */

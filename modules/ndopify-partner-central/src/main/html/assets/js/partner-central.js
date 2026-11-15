@@ -2596,24 +2596,34 @@
 
         // The unboxed contact: role, name and best time to call, then the number (tel:) with its WhatsApp button, then
         // the e-mail. "Modifier" corrects it until the mandate is closed.
+        var name = contactName(c);
         $("[data-contact-role]").textContent = mandate.party === "bailleur" ? "Bailleur" : "Client";
-        $('[data-contact="name"]').textContent = contactName(c);
-        var period = $('[data-contact="period"]');
-        period.hidden = !c.period;
-        period.textContent = CONTACT_PERIOD_PHRASES[c.period] || c.period || "";
+        $('[data-contact="name"]').textContent = name;
+        // Hide the whole "· à appeler" phrase, not just its value.
+        $("[data-contact-period]").hidden = !c.period;
+        $('[data-contact="period"]').textContent = CONTACT_PERIOD_PHRASES[c.period] || c.period || "";
         $(".contact-card__phone").hidden = !c.whatsapp;
         if (c.whatsapp) {
             var tel = $('[data-contact="phone"]');
             tel.href = "tel:" + c.whatsapp;
+            tel.setAttribute("aria-label", "Appeler " + name + " au " + displayPhone(c.whatsapp));
             $("[data-contact-number]", tel).textContent = displayPhone(c.whatsapp);
             $('[data-contact="whatsapp"]').href = "https://wa.me/" + c.whatsapp.replace(/\D/g, "");
+            $('[data-contact="whatsapp"]').setAttribute("aria-label", "Écrire à " + name + " sur WhatsApp");
         }
+        // The e-mail is optional: hide its row rather than leaving an empty mailto: link and an orphan icon.
+        $("[data-contact-email-line]").hidden = !c.email;
         var mail = $('[data-contact="email"]');
-        mail.href = "mailto:" + (c.email || "");
+        mail.href = c.email ? "mailto:" + c.email : "";
         mail.textContent = c.email || "";
+        mail.setAttribute("aria-label", c.email ? "Adresse e-mail : " + c.email : "");
+        // Modifier and its row disappear together when the mandate is terminal.
         var edit = $("[data-contact-edit]");
+        var editable = CUSTOMER_EDITABLE_STATUSES.indexOf(stateOf(id).status) !== -1;
         edit.href = "mandate/customer-edit.html?id=" + encodeURIComponent(id);
-        edit.hidden = CUSTOMER_EDITABLE_STATUSES.indexOf(stateOf(id).status) === -1;
+        edit.setAttribute("aria-label", "Modifier les coordonnées " + p.of);
+        edit.hidden = !editable;
+        $("[data-contact-actions]").hidden = !editable;
 
         function criterion(list, row) {
             var item = document.createElement("div");
@@ -3325,9 +3335,10 @@
         var whatsapp = lazyPhone(phoneInput, { name: "whatsappNumber", value: c.whatsapp || "" });
         var FIELDS = ["firstName", "lastName", "email", "whatsappNumber"];
 
-        document.title = "Modifier les coordonnées " + p.of + " — Ndopify Partner Central";
+        document.title = "Modifier les coordonnées " + p.of + " — Mandat n° " + id +
+            " — Ndopify Partner Central";
         $("[data-customer-title]").textContent = "Coordonnées " + p.of;
-        $("[data-customer-meta]").textContent = "Mandat n° " + id;
+        $("[data-customer-meta]").textContent = "Mandat n° " + id + " · " + titleOf(id);
         $("[data-customer-resend]").hidden = state.status !== "PENDING_APPROVAL";
 
         function field(name) {
