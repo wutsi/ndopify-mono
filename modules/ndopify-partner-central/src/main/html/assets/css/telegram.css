@@ -58,6 +58,18 @@
     background: var(--color-bg-subtle);
 }
 
+/* The "code sent" and error alerts sit between the intro and the steps. */
+[data-telegram-sent],
+[data-telegram-error] {
+    margin-bottom: var(--space-4);
+}
+
+.alert code {
+    padding: 0.125rem var(--space-1);
+    border-radius: calc(var(--radius-control) / 2);
+    background: var(--color-bg);
+}
+
 /* The page's one action: full width on a phone, its natural width above 640px. */
 .connect-cta {
     display: flex;

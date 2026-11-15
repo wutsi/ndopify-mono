@@ -13,8 +13,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
     <link rel="stylesheet" href="assets/css/partner-central.css">
-    <link rel="stylesheet" href="assets/css/telegram.css">
+    <link rel="stylesheet" href="assets/css/telegram.css?v=2">
     <script src="assets/js/partner-central.js" defer></script>
+    <script src="assets/js/telegram.js?v=2" defer></script>
 </head>
 <body data-page="telegram">
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -44,6 +45,31 @@
             <div class="page-intro">
                 <h1>Connecter Telegram</h1>
                 <p>Recevez vos notifications Ndopify directement dans Telegram.</p>
+            </div>
+
+            <div class="alert alert--success" role="status" data-telegram-sent hidden>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                    <circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor"
+                          stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <div>
+                    <p class="alert__title">Code envoyé</p>
+                    <p>Consultez l'adresse e-mail de votre compte, puis envoyez <code>/connect</code> suivi du
+                        code au bot Ndopify. Il expire dans 15&nbsp;minutes.</p>
+                </div>
+            </div>
+
+            <div class="alert alert--error" role="alert" data-telegram-error hidden>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                    <circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/>
+                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor"
+                          stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <div>
+                    <p class="alert__title">Connexion impossible</p>
+                    <p data-telegram-error-text></p>
+                </div>
             </div>
 
             <ol class="connect-steps">
