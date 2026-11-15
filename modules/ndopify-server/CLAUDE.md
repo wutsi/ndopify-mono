@@ -471,7 +471,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   48 h old and past its requested slot to `EXPIRED`, `reminder` every 15 min notifies both sides 24 h ahead (once): the
   customer by e-mail (`VisitReminderMailet.sendCustomer`), the agent over Telegram when its chat is linked
   (`VisitReminderNotifier` / `VisitReminderBotlet`) or by e-mail (`VisitReminderMailet.sendAgent`) otherwise and as the
-  fallback of a failed send — the co-brokerage reminder stays an e-mail —, `noShow` hourly marks the `CONFIRMED` visits
+  fallback of a failed send — the co-brokerage reminder keeps its own channel (`CoBrokerageVisitNotifier`) —, `noShow`
+  hourly marks the `CONFIRMED` visits
   whose agent didn't check in 4 h after the time as `NO_SHOW` (both sides e-mailed). The delays and tolerances above are
   `ndopify.visit.policy.*` (overridable); the job crons are `ndopify.visit.*`. Tenant-scoped.
 - **error** — shared exception types (`WutsiException` subclasses: `BadRequestException`, `NotFoundException`,
