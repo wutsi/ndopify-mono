@@ -35,6 +35,15 @@ open class AuthFactorService(
         return dao.findByUserAndAuthType(user, authType).orElse(null)
     }
 
+    /**
+     * The user's factor, locked for the rest of the transaction. A wrong code counts on the row it returns: two codes
+     * sent in parallel must not both read the same count, or the lock would take as many failures as there are round
+     * trips instead of as many codes as were guessed. Loaded before any other read of that row in the transaction.
+     */
+    fun findByUserAndAuthTypeForUpdateOrNull(user: UserEntity, authType: AuthType): AuthFactorEntity? {
+        return dao.findByUserAndAuthTypeForUpdate(user, authType).orElse(null)
+    }
+
     fun findByUserAndAuthTypeOrNullOrCreate(
         user: UserEntity,
         authType: AuthType,

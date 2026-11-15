@@ -84,7 +84,9 @@ Current domains:
   e-mail nor touching the stored code. A wrong code before the lock answers 409 `AUTH_INVALID_CREDENTIALS` with
   `data.remainingAttempts`; the count survives a new code, a successful login clears it, a lock that expired starts
   it over, and password logins count nothing (`AuthenticationService` is `noRollbackFor` `ConflictException`, so the
-  409 doesn't undo the count). `POST /v1/auth` exchanges credentials for a JWT:
+  409 doesn't undo the count). `OtpAuthenticator` reads the row under a write lock
+  (`AuthFactorRepository.findByUserAndAuthTypeForUpdate`), so codes sent in parallel each count instead of
+  overwriting each other. `POST /v1/auth` exchanges credentials for a JWT:
   `AbstractAuthenticator` requires a tenant (400 `HTTP_MISSING_PARAMETER` otherwise), finds the user by e-mail
   (global), then its membership of the tenant (`AUTH_ACCESS_DENIED` without one), whose roles go in the token, with
   its party's id (`partyId` claim, `JwtPrincipal.getPartyId`; none for a party-less member): for clients only:

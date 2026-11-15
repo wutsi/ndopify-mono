@@ -48,10 +48,11 @@ class OtpAuthenticator(
     /**
      * Rejects every code while the account is locked (a right one included: it isn't consumed). Rejects a code already
      * used to log in, checked here once the code is known to match and before the expiry check: a consumed code is also
-     * expired, but that's not what the user must be told.
+     * expired, but that's not what the user must be told. The row is read under a write lock, so that codes sent in
+     * parallel each count (`AuthFactorService.recordFailedAttempt`).
      */
     override fun checkCredentials(request: AuthenticateRequest, user: UserEntity): AuthFactorEntity {
-        val authFactor = authFactorService.findByUserAndAuthTypeOrNull(user, AuthType.OTP)
+        val authFactor = authFactorService.findByUserAndAuthTypeForUpdateOrNull(user, AuthType.OTP)
             ?: invalidCredentials(null)
         if (authFactor.isLocked(clock)) {
             throw ConflictException(error = lockedError(authFactor))
