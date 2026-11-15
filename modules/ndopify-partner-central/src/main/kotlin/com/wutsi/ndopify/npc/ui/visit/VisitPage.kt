@@ -32,6 +32,16 @@ data class VisitPage(
     val windowFrom: String?,
     val expiresAt: String?,
     val expiresIn: String?,
+    /** The date band under the status: the request's slot, the scheduled one, or "Aujourd'hui · HH:MM" in the window. */
+    val leadWhen: String?,
+    /** "Créneau modifié : …" when the agent moved the slot; null when it equals the request. */
+    val slotChanged: String?,
+    /** The listing agent's number, formatted for display; null on own inventory. */
+    val agentPhone: String?,
+    /** The listing agent's raw E.164 number for `tel:`; null on own inventory. */
+    val agentPhoneDigits: String?,
+    /** When the no-show becomes available, formatted; null without a scheduled slot. */
+    val noShowFrom: String?,
     val note: String?,
     val checkedInAt: String?,
     val checkOutFrom: String?,
