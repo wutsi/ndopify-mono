@@ -114,10 +114,10 @@
                            th:text="${l.status.name() == 'PUBLISHED' and l.publishedAt != null} ? |${l.tag.label} le ${l.publishedAt}| : ${l.tag.label}"
                            data-listing-tag>Brouillon</p>
                     </div>
-                    <p class="mandate__meta" th:if="${!l.coBrokerage}" data-listing-meta>Mandat n° <span th:text="${l.mandateId}">203</span> · créée le
+                    <p class="mandate__meta" th:if="${!l.readOnly}" data-listing-meta>Mandat n° <span th:text="${l.mandateId}">203</span> · créée le
                         <span th:text="${l.createdAt}">20 oct. 2026</span></p>
                     <!-- Another agent's listing (co-brokerage): its mandate, customer, public link and share stay hidden. -->
-                    <p class="listing-origin" th:if="${l.coBrokerage}" data-listing-origin>
+                    <p class="listing-origin" th:if="${l.readOnly}" data-listing-origin>
                         <span class="status-tag status-tag--info">Bien d'un autre agent</span>
                         <span>Ce bien est publié par un autre agent. Contactez-le pour organiser une visite.</span>
                     </p>
@@ -285,7 +285,7 @@
                 </section>
 
                 <!-- The owner's audit trail: collapsed once published, open while the listing is being prepared. -->
-                <details class="listing-verification" th:if="${!l.coBrokerage}" data-listing-verification
+                <details class="listing-verification" th:if="${!l.readOnly}" data-listing-verification
                          th:open="${l.published == null}"
                          th:attr="data-mode=${l.published == null ? 'edit' : 'published'}">
                     <summary>Vérification de l'annonce</summary>

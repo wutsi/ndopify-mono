@@ -20,7 +20,7 @@ object PublishedListingViews {
 
     /**
      * [images] is null when they couldn't be loaded: no photo then. [owner] says whether the private location is built;
-     * a co-broker gets the shared note instead.
+     * another agent gets the shared note instead.
      */
     fun of(
         listing: Listing,

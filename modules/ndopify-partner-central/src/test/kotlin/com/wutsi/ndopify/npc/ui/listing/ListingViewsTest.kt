@@ -900,7 +900,7 @@ class ListingViewsTest {
         assertEquals("2 personnes intéressées · 3 visites", view.stats)
         assertEquals(7, view.rows.size)
         assertEquals("/mandates/203", view.backUrl)
-        assertFalse(view.coBrokerage)
+        assertFalse(view.readOnly)
     }
 
     @Test
@@ -915,12 +915,12 @@ class ListingViewsTest {
         val agent = AgentCardView(30, "Clarisse Mbarga", "CM", null, null, "/agent?id=30")
         val view = ListingViews.of(
             listing, IMAGES, locations, formatter, "https://ndopify.com", ListingStats(501, 2, 1, 2),
-            coBrokerage = true, agent = agent, backUrl = "/mandates/204#matches-title",
+            readOnly = true, agent = agent, backUrl = "/mandates/204#matches-title",
             backLabel = "← Retour aux biens correspondants",
         )
 
         assertEquals("Appartement, Bonapriso", view.title)
-        assertTrue(view.coBrokerage)
+        assertTrue(view.readOnly)
         assertNull(view.publicUrl)
         assertNull(view.stats)
         assertTrue(view.rows.isEmpty())
@@ -938,7 +938,7 @@ class ListingViewsTest {
         val view = of()
 
         assertNull(view.published)
-        assertFalse(view.coBrokerage)
+        assertFalse(view.readOnly)
         assertEquals(7, view.rows.size)
     }
 

@@ -122,7 +122,7 @@ class ListingController(
             formatter(),
             tenantContext.getTenant().publicPortalUrl,
             stats,
-            coBrokerage = readOnly,
+            readOnly = readOnly,
             agent = agentCard,
             backUrl = when {
                 match != null -> "/mandates/${match.mandateId}#matches-title"

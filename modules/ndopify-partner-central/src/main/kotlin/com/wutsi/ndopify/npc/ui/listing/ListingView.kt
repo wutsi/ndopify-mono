@@ -37,11 +37,11 @@ data class ListingView(
     val editable: Boolean,
     /** Every required section done: "Envoyer pour vérification" is active. */
     val sendable: Boolean,
-    /** A co-broker's view: the published sheet without the owner's blocks nor the checklist. */
-    val coBrokerage: Boolean = false,
+    /** Another agent's read-only lens: the published sheet without the owner's blocks nor the checklist. */
+    val readOnly: Boolean = false,
     /** The published sheet; null until PUBLISHED, RENTED or SOLD. */
     val published: PublishedListingView? = null,
-    /** The listing agent's standard card, co-broker only; null when it can't be read. */
+    /** The listing agent's standard card, read-only lens only; null when it can't be read. */
     val agent: AgentCardView? = null,
     /** The mandate for its agent, the search's *Biens correspondants* for a co-broker. */
     val backUrl: String = "/mandates/$mandateId",

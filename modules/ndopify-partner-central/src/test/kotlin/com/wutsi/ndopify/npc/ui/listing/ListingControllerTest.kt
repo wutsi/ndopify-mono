@@ -206,7 +206,7 @@ class ListingControllerTest {
 
         val view = model(mvc.perform(get("/listings/501?match=9009")).andReturn())["listing"] as ListingView
 
-        assertTrue(view.coBrokerage)
+        assertTrue(view.readOnly)
         val agent = view.agent!!
         assertEquals("Serge Ngono", agent.name)
         assertEquals("/agent?id=999&back=/listings/501?match%3D9009", agent.profileUrl)
@@ -234,7 +234,7 @@ class ListingControllerTest {
 
         val view = model(mvc.perform(get("/listings/501?match=9009")).andReturn())["listing"] as ListingView
 
-        assertTrue(view.coBrokerage)
+        assertTrue(view.readOnly)
         assertNull(view.agent)
     }
 
@@ -246,7 +246,7 @@ class ListingControllerTest {
 
         assertNull(model(result)["locked"])
         val view = model(result)["listing"] as ListingView
-        assertTrue(view.coBrokerage)
+        assertTrue(view.readOnly)
         assertNull(view.publicUrl)
         assertNull(view.stats)
         assertEquals("/", view.backUrl)
