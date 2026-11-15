@@ -80,10 +80,11 @@ endpoint tests, Flyway, Maven.
 
 - [ ] **Step 2: Model it in the e-signature prototype**
 
-Add `failedAttempts` and `lockedUntil` to the persisted state, reset both on `update({ codeExpiresAt: … })` only
-when the account isn't locked. `bindCode` counts a wrong code (`WRONG_CODE`) the same way and shows the same two
+Add `failedAttempts` and `lockedUntil` to the persisted state. A new code (`update({ codeExpiresAt: … })`) does
+**not** reset them — a resend buys no attempts, as on ndopify-server; only a verified code clears both, and a lock
+that expired starts the count over. `bindCode` counts a wrong code (`WRONG_CODE`) the same way and shows the same two
 messages from `MESSAGES` (as functions of the number). `[data-resend]` while locked shows the lock message and
-sends nothing.
+sends nothing, as does the intro's `/otp`.
 
 - [ ] **Step 3: Check both in a browser**
 
