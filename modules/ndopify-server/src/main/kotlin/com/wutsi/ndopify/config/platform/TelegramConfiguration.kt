@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.config.platform
 
 import com.wutsi.ndopify.platform.telegram.TelegramClient
+import com.wutsi.ndopify.platform.telegram.TelegramHealthIndicator
 import com.wutsi.ndopify.platform.telegram.TelegramPollingTransport
 import com.wutsi.ndopify.platform.telegram.TelegramUpdateHandler
 import com.wutsi.ndopify.platform.telegram.TelegramWebhookTransport
@@ -12,6 +13,8 @@ import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import tools.jackson.databind.json.JsonMapper
 import java.net.http.HttpClient
+import java.time.Clock
+import java.time.Duration
 
 /**
  * Wires the Telegram bot: the client over its own [Http] (HTTP/1.1, no JDK read timeout: [Http] sets the configured
@@ -25,6 +28,9 @@ class TelegramConfiguration(
     @param:Value("\${ndopify.telegram.polling.timeout-seconds:20}") private val pollingTimeoutSeconds: Int,
     @param:Value("\${ndopify.telegram.webhook.url:}") private val webhookUrl: String,
     @param:Value("\${ndopify.telegram.webhook.secret:}") private val webhookSecret: String,
+    @param:Value("\${ndopify.telegram.health.up-ttl-minutes:5}") private val healthUpTtlMinutes: Long,
+    @param:Value("\${ndopify.telegram.health.down-ttl-minutes:1}") private val healthDownTtlMinutes: Long,
+    private val clock: Clock,
     private val objectMapper: JsonMapper,
     private val httpClientSettings: HttpClientSettings,
 ) {
@@ -48,6 +54,15 @@ class TelegramConfiguration(
     @Bean
     fun telegramWebhookTransport(client: TelegramClient): TelegramWebhookTransport =
         TelegramWebhookTransport(client, transport, webhookUrl, webhookSecret)
+
+    @Bean
+    fun telegramHealthIndicator(client: TelegramClient): TelegramHealthIndicator =
+        TelegramHealthIndicator(
+            client,
+            clock,
+            Duration.ofMinutes(healthUpTtlMinutes),
+            Duration.ofMinutes(healthDownTtlMinutes),
+        )
 
     private fun telegramHttp() = Http(
         client = JdkHttpClientBuilder()

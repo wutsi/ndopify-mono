@@ -20,6 +20,11 @@ spring:
                         enable: false
                         required: false
 
+management:
+    health:
+        telegram:
+            enabled: false # No health call to Telegram in the tests
+
 ndopify:
     security:
         jwt:
