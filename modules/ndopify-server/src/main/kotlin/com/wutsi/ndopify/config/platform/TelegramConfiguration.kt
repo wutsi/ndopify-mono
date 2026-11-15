@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.config.platform
 
 import com.wutsi.ndopify.platform.telegram.TelegramClient
+import com.wutsi.ndopify.platform.telegram.TelegramPollingTransport
 import com.wutsi.ndopify.platform.telegram.TelegramUpdateHandler
 import com.wutsi.ndopify.platform.util.http.Http
 import org.springframework.beans.factory.annotation.Value
@@ -18,6 +19,9 @@ import java.net.http.HttpClient
 @Configuration
 class TelegramConfiguration(
     @param:Value("\${ndopify.telegram.token}") private val token: String,
+    @param:Value("\${ndopify.telegram.transport}") private val transport: String,
+    @param:Value("\${ndopify.telegram.polling.enabled:true}") private val pollingEnabled: Boolean,
+    @param:Value("\${ndopify.telegram.polling.timeout-seconds:20}") private val pollingTimeoutSeconds: Int,
     private val objectMapper: JsonMapper,
     private val httpClientSettings: HttpClientSettings,
 ) {
@@ -26,6 +30,17 @@ class TelegramConfiguration(
 
     @Bean
     fun telegramUpdateHandler(client: TelegramClient): TelegramUpdateHandler = TelegramUpdateHandler(client)
+
+    @Bean
+    fun telegramPollingTransport(
+        client: TelegramClient,
+        handler: TelegramUpdateHandler,
+    ): TelegramPollingTransport = TelegramPollingTransport(
+        client,
+        handler,
+        pollingEnabled && transport == "polling",
+        pollingTimeoutSeconds,
+    )
 
     private fun telegramHttp() = Http(
         client = JdkHttpClientBuilder()
