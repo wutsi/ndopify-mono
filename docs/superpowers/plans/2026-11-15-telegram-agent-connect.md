@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Let an agent link its Telegram account to its Ndopify agent account: request a 6-digit code in Partner Central, receive it by e-mail, send `/connect <code>` to the bot, which records the chat id for #136.
+**Goal:** Let an agent link its Telegram account to its Ndopify agent account: from a dedicated Telegram page in Partner Central, request a 6-digit code, receive it by e-mail, send `/connect <code>` to the bot, which records the chat id for #136.
 
-**Architecture:** A global `T_AGENT_TELEGRAM` row — deliberately not `@TenantId`, like `T_USER` — holds the pending code and the linked chat id, so #134's webhook (no JWT, no tenant) can resolve it by the code alone. The server issues the code from `POST /v1/agents/me/telegram/code` and e-mails it asynchronously through the existing mailet pipeline. #134's `TelegramUpdateHandler` gains a small `TelegramCommand` dispatch; the agent domain answers `/connect`. Partner Central shows the status from `Agent.telegramConnected` and posts to a BFF route that calls the server.
+**Architecture:** A global `T_AGENT_TELEGRAM` row — deliberately not `@TenantId`, like `T_USER` — holds the pending code and the linked chat id, so #134's webhook (no JWT, no tenant) can resolve it by the code alone. The server issues the code from `POST /v1/agents/me/telegram/code` and e-mails it asynchronously through the existing mailet pipeline. #134's `TelegramUpdateHandler` gains a small `TelegramCommand` dispatch; the agent domain answers `/connect`. Partner Central's home banner links to a `/telegram` page that explains the three steps, shows the status from `Agent.telegramConnected`, and posts to a BFF route that calls the server.
 
 **Tech Stack:** Kotlin 2.3.10, JDK 25, Spring Boot 4.1.2, Jackson 3 (`tools.jackson`), Thymeleaf, Flyway, ktlint, JUnit 5 + `kotlin.test` + mockito-kotlin.
 
@@ -31,21 +31,24 @@
 3. A chat already linked to another agent is refused, and neither link changes.
 4. An already-connected agent's code request is 409 with no e-mail; the stored row is untouched.
 5. `/connect` without a code (or with a malformed one) answers invalid without touching the database; a non-command message still answers `OK`.
+6. The connect page links to the configured bot in a new tab and, for a connected agent, shows the connected status instead of the form.
 
 ---
 
-### Task 1: Prototype the home banner
+### Task 1: Prototype the home banner and the connect page
 
 **Files:**
-- Modify: `modules/ndopify-partner-central/src/main/html/index.html` (after the `home-intro` header, before the assignments section)
+- Modify: `modules/ndopify-partner-central/src/main/html/index.html` (the banner after the `home-intro` header)
+- Create: `modules/ndopify-partner-central/src/main/html/telegram.html`
+- Create: `modules/ndopify-partner-central/src/main/html/assets/css/telegram.css`
 - Modify if needed: `modules/ndopify-partner-central/src/main/html/assets/css/home.css`
 
 **Interfaces:**
-- Produces: the approved markup and French copy the served page copies in Task 13.
+- Produces: the approved banner and page markup and French copy Tasks 12 and 13 serve.
 
-- [ ] **Step 1: Add the home banner**
+- [ ] **Step 1: Turn the banner into a link**
 
-In `index.html`, right after the `</header>` of `home-intro` and before the assignments status paragraph, add a banner using the existing `alert alert--info` classes, with the Telegram logo in `currentColor` (like the WhatsApp icon of the agent card):
+In `index.html`, right after the `</header>` of `home-intro` and before the assignments status paragraph, add a banner using the existing `alert alert--info` classes, with the Telegram logo in `currentColor` (like the WhatsApp icon of the agent card). Its CTA is a link to the connect page, never a form:
 
 ```html
 <div class="alert alert--info" data-telegram-banner>
@@ -55,27 +58,69 @@ In `index.html`, right after the `</header>` of `home-intro` and before the assi
     <div>
         <p class="alert__title">Recevez vos notifications sur Telegram</p>
         <p>Vos notifications vous arrivent directement dans Telegram.</p>
-        <p><button class="btn btn--primary" type="button">Recevoir mon code par e-mail</button></p>
+        <p><a class="btn btn--primary" href="telegram.html">Connecter Telegram</a></p>
     </div>
 </div>
 ```
 
-Add only the CSS the banner needs (its margin below the header, a larger Telegram logo); reuse `alert` and `btn` otherwise.
+The served page uses `th:href="@{/telegram}"`; the prototype links `telegram.html`. Add only the CSS the banner needs (its margin below the header, a larger Telegram logo); reuse `alert` and `btn` otherwise.
 
-- [ ] **Step 2: Check the prototype in a browser**
+- [ ] **Step 2: Add the connect page**
 
-Open `modules/ndopify-partner-central/src/main/html/index.html` (without JavaScript, then with it). The banner must read well at phone width and keep the page usable without JavaScript.
+`telegram.html` is a one-column page like the profile pages: the site header, a *Retour à l'espace agent* link, the intro, three numbered steps, then the button. The body:
 
-- [ ] **Step 3: Commit**
+```html
+<div class="page-intro">
+    <h1>Connecter Telegram</h1>
+    <p>Recevez vos notifications Ndopify directement dans Telegram.</p>
+</div>
+
+<ol class="connect-steps">
+    <li>
+        <div>
+            <p class="connect-steps__title">Recevez un code par e-mail</p>
+            <p>Le code à 6&nbsp;chiffres arrive à l'adresse e-mail de votre compte et expire dans 15&nbsp;minutes.</p>
+        </div>
+    </li>
+    <li>
+        <div>
+            <p class="connect-steps__title">
+                <a href="https://t.me/ndopify_bot" target="_blank" rel="noopener">Ouvrez le bot Ndopify</a>
+            </p>
+            <p>Le bot s'ouvre dans Telegram&nbsp;: appuyez sur <em>Démarrer</em> s'il le propose.</p>
+        </div>
+    </li>
+    <li>
+        <div>
+            <p class="connect-steps__title">Envoyez-lui le code</p>
+            <p>Dans la conversation, envoyez <code>/connect</code> suivi du code reçu, par exemple
+                <code>/connect 123456</code>. Le bot confirme la connexion.</p>
+        </div>
+    </li>
+</ol>
+
+<div class="connect-cta">
+    <button class="btn btn--primary" type="button">Recevoir mon code par e-mail</button>
+    <p class="connect-cta__hint">Le code est envoyé à l'adresse e-mail de votre compte.</p>
+</div>
+```
+
+The served template uses `th:href="${telegramBotUrl}"` on the bot link and wraps the button in `<form method="post" th:action="@{/telegram/code}">`. `telegram.css` copies the join confirmation's numbered-list style (`next-steps`) under `connect-steps`, plus the back link and a button that is full width on a phone; no new colours.
+
+- [ ] **Step 3: Check the prototype in a browser**
+
+Open `modules/ndopify-partner-central/src/main/html/index.html`: the banner's CTA opens `telegram.html`. On the page, check the three steps, the bot link opening a new tab, and phone width; both pages work without JavaScript.
+
+- [ ] **Step 4: Commit**
 
 ```bash
 git add modules/ndopify-partner-central/src/main/html
 git commit -m "feat(npc): prototype the telegram connection"
 ```
 
-- [ ] **Step 4: Stop for the prototype gate**
+- [ ] **Step 5: Stop for the prototype gate**
 
-Show the banner and its rendered copy to the user; wait for the OK on the prototype before Task 2. Any change to the design goes back into this plan first.
+Show the banner and the connect page to the user; wait for the OK before Task 2. Any change to the design goes back into this plan first.
 
 ---
 
@@ -923,18 +968,22 @@ Use `mvn antrun:run@ktlint-format` for formatting, a conventional `fix(agent): �
 
 ---
 
-### Task 12: The BFF route that requests a code
+### Task 12: The connect page and the code route
 
 **Files:**
 - Modify: `modules/ndopify-partner-central/src/main/kotlin/com/wutsi/ndopify/npc/client/ndopify/NdAgentClient.kt`
 - Create: `modules/ndopify-partner-central/src/main/kotlin/com/wutsi/ndopify/npc/ui/telegram/TelegramRules.kt`
 - Create: `modules/ndopify-partner-central/src/main/kotlin/com/wutsi/ndopify/npc/ui/telegram/TelegramController.kt`
+- Create: `modules/ndopify-partner-central/src/main/resources/templates/telegram.html`
+- Modify: `modules/ndopify-partner-central/src/main/resources/application.yml`
+- Modify: `.github/workflows/ndopify-partner-central-main.yml`
 - Test: `modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/ui/telegram/TelegramControllerTest.kt`
+- Test: `modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/ui/telegram/TelegramTemplateTest.kt`
 
 **Interfaces:**
-- Produces: `NdAgentClient.requestTelegramCode()`; `POST /telegram/code` → flash `telegramCodeSent = true` on success and `telegramError` otherwise.
+- Produces: `NdAgentClient.requestTelegramCode()`; `GET /telegram` renders the page with `telegramConnected`, `telegramBotUrl` and the flash attributes; `POST /telegram/code` flashes `telegramCodeSent` / `telegramError` and redirects `/telegram`; config `ndopify.telegram.username`.
 
-- [ ] **Step 1: Add the client call**
+- [ ] **Step 1: Add the client call and the configuration**
 
 ```kotlin
 /** Asks the server to e-mail a Telegram connection code to the signed-in agent. */
@@ -943,16 +992,43 @@ fun requestTelegramCode() {
 }
 ```
 
-- [ ] **Step 2: Write the failing controller test**
+In `application.yml`, next to `ndopify.server`:
 
-`TelegramControllerTest` (standalone `MockMvc`, mocked `CurrentAgent` and `NdAgentClient`):
+```yaml
+    telegram:
+        username: ${TELEGRAM_BOT_USERNAME:ndopify_bot}
+```
+
+In `ndopify-partner-central-main.yml`'s `deploy-test` job, add `TELEGRAM_BOT_USERNAME: ${{secrets.TELEGRAM_BOT_USERNAME}}` to the `Prepare Heroku Files` step's `env`, and `heroku config:set --app ${HEROKU_APP} TELEGRAM_BOT_USERNAME="$TELEGRAM_BOT_USERNAME"` next to `NDOPIFY_SERVER_URL`. The `ndopify_bot` default keeps local runs and the template tests working without it.
+
+- [ ] **Step 2: Write the failing controller tests**
+
+`TelegramControllerTest` (standalone `MockMvc`, mocked `CurrentAgent` and `NdAgentClient`; the setup stubs `currentAgent.get()` like `ProfileControllerTest`):
 
 ```kotlin
 @Test
-fun `the home banner sends the code and comes back home`() {
+fun `the page shows the bot url`() {
+    val result = mvc.perform(get("/telegram")).andReturn()
+
+    assertEquals("telegram", result.modelAndView!!.viewName)
+    assertEquals(false, result.modelAndView!!.model["telegramConnected"])
+    assertEquals("https://t.me/ndopify_bot", result.modelAndView!!.model["telegramBotUrl"])
+}
+
+@Test
+fun `a connected agent sees the connected state`() {
+    whenever(currentAgent.get()).thenReturn(AGENT.copy(telegramConnected = true))
+
+    val result = mvc.perform(get("/telegram")).andReturn()
+
+    assertEquals(true, result.modelAndView!!.model["telegramConnected"])
+}
+
+@Test
+fun `the button sends the code and comes back to the page`() {
     val result = mvc.perform(post("/telegram/code")).andReturn()
 
-    assertEquals("redirect:/", result.response.redirectedUrl)
+    assertEquals("redirect:/telegram", result.response.redirectedUrl)
     assertEquals(true, result.flashMap[TelegramRules.SENT])
     verify(agentClient).requestTelegramCode()
 }
@@ -976,31 +1052,46 @@ fun `a server failure is reported`() {
 }
 ```
 
-Use the `conflict(code)` helper of `ProfileControllerTest` for the 409. The setup stubs `currentAgent.get()` (the controller throws `SignInRequiredException` without it, like `ProfileController`).
+Use the `conflict(code)` helper of `ProfileControllerTest` for the 409.
 
-- [ ] **Step 3: Run it to verify it fails**
+- [ ] **Step 3: Write the failing template tests**
 
-Run: `cd modules/ndopify-partner-central && mvn test -Dtest=TelegramControllerTest`
-Expected: FAIL — the controller and rules are unresolved.
+`TelegramTemplateTest` (real Thymeleaf engine, like `ProfileTemplateTest`):
+- not connected → the three steps, the bot link's `href` is `https://t.me/ndopify_bot` and `target="_blank"`, the form action `/telegram/code`;
+- connected → "Votre compte Telegram est connecté." and no form;
+- with `telegramCodeSent` → the sent message and the `/connect` instruction;
+- with `telegramError` → the message.
 
-- [ ] **Step 4: Implement the rules and controller**
+- [ ] **Step 4: Run them to verify they fail**
 
-`TelegramRules`: `SENT = "telegramCodeSent"`, `ERROR = "telegramError"`, `ALREADY_CONNECTED = "Votre compte Telegram est déjà connecté."`, `SEND_FAILED = "L'envoi du code a échoué. Réessayez dans quelques instants."`.
+Run: `cd modules/ndopify-partner-central && mvn test -Dtest='TelegramControllerTest,TelegramTemplateTest'`
+Expected: FAIL — the controller, rules and template are missing.
 
-`TelegramController` (`@Controller @RequestMapping("/telegram")`): `POST /code` requires `currentAgent.get()`, calls `agentClient.requestTelegramCode()`, flashes `SENT` on success; on `HttpClientErrorException` with 409 flashes `ALREADY_CONNECTED`, on any other `RestClientException` logs and flashes `SEND_FAILED`; returns `redirect:/`. KDoc: the redirect target is fixed, never a URL from the request.
+- [ ] **Step 5: Implement the rules, the controller and the page**
 
-- [ ] **Step 5: Run it to verify it passes**
+`TelegramRules`: `SENT = "telegramCodeSent"`, `ERROR = "telegramError"`, `ALREADY_CONNECTED = "Votre compte Telegram est déjà connecté."`, `SEND_FAILED = "L'envoi du code a échoué. Réessayez dans quelques instants."`, `fun botUrl(username: String) = "https://t.me/$username"`.
 
-Run: `cd modules/ndopify-partner-central && mvn test -Dtest=TelegramControllerTest`
+`TelegramController` (`@Controller @RequestMapping("/telegram")`) takes `currentAgent`, `NdAgentClient` and `@Value("\${ndopify.telegram.username}") botUsername: String`:
+- `@GetMapping` requires `currentAgent.get()`, adds `telegramConnected` and `telegramBotUrl = TelegramRules.botUrl(botUsername)`, returns `telegram`;
+- `@PostMapping("/code")` requires the agent, calls `agentClient.requestTelegramCode()`, flashes `SENT` on success; on `HttpClientErrorException` with 409 flashes `ALREADY_CONNECTED`, on any other `RestClientException` logs and flashes `SEND_FAILED`; returns `redirect:/telegram`. KDoc: the redirect target is fixed, never a URL from the request.
+
+`templates/telegram.html` renders the approved Task 1 page: the three steps, the bot link with `target="_blank" rel="noopener"`, the button in a `th:action="@{/telegram/code}"` form, the success line when `telegramCodeSent`, the error line from `telegramError`, and — when connected — "Votre compte Telegram est connecté." with no form.
+
+- [ ] **Step 6: Run them to verify they pass**
+
+Run: `cd modules/ndopify-partner-central && mvn test -Dtest='TelegramControllerTest,TelegramTemplateTest'`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
 git add modules/ndopify-partner-central/src/main/kotlin/com/wutsi/ndopify/npc/client/ndopify/NdAgentClient.kt \
         modules/ndopify-partner-central/src/main/kotlin/com/wutsi/ndopify/npc/ui/telegram \
+        modules/ndopify-partner-central/src/main/resources/templates/telegram.html \
+        modules/ndopify-partner-central/src/main/resources/application.yml \
+        .github/workflows/ndopify-partner-central-main.yml \
         modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/ui/telegram
-git commit -m "feat(npc): request a telegram connection code"
+git commit -m "feat(npc): explain how to connect telegram"
 ```
 
 ---
@@ -1014,7 +1105,7 @@ git commit -m "feat(npc): request a telegram connection code"
 - Test: `modules/ndopify-partner-central/src/test/kotlin/com/wutsi/ndopify/npc/ui/home/HomeTemplateTest.kt`
 
 **Interfaces:**
-- Consumes: `Agent.telegramConnected`, the flash attributes of Task 12.
+- Consumes: `Agent.telegramConnected`.
 - Produces: the model attribute `telegramConnected`.
 
 - [ ] **Step 1: Write the failing tests**
@@ -1022,10 +1113,10 @@ git commit -m "feat(npc): request a telegram connection code"
 `HomeControllerTest`: `show()` puts `telegramConnected = false` on the model for `AGENT`, and `true` when `currentAgent.get()` returns `AGENT.copy(telegramConnected = true)`.
 
 `HomeTemplateTest`:
-- not connected → `doc.select("[data-telegram-banner]")` has one element, whose form action is `/telegram/code`;
-- connected → no `[data-telegram-banner]`;
-- with the `telegramCodeSent` flash attribute (add it to the request: `.flashAttr(TelegramRules.SENT, true)`) → the banner shows the sent message and the `/connect` instruction;
-- with `telegramError` → the banner shows the message.
+- not connected → `doc.select("[data-telegram-banner]")` has one element, whose link has `href` `/telegram` and the text "Connecter Telegram";
+- connected → no `[data-telegram-banner]`.
+
+The banner owns no flash state; the connect page does.
 
 - [ ] **Step 2: Run them to verify they fail**
 
@@ -1034,7 +1125,7 @@ Expected: FAIL — no `telegramConnected` attribute, no banner.
 
 - [ ] **Step 3: Implement the banner**
 
-`HomeController.show` adds `model.addAttribute("telegramConnected", agent.telegramConnected)` next to the other profile flags. In `index.html`, render the approved Task 1 banner after the `home-intro` header, before the KYC banners: `th:if="${not telegramConnected}"`, the success line when `telegramCodeSent`, the error line from `telegramError`, and wrap the button in a `<form method="post" action="/telegram/code">`. Never show it for a connected agent.
+`HomeController.show` adds `model.addAttribute("telegramConnected", agent.telegramConnected)` next to the other profile flags. In `index.html`, render the approved Task 1 banner after the `home-intro` header, before the KYC banners: `th:if="${not telegramConnected}"` and `th:href="@{/telegram}"` on the "Connecter Telegram" link. Never show it for a connected agent.
 
 - [ ] **Step 4: Run them to verify they pass**
 
