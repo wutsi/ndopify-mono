@@ -57,6 +57,7 @@ import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.servlet.view.InternalResourceViewResolver
 import java.time.Clock
 import java.time.ZoneOffset
+import java.time.temporal.ChronoUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
@@ -190,6 +191,20 @@ class SignControllerTest {
     }
 
     @Test
+    fun `locked account gets no code`() {
+        session.setAttribute(PendingSignature.SESSION_ATTRIBUTE, pending)
+        doThrow(error(HttpStatus.CONFLICT, ErrorCode.AUTH_ACCOUNT_LOCKED, mapOf("lockedUntil" to lockedUntil())))
+            .whenever(otpClient).create(any())
+
+        val result = mvc.perform(post("$path/otp").param("resend", "true").session(session)).andReturn()
+
+        assertEquals("sign", result.modelAndView?.viewName)
+        assertEquals(SignView.STEP_INTRO, view(result).step)
+        assertEquals("Trop de tentatives. Réessayez dans 42 minutes.", model(result)["error"])
+        assertNull(session.getAttribute(PendingSignature.SESSION_ATTRIBUTE))
+    }
+
+    @Test
     fun `resend reuses pending email`() {
         session.setAttribute(PendingSignature.SESSION_ATTRIBUTE, pending.copy(expiresAt = 0))
 
@@ -269,6 +284,24 @@ class SignControllerTest {
     @Test
     fun `no e-signature access`() {
         assertVerifyError(ErrorCode.AUTH_ACCESS_DENIED, SignController.EMAIL_UNKNOWN)
+    }
+
+    @Test
+    fun `verify locked`() {
+        assertVerifyError(
+            ErrorCode.AUTH_ACCOUNT_LOCKED,
+            "Trop de tentatives. Réessayez dans 42 minutes.",
+            mapOf("lockedUntil" to lockedUntil()),
+        )
+    }
+
+    @Test
+    fun `verify wrong code shows the attempts left`() {
+        assertVerifyError(
+            ErrorCode.AUTH_INVALID_CREDENTIALS,
+            "Code incorrect. Encore 1 tentative avant le blocage de votre compte.",
+            mapOf("remainingAttempts" to 1),
+        )
     }
 
     @Test
@@ -558,9 +591,9 @@ class SignControllerTest {
         assertTrue(session.isInvalid)
     }
 
-    private fun assertVerifyError(code: String?, message: String) {
+    private fun assertVerifyError(code: String?, message: String, data: Map<String, Any>? = null) {
         session.setAttribute(PendingSignature.SESSION_ATTRIBUTE, pending)
-        doThrow(error(HttpStatus.CONFLICT, code)).whenever(authClient).authenticate(any())
+        doThrow(error(HttpStatus.CONFLICT, code, data)).whenever(authClient).authenticate(any())
 
         val result = mvc.perform(post("$path/verify").param("code", "123 45").session(session)).andReturn()
 
@@ -575,6 +608,8 @@ class SignControllerTest {
         assertEquals(pending, session.getAttribute(PendingSignature.SESSION_ATTRIBUTE))
     }
 
+    private fun lockedUntil(): String = NOW.plus(42, ChronoUnit.MINUTES).toString()
+
     private fun signPost() = post(path).param("consent", "yes").param("contentUrl", CONTENT_URL)
 
     private fun signIn() {
@@ -587,10 +622,10 @@ class SignControllerTest {
         doReturn(contract).whenever(contractClient).get(contract.id)
     }
 
-    private fun error(status: HttpStatus, code: String?): HttpClientErrorException {
+    private fun error(status: HttpStatus, code: String?, data: Map<String, Any>? = null): HttpClientErrorException {
         val ex = HttpClientErrorException(status)
         if (code != null) {
-            ex.setBodyConvertFunction { ErrorResponse(Error(code = code)) }
+            ex.setBodyConvertFunction { ErrorResponse(Error(code = code, data = data)) }
         }
         return ex
     }

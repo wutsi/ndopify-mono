@@ -3,6 +3,7 @@ package com.wutsi.ndopify.esignature.ui.sign
 import com.wutsi.ndopify.contract.dto.Contract
 import com.wutsi.ndopify.contract.dto.SearchContractRequest
 import com.wutsi.ndopify.contract.dto.SignContractRequest
+import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.esignature.client.ContractContentClient
@@ -128,7 +129,15 @@ class SignController(
 
             // A rejected request replaces any earlier one: don't leave a code step open for another address
             session.removeAttribute(PendingSignature.SESSION_ATTRIBUTE)
-            model.addAttribute("error", if (errorCode(ex) == ErrorCode.USER_NOT_FOUND) EMAIL_UNKNOWN else OTP_FAILED)
+            val error = errorOf(ex)
+            model.addAttribute(
+                "error",
+                when (error?.code) {
+                    ErrorCode.AUTH_ACCOUNT_LOCKED -> OtpLockMessage.locked(error.data, clock.millis())
+                    ErrorCode.USER_NOT_FOUND -> EMAIL_UNKNOWN
+                    else -> OTP_FAILED
+                },
+            )
             return introStep(contractPartyId, email, model)
         }
 
@@ -217,11 +226,11 @@ class SignController(
         } catch (ex: HttpClientErrorException) {
             warn(ex)
             // Not the content ndopify-server has for the contract: the signer must read the new one
-            if (errorCode(ex) == ErrorCode.CONTRACT_CONTENT_MISMATCH) {
+            if (errorOf(ex)?.code == ErrorCode.CONTRACT_CONTENT_MISMATCH) {
                 model.addAttribute("error", CONTENT_CHANGED)
                 return render(contractPartyId, view, model)
             }
-            if (errorCode(ex)?.endsWith(VERSION_CONFLICT_SUFFIX) == true) {
+            if (errorOf(ex)?.code?.endsWith(VERSION_CONFLICT_SUFFIX) == true) {
                 model.addAttribute("error", SIGN_BUSY)
                 return render(contractPartyId, view, model)
             }
@@ -269,24 +278,28 @@ class SignController(
         return VIEW
     }
 
-    private fun toCodeMessage(ex: HttpClientErrorException): String =
-        when (errorCode(ex)) {
+    private fun toCodeMessage(ex: HttpClientErrorException): String {
+        val error = errorOf(ex)
+        return when (error?.code) {
             ErrorCode.AUTH_CREDENTIALS_EXPIRED -> CODE_EXPIRED
             ErrorCode.AUTH_CREDENTIALS_ALREADY_USED -> CODE_ALREADY_USED
-            ErrorCode.AUTH_INVALID_CREDENTIALS -> CODE_WRONG
+            ErrorCode.AUTH_INVALID_CREDENTIALS -> OtpLockMessage.invalid(error.data, CODE_WRONG)
+            ErrorCode.AUTH_ACCOUNT_LOCKED -> OtpLockMessage.locked(error.data, clock.millis())
             // A member of the tenant without e-signature access: not one of the signers
             ErrorCode.AUTH_ACCESS_DENIED -> EMAIL_UNKNOWN
             else -> AUTH_FAILED
         }
+    }
 
     // Status and error code only: the body's message can name the e-mail ("User not found: <email>")
     private fun warn(ex: HttpClientErrorException) {
-        LOGGER.warn("Server error: ${ex.statusCode} ${errorCode(ex)}")
+        LOGGER.warn("Server error: ${ex.statusCode} ${errorOf(ex)?.code}")
     }
 
-    private fun errorCode(ex: HttpClientErrorException): String? =
+    /** The error ndopify-server answered with, null when its body isn't an [ErrorResponse] (a proxy's page...). */
+    private fun errorOf(ex: HttpClientErrorException): Error? =
         try {
-            ex.getResponseBodyAs(ErrorResponse::class.java)?.error?.code
+            ex.getResponseBodyAs(ErrorResponse::class.java)?.error
         } catch (ignored: Exception) {
             null
         }
