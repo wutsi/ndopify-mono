@@ -45,6 +45,8 @@ import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.HttpServerErrorException
 import org.springframework.web.client.ResourceAccessException
 import org.springframework.web.servlet.view.InternalResourceViewResolver
+import org.springframework.web.util.UriComponentsBuilder
+import org.springframework.web.util.UriUtils
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
@@ -95,6 +97,9 @@ class ListingControllerTest {
     private fun model(result: MvcResult) = result.modelAndView!!.model
 
     private fun flash(result: MvcResult) = result.flashMap[ListingController.OUTCOME]
+
+    private fun queryParam(url: String, name: String): String? =
+        UriComponentsBuilder.fromUriString(url).build().getQueryParams().getFirst(name)
 
     private fun conflict(code: String): HttpClientErrorException {
         val ex = HttpClientErrorException(HttpStatus.CONFLICT)
@@ -152,7 +157,7 @@ class ListingControllerTest {
     }
 
     @Test
-    fun `show - another agent's listing is locked`() {
+    fun `show - another agent's draft is locked`() {
         doReturn(LISTING.copy(agentId = 999)).whenever(listingClient).get(501)
 
         val result = mvc.perform(get("/listings/501")).andReturn()
@@ -206,7 +211,7 @@ class ListingControllerTest {
 
         val view = model(mvc.perform(get("/listings/501?match=9009")).andReturn())["listing"] as ListingView
 
-        assertTrue(view.coBrokerage)
+        assertTrue(view.readOnly)
         val agent = view.agent!!
         assertEquals("Serge Ngono", agent.name)
         assertEquals("/agent?id=999&back=/listings/501?match%3D9009", agent.profileUrl)
@@ -234,17 +239,141 @@ class ListingControllerTest {
 
         val view = model(mvc.perform(get("/listings/501?match=9009")).andReturn())["listing"] as ListingView
 
-        assertTrue(view.coBrokerage)
+        assertTrue(view.readOnly)
         assertNull(view.agent)
     }
 
     @Test
-    fun `show - co-brokerage listing without a match is locked`() {
-        doReturn(COMPLETE.copy(status = ListingStatus.PUBLISHED, agentId = 999)).whenever(listingClient).get(501)
+    fun `show - another agent's published listing is read-only without a match`() {
+        doReturn(COMPLETE.copy(status = ListingStatus.PUBLISHED, agentId = 999, publishedAt = SENT)).whenever(listingClient).get(501)
+        doReturn(ProfileFixtures.AGENT.copy(id = 999)).whenever(agentClient).get(999)
 
         val result = mvc.perform(get("/listings/501")).andReturn()
 
-        assertEquals(true, model(result)["locked"])
+        assertNull(model(result)["locked"])
+        val view = model(result)["listing"] as ListingView
+        assertTrue(view.readOnly)
+        assertNotNull(view.agent)
+        assertNull(view.publicUrl)
+        assertNull(view.stats)
+        assertTrue(view.rows.isEmpty())
+        assertEquals("/", view.backUrl)
+        assertEquals("← Retour à l'espace agent", view.backLabel)
+        verify(listingClient, never()).stats(any())
+        verify(mandateClient, never()).get(any())
+    }
+
+    @Test
+    fun `show - another agent's rented and sold listings are read-only`() {
+        for (status in listOf(ListingStatus.RENTED, ListingStatus.SOLD)) {
+            doReturn(COMPLETE.copy(status = status, agentId = 999)).whenever(listingClient).get(501)
+            doReturn(ProfileFixtures.AGENT.copy(id = 999)).whenever(agentClient).get(999)
+
+            val view = model(mvc.perform(get("/listings/501")).andReturn())["listing"] as ListingView
+
+            assertTrue(view.readOnly)
+            assertNotNull(view.published)
+            assertNull(view.published?.privateLocation)
+            assertNotNull(view.agent)
+        }
+    }
+
+    @Test
+    fun `show - a valid back returns there with a generic label`() {
+        doReturn(COMPLETE.copy(status = ListingStatus.PUBLISHED, agentId = 999)).whenever(listingClient).get(501)
+        doReturn(ProfileFixtures.AGENT.copy(id = 999)).whenever(agentClient).get(999)
+
+        val view = model(
+            mvc.perform(get("/listings/501").param("back", "/agent?id=30&page=1")).andReturn(),
+        )["listing"] as ListingView
+
+        assertEquals("/agent?id=30&page=1", view.backUrl)
+        assertEquals("← Retour", view.backLabel)
+    }
+
+    @Test
+    fun `show - an own listing keeps its mandate whatever the hints`() {
+        val view = model(
+            mvc.perform(get("/listings/501").param("back", "/agent?id=30").param("match", "9009")).andReturn(),
+        )["listing"] as ListingView
+
+        assertEquals("/mandates/203", view.backUrl)
+        assertEquals("← Retour au mandat", view.backLabel)
+        verify(matchClient, never()).get(any())
+    }
+
+    @Test
+    fun `show - an off-origin back is ignored`() {
+        doReturn(COMPLETE.copy(status = ListingStatus.PUBLISHED, agentId = 999)).whenever(listingClient).get(501)
+        doReturn(ProfileFixtures.AGENT.copy(id = 999)).whenever(agentClient).get(999)
+
+        for (back in listOf("//evil.com", "https://evil.com", "\\evil", "")) {
+            val view = model(mvc.perform(get("/listings/501").param("back", back)).andReturn())["listing"] as ListingView
+
+            assertEquals("/", view.backUrl)
+            assertEquals("← Retour à l'espace agent", view.backLabel)
+        }
+    }
+
+    @Test
+    fun `show - a stale match falls back to the read-only lens`() {
+        doReturn(COMPLETE.copy(status = ListingStatus.PUBLISHED, agentId = 999)).whenever(listingClient).get(501)
+        doThrow(HttpClientErrorException(HttpStatus.NOT_FOUND)).whenever(matchClient).get(9009)
+        doReturn(ProfileFixtures.AGENT.copy(id = 999)).whenever(agentClient).get(999)
+
+        val view = model(
+            mvc.perform(get("/listings/501").param("match", "9009").param("back", "/agent?id=30")).andReturn(),
+        )["listing"] as ListingView
+
+        assertTrue(view.readOnly)
+        assertEquals("/agent?id=30", view.backUrl)
+        verify(mandateClient, never()).get(any())
+    }
+
+    @Test
+    fun `show - a valid match wins over back`() {
+        doReturn(COMPLETE.copy(status = ListingStatus.PUBLISHED, agentId = 999)).whenever(listingClient).get(501)
+        doReturn(Match(id = 9009, mandateId = 204, listingId = 501, coBrokerage = true, status = MatchStatus.ACTIVE))
+            .whenever(matchClient).get(9009)
+        doReturn(Mandate(id = 204, agentId = AGENT.id, mandateType = MandateType.SEARCH, status = MandateStatus.APPROVED))
+            .whenever(mandateClient).get(204)
+        doReturn(ProfileFixtures.AGENT.copy(id = 999)).whenever(agentClient).get(999)
+
+        val view = model(
+            mvc.perform(get("/listings/501").param("match", "9009").param("back", "/agent?id=30")).andReturn(),
+        )["listing"] as ListingView
+
+        assertEquals("/mandates/204#matches-title", view.backUrl)
+        assertEquals("← Retour aux biens correspondants", view.backLabel)
+    }
+
+    @Test
+    fun `show - the agent card returns to the listing page`() {
+        doReturn(COMPLETE.copy(status = ListingStatus.PUBLISHED, agentId = 999)).whenever(listingClient).get(501)
+        doReturn(ProfileFixtures.AGENT.copy(id = 999)).whenever(agentClient).get(999)
+
+        val view = model(
+            mvc.perform(get("/listings/501").param("back", "/agent?id=30")).andReturn(),
+        )["listing"] as ListingView
+
+        // The card's profile link returns to this listing, whose own ?back= is encoded in it: the chain reads back
+        // to the agent profile the listing was opened from.
+        val profileBack = queryParam(view.agent!!.profileUrl, "back")!!
+        val listingUrl = UriUtils.decode(profileBack, "UTF-8")
+        assertEquals("/agent?id=30", UriUtils.decode(queryParam(listingUrl, "back")!!, "UTF-8"))
+    }
+
+    @Test
+    fun `show - an unreadable agent leaves the card out`() {
+        doReturn(COMPLETE.copy(status = ListingStatus.PUBLISHED, agentId = 999)).whenever(listingClient).get(501)
+        doThrow(ResourceAccessException("down")).whenever(agentClient).get(999)
+
+        val result = mvc.perform(get("/listings/501")).andReturn()
+
+        val view = model(result)["listing"] as ListingView
+        assertTrue(view.readOnly)
+        assertNull(view.agent)
+        assertNull(model(result)["locked"])
     }
 
     @Test

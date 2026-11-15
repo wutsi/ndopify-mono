@@ -95,15 +95,15 @@
                     Her current published listings, newest first. The real page reads
                     GET /v1/listings?agent-id={id} (ndopify-server restricts another agent to PUBLISHED) and links
                     each card to NPC's listing page (`/listings/{id}`). PROTOTYPE: six fixtures, three per page,
-                    a placeholder photo and listing.html?id={id}; the section is hidden when the agent has none.
-                    listing.html?id=5001 is the prototype's co-brokerage read-only view (agent card instead of the
-                    customer); the BFF still needs it.
+                    a placeholder photo and listing.html?id={id}&back={this profile}; the section is hidden when the
+                    agent has none. listing.html?id=5001&back=… is the prototype's any-agent read-only view (agent
+                    card instead of the customer, "← Retour" back to this profile).
                 -->
                 <section class="section" id="listings" aria-labelledby="listings-title" data-agent-listings>
                     <h2 id="listings-title">Ses annonces</h2>
                     <ul class="agent-listings" data-agent-listings-list>
                         <li>
-                            <a class="agent-listing" href="listing.html?id=5001">
+                            <a class="agent-listing" href="listing.html?id=5001&amp;back=agent.html%3Fid%3D1001">
                                 <span class="agent-listing__photo" aria-hidden="true">
                                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                          stroke-width="2" focusable="false"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
@@ -117,7 +117,7 @@
                             </a>
                         </li>
                         <li>
-                            <a class="agent-listing" href="listing.html?id=5002">
+                            <a class="agent-listing" href="listing.html?id=5002&amp;back=agent.html%3Fid%3D1001">
                                 <span class="agent-listing__photo" aria-hidden="true">
                                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                          stroke-width="2" focusable="false"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
@@ -131,7 +131,7 @@
                             </a>
                         </li>
                         <li>
-                            <a class="agent-listing" href="listing.html?id=5003">
+                            <a class="agent-listing" href="listing.html?id=5003&amp;back=agent.html%3Fid%3D1001">
                                 <span class="agent-listing__photo" aria-hidden="true">
                                     <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                          stroke-width="2" focusable="false"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>

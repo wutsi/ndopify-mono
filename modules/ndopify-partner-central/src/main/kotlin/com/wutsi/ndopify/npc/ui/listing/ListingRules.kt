@@ -137,6 +137,9 @@ object ListingRules {
     private val CLOSED = setOf(ListingStatus.RENTED, ListingStatus.SOLD, ListingStatus.EXPIRED, ListingStatus.CANCELLED)
     private val CLOSED_TAG = Tag("Fermée", "neutral")
 
+    /** The statuses a listing keeps its public page in: ndopify-server reads them publicly, so any agent may see them. */
+    val PUBLIC_STATUSES: Set<ListingStatus> = setOf(ListingStatus.PUBLISHED, ListingStatus.RENTED, ListingStatus.SOLD)
+
     // PENDING (and UNKNOWN, never shown: the page is then locked): no code sets it yet, neither closed nor sent.
     private val PENDING_TAG = Tag("En attente", "warning")
 

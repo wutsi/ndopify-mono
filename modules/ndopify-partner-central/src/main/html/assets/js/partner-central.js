@@ -3711,29 +3711,41 @@
     }
 
     // The listing's agent card: the standard footer's contents, in its own box (photo or initials, name, WhatsApp).
-    function renderCoBrokerageAgent(agent) {
-        fillAgentCard($("[data-agent-card]"), agent,
-            "listing.html?id=" + encodeURIComponent(CO_BROKERAGE_LISTING.id));
+    // Its profile link returns to the listing as it is shown, so the back chain survives the detour.
+    function renderCoBrokerageAgent(agent, listingUrl) {
+        fillAgentCard($("[data-agent-card]"), agent, listingUrl);
     }
 
     function initListing() {
         var params = new URLSearchParams(window.location.search);
         var id = params.get("id");
-        var coBrokerage = id === String(CO_BROKERAGE_LISTING.id);
-        var listing = coBrokerage ? CO_BROKERAGE_LISTING : listings()[id];
-        if (!listing || (!coBrokerage && !ownsMandate(listing.mandateId))) {
+        var readOnly = id === String(CO_BROKERAGE_LISTING.id);
+        var listing = readOnly ? CO_BROKERAGE_LISTING : listings()[id];
+        if (!listing || (!readOnly && !ownsMandate(listing.mandateId))) {
             $("[data-listing-locked]").hidden = false;
             return;
         }
-        // A co-brokerage listing belongs to another agent's mandate: never link to it, go back to the search instead.
-        var mandateLink = coBrokerage
-            ? "mandate.html?id=204#match-9009-title"
-            : "mandate.html?id=" + encodeURIComponent(listing.mandateId);
+        // Another agent's listing belongs to another agent's mandate: never link to it. ?match= (a co-brokerage
+        // match) returns to the search it came from; a ?back= (the profile's card) returns there; else the Espace agent.
+        var back = params.get("back");
+        // A same-origin path only: no scheme (`:`), no protocol-relative host, no backslash (the server's rule).
+        var sameOrigin = back && back.indexOf(":") < 0 && back.indexOf("//") !== 0 && back.charAt(0) !== "\\" ? back : null;
+        var mandateLink = sameOrigin
+            ? sameOrigin
+            : readOnly
+                ? "mandate.html?id=204#match-9009-title"
+                : "mandate.html?id=" + encodeURIComponent(listing.mandateId);
         $all("[data-mandate-link]").forEach(function (a) {
             a.href = mandateLink;
-            if (coBrokerage) a.textContent = "← Retour aux biens correspondants";
+            if (sameOrigin) a.textContent = "← Retour";
+            else if (readOnly) a.textContent = "← Retour aux biens correspondants";
         });
-        if (coBrokerage) renderCoBrokerageAgent(listing.agent);
+        if (readOnly) {
+            var listingUrl = "listing.html?id=" + encodeURIComponent(id) +
+                (params.get("match") ? "&match=" + encodeURIComponent(params.get("match")) : "") +
+                (sameOrigin ? "&back=" + encodeURIComponent(sameOrigin) : "");
+            renderCoBrokerageAgent(listing.agent, listingUrl);
+        }
 
         var share = $("[data-listing-share]");
         var shareLabel = $("[data-share-label]", share);
@@ -3773,22 +3785,22 @@
         }
 
         function render() {
-            listing = coBrokerage ? CO_BROKERAGE_LISTING : listings()[id];
+            listing = readOnly ? CO_BROKERAGE_LISTING : listings()[id];
             var tag = listingTag(listing);
             var editable = listing.status === "DRAFT";
-            var title = (coBrokerage ? "" : "Annonce · ") + listingTitle(listing);
+            var title = (readOnly ? "" : "Annonce · ") + listingTitle(listing);
             document.title = title + " — Ndopify Partner Central";
             $("[data-listing-title]").textContent = title;
-            $("[data-listing-meta]").hidden = coBrokerage;
-            $("[data-listing-origin]").hidden = !coBrokerage;
-            $("[data-listing-agent]").hidden = !coBrokerage;
+            $("[data-listing-meta]").hidden = readOnly;
+            $("[data-listing-origin]").hidden = !readOnly;
+            $("[data-listing-agent]").hidden = !readOnly;
             var tagEl = $("[data-listing-tag]");
             tagEl.textContent = LISTING_TAGS[tag][0] +
                 (listing.status === "PUBLISHED" ? " le " + formatShortDate(listing.publishedAt) : "");
             tagEl.className = "status-tag status-tag--" + LISTING_TAGS[tag][1];
 
             $all("[data-listing-panel]").forEach(function (panel) {
-                panel.hidden = coBrokerage || panel.getAttribute("data-listing-panel") !== tag;
+                panel.hidden = readOnly || panel.getAttribute("data-listing-panel") !== tag;
             });
             if (listing.rejection) $("[data-rejection-reason]").textContent = listing.rejection.reason;
             if (listing.submittedAt) $("[data-submitted-at]").textContent = formatDate(listing.submittedAt);
@@ -3806,7 +3818,7 @@
             }
             // Published: its activity (views, interested clients, visits). Never another agent's.
             var stats = $("[data-listing-stats]");
-            stats.hidden = coBrokerage || listing.status !== "PUBLISHED";
+            stats.hidden = readOnly || listing.status !== "PUBLISHED";
             $("[data-listing-stats-text]", stats).textContent = statsSummary(listing.mandateId);
 
             var done = LISTING_SECTIONS.filter(function (s) {
@@ -3820,9 +3832,9 @@
             list.textContent = "";
             LISTING_SECTIONS.forEach(function (s) {
                 var item = template.content.firstElementChild.cloneNode(true);
-                var row = document.createElement(coBrokerage ? "div" : "a");
+                var row = document.createElement(readOnly ? "div" : "a");
                 row.className = "checklist__row";
-                if (!coBrokerage) row.href = "listing/" + s.page + "?id=" + encodeURIComponent(id);
+                if (!readOnly) row.href = "listing/" + s.page + "?id=" + encodeURIComponent(id);
                 while (item.firstChild) row.appendChild(item.firstChild);
                 item.appendChild(row);
                 $("[data-section-title]", item).textContent = s.label;
@@ -3835,7 +3847,7 @@
             });
 
             var left = missingSections(listing);
-            $("[data-listing-send]").hidden = coBrokerage || !editable;
+            $("[data-listing-send]").hidden = readOnly || !editable;
             setActive(submit, left.length === 0);
             missing.textContent = left.length ? "Encore à faire : " + left.join(", ") + "." :
                 "Tout est vérifié : vous pouvez envoyer l'annonce.";

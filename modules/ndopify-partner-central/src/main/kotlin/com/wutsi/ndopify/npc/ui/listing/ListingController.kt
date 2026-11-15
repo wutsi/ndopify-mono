@@ -16,6 +16,7 @@ import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.agent.AgentCardViews
+import com.wutsi.ndopify.npc.ui.agent.AgentProfileRules
 import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.npc.ui.mandate.MandateController
 import com.wutsi.ndopify.npc.ui.profile.ProfileRules
@@ -31,13 +32,15 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClientException
 import org.springframework.web.servlet.mvc.support.RedirectAttributes
+import org.springframework.web.util.UriComponentsBuilder
 
 /**
  * The listing of one of the agent's approved LISTING mandates (`listing.html`): its checklist, the visit of the
  * property section by section, and "Envoyer pour vérification" once every required section is done.
  *
- * ndopify-server doesn't check who reads or writes a listing, so this page does: a listing that isn't the signed-in
- * agent's (`Listing.agentId`) is the locked view, and an action on it is [CHANGED], never sent.
+ * ndopify-server reads PUBLISHED, RENTED and SOLD listings publicly, so any agent may open one, read-only. Its write
+ * paths stay the owner's: a listing that isn't the signed-in agent's (`Listing.agentId`) is never sent here, and the
+ * section, photo and verify pages keep [ListingAccess]'s owner-only gate.
  *
  * The listing is created from the mandate page (`POST /mandates/{id}/listing`), pre-filled by ndopify-server from the
  * landlord's answers; a mandate that can't have one goes back to its page with the mandate page's own outcomes.
@@ -79,14 +82,17 @@ class ListingController(
     private val publishedAccess = PublishedListingAccess(listingClient, matchClient, mandateClient)
 
     /**
-     * [id] is a String so that a hand-edited value is the locked view instead of failing the page. [match] is the
-     * co-brokerage match a *Biens correspondants* card opened with: its owner doesn't need one, and a co-broker without
-     * it (or with one that isn't theirs) is locked.
+     * [id] is a String so that a hand-edited value is the locked view instead of failing the page. Any agent may open a
+     * listing that keeps its public page; the other statuses stay locked. On another agent's page, [match] and [back]
+     * only choose the return link: a visible co-brokerage match of one of the agent's searches wins, else a same-origin
+     * [back], else the Espace agent — a stale or bogus hint is ignored, never a locked page. The owner's page keeps its
+     * mandate, whatever the hints.
      */
     @GetMapping("/listings/{id}")
     fun show(
         @PathVariable id: String,
         @RequestParam(required = false) match: String?,
+        @RequestParam(required = false) back: String?,
         model: Model,
     ): String {
         val agent = currentAgent.get() ?: throw SignInRequiredException()
@@ -96,19 +102,32 @@ class ListingController(
         val result = id.toLongOrNull()?.let { load(it, agent, match?.toLongOrNull(), model) } ?: return locked(model)
         val listing = when (result) {
             is PublishedListingAccess.Owner -> result.listing
-            is PublishedListingAccess.CoBroker -> result.listing
+            is PublishedListingAccess.ReadOnly -> result.listing
             else -> return locked(model)
         }
-        val coBrokerage = result is PublishedListingAccess.CoBroker
+        val readOnly = result is PublishedListingAccess.ReadOnly
+        val match = (result as? PublishedListingAccess.ReadOnly)?.match
+        // The owner's return link stays its mandate: only another agent's page is opened from a back path.
+        val backPath = AgentProfileRules.back(back).takeIf { readOnly }
         val images = lookup("images of listing ${listing.id}") { listingClient.images(listing.id) }
-        val stats = if (!coBrokerage && listing.status == ListingStatus.PUBLISHED) {
+        val stats = if (!readOnly && listing.status == ListingStatus.PUBLISHED) {
             lookup("stats of listing ${listing.id}") { listingClient.stats(listOf(listing.id)) }?.get(listing.id)
         } else {
             null
         }
-        val agentCard = if (result is PublishedListingAccess.CoBroker) {
+        // The listing as the card returns to it: its ?match= or ?back= keeps the back chain through the profile.
+        val listingUrl = when {
+            match != null -> UriComponentsBuilder.fromPath("/listings/${listing.id}")
+                .queryParam("match", match.id)
+                .build()
+                .encode()
+                .toUriString()
+            backPath != null -> ListingRules.url(listing.id, backPath)
+            else -> "/listings/${listing.id}"
+        }
+        val agentCard = if (readOnly) {
             lookup("listing agent ${listing.agentId}") { agentClient.get(listing.agentId) }
-                ?.let { AgentCardViews.of(it, "/listings/${listing.id}?match=${result.match.id}") }
+                ?.let { AgentCardViews.of(it, listingUrl) }
                 ?.takeIf { it.name.isNotBlank() }
         } else {
             null
@@ -120,14 +139,20 @@ class ListingController(
             formatter(),
             tenantContext.getTenant().publicPortalUrl,
             stats,
-            coBrokerage = coBrokerage,
+            readOnly = readOnly,
             agent = agentCard,
-            backUrl = if (result is PublishedListingAccess.CoBroker) {
-                "/mandates/${result.match.mandateId}#matches-title"
-            } else {
-                "/mandates/${listing.mandateId}"
+            backUrl = when {
+                match != null -> "/mandates/${match.mandateId}#matches-title"
+                backPath != null -> backPath
+                readOnly -> "/"
+                else -> "/mandates/${listing.mandateId}"
             },
-            backLabel = if (coBrokerage) "← Retour aux biens correspondants" else "← Retour au mandat",
+            backLabel = when {
+                match != null -> "← Retour aux biens correspondants"
+                backPath != null -> "← Retour"
+                readOnly -> "← Retour à l'espace agent"
+                else -> "← Retour au mandat"
+            },
         )
         model.addAttribute("listing", view)
         return VIEW
@@ -244,7 +269,7 @@ class ListingController(
     /** The admitted listing; null when it can't be had, with the view to show instead ([UNAVAILABLE] or locked). */
     private fun load(id: Long, agent: Agent, matchId: Long?, model: Model): PublishedListingAccess.Result? =
         when (val result = publishedAccess.load(id, agent, matchId)) {
-            is PublishedListingAccess.Owner, is PublishedListingAccess.CoBroker -> result
+            is PublishedListingAccess.Owner, is PublishedListingAccess.ReadOnly -> result
             PublishedListingAccess.Locked -> null
             PublishedListingAccess.Unavailable -> {
                 model.addAttribute(UNAVAILABLE, true)

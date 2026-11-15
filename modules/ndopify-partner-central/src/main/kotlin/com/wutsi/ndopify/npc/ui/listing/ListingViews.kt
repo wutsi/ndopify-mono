@@ -61,13 +61,10 @@ object ListingViews {
 
     private const val TITLE_PREFIX = "Annonce · "
 
-    // A listing that keeps its public page once it leaves the market
-    private val PUBLIC = setOf(ListingStatus.PUBLISHED, ListingStatus.RENTED, ListingStatus.SOLD)
-
     /**
      * [images] is null when they couldn't be loaded: the photos' row and the hero image then have no URL.
      * [publicPortalUrl] is the tenant's, the host of a published or closed listing's `url`. [stats] is a published
-     * listing's activity, null when it can't be had: no line then. [coBrokerage] is the co-broker's lens: the same
+     * listing's activity, null when it can't be had: no line then. [readOnly] is another agent's lens: the same
      * published sheet, without the public link, the stats, the checklist or the private location. [agent], [backUrl]
      * and [backLabel] place the card and the return link of that lens.
      */
@@ -78,12 +75,12 @@ object ListingViews {
         formatter: TenantFormatter,
         publicPortalUrl: String? = null,
         stats: ListingStats? = null,
-        coBrokerage: Boolean = false,
+        readOnly: Boolean = false,
         agent: AgentCardView? = null,
         backUrl: String = "/mandates/${listing.mandateId}",
         backLabel: String = "← Retour au mandat",
     ): ListingView {
-        val editable = ListingRules.editable(listing) && !coBrokerage
+        val editable = ListingRules.editable(listing) && !readOnly
         val required = ListingRules.SECTIONS.filter { ListingRules.required(listing, it) }
         val done = required.count { ListingRules.done(listing, it) }
         val left = required.filter { !ListingRules.done(listing, it) }.map { missing(it, images) }
@@ -96,12 +93,12 @@ object ListingViews {
         return ListingView(
             id = listing.id,
             mandateId = listing.mandateId,
-            title = if (coBrokerage) title.removePrefix(TITLE_PREFIX) else title,
+            title = if (readOnly) title.removePrefix(TITLE_PREFIX) else title,
             tag = ListingRules.tag(listing),
             status = listing.status,
             createdAt = formatter.date(listing.createdAt),
             panel = when {
-                coBrokerage -> null
+                readOnly -> null
                 editable && rejections.isNotEmpty() -> ListingView.PANEL_TO_FIX
                 editable -> ListingView.PANEL_DRAFT
                 ListingRules.sent(listing.status) -> ListingView.PANEL_SENT
@@ -111,9 +108,9 @@ object ListingViews {
             sentAt = if (ListingRules.sent(listing.status)) formatter.date(listing.modifiedAt) else null,
             rejections = rejections.map { it.reason },
             publishedAt = listing.publishedAt?.let { formatter.date(it) },
-            publicUrl = if (!coBrokerage && listing.status in PUBLIC) publicUrl(listing, publicPortalUrl) else null,
-            stats = if (!coBrokerage && published) ListingStatsView.of(stats)?.label else null,
-            rows = if (coBrokerage) {
+            publicUrl = if (!readOnly && listing.status in ListingRules.PUBLIC_STATUSES) publicUrl(listing, publicPortalUrl) else null,
+            stats = if (!readOnly && published) ListingStatsView.of(stats)?.label else null,
+            rows = if (readOnly) {
                 emptyList()
             } else {
                 ListingRules.SECTIONS.map { section ->
@@ -126,17 +123,17 @@ object ListingViews {
                     )
                 }
             },
-            progress = if (coBrokerage) "" else "$done sections sur ${required.size} vérifiées",
+            progress = if (readOnly) "" else "$done sections sur ${required.size} vérifiées",
             missing = when {
-                coBrokerage -> ""
+                readOnly -> ""
                 left.isEmpty() -> "Tout est vérifié : vous pouvez envoyer l'annonce."
                 else -> "Encore à faire : ${left.joinToString(", ")}."
             },
             editable = editable,
             sendable = editable && left.isEmpty(),
-            coBrokerage = coBrokerage,
-            published = if (listing.status in PUBLIC) {
-                PublishedListingViews.of(listing, images, locations, formatter, owner = !coBrokerage)
+            readOnly = readOnly,
+            published = if (listing.status in ListingRules.PUBLIC_STATUSES) {
+                PublishedListingViews.of(listing, images, locations, formatter, owner = !readOnly)
             } else {
                 null
             },
