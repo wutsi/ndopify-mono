@@ -122,7 +122,7 @@ class VisitEventListener(
             logger.add("tenant_id", event.tenantId)
             logger.add("visit_id", event.visitId)
 
-            service.sendCancelledEmail(event.visitId)
+            service.sendCancelledNotification(event.visitId)
             logger.add("success", true)
         } catch (ex: Exception) {
             logger.add("success", false)

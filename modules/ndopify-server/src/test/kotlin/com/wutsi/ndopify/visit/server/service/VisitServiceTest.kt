@@ -71,6 +71,7 @@ class VisitServiceTest {
     private val confirmedMailet = mock<VisitConfirmedMailet>()
     private val completedMailet = mock<VisitCompletedMailet>()
     private val noShowMailet = mock<VisitNoShowMailet>()
+    private val cancelledNotifier = mock<VisitCancelledNotifier>()
     private val cancelledMailet = mock<VisitCancelledMailet>()
     private val reminderMailet = mock<VisitReminderMailet>()
     private val expiredMailet = mock<VisitExpiredMailet>()
@@ -95,6 +96,7 @@ class VisitServiceTest {
         confirmedMailet,
         completedMailet,
         noShowMailet,
+        cancelledNotifier,
         cancelledMailet,
         reminderMailet,
         reminderNotifier,
@@ -315,7 +317,7 @@ class VisitServiceTest {
         doReturn(Optional.of(visit.copy(status = VisitStatus.CANCELLED, cancelledBy = VisitParty.AGENT, scheduledAt = date(2026, 12, 2, 10, 0))))
             .whenever(dao).findById(1L)
 
-        service.sendCancelledEmail(1L)
+        service.sendCancelledNotification(1L)
 
         verify(coBrokerageVisitNotifier).sendCancelled(any(), eq(coBrokerageListing), eq(agent20))
     }
@@ -332,7 +334,7 @@ class VisitServiceTest {
             ),
         ).whenever(listingService).findById(101L)
 
-        service.sendCancelledEmail(1L)
+        service.sendCancelledNotification(1L)
 
         verify(coBrokerageVisitNotifier, never()).sendCancelled(any(), any(), any())
     }
@@ -342,8 +344,78 @@ class VisitServiceTest {
         doReturn(Optional.of(visit.copy(status = VisitStatus.CANCELLED, cancelledBy = VisitParty.CUSTOMER, scheduledAt = null)))
             .whenever(dao).findById(1L)
 
-        service.sendCancelledEmail(1L)
+        service.sendCancelledNotification(1L)
 
+        verify(coBrokerageVisitNotifier, never()).sendCancelled(any(), any(), any())
+    }
+
+    @Test
+    fun `customer cancelled - the agent is notified, not e-mailed`() {
+        doReturn(
+            Optional.of(
+                visit.copy(
+                    status = VisitStatus.CANCELLED,
+                    cancelledBy = VisitParty.CUSTOMER,
+                    scheduledAt = date(2026, 12, 2, 10, 0),
+                ),
+            ),
+        ).whenever(dao).findById(1L)
+
+        service.sendCancelledNotification(1L)
+
+        verify(cancelledNotifier).send(any(), eq(customer), eq(agent20), eq(coBrokerageListing))
+        verify(cancelledMailet, never()).sendToCustomer(any(), any(), any(), any())
+        verify(cancelledMailet, never()).sendToAgent(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `agent cancelled - the customer is e-mailed, Telegram is not used`() {
+        doReturn(
+            Optional.of(
+                visit.copy(
+                    status = VisitStatus.CANCELLED,
+                    cancelledBy = VisitParty.AGENT,
+                    scheduledAt = date(2026, 12, 2, 10, 0),
+                ),
+            ),
+        ).whenever(dao).findById(1L)
+
+        service.sendCancelledNotification(1L)
+
+        verify(cancelledMailet).sendToCustomer(any(), eq(customer), eq(agent20), eq(coBrokerageListing))
+        verifyNoInteractions(cancelledNotifier)
+    }
+
+    @Test
+    fun `system cancelled - neither side is notified`() {
+        doReturn(
+            Optional.of(
+                visit.copy(
+                    status = VisitStatus.CANCELLED,
+                    cancelledBy = VisitParty.SYSTEM,
+                    scheduledAt = date(2026, 12, 2, 10, 0),
+                ),
+            ),
+        ).whenever(dao).findById(1L)
+
+        service.sendCancelledNotification(1L)
+
+        verifyNoInteractions(cancelledNotifier)
+        verify(cancelledMailet, never()).sendToCustomer(any(), any(), any(), any())
+        verify(cancelledMailet, never()).sendToAgent(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `a visit never scheduled - nobody is notified`() {
+        listOf(VisitParty.CUSTOMER, VisitParty.AGENT, VisitParty.SYSTEM).forEach { party ->
+            doReturn(Optional.of(visit.copy(status = VisitStatus.CANCELLED, cancelledBy = party, scheduledAt = null)))
+                .whenever(dao).findById(1L)
+
+            service.sendCancelledNotification(1L)
+        }
+
+        verifyNoInteractions(cancelledNotifier)
+        verify(cancelledMailet, never()).sendToCustomer(any(), any(), any(), any())
         verify(coBrokerageVisitNotifier, never()).sendCancelled(any(), any(), any())
     }
 

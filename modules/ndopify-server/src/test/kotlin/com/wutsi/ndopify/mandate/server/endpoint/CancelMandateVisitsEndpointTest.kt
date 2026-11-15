@@ -40,12 +40,17 @@ class CancelMandateVisitsEndpointTest : AuthorizationAwareEndpointIntegrationTes
         assertEquals("CANCELLED", visit(3)["status"])
         assertEquals("CHECKED_IN", visit(2)["status"])
 
-        assertTrue(smtp.waitForIncomingEmail(5000, 5), "customer + A for both cancelled visits, plus B for visit 1")
+        assertTrue(smtp.waitForIncomingEmail(5000, 1), "only the co-brokerage cancellation to B")
         val bodies = smtp.receivedMessages.toList().joinToString("\n") { it.content.toString() }
-        assertTrue(bodies.contains("La visite est annul"), "the neutral wording, to both sides")
         assertFalse(bodies.contains("J'ai trouvé un appartement par un ami"))
         assertTrue(
             smtp.receivedMessages.any { it.subject == "Ndopify: la visite de votre bien est annulée" },
+        )
+        assertTrue(
+            smtp.receivedMessages.all { message ->
+                message.allRecipients.all { it.toString().contains("john.doe@gmail.com") }
+            },
+            "a SYSTEM cancellation notifies neither the customer nor the agent",
         )
     }
 
