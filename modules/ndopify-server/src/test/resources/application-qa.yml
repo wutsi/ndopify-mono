@@ -31,8 +31,12 @@ ndopify:
             secret: qa-secret-not-for-prod-0123456789abcdef
     telegram:
         token: qa-token-not-for-prod
+        username: qa-bot
         polling:
             enabled: false
+    agent:
+        telegram:
+            code-ttl-minutes: 15
     contract:
         expire:
             cron: "-" # Never on its own: tests call ContractJobs
