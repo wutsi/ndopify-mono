@@ -100,6 +100,66 @@ class AuthenticateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `wrong codes count down, the fifth locks`() {
+        for (remaining in 4 downTo 1) {
+            val response = loginError("ray.sponsible@gmail.com", "654321")
+
+            assertEquals(HttpStatus.CONFLICT, response.statusCode)
+            assertEquals(ErrorCode.AUTH_INVALID_CREDENTIALS, response.body?.error?.code)
+            assertEquals(remaining, response.body?.error?.data?.get("remainingAttempts"))
+        }
+
+        val locked = loginError("ray.sponsible@gmail.com", "654321")
+
+        assertEquals(HttpStatus.CONFLICT, locked.statusCode)
+        assertEquals(ErrorCode.AUTH_ACCOUNT_LOCKED, locked.body?.error?.code)
+        assertNotNull(locked.body?.error?.data?.get("lockedUntil"))
+        assertNotNull(authFactorRepository.findById(1L).get().lockedUntil)
+    }
+
+    @Test
+    fun `the right code is refused while locked`() {
+        val response = loginError("locked-otp@gmail.com", CODE)
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.AUTH_ACCOUNT_LOCKED, response.body?.error?.code)
+        assertEquals("2099-01-01T00:00:00Z", response.body?.error?.data?.get("lockedUntil"))
+
+        // Not consumed: the code is untouched, and stays usable if the lock is lifted early
+        val authFactor = authFactorRepository.findById(9L).get()
+        assertNull(authFactor.lastLoggedInAt)
+        assertEquals("2099-01-01T00:00:00Z", authFactor.expiresAt!!.toInstant().toString())
+    }
+
+    @Test
+    fun `an expired lock lets the right code through`() {
+        assertEquals(HttpStatus.OK, login("expired-lock-otp@gmail.com", CODE).statusCode)
+
+        val authFactor = authFactorRepository.findById(10L).get()
+        assertEquals(0, authFactor.failedAttempts)
+        assertNull(authFactor.lockedUntil)
+    }
+
+    @Test
+    fun `an expired lock starts the count over`() {
+        val response = loginError("expired-lock-otp@gmail.com", "654321")
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.AUTH_INVALID_CREDENTIALS, response.body?.error?.code)
+        assertEquals(4, response.body?.error?.data?.get("remainingAttempts"))
+    }
+
+    @Test
+    fun `a login resets the count`() {
+        loginError("ray.sponsible@gmail.com", "654321")
+
+        assertEquals(HttpStatus.OK, login("ray.sponsible@gmail.com", CODE).statusCode)
+
+        val response = loginError("ray.sponsible@gmail.com", "654321")
+        assertEquals(4, response.body?.error?.data?.get("remainingAttempts"))
+    }
+
+    @Test
     fun `expired code`() {
         val response = loginError("expired-otp@gmail.com", CODE)
 

@@ -62,7 +62,10 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
 - Sign-in is e-mail + one-time code on a single page, `templates/login.html` (`LoginController`: `/login` →
   `/login?step=code` → `/login/verify`). The code step is only shown while a `PendingLogin` (e-mail + expiry) is in
   the HTTP session, and verify reads the e-mail from there, not from the form. It calls
-  `/v1/otp` then `/v1/auth` with `AuthType.OTP` and `ApplicationCode.PARTNER_CENTRAL`. The JWT is kept in the
+  `/v1/otp` then `/v1/auth` with `AuthType.OTP` and `ApplicationCode.PARTNER_CENTRAL`. A wrong code shows the attempts
+  the account lock leaves (`error.data.remainingAttempts`, `OtpLockMessage.invalid`), and a locked account the wait
+  (`error.data.lockedUntil`, `OtpLockMessage.locked`) on both steps: `/v1/auth` and `/v1/otp` answer 409
+  `AUTH_ACCOUNT_LOCKED`, so the e-mail step says it too. The JWT is kept in the
   HTTP-only `__npc_access_token` cookie (`AccessTokenService`) and decoded by `JwtAuthenticationFilter`, which clears
   the cookie of a token that doesn't decode (expired) and marks the request `ACCESS_TOKEN_REJECTED`, so that
   `AuthorizationClientHttpRequestInterceptor` doesn't forward it (ndopify-server would answer 401); everything

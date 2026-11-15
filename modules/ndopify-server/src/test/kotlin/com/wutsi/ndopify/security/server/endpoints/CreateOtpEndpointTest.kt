@@ -188,6 +188,52 @@ class CreateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `a locked account gets no code`() {
+        val response = rest.postForEntity(
+            "/v1/otp",
+            CreateOtpRequest(email = "locked-otp@gmail.com", ttl = 300),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.CONFLICT, response.statusCode)
+        assertEquals(ErrorCode.AUTH_ACCOUNT_LOCKED, response.body?.error?.code)
+        assertEquals("2099-01-01T00:00:00Z", response.body?.error?.data?.get("lockedUntil"))
+
+        // No e-mail, and the stored code is left as it is (a replaced one would still be dead for an hour)
+        assertEquals(0, smtp.receivedMessages.size)
+        assertEquals("old-hash", authFactorRepository.findById(9L).get().data)
+    }
+
+    @Test
+    fun `an expired lock gets a code`() {
+        val response = rest.postForEntity(
+            "/v1/otp",
+            CreateOtpRequest(email = "expired-lock-otp@gmail.com", ttl = 300),
+            Void::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertTrue(smtp.waitForIncomingEmail(MAIL_TIMEOUT_MS, 1), "no email received")
+    }
+
+    @Test
+    fun `a new code keeps the count`() {
+        val response = rest.postForEntity(
+            "/v1/otp",
+            CreateOtpRequest(email = "counted-otp@gmail.com", ttl = 300),
+            Void::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+
+        // A new code buys no attempt: otherwise every resend would give an attacker 5 fresh guesses
+        val authFactor = authFactorRepository.findById(23L).get()
+        assertEquals(2, authFactor.failedAttempts)
+        assertNull(authFactor.lockedUntil)
+        assertNotEquals("old-otp-hash", authFactor.data)
+    }
+
+    @Test
     fun `other auth factors are left untouched`() {
         rest.postForEntity("/v1/otp", CreateOtpRequest(email = "has-otp@gmail.com"), Void::class.java)
 
@@ -330,7 +376,7 @@ class CreateOtpEndpointTest : TenantAwareEndpointIntegrationTest() {
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
         assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
-        assertEquals(1, authFactorRepository.findAll().count { it.authType == AuthType.OTP }) // only the fixture's OTP
+        assertEquals(4, authFactorRepository.findAll().count { it.authType == AuthType.OTP }) // the fixture's OTPs only
         assertEquals(0, smtp.receivedMessages.size)
     }
 

@@ -9,6 +9,7 @@ import com.wutsi.ndopify.security.server.domain.AuthFactorEntity
 import com.wutsi.ndopify.security.server.domain.UserEntity
 import org.springframework.stereotype.Service
 import java.time.Clock
+import java.time.Duration
 import java.util.Date
 
 @Service
@@ -32,6 +33,15 @@ open class AuthFactorService(
 
     fun findByUserAndAuthTypeOrNull(user: UserEntity, authType: AuthType): AuthFactorEntity? {
         return dao.findByUserAndAuthType(user, authType).orElse(null)
+    }
+
+    /**
+     * The user's factor, locked for the rest of the transaction. A wrong code counts on the row it returns: two codes
+     * sent in parallel must not both read the same count, or the lock would take as many failures as there are round
+     * trips instead of as many codes as were guessed. Loaded before any other read of that row in the transaction.
+     */
+    fun findByUserAndAuthTypeForUpdateOrNull(user: UserEntity, authType: AuthType): AuthFactorEntity? {
+        return dao.findByUserAndAuthTypeForUpdate(user, authType).orElse(null)
     }
 
     fun findByUserAndAuthTypeOrNullOrCreate(
@@ -85,6 +95,28 @@ open class AuthFactorService(
                 // Start of the previous second: DATETIME has no fractional seconds and MySQL rounds them, so `now`
                 // could be stored up to 0.5s in the future, leaving the code usable until then.
                 expiresAt = Date((millis / 1000 - 1) * 1000),
+                failedAttempts = 0,
+                lockedUntil = null,
+            )
+        )
+    }
+
+    /**
+     * Counts one wrong code, locking the account once [maxAttempts] is reached. A lock that expired starts the count
+     * over: the last failure before it is not carried into the new streak.
+     */
+    fun recordFailedAttempt(
+        authFactor: AuthFactorEntity,
+        maxAttempts: Int,
+        lockDuration: Duration,
+    ): AuthFactorEntity {
+        val millis = clock.millis()
+        val attempts = if (authFactor.lockedUntil != null) 1 else authFactor.failedAttempts + 1
+        return dao.save(
+            authFactor.copy(
+                failedAttempts = attempts,
+                lockedUntil = if (attempts >= maxAttempts) Date(millis + lockDuration.toMillis()) else null,
+                modifiedAt = Date(millis),
             )
         )
     }

@@ -254,6 +254,9 @@ ndopify:
                 e-signature: 1h
                 match-link: 7d             # The token of the links of a match proposal e-mail (MatchLinkTokenService)
             default-ttl: 1h                # An application not listed above
+        otp:
+            max-failed-attempts: 5         # Wrong codes after which the account is locked
+            lock-duration: 1h              # How long the account stays locked
     database:
         pool-size: 8
     ai:

@@ -15,6 +15,7 @@ INSERT INTO T_ROLE(id, application_id, code) VALUES
 -- 6: expired OTP, issued after a previous login and never used
 -- 7: valid OTP, member of tenant 2 only
 -- 8: valid OTP, access to e-signature (a signer) only
+-- 9: valid OTP, account locked until 2099       10: valid OTP, lock expired in 2020
 INSERT INTO T_USER (id, email, deleted, created_at, deleted_at) VALUES
   (1, 'ray.sponsible@gmail.com', false, NOW(), NULL),
   (2, 'expired-otp@gmail.com', false, NOW(), NULL),
@@ -23,7 +24,9 @@ INSERT INTO T_USER (id, email, deleted, created_at, deleted_at) VALUES
   (5, 'flow@gmail.com', false, NOW(), NULL),
   (6, 'expired-after-login@gmail.com', false, NOW(), NULL),
   (7, 'other-tenant@gmail.com', false, NOW(), NULL),
-  (8, 'signer@gmail.com', false, NOW(), NULL);
+  (8, 'signer@gmail.com', false, NOW(), NULL),
+  (9, 'locked-otp@gmail.com', false, NOW(), NULL),
+  (10, 'expired-lock-otp@gmail.com', false, NOW(), NULL);
 
 -- 1's membership has a party (its id goes in the token), the others none
 INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name) VALUES
@@ -39,7 +42,9 @@ INSERT INTO T_MEMBERSHIP (id, tenant_id, user_id) VALUES
   (5, 1, 5),
   (6, 1, 6),
   (7, 2, 7),
-  (8, 1, 8);
+  (8, 1, 8),
+  (9, 1, 9),
+  (10, 1, 10);
 
 -- data = md5("<code>-<salt>"), same as PasswordEncryptor.
 INSERT INTO T_AUTH_FACTOR (id, user_id, auth_type, data, salt, created_at, modified_at, expires_at, last_logged_in_at) VALUES
@@ -51,6 +56,12 @@ INSERT INTO T_AUTH_FACTOR (id, user_id, auth_type, data, salt, created_at, modif
   (7, 7, 'OTP', '123456-test-salt', 'test-salt', NOW(), NOW(), '2099-01-01 00:00:00', NULL),
   (8, 8, 'OTP', '123456-test-salt', 'test-salt', NOW(), NOW(), '2099-01-01 00:00:00', NULL);
 
+-- 9: locked for good (from this run's point of view), 5 wrong codes already counted
+-- 10: the same 5 wrong codes, but the lock ended in 2020
+INSERT INTO T_AUTH_FACTOR (id, user_id, auth_type, data, salt, created_at, modified_at, expires_at, last_logged_in_at, failed_attempts, locked_until) VALUES
+  (9, 9, 'OTP', '123456-test-salt', 'test-salt', NOW(), NOW(), '2099-01-01 00:00:00', NULL, 5, '2099-01-01 00:00:00'),
+  (10, 10, 'OTP', '123456-test-salt', 'test-salt', NOW(), NOW(), '2099-01-01 00:00:00', NULL, 5, '2020-01-01 00:00:00');
+
 INSERT INTO T_USER_APPLICATION (id, membership_id, application_id) VALUES
   (11, 1, 3),
   (21, 2, 3),
@@ -58,7 +69,9 @@ INSERT INTO T_USER_APPLICATION (id, membership_id, application_id) VALUES
   (51, 5, 3),
   (61, 6, 3),
   (71, 7, 3),
-  (81, 8, 4);
+  (81, 8, 4),
+  (91, 9, 3),
+  (101, 10, 3);
 
 INSERT INTO T_USER_APPLICATION_ROLE (user_application_id, role_id) VALUES
   (11, 31),

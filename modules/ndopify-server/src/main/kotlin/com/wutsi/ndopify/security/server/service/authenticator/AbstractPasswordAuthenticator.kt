@@ -55,20 +55,20 @@ abstract class AbstractPasswordAuthenticator(
 
     override fun checkCredentials(request: AuthenticateRequest, user: UserEntity): AuthFactorEntity {
         val authFactor = authFactorService.findByUserAndAuthTypeOrNull(user, request.authType)
-            ?: throw ConflictException(
-                error = Error(
-                    code = ErrorCode.AUTH_INVALID_CREDENTIALS
-                )
-            )
+            ?: invalidCredentials(null)
 
         if (!passwordEncryptor.matches(request.secret!!, authFactor.data, authFactor.salt)) {
-            throw ConflictException(
-                error = Error(
-                    code = ErrorCode.AUTH_INVALID_CREDENTIALS
-                )
-            )
+            invalidCredentials(authFactor)
         }
 
         return authFactor
     }
+
+    /** What a wrong code answers: counts it in a subclass, e.g. to lock the account after too many. */
+    protected open fun invalidCredentials(authFactor: AuthFactorEntity?): Nothing =
+        throw ConflictException(
+            error = Error(
+                code = ErrorCode.AUTH_INVALID_CREDENTIALS
+            )
+        )
 }
