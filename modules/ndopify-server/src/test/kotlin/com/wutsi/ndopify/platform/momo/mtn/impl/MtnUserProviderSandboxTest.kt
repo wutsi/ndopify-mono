@@ -4,6 +4,7 @@ import com.wutsi.ndopify.platform.util.http.Http
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.test.context.ActiveProfiles
 import tools.jackson.databind.json.JsonMapper
 import java.net.http.HttpClient
 import java.net.http.HttpClient.Redirect.NORMAL
@@ -12,6 +13,7 @@ import kotlin.test.Ignore
 import kotlin.test.Test
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@ActiveProfiles("qa")
 class MtnUserProviderSandboxTest {
     @Value("\${ndopify.mobile-money.mtn.collection.subscription-key}")
     private lateinit var subscriptionId: String
