@@ -17,7 +17,6 @@ import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.mandate.server.event.AssignmentAcceptedEvent
 import com.wutsi.ndopify.mandate.server.event.AssignmentClosedEvent
 import com.wutsi.ndopify.mandate.server.mail.MandateAssignedMailet
-import com.wutsi.ndopify.mandate.server.mail.MandateOfferMailet
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.security.server.service.CallerService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
@@ -42,7 +41,7 @@ class AssignmentService(
     private val eventPublisher: ApplicationEventPublisher,
     private val clock: Clock,
     private val mailet: MandateAssignedMailet,
-    private val offerMailet: MandateOfferMailet,
+    private val offerNotifier: AssignmentOfferNotifier,
     private val dispatcher: MandateDispatcher,
 ) {
     companion object {
@@ -211,16 +210,17 @@ class AssignmentService(
     }
 
     /**
-     * E-mails the agent the mandate it's offered. Called by `AssignmentEventListener` on its own thread, with
-     * `TenantContext` set: the transaction gives the mailet a session to load the parties.
+     * Notifies the agent the mandate it's offered, over Telegram or by e-mail (`AssignmentOfferNotifier`). Called by
+     * `AssignmentEventListener` on its own thread, with `TenantContext` set: the transaction gives the mailet a
+     * session to load the parties.
      */
     @Transactional
-    fun sendOfferEmail(id: Long) {
+    fun sendOfferNotification(id: Long) {
         val assignment = findById(id)
         if (assignment.status != AssignmentStatus.PENDING) {
             return // Already answered or expired: nothing to offer anymore
         }
-        offerMailet.send(assignment, agentService.findById(assignment.agentId))
+        offerNotifier.send(assignment, agentService.findById(assignment.agentId))
     }
 
     // DECLINED or EXPIRED. The mandate is offered to the next agent AFTER COMMIT (AssignmentEventListener): a failing

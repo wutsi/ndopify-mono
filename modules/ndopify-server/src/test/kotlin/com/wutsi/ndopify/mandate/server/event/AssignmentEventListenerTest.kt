@@ -51,25 +51,25 @@ class AssignmentEventListenerTest {
         assertThreadCleaned()
     }
 
-    // --- Created: offer e-mail
+    // --- Created: offer notification
 
     @Test
-    fun `created - the agent is e-mailed, in its tenant`() {
+    fun `created - the agent is notified, in its tenant`() {
         doAnswer {
             tenantId = TenantContext.get()
             Unit
-        }.whenever(service).sendOfferEmail(1L)
+        }.whenever(service).sendOfferNotification(1L)
 
         listener.onAssignmentCreated(AssignmentCreatedEvent(assignmentId = 1L, tenantId = 7L))
 
-        verify(service).sendOfferEmail(1L)
+        verify(service).sendOfferNotification(1L)
         assertEquals(7L, tenantId)
         assertThreadCleaned()
     }
 
     @Test
-    fun `created - a failing e-mail is only logged`() {
-        doThrow(IllegalStateException("boom")).whenever(service).sendOfferEmail(1L)
+    fun `created - a failing notification is only logged`() {
+        doThrow(IllegalStateException("boom")).whenever(service).sendOfferNotification(1L)
 
         listener.onAssignmentCreated(AssignmentCreatedEvent(assignmentId = 1L, tenantId = 7L))
 

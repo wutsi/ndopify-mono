@@ -10,6 +10,8 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.agent.server.domain.AgentEntity
+import com.wutsi.ndopify.agent.server.service.AgentService
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.error.server.exception.ForbiddenException
@@ -22,6 +24,7 @@ import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.mandate.server.event.AssignmentAcceptedEvent
 import com.wutsi.ndopify.mandate.server.event.AssignmentClosedEvent
 import com.wutsi.ndopify.platform.tenant.TenantContext
+import org.mockito.Mockito.verifyNoInteractions
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.data.domain.PageRequest
 import java.time.Clock
@@ -40,16 +43,18 @@ class AssignmentServiceTest {
     private val eventPublisher = mock<ApplicationEventPublisher>()
     private val clock = mock<Clock>()
     private val dispatcher = mock<MandateDispatcher>()
+    private val agentService = mock<AgentService>()
+    private val offerNotifier = mock<AssignmentOfferNotifier>()
     private val service = AssignmentService(
         dao = dao,
         mandateDao = mandateDao,
-        agentService = mock(),
+        agentService = agentService,
         customerService = mock(),
         callerService = mock(),
         eventPublisher = eventPublisher,
         clock = clock,
         mailet = mock(),
-        offerMailet = mock(),
+        offerNotifier = offerNotifier,
         dispatcher = dispatcher,
     )
 
@@ -120,6 +125,29 @@ class AssignmentServiceTest {
             Date(now),
             PageRequest.of(0, AssignmentService.BATCH_SIZE),
         )
+    }
+
+    // --- sendOfferNotification
+
+    @Test
+    fun `sendOfferNotification - a pending offer goes to the notifier`() {
+        val assignment = offer(1, 10)
+        val agent = AgentEntity(id = 20L)
+        doReturn(Optional.of(assignment)).whenever(dao).findById(1L)
+        doReturn(agent).whenever(agentService).findById(20L)
+
+        service.sendOfferNotification(1L)
+
+        verify(offerNotifier).send(assignment, agent)
+    }
+
+    @Test
+    fun `sendOfferNotification - a closed offer is not notified`() {
+        doReturn(Optional.of(offer(1, 10).copy(status = AssignmentStatus.EXPIRED))).whenever(dao).findById(1L)
+
+        service.sendOfferNotification(1L)
+
+        verifyNoInteractions(offerNotifier)
     }
 
     // --- acceptForAgent / declineForAgent (the Telegram path: no JWT)
