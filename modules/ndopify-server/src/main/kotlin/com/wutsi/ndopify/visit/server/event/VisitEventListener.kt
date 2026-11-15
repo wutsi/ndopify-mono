@@ -10,7 +10,8 @@ import org.springframework.transaction.event.TransactionPhase
 import org.springframework.transaction.event.TransactionalEventListener
 
 /**
- * The visit domain's asynchronous work: the e-mails, once the change is committed. The executor thread has no request,
+ * The visit domain's asynchronous work: the notifications (e-mails, Telegram), once the change is committed. The
+ * executor thread has no request,
  * so the tenant and a logger are set on it for the duration of the call, and removed afterwards since the threads are
  * reused. A failure is logged, never rethrown.
  */
@@ -29,7 +30,7 @@ class VisitEventListener(
             logger.add("tenant_id", event.tenantId)
             logger.add("visit_id", event.visitId)
 
-            service.sendRequestedEmail(event.visitId)
+            service.sendRequestedNotification(event.visitId)
             logger.add("success", true)
         } catch (ex: Exception) {
             logger.add("success", false)

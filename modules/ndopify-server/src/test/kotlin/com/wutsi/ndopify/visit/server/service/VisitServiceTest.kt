@@ -42,7 +42,7 @@ import com.wutsi.ndopify.visit.server.mail.VisitConfirmedMailet
 import com.wutsi.ndopify.visit.server.mail.VisitExpiredMailet
 import com.wutsi.ndopify.visit.server.mail.VisitNoShowMailet
 import com.wutsi.ndopify.visit.server.mail.VisitReminderMailet
-import com.wutsi.ndopify.visit.server.mail.VisitRequestedMailet
+import org.mockito.Mockito.verifyNoInteractions
 import org.springframework.context.ApplicationEventPublisher
 import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.transaction.PlatformTransactionManager
@@ -67,7 +67,7 @@ class VisitServiceTest {
     private val agentService = mock<AgentService>()
     private val listingService = mock<ListingService>()
     private val tenantService = mock<TenantService>()
-    private val requestedMailet = mock<VisitRequestedMailet>()
+    private val requestedNotifier = mock<VisitRequestedNotifier>()
     private val confirmedMailet = mock<VisitConfirmedMailet>()
     private val completedMailet = mock<VisitCompletedMailet>()
     private val noShowMailet = mock<VisitNoShowMailet>()
@@ -91,7 +91,7 @@ class VisitServiceTest {
         agentService,
         listingService,
         tenantService,
-        requestedMailet,
+        requestedNotifier,
         confirmedMailet,
         completedMailet,
         noShowMailet,
@@ -165,6 +165,31 @@ class VisitServiceTest {
         service.schedule(1L, ScheduleVisitRequest(scheduledAt = date(2026, 12, 2, 10, 0)))
 
         assertNull(saved().reminderSentAt)
+    }
+
+    @Test
+    fun `requested - the agent is notified`() {
+        service.sendRequestedNotification(1L)
+
+        verify(requestedNotifier).send(visit, customer, agent20, coBrokerageListing)
+    }
+
+    @Test
+    fun `requested - nothing once no longer REQUESTED`() {
+        doReturn(Optional.of(visit.copy(status = VisitStatus.EXPIRED))).whenever(dao).findById(1L)
+
+        service.sendRequestedNotification(1L)
+
+        verifyNoInteractions(requestedNotifier)
+    }
+
+    @Test
+    fun `requested - nothing for an unknown visit`() {
+        doReturn(Optional.empty<VisitEntity>()).whenever(dao).findById(999L)
+
+        service.sendRequestedNotification(999L)
+
+        verifyNoInteractions(requestedNotifier)
     }
 
     @Test
