@@ -274,8 +274,9 @@ class VisitCardsTest {
             back = "/#visits-title",
         )
 
-        assertEquals("Clarisse Mbarga", cards.upcoming.single().agentName)
-        assertEquals("/agent?id=30&back=/%23visits-title", cards.upcoming.single().agentUrl)
+        assertEquals("Clarisse Mbarga", cards.upcoming.single().agent?.name)
+        assertEquals("/agent?id=30&back=/%23visits-title", cards.upcoming.single().agent?.profileUrl)
+        assertTrue(cards.upcoming.single().coBrokerage)
     }
 
     @Test
@@ -292,8 +293,8 @@ class VisitCardsTest {
             back = "/#visits-title",
         )
 
-        assertNull(cards.upcoming.single().agentName)
-        assertNull(cards.upcoming.single().agentUrl)
+        assertFalse(cards.upcoming.single().coBrokerage)
+        assertNull(cards.upcoming.single().agent)
     }
 
     @Test
@@ -313,8 +314,8 @@ class VisitCardsTest {
             back = "/#visits-title",
         )
 
-        assertEquals("un autre agent", cards.upcoming.single().agentName)
-        assertNull(cards.upcoming.single().agentUrl)
+        assertTrue(cards.upcoming.single().coBrokerage)
+        assertNull(cards.upcoming.single().agent)
     }
 
     @Test
@@ -331,7 +332,7 @@ class VisitCardsTest {
             back = "/#visits-title",
         )
 
-        assertEquals("un autre agent", cards.upcoming.single().agentName)
-        assertNull(cards.upcoming.single().agentUrl)
+        assertTrue(cards.upcoming.single().coBrokerage)
+        assertNull(cards.upcoming.single().agent)
     }
 }

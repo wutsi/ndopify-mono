@@ -558,18 +558,8 @@
             var listingLink = $("[data-co-brokerage-listing]", item);
             listingLink.textContent = listing.title + " · " + listing.neighbourhood;
             listingLink.href = "listing.html?id=" + encodeURIComponent(visit.listingId);
-            var agent = visit.agent;
-            var names = [agent.firstName, agent.lastName].filter(Boolean);
-            var name = names.join(" ");
-            $("[data-co-brokerage-initials]", item).textContent = names.map(function (part) {
-                return part.charAt(0);
-            }).join("");
-            var agentLink = $("[data-co-brokerage-agent]", item);
-            $("[data-co-brokerage-agent-name]", item).textContent = name;
-            agentLink.href = "agent.html?id=" + encodeURIComponent(agent.id) +
-                "&back=" + encodeURIComponent("index.html#co-brokerage-visits-title");
-            $("[data-co-brokerage-whatsapp]", item).href =
-                "https://wa.me/" + agent.whatsappNumber.replace(/\D/g, "");
+            npc().fillAgentCard($("[data-agent-card]", item), visit.agent,
+                "index.html#co-brokerage-visits-title");
             list.appendChild(item);
         });
         section.hidden = CO_BROKERAGE_VISITS.length === 0;
@@ -655,18 +645,10 @@
             var listing = $("[data-visit-listing]", item);
             listing.innerHTML = TYPE_ICONS[v.type] + "<span></span>";
             $("span", listing).textContent = TYPE_LABELS[v.type] + " · " + v.listing.title + " · " + v.listing.neighbourhood;
-            // Another agent's listing: name its agent, linked to their profile, back to this queue.
-            var agentLine = $("[data-visit-agent]", item);
-            if (agentLine) {
-                agentLine.hidden = !v.agent;
-                if (v.agent) {
-                    var agentName = [v.agent.firstName, v.agent.lastName].filter(Boolean).join(" ");
-                    var agentLink = $("[data-visit-agent-link]", agentLine);
-                    agentLink.href = "agent.html?id=" + encodeURIComponent(v.agent.id) +
-                        "&back=" + encodeURIComponent("index.html#visits-title");
-                    $("[data-visit-agent-name]", agentLine).textContent = agentName;
-                }
-            }
+            // Another agent's listing: the standard agent footer, last in the card.
+            var agentCard = $("[data-agent-card]", item);
+            agentCard.hidden = !v.agent;
+            if (v.agent) npc().fillAgentCard(agentCard, v.agent, "index.html#visits-title");
             return item;
         }
 
@@ -884,38 +866,8 @@
             if (agentSection) {
                 agentSection.hidden = !v.agent;
                 if (v.agent) {
-                    var agent = v.agent;
-                    var names = [agent.firstName, agent.lastName].filter(Boolean);
-                    var name = names.join(" ");
-                    var back = "visit.html?id=" + encodeURIComponent(v.id);
-                    var profile = "agent.html?id=" + encodeURIComponent(agent.id) +
-                        "&back=" + encodeURIComponent(back);
-                    $all("[data-visit-agent-profile]").forEach(function (a) {
-                        a.href = profile;
-                    });
-                    $("[data-visit-agent-name]").textContent = name;
-                    $("[data-visit-agent-initials]").textContent = names.map(function (part) {
-                        return part.charAt(0);
-                    }).join("");
-                    var photo = $("[data-visit-agent-photo]");
-                    var initials = $("[data-visit-agent-initials]");
-                    if (agent.photoUrl) {
-                        photo.src = agent.photoUrl;
-                        photo.hidden = false;
-                        initials.hidden = true;
-                    } else {
-                        photo.hidden = true;
-                        initials.hidden = false;
-                    }
-                    var whatsapp = agent.whatsappNumber
-                        ? "https://wa.me/" + agent.whatsappNumber.replace(/\D/g, "")
-                        : null;
-                    $("[data-visit-agent-contact]").hidden = !whatsapp;
-                    if (whatsapp) {
-                        $("[data-visit-agent-whatsapp]").href = whatsapp;
-                        $("[data-visit-agent-whatsapp]").textContent =
-                            agent.whatsappDisplay || agent.whatsappNumber;
-                    }
+                    npc().fillAgentCard($("[data-agent-card]", agentSection), v.agent,
+                        "visit.html?id=" + encodeURIComponent(v.id));
                 }
             }
             setTag($("[data-visit-tag]"), panel);

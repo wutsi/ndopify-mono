@@ -1063,37 +1063,6 @@ h1.alert__title {
     font-size: var(--step-hint);
 }
 
-/* A co-brokerage card's publisher, between the head and the facts: a name linked to their profile. */
-.match__origin {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    color: var(--color-info-fg);
-    font-size: var(--step-hint);
-    font-weight: 600;
-}
-
-.match__origin[hidden] {
-    display: none;
-}
-
-.match__origin .icon {
-    width: 1rem;
-    height: 1rem;
-    flex: none;
-}
-
-.match__origin a {
-    color: inherit;
-    text-decoration: underline;
-    text-underline-offset: 2px;
-}
-
-.match__origin a:focus-visible {
-    outline: 2px solid var(--color-focus);
-    outline-offset: 2px;
-}
-
 /* Score · neighbourhood · rent · availability, on one line where it fits; the terms are visually hidden. */
 .match__facts {
     display: flex;
@@ -1238,4 +1207,9 @@ h1.alert__title {
 
 [data-visit-outcome] {
     margin-bottom: var(--space-3);
+}
+
+/* The standard agent footer keeps its own spacing at the bottom of a match or proposal card. */
+.assignment .agent-card {
+    margin-top: var(--space-3);
 }

@@ -413,12 +413,14 @@ class VisitTemplateTest {
         doReturn(VisitFixtures.OTHER_AGENT).whenever(agentClient).get(30L)
 
         val page = render(get("/visits/7001"))
-        val card = page.selectFirst("[data-visit-agent]")!!
+        val section = page.selectFirst("[data-visit-agent]")!!
+        val card = section.selectFirst(".agent-card--standalone")!!
 
-        assertEquals("Clarisse Mbarga", card.selectFirst("[data-visit-agent-name]")?.text())
-        assertEquals("/agent?id=30&back=/visits/7001", card.selectFirst("[data-visit-agent-profile]")?.attr("href"))
-        assertTrue(card.text().contains("Visite organisée avec"))
-        assertTrue(page.html().contains("https://wa.me/237699000002"))
+        assertEquals("Clarisse Mbarga", card.selectFirst(".agent-card__name")?.text())
+        assertEquals("/agent?id=30&back=/visits/7001", card.selectFirst("a.agent-card__name")?.attr("href"))
+        assertEquals("https://wa.me/237699000002", card.selectFirst("a.agent-card__whatsapp")?.attr("href"))
+        assertFalse(card.text().contains("Visite organisée avec"))
+        assertFalse(card.text().contains("237699000002")) // a link, never the number
     }
 
     @Test

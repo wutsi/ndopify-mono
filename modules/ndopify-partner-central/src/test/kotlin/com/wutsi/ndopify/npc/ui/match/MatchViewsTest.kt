@@ -1,7 +1,9 @@
 package com.wutsi.ndopify.npc.ui.match
 
+import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.service.TenantFixtures.FORMATTER
+import com.wutsi.ndopify.npc.ui.agent.AgentCardView
 import com.wutsi.ndopify.npc.ui.mandate.MandateRules
 import com.wutsi.ndopify.npc.ui.match.MatchFixtures.LISTINGS
 import com.wutsi.ndopify.npc.ui.match.MatchFixtures.LISTING_A
@@ -11,6 +13,7 @@ import com.wutsi.ndopify.npc.ui.match.MatchFixtures.MATCH_A
 import com.wutsi.ndopify.npc.ui.match.MatchFixtures.MATCH_B
 import com.wutsi.ndopify.npc.ui.match.MatchFixtures.MATCH_C
 import com.wutsi.ndopify.npc.ui.match.MatchFixtures.TODAY
+import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.visit.VisitCardView
 import com.wutsi.ndopify.npc.ui.visit.VisitFixtures
 import com.wutsi.ndopify.visit.dto.VisitStatus
@@ -24,14 +27,21 @@ class MatchViewsTest {
     private fun section(
         matches: List<com.wutsi.ndopify.match.dto.Match> = listOf(MATCH_B, MATCH_A, MATCH_C),
         visits: Map<Long, VisitCardView> = emptyMap(),
-        agentNames: Map<Long, String> = emptyMap(),
-    ) = MatchViews.section(MANDATE, matches, LISTINGS, visits, LOCATIONS, TODAY, FORMATTER, agentNames)
+        agents: Map<Long, Agent> = emptyMap(),
+    ) = MatchViews.section(MANDATE, matches, LISTINGS, visits, LOCATIONS, TODAY, FORMATTER, agents)
+
+    private val listingAgent = ProfileFixtures.AGENT.copy(
+        party = ProfileFixtures.AGENT.party.copy(firstName = "Clarisse", lastName = "Mbarga"),
+        whatsappNumber = "+237699123456",
+    )
 
     private fun visitCard(
         matchId: Long = 9001,
         status: VisitStatus = VisitStatus.REQUESTED,
         expiresAt: Long? = 1_000L,
         at: Long? = 1_000L,
+        coBrokerage: Boolean = false,
+        agent: AgentCardView? = null,
     ) = VisitCardView(
         id = 7001,
         matchId = matchId,
@@ -48,6 +58,8 @@ class MatchViewsTest {
         expiresAt = expiresAt,
         expiresIn = expiresAt?.let { "42 h" },
         urgent = false,
+        coBrokerage = coBrokerage,
+        agent = agent,
     )
 
     @Test
@@ -100,27 +112,48 @@ class MatchViewsTest {
     }
 
     @Test
-    fun `co-brokerage card - the listing agent's name`() {
+    fun `co-brokerage card - the listing agent's card`() {
         val section = section(
             listOf(MATCH_A.copy(coBrokerage = true)),
-            agentNames = mapOf(20L to "Clarisse Mbarga"),
+            agents = mapOf(20L to listingAgent),
         )
 
-        assertEquals("Clarisse Mbarga", section.matches.single().origin)
+        val agent = section.matches.single().agent!!
+        assertEquals("Clarisse Mbarga", agent.name)
+        assertEquals("/agent?id=20&back=/mandates/204%23matches-title", agent.profileUrl)
+        assertEquals("https://wa.me/237699123456", agent.whatsappUrl)
     }
 
     @Test
-    fun `co-brokerage card - generic label without the agent name`() {
+    fun `co-brokerage card without the agent keeps the generic footer`() {
         val section = section(listOf(MATCH_A.copy(coBrokerage = true)))
 
-        assertEquals("Bien d'un autre agent", section.matches.single().origin)
+        assertNull(section.matches.single().agent)
     }
 
     @Test
-    fun `own-inventory card - no origin line`() {
-        val section = section(listOf(MATCH_A))
+    fun `own-inventory card - no agent card`() {
+        val section = section(listOf(MATCH_A), agents = mapOf(20L to listingAgent))
 
-        assertNull(section.matches.single().origin)
+        assertNull(section.matches.single().agent)
+    }
+
+    @Test
+    fun `a co-brokerage match with a visit names the agent once`() {
+        val visit = visitCard(
+            coBrokerage = true,
+            agent = AgentCardView(20, "Clarisse Mbarga", "CM", null, "https://wa.me/237699123456", "/agent?id=20"),
+        )
+        val section = section(
+            listOf(MATCH_A.copy(coBrokerage = true)),
+            visits = mapOf(9001L to visit),
+            agents = mapOf(20L to listingAgent),
+        )
+
+        val view = section.matches.single()
+        assertEquals("Clarisse Mbarga", view.agent?.name)
+        assertFalse(view.visit!!.coBrokerage)
+        assertNull(view.visit?.agent)
     }
 
     @Test

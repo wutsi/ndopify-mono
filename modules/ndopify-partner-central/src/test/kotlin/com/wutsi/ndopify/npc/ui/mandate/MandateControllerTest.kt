@@ -82,6 +82,7 @@ import org.springframework.web.servlet.view.InternalResourceViewResolver
 import java.time.Clock
 import java.util.Date
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -215,8 +216,9 @@ class MandateControllerTest {
 
         @Suppress("UNCHECKED_CAST")
         val visits = model(result)["coBrokerageVisits"] as List<ListingVisitView>
-        assertEquals("Clarisse Mbarga", visits.single().agentName)
-        assertEquals("CM", visits.single().agentInitials)
+        assertEquals("Clarisse Mbarga", visits.single().agent?.name)
+        assertEquals("CM", visits.single().agent?.initials)
+        assertEquals("/agent?id=30&back=/mandates/201%23co-brokerage-visits-title", visits.single().agent?.profileUrl)
         verify(visitClient).coBrokerageOnListing(501)
     }
 
@@ -290,8 +292,7 @@ class MandateControllerTest {
         @Suppress("UNCHECKED_CAST")
         val visits = model(result)["coBrokerageVisits"] as List<ListingVisitView>
         assertEquals(1, visits.size)
-        assertNull(visits.single().agentName)
-        assertNull(visits.single().agentInitials)
+        assertNull(visits.single().agent)
     }
 
     @Test
@@ -319,7 +320,7 @@ class MandateControllerTest {
         @Suppress("UNCHECKED_CAST")
         val visits = model(result)["coBrokerageVisits"] as List<ListingVisitView>
         assertEquals(1, visits.size)
-        assertEquals("Clarisse Mbarga", visits.single().agentName)
+        assertEquals("Clarisse Mbarga", visits.single().agent?.name)
     }
 
     private fun publishedListing() {
@@ -355,8 +356,9 @@ class MandateControllerTest {
 
         val view = proposals()!!
 
-        assertEquals("Clarisse Mbarga", view.rows[0].agentName)
-        assertEquals("/agent?id=30&back=/mandates/203%23proposals-title", view.rows[0].agentUrl)
+        assertTrue(view.rows[0].otherAgent)
+        assertEquals("Clarisse Mbarga", view.rows[0].agent?.name)
+        assertEquals("/agent?id=30&back=/mandates/203%23proposals-title", view.rows[0].agent?.profileUrl)
         verify(agentClient, never()).get(AGENT.id)
     }
 
@@ -368,7 +370,8 @@ class MandateControllerTest {
         val view = proposals()!!
 
         assertEquals("Client d'un autre agent", view.rows[0].client)
-        assertNull(view.rows[0].agentName)
+        assertTrue(view.rows[0].otherAgent)
+        assertNull(view.rows[0].agent)
     }
 
     @Test
@@ -876,9 +879,12 @@ class MandateControllerTest {
 
         val result = mvc.perform(get("/mandates/201")).andReturn()
 
-        val visit = section(result).matches.first { it.id == 9001L }.visit!!
-        assertEquals("Clarisse Mbarga", visit.agentName)
-        assertEquals("/agent?id=30&back=/mandates/201%23matches-title", visit.agentUrl)
+        val view = section(result).matches.first { it.id == 9001L }
+        assertEquals("Clarisse Mbarga", view.agent?.name)
+        assertEquals("/agent?id=30&back=/mandates/201%23matches-title", view.agent?.profileUrl)
+        // The agent appears once: in the card's footer, the visit block has no second one.
+        assertFalse(view.visit!!.coBrokerage)
+        assertNull(view.visit?.agent)
         // The visit and the match origin share the agent: one read for the page.
         verify(agentClient, times(1)).get(VisitFixtures.OTHER_AGENT_ID)
     }
@@ -902,9 +908,10 @@ class MandateControllerTest {
 
         val result = mvc.perform(get("/mandates/201")).andReturn()
 
-        val visit = section(result).matches.first { it.id == 9001L }.visit!!
-        assertEquals("un autre agent", visit.agentName)
-        assertNull(visit.agentUrl)
+        val view = section(result).matches.first { it.id == 9001L }
+        assertNull(view.agent)
+        assertFalse(view.visit!!.coBrokerage)
+        assertNull(view.visit?.agent)
     }
 
     @Test

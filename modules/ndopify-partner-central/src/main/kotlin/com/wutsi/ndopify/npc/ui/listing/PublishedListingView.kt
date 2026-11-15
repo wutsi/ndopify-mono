@@ -56,14 +56,3 @@ data class AmenityGroupView(val label: String, val items: List<String>)
 
 /** The owner-only position of the property, with its Maps link and access directions. */
 data class PrivateLocationView(val coordinates: String?, val mapsUrl: String?, val accessDirections: String?)
-
-/** The listing agent's card on a co-broker's page. */
-data class ListingAgentView(
-    val id: Long,
-    val name: String,
-    val initials: String,
-    val photoUrl: String?,
-    val whatsappUrl: String?,
-    val whatsappNumber: String?,
-    val profileUrl: String,
-)

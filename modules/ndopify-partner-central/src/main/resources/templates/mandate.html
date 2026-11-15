@@ -114,9 +114,10 @@
                 <section class="home-section mandate-contact" aria-labelledby="contact-title">
                     <h2 id="contact-title" class="visually-hidden" th:text="${m.words.theUpper}">Le client</h2>
                     <!--
-                        Condensed, like the co-agent's card on listing.html, without its photo (a customer can't add
-                        one): "Client"/"Bailleur" and the name with the best time to call on one line, then the number
-                        as its WhatsApp link, the channel the agent uses with the customer. No e-mail, no profile link.
+                        Condensed, like the boxed agent card (`agent-card--standalone`), without its photo (a customer
+                        can't add one): "Client"/"Bailleur" and the name with the best time to call on one line, then the
+                        number as its WhatsApp link, the channel the agent uses with the customer. No e-mail, no profile
+                        link.
                     -->
                     <div class="listing-agent contact-person" th:if="${m.contact}" th:with="c=${m.contact}">
                         <div class="listing-agent__info">
@@ -323,17 +324,14 @@
                                                th:class="|status-tag status-tag--${row.tag.style}|"
                                                th:text="${row.tag.label}" data-proposal-tag>Intéressé</p>
                                         </div>
-                                        <p class="match__origin" th:if="${row.agentName}" data-proposal-agent>
-                                            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="6.5" r="3.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                                            <a th:if="${row.agentUrl}" th:href="${row.agentUrl}" th:text="${row.agentName}"
-                                               data-proposal-agent-link>Clarisse Mbarga</a>
-                                            <span th:unless="${row.agentUrl}" th:text="${row.agentName}">Clarisse Mbarga</span>
-                                        </p>
                                         <th:block th:if="${row.visit != null}">
                                             <div th:replace="~{fragments/visit-detail :: detail(${row.visit}, ${row.client})}"></div>
                                         </th:block>
                                         <p class="proposal-card__meta" th:if="${!#strings.isEmpty(row.sent)}"
                                            th:text="${row.sent}" data-proposal-summary>Envoyé le 28 oct. 2026</p>
+                                        <th:block th:if="${row.otherAgent}">
+                                            <div th:replace="~{fragments/agent-card :: agentCard(${row.agent}, false)}"></div>
+                                        </th:block>
                                     </article>
                                 </li>
                             </ul>
@@ -420,14 +418,6 @@
                                                    th:class="|status-tag status-tag--${match.tag.style}|"
                                                    th:text="${match.tag.label}" data-match-tag>Nouveau</p>
                                             </div>
-                                            <p class="match__origin"
-                                               th:if="${match.origin != null and (match.visit == null or match.visit.agentName == null)}"
-                                               data-match-origin>
-                                                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="6.5" r="3.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
-                                                <a th:if="${match.originUrl}" th:href="${match.originUrl}"
-                                                   th:text="${match.origin}" data-match-agent>Clarisse Mbarga</a>
-                                                <span th:unless="${match.originUrl}" th:text="${match.origin}">Bien d'un autre agent</span>
-                                            </p>
                                             <dl class="match__facts" data-match-facts>
                                                 <div th:each="fact : ${match.facts}">
                                                     <dt class="visually-hidden" th:text="${fact.first}">Quartier</dt>
@@ -483,6 +473,9 @@
                                                         </form>
                                                     </div>
                                                 </div>
+                                            </th:block>
+                                            <th:block th:if="${match.coBrokerage}">
+                                                <div th:replace="~{fragments/agent-card :: agentCard(${match.agent}, false)}"></div>
                                             </th:block>
                                         </article>
                                     </li>

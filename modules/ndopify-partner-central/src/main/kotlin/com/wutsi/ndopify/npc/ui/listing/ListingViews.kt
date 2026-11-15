@@ -16,13 +16,12 @@ import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateSummary
 import com.wutsi.ndopify.match.dto.Match
 import com.wutsi.ndopify.match.dto.MatchStatus
-import com.wutsi.ndopify.npc.ui.agent.AgentProfileRules
-import com.wutsi.ndopify.npc.ui.kyc.KycRules
+import com.wutsi.ndopify.npc.ui.agent.AgentCardView
+import com.wutsi.ndopify.npc.ui.agent.AgentCardViews
 import com.wutsi.ndopify.npc.ui.mandate.Amenity
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.npc.ui.mandate.MandateRules
 import com.wutsi.ndopify.npc.ui.match.MatchRules
-import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import com.wutsi.ndopify.npc.ui.visit.VisitCardView
 import com.wutsi.ndopify.npc.ui.visit.VisitCards
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
@@ -79,9 +78,8 @@ object ListingViews {
         formatter: TenantFormatter,
         publicPortalUrl: String? = null,
         stats: ListingStats? = null,
-        visits: List<ListingVisitView> = emptyList(),
         coBrokerage: Boolean = false,
-        agent: ListingAgentView? = null,
+        agent: AgentCardView? = null,
         backUrl: String = "/mandates/${listing.mandateId}",
         backLabel: String = "← Retour au mandat",
     ): ListingView {
@@ -115,7 +113,6 @@ object ListingViews {
             publishedAt = listing.publishedAt?.let { formatter.date(it) },
             publicUrl = if (!coBrokerage && listing.status in PUBLIC) publicUrl(listing, publicPortalUrl) else null,
             stats = if (!coBrokerage && published) ListingStatsView.of(stats)?.label else null,
-            visits = visits,
             rows = if (coBrokerage) {
                 emptyList()
             } else {
@@ -150,24 +147,9 @@ object ListingViews {
     }
 
     /**
-     * The listing agent's card on a co-broker's page, from the profile page's helpers. Its profile link returns to the
-     * co-brokered listing, [match] included.
-     */
-    fun agent(agent: Agent, listing: Listing, match: Match): ListingAgentView =
-        ListingAgentView(
-            id = agent.id,
-            name = ProfileRules.fullName(agent),
-            initials = KycRules.initials(agent.party.firstName, agent.party.lastName),
-            photoUrl = agent.party.photoUrl?.ifBlank { null },
-            whatsappUrl = AgentProfileRules.whatsappUrl(agent.whatsappNumber),
-            whatsappNumber = agent.whatsappNumber,
-            profileUrl = AgentProfileRules.profileUrl(agent.id, "/listings/${listing.id}?match=${match.id}"),
-        )
-
-    /**
-     * The owner's visits block: soonest first, the agent's name/profile/WhatsApp when it could be read, "un autre agent"
-     * (null name) otherwise. Never a customer field. [back] is where the agent's profile link returns; [listingLabels]
-     * names the listing on the home and mandate blocks (null on the listing page).
+     * The owner's hosted-visit block: soonest first, each with the organizer's standard card (null when it can't be
+     * read, so the card says "un autre agent"). Never a customer field. [back] is where the agent's profile link
+     * returns; [listingLabels] names the listing on the home and mandate blocks.
      */
     fun visits(
         visits: List<CoBrokerageVisitSummary>,
@@ -180,20 +162,15 @@ object ListingViews {
         visits
             .sortedWith(compareBy<CoBrokerageVisitSummary> { it.scheduledAt?.time }.thenBy { it.id })
             .map { visit ->
-                val agent = agents[visit.agentId]
-                val name = agent?.let { ProfileRules.fullName(it) }?.ifBlank { null }
-                val initials = agent?.let { KycRules.initials(it.party.firstName, it.party.lastName) }?.ifBlank { null }
+                val agent = agents[visit.agentId]?.let { AgentCardViews.of(it, back) }?.takeIf { it.name.isNotBlank() }
                 val title = listingLabels[visit.listingId]
                 ListingVisitView(
                     at = visit.scheduledAt?.let { VisitSlots.dateTimeLabel(it, tenant, formatter) }.orEmpty(),
                     typeLabel = VisitRules.typeLabel(visit.type),
                     inProgress = visit.status == VisitStatus.CHECKED_IN,
-                    agentName = name,
-                    agentUrl = name?.let { AgentProfileRules.profileUrl(visit.agentId, back) },
-                    whatsappUrl = name?.let { AgentProfileRules.whatsappUrl(agent?.whatsappNumber) },
+                    agent = agent,
                     listingTitle = title,
                     listingUrl = title?.let { "/listings/${visit.listingId}#visits-title" },
-                    agentInitials = initials,
                     video = visit.type == VisitType.VIDEO,
                 )
             }
@@ -375,7 +352,7 @@ object ListingViews {
         tenant: Tenant,
         now: Long,
         formatter: TenantFormatter,
-        agentNames: Map<Long, String> = emptyMap(),
+        agents: Map<Long, Agent> = emptyMap(),
         back: String? = null,
     ): ListingClientsView {
         val own = mandates.filter { it.agentId == agentId }.associateBy { it.id }
@@ -405,8 +382,7 @@ object ListingViews {
             .map { match ->
                 val mandate = own[match.mandateId]
                 val visit = byMatch[match.id]
-                // Another agent's client: that agent may be named and linked, never its client nor its mandate.
-                val otherAgent = if (mandate == null) agentNames[match.agentId] else null
+                // Another agent's client: only that agent may be named and linked, never its client nor its mandate.
                 ProposalRow(
                     matchId = match.id,
                     client = when (mandate) {
@@ -414,8 +390,14 @@ object ListingViews {
                         else -> names[mandate.customerId] ?: "Mandat n° ${mandate.id}"
                     },
                     url = mandate?.let { "/mandates/${it.id}#matches-title" },
-                    agentName = otherAgent,
-                    agentUrl = otherAgent?.let { back?.let { AgentProfileRules.profileUrl(match.agentId, it) } },
+                    otherAgent = mandate == null,
+                    agent = if (mandate == null && back != null) {
+                        agents[match.agentId]
+                            ?.let { AgentCardViews.of(it, back) }
+                            ?.takeIf { it.name.isNotBlank() }
+                    } else {
+                        null
+                    },
                     tag = MatchRules.tag(match),
                     sent = if (visit != null) {
                         match.proposedAt?.let { "Envoyé le ${formatter.date(it)}" }.orEmpty()

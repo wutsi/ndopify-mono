@@ -601,8 +601,9 @@ class HomeControllerTest {
         val result = mvc.perform(get("/")).andReturn()
 
         val card = visitCards(result).upcoming.single()
-        assertEquals("Clarisse Mbarga", card.agentName)
-        assertEquals("/agent?id=30&back=/%23visits-title", card.agentUrl)
+        assertTrue(card.coBrokerage)
+        assertEquals("Clarisse Mbarga", card.agent?.name)
+        assertEquals("/agent?id=30&back=/%23visits-title", card.agent?.profileUrl)
         verify(agentClient).get(VisitFixtures.OTHER_AGENT_ID)
     }
 
@@ -618,8 +619,8 @@ class HomeControllerTest {
         val result = mvc.perform(get("/")).andReturn()
 
         val card = visitCards(result).upcoming.single()
-        assertEquals("un autre agent", card.agentName)
-        assertNull(card.agentUrl)
+        assertTrue(card.coBrokerage)
+        assertNull(card.agent)
     }
 
     @Test
@@ -646,8 +647,10 @@ class HomeControllerTest {
         @Suppress("UNCHECKED_CAST")
         val visits = model(result)["coBrokerageVisits"] as List<ListingVisitView>
         val visit = visits.single()
-        assertEquals("Clarisse Mbarga", visit.agentName)
-        assertEquals("CM", visit.agentInitials)
+        assertEquals("Clarisse Mbarga", visit.agent?.name)
+        assertEquals("CM", visit.agent?.initials)
+        assertEquals("/agent?id=30&back=/%23co-brokerage-visits-title", visit.agent?.profileUrl)
+        assertEquals("https://wa.me/237699000002", visit.agent?.whatsappUrl)
         assertEquals(false, visit.video)
         assertEquals("Appartement 3 chambres · Bonapriso", visit.listingTitle)
         assertEquals(1, model(result)["todayCount"])
@@ -695,7 +698,7 @@ class HomeControllerTest {
         @Suppress("UNCHECKED_CAST")
         val visits = model(result)["coBrokerageVisits"] as List<ListingVisitView>
         assertEquals(1, visits.size)
-        assertEquals("Clarisse Mbarga", visits.single().agentName)
+        assertEquals("Clarisse Mbarga", visits.single().agent?.name)
         assertNull(visits.single().listingTitle)
     }
 
@@ -712,8 +715,7 @@ class HomeControllerTest {
         @Suppress("UNCHECKED_CAST")
         val visits = model(result)["coBrokerageVisits"] as List<ListingVisitView>
         assertEquals(1, visits.size)
-        assertNull(visits.single().agentName)
-        assertNull(visits.single().agentInitials)
+        assertNull(visits.single().agent)
     }
 
     private fun hostedVisit() = CoBrokerageVisitSummary(

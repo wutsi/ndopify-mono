@@ -19,15 +19,6 @@
         <span><strong data-visit-kind th:text="${v.kindLabel}">Visite demandée</strong> ·
             <span data-visit-when th:text="${v.whenText}">pour le sam. 7 novembre 2026 à 10:30</span></span>
     </p>
-    <p class="visit-detail__agent" th:if="${v.agentName != null}" data-visit-agent>
-        <svg class="icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false"><circle cx="10" cy="6.5" r="3.25"/><path d="M4 17c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5" stroke-linecap="round"/></svg>
-        <span>Avec</span>
-        <a th:if="${v.agentUrl}" th:href="${v.agentUrl}" data-visit-agent-link>
-            <span th:text="${v.agentName}" data-visit-agent-name>Clarisse Mbarga</span>
-            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 17 17 7"/><path d="M8 7h9v9"/></svg>
-        </a>
-        <span th:unless="${v.agentUrl}" th:text="${v.agentName}">un autre agent</span>
-    </p>
     <p class="visit-detail__timer" th:if="${v.expiresIn != null}" data-visit-timer>
         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
         <span>Il reste <strong th:text="${v.expiresIn}">42 h</strong> pour confirmer</span>
@@ -38,6 +29,7 @@
     <a class="btn btn--outline btn--compact visit-detail__cta" th:unless="${v.status.name() == 'REQUESTED'}"
        th:href="@{/visits/{id}(id=${v.id})}"
        th:attr="aria-label=|Voir la visite — ${label} — ${v.whenLabel}|" data-visit-link>Voir la visite</a>
+    <th:block th:if="${v.coBrokerage}"><div th:replace="~{fragments/agent-card :: agentCard(${v.agent}, false)}"></div></th:block>
 </div>
 </body>
 </html>

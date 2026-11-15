@@ -3,10 +3,10 @@ package com.wutsi.ndopify.npc.ui.visit
 import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.customer.dto.CustomerSummary
 import com.wutsi.ndopify.listing.dto.ListingSummary
-import com.wutsi.ndopify.npc.ui.agent.AgentProfileRules
+import com.wutsi.ndopify.npc.ui.agent.AgentCardView
+import com.wutsi.ndopify.npc.ui.agent.AgentCardViews
 import com.wutsi.ndopify.npc.ui.mandate.MandateLabels
 import com.wutsi.ndopify.npc.ui.match.MatchRules
-import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Tenant
 import com.wutsi.ndopify.visit.dto.Visit
@@ -59,13 +59,13 @@ object VisitCards {
                 val requestedTime = VisitSlots.localTime(visit.requestedAt, tenant).toString()
                 val dayValid = days.any { it.value == requestedDay }
                 val timeValid = times.any { it.first == requestedTime }
-                val listingAgent = agent(visit, listings, agents, back)
+                val listingAgent = coBrokerage(visit, listings)
                 VisitCardView(
                     id = visit.id,
                     matchId = visit.matchId,
                     customerName = name(customers[visit.customerId]),
-                    agentName = listingAgent.first,
-                    agentUrl = listingAgent.second,
+                    coBrokerage = listingAgent,
+                    agent = if (listingAgent) agent(visit, listings, agents, back) else null,
                     type = VisitRules.typeLabel(visit.type),
                     video = visit.type == VisitType.VIDEO,
                     status = visit.status,
@@ -92,13 +92,13 @@ object VisitCards {
             .sortedWith(compareBy(nullsLast()) { it.scheduledAt?.time })
             .map { visit ->
                 val label = whenLabel(visit, today, tenant, formatter)
-                val listingAgent = agent(visit, listings, agents, back)
+                val listingAgent = coBrokerage(visit, listings)
                 VisitCardView(
                     id = visit.id,
                     matchId = visit.matchId,
                     customerName = name(customers[visit.customerId]),
-                    agentName = listingAgent.first,
-                    agentUrl = listingAgent.second,
+                    coBrokerage = listingAgent,
+                    agent = if (listingAgent) agent(visit, listings, agents, back) else null,
                     type = VisitRules.typeLabel(visit.type),
                     video = visit.type == VisitType.VIDEO,
                     status = visit.status,
@@ -207,23 +207,29 @@ object VisitCards {
     }
 
     /**
-     * The listing's agent when this is a co-brokerage visit: its name, or "un autre agent" when it can't be read, and
-     * its profile link back to [back]. Null when [back] is null (a page that doesn't show the line) or the visit is on
-     * the agent's own inventory.
+     * True when the visit is on another agent's listing: the card ends with the standard agent footer. False for an
+     * own-inventory visit or when the listings couldn't be read.
+     */
+    private fun coBrokerage(visit: Visit, listings: Map<Long, ListingSummary>?): Boolean {
+        val listing = listings?.get(visit.listingId) ?: return false
+        return listing.agentId != visit.agentId
+    }
+
+    /**
+     * The standard card of the other agent the visit is with, its profile link back to [back]; null when it can't be
+     * read or has no name (the footer then says "un autre agent"). Also null when [back] is null: a page that doesn't
+     * show the footer doesn't read the agent.
      */
     private fun agent(
         visit: Visit,
         listings: Map<Long, ListingSummary>?,
         agents: Map<Long, Agent>,
         back: String?,
-    ): Pair<String?, String?> {
-        if (back == null) return null to null
-        val listing = listings?.get(visit.listingId) ?: return null to null
-        if (listing.agentId == visit.agentId) return null to null
-        val agent = agents[listing.agentId]
-        val name = agent?.let { ProfileRules.fullName(it) }?.ifBlank { null }
-        // Both keyed off the resolved name: a readable agent without one stays unlinked, like an unreadable agent.
-        return (name ?: "un autre agent") to name?.let { AgentProfileRules.profileUrl(listing.agentId, back) }
+    ): AgentCardView? {
+        if (back == null) return null
+        val listing = listings?.get(visit.listingId) ?: return null
+        val agent = agents[listing.agentId] ?: return null
+        return AgentCardViews.of(agent, back).takeIf { it.name.isNotBlank() }
     }
 
     private fun name(customer: CustomerSummary?): String =
