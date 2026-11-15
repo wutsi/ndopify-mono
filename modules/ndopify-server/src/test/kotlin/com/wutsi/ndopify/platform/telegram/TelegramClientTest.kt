@@ -77,6 +77,58 @@ class TelegramClientTest {
     }
 
     @Test
+    fun `sendMessageRows posts one keyboard row per button`() {
+        doReturn(TelegramMessageResponse(ok = true))
+            .whenever(http).post(eq("$base/sendMessage"), any(), eq(TelegramMessageResponse::class.java), eq(emptyMap()))
+
+        client.sendMessageRows(
+            123L,
+            "Digest",
+            listOf(
+                listOf(TelegramButton("Voir le mandat — Villa Bastos", url = "https://pc.example/mandates/11")),
+                listOf(TelegramButton("Voir le mandat — Studio Mvan", url = "https://pc.example/mandates/12")),
+            ),
+        )
+
+        verify(http).post(
+            eq("$base/sendMessage"),
+            eq(
+                mapOf(
+                    "chat_id" to 123L,
+                    "text" to "Digest",
+                    "reply_markup" to mapOf(
+                        "inline_keyboard" to listOf(
+                            listOf(
+                                mapOf("text" to "Voir le mandat — Villa Bastos", "url" to "https://pc.example/mandates/11"),
+                            ),
+                            listOf(
+                                mapOf("text" to "Voir le mandat — Studio Mvan", "url" to "https://pc.example/mandates/12"),
+                            ),
+                        ),
+                    ),
+                ),
+            ),
+            eq(TelegramMessageResponse::class.java),
+            eq(emptyMap()),
+        )
+    }
+
+    @Test
+    fun `sendMessageRows without rows posts no keyboard`() {
+        doReturn(TelegramMessageResponse(ok = true))
+            .whenever(http).post(eq("$base/sendMessage"), any(), eq(TelegramMessageResponse::class.java), eq(emptyMap()))
+
+        client.sendMessageRows(123L, "Digest", emptyList())
+
+        verify(http).post(
+            eq("$base/sendMessage"),
+            eq(mapOf("chat_id" to 123L, "text" to "Digest")),
+            eq(TelegramMessageResponse::class.java),
+            eq(emptyMap()),
+        )
+    }
+
+    @Test
     fun answerCallbackQuery() {
         doReturn(TelegramBooleanResponse(ok = true))
             .whenever(http).post(eq("$base/answerCallbackQuery"), any(), eq(TelegramBooleanResponse::class.java), eq(emptyMap()))
