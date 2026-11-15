@@ -361,7 +361,6 @@
                     </div>
 
                     <p class="visit-later" data-noshow-later th:if="${!p.canNoShow and p.noShowFrom != null}">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                         <span><span th:if="${p.type.name() == 'ON_SITE'}">Le client n'est pas là&nbsp;?</span><span
                             th:unless="${p.type.name() == 'ON_SITE'}">Le client ne répond pas&nbsp;?</span> À partir de
                             <strong th:text="${p.noShowFrom}">jeu. 5 novembre 2026 à 10:45</strong>, 15 min après l'heure prévue, vous pourrez le déclarer absent.</span>
