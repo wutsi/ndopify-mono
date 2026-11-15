@@ -3,10 +3,12 @@ package com.wutsi.ndopify.platform.momo.mtn
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.test.context.ActiveProfiles
 import kotlin.test.Ignore
 import kotlin.test.assertEquals
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@ActiveProfiles("qa")
 class MtnCollectionProductTest {
     @Autowired
     private lateinit var product: MtnCollectionProduct

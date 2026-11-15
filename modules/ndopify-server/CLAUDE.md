@@ -474,6 +474,14 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
 - `platform/ai` — the two Spring AI `ChatClient`s (`ChatClients.VISION` for images, `ChatClients.TEXT` for text) and
   their cached health indicators, wired by `config/platform/AIConfiguration`.
 - `platform/util` — small helpers (`PhoneNumberUtils`, `MimeUtils`, `UrlUtils`, `KycUtils`, HTTP utilities).
+- `platform/telegram` — the Telegram bot, wired by `config/platform/TelegramConfiguration`: `TelegramClient` (a thin
+  Bot API client over `platform/util/http/Http`), `TelegramUpdateHandler` (answers every `message` with `OK`, ignores
+  every other update type), two transports (`TelegramPollingTransport` locally: long polling on a virtual thread,
+  clearing the webhook first; `TelegramWebhookTransport` in TEST/PROD: registers
+  `${SERVER_URL}/telegram/webhook` at startup) and `TelegramHealthIndicator` (cached `getMe`, health id `telegram` in
+  the default group). The webhook is public (`PublicEndpoints.GLOBAL`), protected only by the
+  `X-Telegram-Bot-Api-Secret-Token` header (403 without it); `ndopify.telegram.transport` picks one transport, never
+  both. Config under `ndopify.telegram.*`; the token is required and never logged.
 - `platform/endpoint` — `@OpsEndpoint`: marks an operational endpoint method (ex: dispatching a mandate by hand).
   `OpsEndpointHandlerMapping` (wired by `EndpointConfiguration`) doesn't map them unless `ndopify.endpoints.ops` is
   `true` (default config; `false` in `application-prod.yml`, and when missing): the route doesn't exist, and

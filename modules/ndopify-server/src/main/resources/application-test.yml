@@ -34,6 +34,12 @@ ndopify:
         jwt:
             secret: ${JWT_SECRET}          # No default: the server doesn't start without it
 
+    telegram:
+        transport: webhook
+        webhook:
+            url: ${SERVER_URL}/telegram/webhook
+            secret: ${TELEGRAM_WEBHOOK_SECRET}
+
     #    mandate:
     #        assignment:
     #            night:

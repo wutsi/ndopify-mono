@@ -136,6 +136,11 @@ Required for local development (see `application.yml` and the module POMs):
   OpenAI-compatible) reads the KYC documents and listing pictures; the text client (`spring.ai.deepseek`) is for
   text-only prompts. Both currently point at DeepSeek (`deepseek-flash`) and read the same key. See
   `AIConfiguration` / `ChatClients`.
+- `TELEGRAM_TOKEN` for the Telegram bot of `ndopify-server` (`ndopify.telegram.token`), with no default: the app
+  doesn't start without it. Locally it's a separate **dev bot** token, so that local long polling never takes the
+  `Telegram` bot's updates from TEST. Deployed environments have no default either: they read `TELEGRAM_TOKEN`, and
+  (webhook mode) `SERVER_URL` and `TELEGRAM_WEBHOOK_SECRET` — the app registers `${SERVER_URL}/telegram/webhook` with
+  that secret at startup. See *Telegram* in `modules/ndopify-server/CLAUDE.md`.
 
 No RabbitMQ or messaging broker is wired up in `ndopify-server` today — don't assume one exists. MTN Mobile Money
 credentials (`ndopify.mobile-money.mtn.*` in `application.yml`) default to dummy sandbox placeholders and don't need

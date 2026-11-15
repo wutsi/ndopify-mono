@@ -18,6 +18,9 @@ object PublicEndpoints {
         "/v1/locations/**",
         "/v1/applications/**",
 
+        // Telegram's webhook: it authenticates with the secret header it echoes, not a JWT
+        "/telegram/webhook",
+
         // Swagger UI (springdoc.swagger-ui.path) and the OpenAPI docs it loads
         "/api.html",
         "/swagger-ui/**",

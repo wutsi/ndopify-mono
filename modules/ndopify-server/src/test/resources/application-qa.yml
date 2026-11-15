@@ -20,10 +20,19 @@ spring:
                         enable: false
                         required: false
 
+management:
+    health:
+        telegram:
+            enabled: false # No health call to Telegram in the tests
+
 ndopify:
     security:
         jwt:
             secret: qa-secret-not-for-prod-0123456789abcdef
+    telegram:
+        token: qa-token-not-for-prod
+        polling:
+            enabled: false
     contract:
         expire:
             cron: "-" # Never on its own: tests call ContractJobs

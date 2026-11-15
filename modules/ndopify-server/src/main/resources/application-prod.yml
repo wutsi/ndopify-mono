@@ -45,6 +45,12 @@ ndopify:
     database:
         pool-size: 16
 
+    telegram:
+        transport: webhook
+        webhook:
+            url: ${SERVER_URL}/telegram/webhook
+            secret: ${TELEGRAM_WEBHOOK_SECRET}
+
     contract:
         expire:
             cron: "0 0 1 * * ?"            # Every day at 01:00: contracts not signed in time, or past their end date

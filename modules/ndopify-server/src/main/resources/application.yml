@@ -243,6 +243,18 @@ logging:
 ndopify:
     endpoints:
         ops: true                          # @OpsEndpoint endpoints (unauthenticated): off in prod
+    telegram:
+        token: ${TELEGRAM_TOKEN}           # No default: the server doesn't start without it
+        transport: polling                  # polling (local) | webhook (TEST/PROD)
+        webhook:
+            url: ""                         # ${SERVER_URL}/telegram/webhook in TEST/PROD
+            secret: ""                      # TELEGRAM_WEBHOOK_SECRET in TEST/PROD
+        polling:
+            enabled: true
+            timeout-seconds: 20
+        health:
+            up-ttl-minutes: 5
+            down-ttl-minutes: 1
     security:
         jwt:
             secret: local-dev-secret-not-for-prod-0123456789 # Dummy: test and prod use the JWT_SECRET env variable
