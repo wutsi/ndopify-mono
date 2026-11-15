@@ -60,7 +60,7 @@ endpoint tests, Flyway, Maven.
 - Produces: the approved copy and states the served templates mirror in Tasks 6–7: the countdown warning after a
   wrong code, and the locked state with the wait.
 
-- [ ] **Step 1: Model the account lock in Partner Central's prototype**
+- [x] **Step 1: Model the account lock in Partner Central's prototype**
 
 `OTP_LOCK_MS = 60 * 60 * 1000` and a `KEYS.otpLockedUntil = "npc.otpLockedUntil"` next to `otpAttempts`.
 `initLoginCode` changes:
@@ -78,7 +78,7 @@ endpoint tests, Flyway, Maven.
 - Resend keeps `otpAttempts` and `otpLockedUntil` (a new code buys no attempts). While locked it sends nothing and
   says the lock message in `[data-status]`; otherwise it keeps today's behaviour.
 
-- [ ] **Step 2: Model it in the e-signature prototype**
+- [x] **Step 2: Model it in the e-signature prototype**
 
 Add `failedAttempts` and `lockedUntil` to the persisted state. A new code (`update({ codeExpiresAt: … })`) does
 **not** reset them — a resend buys no attempts, as on ndopify-server; only a verified code clears both, and a lock
@@ -86,13 +86,13 @@ that expired starts the count over. `bindCode` counts a wrong code (`WRONG_CODE`
 messages from `MESSAGES` (as functions of the number). `[data-resend]` while locked shows the lock message and
 sends nothing, as does the intro's `/otp`.
 
-- [ ] **Step 3: Check both in a browser**
+- [x] **Step 3: Check both in a browser**
 
 Run: `cd modules/ndopify-partner-central/src/main/html && python3 -m http.server 8000`, open
 `http://localhost:8000/login.html`, request a code, type `000000` five times: the 1st–4th warn, the 5th locks and
 the button is disabled. Same for `modules/ndopify-esignature/src/main/html` (`sign.html`, code `111111`).
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add modules/ndopify-partner-central/src/main/html
@@ -115,12 +115,12 @@ git commit -m "feat(esignature): prototype the OTP account lock"
 **Interfaces:**
 - Produces: `ErrorCode.AUTH_ACCOUNT_LOCKED = "urn:wutsi:ndopify:error:auth:account-locked"`.
 
-- [ ] **Step 1: Add the code**
+- [x] **Step 1: Add the code**
 
 `val AUTH_ACCOUNT_LOCKED = "$PREFIX:auth:account-locked"`, above `AUTH_ACCESS_DENIED` (alphabetical inside the
 `AUTH_` block).
 
-- [ ] **Step 2: Install it locally and pin the server to the snapshot**
+- [x] **Step 2: Install it locally and pin the server to the snapshot**
 
 ```bash
 cd modules/ndopify-dto && mvn install -DskipTests
@@ -130,7 +130,7 @@ git diff -- pom.xml
 
 Expected: only `<ndopify-dto.version>`, `0.0.89` → `0.0.90-SNAPSHOT` (the DTO POM is already `0.0.90-SNAPSHOT`).
 
-- [ ] **Step 3: Commit only the DTO file**
+- [x] **Step 3: Commit only the DTO file**
 
 ```bash
 git add modules/ndopify-dto/src/main/kotlin/com/wutsi/ndopify/error/dto/ErrorCode.kt
@@ -160,7 +160,7 @@ git commit -m "feat(dto): add AUTH_ACCOUNT_LOCKED" -m "Refs #126"
     `ndopify.security.otp`, enabled with `@EnableConfigurationProperties(OtpProperties::class)` on
     `OtpAuthenticator` in Task 4.
 
-- [ ] **Step 1: Write the migration**
+- [x] **Step 1: Write the migration**
 
 ```sql
 ALTER TABLE T_AUTH_FACTOR
@@ -168,7 +168,7 @@ ALTER TABLE T_AUTH_FACTOR
     ADD COLUMN locked_until DATETIME DEFAULT NULL;
 ```
 
-- [ ] **Step 2: Write the failing unit test**
+- [x] **Step 2: Write the failing unit test**
 
 `AuthFactorServiceTest` with a mocked `AuthFactorRepository` and `Clock.fixed(Instant.parse("2026-11-15T10:00:00Z"),
 UTC)`. In `setUp`: `whenever(dao.save(any())).thenAnswer { it.arguments[0] }`.
@@ -201,12 +201,12 @@ UTC)`. In `setUp`: `whenever(dao.save(any())).thenAnswer { it.arguments[0] }`.
 }
 ```
 
-- [ ] **Step 3: Run it to watch it fail**
+- [x] **Step 3: Run it to watch it fail**
 
 Run: `cd modules/ndopify-server && mvn test -Dtest=AuthFactorServiceTest`
 Expected: FAIL — `recordFailedAttempt` unresolved.
 
-- [ ] **Step 4: Add the entity fields and `isLocked`**
+- [x] **Step 4: Add the entity fields and `isLocked`**
 
 `AuthFactorEntity`: `failedAttempts: Int = 0` and `lockedUntil: Date? = null` after `expiresAt`, plus
 
@@ -215,7 +215,7 @@ Expected: FAIL — `recordFailedAttempt` unresolved.
 fun isLocked(clock: Clock): Boolean = lockedUntil != null && lockedUntil.time > clock.millis()
 ```
 
-- [ ] **Step 5: Add the counting rule and reset it on `consume`**
+- [x] **Step 5: Add the counting rule and reset it on `consume`**
 
 ```kotlin
 /** Counts one wrong code, locks the account when [maxAttempts] is reached. A lock that expired starts over. */
@@ -238,7 +238,7 @@ fun recordFailedAttempt(
 
 `consume` also sets `failedAttempts = 0, lockedUntil = null`.
 
-- [ ] **Step 6: Add `OtpProperties` and the yml keys**
+- [x] **Step 6: Add `OtpProperties` and the yml keys**
 
 ```kotlin
 /**
@@ -262,12 +262,12 @@ In `application.yml`, under `ndopify.security`, next to `access-token`:
             lock-duration: 1h             # How long the account stays locked
 ```
 
-- [ ] **Step 7: Run the tests to verify they pass**
+- [x] **Step 7: Run the tests to verify they pass**
 
 Run: `cd modules/ndopify-server && mvn test -Dtest=AuthFactorServiceTest`
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add modules/ndopify-server/src
@@ -293,7 +293,7 @@ git commit -m "feat(security): store OTP failed attempts and lock the account"
 - Produces: `AbstractPasswordAuthenticator.invalidCredentials(authFactor: AuthFactorEntity?): Nothing` (open, the
   default throws `AUTH_INVALID_CREDENTIALS`), overridden by `OtpAuthenticator` to count and to lock.
 
-- [ ] **Step 1: Add two fixtures to `AuthenticateOtpEndpoint.sql`**
+- [x] **Step 1: Add two fixtures to `AuthenticateOtpEndpoint.sql`**
 
 - User 9 `locked-otp@gmail.com`, tenant 1 membership 9, `T_USER_APPLICATION` 91 (application 3), OTP factor 9 with
   `failed_attempts = 5`, `locked_until = '2099-01-01 00:00:00'`.
@@ -302,7 +302,7 @@ git commit -m "feat(security): store OTP failed attempts and lock the account"
 
 Both codes are `123456-test-salt` / `test-salt` with `expires_at = '2099-01-01 00:00:00'`, like factor 1.
 
-- [ ] **Step 2: Write the failing endpoint tests in `AuthenticateOtpEndpointTest`**
+- [x] **Step 2: Write the failing endpoint tests in `AuthenticateOtpEndpointTest`**
 
 ```kotlin
 @Test fun `wrong codes count down, the fifth locks`() {
@@ -351,12 +351,12 @@ Both codes are `123456-test-salt` / `test-salt` with `expires_at = '2099-01-01 0
 For `expires_at` use `authFactorRepository.findById(9L).get().expiresAt!!.toInstant().toString() ==
 "2099-01-01T00:00:00Z"`, matching the DATETIME precision.
 
-- [ ] **Step 3: Run them to watch them fail**
+- [x] **Step 3: Run them to watch them fail**
 
 Run: `cd modules/ndopify-server && mvn test -Dtest=AuthenticateOtpEndpointTest`
 Expected: FAIL — no `remainingAttempts`, `AUTH_INVALID_CREDENTIALS` on the 5th and while locked.
 
-- [ ] **Step 4: Add the `invalidCredentials` hook**
+- [x] **Step 4: Add the `invalidCredentials` hook**
 
 In `AbstractPasswordAuthenticator`, the two `throw ConflictException(Error(AUTH_INVALID_CREDENTIALS))` inside
 `checkCredentials` become `invalidCredentials(null)` (no row) and `invalidCredentials(authFactor)` (wrong code), and:
@@ -369,7 +369,7 @@ protected open fun invalidCredentials(authFactor: AuthFactorEntity?): Nothing =
 
 `PasswordAuthenticator` inherits it, unchanged.
 
-- [ ] **Step 5: Lock and count in `OtpAuthenticator`**
+- [x] **Step 5: Lock and count in `OtpAuthenticator`**
 
 Inject `OtpProperties` (rename the constructor parameter to `properties`), add
 `@EnableConfigurationProperties(OtpProperties::class)` on the class.
@@ -412,13 +412,13 @@ private fun lockedError(authFactor: AuthFactorEntity) = Error(
 
 `clock` is already a constructor parameter of `AbstractAuthenticator` (`protected val clock`).
 
-- [ ] **Step 6: Stop the 409 rolling the count back**
+- [x] **Step 6: Stop the 409 rolling the count back**
 
 `AuthenticationService.authenticate` →
 `@Transactional(noRollbackFor = [ConflictException::class])` (`com.wutsi.ndopify.error.server.exception.ConflictException`),
 with a KDoc line: the wrong-code count is written before the 409, and must survive it.
 
-- [ ] **Step 7: Add the two remaining tests**
+- [x] **Step 7: Add the two remaining tests**
 
 - `AuthenticatePasswordEndpointTest`: `5 wrong passwords still answer AUTH_INVALID_CREDENTIALS` — a loop of five
   `AUTH_INVALID_CREDENTIALS`, none `AUTH_ACCOUNT_LOCKED`.
@@ -426,12 +426,12 @@ with a KDoc line: the wrong-code count is written before the 409, and must survi
   the same `@Sql`, `TenantAwareEndpointIntegrationTest`: one wrong code is `AUTH_INVALID_CREDENTIALS`, the second is
   `AUTH_ACCOUNT_LOCKED`.
 
-- [ ] **Step 8: Run the tests to verify they pass**
+- [x] **Step 8: Run the tests to verify they pass**
 
 Run: `cd modules/ndopify-server && mvn test -Dtest='Authenticate*EndpointTest'`
 Expected: PASS (needs local MySQL).
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add modules/ndopify-server/src
@@ -452,13 +452,13 @@ git commit -m "feat(security): lock an account after 5 wrong OTP codes"
 - Produces: `POST /v1/otp` answers 409 `AUTH_ACCOUNT_LOCKED` (with `data.lockedUntil`) for a locked member, before
   generating or storing anything.
 
-- [ ] **Step 1: Add the fixtures**
+- [x] **Step 1: Add the fixtures**
 
 User 9 `locked-otp@gmail.com` (membership 9, `T_USER_APPLICATION` 91) with an OTP factor locked until
 `'2099-01-01 00:00:00'`, `failed_attempts = 5`, `data = 'old-hash'`; user 10 `expired-lock-otp@gmail.com`
 (membership 10, application 101) with `failed_attempts = 5` and `locked_until = '2020-01-01 00:00:00'`.
 
-- [ ] **Step 2: Write the failing endpoint tests**
+- [x] **Step 2: Write the failing endpoint tests**
 
 ```kotlin
 @Test fun `a locked account gets no code`() {
@@ -476,12 +476,12 @@ User 9 `locked-otp@gmail.com` (membership 9, `T_USER_APPLICATION` 91) with an OT
 }
 ```
 
-- [ ] **Step 3: Run them to watch them fail**
+- [x] **Step 3: Run them to watch them fail**
 
 Run: `cd modules/ndopify-server && mvn test -Dtest=CreateOtpEndpointTest`
 Expected: FAIL — `POST /v1/otp` issues a code for a locked account.
 
-- [ ] **Step 4: Refuse in `OtpService.create`**
+- [x] **Step 4: Refuse in `OtpService.create`**
 
 Inject `java.time.Clock` and, right after the membership check — before `otpGenerator.generate()` —:
 
@@ -500,12 +500,12 @@ authFactorService.findByUserAndAuthTypeOrNull(user, AuthType.OTP)
 
 The KDoc gains: a locked account gets no code — the e-mail isn't sent and the stored code is left as it is.
 
-- [ ] **Step 5: Run the tests to verify they pass**
+- [x] **Step 5: Run the tests to verify they pass**
 
 Run: `cd modules/ndopify-server && mvn test -Dtest=CreateOtpEndpointTest`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add modules/ndopify-server/src
@@ -530,7 +530,7 @@ git commit -m "feat(security): refuse an OTP to a locked account"
   - `OtpLockMessage.invalid(data: Map<String, Any>?, fallback: String): String` — « Code incorrect. Encore N
     tentatives avant le blocage de votre compte. » (`tentative` when 1) from `remainingAttempts`, else `fallback`.
 
-- [ ] **Step 1: Write the failing unit test**
+- [x] **Step 1: Write the failing unit test**
 
 ```kotlin
 private val now = Instant.parse("2026-11-15T10:00:00Z").toEpochMilli()
@@ -554,18 +554,18 @@ private val now = Instant.parse("2026-11-15T10:00:00Z").toEpochMilli()
 }
 ```
 
-- [ ] **Step 2: Run it to watch it fail**
+- [x] **Step 2: Run it to watch it fail**
 
 Run: `cd modules/ndopify-partner-central && mvn test -Dtest=OtpLockMessageTest`
 Expected: FAIL — `OtpLockMessage` unresolved.
 
-- [ ] **Step 3: Implement `OtpLockMessage`**
+- [x] **Step 3: Implement `OtpLockMessage`**
 
 Parse `lockedUntil` with `Instant.parse` in a `try`, read `remainingAttempts` as a `Number`, and format both
 sentences from the numbers (never from the server's message). This copy is deliberately local to the app, like
 `toMessage` itself: the two web apps word their own pages.
 
-- [ ] **Step 4: Wire it into `LoginController`**
+- [x] **Step 4: Wire it into `LoginController`**
 
 - `toMessage` parses the `Error` once (`ex.getResponseBodyAs(ErrorResponse::class.java)?.error`), keeps every current
   branch, and adds `AUTH_INVALID_CREDENTIALS -> OtpLockMessage.invalid(error?.data, "Code incorrect. Vérifiez les 6
@@ -573,7 +573,7 @@ sentences from the numbers (never from the server's message). This copy is delib
 - `submit`'s catch: when the error code is `AUTH_ACCOUNT_LOCKED`, show `OtpLockMessage.locked(...)` instead of
   « Cette adresse email n'est pas valide! ». The pending login is still cleared, as today.
 
-- [ ] **Step 5: Extend `LoginControllerTest`**
+- [x] **Step 5: Extend `LoginControllerTest`**
 
 `assertVerifyError(code, message, data = null)` gains the `data` parameter, passed to `Error(code = code, data =
 data)`. New cases:
@@ -596,12 +596,12 @@ Plus `submit - locked` and `resend - locked` (the `otpClient.create` throws
 `HttpClientErrorException(HttpStatus.CONFLICT)` with the lock body): the model's `error` is the lock sentence and the
 pending login is cleared.
 
-- [ ] **Step 6: Run the tests to verify they pass**
+- [x] **Step 6: Run the tests to verify they pass**
 
 Run: `cd modules/ndopify-partner-central && mvn test -Dtest=LoginControllerTest,OtpLockMessageTest`
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add modules/ndopify-partner-central/src
@@ -623,16 +623,16 @@ git commit -m "feat(npc): show the OTP attempts left and the account lock"
 - Produces: same `OtpLockMessage` API as Task 6 (`locked(data, now)`, `invalid(data, fallback)`), duplicated in this
   app with its own wording choices — the two apps keep their own copy.
 
-- [ ] **Step 1: Write the failing unit test**
+- [x] **Step 1: Write the failing unit test**
 
 Copy `OtpLockMessageTest` from Task 6 (same four assertions; the wording is identical in both apps).
 
-- [ ] **Step 2: Run it to watch it fail**
+- [x] **Step 2: Run it to watch it fail**
 
 Run: `cd modules/ndopify-esignature && mvn test -Dtest=OtpLockMessageTest`
 Expected: FAIL — unresolved.
 
-- [ ] **Step 3: Implement `OtpLockMessage` and wire it into `SignController`**
+- [x] **Step 3: Implement `OtpLockMessage` and wire it into `SignController`**
 
 - Same object as Task 6.
 - In `toCodeMessage`'s `when`: `AUTH_INVALID_CREDENTIALS -> OtpLockMessage.invalid(error?.data, CODE_WRONG)` and
@@ -641,7 +641,7 @@ Expected: FAIL — unresolved.
   branches. `errorCode(ex)` becomes a helper returning the whole `Error` (code + data) so both handlers read it
   once; keep `warn(ex)`'s log line.
 
-- [ ] **Step 4: Extend `SignControllerTest`**
+- [x] **Step 4: Extend `SignControllerTest`**
 
 - `otp - locked`: `otpClient.create` throws 409 `AUTH_ACCOUNT_LOCKED` with `lockedUntil` 42 minutes out → intro
   step with `error` = « Trop de tentatives. Réessayez dans 42 minutes. » and no `PendingSignature` in the session.
@@ -650,12 +650,12 @@ Expected: FAIL — unresolved.
 - `verify - wrong code shows remaining attempts`: `AUTH_INVALID_CREDENTIALS` with `remainingAttempts = 1` → « Code
   incorrect. Encore 1 tentative avant le blocage de votre compte. ».
 
-- [ ] **Step 5: Run the tests to verify they pass**
+- [x] **Step 5: Run the tests to verify they pass**
 
 Run: `cd modules/ndopify-esignature && mvn test -Dtest=SignControllerTest,OtpLockMessageTest`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add modules/ndopify-esignature/src
@@ -674,7 +674,7 @@ git commit -m "feat(esignature): show the OTP attempts left and the account lock
 **Interfaces:**
 - Consumes: everything above.
 
-- [ ] **Step 1: Document the server rule**
+- [x] **Step 1: Document the server rule**
 
 In the **security** bullet: one-time codes lock the account after `ndopify.security.otp.max-failed-attempts` (5)
 wrong codes, for `lock-duration` (1h); `failed_attempts` / `locked_until` on the `OTP` `T_AUTH_FACTOR` row;
@@ -682,12 +682,12 @@ wrong codes, for `lock-duration` (1h); `failed_attempts` / `locked_until` on the
 `POST /v1/otp` refuses while locked; the count survives a new code and a successful login clears it; password logins
 count nothing.
 
-- [ ] **Step 2: Document both pages**
+- [x] **Step 2: Document both pages**
 
 Partner Central: the code step shows the attempts left and the lock wait from `error.data`, and the e-mail step
 shows the lock sentence when the account is locked. E-signature: the same on `/otp` and `/verify`.
 
-- [ ] **Step 3: Verify every touched module**
+- [x] **Step 3: Verify every touched module**
 
 ```bash
 cd modules/ndopify-dto && mvn verify
@@ -698,19 +698,19 @@ cd ../ndopify-esignature && mvn verify
 
 Expected: BUILD SUCCESS everywhere, ktlint clean, JaCoCo gates met (the server needs local MySQL).
 
-- [ ] **Step 4: Check the tree**
+- [x] **Step 4: Check the tree**
 
 Run: `git status --short`
 Expected: only `pom.xml` modified (`<ndopify-dto.version>0.0.90-SNAPSHOT`, the local pin), nothing else. Never
 commit it.
 
-- [ ] **Step 5: Commit the docs**
+- [x] **Step 5: Commit the docs**
 
 ```bash
 git add modules/ndopify-server/CLAUDE.md modules/ndopify-partner-central/CLAUDE.md modules/ndopify-esignature/CLAUDE.md
 git commit -m "docs(security): document the OTP account lock"
 ```
 
-- [ ] **Step 6: Report**
+- [x] **Step 6: Report**
 
 Tell the user the story is implemented and green, and that it is ready for `push 126`. Do not push.
