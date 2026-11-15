@@ -42,7 +42,6 @@ import com.wutsi.ndopify.visit.server.event.VisitExpiredEvent
 import com.wutsi.ndopify.visit.server.event.VisitNoShowEvent
 import com.wutsi.ndopify.visit.server.event.VisitReminderEvent
 import com.wutsi.ndopify.visit.server.event.VisitRequestedEvent
-import com.wutsi.ndopify.visit.server.mail.CoBrokerageVisitMailet
 import com.wutsi.ndopify.visit.server.mail.VisitCancelledMailet
 import com.wutsi.ndopify.visit.server.mail.VisitCompletedMailet
 import com.wutsi.ndopify.visit.server.mail.VisitConfirmedMailet
@@ -83,7 +82,7 @@ class VisitService(
     private val cancelledMailet: VisitCancelledMailet,
     private val reminderMailet: VisitReminderMailet,
     private val expiredMailet: VisitExpiredMailet,
-    private val coBrokerageVisitMailet: CoBrokerageVisitMailet,
+    private val coBrokerageVisitNotifier: CoBrokerageVisitNotifier,
     private val codeGenerator: VisitCodeGenerator,
     private val eventPublisher: ApplicationEventPublisher,
     private val tx: TransactionTemplate,
@@ -553,7 +552,11 @@ class VisitService(
         )
     }
 
-    /** E-mails both sides the confirmation. Called by `VisitEventListener`; nothing when no longer CONFIRMED. */
+    /**
+     * Notifies the customer and the agent, and the listing agent of a co-brokerage visit: Telegram when B's chat is
+     * linked, the e-mail otherwise or as the fallback. Called by `VisitEventListener`; nothing when no longer
+     * CONFIRMED.
+     */
     @Transactional
     fun sendConfirmedEmails(visitId: Long) {
         val visit = dao.findById(visitId).orElse(null) ?: return
@@ -570,7 +573,7 @@ class VisitService(
             listing = listing,
         )
         if (visit.agentId != listing.agent.id) {
-            coBrokerageVisitMailet.sendConfirmed(visit, listing, agent)
+            coBrokerageVisitNotifier.sendConfirmed(visit, listing, agent)
         }
     }
 
@@ -591,8 +594,8 @@ class VisitService(
     }
 
     /**
-     * E-mails the no-show: the customer only when it caused it, both sides when the agent did. Called by
-     * `VisitEventListener`; nothing when not NO_SHOW.
+     * Notifies the no-show: the customer only when it caused it, both sides when the agent did; the listing agent of
+     * a co-brokerage visit over Telegram or by e-mail. Called by `VisitEventListener`; nothing when not NO_SHOW.
      */
     @Transactional
     fun sendNoShowEmails(visitId: Long) {
@@ -610,11 +613,14 @@ class VisitService(
             listing = listing,
         )
         if (visit.agentId != listing.agent.id && visit.noShowParty == VisitParty.CUSTOMER) {
-            coBrokerageVisitMailet.sendNoShow(visit, listing, agent)
+            coBrokerageVisitNotifier.sendNoShow(visit, listing, agent)
         }
     }
 
-    /** E-mails the other side of a cancellation. Called by `VisitEventListener`; nothing when not CANCELLED. */
+    /**
+     * Notifies the other side of a cancellation; the listing agent of a co-brokerage visit over Telegram or by e-mail.
+     * Called by `VisitEventListener`; nothing when not CANCELLED.
+     */
     @Transactional
     fun sendCancelledEmail(visitId: Long) {
         val visit = dao.findById(visitId).orElse(null) ?: return
@@ -631,7 +637,7 @@ class VisitService(
             listing = listing,
         )
         if (notifyListingAgentOfCancellation(visit, listing)) {
-            coBrokerageVisitMailet.sendCancelled(visit, listing, agent)
+            coBrokerageVisitNotifier.sendCancelled(visit, listing, agent)
         }
     }
 
@@ -685,7 +691,10 @@ class VisitService(
         }
     }
 
-    /** E-mails both sides the 24 h reminder. Called by `VisitEventListener`; nothing when no longer CONFIRMED. */
+    /**
+     * Notifies both sides of the 24 h reminder; the listing agent of a co-brokerage visit over Telegram or by e-mail.
+     * Called by `VisitEventListener`; nothing when no longer CONFIRMED.
+     */
     @Transactional
     fun sendReminderEmails(visitId: Long) {
         val visit = dao.findById(visitId).orElse(null) ?: return
@@ -702,7 +711,7 @@ class VisitService(
             listing = listing,
         )
         if (visit.agentId != listing.agent.id) {
-            coBrokerageVisitMailet.sendReminder(visit, listing, agent)
+            coBrokerageVisitNotifier.sendReminder(visit, listing, agent)
         }
     }
 
