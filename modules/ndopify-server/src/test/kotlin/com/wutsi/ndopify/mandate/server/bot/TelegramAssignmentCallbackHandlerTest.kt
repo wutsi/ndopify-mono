@@ -22,6 +22,7 @@ import com.wutsi.ndopify.platform.telegram.model.TelegramCallbackQuery
 import com.wutsi.ndopify.platform.telegram.model.TelegramChat
 import com.wutsi.ndopify.platform.telegram.model.TelegramMessage
 import com.wutsi.ndopify.platform.tenant.TenantContext
+import com.wutsi.ndopify.platform.tenant.jpa.TenantSessionScope
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.mockito.Mockito.never
@@ -35,7 +36,9 @@ class TelegramAssignmentCallbackHandlerTest {
     private val telegramService = mock<AgentTelegramService>()
     private val service = mock<AssignmentService>()
     private val tenantService = mock<TenantService>()
-    private val handler = TelegramAssignmentCallbackHandler(client, telegramService, service, tenantService)
+    private val tenantSession = mock<TenantSessionScope>()
+    private val handler =
+        TelegramAssignmentCallbackHandler(client, telegramService, service, tenantService, tenantSession)
 
     private val link = AgentTelegramEntity(id = 9L, tenantId = 1L, agentId = 20L, chatId = 1000L)
     private val tenant = TenantEntity(id = 1L, name = "Ndopify", partnerCentralUrl = "https://npc.example")

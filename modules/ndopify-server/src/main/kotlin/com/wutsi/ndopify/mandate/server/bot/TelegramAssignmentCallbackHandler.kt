@@ -10,6 +10,7 @@ import com.wutsi.ndopify.platform.telegram.TelegramClient
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
 import com.wutsi.ndopify.platform.telegram.model.TelegramCallbackQuery
 import com.wutsi.ndopify.platform.tenant.TenantContext
+import com.wutsi.ndopify.platform.tenant.jpa.TenantSessionScope
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
@@ -32,6 +33,7 @@ class TelegramAssignmentCallbackHandler(
     private val telegramService: AgentTelegramService,
     private val service: AssignmentService,
     private val tenantService: TenantService,
+    private val tenantSession: TenantSessionScope,
 ) : TelegramCallbackHandler {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(TelegramAssignmentCallbackHandler::class.java)
@@ -49,7 +51,9 @@ class TelegramAssignmentCallbackHandler(
             val call = TelegramOfferCallback.parse(callback.data) ?: return
             val chatId = callback.message?.chat?.id ?: return
             val link = telegramService.findByChatId(chatId) ?: return
+            // The link is global; the request's session was opened before its tenant was known
             TenantContext.set(link.tenantId)
+            tenantSession.reopen()
 
             try {
                 when (call.action) {
