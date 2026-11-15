@@ -8,6 +8,7 @@ import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.domain.MatchEntity
 import jakarta.persistence.LockModeType
 import org.springframework.data.domain.Pageable
+import org.springframework.data.jpa.repository.EntityGraph
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor
 import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Modifying
@@ -104,7 +105,9 @@ interface MatchRepository : CrudRepository<MatchEntity, Long>, JpaSpecificationE
         listingStatus: ListingStatus,
     ): List<MatchEntity>
 
-    // Co-brokerage rows where the search agent showed interest, the listing agent not told yet
+    // Co-brokerage rows where the search agent showed interest, the listing agent not told yet. The mandates'
+    // neighbourhoods come along: the digest reads them outside any transaction, after this call returned.
+    @EntityGraph(attributePaths = ["mandate.neighborhoodIds"])
     @Query(
         "SELECT m FROM MatchEntity m WHERE m.coBrokerage = TRUE AND m.listingAgentNotifiedAt IS NULL " +
             "AND m.status IN :statuses AND m.mandate.status = :mandateStatus AND m.listing.status = :listingStatus"

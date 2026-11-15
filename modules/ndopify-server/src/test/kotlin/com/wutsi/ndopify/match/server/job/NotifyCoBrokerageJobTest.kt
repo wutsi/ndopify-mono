@@ -11,6 +11,7 @@ import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.match.server.mail.CoBrokerageInterestMailet
 import com.wutsi.ndopify.match.server.mail.CoBrokerageMatchMailet
 import com.wutsi.ndopify.match.server.mail.MatchNotificationMailet
+import com.wutsi.ndopify.match.server.service.CoBrokerageInterestDigest
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.bean.override.mockito.MockitoBean
@@ -58,9 +59,11 @@ class NotifyCoBrokerageJobTest : BaseEndpointIntegrationTest() {
     fun `notifies the listing agent when a search agent is interested`() {
         jobs.notifyAgents()
 
-        val interest = argumentCaptor<List<MatchEntity>>()
+        val interest = argumentCaptor<CoBrokerageInterestDigest>()
         verify(interestMailet).send(argThat { id == 30L }, interest.capture())
-        assertEquals(listOf(4L, 5L), interest.firstValue.mapNotNull { it.id }.sorted())
+        // Matches 4 and 5: one listing, one interested agent, two of its searches
+        assertEquals(listOf(101L), interest.firstValue.listings.map { listing -> listing.listingId })
+        assertEquals(2, interest.firstValue.listings.single().agents.single().searchCount)
 
         assertTrue(listingAgentNotifiedAt(4L))
         assertTrue(listingAgentNotifiedAt(5L))

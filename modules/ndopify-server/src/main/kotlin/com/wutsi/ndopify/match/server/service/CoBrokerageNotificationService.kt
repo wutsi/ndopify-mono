@@ -30,6 +30,7 @@ class CoBrokerageNotificationService(
     private val agentService: AgentService,
     private val mailet: CoBrokerageMatchMailet,
     private val interestMailet: CoBrokerageInterestMailet,
+    private val digestBuilder: CoBrokerageInterestDigestBuilder,
     private val clock: Clock,
 ) {
     companion object {
@@ -79,7 +80,7 @@ class CoBrokerageNotificationService(
             pending = notifiable,
             label = "Listing agent",
             recipientId = { match -> match.listing.agent.id },
-            send = { agent, matches -> interestMailet.send(agent, matches) },
+            send = { agent, matches -> interestMailet.send(agent, digestBuilder.build(matches)) },
             mark = { ids, now ->
                 dao.markListingAgentNotified(ids, now)
                 Unit
