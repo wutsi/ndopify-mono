@@ -1282,7 +1282,8 @@
             party: "client",
             createdAt: -4,
             contact: {
-                name: "Aïcha Mbarga",
+                firstName: "Aïcha",
+                lastName: "Mbarga",
                 whatsapp: "+237699123456",
                 email: "aicha.mbarga@example.com",
                 period: "Matin"
@@ -1307,7 +1308,8 @@
             party: "bailleur",
             createdAt: -6,
             contact: {
-                name: "Paul Ekwalla",
+                firstName: "Paul",
+                lastName: "Ekwalla",
                 whatsapp: "+237677987654",
                 email: "paul.ekwalla@example.com",
                 period: "Après-midi"
@@ -1331,7 +1333,8 @@
             party: "client",
             createdAt: -2,
             contact: {
-                name: "Marie-Claire Ndjock",
+                firstName: "Marie-Claire",
+                lastName: "Ndjock",
                 whatsapp: "+237655443322",
                 email: "mc.ndjock@example.com",
                 period: "Soirée"
@@ -1355,7 +1358,8 @@
             createdAt: -30,
             initial: { status: "ASSIGNED", acceptedAt: -1 },
             contact: {
-                name: "Jean-Pierre Fotso",
+                firstName: "Jean-Pierre",
+                lastName: "Fotso",
                 whatsapp: "+237670112233",
                 email: "jp.fotso@example.com",
                 period: "Soirée"
@@ -1381,7 +1385,8 @@
             createdAt: -12,
             initial: { status: "PENDING_APPROVAL", acceptedAt: -5, requestedAt: -2 },
             contact: {
-                name: "Grâce Nkoulou",
+                firstName: "Grâce",
+                lastName: "Nkoulou",
                 whatsapp: "+237691554433",
                 email: "grace.nkoulou@example.com",
                 period: "Après-midi"
@@ -1404,7 +1409,8 @@
             createdAt: -24,
             initial: { status: "APPROVED", acceptedAt: -24, requestedAt: -21, approvedAt: -19 },
             contact: {
-                name: "Emmanuel Tchoua",
+                firstName: "Emmanuel",
+                lastName: "Tchoua",
                 whatsapp: "+237677001122",
                 email: "e.tchoua@example.com",
                 period: "Matin"
@@ -1433,7 +1439,8 @@
             createdAt: -8,
             initial: { status: "APPROVED", acceptedAt: -12, requestedAt: -10, approvedAt: -8 },
             contact: {
-                name: "Sandrine Eboa",
+                firstName: "Sandrine",
+                lastName: "Eboa",
                 whatsapp: "+237699887766",
                 email: "sandrine.eboa@example.com",
                 period: "Soirée"
@@ -1457,7 +1464,8 @@
             createdAt: -3,
             initial: { status: "ASSIGNED", acceptedAt: -2 },
             contact: {
-                name: "Yannick Mballa",
+                firstName: "Yannick",
+                lastName: "Mballa",
                 whatsapp: "+237655778899",
                 email: "y.mballa@example.com",
                 period: "Matin"
@@ -1481,7 +1489,8 @@
             createdAt: -1,
             initial: { status: "APPROVED", acceptedAt: -10, requestedAt: -9, approvedAt: -7 },
             contact: {
-                name: "Nadège Atangana",
+                firstName: "Nadège",
+                lastName: "Atangana",
                 whatsapp: "+237690112244",
                 email: "n.atangana@example.com",
                 period: "Après-midi"
@@ -1505,7 +1514,8 @@
             createdAt: -20,
             initial: { status: "PENDING_APPROVAL", acceptedAt: -7, requestedAt: -5 },
             contact: {
-                name: "Serge Kamga",
+                firstName: "Serge",
+                lastName: "Kamga",
                 whatsapp: "+237677334455",
                 email: "s.kamga@example.com",
                 period: "Soirée"
@@ -1591,6 +1601,17 @@
         return saved && saved.fields ? saved.fields : MANDATES[id].fields;
     }
 
+    // The customer's details, as mandate/customer-edit.html saves them (the mandate copy's "contact").
+    function contactOf(id) {
+        var saved = mandateStates()[id];
+        return saved && saved.contact ? saved.contact : MANDATES[id].contact;
+    }
+
+    // "Aïcha Mbarga"
+    function contactName(contact) {
+        return [contact.firstName, contact.lastName].filter(Boolean).join(" ");
+    }
+
     // The kind of mandate, before its title (cards, mandate page): a magnifying glass for a search (the agent looks
     // for a property), a key for a listing (the owner's property, to let). Not a house: the visit cards use one for
     // "Sur place". Decorative: the title says "Locataire" / "Propriétaire".
@@ -1613,7 +1634,8 @@
     // Who the mandate is for: the card's title. Null when the customer couldn't be loaded: the card then keeps the
     // role and type as its title (see render in initMandates).
     function clientNameOf(id) {
-        return MANDATES[id].contact ? MANDATES[id].contact.name : null;
+        var contact = contactOf(id);
+        return contact ? contactName(contact) : null;
     }
 
     // The search as [term, value] rows: sector, amount and date first (a card's three facts), then the rest.
@@ -2540,7 +2562,7 @@
         }
         var mandate = MANDATES[id];
         var p = partyWords(mandate);
-        var c = mandate.contact;
+        var c = contactOf(id);
         document.title = titleOf(id) + " — Ndopify Partner Central";
         $("[data-mandate-title]").textContent = titleOf(id);
         setKindIcon($("[data-mandate-kind]"), id);
@@ -2572,14 +2594,36 @@
             ? "Créez l'annonce et visitez le bien pour la compléter ; une fois publiée, organisez les visites."
             : "Proposez des biens au client et organisez les visites.";
 
-        // The condensed card, like the co-agent's on listing.html without its photo: role and name, then the number
-        // as its WhatsApp link.
+        // The unboxed contact: role, name and best time to call, then the number (tel:) with its WhatsApp button, then
+        // the e-mail. "Modifier" corrects it until the mandate is closed.
+        var name = contactName(c);
         $("[data-contact-role]").textContent = mandate.party === "bailleur" ? "Bailleur" : "Client";
-        $('[data-contact="name"]').textContent = c.name;
-        var phone = $('[data-contact="whatsapp"]');
-        $("[data-contact-number]", phone).textContent = displayPhone(c.whatsapp);
-        phone.href = "https://wa.me/" + c.whatsapp.replace(/\D/g, "");
-        $('[data-contact="period"]').textContent = CONTACT_PERIOD_PHRASES[c.period] || c.period;
+        $('[data-contact="name"]').textContent = name;
+        // Hide the whole "· à appeler" phrase, not just its value.
+        $("[data-contact-period]").hidden = !c.period;
+        $('[data-contact="period"]').textContent = CONTACT_PERIOD_PHRASES[c.period] || c.period || "";
+        $(".contact-card__phone").hidden = !c.whatsapp;
+        if (c.whatsapp) {
+            var tel = $('[data-contact="phone"]');
+            tel.href = "tel:" + c.whatsapp;
+            tel.setAttribute("aria-label", "Appeler " + name + " au " + displayPhone(c.whatsapp));
+            $("[data-contact-number]", tel).textContent = displayPhone(c.whatsapp);
+            $('[data-contact="whatsapp"]').href = "https://wa.me/" + c.whatsapp.replace(/\D/g, "");
+            $('[data-contact="whatsapp"]').setAttribute("aria-label", "Écrire à " + name + " sur WhatsApp");
+        }
+        // The e-mail is optional: hide its row rather than leaving an empty mailto: link and an orphan icon.
+        $("[data-contact-email-line]").hidden = !c.email;
+        var mail = $('[data-contact="email"]');
+        mail.href = c.email ? "mailto:" + c.email : "";
+        mail.textContent = c.email || "";
+        mail.setAttribute("aria-label", c.email ? "Adresse e-mail : " + c.email : "");
+        // Modifier and its row disappear together when the mandate is terminal.
+        var edit = $("[data-contact-edit]");
+        var editable = CUSTOMER_EDITABLE_STATUSES.indexOf(stateOf(id).status) !== -1;
+        edit.href = "mandate/customer-edit.html?id=" + encodeURIComponent(id);
+        edit.setAttribute("aria-label", "Modifier les coordonnées " + p.of);
+        edit.hidden = !editable;
+        $("[data-contact-actions]").hidden = !editable;
 
         function criterion(list, row) {
             var item = document.createElement("div");
@@ -3193,6 +3237,16 @@
             window.history.replaceState(null, "", window.location.pathname + "?" + params.toString());
         }
 
+        // Back from mandate/customer-edit.html: the customer's details were corrected.
+        var customer = params.get("customer");
+        if (customer) {
+            showFlash("Coordonnées " + p.of + " enregistrées." + (customer === "unsent"
+                ? " Le mandat est revenu à « Assigné » : envoyez-le à nouveau pour signature."
+                : ""));
+            params.delete("customer");
+            window.history.replaceState(null, "", window.location.pathname + "?" + params.toString());
+        }
+
         // Back from mandate/close.html: its wizard closed this mandate (and the deal's other mandate).
         if (params.get("closed")) {
             var closedState = stateOf(id);
@@ -3205,6 +3259,184 @@
             showFlash(closedText);
             params.delete("closed");
             window.history.replaceState(null, "", window.location.pathname + "?" + params.toString());
+        }
+    }
+
+    /* ---------- mandate/customer-edit.html — correct the customer's details ---------- */
+
+    // CustomerEditRules.CUSTOMER_EDITABLE: the mandate isn't CLOSED or CANCELLED.
+    var CUSTOMER_EDITABLE_STATUSES = ["ASSIGNED", "PENDING_APPROVAL", "APPROVED"];
+    var NAME_RE = /^\p{L}[\p{L}' .-]*$/u;
+    var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+    // intl-tel-input's validation errors (util.js): the same wording as the join wizard.
+    var PHONE_ERRORS = {
+        1: "Cet indicatif de pays n'existe pas. Choisissez votre pays dans la liste.",
+        2: "Ce numéro est trop court. Vérifiez qu'il ne manque pas de chiffre.",
+        3: "Ce numéro est trop long. Vérifiez qu'il n'y a pas de chiffre en trop."
+    };
+    var PHONE_LOADING = "Vérification du numéro en cours de chargement. Réessayez dans un instant.";
+    var PHONE_UNAVAILABLE = "Nous ne pouvons pas vérifier ce numéro pour l'instant. Rechargez la page.";
+
+    /*
+     * A phone field whose intl-tel-input controller arrives later (util.js loads utils.js asynchronously).
+     * Until then — or for good, if it can't load — the number counts as invalid, so the form can't be saved.
+     */
+    function lazyPhone(input, options) {
+        var phone = null;
+        var failed = false;
+        return {
+            bind: function (i18n) {
+                options.i18n = i18n;
+                phone = window.NdUtil.bindPhone(input, options);
+            },
+            fail: function () {
+                failed = true;
+            },
+            e164: function () {
+                return phone ? phone.e164() : "";
+            },
+            validity: function (emptyMessage) {
+                if (!phone) return failed ? PHONE_UNAVAILABLE : PHONE_LOADING;
+                if (input.value.trim() === "") return emptyMessage;
+                if (phone.e164()) return "";
+                return PHONE_ERRORS[phone.validationError()] ||
+                    "Ce numéro n'est pas un numéro mobile valide. Exemple : 6 77 12 34 56";
+            }
+        };
+    }
+
+    function initCustomerEdit() {
+        var id = new URLSearchParams(window.location.search).get("id");
+        var back = "../mandate.html?id=" + encodeURIComponent(id || "");
+        $all("[data-back-link]").forEach(function (a) {
+            a.href = back;
+        });
+        var lockedBox = $("[data-customer-locked]");
+        if (!ownsMandate(id)) {
+            lockedBox.hidden = false;
+            return;
+        }
+        var mandate = MANDATES[id];
+        var state = stateOf(id);
+        if (CUSTOMER_EDITABLE_STATUSES.indexOf(state.status) === -1) {
+            $("[data-customer-locked-title]").textContent = "Ce mandat ne peut plus être modifié";
+            $("[data-customer-locked-text]").textContent = "Un mandat fermé ou annulé ne change plus : les " +
+                "coordonnées du client restent celles du dernier échange.";
+            lockedBox.hidden = false;
+            return;
+        }
+
+        var c = contactOf(id);
+        var p = partyWords(mandate);
+        var form = $("[data-customer-form]");
+        var submit = $("[data-customer-submit]", form);
+        var phoneInput = $("#whatsappNumber", form);
+        var whatsapp = lazyPhone(phoneInput, { name: "whatsappNumber", value: c.whatsapp || "" });
+        var FIELDS = ["firstName", "lastName", "email", "whatsappNumber"];
+
+        document.title = "Modifier les coordonnées " + p.of + " — Mandat n° " + id +
+            " — Ndopify Partner Central";
+        $("[data-customer-title]").textContent = "Coordonnées " + p.of;
+        $("[data-customer-meta]").textContent = "Mandat n° " + id + " · " + titleOf(id);
+        $("[data-customer-resend]").hidden = state.status !== "PENDING_APPROVAL";
+
+        function field(name) {
+            return form.elements[name];
+        }
+
+        // The phone's visible input carries no name; intl-tel-input's hidden one does.
+        function target(name) {
+            return name === "whatsappNumber" ? phoneInput : field(name);
+        }
+
+        form.elements.firstName.value = c.firstName || "";
+        form.elements.lastName.value = c.lastName || "";
+        form.elements.email.value = c.email || "";
+
+        function errors() {
+            var found = {};
+            var firstName = field("firstName").value.trim();
+            var lastName = field("lastName").value.trim();
+            var email = field("email").value.trim();
+            if (!firstName) found.firstName = "Saisissez le prénom.";
+            else if (!NAME_RE.test(firstName)) found.firstName = "Le prénom ne peut contenir que des lettres.";
+            if (!lastName) found.lastName = "Saisissez le nom.";
+            else if (!NAME_RE.test(lastName)) found.lastName = "Le nom ne peut contenir que des lettres.";
+            if (!email) found.email = "Saisissez l'adresse email.";
+            else if (!EMAIL_RE.test(email)) {
+                found.email = "Cette adresse email semble incomplète. Exemple : nom@exemple.com";
+            }
+            var phone = whatsapp.validity("Saisissez le numéro WhatsApp.");
+            if (phone) found.whatsappNumber = phone;
+            return found;
+        }
+
+        function render(found) {
+            FIELDS.forEach(function (name) {
+                setFieldError(target(name), $("#" + name + "-error", form), found[name]);
+            });
+            setActive(submit, Object.keys(found).length === 0);
+        }
+
+        render(errors());
+        form.addEventListener("input", function () {
+            render(errors());
+        });
+
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            var found = errors();
+            render(found);
+            var first = FIELDS.filter(function (name) {
+                return !!found[name];
+            })[0];
+            if (first) {
+                target(first).focus();
+                return;
+            }
+
+            // PROTOTYPE: simulates POST /v1/mandates/{id}/customer (UpdateCustomerRequest). A changed e-mail on a
+            // mandate out for signature cancels its contract and puts it back to ASSIGNED
+            // (MandateService.updateCustomer); a name or phone change leaves the contract.
+            var email = field("email").value.trim().toLowerCase();
+            var wasPending = state.status === "PENDING_APPROVAL";
+            var emailChanged = email !== (c.email || "").trim().toLowerCase();
+            var saved = stateOf(id);
+            if (emailChanged && wasPending) saved.status = "ASSIGNED";
+            saved.contact = {
+                firstName: field("firstName").value.trim(),
+                lastName: field("lastName").value.trim(),
+                email: email,
+                whatsapp: whatsapp.e164(),
+                period: c.period
+            };
+            saveState(id, saved);
+            setActive(submit, false);
+            submit.textContent = "Enregistrement…";
+            window.location.href = back + "&customer=" + (emailChanged && wasPending ? "unsent" : "saved");
+        });
+
+        $("[data-customer]").hidden = false;
+
+        // intl-tel-input arrives with util.js's utils.js: until then the save button stays inactive.
+        if (!window.NdUtil) {
+            whatsapp.fail();
+            render(errors());
+        } else {
+            window.NdUtil.phoneReady().then(
+                function (i18n) {
+                    whatsapp.bind(i18n);
+                    phoneInput.addEventListener("countrychange", function () {
+                        render(errors());
+                    });
+                    render(errors());
+                },
+                function () {
+                    whatsapp.fail();
+                    render(errors());
+                }
+            );
         }
     }
 
@@ -4708,7 +4940,7 @@
             $("[data-recap-client]", form).textContent = owner
                 ? (client ? client.client + (searchId ? " — sa recherche sera aussi fermée" : "")
                     : "Aucun client de vos recherches")
-                : mandate.contact.name;
+                : contactName(contactOf(id));
             $("[data-recap-price]", form).textContent =
                 draft.price.toLocaleString("fr-FR") + " FCFA / mois";
 
@@ -4822,7 +5054,7 @@
                 if (owner) {
                     closeSearchMandate(searchId, draft.price, listing ? listing.id : null);
                 } else if (match && counterpart) {
-                    closeListingMandate(counterpart, draft.price, match.listingId, mandate.contact.name, id);
+                    closeListingMandate(counterpart, draft.price, match.listingId, contactName(contactOf(id)), id);
                 }
 
                 var state = stateOf(id);
@@ -4916,6 +5148,7 @@
         mandate: initMandate,
         "mandate-edit": initMandateEdit,
         "mandate-close": initMandateClose,
+        "customer-edit": initCustomerEdit,
         listing: initListing,
         "listing-section": initListingSection
     };
