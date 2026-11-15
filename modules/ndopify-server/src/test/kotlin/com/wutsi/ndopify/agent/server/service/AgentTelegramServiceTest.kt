@@ -87,4 +87,62 @@ class AgentTelegramServiceTest {
         verify(dao, never()).save(any())
         verify(eventPublisher, never()).publishEvent(any())
     }
+
+    @Test
+    fun `a valid code links the chat`() {
+        doReturn(row(code = "123456", expiresAt = Date(now + 60_000))).whenever(dao).findByCode("123456")
+        doReturn(null).whenever(dao).findByChatId(777L)
+        doReturn(1).whenever(dao).link("123456", 777L, Date(now))
+
+        assertEquals(AgentTelegramLinkResult.CONNECTED, service.connect("123456", 777L))
+
+        verify(dao).link("123456", 777L, Date(now))
+    }
+
+    @Test
+    fun `an expired code is invalid`() {
+        doReturn(row(code = "123456", expiresAt = Date(now - 1))).whenever(dao).findByCode("123456")
+
+        assertEquals(AgentTelegramLinkResult.INVALID_CODE, service.connect("123456", 777L))
+        verify(dao, never()).link(any(), any(), any())
+    }
+
+    @Test
+    fun `an unknown code is invalid`() {
+        doReturn(null).whenever(dao).findByCode("000000")
+
+        assertEquals(AgentTelegramLinkResult.INVALID_CODE, service.connect("000000", 777L))
+        verify(dao, never()).link(any(), any(), any())
+    }
+
+    @Test
+    fun `a code taken meanwhile is invalid`() {
+        doReturn(row()).whenever(dao).findByCode("123456")
+        doReturn(null).whenever(dao).findByChatId(777L)
+        doReturn(0).whenever(dao).link("123456", 777L, Date(now))
+
+        assertEquals(AgentTelegramLinkResult.INVALID_CODE, service.connect("123456", 777L))
+    }
+
+    @Test
+    fun `a chat linked to another agent is refused`() {
+        doReturn(row()).whenever(dao).findByCode("123456")
+        doReturn(AgentTelegramEntity(id = 9L, agentId = 20L, chatId = 777L)).whenever(dao).findByChatId(777L)
+
+        assertEquals(AgentTelegramLinkResult.CHAT_ALREADY_LINKED, service.connect("123456", 777L))
+        verify(dao, never()).link(any(), any(), any())
+    }
+
+    @Test
+    fun `a code of another tenant links that agent`() {
+        doReturn(AgentTelegramEntity(id = 9L, tenantId = 2L, agentId = 20L, code = "123456", codeExpiresAt = Date(now + 60_000)))
+            .whenever(dao).findByCode("123456")
+        doReturn(null).whenever(dao).findByChatId(777L)
+        doReturn(1).whenever(dao).link("123456", 777L, Date(now))
+
+        assertEquals(AgentTelegramLinkResult.CONNECTED, service.connect("123456", 777L))
+    }
+
+    private fun row(code: String? = "123456", expiresAt: Date? = Date(now + 60_000)) =
+        AgentTelegramEntity(id = 9L, tenantId = 1L, agentId = 20L, code = code, codeExpiresAt = expiresAt)
 }

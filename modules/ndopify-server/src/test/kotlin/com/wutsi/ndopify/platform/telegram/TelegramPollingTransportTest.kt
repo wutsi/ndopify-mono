@@ -16,7 +16,7 @@ import kotlin.test.assertTrue
 
 class TelegramPollingTransportTest {
     private val client = mock<TelegramClient>()
-    private val handler = TelegramUpdateHandler(client)
+    private val handler = TelegramUpdateHandler(client, emptyList())
 
     @Test
     fun `pollOnce handles every update and advances the offset`() {
