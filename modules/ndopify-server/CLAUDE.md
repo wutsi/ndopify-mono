@@ -512,7 +512,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `VisitRequestedNotifier` messages the agent over Telegram when its chat is linked (`VisitRequestedBotlet`, via
   `AgentTelegramService.chatId`), e-mails it otherwise (`VisitRequestedMailet`, `mail/visit/requested.mjml`), and
   falls back to the e-mail on a failed send (the failure is logged, without the token nor the URL). The message
-  carries the customer and its WhatsApp, the listing (or `Bien n° <id>` without a title), the requested date and time
+  carries the customer's name and, when it has a WhatsApp number, a `Contacter sur WhatsApp` button to its `wa.me` link
+  (never the number in the text), the listing (or `Bien n° <id>` without a title), the requested date and time
   in the tenant's `timeZone`, the requested type (`Sur place` / `Visite vidéo`) and the note, and a `Voir la visite`
   button to `{partnerCentralUrl}/visits/{id}` (none without a `partnerCentralUrl`). **Feedback notification**:
   `VisitFeedbackNotifier` messages the visit's agent when the customer answers the feedback form — over Telegram when
