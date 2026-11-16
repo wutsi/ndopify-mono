@@ -9,6 +9,7 @@ import com.wutsi.ndopify.mandate.dto.Mandate
 import com.wutsi.ndopify.mandate.dto.MandateStats
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateSummary
+import com.wutsi.ndopify.mandate.dto.RequestMandateApprovalRequest
 import com.wutsi.ndopify.mandate.dto.SearchMandateResponse
 import com.wutsi.ndopify.mandate.dto.SearchMandateStatsResponse
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
@@ -119,9 +120,9 @@ class NdMandateClient(
         rest.post().uri("/v1/mandates/{id}", id).body(request).retrieve().toBodilessEntity()
     }
 
-    /** Sends the mandate to the customer for signature (again, for a mandate already waiting for it). */
-    fun requestApproval(id: Long) {
-        rest.post().uri("/v1/mandates/{id}/request-approval", id).retrieve().toBodilessEntity()
+    /** Sends the mandate to the customer for signature (again, for a mandate already waiting for it), with its terms. */
+    fun requestApproval(id: Long, request: RequestMandateApprovalRequest = RequestMandateApprovalRequest()) {
+        rest.post().uri("/v1/mandates/{id}/request-approval", id).body(request).retrieve().toBodilessEntity()
     }
 
     fun close(id: Long, request: CloseMandateRequest) {
