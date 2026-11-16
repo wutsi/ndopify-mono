@@ -37,7 +37,7 @@
 - Test: `modules/ndopify-server/src/test/kotlin/com/wutsi/ndopify/match/server/endpoint/ProposeMatchEndpointTest.kt`
 - Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/match/server/service/MatchLinkTokenService.kt:13-18`
 - Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/security/server/service/AccessTokenProperties.kt:6-10`
-- Modify: `modules/ndopify-server/CLAUDE.md:405-407`
+- Modify: `modules/ndopify-server/CLAUDE.md:426`
 
 **Interfaces:**
 - Consumes: `POST /v1/matches/{id}/propose` (existing), `MatchLinkTokenService` (existing).
@@ -84,7 +84,7 @@ Expected: PASS, `Tests run: … Failures: 0`.
 
 - `MatchLinkTokenService` KDoc (lines 14-18): say it issues the token of the customer links of the **match proposal and the visit e-mails**, and that it lives 365 days.
 - `AccessTokenProperties` KDoc (lines 6-10): the map is keyed by `ApplicationCode` **or a purpose key** (`match-link`), not only by application.
-- `modules/ndopify-server/CLAUDE.md` lines 405-407: replace "(7d)" with "(365d)" and add that the visit e-mails' customer links use the same token and TTL. Keep the warning that the token isn't scoped to the match and signs in whoever has the e-mail.
+- `modules/ndopify-server/CLAUDE.md` line 426: replace "(7d)" with "(365d)" and add that the visit e-mails' customer links use the same token and TTL. Keep the warning that the token isn't scoped to the match and signs in whoever has the e-mail.
 
 - [ ] **Step 6: Check no override and every consumer**
 
