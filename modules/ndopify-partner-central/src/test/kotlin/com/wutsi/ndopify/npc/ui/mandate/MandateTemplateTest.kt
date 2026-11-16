@@ -955,6 +955,42 @@ class MandateTemplateTest {
     }
 
     @Test
+    fun `resend - on a sent match without an open visit`() {
+        withMatches(
+            MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.PROPOSED, proposedAt = proposedAt),
+            MatchFixtures.MATCH_B.copy(mandateId = 201, status = MatchStatus.ACCEPTED, proposedAt = proposedAt),
+            MatchFixtures.MATCH_C.copy(mandateId = 201),
+        )
+
+        val page = render(APPROVED)
+
+        // PROPOSED: waiting for the answer; ACCEPTED: interested, no visit yet
+        val proposed = page.selectFirst("[data-match-id=9001]")!!
+        val form = proposed.selectFirst("[data-match-resend-actions] form")!!
+        assertEquals("/mandates/201/matches/9001/resend", form.attr("action"))
+        assertEquals("post", form.attr("method"))
+        assertEquals("Renvoyer le lien au client", form.selectFirst("button")?.text())
+        assertEquals("btn btn--outline", form.selectFirst("button")?.className())
+        assertEquals(
+            "/mandates/201/matches/9003/resend",
+            page.selectFirst("[data-match-id=9003] [data-match-resend-actions] form")?.attr("action"),
+        )
+        // ACTIVE: nothing sent yet
+        assertNull(page.selectFirst("[data-match-id=9002] [data-match-resend]"))
+    }
+
+    @Test
+    fun `resend - not once a visit is open`() {
+        doReturn(VisitFixtures.NOW).whenever(clock).millis()
+        withVisits(VisitFixtures.summary(VisitFixtures.requested().copy(mandateId = 201, matchId = 9001)))
+
+        val page = render(APPROVED)
+
+        assertNull(page.selectFirst("[data-match-id=9001] [data-match-resend]"))
+        assertNotNull(page.selectFirst("[data-match-id=9003] [data-match-resend]"))
+    }
+
+    @Test
     fun `not a search - no pending visit`() {
         val page = render(APPROVED.copy(mandateType = MandateType.LISTING))
 

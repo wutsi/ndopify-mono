@@ -315,7 +315,10 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   first: one of another mandate than the URL's or no longer ACTIVE / EXPIRED is `changed` without any call (no second e-mail on
   a double post), so is a 403 / 404 / 409; then back to `/mandates/{id}#matches-title` with the `match` flash attribute
   (`proposed`, `dismissed`, `changed`, `error`) and `matchListing`, worded by `MandateController` (it has the contact's
-  e-mail). Without JS, "Écarter" opens the confirmation with `GET /mandates/{id}?dismiss={matchId}` (only an ACTIVE or EXPIRED match
+  e-mail). A PROPOSED or ACCEPTED card without an open visit (`MatchRules.RESENDABLE`, `MatchView.resendable`) also has
+  "Renvoyer le lien" (`POST …/resend`, `NdMatchClient.resend`): ndopify-server e-mails the customer a fresh link without
+  changing the status (`resent`), and its 409 `MATCH_RATE_LIMITED` is read from the body as `rate-limited` ("Un lien
+  vient d'être envoyé au client. Réessayez dans quelques minutes.", warning), never as the stale page's `changed`. Without JS, "Écarter" opens the confirmation with `GET /mandates/{id}?dismiss={matchId}` (only an ACTIVE or EXPIRED match
   shown on the page); `mandate.js` does it in place. *Mes mandats* cards of signed searches get the one-line activity
   (`MandateCards`, `SearchStatsView`, from one `GET /v1/mandates/stats` for all of them, skipped without such a
   card, a failure leaves the line out): "12 biens · 1 intéressé · 3 visites", zero segments left out, linking to the

@@ -7,6 +7,9 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.error.dto.Error
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdMatchClient
 import com.wutsi.ndopify.npc.ui.match.MatchFixtures.MATCH_A
@@ -55,6 +58,64 @@ class MatchControllerTest {
         assertEquals("/mandates/204#matches-title", result.response.redirectedUrl)
         assertEquals("dismissed", outcome(result))
         assertEquals(3012L, listing(result))
+    }
+
+    @Test
+    fun `resend a proposed match`() {
+        doReturn(MATCH_A.copy(status = MatchStatus.PROPOSED)).whenever(client).get(9001)
+
+        val result = mvc.perform(post("/mandates/204/matches/9001/resend")).andReturn()
+
+        verify(client).resend(9001)
+        assertEquals("/mandates/204#matches-title", result.response.redirectedUrl)
+        assertEquals("resent", outcome(result))
+        assertEquals(3012L, listing(result))
+    }
+
+    @Test
+    fun `resend an accepted match`() {
+        doReturn(MATCH_A.copy(status = MatchStatus.ACCEPTED)).whenever(client).get(9001)
+
+        val result = mvc.perform(post("/mandates/204/matches/9001/resend")).andReturn()
+
+        verify(client).resend(9001)
+        assertEquals("resent", outcome(result))
+    }
+
+    @Test
+    fun `resend an active match`() {
+        val result = mvc.perform(post("/mandates/204/matches/9001/resend")).andReturn()
+
+        verify(client, never()).resend(any())
+        assertEquals("changed", outcome(result))
+    }
+
+    @Test
+    fun `resend - rate limited`() {
+        doReturn(MATCH_A.copy(status = MatchStatus.PROPOSED)).whenever(client).get(9001)
+        val conflict = HttpClientErrorException(HttpStatus.CONFLICT)
+        conflict.setBodyConvertFunction { ErrorResponse(Error(code = ErrorCode.MATCH_RATE_LIMITED)) }
+        doThrow(conflict).whenever(client).resend(9001)
+
+        val result = mvc.perform(post("/mandates/204/matches/9001/resend")).andReturn()
+
+        assertEquals("rate-limited", outcome(result))
+    }
+
+    @Test
+    fun `resend - another conflict`() {
+        doReturn(MATCH_A.copy(status = MatchStatus.PROPOSED)).whenever(client).get(9001)
+        doThrow(HttpClientErrorException(HttpStatus.CONFLICT)).whenever(client).resend(9001)
+
+        assertEquals("changed", outcome(mvc.perform(post("/mandates/204/matches/9001/resend")).andReturn()))
+    }
+
+    @Test
+    fun `resend - server error`() {
+        doReturn(MATCH_A.copy(status = MatchStatus.PROPOSED)).whenever(client).get(9001)
+        doThrow(HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR)).whenever(client).resend(9001)
+
+        assertEquals("error", outcome(mvc.perform(post("/mandates/204/matches/9001/resend")).andReturn()))
     }
 
     @Test

@@ -1026,6 +1026,41 @@ class MandateControllerTest {
     }
 
     @Test
+    fun `match outcome - resent`() {
+        withMatches()
+
+        val result = mvc.perform(get("/mandates/201").flashAttr("match", "resent").flashAttr("matchListing", 3012L))
+            .andReturn()
+
+        assertEquals("Annonce n° 3012 renvoyée à ray@gmail.com.", model(result)["matchOutcomeText"])
+        assertEquals("success", model(result)["matchOutcomeStyle"])
+    }
+
+    @Test
+    fun `match outcome - resent without contact`() {
+        withMatches()
+        doThrow(ResourceAccessException("timeout")).whenever(customerClient).get(any())
+
+        val result = mvc.perform(get("/mandates/201").flashAttr("match", "resent").flashAttr("matchListing", 3012L))
+            .andReturn()
+
+        assertEquals("Annonce n° 3012 renvoyée au client.", model(result)["matchOutcomeText"])
+    }
+
+    @Test
+    fun `match outcome - rate limited`() {
+        withMatches()
+
+        val result = mvc.perform(get("/mandates/201").flashAttr("match", "rate-limited")).andReturn()
+
+        assertEquals(
+            "Un lien vient d'être envoyé au client. Réessayez dans quelques minutes.",
+            model(result)["matchOutcomeText"],
+        )
+        assertEquals("warning", model(result)["matchOutcomeStyle"])
+    }
+
+    @Test
     fun `match outcome - changed and error`() {
         withMatches()
 

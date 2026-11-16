@@ -68,6 +68,14 @@ class NdMatchClient(
         rest.post().uri("/v1/matches/{id}/propose", id).retrieve().toBodilessEntity()
     }
 
+    /**
+     * Sends the match's link again (PROPOSED or ACCEPTED), without changing its status; 409 MATCH_RATE_LIMITED inside
+     * the throttle.
+     */
+    fun resend(id: Long) {
+        rest.post().uri("/v1/matches/{id}/resend", id).retrieve().toBodilessEntity()
+    }
+
     /** Sets the listing aside: never matched again to this mandate (DISMISSED). 409 once the match isn't ACTIVE. */
     fun dismiss(id: Long) {
         rest.post().uri("/v1/matches/{id}/dismiss", id).retrieve().toBodilessEntity()

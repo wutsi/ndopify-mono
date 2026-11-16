@@ -124,6 +124,16 @@ class NdMatchClientTest {
     }
 
     @Test
+    fun resend() {
+        server.expect(requestTo("http://localhost:8080/v1/matches/9/resend"))
+            .andExpect(method(HttpMethod.POST))
+            .andRespond(withStatus(HttpStatus.OK))
+
+        client.resend(9)
+        server.verify()
+    }
+
+    @Test
     fun dismiss() {
         server.expect(requestTo("http://localhost:8080/v1/matches/9001/dismiss"))
             .andExpect(method(HttpMethod.POST))

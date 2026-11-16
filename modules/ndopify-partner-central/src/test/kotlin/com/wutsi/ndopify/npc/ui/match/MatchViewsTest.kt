@@ -97,6 +97,31 @@ class MatchViewsTest {
     }
 
     @Test
+    fun `resendable - a proposed match`() {
+        assertTrue(section(listOf(MATCH_A.copy(status = MatchStatus.PROPOSED))).matches.single().resendable)
+    }
+
+    @Test
+    fun `resendable - an accepted match without a visit`() {
+        assertTrue(section(listOf(MATCH_A.copy(status = MatchStatus.ACCEPTED))).matches.single().resendable)
+    }
+
+    @Test
+    fun `resendable - an accepted match with a visit`() {
+        val section = section(
+            listOf(MATCH_A.copy(status = MatchStatus.ACCEPTED)),
+            visits = mapOf(9001L to visitCard()),
+        )
+
+        assertFalse(section.matches.single().resendable)
+    }
+
+    @Test
+    fun `resendable - an active match`() {
+        assertFalse(section(listOf(MATCH_A)).matches.single().resendable)
+    }
+
+    @Test
     fun `co-brokerage card links with its match`() {
         val section = section(listOf(MATCH_A.copy(coBrokerage = true)))
 
