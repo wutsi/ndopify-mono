@@ -7,6 +7,7 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.listing.server.event.ListingPublishedEvent
 import com.wutsi.ndopify.mandate.server.event.MandateApprovedEvent
+import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.service.MatchProposalService
 import com.wutsi.ndopify.match.server.service.MatchService
 import com.wutsi.ndopify.platform.logger.KVLoggerThreadLocal
@@ -90,6 +91,33 @@ class MatchEventListenerTest {
         doThrow(IllegalStateException("boom")).whenever(proposalService).sendProposedEmail(listOf(30L, 31L))
 
         listener.onMatchProposed(MatchProposedEvent(matchIds = listOf(30L, 31L), tenantId = 7L))
+
+        assertNull(TenantContext.get())
+        assertNull(KVLoggerThreadLocal.get())
+    }
+
+    @Test
+    fun `answered - the proposal service is told, in the tenant`() {
+        var tenantId: Long? = null
+        doAnswer { tenantId = TenantContext.get() }.whenever(proposalService).sendAnsweredNotification(2L)
+
+        listener.onMatchAnswered(
+            MatchAnsweredEvent(matchId = 2L, mandateId = 1L, tenantId = 7L, status = MatchStatus.ACCEPTED),
+        )
+
+        verify(proposalService).sendAnsweredNotification(2L)
+        assertEquals(7L, tenantId)
+        assertNull(TenantContext.get())
+        assertNull(KVLoggerThreadLocal.get())
+    }
+
+    @Test
+    fun `answered - a failure is only logged`() {
+        doThrow(IllegalStateException("boom")).whenever(proposalService).sendAnsweredNotification(2L)
+
+        listener.onMatchAnswered(
+            MatchAnsweredEvent(matchId = 2L, mandateId = 1L, tenantId = 7L, status = MatchStatus.REJECTED),
+        )
 
         assertNull(TenantContext.get())
         assertNull(KVLoggerThreadLocal.get())
