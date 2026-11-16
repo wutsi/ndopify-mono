@@ -6,6 +6,7 @@ import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.domain.MatchEntity
+import com.wutsi.ndopify.visit.dto.VisitStatus
 import jakarta.persistence.LockModeType
 import org.springframework.data.domain.Pageable
 import org.springframework.data.jpa.repository.EntityGraph
@@ -142,4 +143,30 @@ interface MatchRepository : CrudRepository<MatchEntity, Long>, JpaSpecificationE
     @Modifying
     @Query("UPDATE MatchEntity m SET m.listingAgentNotifiedAt = :now WHERE m.id IN :ids")
     fun markListingAgentNotified(@Param("ids") ids: Collection<Long>, @Param("now") now: Date): Int
+
+    // The accepted matches with no visit yet that are due for a reminder, oldest answer first (MatchVisitReminderService).
+    // VisitEntity is named in the query rather than imported: the match domain doesn't depend on the visit one.
+    @Query(
+        "SELECT m FROM MatchEntity m WHERE m.status = :status AND m.visitRemindedAt IS NULL " +
+            "AND m.answeredAt <= :before AND m.mandate.status = :mandateStatus " +
+            "AND m.listing.status = :listingStatus " +
+            "AND NOT EXISTS (SELECT v.id FROM VisitEntity v WHERE v.matchId = m.id AND v.status IN :visitStatuses) " +
+            "ORDER BY m.answeredAt ASC, m.id ASC"
+    )
+    fun findVisitReminderDue(
+        @Param("status") status: MatchStatus,
+        @Param("before") before: Date,
+        @Param("mandateStatus") mandateStatus: MandateStatus,
+        @Param("listingStatus") listingStatus: ListingStatus,
+        @Param("visitStatuses") visitStatuses: Collection<VisitStatus>,
+        page: Pageable,
+    ): List<MatchEntity>
+
+    // Whether the match has an open visit: the reminder doesn't go out then. VisitEntity is named in the query rather
+    // than imported, as above.
+    @Query(
+        "SELECT CASE WHEN COUNT(v) > 0 THEN TRUE ELSE FALSE END FROM VisitEntity v " +
+            "WHERE v.matchId = :matchId AND v.status IN :statuses"
+    )
+    fun existsOpenVisit(@Param("matchId") matchId: Long, @Param("statuses") statuses: Collection<VisitStatus>): Boolean
 }
