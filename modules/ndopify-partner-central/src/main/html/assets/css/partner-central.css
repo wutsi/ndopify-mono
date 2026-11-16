@@ -512,6 +512,12 @@ a.user-menu__item:hover {
     text-decoration-thickness: 2px;
 }
 
+/* The same text-style button, inline in a meta line: no 44px target, so the line keeps its height. */
+.link-button--inline {
+    display: inline;
+    min-height: 0;
+}
+
 /* ---------- Forms ---------- */
 .form > * + * {
     margin-top: var(--space-4);

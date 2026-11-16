@@ -12,13 +12,13 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
-    <link rel="stylesheet" href="assets/css/partner-central.css">
+    <link rel="stylesheet" href="assets/css/partner-central.css?v=20261116a">
     <link rel="stylesheet" href="assets/css/rejoindre.css">
     <link rel="stylesheet" href="assets/css/find-property.css">
-    <link rel="stylesheet" href="assets/css/home.css">
+    <link rel="stylesheet" href="assets/css/home.css?v=20261116a">
     <link rel="stylesheet" href="assets/css/listing.css">
     <link rel="stylesheet" href="assets/css/visit.css">
-    <script src="assets/js/partner-central.js?v=20261114a" defer></script>
+    <script src="assets/js/partner-central.js?v=20261116a" defer></script>
     <script src="assets/js/visit.js" defer></script>
 </head>
 <!--
@@ -462,12 +462,15 @@
                                     <p class="status-tag" data-match-tag></p>
                                 </div>
                                 <dl class="match__facts" data-match-facts></dl>
-                                <p class="match__answer" hidden data-match-answer></p>
-                                <!-- Sent, unanswered or answered with interest: the client's link can be e-mailed again,
-                                     its status left as is. -->
-                                <div class="assignment__actions match__actions" data-match-resend-actions hidden>
-                                    <button type="button" class="btn btn--outline" data-match-resend>Renvoyer le lien<span
-                                            class="visually-hidden"> au client</span></button>
+                                <!-- Sent: one meta line. A sent, unanswered match (or one the client is interested in
+                                     but hasn't booked) also offers the link again, inline: the card keeps its height. -->
+                                <div class="match__status" hidden data-match-status>
+                                    <span class="match__answer" data-match-answer></span>
+                                    <div class="match__resend" data-match-resend-actions hidden>
+                                        <button type="button" class="link-button link-button--inline"
+                                                data-match-resend>Renvoyer le lien<span
+                                                class="visually-hidden"> au client</span></button>
+                                    </div>
                                 </div>
                                 <div class="visit-detail" data-match-visit hidden>
                                     <p class="visit-detail__when">
