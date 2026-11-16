@@ -1241,8 +1241,23 @@ h1.alert__title {
     font-size: var(--step-hint);
 }
 
-.match__answer {
+/* The sent line: the date, then the client's link again when it can be resent. Both share one text line, so the
+   action costs the card no height. */
+.match__status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    column-gap: var(--space-2);
     font-size: var(--step-hint);
+}
+
+.match__answer {
+    font-size: inherit;
+}
+
+.match__resend {
+    display: inline-flex;
+    align-items: baseline;
 }
 
 /* The standard agent footer keeps its own spacing at the bottom of a match or proposal card. */

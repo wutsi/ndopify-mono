@@ -49,10 +49,13 @@ class TelegramVisitRequestedEndpointTest : AuthorizationAwareEndpointIntegration
         assertTrue(text.firstValue.contains("Ray Sponsible souhaite visiter un bien que vous lui avez proposé."))
         assertTrue(text.firstValue.contains("Bien: Nice apartment"))
         assertTrue(text.firstValue.contains("Type: Sur place"))
-        assertTrue(text.firstValue.contains("WhatsApp: +237 6 00 00 00 01"))
+        assertFalse(text.firstValue.contains("WhatsApp:"))
         assertTrue(text.firstValue.contains("Note: Je viens avec ma femme"))
         assertEquals(
-            listOf(TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/$id")),
+            listOf(
+                TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/$id"),
+                TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237600000001"),
+            ),
             buttons.firstValue,
         )
 

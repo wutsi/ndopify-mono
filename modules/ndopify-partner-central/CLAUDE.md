@@ -308,16 +308,18 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   listing, then one line of facts (score, neighbourhood, the rent in bold and in short, `compact = true`: "245K FCFA /
   mois", availability) and, once sent, "Envoyé le …" (tag "En attente" / "Intéressé"; "Expirée" and "Envoyé le …, sans réponse" for a
   proposal ndopify-server expired unanswered, counted "1 sans réponse"). `MatchViews` → `MatchView` (cards in `MatchRules.ORDER`,
-  best score first within each status) and `MatchRules`: tags, the client's answer ("Envoyé le … · intéressé le
-  …"), and "Pourquoi ce bien ?", the partial scores of ndopify-server's `Matcher` in words (neighbourhood, price,
+  best score first within each status) and `MatchRules`: tags, the client's answer ("Envoyé le …" or, interested,
+  "Intéressé le …": the latest step only), and "Pourquoi ce bien ?", the partial scores of ndopify-server's `Matcher` in words (neighbourhood, price,
   rooms, amenities when some were asked, availability, furniture when asked). An ACTIVE or EXPIRED card (`MatchRules.ACTIONABLE`) is sent to the client
   (again, for an expired one) or set aside by `MatchController`, `POST /mandates/{mandateId}/matches/{matchId}/propose|dismiss`, which reads the match
   first: one of another mandate than the URL's or no longer ACTIVE / EXPIRED is `changed` without any call (no second e-mail on
   a double post), so is a 403 / 404 / 409; then back to `/mandates/{id}#matches-title` with the `match` flash attribute
   (`proposed`, `dismissed`, `changed`, `error`) and `matchListing`, worded by `MandateController` (it has the contact's
   e-mail). A PROPOSED or ACCEPTED card without an open visit (`MatchRules.RESENDABLE`, `MatchView.resendable`) also has
-  "Renvoyer le lien" (`POST …/resend`, `NdMatchClient.resend`): ndopify-server e-mails the customer a fresh link without
-  changing the status (`resent`), and its 409 `MATCH_RATE_LIMITED` is read from the body as `rate-limited` ("Un lien
+  "Renvoyer le lien" (`POST …/resend`, `NdMatchClient.resend`) inline on that sent-status line, in a
+  `.match__status` row with a `.link-button--inline` submit button (no button row, no 44px target: the card keeps its
+  height): ndopify-server e-mails the customer a fresh link without changing the status (`resent`), and its 409
+  `MATCH_RATE_LIMITED` is read from the body as `rate-limited` ("Un lien
   vient d'être envoyé au client. Réessayez dans quelques minutes.", warning), never as the stale page's `changed`. Without JS, "Écarter" opens the confirmation with `GET /mandates/{id}?dismiss={matchId}` (only an ACTIVE or EXPIRED match
   shown on the page); `mandate.js` does it in place. *Mes mandats* cards of signed searches get the one-line activity
   (`MandateCards`, `SearchStatsView`, from one `GET /v1/mandates/stats` for all of them, skipped without such a

@@ -79,7 +79,7 @@ class VisitReminderBotletTest {
     }
 
     @Test
-    fun `an on-site reminder carries the slot, the place and the customer's WhatsApp`() {
+    fun `an on-site reminder carries the slot, the place and a WhatsApp button`() {
         botlet.send(visit, customer, agent, listing, 1000L)
 
         val text = argumentCaptor<String>()
@@ -93,12 +93,14 @@ class VisitReminderBotletTest {
 
             Type: Sur place
             Lieu: Bastos, Yaounde
-            WhatsApp: +237 6 00 00 00 01
             """.trimIndent(),
             text.firstValue,
         )
         assertEquals(
-            listOf(TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1")),
+            listOf(
+                TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1"),
+                TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237600000001"),
+            ),
             buttons.firstValue,
         )
     }
@@ -117,7 +119,6 @@ class VisitReminderBotletTest {
 
             Type: Visite vidéo
             Lieu: Bastos, Yaounde
-            WhatsApp: +237 6 00 00 00 01
 
             Depuis le bien, appelez Ray Sponsible en vidéo sur WhatsApp. Le client vous lira son code de visite pendant l'appel.
             """.trimIndent(),
@@ -153,12 +154,17 @@ class VisitReminderBotletTest {
     }
 
     @Test
-    fun `no WhatsApp number leaves no line`() {
+    fun `no whatsapp number - no line and no whatsapp button`() {
         botlet.send(visit, customer.copy(whatsappNumber = null), agent, listing, 1000L)
 
         val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        val buttons = argumentCaptor<List<TelegramButton>>()
+        verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
         assertFalse(text.firstValue.contains("WhatsApp:"))
+        assertEquals(
+            listOf(TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1")),
+            buttons.firstValue,
+        )
     }
 
     @Test
@@ -171,12 +177,17 @@ class VisitReminderBotletTest {
     }
 
     @Test
-    fun `a tenant without Partner Central gets no button`() {
+    fun `a tenant without Partner Central keeps only the WhatsApp button`() {
         doReturn(tenant.copy(partnerCentralUrl = null)).whenever(tenantService).findById(1L)
 
         botlet.send(visit, customer, agent, listing, 1000L)
 
-        verify(client).sendMessage(eq(1000L), any(), eq(emptyList<TelegramButton>()))
+        val buttons = argumentCaptor<List<TelegramButton>>()
+        verify(client).sendMessage(eq(1000L), any(), buttons.capture())
+        assertEquals(
+            listOf(TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237600000001")),
+            buttons.firstValue,
+        )
     }
 
     @Test

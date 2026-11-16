@@ -419,21 +419,21 @@
                                                     <dd th:text="${fact.second}" th:classappend="${fact.first == 'Loyer'} ? 'match__rent'">Bonapriso</dd>
                                                 </div>
                                             </dl>
-                                            <p class="match__answer"
-                                               th:if="${match.visit != null ? !#strings.isEmpty(match.sent) : match.answer != null}"
-                                               th:text="${match.visit != null ? match.sent : match.answer}"
-                                               data-match-answer>Envoyé le 28 octobre 2026</p>
-                                            <!-- Sent, unanswered or answered with interest: the client's link can be e-mailed
-                                                 again, its status left as is. -->
-                                            <th:block th:if="${match.resendable}">
-                                                <div class="assignment__actions match__actions" data-match-resend-actions>
+                                            <!-- Sent: one meta line. A sent, unanswered match (or one the client is interested in
+                                                 but hasn't booked) also offers the link again, inline: the card keeps its height. -->
+                                            <div class="match__status"
+                                                 th:if="${match.visit != null ? !#strings.isEmpty(match.sent) : match.answer != null}"
+                                                 data-match-status>
+                                                <p class="match__answer" th:text="${match.visit != null ? match.sent : match.answer}"
+                                                   data-match-answer>Envoyé le 28 octobre 2026</p>
+                                                <div class="match__resend" th:if="${match.resendable}" data-match-resend-actions>
                                                     <form method="post"
                                                           th:action="@{/mandates/{mid}/matches/{id}/resend(mid=${m.id},id=${match.id})}">
-                                                        <button type="submit" class="btn btn--outline" data-match-resend>Renvoyer le lien<span
+                                                        <button type="submit" class="link-button link-button--inline" data-match-resend>Renvoyer le lien<span
                                                                 class="visually-hidden"> au client</span></button>
                                                     </form>
                                                 </div>
-                                            </th:block>
+                                            </div>
                                             <th:block th:if="${match.visit != null}">
                                                 <div th:replace="~{fragments/visit-detail :: detail(${match.visit}, ${match.title + ' · annonce n° ' + match.listingId})}"></div>
                                             </th:block>

@@ -83,7 +83,6 @@ class VisitRequestedBotletTest {
             Bien: Nice apartment
             Date souhaitée: 01/12/2026 à 10:00
             Type: Sur place
-            WhatsApp: +237 6 00 00 00 01
             Note: Je viens avec ma femme
 
             Confirmez la visite avec la date et l'heure qui vous conviennent.
@@ -91,7 +90,10 @@ class VisitRequestedBotletTest {
             text.firstValue,
         )
         assertEquals(
-            listOf(TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1")),
+            listOf(
+                TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1"),
+                TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237600000001"),
+            ),
             buttons.firstValue,
         )
     }
@@ -107,19 +109,18 @@ class VisitRequestedBotletTest {
     }
 
     @Test
-    fun `no whatsapp and a blank note leave no line`() {
-        botlet.send(
-            visit.copy(note = " "),
-            customer.copy(whatsappNumber = null),
-            agent,
-            listing,
-            1000L,
-        )
+    fun `no whatsapp - no number in the text and no whatsapp button`() {
+        botlet.send(visit.copy(note = " "), customer.copy(whatsappNumber = null), agent, listing, 1000L)
 
         val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
-        assertFalse(text.firstValue.contains("WhatsApp:"))
+        val buttons = argumentCaptor<List<TelegramButton>>()
+        verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
+        assertFalse(text.firstValue.contains("WhatsApp"))
         assertFalse(text.firstValue.contains("Note:"))
+        assertEquals(
+            listOf(TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1")),
+            buttons.firstValue,
+        )
     }
 
     @Test
@@ -132,10 +133,24 @@ class VisitRequestedBotletTest {
     }
 
     @Test
-    fun `a tenant without Partner Central gets no button`() {
+    fun `a tenant without Partner Central keeps only the WhatsApp button`() {
         doReturn(tenant.copy(partnerCentralUrl = null)).whenever(tenantService).findById(1L)
 
         botlet.send(visit, customer, agent, listing, 1000L)
+
+        val buttons = argumentCaptor<List<TelegramButton>>()
+        verify(client).sendMessage(eq(1000L), any(), buttons.capture())
+        assertEquals(
+            listOf(TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237600000001")),
+            buttons.firstValue,
+        )
+    }
+
+    @Test
+    fun `no whatsapp and no Partner Central - no button`() {
+        doReturn(tenant.copy(partnerCentralUrl = null)).whenever(tenantService).findById(1L)
+
+        botlet.send(visit, customer.copy(whatsappNumber = null), agent, listing, 1000L)
 
         verify(client).sendMessage(eq(1000L), any(), eq(emptyList<TelegramButton>()))
     }
