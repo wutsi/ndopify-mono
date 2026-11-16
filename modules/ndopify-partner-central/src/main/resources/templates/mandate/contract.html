@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Envoyer le mandat — Ndopify Partner Central</title>
+    <meta name="description" content="Envoyer un mandat au client pour signature : durée et frais de visite.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/find-property.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/home.css}">
+    <script th:src="@{/assets/js/partner-central.js}" defer></script>
+</head>
+<!--/*
+    Sending a mandate's contract (MandateContractController), on its own page reached from the mandate page's
+    "Envoyer au client" (ASSIGNED) or "Renvoyer" (PENDING_APPROVAL). The agent confirms the terms the customer accepts
+    by signing: the duration, and the visit fee the visitors pay the agent for each visit, offline, Ndopify
+    collecting nothing. The form posts without any script: no page script, the rules are re-checked server-side.
+
+    "mandate" is the mandate, "form" (MandateContractForm) the two answers, "errors" its errors per field, "resend"
+    true for PENDING_APPROVAL (the button reads "Renvoyer"), "email" the address the contract goes to (may be null),
+    "signatureTtlDays" the days given to sign (null before the first send), "months" 1..12 and "currency" the
+    tenant's currency.
+*/-->
+<body data-page="mandate-contract">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" th:href="@{/}">
+                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav th:replace="~{fragments/user-menu :: menu}"></nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="back-link">
+                <a th:href="@{/mandates/{id}(id=${mandate.id})}" data-back-link>← Retour au mandat</a>
+            </p>
+
+            <div class="page-intro">
+                <h1>Envoyer le mandat au client</h1>
+                <p>Confirmez les conditions que le client acceptera en signant.</p>
+            </div>
+
+            <form class="form" method="post" novalidate
+                  th:action="@{/mandates/{id}/contract(id=${mandate.id})}" data-contract-form>
+                <!-- The two terms on one line. -->
+                <div class="mandate-terms__fields">
+                    <div class="field">
+                        <label class="field__label" for="contractDuration">Durée</label>
+                        <select class="input select" id="contractDuration" name="durationMonths"
+                                aria-describedby="contractDuration-hint"
+                                th:attr="aria-invalid=${errors['durationMonths'] != null ? 'true' : null}">
+                            <option th:each="month : ${months}" th:value="${month}" th:text="${month} + ' mois'"
+                                    th:selected="${#strings.toString(month) == form.durationMonths}">6 mois</option>
+                        </select>
+                        <p class="field__hint" id="contractDuration-hint">À compter de la signature du contrat.</p>
+                        <p class="field__error" th:if="${errors['durationMonths']}" th:text="${errors['durationMonths']}"
+                           data-duration-error></p>
+                    </div>
+
+                    <div class="field">
+                        <label class="field__label" for="visitFee">Frais de visite</label>
+                        <div class="input-unit">
+                            <input class="input" id="visitFee" name="visitFee" type="text" inputmode="numeric"
+                                   autocomplete="off" aria-describedby="visitFee-hint" th:value="${form.visitFee}"
+                                   th:attr="aria-invalid=${errors['visitFee'] != null ? 'true' : null}">
+                            <span aria-hidden="true" class="input-unit__suffix" th:text="${currency}">FCFA</span>
+                        </div>
+                        <p class="field__hint" id="visitFee-hint">0 = aucun frais. Réglés directement à vous, à chaque
+                            visite.</p>
+                        <p class="field__error" th:if="${errors['visitFee']}" th:text="${errors['visitFee']}"
+                           data-visit-fee-error></p>
+                    </div>
+                </div>
+
+                <div class="hint">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <p>
+                        Le contrat est envoyé par e-mail à <strong th:text="${email}">le client</strong>, qui le signe
+                        en ligne.
+                        <span th:if="${signatureTtlDays != null}">Passé le délai de <span
+                                th:text="${signatureTtlDays}">7</span>&nbsp;jours, renvoyez-le&nbsp;: le client a de
+                            nouveau ce délai pour le signer.</span>
+                        Ndopify ne perçoit aucun paiement.
+                    </p>
+                </div>
+
+                <div class="form__actions form__actions--end">
+                    <button type="submit" class="btn btn--primary" data-contract-submit
+                            th:text="${resend} ? 'Renvoyer' : 'Envoyer au client'">Envoyer au client</button>
+                </div>
+            </form>
+        </div>
+    </main>
+</body>
+</html>
