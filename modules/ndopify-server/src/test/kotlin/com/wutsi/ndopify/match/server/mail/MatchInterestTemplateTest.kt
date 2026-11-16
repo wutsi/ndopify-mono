@@ -39,6 +39,9 @@ class MatchInterestTemplateTest {
         assertTrue(html.contains("175 000 FCFA / mois"))
         assertTrue(html.contains("Bonapriso, Douala"))
         assertTrue(html.contains("Ce logement a été ajouté à son mandat de recherche"))
+        // The listing may be another agent's (co-brokerage): the agent is never told it published it
+        assertTrue(html.contains("intéresse à un logement."))
+        assertFalse(html.contains("que vous avez publié"))
         assertTrue(html.contains("src=\"https://cdn.ndopify.com/7.jpg\""))
         assertTrue(html.contains("<a href=\"https://partner.ndopify.com/mandates/1\""))
         assertTrue(html.contains("Voir le mandat"))

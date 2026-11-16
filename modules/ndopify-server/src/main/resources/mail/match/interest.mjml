@@ -23,7 +23,7 @@
                     Bonjour <strong>{{recipient_name}}</strong>,
                 </mj-text>
                 <mj-text>
-                    <strong>{{customer_name}}</strong> s'intéresse à un logement que vous avez publié.
+                    <strong>{{customer_name}}</strong> s'intéresse à un logement.
                 </mj-text>
 
                 <!-- In an mj-text: MJML drops raw HTML outside of it -->
