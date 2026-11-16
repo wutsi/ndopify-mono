@@ -8,6 +8,7 @@ import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.listing.server.event.ListingPublishedEvent
 import com.wutsi.ndopify.mandate.server.event.MandateApprovedEvent
 import com.wutsi.ndopify.match.dto.MatchStatus
+import com.wutsi.ndopify.match.server.service.MatchInterestService
 import com.wutsi.ndopify.match.server.service.MatchProposalService
 import com.wutsi.ndopify.match.server.service.MatchService
 import com.wutsi.ndopify.platform.logger.KVLoggerThreadLocal
@@ -19,7 +20,8 @@ import kotlin.test.assertNull
 class MatchEventListenerTest {
     private val service = mock<MatchService>()
     private val proposalService = mock<MatchProposalService>()
-    private val listener = MatchEventListener(service, proposalService)
+    private val interestService = mock<MatchInterestService>()
+    private val listener = MatchEventListener(service, proposalService, interestService)
 
     @Test
     fun `approved - the mandate is matched, in its tenant`() {
@@ -32,6 +34,7 @@ class MatchEventListenerTest {
         listener.onMandateApproved(MandateApprovedEvent(mandateId = 10L, tenantId = 7L))
 
         verify(service).matchMandate(10L)
+        verify(interestService).proposeOrigin(10L) // Its origin listing is proposed at once
         assertEquals(7L, tenantId)
         assertNull(TenantContext.get()) // Removed: the executor threads are reused
         assertNull(KVLoggerThreadLocal.get())

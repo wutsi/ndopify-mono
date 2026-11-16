@@ -3,6 +3,7 @@ package com.wutsi.ndopify.match.server.service
 import com.wutsi.ndopify.agent.server.service.AgentService
 import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.mandate.server.service.MandateService
 import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.platform.logger.KVLogger
 import org.springframework.stereotype.Service
@@ -23,6 +24,7 @@ class MatchInterestService(
     private val proposalService: MatchProposalService,
     private val agentService: AgentService,
     private val customerService: CustomerService,
+    private val mandateService: MandateService,
     private val notifier: MatchInterestNotifier,
     private val logger: KVLogger,
 ) {
@@ -42,6 +44,25 @@ class MatchInterestService(
         if (match.mandate.status == MandateStatus.APPROVED && match.status in MatchService.OPEN_STATUSES) {
             proposalService.propose(listOf(match.id!!))
             logger.add("proposed", true)
+        }
+        return match.id
+    }
+
+    /**
+     * The mandate an approval just made APPROVED had a search seeded from a listing: ensures the match of that listing
+     * (no agent notification, the approval's own message is enough) and proposes it at once, instead of waiting for the
+     * agent or the 24 h auto-proposal. Null when it has no origin, the listing is gone or no longer published, or the
+     * pair can't match (another city, the agent turned it down...).
+     */
+    @Transactional
+    fun proposeOrigin(mandateId: Long): Long? {
+        val mandate = mandateService.findByIdOrNull(mandateId) ?: return null
+        val listingId = mandate.originListingId ?: return null
+        val match = matchService.ensureInterest(mandateId, listingId)?.match ?: return null
+        logger.add("origin_match_id", match.id)
+        if (mandate.status == MandateStatus.APPROVED && match.status in MatchService.OPEN_STATUSES) {
+            proposalService.propose(listOf(match.id!!))
+            logger.add("origin_proposed", true)
         }
         return match.id
     }

@@ -14,12 +14,15 @@ import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.mandate.server.service.MandateService
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.platform.logger.DefaultKVLogger
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 
 class MatchInterestServiceTest {
     private val matchService = mock<MatchService>()
@@ -27,11 +30,13 @@ class MatchInterestServiceTest {
     private val agentService = mock<AgentService>()
     private val customerService = mock<CustomerService>()
     private val notifier = mock<MatchInterestNotifier>()
+    private val mandateService = mock<MandateService>()
     private val service = MatchInterestService(
         matchService,
         proposalService,
         agentService,
         customerService,
+        mandateService,
         notifier,
         DefaultKVLogger(),
     )
@@ -81,4 +86,44 @@ class MatchInterestServiceTest {
 
         verify(proposalService).propose(listOf(9L))
     }
+
+    @Test
+    fun `proposeOrigin proposes the origin match`() {
+        doReturn(approvedMandate(originListingId = 2L)).whenever(mandateService).findByIdOrNull(1L)
+        doReturn(Interest(match(), false)).whenever(matchService).ensureInterest(1L, 2L)
+
+        assertEquals(9L, service.proposeOrigin(1L))
+
+        verify(proposalService).propose(listOf(9L))
+        verify(notifier, never()).send(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `no origin, nothing proposed`() {
+        doReturn(approvedMandate(originListingId = null)).whenever(mandateService).findByIdOrNull(1L)
+
+        assertNull(service.proposeOrigin(1L))
+
+        verify(matchService, never()).ensureInterest(any(), any())
+        verify(proposalService, never()).propose(any())
+    }
+
+    @Test
+    fun `a sold listing is not proposed`() {
+        doReturn(approvedMandate(originListingId = 2L)).whenever(mandateService).findByIdOrNull(1L)
+        doReturn(null as Interest?).whenever(matchService).ensureInterest(1L, 2L)
+
+        assertNull(service.proposeOrigin(1L))
+
+        verify(proposalService, never()).propose(any())
+    }
+
+    private fun approvedMandate(originListingId: Long?) = MandateEntity(
+        id = 1L,
+        tenantId = 1L,
+        customerId = 10L,
+        agentId = 20L,
+        originListingId = originListingId,
+        status = MandateStatus.APPROVED,
+    )
 }
