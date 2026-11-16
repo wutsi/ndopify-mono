@@ -145,7 +145,15 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   search, create, update).
   `MandateService.create` finds or creates the customer from the request's contact fields and starts the mandate
   as `PENDING_ASSIGNMENT`. It only checks that the contact fields aren't empty (`@NotEmpty`): categories, cities,
-  neighbourhoods, prices and enums aren't validated server-side yet. `availableFrom` (`V7_0`) is a LISTING's
+  neighbourhoods, prices and enums aren't validated server-side yet. A request with an `originListingId` — the public
+  listing page's (`docs/superpowers/plans/2026-11-15-listing-search-mandate.md`) — takes the mandate's criteria **and
+  its budget** from that listing (`OriginListingResolver`, implemented by the listing domain), never from the request:
+  the visitor posts only its contact, its moving period and the id. The origin (`T_MANDATE.origin_listing_id`,
+  `V12_0`) is kept only while the listing is still PUBLISHED (a sold one still seeds the mandate), and an unknown id is
+  404 `LISTING_NOT_FOUND`. A customer who already has an open SEARCH mandate of the same city and listing type gets no
+  second one: the listing is kept as its origin (when it had none) and `ExistingSearchInterestEvent` published (see
+  *match*). Otherwise, at most 3 new SEARCH mandates per customer per 24 h (409 `MANDATE_RATE_LIMITED`); attaching to an
+  existing search is never capped. `availableFrom` (`V7_0`) is a LISTING's
   availability date (the date from which the property can be let): stored and returned, not checked by the server.
   Tenant-scoped.
   **Access** (`MandateAccessService`): every endpoint but create (public) needs a JWT (401
@@ -205,7 +213,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   declined / ignored it; under `max-load`; fewer than `max-pending` (3) PENDING offers, so an agent who doesn't answer
   isn't flooded), scored on neighbourhood match (incl. nearby ones of the same city, via
   `searchNearest(parentId)`), rotation (`lastAssignedAt`, set on offer), `AgentEntity.rating`, acceptance rate and
-  load. No offer at night (`DispatchHours`, tenant's `timeZone`), whose hours also pause the TTL; past
+  load. A mandate with an origin listing first offers it to that listing's agent, which bypasses the ranking (scored
+  alone) but not the hard filters — verified, the mandate's city, not the customer, no DECLINED / EXPIRED offer on it,
+  under `max-load` / `max-pending`; a failing filter, or an unknown listing, falls back to the ranking. No offer at night (`DispatchHours`, tenant's `timeZone`), whose hours also pause the TTL; past
   `manual-after-days` it moves the mandate to `MANUAL_ASSIGNMENT` instead (`MandateManualAssignmentEvent`, no listener
   yet). It's called after commit by `MandateEventListener` on `MandateCreatedEvent` (creation) and
   `AssignmentEventListener` on `AssignmentClosedEvent` (decline, expiry), and by `MandateJobs`: `expire` (PENDING
@@ -343,6 +353,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   CANCELLED, with `closedAt` (`ListingService.onMandateClosed`); a listing in any other status is left as is.
   `ListingJobs.close` (daily, `ndopify.listing.close.cron`) does the same for the PUBLISHED listings of closed mandates
   the listener missed (closed before it existed). `EXPIRED` isn't set by any code yet.
+  `ListingOriginListingResolver` implements the mandate domain's `OriginListingResolver`: it turns a listing into the
+  SEARCH mandate's criteria and budget that a visitor of its public page gets (the origin of the mandate). The listing
+  domain implements an interface the mandate declares, never the reverse.
   Tenant-scoped.
 - **match** — the listings of an agent's inventory matching its SEARCH mandates (`MatchEntity`, `T_MATCH`, `V9_0`,
   one row per (mandate, listing), `@Version`-ed), see `docs/superpowers/plans/2026-10-31-search-listing-matching.md`
@@ -358,7 +371,14 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   after a shortlist/proposal (`SHORTLISTED`, `PROPOSED`, `ACCEPTED`, `EXPIRED`); the e-mail is also the fallback of a
   failed Telegram send, and `CoBrokerageInterestNotifier` throws when both fail, so `listingAgentNotifiedAt` stays null
   for the next run. Both ride `MatchJobs.notifyAgents`;
-  `notifiedAt` is the forward one-shot and `listingAgentNotifiedAt` the reverse one. Anti-sautage: a customer never
+  `notifiedAt` is the forward one-shot and `listingAgentNotifiedAt` the reverse one. **A customer's interest** (a
+  listing's public page): `ExistingSearchInterestEvent` → `MatchInterestService.registerInterest` stores
+  `MatchService.ensureInterest`'s match on the search the customer already has (the hard rules still apply, `min-score`
+  doesn't, an ACTIVE row is reused and a REJECTED one stays), tells the search's agent once (`MatchInterestNotifier`:
+  `MatchInterestBotlet` over Telegram when its chat is linked, `MatchInterestMailet` otherwise or as the fallback), and
+  proposes it at once when the search is APPROVED. A search without an agent yet can't have a match: the listing stays
+  its `originListingId`, and `proposeOrigin` (called by `MatchEventListener.onMandateApproved` after
+  `matchMandate`) ensures and proposes that match once the search is approved. Anti-sautage: a customer never
   learns the counterpart agent's identity/contact, and a counterpart agent never learns the customer's
   identity/contact/mandate; the customer-facing proposal still names only the search agent. The same
   `Matcher`, `min-score` and distances apply. A co-brokerage row is never deleted (sticky when own inventory appears
