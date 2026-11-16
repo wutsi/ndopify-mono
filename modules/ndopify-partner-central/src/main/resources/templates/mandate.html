@@ -23,8 +23,10 @@
 <!--/*
   The page of one of the agent's mandates (MandateController), opened from the Espace agent's Mes mandats. Its status
   is a wizard, Assigné > En approbation > Actif > Fermé (or Annulé), with the actions of the current step:
-    - Envoyer au client / Renvoyer (Assigné, En approbation): POST /mandates/{id}/request-approval, the contract is
-      e-mailed to the customer, who signs it online; sent again, it resets the signature deadline.
+    - Envoyer au client / Renvoyer (Assigné, En approbation): mandate/contract.html, its own page, where the agent
+      confirms the contract's terms — its duration and the visit fee the visitors pay it for each visit, offline (the
+      platform collects nothing) — then POST /v1/mandates/{id}/request-approval: the contract is e-mailed to the
+      customer, who signs it online; sent again, it resets the signature deadline.
     - Modifier le mandat (Assigné, En approbation): /mandates/{id}/edit. Saved while En approbation, its contract is
       cancelled and the mandate is Assigné again, to be sent anew.
     - Fermer (Actif, on its own page /mandates/{id}/close: lease signed, with the agreed rent) and Annuler (any active
@@ -157,12 +159,11 @@
                     <div class="mandate-panel" th:if="${m.status.name() == 'ASSIGNED'}" data-panel="ASSIGNED">
                         <p>Confirmez <span th:text="${m.words.search}">sa recherche</span> avec
                             <span th:text="${m.words.the}">le client</span>, puis envoyez-lui le mandat à signer.</p>
-                        <div class="mandate-panel__actions">
-                            <form method="post" th:action="@{/mandates/{id}/request-approval(id=${m.id})}"
-                                  data-request-approval-form>
-                                <button type="submit" class="btn btn--primary" data-request-approval>Envoyer au client</button>
-                            </form>
+                        <!-- The contract's terms are confirmed on their own page (mandate/contract.html): no inline
+                             contract editing, and every send shows what the client is about to accept. -->
+                        <div class="mandate-panel__actions mandate-panel__actions--forward-last">
                             <a class="btn btn--outline" th:href="@{/mandates/{id}/edit(id=${m.id})}" data-edit-link>Modifier le mandat</a>
+                            <a class="btn btn--primary" th:href="@{/mandates/{id}/contract(id=${m.id})}" data-send-link>Envoyer au client</a>
                         </div>
                         <details class="assignment__details">
                             <summary>Comment ça marche&nbsp;?</summary>
@@ -179,13 +180,11 @@
                     <div class="mandate-panel" th:if="${m.status.name() == 'PENDING_APPROVAL'}" data-panel="PENDING_APPROVAL">
                         <p th:if="${m.signatureDeadline}">Envoyé le <span th:text="${m.requestedAt}">15 octobre 2026</span> · à signer avant le
                             <strong data-signature-deadline th:text="${m.deadlinePassed} ? |${m.signatureDeadline} (dépassé)| : ${m.signatureDeadline}">22 octobre 2026</strong>.</p>
-                        <div class="mandate-panel__actions">
-                            <form method="post" th:action="@{/mandates/{id}/request-approval(id=${m.id})}"
-                                  data-request-approval-form>
-                                <button type="submit" class="btn btn--outline"
-                                        data-request-approval>Renvoyer</button>
-                            </form>
+                        <!-- The terms themselves are not repeated here: they sit in their own section (see Termes du
+                             contrat), and mandate/contract.html changes them (no inline contract editing). -->
+                        <div class="mandate-panel__actions mandate-panel__actions--forward-last">
                             <a class="btn btn--outline" th:href="@{/mandates/{id}/edit(id=${m.id})}" data-edit-link>Modifier le mandat</a>
+                            <a class="btn btn--outline" th:href="@{/mandates/{id}/contract(id=${m.id})}" data-send-link>Renvoyer</a>
                         </div>
                         <details class="assignment__details">
                             <summary>Comment ça marche&nbsp;?</summary>
@@ -501,6 +500,34 @@
                            th:text="${ms.dismissed > 1} ? |${ms.dismissed} biens écartés : ils ne vous seront plus proposés pour ce mandat.| : '1 bien écarté : il ne vous sera plus proposé pour ce mandat.'">
                             1 bien écarté : il ne vous sera plus proposé pour ce mandat.</p>
                     </th:block>
+                </section>
+
+                <!--
+                    The contract's terms: reference data about the mandate, like the search below, not one step's
+                    action — so they are not repeated in the progress panels. Set when the mandate is sent
+                    (mandate/contract.html), hence absent until a contract exists.
+                -->
+                <section class="home-section" aria-labelledby="terms-title" th:if="${m.hasContract}" data-terms-section>
+                    <h2 id="terms-title">Termes du contrat</h2>
+                    <dl class="review">
+                        <div class="review__item">
+                            <dt class="review__term">Durée</dt>
+                            <dd class="review__value" th:text="${m.contractDuration}">6 mois</dd>
+                        </div>
+                        <div class="review__item">
+                            <dt class="review__term">Frais de visite</dt>
+                            <dd class="review__value" th:text="${m.visitFee} ?: 'Aucun frais de visite'">Aucun frais de visite</dd>
+                        </div>
+                        <!-- Once signed only: before, there is no signature date and no end date. -->
+                        <div class="review__item" th:if="${m.approvedAt != null}">
+                            <dt class="review__term">Signé le</dt>
+                            <dd class="review__value" th:text="${m.approvedAt}">20 octobre 2026</dd>
+                        </div>
+                        <div class="review__item" th:if="${m.approvedAt != null and m.validUntil != null}">
+                            <dt class="review__term">Valable jusqu'au</dt>
+                            <dd class="review__value" th:text="${m.validUntil}">28 mars 2027</dd>
+                        </div>
+                    </dl>
                 </section>
 
                 <section class="home-section" aria-labelledby="search-title">

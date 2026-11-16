@@ -1078,64 +1078,6 @@ class MandateControllerTest {
     private fun outcome(result: MvcResult) = result.flashMap["outcome"]
 
     @Test
-    fun `request approval`() {
-        doReturn(MANDATE).whenever(mandateClient).get(201)
-
-        val result = mvc.perform(post("/mandates/201/request-approval")).andReturn()
-
-        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
-        assertEquals("sent", outcome(result))
-        verify(mandateClient).requestApproval(201)
-    }
-
-    @Test
-    fun `request approval - again`() {
-        val result = mvc.perform(post("/mandates/201/request-approval")).andReturn()
-
-        assertEquals("resent", outcome(result))
-    }
-
-    @Test
-    fun `request approval - conflict`() {
-        doThrow(HttpClientErrorException(HttpStatus.CONFLICT)).whenever(mandateClient).requestApproval(201)
-
-        val result = mvc.perform(post("/mandates/201/request-approval")).andReturn()
-
-        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
-        assertEquals("changed", outcome(result))
-    }
-
-    @Test
-    fun `request approval - server error`() {
-        doThrow(HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR)).whenever(mandateClient).requestApproval(201)
-
-        val result = mvc.perform(post("/mandates/201/request-approval")).andReturn()
-
-        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
-        assertEquals("error", outcome(result))
-    }
-
-    @Test
-    fun `request approval - mandate unavailable - still sent`() {
-        doThrow(ResourceAccessException("timeout")).whenever(mandateClient).get(201)
-
-        val result = mvc.perform(post("/mandates/201/request-approval")).andReturn()
-
-        assertEquals("sent", outcome(result))
-        verify(mandateClient).requestApproval(201)
-    }
-
-    @Test
-    fun `request approval - forbidden`() {
-        doThrow(HttpClientErrorException(HttpStatus.FORBIDDEN)).whenever(mandateClient).requestApproval(201)
-
-        val result = mvc.perform(post("/mandates/201/request-approval")).andReturn()
-
-        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
-        assertEquals("changed", outcome(result))
-    }
-
-    @Test
     fun `forbidden - locked`() {
         doThrow(HttpClientErrorException(HttpStatus.FORBIDDEN)).whenever(mandateClient).get(201)
 
@@ -1218,13 +1160,10 @@ class MandateControllerTest {
     fun `actions - not an agent - sign out`() {
         doReturn(null).whenever(currentAgent).get()
 
-        for (action in listOf("request-approval", "cancel")) {
-            assertEquals(
-                "redirect:/login",
-                mvc.perform(post("/mandates/201/$action")).andReturn().modelAndView?.viewName,
-            )
-        }
-        verify(mandateClient, never()).requestApproval(any())
+        assertEquals(
+            "redirect:/login",
+            mvc.perform(post("/mandates/201/cancel")).andReturn().modelAndView?.viewName,
+        )
     }
 
     @Test
@@ -1273,16 +1212,6 @@ class MandateControllerTest {
             model(result)["outcomeText"],
         )
         assertEquals("success", model(result)["outcomeStyle"])
-    }
-
-    @Test
-    fun `request approval - customer e-mail of another member`() {
-        doThrow(conflict(ErrorCode.CONTRACT_PARTY_MEMBERSHIP_CONFLICT)).whenever(mandateClient).requestApproval(201)
-
-        val result = mvc.perform(post("/mandates/201/request-approval")).andReturn()
-
-        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
-        assertEquals("email-conflict", outcome(result))
     }
 
     @Test

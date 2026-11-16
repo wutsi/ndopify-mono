@@ -13,6 +13,7 @@ import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.MANDATE
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.NAMES
 import com.wutsi.ndopify.npc.ui.mandate.MandateCardsTest.Companion.NOW
 import com.wutsi.ndopify.party.dto.Party
+import com.wutsi.ndopify.refdata.dto.Money
 import java.time.Instant
 import java.util.Date
 import kotlin.test.Test
@@ -96,6 +97,33 @@ class MandateViewsTest {
         assertTrue(view.editable)
         assertFalse(view.closable)
         assertTrue(view.cancellable)
+    }
+
+    @Test
+    fun `contract terms`() {
+        val view = view(APPROVED, contract = CONTRACT.copy(durationMonths = 3, visitFee = Money(5000, "XAF")))
+
+        assertTrue(view.hasContract)
+        assertEquals("3 mois", view.contractDuration)
+        assertEquals("5 000 FCFA", view.visitFee!!.replace('\u00a0', ' '))
+    }
+
+    @Test
+    fun `contract terms - no fee`() {
+        val view = view(APPROVED, contract = CONTRACT.copy(durationMonths = 6))
+
+        assertTrue(view.hasContract)
+        assertEquals("6 mois", view.contractDuration)
+        assertNull(view.visitFee)
+    }
+
+    @Test
+    fun `contract terms - no contract`() {
+        val view = view(MANDATE, contract = null)
+
+        assertFalse(view.hasContract)
+        assertNull(view.contractDuration)
+        assertNull(view.visitFee)
     }
 
     @Test
