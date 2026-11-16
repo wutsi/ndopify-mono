@@ -91,7 +91,7 @@ class ListingControllerTest {
         assertEquals(123L, page.id)
         assertEquals("Appartement meublé", page.title)
         assertEquals("Bonapriso, Douala", page.place)
-        assertEquals("2026-10-31", page.visitDays.first().value)
+        assertEquals(false, result.modelAndView?.model?.get("done"))
         verify(locationClient).search(listOf(2370201L, 5L))
     }
 

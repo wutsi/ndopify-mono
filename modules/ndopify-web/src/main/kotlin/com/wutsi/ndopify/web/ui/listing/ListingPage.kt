@@ -33,8 +33,6 @@ data class ListingPage(
     val longitude: Double?,
     val city: String?,
     val countryCode: String,
-    val visitDays: List<VisitDay>,
-    val visitTimes: List<Pair<String, String>>,
     /** "Ce bien a été loué le …" for a closed listing's meta description (and the closed-state flag); null while on the market. */
     val closedNotice: String? = null,
 )
@@ -46,5 +44,5 @@ data class Fact(val icon: String, val count: String?, val label: String)
 
 data class AmenityGroup(val title: String, val items: List<String>)
 
-/** A day of the visit popup: [value] is the ISO date posted, the others its label ("sam." "31" "oct."). */
+/** A day offered by a visit picker (the match page's, the visit page's): [value] is the ISO date posted, the others its label ("sam." "31" "oct."). */
 data class VisitDay(val value: String, val dayName: String, val day: String, val month: String)

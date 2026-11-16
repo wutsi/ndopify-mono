@@ -352,18 +352,6 @@ class ListingPagesTest {
     }
 
     @Test
-    fun `visit days and times`() {
-        val page = page()
-
-        assertEquals(8, page.visitDays.size)
-        assertEquals(VisitDay("2026-10-31", "sam.", "31", "oct."), page.visitDays.first())
-        assertEquals(VisitDay("2026-11-07", "sam.", "7", "nov."), page.visitDays.last())
-        assertEquals(23, page.visitTimes.size)
-        assertEquals("10:00" to "10h00", page.visitTimes.first())
-        assertEquals("21:00" to "21h00", page.visitTimes.last())
-    }
-
-    @Test
     fun `never the agent's remarks`() {
         val page = page(listing.copy(agentRemarks = "Clé chez le gardien"))
 

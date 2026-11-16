@@ -39,9 +39,9 @@
 <!--/*
   A listing's public page (ListingController), from the prototype src/main/html/annonce.html. Every text comes
   formatted in `page` (ListingPage); a section the listing has nothing for is left out.
-  The "Demander une visite" and "Poser une question" calls to action are left out for now: their popup and drawer
-  below are still the prototype's (listing.js fakes the confirmation and the replies, nothing on the server handles
-  their forms) and no button opens them; only a #visit / #ask link would.
+  The "Visiter ce logement" call to action (price card and bottom bar) opens the #visit popup: a real form posting the
+  visitor's contact and moving period to /listings/{id}/interest. The "Poser une question" drawer below is still the
+  prototype's: listing.js answers from canned replies, nothing on the server handles its form.
 */-->
 <body class="listing-page">
 <a class="skip-link" href="#main">Aller au contenu principal</a>
@@ -99,8 +99,8 @@
                 <th:block th:replace="~{fragments/listing-body :: content(${page}, null)}"></th:block>
             </div>
 
-            <!-- Price card: sticky on desktop; on mobile, the fixed bottom bar shows the price. A closed listing keeps
-                 its last published price. -->
+            <!-- Price card: sticky on desktop; on mobile, the fixed bottom bar carries the same call to action. A closed
+                 listing keeps its last published price, without a call to action. -->
             <aside aria-label="Prix et contact" class="listing__aside">
                 <div class="price-card">
                     <p class="price-card__price"><strong th:text="${page.priceAmount}">175K FCFA</strong><th:block
@@ -108,29 +108,42 @@
                     <ul class="price-card__terms">
                         <li th:each="term : ${page.asideTerms}" th:text="${term}">Caution : 2 mois</li>
                     </ul>
+                    <a class="btn btn-primary price-card__cta" data-modal-open th:href="'#visit'"
+                       th:if="${page.closedNotice == null}">
+                        <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Visiter ce logement
+                    </a>
+                    <p class="price-card__hint" th:if="${page.closedNotice == null}">Un agent vous contacte sous 24 h
+                        pour convenir de la visite.</p>
                 </div>
             </aside>
         </div>
     </div>
 
-    <!--/* Below 1024px, the price stays in the fixed bottom bar (the price card is hidden) */-->
+    <!--/* Below 1024px, the price stays in the fixed bottom bar (the price card is hidden), with the same call to action */-->
     <div class="cta-bar">
         <p class="cta-bar__price"><strong th:text="${page.priceAmount}">175K FCFA</strong><th:block
                 th:if="${page.pricePeriod}" th:text="| ${page.pricePeriod}|"> / mois</th:block></p>
+        <div class="cta-bar__actions" th:if="${page.closedNotice == null}">
+            <a class="btn btn-primary" data-modal-open th:href="'#visit'">Visiter ce logement</a>
+        </div>
     </div>
 </main>
 
 <!--/*
-  "Demander une visite" popup, still the prototype's (see annonce.html): listing.js shows the confirmation in place, no
-  server handles the form yet. The days are page.visitDays (tomorrow to tomorrow + 7 days, tenant's time zone), the
-  times page.visitTimes (10:00 to 21:00, every 30 minutes).
+  "Visiter ce logement" popup. The visitor asks for the property, not a slot: a visit needs an agent and a signed search
+  mandate, so no day or time here. Without JavaScript it opens with :target (#visit) and the form posts; the server
+  answers with the confirmation (?#interest=done), or the page again with the fields' errors (the popup then has
+  `is-open`). listing.js makes it a modal dialog and binds the WhatsApp number (E.164 in a hidden whatsappNumber); it
+  never posts, nor fakes an answer. Hidden field: website, the honeypot; movingPeriod, one of the three periods.
+  Everything else — city, type, budget — comes from the listing.
 */-->
-<div aria-labelledby="visit-title" class="modal" id="visit">
+<div aria-labelledby="visit-title" class="modal" id="visit"
+     th:classappend="${errors != null && !errors.isEmpty()} ? ' is-open'">
     <a aria-hidden="true" class="modal__backdrop" data-modal-close href="#main" tabindex="-1"></a>
     <div class="modal__panel">
         <header class="modal__header">
             <div>
-                <h2 class="modal__title" id="visit-title">Demander une visite</h2>
+                <h2 class="modal__title" id="visit-title">Visiter ce logement</h2>
                 <p class="modal__subtitle"><th:block th:text="${page.title}">Appartement meublé 2 chambres</th:block><span
                         class="modal__price" th:if="${page.closedNotice == null}">&nbsp;· <strong th:text="${page.price}">175K FCFA / mois</strong></span></p>
             </div>
@@ -140,68 +153,70 @@
             </a>
         </header>
 
-        <form action="#visit" class="modal__body interest-form" data-interest-form method="post" novalidate>
+        <form class="modal__body interest-form" data-listing-interest-form method="post" novalidate
+              th:action="@{/listings/{id}/interest(id=${page.id})}" th:hidden="${done}">
             <div class="interest-form__row">
                 <div class="field">
                     <label for="first-name">Prénom</label>
-                    <input autocomplete="given-name" id="first-name" name="firstName" required type="text">
-                    <span aria-live="polite" class="field-error"></span>
+                    <input autocomplete="given-name" id="first-name" name="firstName" required type="text"
+                           th:value="${interestForm?.firstName}">
+                    <span aria-live="polite" class="field-error" th:text="${errors?.get('firstName')}"></span>
                 </div>
                 <div class="field">
                     <label for="last-name">Nom</label>
-                    <input autocomplete="family-name" id="last-name" name="lastName" required type="text">
-                    <span aria-live="polite" class="field-error"></span>
+                    <input autocomplete="family-name" id="last-name" name="lastName" required type="text"
+                           th:value="${interestForm?.lastName}">
+                    <span aria-live="polite" class="field-error" th:text="${errors?.get('lastName')}"></span>
                 </div>
             </div>
             <div class="field">
                 <label for="email">E-mail</label>
-                <input autocomplete="email" id="email" name="email" required type="email">
-                <span aria-live="polite" class="field-error"></span>
+                <input autocomplete="email" id="email" name="email" required type="email"
+                       th:value="${interestForm?.email}">
+                <span aria-live="polite" class="field-error" th:text="${errors?.get('email')}"></span>
             </div>
             <div class="field">
                 <label for="whatsapp">Numéro WhatsApp</label>
                 <input autocomplete="tel" data-phone-name="whatsappNumber" id="whatsapp" name="whatsappNumber"
-                       required type="tel">
-                <span aria-live="polite" class="field-error"></span>
+                       required type="tel" th:value="${interestForm?.whatsappNumber}">
+                <span aria-live="polite" class="field-error" th:text="${errors?.get('whatsappNumber')}"></span>
             </div>
             <div class="field">
-                <label id="visit-type-label">Type de visite</label>
-                <div aria-labelledby="visit-type-label" class="option-grid option-grid--2" role="radiogroup">
-                    <label><input name="visitType" required type="radio" value="IN_PERSON">
-                        <svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>Sur place</label>
-                    <label><input name="visitType" required type="radio" value="VIDEO">
-                        <svg aria-hidden="true" class="icon"><use href="#i-video"/></svg>En vidéo</label>
+                <label id="moving-period-label">Date d'emménagement souhaitée</label>
+                <div aria-labelledby="moving-period-label" class="option-grid" role="radiogroup">
+                    <label><input name="movingPeriod" required type="radio" value="WITHIN_1_MONTH"
+                                  th:checked="${interestForm?.movingPeriod == 'WITHIN_1_MONTH'}">Dans moins
+                        d'1&nbsp;mois</label>
+                    <label><input name="movingPeriod" required type="radio" value="WITHIN_3_MONTHS"
+                                  th:checked="${interestForm?.movingPeriod == 'WITHIN_3_MONTHS'}">Dans 1 à
+                        3&nbsp;mois</label>
+                    <label><input name="movingPeriod" required type="radio" value="AFTER_3_MONTHS"
+                                  th:checked="${interestForm?.movingPeriod == 'AFTER_3_MONTHS'}">Dans plus de
+                        3&nbsp;mois</label>
                 </div>
-                <span aria-live="polite" class="field-error"></span>
+                <span aria-live="polite" class="field-error" th:text="${errors?.get('movingPeriod')}"></span>
             </div>
-            <div class="field">
-                <label id="visit-date-label">Jour de la visite</label>
-                <div aria-labelledby="visit-date-label" class="interest-form__days" role="radiogroup">
-                    <label th:each="day : ${page.visitDays}"><input name="visitDate" required type="radio" th:value="${day.value}">
-                        <span class="day__name" th:text="${day.dayName}">sam.</span>
-                        <strong th:text="${day.day}">31</strong>
-                        <span class="day__month" th:text="${day.month}">oct.</span></label>
-                </div>
-                <span aria-live="polite" class="field-error"></span>
+            <p class="field-error" th:if="${errors != null && errors.containsKey('global')}"
+               th:text="${errors['global']}"></p>
+            <!--/* Honeypot: a bot fills it, a person never sees it. The server creates nothing when it isn't empty. */-->
+            <div aria-hidden="true" class="visually-hidden">
+                <label for="website">Site web</label>
+                <input autocomplete="off" id="website" name="website" tabindex="-1" type="text">
             </div>
-            <div class="field">
-                <label for="visit-time">Heure de la visite</label>
-                <select id="visit-time" name="visitTime" required>
-                    <option value="">Choisissez une heure</option>
-                    <option th:each="time : ${page.visitTimes}" th:value="${time.first}" th:text="${time.second}">10h00</option>
-                </select>
-                <span aria-live="polite" class="field-error"></span>
-            </div>
-            <button class="btn btn-primary interest-form__submit" type="submit">Envoyer la demande</button>
-            <p class="interest-form__privacy">L'agent vous confirme le créneau sur WhatsApp. Seul l'agent voit vos
+            <button class="btn btn-primary interest-form__submit" type="submit">Envoyer ma demande</button>
+            <p class="interest-form__privacy">Un agent vous contacte sous 24 h. Seul l'agent voit vos
                 coordonnées.</p>
         </form>
 
-        <div class="modal__body interest-done" data-interest-done hidden tabindex="-1">
+        <div class="modal__body interest-done" data-listing-interest-done th:hidden="${!done}" tabindex="-1">
             <svg aria-hidden="true" class="icon icon--lg"><use href="#i-check"/></svg>
-            <h3>Merci, votre demande est envoyée</h3>
-            <p data-interest-done-text>L'agent vous recontacte très vite sur WhatsApp pour confirmer la visite.</p>
-            <p>Les visites se règlent avec le Pass Visite par Mobile Money : aucun paiement en espèces.</p>
+            <h3>Merci, votre demande est enregistrée</h3>
+            <p>Un agent vous contacte sous 24 h par WhatsApp ou par e-mail.</p>
+            <ol class="interest-done__steps">
+                <li>Vous signez votre mandat de recherche — gratuit, une commission seulement à la signature du
+                    bail.</li>
+                <li>Vous choisissez ensemble le créneau de la visite.</li>
+            </ol>
             <a class="btn btn-secondary" data-modal-close href="#main">Fermer</a>
         </div>
     </div>
@@ -257,7 +272,7 @@
             </button>
         </form>
         <p class="chat__disclaimer">Réponses générées par IA à partir de l'annonce : l'agent confirme tout lors de la
-            visite. <a data-modal-open href="#visit">Demander une visite</a></p>
+            visite. <a data-modal-open href="#visit">Visiter ce logement</a></p>
     </div>
 </div>
 

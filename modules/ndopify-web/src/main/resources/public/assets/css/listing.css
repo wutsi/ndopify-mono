@@ -306,45 +306,7 @@
 .interest-form__row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 var(--space-lg); }
 .interest-form .field { margin-bottom: var(--space-md); }
 .interest-form .field > label { margin-bottom: var(--space-sm); }
-/* Visit type: side by side even on a phone, the padding tightened and, below 360px, the icons left out */
-.interest-form .option-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-.interest-form .option-grid--2 label { gap: var(--space-md); padding-inline: var(--space-lg); white-space: nowrap; }
-@media (max-width: 359px) {
-  .interest-form .option-grid--2 .icon { display: none; }
-}
-/* Visit day: 8 day cards, 2 rows of 4 on a phone, one row from 640px; the radio itself hidden but still focusable */
-.interest-form__days { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-md); }
-@media (min-width: 640px) {
-  .interest-form__days { grid-template-columns: repeat(8, 1fr); }
-}
-.interest-form .interest-form__days label {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  margin: 0;
-  padding: var(--space-md) var(--space-sm);
-  border: 1px solid var(--color-border-strong);
-  border-radius: calc(var(--radius-control) / 2);
-  background: var(--color-bg-default);
-  font-size: 0.8125rem;
-  font-weight: 400;
-  line-height: 1.25;
-  text-align: center;
-  cursor: pointer;
-  transition: border-color 200ms ease-out, background-color 200ms ease-out;
-}
-.interest-form__days label:hover { border-color: var(--color-text-default); }
-.interest-form__days strong { font-family: var(--font-heading); font-size: 1.125rem; }
-.interest-form__days input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.interest-form__days label:has(input:checked) {
-  border-color: var(--color-primary);
-  background: var(--color-bg-secondary);
-  font-weight: 600;
-}
-.interest-form__days label:has(input:focus-visible) { outline: 2px solid var(--color-primary); outline-offset: 2px; }
-.interest-form__days:has([aria-invalid="true"]) label { border-color: var(--color-text-error); }
+.interest-form .option-grid { margin-top: var(--space-sm); }
 .interest-form__submit { width: 100%; margin-top: var(--space-sm); }
 .interest-form__submit[aria-disabled="true"] { background: var(--color-text-disabled); box-shadow: none; cursor: not-allowed; }
 .interest-form__privacy { font-size: 0.8125rem; text-align: center; margin: var(--space-md) auto 0; }
@@ -354,6 +316,14 @@
 .interest-done .icon--lg { color: var(--color-text-success); margin-bottom: var(--space-lg); }
 .interest-done h3 { font-size: var(--h4-size); }
 .interest-done p { margin-inline: auto; }
+.interest-done__steps {
+  max-width: 32rem;
+  margin: var(--space-lg) auto 0;
+  padding-left: var(--space-xl);
+  text-align: left;
+  font-size: 0.875rem;
+}
+.interest-done .btn { margin-top: var(--space-xl); }
 
 /* "Poser une question" drawer: the conversation scrolls, the composer stays at the bottom */
 .chat__avatar {

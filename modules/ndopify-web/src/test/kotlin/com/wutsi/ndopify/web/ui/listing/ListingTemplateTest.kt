@@ -105,8 +105,19 @@ class ListingTemplateTest {
         LocalDate.of(2026, 10, 30),
     )
 
-    private fun render(page: ListingPage = page()): Document {
-        controller.attributes = mapOf("tenant" to tenant, "page" to page)
+    private fun render(
+        page: ListingPage = page(),
+        errors: Map<String, String> = emptyMap(),
+        form: ListingInterestForm = ListingInterestForm(),
+        done: Boolean = false,
+    ): Document {
+        controller.attributes = mapOf(
+            "tenant" to tenant,
+            "page" to page,
+            "errors" to errors,
+            "interestForm" to form,
+            "done" to done,
+        )
         return Jsoup.parse(mvc.perform(get("/listing")).andReturn().response.contentAsString)
     }
 
@@ -215,34 +226,64 @@ class ListingTemplateTest {
     }
 
     @Test
-    fun `visit days and times`() {
+    fun `a published listing shows the visit call to action`() {
         val doc = render()
 
-        val days = doc.select("input[name=visitDate]")
-        assertEquals(8, days.size)
-        assertEquals("2026-10-31", days.first()?.attr("value"))
-        assertEquals("sam. 31 oct.", days.first()?.parent()?.text())
-        assertEquals(23, doc.select("#visit-time option[value~=.+]").size)
-        assertEquals("10h00", doc.select("#visit-time option[value~=.+]").first()?.text())
+        val card = doc.selectFirst(".price-card__cta")!!
+        assertEquals("Visiter ce logement", card.text())
+        assertEquals("#visit", card.attr("href"))
+        assertTrue(card.hasAttr("data-modal-open"))
+        assertEquals("Visiter ce logement", doc.selectFirst(".cta-bar__actions a")?.text())
+        assertNotNull(doc.selectFirst(".price-card__hint"))
     }
 
     @Test
-    fun `no call to action to ask a question or request a visit`() {
-        val doc = render()
+    fun `a closed listing shows no call to action`() {
+        val doc = render(page(listing = listing.copy(status = ListingStatus.SOLD)))
 
-        // Only the drawer, which nothing opens now, still links to the visit popup
-        assertTrue(doc.select("[data-modal-open], a[href=#visit], a[href=#ask]").all { it.closest(".modal") != null })
-        assertTrue(doc.select(".price-card__cta, .cta-bar__actions").isEmpty())
+        assertNull(doc.selectFirst(".price-card__cta"))
+        assertNull(doc.selectFirst(".cta-bar__actions"))
+        assertNull(doc.selectFirst(".price-card__hint"))
     }
 
     @Test
-    fun `visit and question forms are the prototype's`() {
+    fun `the visit form posts to the listing interest endpoint`() {
         val doc = render()
+        val form = doc.selectFirst("form[data-listing-interest-form]")!!
 
-        assertEquals("#visit", doc.selectFirst("form[data-interest-form]")?.attr("action"))
-        assertEquals("#ask", doc.selectFirst("form[data-chat-form]")?.attr("action"))
-        assertNotNull(doc.selectFirst("script[src=/assets/js/listing.js]"))
-        assertNotNull(doc.selectFirst("link[href=/assets/css/listing.css]"))
+        assertEquals("/listings/123/interest", form.attr("action"))
+        assertEquals("post", form.attr("method"))
+        assertEquals(
+            listOf("firstName", "lastName", "email", "whatsappNumber", "movingPeriod", "website"),
+            form.select("input[name]").map { it.attr("name") }.distinct(),
+        )
+        assertEquals(3, form.select("input[name=movingPeriod]").size)
+        assertEquals("whatsappNumber", form.selectFirst("[data-phone-name]")?.attr("data-phone-name"))
+        assertNull(form.selectFirst("[name=website]")?.attr("tabindex")?.takeIf { it != "-1" })
+        // A slot can't be promised before an agent and a signed mandate: no day, time nor visit type
+        assertTrue(form.select("[name=visitDate], [name=visitTime], [name=visitType]").isEmpty())
+    }
+
+    @Test
+    fun `a failed post re-opens the popup with the errors`() {
+        val doc = render(
+            errors = mapOf("firstName" to "Indiquez votre prénom."),
+            form = ListingInterestForm(firstName = "  "),
+        )
+
+        assertTrue(doc.selectFirst("#visit")!!.hasClass("is-open"))
+        assertEquals("Indiquez votre prénom.", doc.selectFirst("#visit .field-error")?.text())
+    }
+
+    @Test
+    fun `the confirmation replaces the form`() {
+        val doc = render(done = true)
+
+        assertTrue(doc.selectFirst("form[data-listing-interest-form]")!!.hasAttr("hidden"))
+        val done = doc.selectFirst("[data-listing-interest-done]")!!
+        assertFalse(done.hasAttr("hidden"))
+        assertTrue(done.text().contains("sous 24 h"))
+        assertTrue(done.text().contains("mandat de recherche"))
     }
 
     @Test
