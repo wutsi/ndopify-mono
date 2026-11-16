@@ -272,6 +272,8 @@ class VisitTemplateTest {
         )
 
         assertNull(doc.selectFirst(".feedback-thanks a.btn"))
+        assertNull(doc.selectFirst(".feedback-thanks"))
+        assertFalse(doc.text().contains("Vous pouvez aussi lui écrire"))
     }
 
     @Test

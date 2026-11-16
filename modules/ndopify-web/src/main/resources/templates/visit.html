@@ -247,9 +247,10 @@
                         <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
                         <span th:text="|Le logement vous intéresse : ${page.agent?.name ?: 'votre agent'} vous recontacte pour la suite (dossier, bail).|">Le logement vous intéresse : Serge vous recontacte pour la suite (dossier, bail).</span>
                     </p>
-                    <div class="feedback-thanks">
+                    <!--/* Both the copy and the link: an agent without a number leaves no WhatsApp promise */-->
+                    <div class="feedback-thanks" th:if="${page.agent?.whatsappUrl}">
                         <p>Vous pouvez aussi lui écrire dès maintenant.</p>
-                        <a class="btn btn-secondary" th:if="${page.agent?.whatsappUrl}" rel="noopener"
+                        <a class="btn btn-secondary" rel="noopener"
                            target="_blank" th:href="${page.agent?.whatsappUrl}">
                             <svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg><span
                                 th:text="|Écrire à ${page.agent?.name ?: 'votre agent'}|">Écrire à Serge</span><span
