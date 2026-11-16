@@ -5,6 +5,7 @@ import com.wutsi.ndopify.match.server.service.MatchAutoProposalService
 import com.wutsi.ndopify.match.server.service.MatchNotificationService
 import com.wutsi.ndopify.match.server.service.MatchProposalService
 import com.wutsi.ndopify.match.server.service.MatchService
+import com.wutsi.ndopify.match.server.service.MatchVisitReminderService
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.slf4j.LoggerFactory
@@ -23,6 +24,7 @@ class MatchJobs(
     private val proposalService: MatchProposalService,
     private val autoProposalService: MatchAutoProposalService,
     private val matchService: MatchService,
+    private val reminderService: MatchVisitReminderService,
     private val tenantService: TenantService,
 ) {
     companion object {
@@ -55,6 +57,12 @@ class MatchJobs(
     @Scheduled(cron = "\${ndopify.match.auto-propose.cron}")
     fun autoPropose() {
         forEachTenant("autoPropose", "match(es)") { autoProposalService.autoProposeDue() }
+    }
+
+    /** Reminds the customers who accepted a match but didn't book a visit. */
+    @Scheduled(cron = "\${ndopify.match.visit-reminder.cron}")
+    fun remindAcceptedWithoutVisit() {
+        forEachTenant("remindAcceptedWithoutVisit", "match(es)") { reminderService.remindDue() }
     }
 
     private fun forEachTenant(job: String, unit: String, run: () -> Int) {

@@ -84,6 +84,8 @@ ndopify:
             cron: "0 0 2 * * ?"         # Every day at 02:00: expires the proposals not answered in time
         auto-propose:
             cron: "0 45 * * * ?"        # Every hour at 45 minutes: a 24h delay needs no finer cadence
+        visit-reminder:
+            cron: "0 0 9 * * ?"         # Every day at 09:00
 
     mobile-money:
         mtn:
