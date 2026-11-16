@@ -17,6 +17,7 @@ import com.wutsi.ndopify.match.server.dao.MatchRepository
 import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.match.server.event.MatchAnsweredEvent
 import com.wutsi.ndopify.match.server.event.MatchProposedEvent
+import com.wutsi.ndopify.match.server.event.MatchResentEvent
 import com.wutsi.ndopify.match.server.mail.MatchProposedMailet
 import com.wutsi.ndopify.platform.logger.KVLogger
 import org.slf4j.LoggerFactory
@@ -27,13 +28,15 @@ import org.springframework.orm.ObjectOptimisticLockingFailureException
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.Clock
+import java.time.Duration
 import java.util.Date
 
 /**
  * A match from the agent to its customer: proposed by the agent (ACTIVE, SHORTLISTED or EXPIRED → PROPOSED, several in
  * one e-mail), then accepted or rejected by the customer (→ ACCEPTED / REJECTED, final), or left unanswered for
- * `ndopify.match.expire.days` (→ EXPIRED by `MatchJobs.expire`, which the agent may propose again). The matcher never touches a row
- * once it's no longer ACTIVE. Who may do what is checked by `MatchEndpoints`.
+ * `ndopify.match.expire.days` (→ EXPIRED by `MatchJobs.expire`, which the agent may propose again). The agent may also
+ * resend the link of a PROPOSED or ACCEPTED match: a new e-mail, the status untouched (`resend`). The matcher never
+ * touches a row once it's no longer ACTIVE. Who may do what is checked by `MatchEndpoints`.
  */
 @Service
 class MatchProposalService(
@@ -48,6 +51,7 @@ class MatchProposalService(
     private val logger: KVLogger,
 
     @param:Value("\${ndopify.match.expire.days}") private val expireDays: Long,
+    @param:Value("\${ndopify.match.resend.min-interval}") private val resendMinInterval: Duration,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(MatchProposalService::class.java)
@@ -108,6 +112,60 @@ class MatchProposalService(
             MatchProposedEvent(matchIds = saved.map { it.id!! }, tenantId = saved.first().tenantId!!),
         )
         return saved
+    }
+
+    /**
+     * Sends the match's link to its customer again, without changing its status: PROPOSED or ACCEPTED only, the search
+     * APPROVED and the listing PUBLISHED. A PROPOSED match gets a fresh `proposedAt` (its 7-day window restarts); an
+     * ACCEPTED one keeps its `answeredAt` and `proposedAt`. 409 MATCH_NOT_PROPOSED, MANDATE_NOT_APPROVED,
+     * LISTING_NOT_PUBLISHED, then MATCH_RATE_LIMITED when the last resend is younger than `ndopify.match.resend.min-interval`.
+     * E-mails the customer after commit ([MatchResentEvent]).
+     */
+    @Transactional
+    fun resend(id: Long): MatchEntity {
+        val match = matchService.findById(id)
+        if (match.status != MatchStatus.PROPOSED && match.status != MatchStatus.ACCEPTED) {
+            throw ConflictException(error = Error(code = ErrorCode.MATCH_NOT_PROPOSED))
+        }
+        if (match.mandate.status != MandateStatus.APPROVED) {
+            throw ConflictException(error = Error(code = ErrorCode.MANDATE_NOT_APPROVED))
+        }
+        if (match.listing.status != ListingStatus.PUBLISHED) {
+            throw ConflictException(error = Error(code = ErrorCode.LISTING_NOT_PUBLISHED))
+        }
+        val now = Date(clock.millis())
+        if (match.resentAt?.after(Date(now.time - resendMinInterval.toMillis())) == true) {
+            throw ConflictException(error = Error(code = ErrorCode.MATCH_RATE_LIMITED))
+        }
+
+        val saved = dao.save(
+            match.copy(
+                proposedAt = if (match.status == MatchStatus.PROPOSED) now else match.proposedAt,
+                resentAt = now,
+                modifiedAt = now,
+            )
+        )
+        eventPublisher.publishEvent(
+            MatchResentEvent(matchId = saved.id!!, tenantId = saved.tenantId!!),
+        )
+        return saved
+    }
+
+    /**
+     * E-mails the customer the match's link again, PROPOSED or ACCEPTED only; called by `MatchEventListener`. Nothing
+     * for an unknown match or another status (answered, expired meanwhile).
+     */
+    @Transactional
+    fun sendResentEmail(matchId: Long) {
+        val match = dao.findById(matchId).orElse(null) ?: return
+        if (match.status != MatchStatus.PROPOSED && match.status != MatchStatus.ACCEPTED) {
+            return
+        }
+        mailet.send(
+            listOf(match),
+            customerService.findById(match.mandate.customerId),
+            agentService.findById(match.agentId),
+        )
     }
 
     /**
