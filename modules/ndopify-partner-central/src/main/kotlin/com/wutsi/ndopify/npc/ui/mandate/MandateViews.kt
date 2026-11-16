@@ -114,6 +114,10 @@ object MandateViews {
             closable = status == MandateStatus.APPROVED,
             cancellable = status in MandateRules.ACTIVE,
             signatureTtlDays = MandateRules.signatureTtlDays(contract),
+            hasContract = contract != null,
+            contractDuration = contract?.durationMonths?.takeIf { it > 0 }?.let { "$it mois" },
+            visitFee = contract?.visitFee?.takeIf { it.amount > 0 }
+                ?.let { formatter.money(it.amount, it.currency.ifBlank { mandate.price.currency }) },
         )
     }
 

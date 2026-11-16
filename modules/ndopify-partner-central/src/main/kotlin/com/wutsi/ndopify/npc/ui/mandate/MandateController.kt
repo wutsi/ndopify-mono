@@ -72,9 +72,11 @@ import java.time.ZoneOffset
  * customer's contact details, its criteria, and the actions of its status. Any status but the five of
  * [MandateRules.SHOWN], or a mandate that can't be loaded, is the locked view.
  *
- * The actions (send for approval, cancel) are post-redirect-get, back to the page with their outcome (flash attribute
- * [OUTCOME]). A mandate that changed since the page was loaded (approved, closed or cancelled meanwhile:
- * ndopify-server's 409, gone: 404, or no longer the agent's: 403) is [CHANGED], not an error: the page it was on was just stale. Closing
+ * The actions (cancel) are post-redirect-get, back to the page with their outcome (flash attribute [OUTCOME]). Sending
+ * the contract has its own page (`MandateContractController`), reached from the *Envoyer au client* / *Renvoyer* link: the
+ * agent confirms the duration and the visit fee there. A mandate that changed since the page was loaded (approved,
+ * closed or cancelled meanwhile: ndopify-server's 409, gone: 404, or no longer the agent's: 403) is [CHANGED], not an
+ * error: the page it was on was just stale. Closing
  * now has its own page (`MandateCloseController`), reached from the *Fermer le mandat* link; `?end=close` redirects there so old
  * links still work. The cancel form opens without JS through `GET /mandates/{id}?end=cancel`, and comes back with its errors.
  *
@@ -187,15 +189,6 @@ class MandateController(
 
         val mandate = id.toLongOrNull()?.let { load(it) } ?: return locked(model)
         return render(agent, mandate, end, MandateEndForm(), emptyMap(), model, dismiss)
-    }
-
-    @PostMapping("/{id}/request-approval")
-    fun requestApproval(@PathVariable id: Long, redirect: RedirectAttributes): String {
-        currentAgent.get() ?: throw SignInRequiredException()
-
-        // Sending again resets the deadline: worded "renvoyé". Without the mandate, it's still worth sending.
-        val again = lookup("mandate $id") { mandateClient.get(id) }?.status == MandateStatus.PENDING_APPROVAL
-        return act(id, if (again) RESENT else SENT, redirect) { mandateClient.requestApproval(id) }
     }
 
     /** An unknown code (hand-edited form) fails the binding: it reads as no code, [binding] keeps it from a 400. */

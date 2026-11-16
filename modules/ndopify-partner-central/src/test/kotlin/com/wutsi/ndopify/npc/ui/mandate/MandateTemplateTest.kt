@@ -44,6 +44,7 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.BONAPRISO
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.DOUALA
 import com.wutsi.ndopify.npc.ui.visit.VisitFixtures
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
+import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitSummary
@@ -192,12 +193,15 @@ class MandateTemplateTest {
         assertEquals(listOf("PENDING_APPROVAL"), page.select("[data-panel]").map { it.attr("data-panel") })
         val panel = page.selectFirst("[data-panel=PENDING_APPROVAL]")!!
         assertEquals("Envoyé le 15 oct. 2026 · à signer avant le 22 oct. 2026.", panel.selectFirst("p")?.text())
-        val resend = panel.selectFirst("form[data-request-approval-form]")!!
-        assertEquals("/mandates/201/request-approval", resend.attr("action"))
-        assertEquals("post", resend.attr("method"))
-        assertEquals("btn btn--outline", resend.selectFirst("button")?.className())
-        assertEquals("Renvoyer", resend.selectFirst("button")?.text())
+        val resend = panel.selectFirst("a[data-send-link]")!!
+        assertEquals("/mandates/201/contract", resend.attr("href"))
+        assertEquals("btn btn--outline", resend.className())
+        assertEquals("Renvoyer", resend.text())
         assertEquals("/mandates/201/edit", panel.selectFirst("a[data-edit-link]")?.attr("href"))
+        // The edit comes first in the markup, the send last
+        val actions = panel.select("a[data-edit-link], a[data-send-link]")
+        assertTrue(actions[0].hasAttr("data-edit-link"))
+        assertTrue(actions[1].hasAttr("data-send-link"))
         assertTrue(panel.text().contains("Le mandat a été envoyé à ray@gmail.com."))
         assertTrue(panel.text().contains("le client a de nouveau 7 jours pour le signer."))
         assertFalse(page.text().contains("Simuler"))
@@ -224,6 +228,46 @@ class MandateTemplateTest {
     }
 
     @Test
+    fun `contract terms - duration and no fee`() {
+        doReturn(CONTRACT.copy(durationMonths = 6)).whenever(contractClient).get("c-201")
+
+        val page = render(get("/mandates/201"))
+
+        val section = page.selectFirst("[data-terms-section]")!!
+        assertTrue(section.text().contains("Termes du contrat"))
+        assertTrue(section.text().contains("Durée"))
+        assertTrue(section.text().contains("6 mois"))
+        assertTrue(section.text().contains("Frais de visite"))
+        assertTrue(section.text().contains("Aucun frais de visite"))
+        assertFalse(section.text().contains("Signé le"))
+        assertFalse(section.text().contains("Valable jusqu'au"))
+    }
+
+    @Test
+    fun `contract terms - the fee and the dates once signed`() {
+        doReturn(APPROVED).whenever(mandateClient).get(201)
+        doReturn(CONTRACT.copy(durationMonths = 3, visitFee = Money(5000, "XAF")))
+            .whenever(contractClient).get("c-201")
+
+        val page = render(get("/mandates/201"))
+
+        val section = page.selectFirst("[data-terms-section]")!!
+        assertEquals("3 mois", section.select(".review__value")[0].text())
+        assertEquals("5 000 FCFA", section.select(".review__value")[1].text().replace('\u00a0', ' '))
+        assertTrue(section.text().contains("Signé le"))
+        assertTrue(section.text().contains("20 oct. 2026"))
+        assertTrue(section.text().contains("Valable jusqu'au"))
+        assertTrue(section.text().contains("28 mars 2027"))
+    }
+
+    @Test
+    fun `no contract terms section without a contract`() {
+        val page = render(MANDATE)
+
+        assertNull(page.selectFirst("[data-terms-section]"))
+    }
+
+    @Test
     fun assigned() {
         val page = render(MANDATE)
 
@@ -232,8 +276,9 @@ class MandateTemplateTest {
             "Confirmez sa recherche avec le client, puis envoyez-lui le mandat à signer.",
             panel.selectFirst("p")?.text(),
         )
-        assertEquals("Envoyer au client", panel.selectFirst("form[data-request-approval-form] button")?.text())
-        assertEquals("btn btn--primary", panel.selectFirst("form[data-request-approval-form] button")?.className())
+        assertEquals("Envoyer au client", panel.selectFirst("a[data-send-link]")?.text())
+        assertEquals("btn btn--primary", panel.selectFirst("a[data-send-link]")?.className())
+        assertEquals("/mandates/201/contract", panel.selectFirst("a[data-send-link]")?.attr("href"))
         assertEquals("/mandates/201/edit", panel.selectFirst("a[data-edit-link]")?.attr("href"))
         // No contract yet: no number of days
         assertTrue(

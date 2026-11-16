@@ -553,6 +553,12 @@ button.user-menu__item:hover {
     font-weight: 600;
 }
 
+/* What a field means or how its value is used, under the control. */
+.field__hint {
+    font-size: var(--step-hint);
+    line-height: 1.5;
+}
+
 .field__optional {
     font-weight: 400;
 }

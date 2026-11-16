@@ -13,6 +13,7 @@ import com.wutsi.ndopify.mandate.dto.MandateStats
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateSummary
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.RequestMandateApprovalRequest
 import com.wutsi.ndopify.mandate.dto.SearchMandateResponse
 import com.wutsi.ndopify.mandate.dto.SearchMandateStatsResponse
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
@@ -261,9 +262,24 @@ class NdMandateClientTest {
     fun requestApproval() {
         server.expect(requestTo("http://localhost:8080/v1/mandates/101/request-approval"))
             .andExpect(method(HttpMethod.POST))
+            .andExpect(content().json("{}"))
             .andRespond(withSuccess())
 
         client.requestApproval(101)
+
+        server.verify()
+    }
+
+    @Test
+    fun `request approval - with terms`() {
+        server.expect(requestTo("http://localhost:8080/v1/mandates/101/request-approval"))
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(
+                content().json("""{"durationMonths":3,"visitFee":{"amount":5000,"currency":"XAF","periodicity":"UNKNOWN"}}"""),
+            )
+            .andRespond(withSuccess())
+
+        client.requestApproval(101, RequestMandateApprovalRequest(3, Money(5000, "XAF")))
 
         server.verify()
     }

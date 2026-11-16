@@ -140,6 +140,10 @@ class MandateContractGenerator(
             "contract_date" to formatter.date(contract.createdAt),
             // Generated before the signature, from which the contract is valid: no dates yet
             "duration_months" to contract.durationMonths,
+            "visit_fee" to contract.visitFeeAmount
+                .takeIf { amount -> amount > 0 }
+                ?.let { amount -> formatter.money(amount, contract.visitFeeCurrency.ifBlank { tenant.currencyCode }) },
+            "has_visit_fee" to (contract.visitFeeAmount > 0),
 
             // Parties
             "tenant_name" to tenant.name,

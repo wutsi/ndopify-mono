@@ -844,6 +844,26 @@ h1.alert__title {
     font-size: var(--step-hint);
 }
 
+/* The contract's terms on their own line: the duration, then the visit fee (mandate/contract.html edits them). */
+.mandate-terms__fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+    gap: var(--space-3);
+}
+
+/* The label already says "Frais de visite": the suffix is the currency alone, leaving the amount its room. */
+.mandate-terms__fields .input-unit .input {
+    padding-right: 4.5rem;
+}
+
+/* "Modifier le mandat" first in the markup, the send last (right from 640px); on phones the send stays on top,
+   where the step's main action belongs. */
+@media (max-width: 639.98px) {
+    .mandate-panel__actions--forward-last {
+        flex-direction: column-reverse;
+    }
+}
+
 /* The end section follows Sa recherche without the sections' separator: its box and a gap set it apart. */
 .home-section + .mandate-close {
     margin-top: var(--space-4);

@@ -175,13 +175,18 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   new contract (a CANCELLED one is replaced, like an EXPIRED one). A lock is always taken before the entity is loaded
   in the transaction (ids / `contractId` read through projections first): Hibernate doesn't refresh an entity it
   already has when `findByIdForUpdate` locks it, so a check would run on stale values.
-  `POST /{id}/request-approval` (ASSIGNED or PENDING_APPROVAL, else 409 `MANDATE_CANNOT_BE_APPROVED`) →
-  `PENDING_APPROVAL`, its contract's content generated and stored, and its signature requested, in 3 transactions so that
-  no lock (the tenant's contract sequence, the mandate) is held during the upload: (1) under the mandate's lock, reuse
-  its contract or create one (none, EXPIRED or CANCELLED) and link it, so concurrent requests share one contract; (2) generate
-  (read-only) then upload, outside any transaction; (3) under the lock again, 409 `MANDATE_VERSION_CONFLICT` if the
-  mandate changed since (2), else set the content, PENDING_APPROVAL, request the signature. A failure after (1) leaves
-  the mandate ASSIGNED with its DRAFT contract, reused next time: an ASSIGNED mandate can have a `contractId`.
+  `POST /{id}/request-approval` (ASSIGNED or PENDING_APPROVAL, else 409 `MANDATE_CANNOT_BE_APPROVED`) takes an
+  optional `RequestMandateApprovalRequest` (`durationMonths` 1..36, else 400 `HTTP_INVALID_PARAMETER`; `visitFee`),
+  applies those terms to the mandate's contract, and moves it to `PENDING_APPROVAL`, its content generated and stored,
+  and its signature requested, in 3 transactions so that no lock (the tenant's contract sequence, the mandate) is held
+  during the upload: (1) under the contract's lock then the mandate's, reuse its contract or create one (none, EXPIRED
+  or CANCELLED, with the terms) and link it, so concurrent requests share one contract; (2) generate (read-only) from an
+  in-memory copy of the contract with the terms, then upload, outside any transaction; (3) under the locks again, 409
+  `MANDATE_VERSION_CONFLICT` if the mandate changed since (2), else apply the terms to a reused contract, set the
+  content, PENDING_APPROVAL, request the signature — one transaction, so a contract the customer can still sign never
+  states terms other than its content's (a signature since (1) makes it 409 `CONTRACT_ALREADY_SIGNED`). A failure after
+  (1) leaves the mandate as it was, with its DRAFT contract, reused next time: an ASSIGNED mandate can have a
+  `contractId`.
   The last signature of its contract approves it (`MandateEventListener.onContractSigned`, synchronous, in the
   signature's transaction: `APPROVED`, `approvedAt`), publishing `MandateApprovedEvent`: `MandateApprovedNotifier`
   messages its agent over Telegram when its chat is linked (`MandateApprovedBotlet`, via
@@ -241,7 +246,12 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `durationMonths >= 1` (persisted; the request has no dates) and that each `partyId` is a party of the tenant (404
   `PARTY_NOT_FOUND`), and starts the contract as `DRAFT`, without dates nor document, numbered `<prefix>-<year>-<nnnnnn>` by `ContractNumberGenerator` (`BAIL` for a
   `LEASE_AGREEMENT`, else `MNDT`; year in the tenant's `timeZone`): one gapless sequence per tenant, prefix and year in
-  `T_CONTRACT_SEQUENCE`, incremented last in the create transaction (row locked until commit). `content` (`SetContractRequest.url`) sets the
+  `T_CONTRACT_SEQUENCE`, incremented last in the create transaction (row locked until commit). `visitFeeAmount` /
+  `visitFeeCurrency` (`T_CONTRACT`, `V13_0`) hold the per-visit fee the visitors pay the agent offline (0 = none) in
+  the tenant's currency (a blank request currency means it, any other is 400), exposed as `Contract.visitFee`;
+  `ContractService.setTerms` applies a mandate's duration (1..36) and fee to a DRAFT / PENDING_SIGNATURE contract
+  (409 `CONTRACT_EXPIRED` / `CONTRACT_CANCELLED` / `CONTRACT_ALREADY_SIGNED` otherwise), under the contract's lock.
+  `content` (`SetContractRequest.url`) sets the
   document's `contentUrl` of a DRAFT or PENDING_SIGNATURE contract, locked like a signature (409 `CONTRACT_EXPIRED` /
   `CONTRACT_CANCELLED` / `CONTRACT_ALREADY_SIGNED` otherwise). `contentHash` (SHA-256 of the uploaded bytes, set by
   `MandateService`; the endpoint clears it) and each party's `signatureHash` (set by `sign`, see `ContractHasher`) are

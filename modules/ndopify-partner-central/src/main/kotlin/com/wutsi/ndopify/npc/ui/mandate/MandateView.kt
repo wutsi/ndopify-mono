@@ -49,6 +49,9 @@ data class MandateView(
     val closable: Boolean,
     val cancellable: Boolean,
     val signatureTtlDays: Int?, // Null without a request for signature
+    val hasContract: Boolean,
+    val contractDuration: String?, // "6 mois"; null without a contract
+    val visitFee: String?, // "5 000 FCFA"; null when there's none
 )
 
 data class StepView(

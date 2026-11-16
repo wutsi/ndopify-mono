@@ -33,6 +33,8 @@ data class ContractEntity(
     val signedContentUrl: String? = null, // The signed PDF, set once all parties signed (SignedContractService)
     val signedContentHash: String? = null, // SHA-256 of the signed PDF's bytes (ContractHasher), set with signedContentUrl
     val durationMonths: Int = 0,
+    val visitFeeAmount: Long = 0, // Per visit, paid to the agent offline; 0 = none
+    val visitFeeCurrency: String = "", // Empty on a legacy row: read it as the tenant's
     val signatureRequestedAt: Date? = null, // Set by each request for signature, with signatureDeadline
     val signatureDeadline: Date? = null, // Set by each request for signature
     val validFrom: Date? = null, // Set by the last signature, with validUntil

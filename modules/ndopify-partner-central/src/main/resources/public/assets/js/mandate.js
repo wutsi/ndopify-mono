@@ -128,10 +128,6 @@
         var flash = $("[data-mandate-flash]");
         if (flash) flash.focus();
 
-        $all("[data-request-approval-form]").forEach(function (form) {
-            guardSubmit(form, "Envoi…");
-        });
-
         // "Voir tous les critères (n)" / "Masquer les critères".
         var more = $("[data-mandate-more]");
         if (more) {
