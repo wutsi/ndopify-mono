@@ -598,8 +598,9 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
   `platform/util/http`'s `Http` has `postMultipart` (a `multipart/form-data` POST — `String` fields written as-is, the
   others JSON-serialized, plus one `HttpFile`) beside its JSON `post`.
 - `platform/telegram` — the Telegram bot, wired by `config/platform/TelegramConfiguration`: `TelegramClient` (a thin
-  Bot API client over `platform/util/http/Http`; `sendMessageRows` sends the keyboard's rows given explicitly, ex: one
-  row per listing of a digest; `sendPhoto` uploads an image, never a URL Telegram would fetch, with its caption and
+  Bot API client over `platform/util/http/Http`; `sendMessage`, `sendPhoto` and `editMessageText` give each button its
+  own keyboard row, while `sendMessageRows` sends the keyboard's rows given explicitly, ex: one row per listing of a
+  digest; `sendPhoto` uploads an image, never a URL Telegram would fetch, with its caption and
   keyboard), `TelegramUpdateHandler` (routes a `callback_query` to its
   `TelegramCallbackHandler` — the mandate domain's offer buttons — gives a `message` the reply of the first
   `TelegramCommand` bean that recognizes it — the agent domain's `/start` and `/connect` — else `OK`, and ignores

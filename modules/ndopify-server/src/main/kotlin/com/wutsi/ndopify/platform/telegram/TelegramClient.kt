@@ -30,7 +30,7 @@ open class TelegramClient(
             put("chat_id", chatId)
             put("text", text)
             if (buttons.isNotEmpty()) {
-                put("reply_markup", mapOf("inline_keyboard" to listOf(buttons.toPayload())))
+                put("reply_markup", mapOf("inline_keyboard" to buttons.toKeyboard()))
             }
         }
         http.post(
@@ -42,11 +42,12 @@ open class TelegramClient(
     }
 
     /**
-     * The same [sendMessage], with the keyboard's rows given explicitly: one row per button list. A digest labels its
-     * buttons per listing, so they can't share a row.
+     * The same [sendMessage], with the keyboard's rows given explicitly: one row per button list. [sendMessage] gives
+     * each button its own row; this method keeps a caller's grouping, ex: a digest labels its buttons per listing.
      */
     open fun sendMessageRows(chatId: Long, text: String, rows: List<List<TelegramButton>>) {
-        val keyboard = rows.filter { row -> row.isNotEmpty() }.map { row -> row.toPayload() }
+        val keyboard = rows.filter { row -> row.isNotEmpty() }
+            .map { row -> row.map { button -> button.toPayload() } }
         val payload = buildMap<String, Any> {
             put("chat_id", chatId)
             put("text", text)
@@ -80,9 +81,7 @@ open class TelegramClient(
                 "chat_id" to chatId,
                 "message_id" to messageId,
                 "text" to text,
-                "reply_markup" to mapOf(
-                    "inline_keyboard" to if (buttons.isEmpty()) emptyList<List<Any>>() else listOf(buttons.toPayload()),
-                ),
+                "reply_markup" to mapOf("inline_keyboard" to buttons.toKeyboard()),
             ),
             TelegramMessageResponse::class.java,
             emptyMap(),
@@ -106,7 +105,7 @@ open class TelegramClient(
             put("chat_id", chatId)
             put("caption", caption)
             if (buttons.isNotEmpty()) {
-                put("reply_markup", mapOf("inline_keyboard" to listOf(buttons.toPayload())))
+                put("reply_markup", mapOf("inline_keyboard" to buttons.toKeyboard()))
             }
         }
         http.postMultipart(
@@ -156,12 +155,14 @@ open class TelegramClient(
 
     private fun url(path: String) = "$BASE_URL/bot$token/$path"
 
-    private fun List<TelegramButton>.toPayload(): List<Map<String, String>> = map { button ->
-        buildMap {
-            put("text", button.text)
-            button.callbackData?.let { put("callback_data", it) }
-            button.url?.let { put("url", it) }
-        }
+    /** One button per keyboard row: Telegram truncates a caption that shares its row with another button. */
+    private fun List<TelegramButton>.toKeyboard(): List<List<Map<String, String>>> =
+        map { button -> listOf(button.toPayload()) }
+
+    private fun TelegramButton.toPayload(): Map<String, String> = buildMap {
+        put("text", text)
+        callbackData?.let { put("callback_data", it) }
+        url?.let { put("url", it) }
     }
 
     private fun <T : TelegramResponse> T?.check(): T {
