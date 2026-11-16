@@ -411,7 +411,15 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   and `reason`, a comment, optional, at most 1000) are for the mandate's customer only
   (`MandateAccessService.ensureIsCustomer`: the JWT's party is the customer's, any application; **no admin bypass,
   the agent can't answer for its customer**): PROPOSED → ACCEPTED / REJECTED, final, `answeredAt`, else 409
-  `MATCH_NOT_PROPOSED`. The agent isn't told of the answer yet.
+  `MATCH_NOT_PROPOSED`. The answer publishes `MatchAnsweredEvent` inside the accept / reject transaction, and
+  `MatchEventListener.onMatchAnswered` (async, after commit) calls `MatchProposalService.sendAnsweredNotification`:
+  `MatchAnsweredNotifier` messages a linked agent (`AgentTelegramService.chatId(match.agentId)`) through
+  `MatchAnsweredBotlet`, e-mails the others (`MatchAnsweredMailet`, `mail/match/answered.mjml`), and falls back to the
+  e-mail when Telegram fails (logged, without the token nor the URL). The message names the customer, the listing and
+  its price, the mandate's criteria via `MandateMailLabels`, and a rejection's reason and comment, with a
+  `Voir le mandat` button to `{partnerCentralUrl}/mandates/{mandateId}` (none without a `partnerCentralUrl`); one
+  without a title is `Bien n° <id>`. It's final, and the listing's agent is never told. An `EXPIRED` proposal notifies
+  nobody.
   **Expiry**: `MatchJobs.expire` (daily, `ndopify.match.expire.cron`) has `MatchProposalService.expireDue` move to
   `EXPIRED` the PROPOSED matches whose `proposedAt` is older than `ndopify.match.expire.days` (7), oldest first, 100
   per run; each save is its own transaction, so a match answered meanwhile fails on its `@Version` and is skipped. No
@@ -485,22 +493,24 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `ConflictException`, `ForbiddenException`, `UnauthorizedException`, `InternalErrorException`) and a global
   `ControllerErrorHandler`.
 
-**Asynchronous e-mails** (welcome, OTP, KYC status, mandate offered, mandate assigned, mandate approved, contract to sign, listing published, new matches, match proposed, visit requested / confirmed / completed / cancelled / no-show / expired / reminded): the service publishes an event
+**Asynchronous e-mails** (welcome, OTP, KYC status, mandate offered, mandate assigned, mandate approved, contract to sign, listing published, new matches, match proposed, match answered, visit requested / confirmed / completed / cancelled / no-show / expired / reminded): the service publishes an event
 from its transaction (`AgentCreatedEvent`, `OtpCreatedEvent`, `KycCaseCompletedEvent`, `AssignmentCreatedEvent`,
 `AssignmentAcceptedEvent`, `MandateApprovedEvent`, `ContractSignatureRequestedEvent`, `ListingPublishedEvent`, `MatchProposedEvent`,
-`VisitRequestedEvent`, `VisitConfirmedEvent`, `VisitCompletedEvent`, `VisitCancelledEvent`, `VisitNoShowEvent`, `VisitExpiredEvent`,
+`MatchAnsweredEvent`, `VisitRequestedEvent`, `VisitConfirmedEvent`, `VisitCompletedEvent`, `VisitCancelledEvent`, `VisitNoShowEvent`, `VisitExpiredEvent`,
 `VisitReminderEvent` in `<domain>/server/event/`), carrying ids plus the `tenantId` — never entities. Its
 listener is `@Async @TransactionalEventListener(AFTER_COMMIT)`, so nothing is sent for a rolled-back transaction. The
 executor thread has no request, so the listener sets `TenantContext` and a `DefaultKVLogger` in `KVLoggerThreadLocal`
 (which the injected `KVLogger` falls back to), calls `logger.log()` in `finally` to flush it, and removes both
 (threads are reused). The work runs in a `@Transactional` service method (`AgentService.sendWelcomeEmail`,
 `OtpService.sendEmail`, `KycService.sendStatusEmail`, `AssignmentService.sendOfferNotification` / `sendAssignedEmail`, `MandateService.sendApprovedNotification`,
-`ContractService.sendSignatureRequestEmails`, `ListingService.sendPublishedNotification`, `MatchProposalService.sendProposedEmail`,
+`ContractService.sendSignatureRequestEmails`, `ListingService.sendPublishedNotification`, `MatchProposalService.sendProposedEmail` /
+`sendAnsweredNotification`,
 `VisitService.sendRequestedNotification` / `sendConfirmedEmails` / `sendCompletedEmail` / `sendCancelledNotification` / `sendNoShowEmails` /
 `sendExpiredEmails` / `sendReminderNotifications`); the signed PDF (`ContractSignedEvent` → `SignedContractService.generate`,
-not an e-mail, not transactional) follows the same listener pattern. The requested-visit, cancellation, reminder and
-mandate-approval entries are the ones that don't always go by e-mail: `VisitRequestedNotifier` /
-`VisitCancelledNotifier` / `VisitReminderNotifier` (see *visit*) and `MandateApprovedNotifier` (see *mandate*) message a
+not an e-mail, not transactional) follows the same listener pattern. The requested-visit, cancellation, reminder,
+mandate-approval and match-answered entries are the ones that don't always go by e-mail: `VisitRequestedNotifier` /
+`VisitCancelledNotifier` / `VisitReminderNotifier` (see *visit*), `MandateApprovedNotifier` (see *mandate*) and
+`MatchAnsweredNotifier` (see *match*) message a
 linked agent over Telegram, and e-mail the others or as the fallback. The service methods are
 entered *after* `TenantContext` is set since Hibernate resolves the tenant when the session opens. Failures are
 logged, never rethrown. Tests must wait for the mail (`smtp.waitForIncomingEmail`);
