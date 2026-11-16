@@ -176,15 +176,16 @@
 
         var email = store.get(KEYS.email);
         var initials = initialsFromEmail(email);
-        $("[data-user-initials]").textContent = initials;
-        var emailEl = $("[data-user-email]");
-        if (emailEl) {
+        $all("[data-user-initials]").forEach(function (el) {
+            el.textContent = initials;
+        });
+        $all("[data-user-email]").forEach(function (el) {
             if (email) {
-                emailEl.textContent = email;
+                el.textContent = email;
             } else {
-                emailEl.hidden = true;
+                el.hidden = true;
             }
-        }
+        });
 
         function close(returnFocus) {
             list.hidden = true;
