@@ -958,25 +958,42 @@ class MandateTemplateTest {
     fun `resend - on a sent match without an open visit`() {
         withMatches(
             MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.PROPOSED, proposedAt = proposedAt),
-            MatchFixtures.MATCH_B.copy(mandateId = 201, status = MatchStatus.ACCEPTED, proposedAt = proposedAt),
+            MatchFixtures.MATCH_B.copy(
+                mandateId = 201,
+                status = MatchStatus.ACCEPTED,
+                proposedAt = proposedAt,
+                answeredAt = proposedAt,
+            ),
             MatchFixtures.MATCH_C.copy(mandateId = 201),
         )
 
         val page = render(APPROVED)
 
-        // PROPOSED: waiting for the answer; ACCEPTED: interested, no visit yet
+        // PROPOSED: waiting for the answer, the link inline on the sent line
         val proposed = page.selectFirst("[data-match-id=9001]")!!
-        val form = proposed.selectFirst("[data-match-resend-actions] form")!!
+        val statusLine = proposed.selectFirst("[data-match-status]")!!
+        val form = statusLine.selectFirst("[data-match-resend-actions] form")!!
         assertEquals("/mandates/201/matches/9001/resend", form.attr("action"))
         assertEquals("post", form.attr("method"))
         assertEquals("Renvoyer le lien au client", form.selectFirst("button")?.text())
-        assertEquals("btn btn--outline", form.selectFirst("button")?.className())
+        assertEquals("submit", form.selectFirst("button")?.attr("type"))
+        assertEquals("link-button link-button--inline", form.selectFirst("button")?.className())
+        // Inline on the line, not its own actions row: no outline button, no height of its own
+        assertFalse(statusLine.selectFirst("[data-match-resend-actions]")!!.hasClass("match__actions"))
+        assertNull(proposed.selectFirst(".btn.btn--outline"))
+        assertTrue(statusLine.selectFirst("[data-match-answer]")!!.text().startsWith("Envoyé le"))
+
+        // ACCEPTED: interested, no visit yet: only the latest step, the link on the same line
+        assertTrue(
+            page.selectFirst("[data-match-id=9003] [data-match-status] [data-match-answer]")!!
+                .text().startsWith("Intéressé le"),
+        )
         assertEquals(
             "/mandates/201/matches/9003/resend",
             page.selectFirst("[data-match-id=9003] [data-match-resend-actions] form")?.attr("action"),
         )
-        // ACTIVE: nothing sent yet
-        assertNull(page.selectFirst("[data-match-id=9002] [data-match-resend]"))
+        // ACTIVE: nothing sent yet, no status line at all
+        assertNull(page.selectFirst("[data-match-id=9002] [data-match-status]"))
     }
 
     @Test
