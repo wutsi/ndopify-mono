@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>Ndopify — Confiez votre recherche de logement à un agent vérifié</title>
+    <meta
+        content="Décrivez votre recherche : un agent vérifié de votre secteur la prend en charge, vous propose des biens qui vous correspondent et organise vos visites, sur place ou en vidéo. Gratuit jusqu'à la signature du bail."
+        name="description">
+    <link href="https://www.ndopify.com/" rel="canonical">
+    <meta content="website" property="og:type">
+    <meta content="Ndopify — Un agent vérifié pour votre recherche de logement" property="og:title">
+    <meta
+        content="Un agent vérifié de votre secteur, des biens choisis pour vous, des visites organisées. Gratuit jusqu'à la signature du bail."
+        property="og:description">
+    <meta content="https://www.ndopify.com/assets/images/og-image.png" property="og:image">
+    <meta content="https://www.ndopify.com/" property="og:url">
+    <meta content="summary_large_image" name="twitter:card">
+    <meta content="#1d7edf" name="theme-color">
+    <link href="assets/images/icon.png" rel="icon">
+    <link href="assets/images/icon.png" rel="apple-touch-icon">
+    <link href="assets/css/styles.css" rel="stylesheet">
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "name": "Ndopify",
+            "url": "https://www.ndopify.com/",
+            "logo": "https://www.ndopify.com/assets/images/logo.png"
+        }
+    </script>
+</head>
+<!--
+  MVP prototype — tenant landing page (served at "/").
+  Pillar 2 (matching a tenant with an agent) and pillar 3 (visits), from the tenant's side.
+  The call to action is Partner Central's public "Trouver un bien" wizard: {partnerCentralUrl}/find-property
+  (https://partner.ndopify.com stands for the tenant's partnerCentralUrl). Out of the MVP, so never promised here:
+  Pass Visite, any payment through the platform, tenant vetting.
+-->
+<body>
+<a class="skip-link" href="#main">Aller au contenu principal</a>
+<header class="site-header">
+    <a aria-label="Ndopify — accueil" class="site-header__logo" href="index.html">
+        <img alt="Ndopify" height="36" src="assets/images/logo.png" width="140">
+    </a>
+    <nav aria-label="Navigation principale" class="site-nav">
+        <button aria-controls="primary-nav-list" aria-expanded="false" class="nav-toggle"><span aria-hidden="true"
+                                                                                                class="nav-toggle__icon">☰</span>
+            Locataires
+        </button>
+        <ul class="site-nav__list" id="primary-nav-list">
+            <li><a aria-current="page" href="index.html">Locataires</a></li>
+            <li><a href="bailleur.html">Propriétaires</a></li>
+            <li><a href="agent.html">Agents</a></li>
+        </ul>
+    </nav>
+</header>
+
+<main id="main">
+    <section class="section section--default">
+        <div class="container hero">
+            <span class="hero__eyebrow">Un agent vérifié, dans votre secteur</span>
+            <h1>Confiez votre recherche de logement à un agent vérifié</h1>
+            <p class="hero__sub">Décrivez ce que vous cherchez en quelques minutes. Un agent de votre secteur prend
+                votre recherche en charge, vous propose des biens qui vous correspondent et organise vos visites.</p>
+            <ul class="proof-stats">
+                <li><strong>100 %</strong>des agents vérifiés : pièce d'identité et compte Mobile Money</li>
+                <li><strong>0 FCFA</strong>pour lancer votre recherche et visiter</li>
+                <li><strong>1 mois</strong>de loyer en commission, seulement si vous signez un bail</li>
+            </ul>
+            <div class="cta-row">
+                <a class="btn btn-primary" href="https://partner.ndopify.com/find-property">Lancer ma recherche</a>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="garanties-heading" class="section section--secondary">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="garanties-heading">Nos garanties</h2>
+                <p>Un seul interlocuteur, vérifié, qui travaille sur votre recherche — et pas une liste d'annonces à
+                    trier seul.</p>
+            </div>
+            <ul class="card-grid">
+                <li class="card">
+                    <h3 class="card-title">Un agent vérifié</h3>
+                    <p>Chaque agent a fait vérifier sa pièce d'identité et un compte Mobile Money à son nom avant de
+                        recevoir sa première recherche.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Un agent de votre secteur</h3>
+                    <p>Votre recherche est confiée à un agent qui travaille dans les quartiers que vous avez
+                        choisis.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Un mandat clair, signé en ligne</h3>
+                    <p>Vos critères et les conditions sont écrits dans un mandat de recherche que vous signez en ligne,
+                        sans vous déplacer.</p>
+                </li>
+                <li class="card">
+                    <h3 class="card-title">Des biens choisis pour vous</h3>
+                    <p>Chaque proposition explique pourquoi le bien vous correspond. Vous répondez en un clic : « Ça
+                        m'intéresse » ou « Pas pour moi ».</p>
+                </li>
+            </ul>
+            <div class="cta-row">
+                <a class="btn btn-primary" href="https://partner.ndopify.com/find-property">Lancer ma recherche</a>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="comment-heading" class="section section--default">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="comment-heading">Comment ça marche</h2>
+            </div>
+            <ol class="steps">
+                <li><h3>Décrivez votre recherche</h3>
+                    <p>Ville, quartiers, type de bien, budget, équipements et date d'emménagement : quelques minutes
+                        suffisent.</p></li>
+                <li><h3>Un agent prend votre recherche</h3>
+                    <p>Un agent vérifié de votre secteur l'accepte. Vous recevez un e-mail, puis le mandat de recherche
+                        à signer en ligne.</p></li>
+                <li><h3>Recevez des propositions</h3>
+                    <p>Votre agent vous envoie par e-mail les biens qui correspondent à vos critères. Vous dites ce qui
+                        vous intéresse.</p></li>
+                <li><h3>Visitez, sur place ou en vidéo</h3>
+                    <p>Choisissez un créneau, votre agent le confirme et vous recevez votre code de visite. Après la
+                        visite, donnez votre avis.</p></li>
+            </ol>
+            <div class="cta-row">
+                <a class="btn btn-primary" href="https://partner.ndopify.com/find-property">Lancer ma recherche</a>
+            </div>
+        </div>
+    </section>
+
+    <section aria-labelledby="faq-heading" class="section section--secondary">
+        <div class="container">
+            <div class="section__head">
+                <h2 id="faq-heading">Questions fréquentes</h2>
+            </div>
+            <div class="faq-list">
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-1" aria-expanded="false" class="faq-trigger">Comment Ndopify
+                            choisit-il l'agent qui prend ma recherche ?<span aria-hidden="true" class="chevron">▾</span>
+                        </button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-1"><p>Votre recherche est proposée en priorité aux agents
+                        vérifiés qui travaillent dans vos quartiers, en tenant compte de leur disponibilité, de leur
+                        réactivité et des avis de leurs clients. Le premier qui l'accepte devient votre agent.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-2" aria-expanded="false" class="faq-trigger">Qu'est-ce qu'un agent
+                            vérifié ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-2"><p>Un agent qui a envoyé sa pièce d'identité (recto,
+                        verso et selfie) et dont le compte Mobile Money est bien à son nom. Sans cette vérification, il
+                        ne reçoit aucune recherche.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-3" aria-expanded="false" class="faq-trigger">Pourquoi signer un
+                            mandat de recherche ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-3"><p>Le mandat écrit noir sur blanc ce que vous cherchez et
+                        ce que fait votre agent. Vous le recevez par e-mail et le signez en ligne. Votre agent ne vous
+                        propose des visites qu'une fois le mandat signé.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-4" aria-expanded="false" class="faq-trigger">Comment vais-je
+                            recevoir les propositions ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-4"><p>Par e-mail, avec un lien vers le bien : photos,
+                        description, prix et la liste des critères qu'il remplit. Répondez « Ça m'intéresse » ou « Pas
+                        pour moi » ; votre agent est prévenu de votre réponse.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-5" aria-expanded="false" class="faq-trigger">Une proposition ne me
+                            convient pas : que se passe-t-il ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-5"><p>Répondez « Pas pour moi » en indiquant pourquoi (prix,
+                        quartier, taille…). Votre agent connaît ainsi vos raisons et continue à chercher pour
+                        vous.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-6" aria-expanded="false" class="faq-trigger">Les visites sont-elles
+                            payantes ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-6"><p>Non. Demander une visite, visiter sur place ou en vidéo
+                        ne vous coûte rien. Ne versez jamais d'argent à un agent pour une visite.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-7" aria-expanded="false" class="faq-trigger">Comment se passe une
+                            visite ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-7"><p>Depuis une proposition qui vous intéresse, choisissez
+                        une visite sur place ou en vidéo WhatsApp et un créneau. Votre agent la confirme et vous
+                        recevez un code de visite, à lui donner en arrivant. Vous recevez un rappel la veille et
+                        pouvez annuler jusqu'au début de la visite.</p></div>
+                </div>
+                <div class="faq-item">
+                    <h3>
+                        <button aria-controls="faq-8" aria-expanded="false" class="faq-trigger">Quand dois-je payer la
+                            commission ?<span aria-hidden="true" class="chevron">▾</span></button>
+                    </h3>
+                    <div class="faq-panel" hidden id="faq-8"><p>Uniquement si vous signez un bail pour un bien trouvé
+                        par votre agent : la commission est d'1 mois de loyer, comme indiqué dans votre mandat.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="cta-row">
+                <a class="btn btn-primary" href="https://partner.ndopify.com/find-property">Lancer ma recherche</a>
+            </div>
+        </div>
+    </section>
+</main>
+
+<footer class="site-footer">
+    <div class="container site-footer__inner">
+        <img alt="Ndopify" height="32" src="assets/images/icon.png" width="32">
+        <nav aria-label="Navigation du pied de page">
+            <ul>
+                <li><a href="index.html">Locataires</a></li>
+                <li><a href="bailleur.html">Propriétaires</a></li>
+                <li><a href="agent.html">Agents</a></li>
+            </ul>
+        </nav>
+        <small>© 2026 Ndopify. Des agents vérifiés, à votre service.</small>
+    </div>
+</footer>
+
+<script src="assets/js/main.js"></script>
+</body>
+</html>
