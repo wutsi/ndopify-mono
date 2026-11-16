@@ -127,7 +127,10 @@ class MandateServiceTest {
 
     private fun givenCustomer() {
         doReturn(CustomerEntity(id = 10L)).whenever(customerService).findOrCreate(any())
-        doAnswer { it.getArgument<MandateEntity>(0).copy(id = 1L) }.whenever(dao).save(any())
+        doAnswer { inv ->
+            val entity = inv.getArgument<MandateEntity>(0)
+            if (entity.id == null) entity.copy(id = 1L) else entity
+        }.whenever(dao).save(any())
     }
 
     @Test
@@ -191,6 +194,20 @@ class MandateServiceTest {
         val mandate = service.create(visitor)
 
         assertEquals(42L, mandate.id)
+        assertEquals(7L, mandate.originListingId) // kept, for its proposal once the search is approved
+        verify(eventPublisher).publishEvent(ExistingSearchInterestEvent(mandateId = 42L, listingId = 7L, tenantId = 1L))
+    }
+
+    @Test
+    fun `attaching keeps the search's own origin`() {
+        givenCustomer()
+        doReturn(OriginListing(7L, 70L, true, criteria)).whenever(originListingResolver).resolve(7L)
+        givenExistingSearch(MandateEntity(id = 42L, customerId = 10L, cityId = 2370201L, originListingId = 5L))
+
+        val mandate = service.create(visitor)
+
+        assertEquals(42L, mandate.id)
+        assertEquals(5L, mandate.originListingId)
         verify(dao, never()).save(any())
         verify(eventPublisher).publishEvent(ExistingSearchInterestEvent(mandateId = 42L, listingId = 7L, tenantId = 1L))
     }

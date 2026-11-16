@@ -35,6 +35,19 @@ INSERT INTO T_MANDATE(
     (400, 1, 101, 30, 'RESIDENTIAL', 'APPROVED', 'LISTING', 'RENTAL', 2370201, 175000, 'MONTHLY', 'XAF'),
     (401, 1, 101, 30, 'RESIDENTIAL', 'CLOSED', 'LISTING', 'RENTAL', 2370201, 175000, 'MONTHLY', 'XAF');
 
+-- A customer who already has an ASSIGNED search in Bastos (listing 500 attaches to it)
+INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name) VALUES
+    (301, 1, 'existing.search@gmail.com', 'Awa', 'Ndiaye');
+
+INSERT INTO T_CUSTOMER(id, tenant_id, party_id) VALUES
+    (102, 1, 301);
+
+INSERT INTO T_MANDATE(
+    id, tenant_id, customer_id, agent_id, property_category, status, mandate_type, listing_type, city_id,
+    price, price_periodicity_type, currency_code
+) VALUES
+    (402, 1, 102, 30, 'RESIDENTIAL', 'ASSIGNED', 'SEARCH', 'RENTAL', 2370201, 175000, 'MONTHLY', 'XAF');
+
 -- 500: published apartment in Bastos   501: the same, sold
 INSERT INTO T_LISTING(
     id, tenant_id, version, mandate_id, agent_id, property_category, listing_type, status, city_id, neighborhood_id,

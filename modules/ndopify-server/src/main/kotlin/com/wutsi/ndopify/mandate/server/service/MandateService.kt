@@ -177,14 +177,22 @@ class MandateService(
                 listingType = criteria.listingType,
                 statuses = listOf(MandateStatus.CLOSED, MandateStatus.CANCELLED),
             )?.let { existing ->
+                // The listing the customer asked for is remembered as the search's origin: a search without an agent
+                // yet can't have a match, and an approved one proposes it at once (MatchInterestService, and
+                // MatchInterestService.proposeOrigin on its approval)
+                val attached = if (existing.originListingId == null) {
+                    dao.save(existing.copy(originListingId = origin.id, modifiedAt = now))
+                } else {
+                    existing
+                }
                 eventPublisher.publishEvent(
                     ExistingSearchInterestEvent(
-                        mandateId = existing.id!!,
+                        mandateId = attached.id!!,
                         listingId = origin.id,
                         tenantId = TenantContext.get()!!,
                     ),
                 )
-                return existing
+                return attached
             }
             // A visitor can't flood an agent with offers: their page creates at most 3 new searches per day
             val recent = dao.countByCustomerIdAndMandateTypeAndCreatedAtAfter(

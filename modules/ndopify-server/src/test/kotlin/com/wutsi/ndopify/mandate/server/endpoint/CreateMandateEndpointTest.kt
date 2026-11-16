@@ -30,7 +30,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
-
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/CreateMandateEndpoint.sql"])
 class CreateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     override val roles = arrayOf(RoleCode.ADMIN)
@@ -317,7 +316,7 @@ class CreateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
-    fun `an existing search of the same city and type gets the listing as a match`() {
+    fun `a second request for the same search creates no second mandate`() {
         val first = rest.postForEntity("/v1/mandates", visitor, CreateMandateResponse::class.java)
         val second = rest.postForEntity("/v1/mandates", visitor, CreateMandateResponse::class.java)
         awaitAsyncTasks()
@@ -327,12 +326,44 @@ class CreateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(1, countSearches(visitor.email))
     }
 
+    @Test
+    fun `an existing search of the same city and type gets the listing as a match`() {
+        val response = rest.postForEntity(
+            "/v1/mandates",
+            visitor.copy(email = "existing.search@gmail.com"),
+            CreateMandateResponse::class.java,
+        )
+        awaitAsyncTasks()
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(402L, response.body!!.mandateId) // the search it already has
+        assertEquals(1, countSearches("existing.search@gmail.com"))
+        assertEquals(1, countMatches(402L, 500L))
+
+        // Its agent is told, so it proposes the visit from its mandate
+        assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received")
+        val message = smtp.receivedMessages.single()
+        assertEquals("Listing Agent <listing.agent@gmail.com>", message.allRecipients.single().toString())
+        assertTrue(message.content.toString().contains("Awa Ndiaye"))
+    }
+
     private fun countSearches(email: String): Int = ds.connection.use { conn ->
         conn.prepareStatement(
             "SELECT COUNT(*) FROM T_MANDATE m JOIN T_CUSTOMER c ON c.id = m.customer_id " +
                 "JOIN T_PARTY p ON p.id = c.party_id WHERE p.email = ? AND m.mandate_type = 'SEARCH'",
         ).use { stmt ->
             stmt.setString(1, email)
+            stmt.executeQuery().use { rs ->
+                rs.next()
+                rs.getInt(1)
+            }
+        }
+    }
+
+    private fun countMatches(mandateId: Long, listingId: Long): Int = ds.connection.use { conn ->
+        conn.prepareStatement("SELECT COUNT(*) FROM T_MATCH WHERE mandate_id = ? AND listing_id = ?").use { stmt ->
+            stmt.setLong(1, mandateId)
+            stmt.setLong(2, listingId)
             stmt.executeQuery().use { rs ->
                 rs.next()
                 rs.getInt(1)
