@@ -13,10 +13,13 @@ import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.match.dto.MatchRejectionReason
 import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.visit.dto.CancelVisitRequest
 import com.wutsi.ndopify.visit.dto.Visit
+import com.wutsi.ndopify.visit.dto.VisitFeedbackRequest
+import com.wutsi.ndopify.visit.dto.VisitInterest
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.web.client.ndopify.NdAgentClient
@@ -344,5 +347,124 @@ class VisitControllerTest {
         val result = perform(post("/visits/9/cancel"))
         assertEquals(VisitController.VIEW_LINK, result.modelAndView?.viewName)
         verify(visitClient, never()).cancel(any(), any())
+    }
+
+    @Test
+    fun `feedback - interested`() {
+        MatchFixtures.signIn()
+
+        val result = perform(post("/visits/9/feedback").param("interest", "INTERESTED"))
+
+        verify(visitClient).feedback(9, VisitFeedbackRequest(interest = VisitInterest.INTERESTED))
+        assertEquals("/visits/9", result.response.getHeader(HttpHeaders.LOCATION))
+    }
+
+    @Test
+    fun `feedback - not interested, with a reason and a trimmed comment`() {
+        MatchFixtures.signIn()
+
+        perform(
+            post("/visits/9/feedback")
+                .param("interest", "NOT_INTERESTED")
+                .param("reasonCode", "PRICE")
+                .param("comment", "  Trop cher  "),
+        )
+
+        verify(visitClient).feedback(
+            9,
+            VisitFeedbackRequest(
+                interest = VisitInterest.NOT_INTERESTED,
+                reasonCode = MatchRejectionReason.PRICE,
+                comment = "Trop cher",
+            ),
+        )
+    }
+
+    @Test
+    fun `feedback - no reason is OTHER`() {
+        MatchFixtures.signIn()
+
+        perform(post("/visits/9/feedback").param("interest", "NOT_INTERESTED").param("comment", "  "))
+
+        verify(visitClient).feedback(
+            9,
+            VisitFeedbackRequest(
+                interest = VisitInterest.NOT_INTERESTED,
+                reasonCode = MatchRejectionReason.OTHER,
+                comment = null,
+            ),
+        )
+    }
+
+    @Test
+    fun `feedback - a reason is dropped when interested`() {
+        MatchFixtures.signIn()
+
+        perform(post("/visits/9/feedback").param("interest", "INTERESTED").param("reasonCode", "PRICE"))
+
+        verify(visitClient).feedback(9, VisitFeedbackRequest(interest = VisitInterest.INTERESTED))
+    }
+
+    @Test
+    fun `feedback - a long comment is cut`() {
+        MatchFixtures.signIn()
+
+        perform(post("/visits/9/feedback").param("interest", "INTERESTED").param("comment", "x".repeat(1001)))
+
+        verify(visitClient).feedback(
+            9,
+            VisitFeedbackRequest(interest = VisitInterest.INTERESTED, comment = "x".repeat(1000)),
+        )
+    }
+
+    @Test
+    fun `feedback - no interest is not forwarded`() {
+        MatchFixtures.signIn()
+
+        val result = perform(post("/visits/9/feedback"))
+        val invalid = perform(post("/visits/9/feedback").param("interest", "MAYBE"))
+
+        assertEquals("/visits/9?feedback=invalid", result.response.getHeader(HttpHeaders.LOCATION))
+        assertEquals("/visits/9?feedback=invalid", invalid.response.getHeader(HttpHeaders.LOCATION))
+        verify(visitClient, never()).feedback(any(), any())
+    }
+
+    @Test
+    fun `feedback - conflict returns to the page`() {
+        MatchFixtures.signIn()
+        doThrow(failure(HttpStatus.CONFLICT)).whenever(visitClient).feedback(any(), any())
+
+        val result = perform(post("/visits/9/feedback").param("interest", "INTERESTED"))
+
+        assertEquals("/visits/9", result.response.getHeader(HttpHeaders.LOCATION))
+    }
+
+    @Test
+    fun `feedback - server unauthorized`() {
+        MatchFixtures.signIn()
+        doThrow(failure(HttpStatus.UNAUTHORIZED)).whenever(visitClient).feedback(any(), any())
+
+        val result = perform(post("/visits/9/feedback").param("interest", "INTERESTED"))
+
+        verify(accessTokenService).remove()
+        assertEquals("expired", result.modelAndView?.model?.get("reason"))
+    }
+
+    @Test
+    fun `feedback - another customer`() {
+        MatchFixtures.signIn()
+        doThrow(failure(HttpStatus.FORBIDDEN)).whenever(visitClient).feedback(any(), any())
+
+        val result = perform(post("/visits/9/feedback").param("interest", "INTERESTED"))
+
+        assertEquals("not-yours", result.modelAndView?.model?.get("reason"))
+    }
+
+    @Test
+    fun `feedback - signed out`() {
+        val result = perform(post("/visits/9/feedback").param("interest", "INTERESTED"))
+
+        assertEquals(VisitController.VIEW_LINK, result.modelAndView?.viewName)
+        verify(visitClient, never()).feedback(any(), any())
     }
 }
