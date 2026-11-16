@@ -34,6 +34,7 @@ import com.wutsi.ndopify.mandate.server.dao.AssignmentRepository
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.mandate.server.domain.AssignmentEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.mandate.server.event.ExistingSearchInterestEvent
 import com.wutsi.ndopify.mandate.server.event.MandateApprovedEvent
 import com.wutsi.ndopify.mandate.server.event.MandateClosedEvent
 import com.wutsi.ndopify.mandate.server.event.MandateCreatedEvent
@@ -73,9 +74,17 @@ class MandateService(
     private val tx: TransactionTemplate,
     private val access: MandateAccessService,
     private val approvedNotifier: MandateApprovedNotifier,
+    private val originListingResolver: OriginListingResolver,
 
     @param:Value("\${ndopify.mandate.contract.duration-months}") private val contractDurationMonths: Int,
 ) {
+    companion object {
+        // New SEARCH mandates a visitor's page may create for one customer in 24 h (attaching to an existing search
+        // isn't counted: it creates nothing)
+        const val MAX_NEW_SEARCHES_PER_DAY = 3L
+        private const val DAY_MILLIS = 86_400_000L
+    }
+
     fun search(request: SearchMandateRequest): List<MandateEntity> {
         val spec = Specification<MandateEntity> { root, query, cb ->
             query.distinct(true)
@@ -142,6 +151,13 @@ class MandateService(
     @Transactional
     fun create(request: CreateMandateRequest): MandateEntity {
         validateRentalTerms(request.securityDeposit, request.advanceRent)
+        // A mandate seeded from a listing takes its criteria and budget from the listing, never from the request: the
+        // public page can't be turned into an arbitrary search
+        val origin = request.originListingId?.let { id ->
+            originListingResolver.resolve(id)
+                ?: throw NotFoundException(error = Error(code = ErrorCode.LISTING_NOT_FOUND))
+        }
+        val criteria = origin?.criteria ?: request
         val customer = customerService.findOrCreate(
             CreateCustomerRequest(
                 firstName = request.firstName,
@@ -152,37 +168,74 @@ class MandateService(
         )
 
         val now = Date(clock.millis())
+        if (origin != null) {
+            // One search of a city and listing type per customer: the listing attaches to it instead of duplicating it
+            dao.findFirstByCustomerIdAndMandateTypeAndCityIdAndListingTypeAndStatusNotInOrderByIdDesc(
+                customerId = customer.id!!,
+                mandateType = MandateType.SEARCH,
+                cityId = criteria.cityId,
+                listingType = criteria.listingType,
+                statuses = listOf(MandateStatus.CLOSED, MandateStatus.CANCELLED),
+            )?.let { existing ->
+                // The listing the customer asked for is remembered as the search's origin: a search without an agent
+                // yet can't have a match, and an approved one proposes it at once (MatchInterestService, and
+                // MatchInterestService.proposeOrigin on its approval)
+                val attached = if (existing.originListingId == null) {
+                    dao.save(existing.copy(originListingId = origin.id, modifiedAt = now))
+                } else {
+                    existing
+                }
+                eventPublisher.publishEvent(
+                    ExistingSearchInterestEvent(
+                        mandateId = attached.id!!,
+                        listingId = origin.id,
+                        tenantId = TenantContext.get()!!,
+                    ),
+                )
+                return attached
+            }
+            // A visitor can't flood an agent with offers: their page creates at most 3 new searches per day
+            val recent = dao.countByCustomerIdAndMandateTypeAndCreatedAtAfter(
+                customerId = customer.id!!,
+                mandateType = MandateType.SEARCH,
+                after = Date(now.time - DAY_MILLIS),
+            )
+            if (recent >= MAX_NEW_SEARCHES_PER_DAY) {
+                throw ConflictException(error = Error(code = ErrorCode.MANDATE_RATE_LIMITED))
+            }
+        }
         val mandate = dao.save(
             MandateEntity(
                 customerId = customer.id ?: -1,
                 status = MandateStatus.PENDING_ASSIGNMENT,
-                propertyCategory = request.propertyCategory,
-                mandateType = request.mandateType,
-                listingType = request.listingType,
-                cityId = request.cityId,
-                neighborhoodIds = request.neighbourhoodIds,
-                propertyType = request.propertyType,
-                furnitureType = request.furnitureType,
-                rooms = request.rooms,
-                parkings = request.parkings,
-                area = request.area,
-                waterMeter = request.waterMeter,
-                dedicatedWaterMeter = request.dedicatedWaterMeter,
-                waterTank = request.waterTank,
-                waterWell = request.waterWell,
-                electricityMeter = request.electricityMeter,
-                dedicatedElectricityMeter = request.dedicatedElectricityMeter,
-                generatorSet = request.generatorSet,
-                solarPanel = request.solarPanel,
-                roadPaved = request.roadPaved,
-                trackAccessibleByCar = request.trackAccessibleByCar,
-                trackInaccessibleByCar = request.trackInaccessibleByCar,
-                securedFenced = request.securedFenced,
-                securityGuard = request.securityGuard,
-                videoSurveillance = request.videoSurveillance,
-                price = request.price.amount,
-                pricePeriodicityType = request.price.periodicity,
-                currencyCode = request.price.currency,
+                originListingId = origin?.id?.takeIf { origin.published },
+                propertyCategory = criteria.propertyCategory,
+                mandateType = criteria.mandateType,
+                listingType = criteria.listingType,
+                cityId = criteria.cityId,
+                neighborhoodIds = criteria.neighbourhoodIds,
+                propertyType = criteria.propertyType,
+                furnitureType = criteria.furnitureType,
+                rooms = criteria.rooms,
+                parkings = criteria.parkings,
+                area = criteria.area,
+                waterMeter = criteria.waterMeter,
+                dedicatedWaterMeter = criteria.dedicatedWaterMeter,
+                waterTank = criteria.waterTank,
+                waterWell = criteria.waterWell,
+                electricityMeter = criteria.electricityMeter,
+                dedicatedElectricityMeter = criteria.dedicatedElectricityMeter,
+                generatorSet = criteria.generatorSet,
+                solarPanel = criteria.solarPanel,
+                roadPaved = criteria.roadPaved,
+                trackAccessibleByCar = criteria.trackAccessibleByCar,
+                trackInaccessibleByCar = criteria.trackInaccessibleByCar,
+                securedFenced = criteria.securedFenced,
+                securityGuard = criteria.securityGuard,
+                videoSurveillance = criteria.videoSurveillance,
+                price = criteria.price.amount,
+                pricePeriodicityType = criteria.price.periodicity,
+                currencyCode = criteria.price.currency,
                 securityDeposit = request.securityDeposit,
                 advanceRent = request.advanceRent,
                 leaseTerm = request.leaseTerm,

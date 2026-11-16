@@ -29,7 +29,7 @@ import javax.sql.DataSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
-
+import kotlin.test.assertTrue
 @Sql(value = ["/db/test/clean.sql", "/db/test/mandate/CreateMandateEndpoint.sql"])
 class CreateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     override val roles = arrayOf(RoleCode.ADMIN)
@@ -245,6 +245,130 @@ class CreateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
             ErrorResponse::class.java,
         )
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+    }
+
+    // What the public listing page posts: the contact, the moving period and the origin listing, no criterion
+    private val visitor = CreateMandateRequest(
+        propertyCategory = PropertyCategory.COMMERCIAL, // tampered
+        mandateType = MandateType.SEARCH,
+        listingType = ListingType.SALE, // tampered
+        cityId = 2220957L, // tampered
+        neighbourhoodIds = listOf(222L), // tampered
+        rooms = "9", // tampered
+        price = Money(amount = 1, currency = "EUR", periodicity = PeriodicityType.YEARLY), // tampered
+        movingPeriod = MovingPeriod.WITHIN_3_MONTHS,
+        firstName = "Awa",
+        lastName = "Ndiaye",
+        email = "awa.ndiaye@gmail.com",
+        whatsappNumber = "+237650000002",
+        originListingId = 500L,
+    )
+
+    @Test
+    fun `a mandate created from a listing takes the listing's criteria`() {
+        val response = rest.postForEntity("/v1/mandates", visitor, CreateMandateResponse::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+
+        val mandate = dao.findById(response.body!!.mandateId).get()
+        assertEquals(PropertyCategory.RESIDENTIAL, mandate.propertyCategory)
+        assertEquals(MandateType.SEARCH, mandate.mandateType)
+        assertEquals(ListingType.RENTAL, mandate.listingType)
+        assertEquals(2370201L, mandate.cityId)
+        assertNeighborhoods(mandate.id!!, listOf(111L))
+        assertEquals("2", mandate.rooms)
+        assertEquals("1", mandate.parkings)
+        assertEquals(75, mandate.area)
+        assertTrue(mandate.waterTank)
+        assertEquals(175000L, mandate.price)
+        assertEquals("XAF", mandate.currencyCode)
+        assertEquals(PeriodicityType.MONTHLY, mandate.pricePeriodicityType)
+        assertEquals(MovingPeriod.WITHIN_3_MONTHS, mandate.movingPeriod) // the visitor's
+        assertEquals(500L, mandate.originListingId)
+    }
+
+    @Test
+    fun `a sold listing seeds the criteria without origin`() {
+        val response = rest.postForEntity(
+            "/v1/mandates",
+            visitor.copy(originListingId = 501L),
+            CreateMandateResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+
+        val mandate = dao.findById(response.body!!.mandateId).get()
+        assertNull(mandate.originListingId)
+        assertEquals(2370201L, mandate.cityId)
+        assertEquals(175000L, mandate.price)
+    }
+
+    @Test
+    fun `an unknown listing is 404`() {
+        val response = rest.postForEntity(
+            "/v1/mandates",
+            visitor.copy(originListingId = 999L),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
+        assertEquals(ErrorCode.LISTING_NOT_FOUND, response.body?.error?.code)
+    }
+
+    @Test
+    fun `a second request for the same search creates no second mandate`() {
+        val first = rest.postForEntity("/v1/mandates", visitor, CreateMandateResponse::class.java)
+        val second = rest.postForEntity("/v1/mandates", visitor, CreateMandateResponse::class.java)
+        awaitAsyncTasks()
+
+        assertEquals(HttpStatus.OK, second.statusCode)
+        assertEquals(first.body!!.mandateId, second.body!!.mandateId) // the same search, not a duplicate
+        assertEquals(1, countSearches(visitor.email))
+    }
+
+    @Test
+    fun `an existing search of the same city and type gets the listing as a match`() {
+        val response = rest.postForEntity(
+            "/v1/mandates",
+            visitor.copy(email = "existing.search@gmail.com"),
+            CreateMandateResponse::class.java,
+        )
+        awaitAsyncTasks()
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(402L, response.body!!.mandateId) // the search it already has
+        assertEquals(1, countSearches("existing.search@gmail.com"))
+        assertEquals(1, countMatches(402L, 500L))
+
+        // Its agent is told, so it proposes the visit from its mandate
+        assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received")
+        val message = smtp.receivedMessages.single()
+        assertEquals("Listing Agent <listing.agent@gmail.com>", message.allRecipients.single().toString())
+        assertTrue(message.content.toString().contains("Awa Ndiaye"))
+    }
+
+    private fun countSearches(email: String): Int = ds.connection.use { conn ->
+        conn.prepareStatement(
+            "SELECT COUNT(*) FROM T_MANDATE m JOIN T_CUSTOMER c ON c.id = m.customer_id " +
+                "JOIN T_PARTY p ON p.id = c.party_id WHERE p.email = ? AND m.mandate_type = 'SEARCH'",
+        ).use { stmt ->
+            stmt.setString(1, email)
+            stmt.executeQuery().use { rs ->
+                rs.next()
+                rs.getInt(1)
+            }
+        }
+    }
+
+    private fun countMatches(mandateId: Long, listingId: Long): Int = ds.connection.use { conn ->
+        conn.prepareStatement("SELECT COUNT(*) FROM T_MATCH WHERE mandate_id = ? AND listing_id = ?").use { stmt ->
+            stmt.setLong(1, mandateId)
+            stmt.setLong(2, listingId)
+            stmt.executeQuery().use { rs ->
+                rs.next()
+                rs.getInt(1)
+            }
+        }
     }
 
     private fun assertNeighborhoods(mandateId: Long, expectedNeighborhoodIds: List<Long>) {

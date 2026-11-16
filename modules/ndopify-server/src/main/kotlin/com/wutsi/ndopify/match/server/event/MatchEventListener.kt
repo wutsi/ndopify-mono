@@ -2,6 +2,7 @@ package com.wutsi.ndopify.match.server.event
 
 import com.wutsi.ndopify.listing.server.event.ListingPublishedEvent
 import com.wutsi.ndopify.mandate.server.event.MandateApprovedEvent
+import com.wutsi.ndopify.match.server.service.MatchInterestService
 import com.wutsi.ndopify.match.server.service.MatchProposalService
 import com.wutsi.ndopify.match.server.service.MatchService
 import com.wutsi.ndopify.platform.logger.DefaultKVLogger
@@ -26,6 +27,7 @@ import org.springframework.transaction.event.TransactionalEventListener
 class MatchEventListener(
     private val service: MatchService,
     private val proposalService: MatchProposalService,
+    private val interestService: MatchInterestService,
 ) {
     @Async
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
@@ -40,6 +42,9 @@ class MatchEventListener(
 
             val count = service.matchMandate(event.mandateId)
             logger.add("match_count", count)
+            // A search seeded from a listing: its listing is proposed at once, the customer asked for it
+            val originMatchId = interestService.proposeOrigin(event.mandateId)
+            logger.add("origin_match_id", originMatchId)
             logger.add("success", true)
         } catch (ex: Exception) {
             logger.add("success", false)

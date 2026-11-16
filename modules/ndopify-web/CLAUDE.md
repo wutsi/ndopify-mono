@@ -24,10 +24,16 @@ Package `com.wutsi.ndopify.web`:
   `ListingPages` builds the `ListingPage` view (every text formatted, never `agentRemarks`); its body (head, gallery,
   content sections) is `templates/fragments/listing-body.html`, shared with `match.html`. A SOLD or RENTED listing keeps
   its public page, marked "Vendu"/"Loué": its price card and bottom bar show its last published listing price, never a
-  closing price, and its conditions are left out. The "Demander une visite"
-  and "Poser une question" buttons are left out for now (the bottom bar on mobile only shows the price); their popup
-  and drawer are still in the page, the prototype's: `listing.js` fakes their answers, no handler posts them yet.
-  ndopify-server supports visits (request, schedule, check-in/out, feedback), but this page doesn't post one yet.
+  closing price, its conditions are left out, and it has no call to action.
+  "Visiter ce logement" (price card, and bottom bar below 1024px) opens the `#visit` popup: the `ListingInterestForm`
+  posts to `POST /listings/{id}/interest` the visitor's contact, its moving period and the `website` honeypot
+  (`ListingInterestRules` validates them in French), and `NdMandateClient.create` creates a SEARCH mandate seeded from
+  the listing (`originListingId`: the server reads every criterion and the budget from it). Success, a filled honeypot
+  and a 409 `MANDATE_RATE_LIMITED` all redirect to the same server-rendered confirmation
+  (`{url}?interest=done#visit`, the `done` state: an agent within 24 h, the mandate to sign, then the slot); an invalid
+  form or a 400 re-renders the page with the popup open (`is-open`), the French messages and the typed values. No slot
+  picker: a visit needs an agent and a signed mandate. The "Poser une question" drawer is still the prototype's (no
+  trigger, canned answers); ndopify-server supports the visits themselves from the match page, not here.
 - `ui/match/` — `MatchController`, the link of the proposition e-mail (`/match/{id}?token=`): the token goes to the
   cookie and is stripped from the address (302); signed out or a 401 from ndopify-server (cookie cleared) → `match-link.html`
   with `reason = expired`, a 403 → `not-yours`, a 404 → the app's 404 (an agent that's gone → "votre agent"), a `token` that isn't JWT-shaped → `expired`, never set as a cookie — the same for the page and its three answers.
@@ -75,7 +81,8 @@ Package `com.wutsi.ndopify.web`:
   offered slots (the next 7 days, 08:00–20:00 every 30 min), the tenant-local instant and the slot label, shared by the
   match popup and the visit page.
 - `config/` — `SecurityConfiguration` permits only `/`, `/agent`, `/owner`, GET of the listing paths
-  (`/*/listing/*`, `/*/*/listing/*/*`…), `GET /match/*`, `POST /match/*/accept|reject|visit`, `GET /visits/*`,
+  (`/*/listing/*`, `/*/*/listing/*/*`…), `POST /listings/*/interest`, `GET /match/*`,
+  `POST /match/*/accept|reject|visit`, `GET /visits/*`,
   `POST /visits/*/cancel`, `/assets/**` and `/error` (everything else is denied: a new page must
   be added there), `RestConfiguration`, `ClockConfiguration`, and `WebCoreConfiguration` (`TenantContext` on
   `TenantPortal.PUBLIC_PORTAL`, `@Import(NdTenantClient)`).
@@ -86,8 +93,8 @@ request and open-visit rules, and `proposal.js`, which only moves the focus into
 "Demander une visite" submit (`aria-disabled`) until a slot is chosen (the form still posts): `listing.js` opens and
 closes them and shows the photos,
 `proposition.js`'s faked answers are not ported; the visit page's `visit.css` / `visit.js`, which only moves the focus
-into `#cancel` — `listing.js` opens and closes it. `listing.js`'s lead form is guarded on the prototype's markers
-(`data-interest-form`, `data-interest-done`, `data-phone-name`): the match page reuses `#visit` for its own request
+into `#cancel` — `listing.js` opens and closes it. `listing.js`'s interest form is guarded on the prototype's markers
+(`data-listing-interest-form`, `data-listing-interest-done`, `data-phone-name`): the match page reuses `#visit` for its own request
 popup, which is not the listing's lead popup and is left alone. Served files have English names; scripts only
 enhance). `src/main/html/` is the
 prototype (`index.html`, `louer.html`, `bailleur.html`, `agent.html`, `rechercher.html`, `joindre.html`, `proposition.html` (the match proposal), `annonce.html` — a listing's public page, with a photo viewer, a "Demander une visite" popup (day + time) and a "Poser une question" AI-assistant chat drawer — and `visite.html` for the visit flow + assets),

@@ -14,6 +14,7 @@ class MandateMapper {
             customerId = entity.customerId,
             agentId = entity.agentId,
             contractId = entity.contractId,
+            originListingId = entity.originListingId,
             propertyCategory = entity.propertyCategory,
             status = entity.status,
             mandateType = entity.mandateType,

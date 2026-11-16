@@ -1,4 +1,4 @@
-// Ndopify — listing page: the "Demander une visite" popup, the "Poser une question" drawer, the photo viewer and the
+// Ndopify — listing page: the "Visiter ce logement" form, the "Poser une question" drawer, the photo viewer and the
 // share button. Everything only enhances: without JavaScript the popup and the drawer open with :target and their
 // forms post, the photos are links.
 (function () {
@@ -18,7 +18,7 @@
   // ---------------------------------------------------------------- Popup and drawer
 
   // Any [data-modal-open] link opens the dialog its href names (#visit, #ask), [data-modal-close] closes it. One
-  // dialog at a time: opening one from the other ("Demander une visite" in the drawer) replaces it, and focus goes
+  // dialog at a time: opening one from the other ("Visiter ce logement" in the drawer) replaces it, and focus goes
   // back to what opened the first one.
   function initDialogs() {
     var current = null;
@@ -48,7 +48,7 @@
       dialog.setAttribute('aria-modal', 'true');
       document.body.classList.add('modal-open');
       var first = dialog.querySelector(
-        '[data-interest-form]:not([hidden]) input, [data-interest-done]:not([hidden]), [data-chat-form] textarea');
+        '[data-listing-interest-form]:not([hidden]) input, [data-listing-interest-done]:not([hidden]), [data-chat-form] textarea');
       if (first) first.focus();
     }
 
@@ -93,22 +93,25 @@
       }
     });
 
-    // Opened on load when the page comes back from the server with #visit or #ask, or from a shared link
-    var target = location.hash && document.getElementById(location.hash.slice(1));
+    // Opened on load when the page comes back from the server with #visit or #ask, or from a shared link; also adopts
+    // the popup the server renders open (`is-open`: the form posted and came back with its errors), so that its close
+    // button, its backdrop and Escape work, and the page behind it doesn't scroll
+    var target = (location.hash && document.getElementById(location.hash.slice(1))) ||
+      document.querySelector('.modal.is-open');
     if (target && target.classList.contains('modal')) open(target, null);
   }
 
-  // ---------------------------------------------------------------- Visit form
+  // ---------------------------------------------------------------- Interest form
 
-  // "Envoyer la demande" stays inactive until every [required] field is filled (presence, not format); the format is
-  // checked on submit, in the fields' order. The prototype then shows the confirmation instead of posting.
-  function initVisitForm(modal) {
-    var form = modal.querySelector('[data-interest-form]');
-    var done = modal.querySelector('[data-interest-done]');
+  // "Envoyer ma demande" stays inactive until every [required] field is filled (presence, not format): the formats are
+  // checked by the server, which answers the page again with the fields' messages. The form really posts: no
+  // preventDefault, no confirmation here. The match page reuses #visit for its own request popup, which has none of
+  // the marker below: leave it alone.
+  function initInterestForm(modal) {
+    var form = modal.querySelector('[data-listing-interest-form]');
     var phoneInput = form && form.querySelector('[data-phone-name]');
-    var submit = form && form.querySelector('[type="submit"]');
-    // The match page reuses #visit for its request popup, which has none of the lead form's markers: leave it alone.
-    if (!form || !done || !phoneInput) return;
+    if (!form || !phoneInput) return;
+    var submit = form.querySelector('[type="submit"]');
     var iti = null;
     var phoneBroken = false;
 
@@ -157,63 +160,6 @@
     form.addEventListener('change', refresh);
     phoneInput.addEventListener('countrychange', refresh);
     refresh();
-
-    form.addEventListener('submit', function (e) {
-      e.preventDefault();
-      if (submit.getAttribute('aria-disabled') === 'true') return;
-      var firstName = form.querySelector('#first-name');
-      var lastName = form.querySelector('#last-name');
-      var email = form.querySelector('#email');
-      var visitType = form.querySelector('[name="visitType"]');
-      var checkedType = form.querySelector('[name="visitType"]:checked');
-      var visitDate = form.querySelector('[name="visitDate"]');
-      var checkedDate = form.querySelector('[name="visitDate"]:checked');
-      var visitTime = form.querySelector('#visit-time');
-      var ok = [
-        showError(firstName, firstName.value.trim() ? '' : 'Indiquez votre prénom.'),
-        showError(lastName, lastName.value.trim() ? '' : 'Indiquez votre nom.'),
-        showError(email, /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())
-          ? '' : 'Cette adresse e-mail n\'est pas valide, vérifiez-la.'),
-        showError(phoneInput, phoneError()),
-        showError(visitType, checkedType ? '' : 'Choisissez une visite sur place ou en vidéo.'),
-        showError(visitDate, checkedDate ? '' : 'Choisissez le jour de la visite.'),
-        showError(visitTime, visitTime.value ? '' : 'Choisissez l\'heure de la visite.')
-      ].every(Boolean);
-      if (!ok) {
-        form.querySelector('[aria-invalid="true"]').focus();
-        return;
-      }
-      var phone = iti.getNumber(window.intlTelInput.utils.numberFormat.E164);
-      // The day card's parts (lun. / 2 / nov.) have no space between them
-      var day = Array.prototype.map.call(checkedDate.closest('label').children, function (n) {
-        return n.textContent.trim();
-      }).filter(Boolean).join(' ');
-      var time = visitTime.options[visitTime.selectedIndex].text;
-      form.hidden = true;
-      done.querySelector('[data-interest-done-text]').textContent = 'Merci ' + firstName.value.trim() + ' ! ' +
-        'Vous avez demandé une visite ' + (checkedType.value === 'VIDEO' ? 'en vidéo' : 'sur place') + ' le ' + day +
-        ' à ' + time + '. L\'agent vous confirme le créneau sur WhatsApp au ' + formatPhone(phone) +
-        (checkedType.value === 'VIDEO' ? ', et vous appelle en vidéo sur WhatsApp à l\'heure prévue.' : '.');
-      done.hidden = false;
-      done.focus();
-    });
-
-    function phoneError() {
-      if (!iti || !window.intlTelInput.utils) return 'Impossible de vérifier ce numéro pour le moment.';
-      if (iti.isValidNumberPrecise()) return '';
-      var codes = window.intlTelInput.utils.validationError;
-      switch (iti.getValidationError()) {
-        case codes.TOO_SHORT: return 'Ce numéro est trop court, il manque des chiffres.';
-        case codes.TOO_LONG: return 'Ce numéro est trop long, vérifiez-le.';
-        case codes.INVALID_COUNTRY_CODE: return 'L\'indicatif du pays n\'est pas valide.';
-        default: return 'Ce numéro n\'est pas un numéro mobile valide, vérifiez-le.';
-      }
-    }
-  }
-
-  function formatPhone(e164) {
-    var utils = window.intlTelInput && window.intlTelInput.utils;
-    return utils ? utils.formatNumber(e164, null, utils.numberFormat.INTERNATIONAL) : e164;
   }
 
   function showError(control, message) {
@@ -245,8 +191,8 @@
     },
     {
       keys: ['visite', 'visiter', 'voir', 'rendez'],
-      text: 'Dans « Demander une visite », choisissez une visite sur place ou en vidéo (un appel vidéo WhatsApp avec ' +
-        'l\'agent), puis un jour et une heure : l\'agent vous confirme le créneau sur WhatsApp. La visite se règle avec le Pass Visite par Mobile Money, jamais en espèces.',
+      text: 'Dans « Visiter ce logement », indiquez vos coordonnées et votre date d\'emménagement : un agent vous ' +
+        'contacte sous 24 h, puis vous signez votre mandat de recherche et vous choisissez le créneau de la visite.',
       visit: true
     },
     {
@@ -321,7 +267,7 @@
         var msg = add('bot', reply.text);
         if (reply.visit) {
           var link = el('a', 'btn btn-secondary chat__visit',
-            '<svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Demander une visite');
+            '<svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Visiter ce logement');
           link.href = '#visit';
           link.setAttribute('data-modal-open', '');
           msg.appendChild(link);
@@ -489,7 +435,7 @@
   document.addEventListener('DOMContentLoaded', function () {
     initDialogs();
     var visit = document.getElementById('visit');
-    if (visit) initVisitForm(visit);
+    if (visit) initInterestForm(visit);
     var ask = document.getElementById('ask');
     if (ask) initChat(ask);
     initLightbox();

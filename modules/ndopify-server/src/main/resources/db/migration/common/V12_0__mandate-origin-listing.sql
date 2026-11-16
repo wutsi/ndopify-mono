@@ -1,0 +1,6 @@
+ALTER TABLE T_MANDATE ADD COLUMN origin_listing_id BIGINT;
+
+CREATE INDEX I_MANDATE_origin_listing ON T_MANDATE (origin_listing_id);
+
+ALTER TABLE T_MANDATE
+    ADD CONSTRAINT FK_MANDATE_origin_listing FOREIGN KEY (origin_listing_id) REFERENCES T_LISTING (id);

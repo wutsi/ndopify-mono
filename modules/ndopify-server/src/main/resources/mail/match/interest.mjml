@@ -1,0 +1,64 @@
+<mjml>
+    <mj-head>
+        <mj-style inline="inline">
+            {{__css__}}
+        </mj-style>
+    </mj-head>
+    <mj-body css-class="body">
+        <mj-section css-class="main-content">
+            <mj-column>
+                <!-- Logo -->
+                <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
+
+                <!-- Divider with class for CSS injection -->
+                <mj-divider css-class="divider"/>
+
+                <!-- The listing's photo, if any -->
+                {{#image_url}}
+                <mj-image src="{{image_url}}" alt="{{listing_title}}" border-radius="8px" padding="10px 0"/>
+                {{/image_url}}
+
+                <!-- Body Text -->
+                <mj-text>
+                    Bonjour <strong>{{recipient_name}}</strong>,
+                </mj-text>
+                <mj-text>
+                    <strong>{{customer_name}}</strong> s'intéresse à un logement.
+                </mj-text>
+
+                <!-- In an mj-text: MJML drops raw HTML outside of it -->
+                <mj-text>
+                    <ul>
+                        <li>
+                            <b>Bien</b>&#160;: {{listing_title}}
+                        </li>
+                        <li>
+                            <b>Loyer</b>&#160;: {{price}}
+                        </li>
+                        <li>
+                            <b>Quartier</b>&#160;: {{place}}
+                        </li>
+                    </ul>
+                </mj-text>
+
+                <mj-text>
+                    Ce logement a été ajouté à son mandat de recherche. Proposez-lui la visite depuis son mandat.
+                </mj-text>
+
+                {{#mandate_url}}
+                <mj-button href="{{mandate_url}}" css-class="btn-primary" align="center">
+                    Voir le mandat
+                </mj-button>
+                {{/mandate_url}}
+
+                <!-- Sign-off -->
+                <mj-spacer/>
+                <mj-text>
+                    Cordialement,
+                    <br/>
+                    L'équipe {{tenant_name}}
+                </mj-text>
+            </mj-column>
+        </mj-section>
+    </mj-body>
+</mjml>

@@ -11,7 +11,6 @@ import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.dto.Tenant
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import java.time.LocalDate
-import java.time.LocalTime
 
 /**
  * Builds a listing's [ListingPage] (the prototype `annonce.html`) from ndopify-server's DTOs. Only the listing's
@@ -84,10 +83,6 @@ object ListingPages {
         ),
     )
 
-    private const val VISIT_DAYS = 8L
-    private val FIRST_VISIT_TIME = LocalTime.of(10, 0)
-    private val LAST_VISIT_TIME = LocalTime.of(21, 0)
-
     fun of(
         listing: Listing,
         images: List<ListingImage>,
@@ -158,18 +153,6 @@ object ListingPages {
             longitude = listing.longitude,
             city = city,
             countryCode = tenant.countryCode,
-            visitDays = (1..VISIT_DAYS).map { today.plusDays(it) }.map { day ->
-                VisitDay(
-                    value = day.toString(),
-                    dayName = formatter.date(day, "EEE"),
-                    day = day.dayOfMonth.toString(),
-                    month = formatter.date(day, "MMM"),
-                )
-            },
-            visitTimes = generateSequence(FIRST_VISIT_TIME) { it.plusMinutes(30) }
-                .takeWhile { !it.isAfter(LAST_VISIT_TIME) }
-                .map { time -> time.toString() to "%dh%02d".format(time.hour, time.minute) }
-                .toList(),
             closedNotice = closedNotice,
         )
     }

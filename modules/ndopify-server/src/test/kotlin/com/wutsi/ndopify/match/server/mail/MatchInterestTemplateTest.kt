@@ -1,0 +1,58 @@
+package com.wutsi.ndopify.match.server.mail
+
+import com.github.mustachejava.DefaultMustacheFactory
+import com.github.mustachejava.resolver.ClasspathResolver
+import com.wutsi.ndopify.platform.mail.MailBodyResolver
+import com.wutsi.ndopify.platform.mail.filter.MailFilterNull
+import dev.jcputney.mjml.MjmlRenderer
+import kotlin.test.Test
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+
+/** Renders the template, which [MatchInterestMailetTest] doesn't (its resolver is a mock). */
+class MatchInterestTemplateTest {
+    private val resolver = MailBodyResolver(
+        renderer = MjmlRenderer.create(),
+        mustache = DefaultMustacheFactory(ClasspathResolver()),
+        filters = listOf(MailFilterNull()),
+    )
+
+    private val context = mapOf(
+        "tenant_logo_url" to "https://cdn.ndopify.com/logo.png",
+        "tenant_name" to "Ndopify",
+        "recipient_name" to "Kim Possible",
+        "customer_name" to "Ray Sponsible",
+        "listing_title" to "Nice apartment",
+        "image_url" to "https://cdn.ndopify.com/7.jpg",
+        "price" to "175 000 FCFA / mois",
+        "place" to "Bonapriso, Douala",
+        "mandate_url" to "https://partner.ndopify.com/mandates/1",
+    )
+
+    @Test
+    fun `names the customer and the listing`() {
+        val html = resolver.resolve(MatchInterestMailet.TEMPLATE, context)
+
+        assertTrue(html.contains("Kim Possible"))
+        assertTrue(html.contains("Ray Sponsible"))
+        assertTrue(html.contains("Nice apartment"))
+        assertTrue(html.contains("175 000 FCFA / mois"))
+        assertTrue(html.contains("Bonapriso, Douala"))
+        assertTrue(html.contains("Ce logement a été ajouté à son mandat de recherche"))
+        // The listing may be another agent's (co-brokerage): the agent is never told it published it
+        assertTrue(html.contains("intéresse à un logement."))
+        assertFalse(html.contains("que vous avez publié"))
+        assertTrue(html.contains("src=\"https://cdn.ndopify.com/7.jpg\""))
+        assertTrue(html.contains("<a href=\"https://partner.ndopify.com/mandates/1\""))
+        assertTrue(html.contains("Voir le mandat"))
+    }
+
+    @Test
+    fun `no photo, no mandate page - neither`() {
+        val html = resolver.resolve(MatchInterestMailet.TEMPLATE, context - "image_url" - "mandate_url")
+
+        assertFalse(html.contains("cdn.ndopify.com/7.jpg"))
+        assertFalse(html.contains("Voir le mandat"))
+        assertFalse(html.contains("href=\"\""))
+    }
+}

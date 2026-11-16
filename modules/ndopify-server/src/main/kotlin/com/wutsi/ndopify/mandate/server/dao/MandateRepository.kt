@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.mandate.server.dao
 
+import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
@@ -12,6 +13,7 @@ import org.springframework.data.jpa.repository.Lock
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.CrudRepository
 import org.springframework.stereotype.Repository
+import java.util.Date
 
 /** Number of mandates of an agent. */
 interface AgentMandateCount {
@@ -29,6 +31,27 @@ interface MandateRepository : CrudRepository<MandateEntity, Long>, JpaSpecificat
 
     @Query("SELECT m.contractId FROM MandateEntity m WHERE m.id = :id")
     fun findContractIdById(id: Long): String?
+
+    // The customer's search still open in the same city and for the same listing type: a listing asked for from its
+    // public page attaches to it instead of creating a duplicate search. Newest first, should a customer have two.
+    fun findFirstByCustomerIdAndMandateTypeAndCityIdAndListingTypeAndStatusNotInOrderByIdDesc(
+        customerId: Long,
+        mandateType: MandateType,
+        cityId: Long,
+        listingType: ListingType,
+        statuses: Collection<MandateStatus>,
+    ): MandateEntity?
+
+    // The searches the customer created since [after] (the rate cap of the public listing page)
+    @Query(
+        "SELECT COUNT(m) FROM MandateEntity m WHERE m.customerId = :customerId " +
+            "AND m.mandateType = :mandateType AND m.createdAt > :after"
+    )
+    fun countByCustomerIdAndMandateTypeAndCreatedAtAfter(
+        customerId: Long,
+        mandateType: MandateType,
+        after: Date,
+    ): Long
 
     // With its neighbourhoods, for a caller outside a transaction (the lazy collection couldn't be read there)
     @EntityGraph(attributePaths = ["neighborhoodIds"])
