@@ -76,6 +76,9 @@ data class MatchEntity(
     val proposedAt: Date? = null,
     val answeredAt: Date? = null, // When the customer accepted or rejected it
 
+    // When the customer was reminded that its accepted match still has no visit (MatchVisitReminderService)
+    val visitRemindedAt: Date? = null,
+
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
 

@@ -335,6 +335,10 @@ ndopify:
             after-hours: 24                 # A match the agent hasn't touched for 24h is proposed to the customer
             batch-size: 100                 # Matches examined per run
             cron: "30 */15 * * * ?"         # Every 15 minutes, offset from the other 15-minute jobs
+        visit-reminder:
+            delay-days: 3                   # An ACCEPTED match with no visit is reminded after this delay
+            batch-size: 100                 # Matches reminded per run
+            cron: "0 0 9 * * ?"             # Every day at 09:00: reminds the customers who accepted a match but booked no visit
 
     mobile-money:
         mtn:
