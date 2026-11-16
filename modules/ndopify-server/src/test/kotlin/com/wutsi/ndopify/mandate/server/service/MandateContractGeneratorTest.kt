@@ -228,6 +228,7 @@ class MandateContractGeneratorTest {
             "<b>Disponible à partir du</b> : 01/11/2026",
             "Le matin",
             "6 mois, à compter de la date de sa",
+            "Aucun frais de visite.",
             "EXCLUSIVITÉ",
             "1 mois du loyer stipulé dans le bail",
             "VISITE D'ÉVALUATION ET PUBLICATION",
@@ -240,8 +241,35 @@ class MandateContractGeneratorTest {
             "Préavis",
             "Emménagement",
             "Commentaires",
-            "Frais de visites",
         ).forEach { text -> assertFalse(html.contains(text), "unexpected: $text") }
+    }
+
+    @Test
+    fun `search - states the visit fee and who receives it`() {
+        val html = generator.generate(mandate, contract.copy(visitFeeAmount = 5000, visitFeeCurrency = "XAF"))
+
+        listOf(
+            "Frais de visite",
+            "5 000 XAF par visite, à régler directement à l'Agent (Kim Possible) avant chaque visite.",
+            "Aucun paiement n'est effectué via Ndopify.",
+            "Aucun frais n'est dû pour une visite annulée par l'Agent.",
+        ).forEach { text -> assertTrue(html.contains(text), "missing: $text") }
+    }
+
+    @Test
+    fun `search - no visit fee`() {
+        val html = generator.generate(mandate, contract)
+
+        assertTrue(html.contains("Aucun frais de visite."))
+    }
+
+    @Test
+    fun `listing - the visitors pay the fee, not the owner`() {
+        val listing = mandate.copy(mandateType = MandateType.LISTING)
+        val html = generator.generate(listing, contract.copy(visitFeeAmount = 5000, visitFeeCurrency = "XAF"))
+
+        assertTrue(html.contains("à régler par les visiteurs directement à l'Agent"))
+        assertFalse(html.contains("à régler directement à l'Agent (Kim Possible) avant chaque visite"))
     }
 
     @Test
