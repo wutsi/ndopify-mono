@@ -2942,15 +2942,18 @@
             }
             // Sent: one line of provenance; a visit the client asked for fills its own block below, since that's
             // what the agent acts on. The card stays in place while the visit is open.
+            var statusLine = $("[data-match-status]", item);
             var answerLine = $("[data-match-answer]", item);
-            answerLine.hidden = match.status !== "PROPOSED" && match.status !== "EXPIRED";
+            var answerShown = match.status === "PROPOSED" || match.status === "EXPIRED";
+            answerLine.hidden = !answerShown;
             if (match.status === "EXPIRED") {
                 answerLine.textContent = "Envoyé le " + formatShortDate(match.sentAt) + ", sans réponse";
             }
             if (match.status === "PROPOSED") {
                 var sentText = "Envoyé le " + formatShortDate(match.sentAt);
+                // The server's line keeps only the latest step: "Intéressé le ..." (MatchRules.answer).
                 answerLine.textContent = answer === "ACCEPTED" && match.answeredAt
-                    ? sentText + " · intéressé le " + formatShortDate(match.answeredAt)
+                    ? "Intéressé le " + formatShortDate(match.answeredAt)
                     : sentText;
             }
             fillVisit(
@@ -3035,6 +3038,7 @@
             var resendActions = $("[data-match-resend-actions]", item);
             var resend = match.status === "PROPOSED" && !match.visit;
             resendActions.hidden = !resend;
+            statusLine.hidden = !answerShown && !resend;
             if (resend) {
                 $("[data-match-resend]", item).addEventListener("click", function () {
                     // PROTOTYPE: simulates POST /v1/matches/{id}/resend: a fresh link, the status is unchanged.
