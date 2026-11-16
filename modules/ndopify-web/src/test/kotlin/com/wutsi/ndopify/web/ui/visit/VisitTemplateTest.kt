@@ -10,6 +10,7 @@ import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.visit.dto.Visit
+import com.wutsi.ndopify.visit.dto.VisitInterest
 import com.wutsi.ndopify.visit.dto.VisitParty
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
@@ -108,7 +109,12 @@ class VisitTemplateTest {
         longitude = 9.6943,
     )
 
-    private fun of(visit: Visit, customer: Customer? = this.customer, feedback: String? = null) = VisitPages.of(
+    private fun of(
+        visit: Visit,
+        customer: Customer? = this.customer,
+        agent: Agent? = this.agent,
+        feedback: String? = null,
+    ) = VisitPages.of(
         visit,
         listing,
         images,
@@ -223,9 +229,74 @@ class VisitTemplateTest {
     }
 
     @Test
-    fun `no feedback form and no prototype links`() {
+    fun `completed without feedback shows the form`() {
         val doc = render(of(visit(VisitStatus.COMPLETED, VisitType.ON_SITE)))
-        assertNull(doc.selectFirst("[name=interest]"))
+        val completed = doc.selectFirst("[data-visit-state=COMPLETED]")!!
+
+        assertTrue(completed.selectFirst("h2")!!.text().startsWith("Le bien vous intéresse"))
+        assertEquals("post", completed.selectFirst("form.feedback")?.attr("method"))
+        assertEquals("/visits/9/feedback", completed.selectFirst("form.feedback")?.attr("action"))
+        assertEquals(2, completed.select("input[name=interest]").size)
+        assertTrue(completed.select("input[name=interest]").all { it.hasAttr("required") })
+        assertEquals(
+            listOf("PRICE", "LOCATION", "SIZE", "AMENITIES", "AVAILABILITY", "OTHER"),
+            completed.select("input[name=reasonCode]").map { it.attr("value") },
+        )
+        assertTrue(completed.select("input[name=reasonCode]").none { it.hasAttr("required") })
+        assertEquals("1000", completed.selectFirst("#feedback-comment")?.attr("maxlength"))
+        assertTrue(completed.text().contains("Votre visite sur place du samedi 7 novembre 2026 à 11:00 est terminée."))
+        assertTrue(completed.text().contains("Votre réponse aide Serge Ngono pour la suite."))
         assertTrue(doc.select("[href$=.html], [src$=.html]").isEmpty())
+    }
+
+    @Test
+    fun `completed interested shows the thanks and the agent whatsapp`() {
+        val doc = render(of(visit(VisitStatus.COMPLETED, VisitType.ON_SITE).copy(interest = VisitInterest.INTERESTED)))
+
+        assertNull(doc.selectFirst("form.feedback"))
+        assertEquals("Merci pour votre réponse", doc.selectFirst("[data-visit-state=COMPLETED] h2")?.text())
+        assertTrue(
+            doc.text().contains("Le logement vous intéresse : Serge Ngono vous recontacte pour la suite (dossier, bail)."),
+        )
+        assertEquals("https://wa.me/237677000111", doc.selectFirst(".feedback-thanks a.btn")?.attr("href"))
+        assertTrue(doc.selectFirst(".feedback-thanks a.btn")!!.text().contains("Écrire à Serge Ngono"))
+    }
+
+    @Test
+    fun `completed interested without a number has no whatsapp`() {
+        val doc = render(
+            of(
+                visit(VisitStatus.COMPLETED, VisitType.ON_SITE).copy(interest = VisitInterest.INTERESTED),
+                agent = agent.copy(whatsappNumber = null),
+            ),
+        )
+
+        assertNull(doc.selectFirst(".feedback-thanks a.btn"))
+    }
+
+    @Test
+    fun `completed not interested says the agent keeps searching`() {
+        val doc = render(of(visit(VisitStatus.COMPLETED, VisitType.ON_SITE).copy(interest = VisitInterest.NOT_INTERESTED)))
+
+        assertNull(doc.selectFirst("form.feedback"))
+        assertTrue(
+            doc.text().contains("C'est noté : Serge Ngono est prévenu et continue de chercher pour vous. Il vous enverra d'autres logements."),
+        )
+    }
+
+    @Test
+    fun `feedback invalid shows the error above the form`() {
+        val doc = render(of(visit(VisitStatus.COMPLETED, VisitType.ON_SITE), feedback = VisitPages.FEEDBACK_INVALID))
+
+        assertEquals("Répondez par oui ou par non.", doc.selectFirst(".field-error")?.text())
+        assertNotNull(doc.selectFirst("form.feedback"))
+    }
+
+    @Test
+    fun `other states have no feedback form`() {
+        listOf(VisitStatus.REQUESTED, VisitStatus.CONFIRMED, VisitStatus.CHECKED_IN, VisitStatus.CANCELLED, VisitStatus.EXPIRED, VisitStatus.NO_SHOW)
+            .forEach { status ->
+                assertNull(render(of(visit(status, VisitType.ON_SITE))).selectFirst("form.feedback"), status.name)
+            }
     }
 }
