@@ -28,6 +28,8 @@ import com.wutsi.ndopify.platform.logger.DefaultKVLogger
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.visit.dto.ScheduleVisitRequest
+import com.wutsi.ndopify.visit.dto.VisitFeedbackRequest
+import com.wutsi.ndopify.visit.dto.VisitInterest
 import com.wutsi.ndopify.visit.dto.VisitNoShowReason
 import com.wutsi.ndopify.visit.dto.VisitParty
 import com.wutsi.ndopify.visit.dto.VisitStatus
@@ -35,6 +37,7 @@ import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.visit.server.dao.VisitRepository
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
 import com.wutsi.ndopify.visit.server.event.VisitCancelledEvent
+import com.wutsi.ndopify.visit.server.event.VisitFeedbackSentEvent
 import com.wutsi.ndopify.visit.server.mail.VisitCancelledMailet
 import com.wutsi.ndopify.visit.server.mail.VisitCompletedMailet
 import com.wutsi.ndopify.visit.server.mail.VisitConfirmedMailet
@@ -67,6 +70,7 @@ class VisitServiceTest {
     private val listingService = mock<ListingService>()
     private val tenantService = mock<TenantService>()
     private val requestedNotifier = mock<VisitRequestedNotifier>()
+    private val feedbackNotifier = mock<VisitFeedbackNotifier>()
     private val reminderNotifier = mock<VisitReminderNotifier>()
     private val confirmedMailet = mock<VisitConfirmedMailet>()
     private val completedMailet = mock<VisitCompletedMailet>()
@@ -93,6 +97,7 @@ class VisitServiceTest {
         listingService,
         tenantService,
         requestedNotifier,
+        feedbackNotifier,
         confirmedMailet,
         completedMailet,
         noShowMailet,
@@ -193,6 +198,44 @@ class VisitServiceTest {
         service.sendRequestedNotification(999L)
 
         verifyNoInteractions(requestedNotifier)
+    }
+
+    @Test
+    fun `feedback publishes the notification event`() {
+        doReturn(visit.copy(status = VisitStatus.COMPLETED)).whenever(dao).findByIdForUpdate(1L)
+
+        service.feedback(1L, VisitFeedbackRequest(interest = VisitInterest.INTERESTED))
+
+        verify(eventPublisher).publishEvent(VisitFeedbackSentEvent(visitId = 1L, tenantId = 1L))
+    }
+
+    @Test
+    fun `feedback - the agent is notified`() {
+        doReturn(Optional.of(visit.copy(status = VisitStatus.COMPLETED, interest = VisitInterest.INTERESTED)))
+            .whenever(dao).findById(1L)
+
+        service.sendFeedbackNotification(1L)
+
+        verify(feedbackNotifier).send(any(), eq(customer), eq(agent20), eq(coBrokerageListing))
+    }
+
+    @Test
+    fun `feedback - nothing without an answer`() {
+        doReturn(Optional.of(visit.copy(status = VisitStatus.COMPLETED, interest = null))).whenever(dao).findById(1L)
+
+        service.sendFeedbackNotification(1L)
+
+        verifyNoInteractions(feedbackNotifier)
+    }
+
+    @Test
+    fun `feedback - nothing when not COMPLETED`() {
+        doReturn(Optional.of(visit.copy(status = VisitStatus.CONFIRMED, interest = VisitInterest.INTERESTED)))
+            .whenever(dao).findById(1L)
+
+        service.sendFeedbackNotification(1L)
+
+        verifyNoInteractions(feedbackNotifier)
     }
 
     @Test

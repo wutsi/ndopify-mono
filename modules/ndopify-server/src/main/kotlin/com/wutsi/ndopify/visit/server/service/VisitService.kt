@@ -39,6 +39,7 @@ import com.wutsi.ndopify.visit.server.event.VisitCancelledEvent
 import com.wutsi.ndopify.visit.server.event.VisitCompletedEvent
 import com.wutsi.ndopify.visit.server.event.VisitConfirmedEvent
 import com.wutsi.ndopify.visit.server.event.VisitExpiredEvent
+import com.wutsi.ndopify.visit.server.event.VisitFeedbackSentEvent
 import com.wutsi.ndopify.visit.server.event.VisitNoShowEvent
 import com.wutsi.ndopify.visit.server.event.VisitReminderEvent
 import com.wutsi.ndopify.visit.server.event.VisitRequestedEvent
@@ -76,6 +77,7 @@ class VisitService(
     private val listingService: ListingService,
     private val tenantService: TenantService,
     private val requestedNotifier: VisitRequestedNotifier,
+    private val feedbackNotifier: VisitFeedbackNotifier,
     private val confirmedMailet: VisitConfirmedMailet,
     private val completedMailet: VisitCompletedMailet,
     private val noShowMailet: VisitNoShowMailet,
@@ -374,7 +376,8 @@ class VisitService(
 
     /**
      * The customer's feedback on a COMPLETED visit, once: 409 VISIT_NOT_COMPLETED, then VISIT_FEEDBACK_ALREADY_SENT. A
-     * reason only when the property doesn't interest it (OTHER when none given).
+     * reason only when the property doesn't interest it (OTHER when none given). Notifies the visit's agent after the
+     * commit, once.
      */
     @Transactional
     fun feedback(id: Long, request: VisitFeedbackRequest): VisitEntity {
@@ -387,7 +390,7 @@ class VisitService(
         }
 
         val notInterested = request.interest == VisitInterest.NOT_INTERESTED
-        return dao.save(
+        val saved = dao.save(
             visit.copy(
                 interest = request.interest,
                 feedbackReasonCode = if (notInterested) {
@@ -398,6 +401,8 @@ class VisitService(
                 feedbackComment = request.comment?.trim()?.ifEmpty { null },
             ),
         )
+        eventPublisher.publishEvent(VisitFeedbackSentEvent(visitId = saved.id!!, tenantId = saved.tenantId!!))
+        return saved
     }
 
     /**
@@ -547,6 +552,24 @@ class VisitService(
         }
         logger.add("visit_id", visitId)
         requestedNotifier.send(
+            visit = visit,
+            customer = customerService.findById(visit.customerId),
+            agent = agentService.findById(visit.agentId),
+            listing = listingService.findById(visit.listingId),
+        )
+    }
+
+    /**
+     * Notifies the visit's agent of the customer's answer. Called by `VisitEventListener`; nothing without one.
+     */
+    @Transactional
+    fun sendFeedbackNotification(visitId: Long) {
+        val visit = dao.findById(visitId).orElse(null) ?: return
+        if (visit.status != VisitStatus.COMPLETED || visit.interest == null) {
+            return
+        }
+        logger.add("visit_id", visitId)
+        feedbackNotifier.send(
             visit = visit,
             customer = customerService.findById(visit.customerId),
             agent = agentService.findById(visit.agentId),

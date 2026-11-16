@@ -22,8 +22,8 @@
   address, only the city, neighbourhood and landmark. Dates and times come pre-formatted in `page`, never formatted
   here.
   Without JavaScript the cancel form posts and the #cancel popup opens with :target; listing.js opens and closes the
-  popup and visit.js moves the focus into it. Only the current state's block is rendered: no feedback form on
-  COMPLETED, no check-in UI. Never agentRemarks.
+  popup and visit.js moves the focus into it. Only the current state's block is rendered: the COMPLETED block shows the
+  feedback form, or its thanks once answered; no check-in UI. Never agentRemarks.
 */-->
 <body class="visit-page" data-page="visit">
 <a class="skip-link" href="#main">Aller au contenu principal</a>
@@ -215,9 +215,52 @@
         <!-- ============================================================ COMPLETED -->
         <section aria-labelledby="completed-title" class="visit-state" data-visit-state="COMPLETED"
                  th:if="${page.status.name() == 'COMPLETED'}">
-            <h2 id="completed-title">Votre visite est terminée</h2>
-            <p class="visit-ended" th:text="${page.scheduledSlot}">Sur place · samedi 7 novembre 2026 à 11h00</p>
-            <p>Merci, votre visite est terminée.</p>
+            <!--/* No answer yet: the feedback form (final, like a match answer) */-->
+            <th:block th:if="${page.feedbackInterest == null}">
+                <h2 id="completed-title">Le bien vous intéresse&nbsp;?</h2>
+                <p><span th:text="${page.feedbackIntro}">Votre visite sur place du samedi 7 novembre 2026 à 11:00 est terminée.</span>
+                    <span th:text="|Votre réponse aide ${page.agent?.name ?: 'votre agent'} pour la suite.|">Votre réponse aide Serge pour la suite.</span>
+                </p>
+                <p class="field-error" role="alert" th:if="${page.feedbackError}" th:text="${page.feedbackError}">Répondez par oui ou par non.</p>
+                <form class="feedback" method="post" th:action="@{/visits/{id}/feedback(id=${page.id})}">
+                    <fieldset class="field feedback__interest">
+                        <legend class="visually-hidden">Le bien vous intéresse&nbsp;?</legend>
+                        <div class="option-grid option-grid--2">
+                            <label><input name="interest" required type="radio" value="INTERESTED">Oui, il m'intéresse</label>
+                            <label><input name="interest" required type="radio" value="NOT_INTERESTED">Non</label>
+                        </div>
+                    </fieldset>
+                    <div class="feedback__no" th:insert="~{fragments/reject-reasons :: fieldset('reasonCode', false)}"></div>
+                    <div class="field">
+                        <label for="feedback-comment">Un commentaire <span class="field__optional">(facultatif)</span></label>
+                        <textarea id="feedback-comment" maxlength="1000" name="comment" rows="3"></textarea>
+                    </div>
+                    <button class="btn btn-primary visit-submit" type="submit">Envoyer ma réponse</button>
+                </form>
+            </th:block>
+
+            <!--/* Answered: the prototype's thanks, never the form again */-->
+            <th:block th:if="${page.feedbackInterest != null}">
+                <h2 id="completed-title">Merci pour votre réponse</h2>
+                <th:block th:if="${page.feedbackInterest.name() == 'INTERESTED'}">
+                    <p class="notice notice--success">
+                        <svg aria-hidden="true" class="icon"><use href="#i-check"/></svg>
+                        <span th:text="|Le logement vous intéresse : ${page.agent?.name ?: 'votre agent'} vous recontacte pour la suite (dossier, bail).|">Le logement vous intéresse : Serge vous recontacte pour la suite (dossier, bail).</span>
+                    </p>
+                    <!--/* Both the copy and the link: an agent without a number leaves no WhatsApp promise */-->
+                    <div class="feedback-thanks" th:if="${page.agent?.whatsappUrl}">
+                        <p>Vous pouvez aussi lui écrire dès maintenant.</p>
+                        <a class="btn btn-secondary" rel="noopener"
+                           target="_blank" th:href="${page.agent?.whatsappUrl}">
+                            <svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg><span
+                                th:text="|Écrire à ${page.agent?.name ?: 'votre agent'}|">Écrire à Serge</span><span
+                                class="visually-hidden"> sur WhatsApp</span>
+                        </a>
+                    </div>
+                </th:block>
+                <p th:if="${page.feedbackInterest.name() == 'NOT_INTERESTED'}"
+                   th:text="|C'est noté : ${page.agent?.name ?: 'votre agent'} est prévenu et continue de chercher pour vous. Il vous enverra d'autres logements.|">C'est noté : Serge est prévenu et continue de chercher pour vous. Il vous enverra d'autres logements.</p>
+            </th:block>
         </section>
 
         <!-- ============================================================ CANCELLED -->

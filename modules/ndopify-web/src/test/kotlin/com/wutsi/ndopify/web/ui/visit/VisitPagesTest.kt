@@ -7,6 +7,7 @@ import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.visit.dto.Visit
+import com.wutsi.ndopify.visit.dto.VisitInterest
 import com.wutsi.ndopify.visit.dto.VisitParty
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
@@ -52,7 +53,10 @@ class VisitPagesTest {
         agent: Agent? = this.agent,
         customer: Customer? = this.customer,
         cancel: String? = null,
-    ) = VisitPages.of(visit, listing, images, locations, agent, customer, TENANT, FORMATTER, LocalDate.of(2026, 10, 31), cancel)
+        feedback: String? = null,
+    ) = VisitPages.of(
+        visit, listing, images, locations, agent, customer, TENANT, FORMATTER, LocalDate.of(2026, 10, 31), cancel, feedback,
+    )
 
     @Test
     fun `requested`() {
@@ -125,5 +129,53 @@ class VisitPagesTest {
         val page = of(visit(VisitStatus.REQUESTED, VisitType.ON_SITE), listing = null, agent = null)
         assertNull(page.listing)
         assertNull(page.agent)
+    }
+
+    @Test
+    fun `completed intro`() {
+        assertEquals(
+            "Votre visite sur place du samedi 7 novembre 2026 à 11:00 est terminée.",
+            of(visit(VisitStatus.COMPLETED, VisitType.ON_SITE)).feedbackIntro,
+        )
+    }
+
+    @Test
+    fun `completed video intro`() {
+        assertEquals(
+            "Votre visite vidéo du samedi 7 novembre 2026 à 11:00 est terminée.",
+            of(visit(VisitStatus.COMPLETED, VisitType.VIDEO)).feedbackIntro,
+        )
+    }
+
+    @Test
+    fun `feedback interest is the answer`() {
+        val page = of(visit(VisitStatus.COMPLETED, VisitType.ON_SITE).copy(interest = VisitInterest.NOT_INTERESTED))
+
+        assertEquals(VisitInterest.NOT_INTERESTED, page.feedbackInterest)
+    }
+
+    @Test
+    fun `feedback invalid asks for an answer`() {
+        val page = of(visit(VisitStatus.COMPLETED, VisitType.ON_SITE), feedback = VisitPages.FEEDBACK_INVALID)
+
+        assertEquals("Répondez par oui ou par non.", page.feedbackError)
+    }
+
+    @Test
+    fun `feedback invalid is ignored once answered`() {
+        val page = of(
+            visit(VisitStatus.COMPLETED, VisitType.ON_SITE).copy(interest = VisitInterest.INTERESTED),
+            feedback = VisitPages.FEEDBACK_INVALID,
+        )
+
+        assertNull(page.feedbackError)
+    }
+
+    @Test
+    fun `no feedback error outside COMPLETED`() {
+        val page = of(visit(VisitStatus.CHECKED_IN, VisitType.ON_SITE), feedback = VisitPages.FEEDBACK_INVALID)
+
+        assertNull(page.feedbackError)
+        assertNull(page.feedbackIntro)
     }
 }

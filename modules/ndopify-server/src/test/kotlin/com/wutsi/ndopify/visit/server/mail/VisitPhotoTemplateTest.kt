@@ -27,6 +27,7 @@ class VisitPhotoTemplateTest {
         VisitExpiredMailet.TEMPLATE,
         VisitNoShowMailet.TEMPLATE,
         VisitCompletedMailet.TEMPLATE,
+        VisitFeedbackMailet.TEMPLATE,
     )
 
     private val context = mapOf(

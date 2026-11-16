@@ -42,6 +42,7 @@ class SecurityConfiguration(
                     // A visit (VisitController): the page, and the customer's cancellation
                     .requestMatchers(HttpMethod.GET, "/visits/*").permitAll()
                     .requestMatchers(HttpMethod.POST, "/visits/*/cancel").permitAll()
+                    .requestMatchers(HttpMethod.POST, "/visits/*/feedback").permitAll()
                     .requestMatchers("/assets/**").permitAll()
                     .requestMatchers("/error").permitAll()
                     .anyRequest().denyAll() // nothing else is served

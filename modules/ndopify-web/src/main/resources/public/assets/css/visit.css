@@ -120,3 +120,11 @@
 @media (max-width: 479px) {
   .visit-state > .btn, .visit-state div > .btn { width: 100%; }
 }
+
+/* The feedback form of a COMPLETED visit: the match reply's reasons, shown when "Non" (all of them without :has) */
+.feedback fieldset { border: 0; margin: 0 0 var(--space-xl); padding: 0; }
+.feedback .reject-reasons { margin-bottom: var(--space-xl); }
+@supports selector(:has(*)) {
+  .feedback__no { display: none; }
+  .feedback:has(input[value="NOT_INTERESTED"]:checked) .feedback__no { display: block; }
+}

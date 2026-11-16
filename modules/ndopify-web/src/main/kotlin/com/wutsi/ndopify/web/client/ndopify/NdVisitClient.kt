@@ -6,6 +6,7 @@ import com.wutsi.ndopify.visit.dto.CreateVisitResponse
 import com.wutsi.ndopify.visit.dto.GetVisitResponse
 import com.wutsi.ndopify.visit.dto.SearchVisitResponse
 import com.wutsi.ndopify.visit.dto.Visit
+import com.wutsi.ndopify.visit.dto.VisitFeedbackRequest
 import com.wutsi.ndopify.visit.dto.VisitSummary
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
@@ -64,6 +65,15 @@ class NdVisitClient(
     fun cancel(id: Long, request: CancelVisitRequest) {
         rest.post()
             .uri("/v1/visits/{id}/cancel", id)
+            .body(request)
+            .retrieve()
+            .toBodilessEntity()
+    }
+
+    /** Posts the customer's feedback on a COMPLETED visit; ndopify-server answers 409 once answered. */
+    fun feedback(id: Long, request: VisitFeedbackRequest) {
+        rest.post()
+            .uri("/v1/visits/{id}/feedback", id)
             .body(request)
             .retrieve()
             .toBodilessEntity()

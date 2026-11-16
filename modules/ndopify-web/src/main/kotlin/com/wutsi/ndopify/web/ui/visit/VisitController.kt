@@ -5,8 +5,11 @@ import com.wutsi.ndopify.customer.dto.Customer
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingStatus
+import com.wutsi.ndopify.match.dto.MatchRejectionReason
 import com.wutsi.ndopify.refdata.dto.Tenant
 import com.wutsi.ndopify.visit.dto.CancelVisitRequest
+import com.wutsi.ndopify.visit.dto.VisitFeedbackRequest
+import com.wutsi.ndopify.visit.dto.VisitInterest
 import com.wutsi.ndopify.web.client.ndopify.NdAgentClient
 import com.wutsi.ndopify.web.client.ndopify.NdCustomerClient
 import com.wutsi.ndopify.web.client.ndopify.NdListingClient
@@ -70,6 +73,9 @@ class VisitController(
 
         /** `CancelVisitRequest.reason`'s size on ndopify-server: the form allows 500, a longer post is cut. */
         private const val MAX_REASON = 500
+
+        /** `VisitFeedbackRequest.comment`'s size on ndopify-server: the form allows 1000, a longer post is cut. */
+        private const val MAX_COMMENT = 1000
     }
 
     @GetMapping("/visits/{id}")
@@ -77,6 +83,7 @@ class VisitController(
         @PathVariable id: Long,
         @RequestParam(name = "token", required = false) token: String?,
         @RequestParam(name = "cancel", required = false) cancel: String?,
+        @RequestParam(name = "feedback", required = false) feedback: String?,
         request: HttpServletRequest,
         model: Model,
     ): Any {
@@ -99,7 +106,7 @@ class VisitController(
             val customer = customer(visit.customerId)
             val tenant = model.getAttribute("tenant") as Tenant
             val formatter = TenantFormatter(tenant)
-            val page = VisitPages.of(visit, listing, images, locations, agent, customer, tenant, formatter, formatter.today(clock), cancel)
+            val page = VisitPages.of(visit, listing, images, locations, agent, customer, tenant, formatter, formatter.today(clock), cancel, feedback)
             model.addAttribute("page", page)
             VIEW
         }
@@ -116,6 +123,37 @@ class VisitController(
             } catch (ex: HttpClientErrorException.Conflict) {
                 LOGGER.info("Visit #$id can't be cancelled anymore")
                 redirect("/visits/$id?cancel=conflict")
+            }
+        }
+
+    /**
+     * Posts the feedback; a missing or unknown interest goes back with `?feedback=invalid` and is never forwarded
+     * (`VisitFeedbackRequest` defaults a missing interest to `INTERESTED`). A missing reason is `OTHER`, a blank comment
+     * none, a longer one is cut to what ndopify-server takes; a 409 (already answered, or no longer COMPLETED) returns to
+     * the page, which shows the answer it already has.
+     */
+    @PostMapping("/visits/{id}/feedback")
+    fun feedback(@PathVariable id: Long, @ModelAttribute form: VisitFeedbackForm, model: Model): Any =
+        signedIn("POST /visits/$id/feedback", model) {
+            val interest = VisitInterest.entries.find { it.name == form.interest }
+                ?: return@signedIn redirect("/visits/$id?feedback=invalid")
+            val request = VisitFeedbackRequest(
+                interest = interest,
+                reasonCode = if (interest == VisitInterest.NOT_INTERESTED) {
+                    MatchRejectionReason.entries.find { it.name == form.reasonCode }
+                        ?.takeIf { it != MatchRejectionReason.UNKNOWN }
+                        ?: MatchRejectionReason.OTHER
+                } else {
+                    null
+                },
+                comment = form.comment?.trim()?.ifEmpty { null }?.take(MAX_COMMENT),
+            )
+            try {
+                visitClient.feedback(id, request)
+                redirect("/visits/$id")
+            } catch (ex: HttpClientErrorException.Conflict) {
+                LOGGER.info("Visit #$id feedback already sent, or the visit is no longer COMPLETED")
+                redirect("/visits/$id")
             }
         }
 

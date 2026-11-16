@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/* The six reasons of a "Pas pour moi" answer, shared by the match popup and the visit feedback form. `required`
+       is true only where the form needs one (the match page); a false value removes the attribute. */-->
+<fieldset class="field reject-reasons" th:fragment="fieldset(name, required)">
+    <legend>La raison principale</legend>
+    <label><input th:name="${name}" th:required="${required}" type="radio" value="PRICE">Trop cher</label>
+    <label><input th:name="${name}" th:required="${required}" type="radio" value="LOCATION">Le quartier ne me convient pas</label>
+    <label><input th:name="${name}" th:required="${required}" type="radio" value="SIZE">Trop petit ou trop grand</label>
+    <label><input th:name="${name}" th:required="${required}" type="radio" value="AMENITIES">Il manque des équipements</label>
+    <label><input th:name="${name}" th:required="${required}" type="radio" value="AVAILABILITY">Disponible trop tard</label>
+    <label><input th:name="${name}" th:required="${required}" type="radio" value="OTHER">Autre raison</label>
+</fieldset>
+</body>
+</html>

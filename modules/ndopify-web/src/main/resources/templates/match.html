@@ -341,15 +341,7 @@
         </header>
 
         <form class="modal__body interest-form" method="post" th:action="@{/match/{id}/reject(id=${page.id})}">
-            <fieldset class="field reject-reasons">
-                <legend>La raison principale</legend>
-                <label><input name="reason" required type="radio" value="PRICE">Trop cher</label>
-                <label><input name="reason" required type="radio" value="LOCATION">Le quartier ne me convient pas</label>
-                <label><input name="reason" required type="radio" value="SIZE">Trop petit ou trop grand</label>
-                <label><input name="reason" required type="radio" value="AMENITIES">Il manque des équipements</label>
-                <label><input name="reason" required type="radio" value="AVAILABILITY">Disponible trop tard</label>
-                <label><input name="reason" required type="radio" value="OTHER">Autre raison</label>
-            </fieldset>
+            <fieldset th:replace="~{fragments/reject-reasons :: fieldset('reason', true)}"></fieldset>
             <div class="field">
                 <label for="reject-comment">Précisions <span class="field__optional">(facultatif)</span></label>
                 <textarea id="reject-comment" maxlength="500" name="comment" rows="3"></textarea>

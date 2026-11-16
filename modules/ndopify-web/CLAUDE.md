@@ -65,9 +65,14 @@ Package `com.wutsi.ndopify.web`:
   visit. "Annuler
   ma demande" / "Annuler la visite" (`#cancel` popup, `CancelVisitForm`, optional reason ≤ 500) posts
   `POST /visits/{id}/cancel` while REQUESTED or CONFIRMED, before the check-in; `?cancel=done|conflict` drives the
-  flash. No feedback form and no check-in UI: the page only reads. A listing, agent or customer that ndopify-server no
-  longer serves is not an error: the listing card is omitted, a gone agent's card shows "votre agent", and a gone
-  customer just hides their contact.
+  flash. The COMPLETED block is the feedback: "Le bien vous intéresse ?" (Oui / Non), the match reply's six reasons
+  (CSS `:has`, no JS, never required, a missing one is `OTHER`) and an optional comment (≤ 1000) unless `interest` is
+  already set — then the prototype's "Merci pour votre réponse" (the agent's WhatsApp when it has a number), never the
+  form again. `POST /visits/{id}/feedback` redirects to `/visits/{id}` (a 409, already answered or no longer COMPLETED,
+  too, showing the answer the page has), and a missing or unknown interest goes to `/visits/{id}?feedback=invalid`
+  without calling the server ("Répondez par oui ou par non."). No check-in UI. A listing, agent or customer that
+  ndopify-server no longer serves is not an error: the listing card is omitted, a gone agent's card shows "votre agent",
+  and a gone customer just hides their contact.
 - `ui/layout/HttpClientErrorHandler` — a 403/404 from ndopify-server (ex: a listing no longer published) is answered
   with the same status (`templates/error/404.html`); a 401 (it rejected the cookie's token) clears the cookie and
   redirects to the same page (a 404 when the request had no cookie, so it can't loop).
@@ -76,15 +81,15 @@ Package `com.wutsi.ndopify.web`:
 - `TenantContext` (web-core) — the tenant whose `publicPortalUrl` prefixes the request URL (from web-core's
   `NdTenantClient`, a plain `RestTemplate`); `TenantFormatter` (web-core) — dates and amounts.
 - `client/ndopify/NdListingClient`, `NdLocationClient`, `NdMatchClient` (get/accept/reject), `NdMandateClient`,
-  `NdAgentClient`, `NdVisitClient` (create/get/cancel, and `openForMatch`), `NdCustomerClient` (get) — `RestClient`s
+  `NdAgentClient`, `NdVisitClient` (create/get/cancel/feedback, and `openForMatch`), `NdCustomerClient` (get) — `RestClient`s
   that get `RestConfiguration`'s interceptors (web-core's logging and `X-Tenant-ID`). `ui/visit/VisitSlots` holds the
   offered slots (the next 7 days, 08:00–20:00 every 30 min), the tenant-local instant and the slot label, shared by the
   match popup and the visit page.
 - `config/` — `SecurityConfiguration` permits only `/`, `/agent`, `/owner`, GET of the listing paths
   (`/*/listing/*`, `/*/*/listing/*/*`…), `POST /listings/*/interest`, `GET /match/*`,
   `POST /match/*/accept|reject|visit`, `GET /visits/*`,
-  `POST /visits/*/cancel`, `/assets/**` and `/error` (everything else is denied: a new page must
-  be added there), `RestConfiguration`, `ClockConfiguration`, and `WebCoreConfiguration` (`TenantContext` on
+  `POST /visits/*/cancel`, `POST /visits/*/feedback`, `/assets/**` and `/error` (everything else is denied: a new page
+  must be added there), `RestConfiguration`, `ClockConfiguration`, and `WebCoreConfiguration` (`TenantContext` on
   `TenantPortal.PUBLIC_PORTAL`, `@Import(NdTenantClient)`).
 
 Static assets in `src/main/resources/public/assets/` (`main.js`, and the listing page's `listing.js` / `listing.css`,
@@ -93,7 +98,8 @@ request and open-visit rules, and `proposal.js`, which only moves the focus into
 "Demander une visite" submit (`aria-disabled`) until a slot is chosen (the form still posts): `listing.js` opens and
 closes them and shows the photos,
 `proposition.js`'s faked answers are not ported; the visit page's `visit.css` / `visit.js`, which only moves the focus
-into `#cancel` — `listing.js` opens and closes it. `listing.js`'s interest form is guarded on the prototype's markers
+into `#cancel` — `listing.js` opens and closes it — and `visit.css` also carries the feedback form's styles (the
+reasons shown on "Non" through `:has`; no JS change). `listing.js`'s interest form is guarded on the prototype's markers
 (`data-listing-interest-form`, `data-listing-interest-done`, `data-phone-name`): the match page reuses `#visit` for its own request
 popup, which is not the listing's lead popup and is left alone. Served files have English names; scripts only
 enhance). `src/main/html/` is the
