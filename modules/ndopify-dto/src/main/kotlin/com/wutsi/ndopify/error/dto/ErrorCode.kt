@@ -94,6 +94,7 @@ object ErrorCode {
     val MATCH_NOT_ACTIVE = "$PREFIX:match:not-active"
     val MATCH_NOT_ACCEPTED = "$PREFIX:match:not-accepted"
     val MATCH_NOT_PROPOSED = "$PREFIX:match:not-proposed"
+    val MATCH_RATE_LIMITED = "$PREFIX:match:rate-limited"
 
     val PARTY_NOT_FOUND = "$PREFIX:party:not-found"
     val PARTY_EMAIL_ALREADY_EXISTS = "$PREFIX:party:email-already-exists"
