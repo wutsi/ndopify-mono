@@ -61,7 +61,7 @@ open class AccessTokenService(
             .withArrayClaim(JwtPrincipal.CLAIM_ROLE, roles)
             .withSubject(userId.toString())
             .withIssuedAt(Instant.ofEpochMilli(now))
-            .withExpiresAt(Instant.ofEpochMilli(now + ttlSeconds * 1000))
+            .withExpiresAt(Instant.ofEpochMilli(now + ttlSeconds.toLong() * 1000))
 
         if (tenantId != null) {
             builder.withClaim(JwtPrincipal.CLAIM_TENANT_ID, tenantId)

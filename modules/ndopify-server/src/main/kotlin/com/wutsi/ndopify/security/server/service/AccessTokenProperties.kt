@@ -5,8 +5,9 @@ import java.time.Duration
 
 /**
  * `ndopify.security.access-token`: how long a token issued for each application lives, keyed by `ApplicationCode`
- * (an environment can override one). The web apps keep their cookie as long as the token, from its `exp` claim, so
- * this is also how long a user stays signed in.
+ * (an environment can override one), or by a purpose key (`match-link`, the customer links of the match proposal and
+ * the visit e-mails). The web apps keep their cookie as long as the token, from its `exp` claim, so this is also how
+ * long a user stays signed in.
  */
 @ConfigurationProperties("ndopify.security.access-token")
 data class AccessTokenProperties(

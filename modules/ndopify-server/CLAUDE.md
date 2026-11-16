@@ -423,8 +423,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   customer reads it with `GET /v1/matches/{id}` (and its mandate), only once PROPOSED, ACCEPTED, REJECTED or EXPIRED (else 403
   `MANDATE_ACCESS_DENIED`; as `ensureCanRead` for an admin or agent: an agent only its own / offered mandates). The
   token (`MatchLinkTokenService`, one per e-mail) is a `public-portal` JWT of the customer's own user and party, so
-  that the link signs it in; it lives `ndopify.security.access-token.ttl.match-link` (7d) and isn't scoped to the
-  match: whoever has the e-mail is signed in as the customer until then. The customer gets a membership of the tenant
+  that the link signs it in; it lives `ndopify.security.access-token.ttl.match-link` (365d) and isn't scoped to the
+  match: whoever has the e-mail is signed in as the customer until then. The visit e-mails' customer links go through
+  the same service and key, so they live 365d too. The customer gets a membership of the tenant
   with `public-portal` access first (its own, else the user of its e-mail); no `token` without an e-mail, or when
   that address is already a member's as another party. `POST /{id}/accept` and
   `POST /{id}/reject` (`RejectMatchRequest.reasonCode`, a `MatchRejectionReason`, `OTHER` when missing or `UNKNOWN`,

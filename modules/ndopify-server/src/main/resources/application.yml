@@ -265,7 +265,7 @@ ndopify:
                 admin-console: 1h
                 partner-central: 7d
                 e-signature: 1h
-                match-link: 7d             # The token of the links of a match proposal e-mail (MatchLinkTokenService)
+                match-link: 365d           # The token of the customer links of the proposal and visit e-mails (MatchLinkTokenService)
             default-ttl: 1h                # An application not listed above
         otp:
             max-failed-attempts: 5         # Wrong codes after which the account is locked

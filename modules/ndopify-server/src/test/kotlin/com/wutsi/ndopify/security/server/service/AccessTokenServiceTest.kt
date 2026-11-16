@@ -96,6 +96,22 @@ class AccessTokenServiceTest {
     }
 
     @Test
+    fun `a ttl over Int seconds`() {
+        val now = System.currentTimeMillis()
+        doReturn(now).whenever(clock).millis()
+
+        val token = service.create(
+            application = ApplicationCode.PUBLIC_PORTAL,
+            userId = 111L,
+            roles = emptyArray(),
+            tenantId = 1L,
+            ttlSeconds = Duration.ofDays(365).seconds.toInt(),
+        )
+
+        assertEquals(Duration.ofDays(365), lifetime(token))
+    }
+
+    @Test
     fun `expired token`() {
         val now = 1000L
         doReturn(now).whenever(clock).millis()
