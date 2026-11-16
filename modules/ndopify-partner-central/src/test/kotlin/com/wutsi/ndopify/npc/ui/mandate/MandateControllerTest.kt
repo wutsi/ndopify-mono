@@ -1078,6 +1078,13 @@ class MandateControllerTest {
     private fun outcome(result: MvcResult) = result.flashMap["outcome"]
 
     @Test
+    fun `match outcome - unknown ignored`() {
+        val result = mvc.perform(get("/mandates/201").flashAttr("match", "xyz")).andReturn()
+
+        assertNull(model(result)["matchOutcomeText"])
+    }
+
+    @Test
     fun `forbidden - locked`() {
         doThrow(HttpClientErrorException(HttpStatus.FORBIDDEN)).whenever(mandateClient).get(201)
 
@@ -1116,6 +1123,26 @@ class MandateControllerTest {
         val result = mvc.perform(post("/mandates/201/cancel").param("cancellationCode", "OTHER")).andReturn()
 
         assertEquals("changed", outcome(result))
+    }
+
+    @Test
+    fun `cancel - the mandate can't be read`() {
+        doThrow(ResourceAccessException("timeout")).whenever(mandateClient).get(201)
+
+        val result = mvc.perform(post("/mandates/201/cancel").param("cancellationCode", "OTHER")).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        assertEquals("error", outcome(result))
+    }
+
+    @Test
+    fun `cancel - the call fails`() {
+        doThrow(ResourceAccessException("timeout")).whenever(mandateClient).cancel(any(), any())
+
+        val result = mvc.perform(post("/mandates/201/cancel").param("cancellationCode", "OTHER")).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        assertEquals("error", outcome(result))
     }
 
     @Test
@@ -1290,6 +1317,16 @@ class MandateControllerTest {
         assertEquals(listOf("Bonapriso", "Akwa"), neighborhoods.map { it.name })
         assertEquals(false, model(result)["owner"])
         assertNull(model(result)["locked"])
+    }
+
+    @Test
+    fun `edit form - location names unavailable`() {
+        whenever(locationClient.search(any())).thenThrow(ResourceAccessException("timeout"))
+
+        val result = mvc.perform(get("/mandates/201/edit")).andReturn()
+
+        assertEquals("mandate/edit", result.modelAndView?.viewName)
+        assertNull(model(result)["city"])
     }
 
     @Test

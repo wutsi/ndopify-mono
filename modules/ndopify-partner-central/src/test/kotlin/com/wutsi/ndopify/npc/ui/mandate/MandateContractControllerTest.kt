@@ -209,6 +209,17 @@ class MandateContractControllerTest {
     }
 
     @Test
+    fun `send - a conflict whose body can't be read is changed`() {
+        val ex = HttpClientErrorException(HttpStatus.CONFLICT)
+        ex.setBodyConvertFunction { throw IllegalStateException("unreadable") }
+        doThrow(ex).whenever(mandateClient).requestApproval(any(), any())
+
+        val result = mvc.perform(form("durationMonths" to "6", "visitFee" to "0")).andReturn()
+
+        assertEquals("changed", outcome(result))
+    }
+
+    @Test
     fun `send - not signed in`() {
         doReturn(null).whenever(currentAgent).get()
 
