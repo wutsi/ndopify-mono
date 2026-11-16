@@ -46,6 +46,7 @@ class MatchProposedTemplateTest {
         assertTrue(html.contains("150 000 FCFA / mois"))
         assertTrue(html.contains("https://www.ndopify.com/match/1"))
         assertTrue(html.contains("Voir le bien et répondre"))
+        assertFalse(html.contains("choisissez un créneau de visite"))
         assertFalse(html.contains("Répondez-moi"))
         assertTrue(html.contains("dites-moi"))
         assertTrue(html.contains("j'en tiendrai compte"))
@@ -55,6 +56,15 @@ class MatchProposedTemplateTest {
         assertFalse(html.contains("Votre agent"))
         assertTrue(html.contains("https://wa.me/237699000001"))
         assertTrue(html.contains("src=\"https://cdn.ndopify.com/agent.jpg\""))
+    }
+
+    @Test
+    fun `accepted - invites to book a visit`() {
+        val html = resolver.resolve(MatchProposedMailet.TEMPLATE, context + mapOf("accepted" to true))
+
+        assertTrue(html.contains("Vous avez indiqué que ce bien vous intéresse"))
+        assertTrue(html.contains("choisissez un créneau de visite"))
+        assertTrue(html.contains("Voir le bien et répondre"))
     }
 
     @Test

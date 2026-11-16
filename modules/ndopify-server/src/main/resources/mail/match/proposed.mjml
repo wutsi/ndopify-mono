@@ -24,6 +24,12 @@
                         à votre recherche&#160;:
                     </mj-text>
 
+                    {{#accepted}}
+                    <mj-text>
+                        Vous avez indiqué que ce bien vous intéresse : choisissez un créneau de visite sur sa page.
+                    </mj-text>
+                    {{/accepted}}
+
                     {{#listings}}
                     <!-- The listing's photo, linked to its proposal's page when there is one -->
                     {{#image_url}}
