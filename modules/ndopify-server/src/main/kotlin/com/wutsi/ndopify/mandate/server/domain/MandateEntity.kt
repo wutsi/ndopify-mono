@@ -42,6 +42,10 @@ data class MandateEntity(
     val agentId: Long? = null,
     val contractId: String? = null,
 
+    /** The listing the mandate was seeded from; null for a mandate created another way. */
+    @Column(name = "origin_listing_id")
+    val originListingId: Long? = null,
+
     val propertyCategory: PropertyCategory = PropertyCategory.UNKNOWN,
     val status: MandateStatus = MandateStatus.UNKNOWN,
     val mandateType: MandateType = MandateType.UNKNOWN,

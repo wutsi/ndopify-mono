@@ -5,10 +5,23 @@ import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class MandateMapperTest {
     private val mapper = MandateMapper()
+
+    @Test
+    fun `origin listing is returned`() {
+        val mandate = mapper.toMandate(MandateEntity(id = 1, customerId = 2, cityId = 3, originListingId = 9))
+
+        assertEquals(9, mandate.originListingId)
+    }
+
+    @Test
+    fun `no origin listing`() {
+        assertNull(mapper.toMandate(MandateEntity(id = 1, customerId = 2, cityId = 3)).originListingId)
+    }
 
     @Test
     fun `toMandate maps the deal the mandate was closed on`() {
