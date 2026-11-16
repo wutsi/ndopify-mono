@@ -1,0 +1,184 @@
+package com.wutsi.ndopify.match.server.bot
+
+import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.argumentCaptor
+import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.eq
+import com.nhaarman.mockitokotlin2.mock
+import com.nhaarman.mockitokotlin2.verify
+import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.agent.server.domain.AgentEntity
+import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.listing.server.domain.ListingEntity
+import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.match.dto.MatchRejectionReason
+import com.wutsi.ndopify.match.dto.MatchStatus
+import com.wutsi.ndopify.match.server.domain.MatchEntity
+import com.wutsi.ndopify.party.server.domain.PartyEntity
+import com.wutsi.ndopify.platform.telegram.TelegramClient
+import com.wutsi.ndopify.platform.telegram.model.TelegramButton
+import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import com.wutsi.ndopify.refdata.server.domain.LocationEntity
+import com.wutsi.ndopify.refdata.server.domain.TenantEntity
+import com.wutsi.ndopify.refdata.server.service.LocationService
+import com.wutsi.ndopify.refdata.server.service.TenantService
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+
+class MatchAnsweredBotletTest {
+    private val tenantService = mock<TenantService>()
+    private val locationService = mock<LocationService>()
+    private val client = mock<TelegramClient>()
+    private val botlet = MatchAnsweredBotlet(tenantService, locationService, client)
+
+    private val tenant = TenantEntity(
+        id = 1L,
+        name = "Ndopify",
+        partnerCentralUrl = "https://partner.ndopify.com/",
+        currencyCode = "XAF",
+        monetaryFormat = "#,###,##0 FCFA",
+    )
+    private val mandate = MandateEntity(
+        id = 1L,
+        tenantId = 1L,
+        customerId = 10L,
+        agentId = 20L,
+        mandateType = MandateType.SEARCH,
+        listingType = ListingType.RENTAL,
+        cityId = 2370201L,
+        neighborhoodIds = listOf(1001L),
+        propertyType = PropertyType.APARTMENT,
+        price = 150000,
+        currencyCode = "XAF",
+        pricePeriodicityType = PeriodicityType.MONTHLY,
+    )
+    private val listing = ListingEntity(
+        id = 102L,
+        title = "Small apartment",
+        price = 140000,
+        currencyCode = "XAF",
+        pricePeriodicityType = PeriodicityType.MONTHLY,
+    )
+    private val match = MatchEntity(
+        id = 2L,
+        tenantId = 1L,
+        mandate = mandate,
+        listing = listing,
+        agentId = 20L,
+        status = MatchStatus.ACCEPTED,
+    )
+    private val customer = CustomerEntity(
+        id = 10L,
+        party = PartyEntity(id = 100L, firstName = "Ray", lastName = "Sponsible"),
+    )
+    private val agent = AgentEntity(
+        id = 20L,
+        party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible"),
+    )
+
+    @BeforeTest
+    fun setUp() {
+        doReturn(tenant).whenever(tenantService).findById(1L)
+        doReturn(LocationEntity(id = 2370201L, name = "Yaounde")).whenever(locationService).findByIdOrNull(2370201L)
+        doReturn(LocationEntity(id = 1001L, name = "Bastos")).whenever(locationService).findByIdOrNull(1001L)
+    }
+
+    @Test
+    fun `an acceptance names the customer, the listing and the mandate`() {
+        botlet.send(match, customer, agent, 1000L)
+
+        assertEquals(
+            """
+            Bonjour Kim Possible,
+
+            Bonne nouvelle : Ray Sponsible a accepté la proposition.
+
+            Bien: Small apartment
+            Loyer: 140 000 FCFA / mois
+
+            Recherche: Location - Appartement
+            Ville: Yaounde
+            Quartier(s): Bastos
+            Budget: 150 000 FCFA / mois
+
+            Cette réponse est définitive.
+            """.trimIndent(),
+            text(),
+        )
+        assertEquals(
+            listOf(TelegramButton("Voir le mandat", url = "https://partner.ndopify.com/mandates/1")),
+            buttons(),
+        )
+    }
+
+    @Test
+    fun `a rejection names its reason and comment`() {
+        botlet.send(
+            match.copy(
+                status = MatchStatus.REJECTED,
+                rejectionReasonCode = MatchRejectionReason.PRICE,
+                rejectionReason = "Trop loin du travail.",
+            ),
+            customer,
+            agent,
+            1000L,
+        )
+
+        assertTrue(
+            text().contains(
+                "Ray Sponsible a refusé la proposition.\nMotif: trop cher\nCommentaire: Trop loin du travail.\n",
+            ),
+        )
+    }
+
+    @Test
+    fun `a rejection without a comment leaves no line`() {
+        botlet.send(
+            match.copy(
+                status = MatchStatus.REJECTED,
+                rejectionReasonCode = MatchRejectionReason.OTHER,
+                rejectionReason = " ",
+            ),
+            customer,
+            agent,
+            1000L,
+        )
+
+        assertTrue(text().contains("Motif: autre raison"))
+        assertFalse(text().contains("Commentaire:"))
+    }
+
+    @Test
+    fun `a listing without a title is named by its id`() {
+        botlet.send(match.copy(listing = listing.copy(title = null)), customer, agent, 1000L)
+
+        assertTrue(text().contains("Bien: Bien n° 102"))
+    }
+
+    @Test
+    fun `a tenant without Partner Central gets no button`() {
+        doReturn(tenant.copy(partnerCentralUrl = null)).whenever(tenantService).findById(1L)
+
+        botlet.send(match, customer, agent, 1000L)
+
+        assertEquals(emptyList<TelegramButton>(), buttons())
+    }
+
+    private fun text(): String {
+        val text = argumentCaptor<String>()
+        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        return text.firstValue
+    }
+
+    private fun buttons(): List<TelegramButton> {
+        val buttons = argumentCaptor<List<TelegramButton>>()
+        verify(client).sendMessage(eq(1000L), any(), buttons.capture())
+        return buttons.firstValue
+    }
+}
