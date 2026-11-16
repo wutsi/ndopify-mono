@@ -73,6 +73,7 @@ class MandateService(
     private val tx: TransactionTemplate,
     private val access: MandateAccessService,
     private val approvedNotifier: MandateApprovedNotifier,
+    private val originListingResolver: OriginListingResolver,
 
     @param:Value("\${ndopify.mandate.contract.duration-months}") private val contractDurationMonths: Int,
 ) {
@@ -142,6 +143,13 @@ class MandateService(
     @Transactional
     fun create(request: CreateMandateRequest): MandateEntity {
         validateRentalTerms(request.securityDeposit, request.advanceRent)
+        // A mandate seeded from a listing takes its criteria and budget from the listing, never from the request: the
+        // public page can't be turned into an arbitrary search
+        val origin = request.originListingId?.let { id ->
+            originListingResolver.resolve(id)
+                ?: throw NotFoundException(error = Error(code = ErrorCode.LISTING_NOT_FOUND))
+        }
+        val criteria = origin?.criteria ?: request
         val customer = customerService.findOrCreate(
             CreateCustomerRequest(
                 firstName = request.firstName,
@@ -156,33 +164,34 @@ class MandateService(
             MandateEntity(
                 customerId = customer.id ?: -1,
                 status = MandateStatus.PENDING_ASSIGNMENT,
-                propertyCategory = request.propertyCategory,
-                mandateType = request.mandateType,
-                listingType = request.listingType,
-                cityId = request.cityId,
-                neighborhoodIds = request.neighbourhoodIds,
-                propertyType = request.propertyType,
-                furnitureType = request.furnitureType,
-                rooms = request.rooms,
-                parkings = request.parkings,
-                area = request.area,
-                waterMeter = request.waterMeter,
-                dedicatedWaterMeter = request.dedicatedWaterMeter,
-                waterTank = request.waterTank,
-                waterWell = request.waterWell,
-                electricityMeter = request.electricityMeter,
-                dedicatedElectricityMeter = request.dedicatedElectricityMeter,
-                generatorSet = request.generatorSet,
-                solarPanel = request.solarPanel,
-                roadPaved = request.roadPaved,
-                trackAccessibleByCar = request.trackAccessibleByCar,
-                trackInaccessibleByCar = request.trackInaccessibleByCar,
-                securedFenced = request.securedFenced,
-                securityGuard = request.securityGuard,
-                videoSurveillance = request.videoSurveillance,
-                price = request.price.amount,
-                pricePeriodicityType = request.price.periodicity,
-                currencyCode = request.price.currency,
+                originListingId = origin?.id?.takeIf { origin.published },
+                propertyCategory = criteria.propertyCategory,
+                mandateType = criteria.mandateType,
+                listingType = criteria.listingType,
+                cityId = criteria.cityId,
+                neighborhoodIds = criteria.neighbourhoodIds,
+                propertyType = criteria.propertyType,
+                furnitureType = criteria.furnitureType,
+                rooms = criteria.rooms,
+                parkings = criteria.parkings,
+                area = criteria.area,
+                waterMeter = criteria.waterMeter,
+                dedicatedWaterMeter = criteria.dedicatedWaterMeter,
+                waterTank = criteria.waterTank,
+                waterWell = criteria.waterWell,
+                electricityMeter = criteria.electricityMeter,
+                dedicatedElectricityMeter = criteria.dedicatedElectricityMeter,
+                generatorSet = criteria.generatorSet,
+                solarPanel = criteria.solarPanel,
+                roadPaved = criteria.roadPaved,
+                trackAccessibleByCar = criteria.trackAccessibleByCar,
+                trackInaccessibleByCar = criteria.trackInaccessibleByCar,
+                securedFenced = criteria.securedFenced,
+                securityGuard = criteria.securityGuard,
+                videoSurveillance = criteria.videoSurveillance,
+                price = criteria.price.amount,
+                pricePeriodicityType = criteria.price.periodicity,
+                currencyCode = criteria.price.currency,
                 securityDeposit = request.securityDeposit,
                 advanceRent = request.advanceRent,
                 leaseTerm = request.leaseTerm,

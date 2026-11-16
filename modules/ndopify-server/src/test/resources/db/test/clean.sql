@@ -2,6 +2,8 @@ DELETE FROM T_VISIT;
 DELETE FROM T_MATCH;
 DELETE FROM T_LISTING_SECTION;
 DELETE FROM T_LISTING_IMAGE;
+-- A mandate may reference a listing (its origin), and a listing references its mandate: the reference goes first
+UPDATE T_MANDATE SET origin_listing_id = NULL;
 DELETE FROM T_LISTING;
 DELETE FROM T_ASSIGNMENT;
 DELETE FROM T_MANDATE_NEIGHBORHOOD;

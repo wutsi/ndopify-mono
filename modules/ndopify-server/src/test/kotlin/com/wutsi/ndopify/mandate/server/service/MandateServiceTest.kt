@@ -18,9 +18,15 @@ import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.server.exception.ConflictException
+import com.wutsi.ndopify.error.server.exception.NotFoundException
+import com.wutsi.ndopify.listing.dto.ListingType
+import com.wutsi.ndopify.listing.dto.MovingPeriod
+import com.wutsi.ndopify.listing.dto.PropertyCategory
 import com.wutsi.ndopify.mandate.dto.CancelMandateRequest
 import com.wutsi.ndopify.mandate.dto.CloseMandateRequest
+import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.mandate.server.dao.AssignmentRepository
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
@@ -29,6 +35,7 @@ import com.wutsi.ndopify.mandate.server.event.MandateApprovedEvent
 import com.wutsi.ndopify.mandate.server.event.MandateClosedEvent
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.dto.Money
+import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import org.mockito.Mockito.verifyNoInteractions
 import org.springframework.context.ApplicationEventPublisher
 import java.time.Clock
@@ -53,6 +60,7 @@ class MandateServiceTest {
     private val agentService = mock<AgentService>()
     private val contractService = mock<ContractService>()
     private val approvedNotifier = mock<MandateApprovedNotifier>()
+    private val originListingResolver = mock<OriginListingResolver>()
     private val service = MandateService(
         dao = dao,
         assignmentDao = assignmentDao,
@@ -68,6 +76,7 @@ class MandateServiceTest {
         tx = mock(),
         access = mock(),
         approvedNotifier = approvedNotifier,
+        originListingResolver = originListingResolver,
         contractDurationMonths = 6,
     )
 
@@ -87,6 +96,82 @@ class MandateServiceTest {
         createdAt = Date(now - 30 * day),
         approvedAt = approvedAt,
     )
+
+    // What the visitor posts from the listing's page: contact, moving period and origin listing, never a criterion
+    private val visitor = CreateMandateRequest(
+        cityId = 9999L,
+        neighbourhoodIds = listOf(99L),
+        rooms = "9",
+        price = Money(1, "EUR", PeriodicityType.YEARLY),
+        movingPeriod = MovingPeriod.WITHIN_1_MONTH,
+        firstName = "Awa",
+        lastName = "Ndiaye",
+        email = "awa@example.com",
+        whatsappNumber = "+237650000001",
+        originListingId = 7L,
+    )
+
+    // What the listing resolver returns: the listing's criteria, without any contact
+    private val criteria = CreateMandateRequest(
+        mandateType = MandateType.SEARCH,
+        listingType = ListingType.RENTAL,
+        propertyCategory = PropertyCategory.RESIDENTIAL,
+        cityId = 2370201L,
+        neighbourhoodIds = listOf(11L),
+        rooms = "2",
+        waterTank = true,
+        price = Money(175_000, "XAF", PeriodicityType.MONTHLY),
+    )
+
+    private fun givenCustomer() {
+        doReturn(CustomerEntity(id = 10L)).whenever(customerService).findOrCreate(any())
+        doAnswer { it.getArgument<MandateEntity>(0).copy(id = 1L) }.whenever(dao).save(any())
+    }
+
+    @Test
+    fun `create seeds the criteria and the budget from the origin listing`() {
+        givenCustomer()
+        doReturn(OriginListing(7L, 70L, true, criteria)).whenever(originListingResolver).resolve(7L)
+
+        val mandate = service.create(visitor)
+
+        assertEquals(MandateType.SEARCH, mandate.mandateType)
+        assertEquals(ListingType.RENTAL, mandate.listingType)
+        assertEquals(PropertyCategory.RESIDENTIAL, mandate.propertyCategory)
+        assertEquals(2370201L, mandate.cityId)
+        assertEquals(listOf(11L), mandate.neighborhoodIds)
+        assertEquals("2", mandate.rooms)
+        assertTrue(mandate.waterTank)
+        assertEquals(175_000L, mandate.price)
+        assertEquals("XAF", mandate.currencyCode)
+        assertEquals(PeriodicityType.MONTHLY, mandate.pricePeriodicityType)
+        assertEquals(MovingPeriod.WITHIN_1_MONTH, mandate.movingPeriod) // the visitor's
+        assertEquals(7L, mandate.originListingId)
+        assertEquals(10L, mandate.customerId)
+    }
+
+    @Test
+    fun `create keeps no origin for a listing no longer published`() {
+        givenCustomer()
+        doReturn(OriginListing(7L, 70L, false, criteria)).whenever(originListingResolver).resolve(7L)
+
+        val mandate = service.create(visitor)
+
+        assertEquals(2370201L, mandate.cityId) // still seeded from it
+        assertEquals(175_000L, mandate.price)
+        assertNull(mandate.originListingId)
+    }
+
+    @Test
+    fun `create rejects an unknown origin listing`() {
+        doReturn(null).whenever(originListingResolver).resolve(7L)
+
+        val ex = assertFailsWith<NotFoundException> { service.create(visitor) }
+
+        assertEquals(ErrorCode.LISTING_NOT_FOUND, ex.error.code)
+        verify(customerService, never()).findOrCreate(any())
+        verify(dao, never()).save(any())
+    }
 
     @BeforeTest
     fun setUp() {
