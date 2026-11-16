@@ -367,7 +367,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   notifications (`V10_6`): the search agent is e-mailed the other agent's listing and contact when the match is
   created; the listing agent is messaged over Telegram when its chat is linked (`CoBrokerageInterestBotlet`, one digest
   built by `CoBrokerageInterestDigestBuilder`, split under Telegram's 4096 characters at listing boundaries, one
-  `Voir le mandat — <title>` button per listing on its own row), e-mailed otherwise (`CoBrokerageInterestMailet`), only
+  `Voir le mandat — <title>` button per listing on its own row, naming each interested agent without its contact (the
+  mandate page's proposal card carries the agent's WhatsApp link)), e-mailed otherwise (`CoBrokerageInterestMailet`), only
   after a shortlist/proposal (`SHORTLISTED`, `PROPOSED`, `ACCEPTED`, `EXPIRED`); the e-mail is also the fallback of a
   failed Telegram send, and `CoBrokerageInterestNotifier` throws when both fail, so `listingAgentNotifiedAt` stays null
   for the next run. Both ride `MatchJobs.notifyAgents`;
