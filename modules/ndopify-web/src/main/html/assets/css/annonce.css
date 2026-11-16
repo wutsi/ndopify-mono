@@ -348,12 +348,25 @@
 .interest-form__submit { width: 100%; margin-top: var(--space-sm); }
 .interest-form__submit[aria-disabled="true"] { background: var(--color-text-disabled); box-shadow: none; cursor: not-allowed; }
 .interest-form__privacy { font-size: 0.8125rem; text-align: center; margin: var(--space-md) auto 0; }
+/* Moving period: the design system's option group, one choice per row */
+.interest-form .option-grid { margin-top: var(--space-sm); }
 
 .interest-done { text-align: center; }
 .interest-done:focus { outline: none; }
 .interest-done .icon--lg { color: var(--color-text-success); margin-bottom: var(--space-lg); }
 .interest-done h3 { font-size: var(--h4-size); }
 .interest-done p { margin-inline: auto; }
+/* What happens next: a short list, left-aligned so the steps read in order */
+.interest-done__steps {
+  display: grid;
+  gap: var(--space-sm);
+  max-width: 26rem;
+  margin: var(--space-lg) auto 0;
+  padding-left: 1.25rem;
+  font-size: 0.875rem;
+  text-align: left;
+}
+.interest-done .btn { margin-top: var(--space-xl); }
 
 /* "Poser une question" drawer: the conversation scrolls, the composer stays at the bottom */
 .chat__avatar {

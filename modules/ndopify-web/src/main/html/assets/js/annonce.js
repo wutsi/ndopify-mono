@@ -1,4 +1,4 @@
-// Ndopify — listing page: the "Demander une visite" popup, the "Poser une question" drawer, the photo viewer and the
+// Ndopify — listing page: the "Visiter ce logement" popup, the "Poser une question" drawer, the photo viewer and the
 // share button. Everything only enhances: without JavaScript the popup and the drawer open with :target and their
 // forms post, the photos are links.
 (function () {
@@ -18,7 +18,7 @@
   // ---------------------------------------------------------------- Popup and drawer
 
   // Any [data-modal-open] link opens the dialog its href names (#visit, #ask), [data-modal-close] closes it. One
-  // dialog at a time: opening one from the other ("Demander une visite" in the drawer) replaces it, and focus goes
+  // dialog at a time: opening one from the other ("Visiter ce logement" in the drawer) replaces it, and focus goes
   // back to what opened the first one.
   function initDialogs() {
     var current = null;
@@ -100,8 +100,9 @@
 
   // ---------------------------------------------------------------- Visit form
 
-  // "Envoyer la demande" stays inactive until every [required] field is filled (presence, not format); the format is
-  // checked on submit, in the fields' order. The prototype then shows the confirmation instead of posting.
+  // "Envoyer ma demande" stays inactive until every [required] field is filled (presence, not format); the format is
+  // checked on submit, in the fields' order. The mandate's criteria — budget included — come from the listing. The
+  // prototype then shows the confirmation instead of posting.
   function initVisitForm(modal) {
     var form = modal.querySelector('[data-interest-form]');
     var done = modal.querySelector('[data-interest-done]');
@@ -162,36 +163,24 @@
       var firstName = form.querySelector('#first-name');
       var lastName = form.querySelector('#last-name');
       var email = form.querySelector('#email');
-      var visitType = form.querySelector('[name="visitType"]');
-      var checkedType = form.querySelector('[name="visitType"]:checked');
-      var visitDate = form.querySelector('[name="visitDate"]');
-      var checkedDate = form.querySelector('[name="visitDate"]:checked');
-      var visitTime = form.querySelector('#visit-time');
+      var movingPeriod = form.querySelector('[name="movingPeriod"]');
+      var checkedPeriod = form.querySelector('[name="movingPeriod"]:checked');
       var ok = [
         showError(firstName, firstName.value.trim() ? '' : 'Indiquez votre prénom.'),
         showError(lastName, lastName.value.trim() ? '' : 'Indiquez votre nom.'),
         showError(email, /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value.trim())
           ? '' : 'Cette adresse e-mail n\'est pas valide, vérifiez-la.'),
         showError(phoneInput, phoneError()),
-        showError(visitType, checkedType ? '' : 'Choisissez une visite sur place ou en vidéo.'),
-        showError(visitDate, checkedDate ? '' : 'Choisissez le jour de la visite.'),
-        showError(visitTime, visitTime.value ? '' : 'Choisissez l\'heure de la visite.')
+        showError(movingPeriod, checkedPeriod ? '' : 'Choisissez votre date d\'emménagement.')
       ].every(Boolean);
       if (!ok) {
         form.querySelector('[aria-invalid="true"]').focus();
         return;
       }
       var phone = iti.getNumber(window.intlTelInput.utils.numberFormat.E164);
-      // The day card's parts (lun. / 2 / nov.) have no space between them
-      var day = Array.prototype.map.call(checkedDate.closest('label').children, function (n) {
-        return n.textContent.trim();
-      }).filter(Boolean).join(' ');
-      var time = visitTime.options[visitTime.selectedIndex].text;
       form.hidden = true;
       done.querySelector('[data-interest-done-text]').textContent = 'Merci ' + firstName.value.trim() + ' ! ' +
-        'Vous avez demandé une visite ' + (checkedType.value === 'VIDEO' ? 'en vidéo' : 'sur place') + ' le ' + day +
-        ' à ' + time + '. L\'agent vous confirme le créneau sur WhatsApp au ' + formatPhone(phone) +
-        (checkedType.value === 'VIDEO' ? ', et vous appelle en vidéo sur WhatsApp à l\'heure prévue.' : '.');
+        'Votre demande est enregistrée : un agent vous contacte sous 24 h par WhatsApp au ' + formatPhone(phone) + '.';
       done.hidden = false;
       done.focus();
     });
@@ -243,8 +232,8 @@
     },
     {
       keys: ['visite', 'visiter', 'voir', 'rendez'],
-      text: 'Dans « Demander une visite », choisissez une visite sur place ou en vidéo (un appel vidéo WhatsApp avec ' +
-        'l\'agent), puis un jour et une heure : l\'agent vous confirme le créneau sur WhatsApp.',
+      text: 'Dans « Visiter ce logement », indiquez votre budget et votre date d\'emménagement : un agent vous ' +
+        'contacte sous 24 h, puis vous signez votre mandat de recherche et vous choisissez le créneau de la visite.',
       visit: true
     },
     {
@@ -319,7 +308,7 @@
         var msg = add('bot', reply.text);
         if (reply.visit) {
           var link = el('a', 'btn btn-secondary chat__visit',
-            '<svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Demander une visite');
+            '<svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Visiter ce logement');
           link.href = '#visit';
           link.setAttribute('data-modal-open', '');
           msg.appendChild(link);

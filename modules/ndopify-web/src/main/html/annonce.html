@@ -232,44 +232,37 @@
                         <li>Disponible le 1<sup>er</sup> décembre 2026</li>
                     </ul>
                     <a class="btn btn-primary price-card__cta" data-modal-open href="#visit">
-                        <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Demander une visite
+                        <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Visiter ce logement
                     </a>
-                    <a class="btn btn-outline price-card__cta price-card__ask" data-modal-open href="#ask">
-                        <svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg>Poser une question
-                    </a>
-                    <p class="price-card__hint">Choisissez un créneau : l'agent vous confirme la visite sur
-                        WhatsApp.</p>
+                    <p class="price-card__hint">Un agent vous contacte sous 24 h pour convenir de la visite.</p>
                 </div>
             </aside>
         </div>
     </div>
 
-    <!-- Below 1024px: the question button is an icon only, its label stays for screen readers -->
+    <!-- Below 1024px: one call to action, the price beside it -->
     <div class="cta-bar">
         <p class="cta-bar__price"><strong>175K FCFA</strong> / mois</p>
         <div class="cta-bar__actions">
-            <a class="btn btn-outline cta-bar__ask" data-modal-open href="#ask">
-                <svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg><span class="cta-bar__ask-label">Poser une question</span>
-            </a>
-            <a class="btn btn-primary" data-modal-open href="#visit">Demander une visite</a>
+            <a class="btn btn-primary" data-modal-open href="#visit">Visiter ce logement</a>
         </div>
     </div>
 </main>
 
 <!--
-  "Demander une visite" popup. Without JavaScript it opens with :target (#visit) and the form posts; the server
+  "Visiter ce logement" popup. The visitor asks for the property, not a slot: no day or time here, a visit needs an
+  agent and a signed search mandate. Without JavaScript it opens with :target (#visit) and the form posts; the server
   answers with the confirmation, or the form again with the fields' errors. annonce.js makes it a modal dialog, binds
-  the WhatsApp number (E.164 in a hidden whatsappNumber) and shows the confirmation in place. The days (visitDate,
-  ISO date) go from tomorrow to tomorrow + 7 days, in the tenant's time zone; the times (visitTime) from 10:00 to
-  21:00, every 30 minutes. The visit is on site (visitType IN_PERSON) or a video tour the agent gives on a WhatsApp
-  video call (VIDEO). The agent confirms the slot on WhatsApp: the request doesn't book it.
+  the WhatsApp number (E.164 in a hidden whatsappNumber) and shows the confirmation in place. Hidden field: website,
+  the honeypot (always empty); movingPeriod, one of the three periods. Everything else — city, type, budget — comes
+  from the listing.
 -->
 <div aria-labelledby="visit-title" class="modal" id="visit">
     <a aria-hidden="true" class="modal__backdrop" data-modal-close href="#main" tabindex="-1"></a>
     <div class="modal__panel">
         <header class="modal__header">
             <div>
-                <h2 class="modal__title" id="visit-title">Demander une visite</h2>
+                <h2 class="modal__title" id="visit-title">Visiter ce logement</h2>
                 <p class="modal__subtitle">Appartement meublé 2 chambres · Bonapriso<span
                         class="modal__price">&nbsp;· <strong>175K FCFA</strong> / mois</span></p>
             </div>
@@ -304,76 +297,36 @@
                 <span aria-live="polite" class="field-error"></span>
             </div>
             <div class="field">
-                <label id="visit-type-label">Type de visite</label>
-                <div aria-labelledby="visit-type-label" class="option-grid option-grid--2" role="radiogroup">
-                    <label><input name="visitType" required type="radio" value="IN_PERSON">
-                        <svg aria-hidden="true" class="icon"><use href="#i-pin"/></svg>Sur place</label>
-                    <label><input name="visitType" required type="radio" value="VIDEO">
-                        <svg aria-hidden="true" class="icon"><use href="#i-video"/></svg>En vidéo</label>
+                <label id="moving-period-label">Date d'emménagement souhaitée</label>
+                <div aria-labelledby="moving-period-label" class="option-grid" role="radiogroup">
+                    <label><input name="movingPeriod" required type="radio" value="WITHIN_1_MONTH">Dans moins
+                        d'1&nbsp;mois</label>
+                    <label><input name="movingPeriod" required type="radio" value="WITHIN_3_MONTHS">Dans 1 à
+                        3&nbsp;mois</label>
+                    <label><input name="movingPeriod" required type="radio" value="AFTER_3_MONTHS">Dans plus de
+                        3&nbsp;mois</label>
                 </div>
                 <span aria-live="polite" class="field-error"></span>
             </div>
-            <div class="field">
-                <label id="visit-date-label">Jour de la visite</label>
-                <div aria-labelledby="visit-date-label" class="interest-form__days" role="radiogroup">
-                    <label><input name="visitDate" required type="radio" value="2026-10-31">
-                        <span class="day__name">sam.</span><strong>31</strong><span class="day__month">oct.</span></label>
-                    <label><input name="visitDate" required type="radio" value="2026-11-01">
-                        <span class="day__name">dim.</span><strong>1</strong><span class="day__month">nov.</span></label>
-                    <label><input name="visitDate" required type="radio" value="2026-11-02">
-                        <span class="day__name">lun.</span><strong>2</strong><span class="day__month">nov.</span></label>
-                    <label><input name="visitDate" required type="radio" value="2026-11-03">
-                        <span class="day__name">mar.</span><strong>3</strong><span class="day__month">nov.</span></label>
-                    <label><input name="visitDate" required type="radio" value="2026-11-04">
-                        <span class="day__name">mer.</span><strong>4</strong><span class="day__month">nov.</span></label>
-                    <label><input name="visitDate" required type="radio" value="2026-11-05">
-                        <span class="day__name">jeu.</span><strong>5</strong><span class="day__month">nov.</span></label>
-                    <label><input name="visitDate" required type="radio" value="2026-11-06">
-                        <span class="day__name">ven.</span><strong>6</strong><span class="day__month">nov.</span></label>
-                    <label><input name="visitDate" required type="radio" value="2026-11-07">
-                        <span class="day__name">sam.</span><strong>7</strong><span class="day__month">nov.</span></label>
-                </div>
-                <span aria-live="polite" class="field-error"></span>
+            <!--/* Honeypot: a bot fills it, a person never sees it. The server creates nothing when it isn't empty. */-->
+            <div aria-hidden="true" class="visually-hidden">
+                <label for="website">Site web</label>
+                <input autocomplete="off" id="website" name="website" tabindex="-1" type="text">
             </div>
-            <div class="field">
-                <label for="visit-time">Heure de la visite</label>
-                <select id="visit-time" name="visitTime" required>
-                    <option value="">Choisissez une heure</option>
-                    <option value="10:00">10h00</option>
-                    <option value="10:30">10h30</option>
-                    <option value="11:00">11h00</option>
-                    <option value="11:30">11h30</option>
-                    <option value="12:00">12h00</option>
-                    <option value="12:30">12h30</option>
-                    <option value="13:00">13h00</option>
-                    <option value="13:30">13h30</option>
-                    <option value="14:00">14h00</option>
-                    <option value="14:30">14h30</option>
-                    <option value="15:00">15h00</option>
-                    <option value="15:30">15h30</option>
-                    <option value="16:00">16h00</option>
-                    <option value="16:30">16h30</option>
-                    <option value="17:00">17h00</option>
-                    <option value="17:30">17h30</option>
-                    <option value="18:00">18h00</option>
-                    <option value="18:30">18h30</option>
-                    <option value="19:00">19h00</option>
-                    <option value="19:30">19h30</option>
-                    <option value="20:00">20h00</option>
-                    <option value="20:30">20h30</option>
-                    <option value="21:00">21h00</option>
-                </select>
-                <span aria-live="polite" class="field-error"></span>
-            </div>
-            <button class="btn btn-primary interest-form__submit" type="submit">Envoyer la demande</button>
-            <p class="interest-form__privacy">L'agent vous confirme le créneau sur WhatsApp. Seul l'agent voit vos
+            <button class="btn btn-primary interest-form__submit" type="submit">Envoyer ma demande</button>
+            <p class="interest-form__privacy">Un agent vous contacte sous 24 h. Seul l'agent voit vos
                 coordonnées.</p>
         </form>
 
         <div class="modal__body interest-done" data-interest-done hidden tabindex="-1">
             <svg aria-hidden="true" class="icon icon--lg"><use href="#i-check"/></svg>
-            <h3>Merci, votre demande est envoyée</h3>
-            <p data-interest-done-text>L'agent vous recontacte très vite sur WhatsApp pour confirmer la visite.</p>
+            <h3>Merci, votre demande est enregistrée</h3>
+            <p data-interest-done-text>Un agent vous contacte sous 24 h par WhatsApp ou par e-mail.</p>
+            <ol class="interest-done__steps">
+                <li>Vous signez votre mandat de recherche — gratuit, une commission seulement à la signature du
+                    bail.</li>
+                <li>Vous choisissez ensemble le créneau de la visite.</li>
+            </ol>
             <a class="btn btn-secondary" data-modal-close href="#main">Fermer</a>
         </div>
     </div>
@@ -384,7 +337,8 @@
   information only (never the agent's remarks). Without JavaScript it opens with :target (#ask) and the form posts
   the question; the server answers with the conversation (conversationId) and the assistant's reply. annonce.js
   makes it a modal dialog and adds the replies in place. A suggestion posts as the question (suggestion); the
-  suggestions are only shown before the first question.
+  suggestions are only shown before the first question. Kept for the assistant's own story: this page no longer
+  shows its trigger now that "Visiter ce logement" is the single call to action.
 -->
 <div aria-labelledby="ask-title" class="modal modal--drawer" id="ask">
     <a aria-hidden="true" class="modal__backdrop" data-modal-close href="#main" tabindex="-1"></a>
@@ -432,7 +386,7 @@
             </button>
         </form>
         <p class="chat__disclaimer">Réponses générées par IA à partir de l'annonce : l'agent confirme tout lors de la
-            visite. <a data-modal-open href="#visit">Demander une visite</a></p>
+            visite. <a data-modal-open href="#visit">Visiter ce logement</a></p>
     </div>
 </div>
 
