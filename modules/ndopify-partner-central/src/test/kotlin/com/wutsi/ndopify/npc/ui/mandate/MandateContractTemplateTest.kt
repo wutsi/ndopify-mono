@@ -136,6 +136,17 @@ class MandateContractTemplateTest {
     }
 
     @Test
+    fun `an API-set duration is offered as is`() {
+        doReturn(PENDING).whenever(mandateClient).get(201)
+        doReturn(CONTRACT.copy(durationMonths = 24)).whenever(contractClient).get("c-201")
+
+        val page = render("/mandates/201/contract")
+
+        assertEquals("24", page.selectFirst("select[name=durationMonths] option[selected]")?.attr("value"))
+        assertEquals(13, page.select("select[name=durationMonths] option").size)
+    }
+
+    @Test
     fun `a first send has no signature deadline yet`() {
         val page = render("/mandates/201/contract")
 

@@ -133,6 +133,17 @@ class MandateContractControllerTest {
     }
 
     @Test
+    fun `show - a contract that can't be read doesn't offer the defaults`() {
+        doReturn(PENDING).whenever(mandateClient).get(201)
+        doThrow(HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR)).whenever(contractClient).get("c-201")
+
+        val result = mvc.perform(get("/mandates/201/contract")).andReturn()
+
+        assertEquals("redirect:/mandates/201", result.modelAndView?.viewName)
+        assertEquals("error", outcome(result))
+    }
+
+    @Test
     fun `show - an unknown or non-numeric id goes to the home page`() {
         assertEquals("redirect:/", mvc.perform(get("/mandates/abc/contract")).andReturn().modelAndView?.viewName)
 
@@ -158,6 +169,17 @@ class MandateContractControllerTest {
         val result = mvc.perform(form("durationMonths" to "6", "visitFee" to "0")).andReturn()
 
         assertEquals("resent", outcome(result))
+    }
+
+    @Test
+    fun `send - keeps a duration set through the API`() {
+        doReturn(PENDING).whenever(mandateClient).get(201)
+        doReturn(CONTRACT.copy(durationMonths = 24)).whenever(contractClient).get("c-201")
+
+        val result = mvc.perform(form("durationMonths" to "24", "visitFee" to "0")).andReturn()
+
+        assertEquals("resent", outcome(result))
+        verify(mandateClient).requestApproval(201, RequestMandateApprovalRequest(24, Money(0, "XAF")))
     }
 
     @Test

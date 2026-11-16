@@ -62,14 +62,21 @@ class MandateContractController(
     }
 
     @GetMapping
-    fun show(@PathVariable id: String, model: Model): String {
+    fun show(@PathVariable id: String, model: Model, redirect: RedirectAttributes): String {
         val agent = currentAgent.get() ?: throw SignInRequiredException()
 
         val mandate = id.toLongOrNull()?.let { load(it) } ?: return "redirect:/"
         if (mandate.status !in SENDABLE) {
             return "redirect:/mandates/${mandate.id}"
         }
-        return render(agent, mandate, MandateContractRules.prefill(contract(mandate)), emptyMap(), model)
+        val contract = contract(mandate)
+        if (contract == null && mandate.contractId != null) {
+            // Never send the default terms for a contract whose own couldn't be read: that would reset them
+            LOGGER.warn("Contract ${mandate.contractId} of mandate ${mandate.id} not readable")
+            redirect.addFlashAttribute(MandateController.OUTCOME, MandateController.FAILED)
+            return back(mandate.id)
+        }
+        return render(agent, mandate, contract, MandateContractRules.prefill(contract), emptyMap(), model)
     }
 
     @PostMapping
@@ -81,17 +88,21 @@ class MandateContractController(
     ): String {
         val agent = currentAgent.get() ?: throw SignInRequiredException()
 
-        val errors = MandateContractRules.errors(form)
+        val mandate = load(id)
+        // A contract set through the API may be outside the UI's range: keeping it is valid, choosing another isn't
+        val currentDuration = form.durationMonths.trim().toIntOrNull()
+            ?.takeIf { it !in MandateContractRules.MIN_MONTHS..MandateContractRules.MAX_MONTHS }
+            ?.let { mandate?.let { contract(it)?.durationMonths } }
+        val errors = MandateContractRules.errors(form, currentDuration)
         if (errors.isNotEmpty()) {
-            val mandate = load(id)
             if (mandate == null || mandate.status !in SENDABLE) {
                 redirect.addFlashAttribute(MandateController.OUTCOME, MandateController.CHANGED)
                 return back(id)
             }
-            return render(agent, mandate, form, errors, model)
+            return render(agent, mandate, contract(mandate), form, errors, model)
         }
 
-        val again = load(id)?.status == MandateStatus.PENDING_APPROVAL
+        val again = mandate?.status == MandateStatus.PENDING_APPROVAL
         val currency = tenantContext.getTenant().currencyCode
         return act(id, if (again) MandateController.RESENT else MandateController.SENT, redirect) {
             mandateClient.requestApproval(id, MandateContractRules.request(form, currency))
@@ -101,19 +112,19 @@ class MandateContractController(
     private fun render(
         agent: Agent,
         mandate: Mandate,
+        contract: Contract?,
         form: MandateContractForm,
         errors: Map<String, String>,
         model: Model,
     ): String {
         ProfileRules.header(agent, model)
-        val contract = contract(mandate)
         model.addAttribute("mandate", mandate)
         model.addAttribute("form", form)
         model.addAttribute("errors", errors)
         model.addAttribute("resend", mandate.status == MandateStatus.PENDING_APPROVAL)
         model.addAttribute("email", email(mandate, contract))
         model.addAttribute("signatureTtlDays", MandateRules.signatureTtlDays(contract))
-        model.addAttribute("months", MandateContractRules.MIN_MONTHS..MandateContractRules.MAX_MONTHS)
+        model.addAttribute("months", MandateContractRules.months(contract))
         model.addAttribute("currency", TenantFormatter(tenantContext.getTenant()).currency())
         return VIEW
     }
