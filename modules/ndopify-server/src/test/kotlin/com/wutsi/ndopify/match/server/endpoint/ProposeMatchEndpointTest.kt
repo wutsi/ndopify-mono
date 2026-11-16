@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.match.server.endpoint
 
+import com.auth0.jwt.JWT
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
@@ -13,6 +14,7 @@ import com.wutsi.ndopify.security.server.service.AccessTokenService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
+import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -78,6 +80,17 @@ class ProposeMatchEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
             Thread.sleep(50)
         }
         assertTrue(userApplicationDao.findByMembershipAndApplication(membership, publicPortal).isPresent)
+    }
+
+    @Test
+    fun `the link lives a year`() {
+        rest.postForEntity("/v1/matches/1/propose", null, Any::class.java)
+
+        assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received")
+        val body = smtp.receivedMessages.single().content.toString()
+        val token = Regex("/match/1\\?token=([A-Za-z0-9._-]+)").find(body)!!.groupValues[1]
+        val jwt = JWT.decode(token)
+        assertEquals(Duration.ofDays(365), Duration.between(jwt.issuedAtAsInstant, jwt.expiresAtAsInstant))
     }
 
     @Test

@@ -11,11 +11,12 @@ import com.wutsi.ndopify.security.server.service.UserService
 import org.springframework.stereotype.Service
 
 /**
- * Issues the token the links of a match proposal e-mail carry (`?token=`), so that the customer opening one is signed
- * in to the public portal as its own party: the party `MatchEndpoints` checks on accept / reject. Gives the customer a
- * membership of the tenant with `public-portal` access first, as `ContractSignerService` does for the e-signature
- * portal. The token lives `ndopify.security.access-token.ttl.match-link`, and is a full `public-portal` token: anyone
- * the e-mail is forwarded to is signed in as the customer until then.
+ * Issues the token the customer links of the match proposal and the visit e-mails carry (`?token=`), so that the
+ * customer opening one is signed in to the public portal as its own party: the party `MatchEndpoints` checks on accept
+ * / reject. Gives the customer a membership of the tenant with `public-portal` access first, as
+ * `ContractSignerService` does for the e-signature portal. The token lives `ndopify.security.access-token.ttl.match-link`
+ * (365 days), and is a full `public-portal` token: anyone the e-mail is forwarded to is signed in as the customer until
+ * then.
  *
  * No token (null) when the customer has no e-mail, or its address is already a member's as another party: the customer
  * then signs in. Runs in the caller's transaction.
