@@ -5,6 +5,7 @@ import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.platform.telegram.TelegramClient
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
+import com.wutsi.ndopify.platform.util.PhoneNumberUtils
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantFormatter
@@ -18,7 +19,8 @@ import java.time.ZoneId
 /**
  * Reminds the agent over Telegram of a confirmed visit 24 h ahead: the mirror of `VisitReminderMailet`'s agent copy,
  * with the type, the date and time in the tenant's `timeZone`, the property's city and neighbourhood (never its exact
- * address), the customer's WhatsApp number, the WhatsApp call note of a `VIDEO` visit and a `Voir la visite` button.
+ * address), a WhatsApp button to contact the customer, the WhatsApp call note of a `VIDEO` visit and a `Voir la visite`
+ * button.
  * It never carries the visit's 4-digit code: only the customer's copy does.
  *
  * [send]'s recipient is the agent's chat, from #135's link (`AgentTelegramService.chatId`), never the agent's e-mail.
@@ -35,12 +37,16 @@ class VisitReminderBotlet(
     fun send(visit: VisitEntity, customer: CustomerEntity, agent: AgentEntity, listing: ListingEntity, chatId: Long) {
         val tenant = tenantService.findById(visit.tenantId!!)
         val formatter = TenantFormatter(tenant)
+        val url = tenant.partnerCentralUrl?.removeSuffix("/")
         client.sendMessage(
             chatId,
             text(visit, customer, agent, listing, tenant, formatter),
-            tenant.partnerCentralUrl?.removeSuffix("/")?.let { url ->
-                listOf(TelegramButton("Voir la visite", url = "$url/visits/${visit.id}"))
-            } ?: emptyList(),
+            listOfNotNull(
+                url?.let { TelegramButton("Voir la visite", url = "$it/visits/${visit.id}") },
+                customer.whatsappNumber?.takeIf { it.isNotBlank() }?.let {
+                    TelegramButton("Contacter sur WhatsApp", url = PhoneNumberUtils.toWhatsappUrl(it))
+                },
+            ),
         )
     }
 
@@ -63,7 +69,6 @@ class VisitReminderBotlet(
         lines.add("")
         lines.add("Type: ${typeLabel(visit.type)}")
         placeOf(listing)?.let { lines.add("Lieu: $it") }
-        formatter.phone(customer.whatsappNumber)?.let { lines.add("WhatsApp: $it") }
         if (visit.type == VisitType.VIDEO) {
             lines.add("")
             lines.add(
