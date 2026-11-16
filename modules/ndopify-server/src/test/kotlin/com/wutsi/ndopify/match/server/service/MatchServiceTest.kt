@@ -43,6 +43,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class MatchServiceTest {
@@ -520,5 +521,77 @@ class MatchServiceTest {
 
         verify(matchDao, never()).save(any<MatchEntity>())
         verify(matchDao, never()).delete(any<MatchEntity>())
+    }
+
+    // --- A match at the customer's request (a listing asked for from its public page)
+
+    private fun givenInterest(score: MatchScore?, match: MatchEntity?) {
+        doReturn(Optional.of(listing1)).whenever(listingDao).findById(LISTING_ID)
+        doReturn(score).whenever(matcher).score(eq(search), eq(listing1), any(), eq(today))
+        doReturn(match).whenever(matchDao).findByMandateAndListing(search, listing1)
+    }
+
+    @Test
+    fun `ensureInterest stores a pair under the min score`() {
+        givenInterest(score(0.2), null)
+        val saved = MatchEntity(id = 9L, mandate = search, listing = listing1)
+        // The lookups: not the customer's interest yet, not a row store() reuses, then the row it just stored
+        doReturn(null, null, saved).whenever(matchDao).findByMandateAndListing(search, listing1)
+
+        val interest = service.ensureInterest(MANDATE_ID, LISTING_ID)!!
+
+        assertTrue(interest.created)
+        assertEquals(9L, interest.match.id)
+        val captor = argumentCaptor<MatchEntity>()
+        verify(matchDao).save(captor.capture())
+        assertEquals(MatchStatus.ACTIVE, captor.firstValue.status)
+        assertEquals(0.2, captor.firstValue.score, 0.000001)
+    }
+
+    @Test
+    fun `ensureInterest reuses an existing active match`() {
+        val existing = MatchEntity(id = 9L, mandate = search, listing = listing1, status = MatchStatus.ACTIVE)
+        givenInterest(score(0.2), existing)
+
+        val interest = service.ensureInterest(MANDATE_ID, LISTING_ID)!!
+
+        assertEquals(false, interest.created)
+        assertEquals(9L, interest.match.id)
+    }
+
+    @Test
+    fun `ensureInterest leaves a rejected match rejected`() {
+        givenInterest(score(0.9), MatchEntity(id = 9L, status = MatchStatus.REJECTED))
+
+        assertNull(service.ensureInterest(MANDATE_ID, LISTING_ID))
+
+        verify(matchDao, never()).save(any<MatchEntity>())
+    }
+
+    @Test
+    fun `ensureInterest still applies the hard rules`() {
+        givenInterest(null, null)
+
+        assertNull(service.ensureInterest(MANDATE_ID, LISTING_ID))
+
+        verify(matchDao, never()).save(any<MatchEntity>())
+    }
+
+    @Test
+    fun `ensureInterest needs a published listing`() {
+        doReturn(Optional.of(listing1.copy(status = ListingStatus.SOLD))).whenever(listingDao).findById(LISTING_ID)
+
+        assertNull(service.ensureInterest(MANDATE_ID, LISTING_ID))
+
+        verify(matchDao, never()).save(any<MatchEntity>())
+    }
+
+    @Test
+    fun `ensureInterest needs an agent`() {
+        doReturn(search.copy(agentId = null)).whenever(mandateDao).findWithNeighborhoodsById(MANDATE_ID)
+
+        assertNull(service.ensureInterest(MANDATE_ID, LISTING_ID))
+
+        verify(matchDao, never()).save(any<MatchEntity>())
     }
 }

@@ -350,13 +350,13 @@ class MatchService(
     }
 
     // Returns the outcome of the pair: nothing is deleted when the pair isn't ACTIVE, nor for co-brokerage
-    private fun store(mandate: MandateEntity, listing: ListingEntity, score: MatchScore): StoreOutcome {
+    private fun store(mandate: MandateEntity, listing: ListingEntity, score: MatchScore, force: Boolean = false): StoreOutcome {
         val coBrokerage = listing.agent.id != mandate.agentId
         val existing = dao.findByMandateAndListing(mandate, listing)
         if (existing != null && existing.status != MatchStatus.ACTIVE) {
             return StoreOutcome.NOT_ACTIVE
         }
-        if (score.total < minScore) {
+        if (!force && score.total < minScore) {
             // A co-brokerage row was valid when created and its own-inventory situation is unchanged: kept (sticky)
             if (existing != null && !coBrokerage) {
                 dao.delete(existing)
@@ -391,6 +391,40 @@ class MatchService(
             )
         )
         return StoreOutcome.STORED
+    }
+
+    /**
+     * The match of (mandate, listing) the customer asked for on the listing's public page: stored ACTIVE even under
+     * `min-score` (the explicit interest outweighs the score), the hard rules still applying. An existing ACTIVE match
+     * is reused (`created = false`); a match in any other status (REJECTED, DISMISSED…) is left as is and returns null.
+     * Null too when the mandate isn't an APPROVED-style SEARCH with an agent, or the listing isn't PUBLISHED.
+     */
+    @Transactional
+    fun ensureInterest(mandateId: Long, listingId: Long): Interest? {
+        val mandate = mandateDao.findWithNeighborhoodsById(mandateId) ?: return null
+        if (mandate.mandateType != MandateType.SEARCH || mandate.agentId == null) {
+            return null
+        }
+        val listing = listingDao.findById(listingId).orElse(null) ?: return null
+        if (listing.status != ListingStatus.PUBLISHED) {
+            return null
+        }
+        val score = matcher.score(mandate, listing, distances(mandate), today(mandate.tenantId!!)) ?: return null
+        val existing = dao.findByMandateAndListing(mandate, listing)
+        if (existing != null && existing.status != MatchStatus.ACTIVE) {
+            return null
+        }
+
+        val outcome = try {
+            store(mandate, listing, score, force = true)
+        } catch (ex: DataIntegrityViolationException) {
+            StoreOutcome.STORED // a concurrent request inserted the pair: read it below
+        }
+        if (outcome != StoreOutcome.STORED) {
+            return null
+        }
+        val match = dao.findByMandateAndListing(mandate, listing) ?: return null
+        return Interest(match, created = existing == null)
     }
 
     // Distance (km) from each neighbourhood of the mandate's city to the nearest of the mandate's: 0 for its own
