@@ -21,8 +21,14 @@ object ProfileRules {
 
     fun fullName(agent: Agent): String = "${agent.party.firstName} ${agent.party.lastName}".trim()
 
-    /** The header's account menu: the agent's photo, or its initials without one. */
+    /**
+     * The header's account menu: the signed-in agent's identity block — its id (the link target, `/agent?id=…`), full
+     * name and e-mail — then its photo, or its initials without one.
+     */
     fun header(agent: Agent, model: Model) {
+        model.addAttribute("userAgentId", agent.id)
+        model.addAttribute("userName", fullName(agent))
+        model.addAttribute("userEmail", agent.party.email)
         model.addAttribute("userPhotoUrl", agent.party.photoUrl?.ifBlank { null })
         model.addAttribute("initials", KycRules.initials(agent.party.firstName, agent.party.lastName))
     }
