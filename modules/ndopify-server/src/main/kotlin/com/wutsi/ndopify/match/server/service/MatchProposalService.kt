@@ -15,6 +15,7 @@ import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.dto.RejectMatchRequest
 import com.wutsi.ndopify.match.server.dao.MatchRepository
 import com.wutsi.ndopify.match.server.domain.MatchEntity
+import com.wutsi.ndopify.match.server.event.MatchAnsweredEvent
 import com.wutsi.ndopify.match.server.event.MatchProposedEvent
 import com.wutsi.ndopify.match.server.mail.MatchProposedMailet
 import com.wutsi.ndopify.platform.logger.KVLogger
@@ -41,6 +42,7 @@ class MatchProposalService(
     private val customerService: CustomerService,
     private val agentService: AgentService,
     private val mailet: MatchProposedMailet,
+    private val answeredNotifier: MatchAnsweredNotifier,
     private val eventPublisher: ApplicationEventPublisher,
     private val clock: Clock,
     private val logger: KVLogger,
@@ -108,21 +110,36 @@ class MatchProposalService(
         return saved
     }
 
-    /** The customer accepts a PROPOSED match. 409 MATCH_NOT_PROPOSED otherwise. */
+    /**
+     * The customer accepts a PROPOSED match. 409 MATCH_NOT_PROPOSED otherwise. After commit, its agent hears the answer
+     * ([MatchAnsweredEvent]).
+     */
+    @Transactional
     fun accept(id: Long): MatchEntity {
         val match = findProposed(id)
         val now = Date(clock.millis())
-        return dao.save(match.copy(status = MatchStatus.ACCEPTED, answeredAt = now, modifiedAt = now))
+        val saved = dao.save(match.copy(status = MatchStatus.ACCEPTED, answeredAt = now, modifiedAt = now))
+        eventPublisher.publishEvent(
+            MatchAnsweredEvent(
+                matchId = saved.id!!,
+                mandateId = saved.mandate.id!!,
+                tenantId = saved.tenantId!!,
+                status = saved.status,
+            ),
+        )
+        return saved
     }
 
     /**
      * The customer rejects a PROPOSED match, for good. Keeps its reason (`reasonCode`, OTHER when none), its comment
-     * (blank: none) and the price it said no to (`listingPrice`), to tell a price drop later. 409 MATCH_NOT_PROPOSED otherwise.
+     * (blank: none) and the price it said no to (`listingPrice`), to tell a price drop later. 409 MATCH_NOT_PROPOSED
+     * otherwise. After commit, its agent hears the answer ([MatchAnsweredEvent]).
      */
+    @Transactional
     fun reject(id: Long, request: RejectMatchRequest): MatchEntity {
         val match = findProposed(id)
         val now = Date(clock.millis())
-        return dao.save(
+        val saved = dao.save(
             match.copy(
                 status = MatchStatus.REJECTED,
                 answeredAt = now,
@@ -133,6 +150,33 @@ class MatchProposalService(
                 listingPrice = match.listing.price,
                 modifiedAt = now,
             )
+        )
+        eventPublisher.publishEvent(
+            MatchAnsweredEvent(
+                matchId = saved.id!!,
+                mandateId = saved.mandate.id!!,
+                tenantId = saved.tenantId!!,
+                status = saved.status,
+            ),
+        )
+        return saved
+    }
+
+    /**
+     * Tells the match's agent that its customer answered it: called by `MatchEventListener` after commit, so nothing is
+     * sent for a rolled-back answer. The agent is the search mandate's (`match.agentId`), never the listing's. Nothing
+     * once the match isn't ACCEPTED or REJECTED (a second event, a match expired meanwhile).
+     */
+    @Transactional
+    fun sendAnsweredNotification(matchId: Long) {
+        val match = dao.findById(matchId).orElse(null) ?: return
+        if (match.status != MatchStatus.ACCEPTED && match.status != MatchStatus.REJECTED) {
+            return
+        }
+        answeredNotifier.send(
+            match,
+            customerService.findById(match.mandate.customerId),
+            agentService.findById(match.agentId),
         )
     }
 
