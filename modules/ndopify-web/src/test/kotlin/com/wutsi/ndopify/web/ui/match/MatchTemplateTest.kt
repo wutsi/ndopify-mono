@@ -201,6 +201,7 @@ class MatchTemplateTest {
             listOf("PRICE", "LOCATION", "SIZE", "AMENITIES", "AVAILABILITY", "OTHER"),
             reject.select("input[name=reason]").map { it.attr("value") },
         )
+        assertTrue(reject.select("input[name=reason]").all { it.hasAttr("required") })
         assertEquals("500", reject.selectFirst("textarea[name=comment]")?.attr("maxlength"))
         // The price card's two answers, and the #answer popup's below 1024px
         assertEquals(2, doc.select("form[action=/match/12/accept]").size)
