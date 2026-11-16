@@ -32,10 +32,10 @@ class SecurityConfiguration(
             .authorizeHttpRequests { customizer ->
                 customizer
                     .requestMatchers("/", "/agent", "/owner").permitAll()
-                    // A listing's page (ListingController); GET only: its visit and question forms are still the
-                    // prototype's
+                    // A listing's page (ListingController), and its "Visiter ce logement" form
                     .requestMatchers(HttpMethod.GET, "/*/listing/*", "/*/listing/*/*", "/*/*/listing/*", "/*/*/listing/*/*")
                     .permitAll()
+                    .requestMatchers(HttpMethod.POST, "/listings/*/interest").permitAll()
                     // A match proposal (MatchController): the page, and the customer's answer
                     .requestMatchers(HttpMethod.GET, "/match/*").permitAll()
                     .requestMatchers(HttpMethod.POST, "/match/*/accept", "/match/*/reject", "/match/*/visit").permitAll()
