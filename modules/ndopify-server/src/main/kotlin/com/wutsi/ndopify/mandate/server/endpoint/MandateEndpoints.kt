@@ -13,6 +13,7 @@ import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.CreateMandateResponse
 import com.wutsi.ndopify.mandate.dto.DispatchMandateResponse
 import com.wutsi.ndopify.mandate.dto.GetMandateResponse
+import com.wutsi.ndopify.mandate.dto.RequestMandateApprovalRequest
 import com.wutsi.ndopify.mandate.dto.SearchMandateRequest
 import com.wutsi.ndopify.mandate.dto.SearchMandateResponse
 import com.wutsi.ndopify.mandate.dto.SearchMandateStatsRequest
@@ -113,8 +114,11 @@ class MandateEndpoints(
     }
 
     @PostMapping("/{id}/request-approval")
-    fun requestApproval(@PathVariable id: Long) {
-        service.requestApproval(id)
+    fun requestApproval(
+        @PathVariable id: Long,
+        @RequestBody(required = false) @Valid request: RequestMandateApprovalRequest?,
+    ) {
+        service.requestApproval(id, request)
     }
 
     @PostMapping("/{id}/cancel")

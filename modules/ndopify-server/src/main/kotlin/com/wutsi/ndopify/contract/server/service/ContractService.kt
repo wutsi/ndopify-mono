@@ -200,6 +200,28 @@ class ContractService(
     }
 
     /**
+     * Sets the terms of a contract that can still be signed (DRAFT, PENDING_SIGNATURE). A null value keeps the current
+     * one. The duration is 1..36 months; the fee is in the tenant's currency (blank means it) and can't be negative.
+     * Locked like every contract write, so a signature can't interleave.
+     */
+    @Transactional
+    fun setTerms(id: String, durationMonths: Int? = null, visitFee: Money? = null): ContractEntity {
+        val contract = findByIdForUpdate(id)
+        ensureNotClosed(contract)
+
+        var updated = contract
+        if (durationMonths != null) {
+            if (durationMonths !in 1..36) throw invalidParameter("durationMonths", durationMonths.toString())
+            updated = updated.copy(durationMonths = durationMonths)
+        }
+        if (visitFee != null) {
+            val (amount, currency) = normalizeVisitFee(visitFee, tenantService.findById(TenantContext.get()!!).currencyCode)
+            updated = updated.copy(visitFeeAmount = amount, visitFeeCurrency = currency)
+        }
+        return if (updated === contract) contract else dao.save(updated)
+    }
+
+    /**
      * Sends a DRAFT or PENDING_SIGNATURE contract to its parties for signature: it becomes PENDING_SIGNATURE, its
      * parties have `ttl-days` from now to sign it (each request resets the deadline), and are e-mailed after commit, by
      * a listener of [ContractSignatureRequestedEvent]. Locked like a signature, so that it can't expire while its

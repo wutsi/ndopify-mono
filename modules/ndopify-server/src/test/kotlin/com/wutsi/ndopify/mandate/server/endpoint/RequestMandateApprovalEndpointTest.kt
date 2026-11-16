@@ -8,6 +8,7 @@ import com.nhaarman.mockitokotlin2.doNothing
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.eq
+import com.nhaarman.mockitokotlin2.inOrder
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.times
@@ -27,11 +28,13 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.error.server.exception.ConflictException
 import com.wutsi.ndopify.mandate.dto.MandateStatus
+import com.wutsi.ndopify.mandate.dto.RequestMandateApprovalRequest
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.mandate.server.service.MandateContractGenerator
 import com.wutsi.ndopify.platform.storage.StorageService
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
+import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.apache.commons.codec.digest.DigestUtils
 import org.springframework.beans.factory.annotation.Autowired
@@ -156,6 +159,49 @@ class RequestMandateApprovalEndpointTest : AuthorizationAwareEndpointIntegration
         )
 
         verify(contractService).requestSignature("c-1")
+    }
+
+    @Test
+    fun `request approval with terms - a new contract gets them`() {
+        val request = RequestMandateApprovalRequest(durationMonths = 3, visitFee = Money(5000, "XAF"))
+
+        val response = rest.postForEntity("/v1/mandates/1/request-approval", request, Any::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+
+        val captured = argumentCaptor<CreateContractRequest>()
+        verify(contractService).create(captured.capture())
+        assertEquals(3, captured.firstValue.durationMonths)
+        assertEquals(Money(5000, "XAF"), captured.firstValue.visitFee)
+    }
+
+    @Test
+    fun `request approval with terms - a reused contract is updated before the content`() {
+        val request = RequestMandateApprovalRequest(durationMonths = 3, visitFee = Money(5000, "XAF"))
+
+        val response = rest.postForEntity("/v1/mandates/4/request-approval", request, Any::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+
+        verify(contractService).setTerms("c-4", 3, Money(5000, "XAF"))
+        val order = inOrder(contractService, contractGenerator)
+        order.verify(contractService).setTerms("c-4", 3, Money(5000, "XAF"))
+        order.verify(contractGenerator).generate(any(), any())
+    }
+
+    @Test
+    fun `request approval - an out-of-range duration is 400`() {
+        for (duration in listOf(0, 37)) {
+            val response = rest.postForEntity(
+                "/v1/mandates/1/request-approval",
+                RequestMandateApprovalRequest(durationMonths = duration),
+                ErrorResponse::class.java,
+            )
+
+            assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+            assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body!!.error.code)
+        }
+        verify(contractService, never()).create(any())
     }
 
     @Test

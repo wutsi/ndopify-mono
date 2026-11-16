@@ -28,6 +28,7 @@ import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateCancellationCode
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.mandate.dto.RequestMandateApprovalRequest
 import com.wutsi.ndopify.mandate.dto.SearchMandateRequest
 import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.mandate.server.dao.AssignmentRepository
@@ -380,19 +381,25 @@ class MandateService(
 
     /**
      * Sends an ASSIGNED mandate (or a PENDING_APPROVAL one, again) to its customer for approval: it becomes
-     * PENDING_APPROVAL, with a contract to sign. In 3 transactions, so that no lock is held while the contract's content
-     * is uploaded (creating a contract locks the tenant's contract sequence until commit):
-     * 1. Under the mandate's lock, its contract: the current one, or a new one (none yet, or expired), linked to the
-     *    mandate right away. A concurrent request waits for the lock, then reuses it: never 2 contracts for a mandate.
+     * PENDING_APPROVAL, with a contract to sign. [request] confirms the contract's terms (duration, visit fee); null
+     * keeps the contract's current ones, or the tenant default for a new one. In 3 transactions, so that no lock is
+     * held while the contract's content is uploaded (creating a contract locks the tenant's contract sequence until
+     * commit):
+     * 1. Under the contract's lock, then the mandate's (the order of a signature, so that they can't deadlock): its
+     *    contract, the current one with its new terms, or a new one (none yet, or expired), linked to the mandate right
+     *    away. A concurrent request waits for the lock, then reuses it: never 2 contracts for a mandate.
      * 2. Its content, generated from the mandate (read-only), then uploaded outside any transaction.
-     * 3. Under the contract's lock, then the mandate's again (the order of a signature, so that they can't deadlock):
-     *    the content is set, the mandate is PENDING_APPROVAL and the signature is requested. 409
-     *    MANDATE_VERSION_CONFLICT if the mandate changed since 2: the content would be stale.
+     * 3. Under the contract's lock, then the mandate's again: the content is set, the mandate is PENDING_APPROVAL and
+     *    the signature is requested. 409 MANDATE_VERSION_CONFLICT if the mandate changed since 2: the content would be
+     *    stale.
      * A failure after 1 leaves the mandate as it was, with its DRAFT contract, which the next request reuses.
      * Not @Transactional: each step is its own transaction.
      */
-    fun requestApproval(id: Long): MandateEntity {
-        val contractId = tx.execute { prepareApproval(id) }
+    fun requestApproval(id: Long, request: RequestMandateApprovalRequest? = null): MandateEntity {
+        request?.durationMonths?.let { durationMonths ->
+            if (durationMonths !in 1..36) throw invalid("durationMonths")
+        }
+        val contractId = tx.execute { prepareApproval(id, request) }
         val (version, html) = tx.execute {
             val mandate = findById(id)
             mandate.version to contractGenerator.generate(mandate, contractService.findById(contractId))
@@ -595,7 +602,7 @@ class MandateService(
         Duration.ofMillis(to.time - from.time).toDays().toInt().coerceAtLeast(0)
 
     // Signed by the customer only: the agent is a party, so that it can read the contract, but doesn't sign it
-    private fun createContract(mandate: MandateEntity): ContractEntity {
+    private fun createContract(mandate: MandateEntity, request: RequestMandateApprovalRequest?): ContractEntity {
         val customer = customerService.findById(mandate.customerId)
         val agent = agentService.findById(mandate.agentId!!) // An ASSIGNED / PENDING_APPROVAL mandate has an agent
         return contractService.create(
@@ -605,7 +612,8 @@ class MandateService(
                     MandateType.LISTING -> ContractType.LISTING
                     else -> throw IllegalArgumentException("Unsupported mandate type: ${mandate.mandateType}")
                 },
-                durationMonths = contractDurationMonths,
+                durationMonths = request?.durationMonths ?: contractDurationMonths,
+                visitFee = request?.visitFee,
                 parties = listOf(
                     CreateContractParty(
                         partyId = customer.party.id ?: -1,
@@ -627,17 +635,26 @@ class MandateService(
     }
 
     /** Returns the id of the mandate's contract to sign, created if it has none, or it expired or was cancelled. */
-    private fun prepareApproval(id: Long): String {
+    private fun prepareApproval(id: Long, request: RequestMandateApprovalRequest?): String {
+        // The contract before the mandate, the order of a signature: a concurrent request waits for the lock
+        val contractId = dao.findContractIdById(id)
+        contractId?.let { contractService.findByIdForUpdate(it) }
+
         val mandate = findByIdForUpdate(id)
         access.ensureCanUpdate(mandate)
         ensureCanBeApproved(mandate)
+        if (mandate.contractId != contractId) {
+            // Replaced meanwhile by another request: not the contract locked above
+            throw ConflictException(Error(ErrorCode.MANDATE_VERSION_CONFLICT))
+        }
 
-        val current = mandate.contractId?.let { contractId -> contractService.findById(contractId) }
+        val current = contractId?.let { contractService.findById(it) }
         // A contract cancelled by an update can't be signed any more, like an expired one: a new one replaces it
         if (current != null && current.status != ContractStatus.EXPIRED && current.status != ContractStatus.CANCELLED) {
+            contractService.setTerms(current.id, request?.durationMonths, request?.visitFee)
             return current.id
         }
-        val contract = createContract(mandate)
+        val contract = createContract(mandate, request)
         dao.save(mandate.copy(contractId = contract.id, modifiedAt = Date(clock.millis())))
         return contract.id
     }
