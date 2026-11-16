@@ -46,14 +46,18 @@ class TelegramClientTest {
     }
 
     @Test
-    fun `sendMessage with buttons posts one keyboard row`() {
+    fun `sendMessage with buttons posts one keyboard row per button`() {
         doReturn(TelegramMessageResponse(ok = true))
             .whenever(http).post(eq("$base/sendMessage"), any(), eq(TelegramMessageResponse::class.java), eq(emptyMap()))
 
         client.sendMessage(
             123L,
             "Offre",
-            listOf(TelegramButton("Accepter", "accept:9"), TelegramButton("Refuser", "decline:9")),
+            listOf(
+                TelegramButton("Accepter", "accept:9"),
+                TelegramButton("Refuser", "decline:9"),
+                TelegramButton("Voir le mandat", "view:9"),
+            ),
         )
 
         verify(http).post(
@@ -64,10 +68,45 @@ class TelegramClientTest {
                     "text" to "Offre",
                     "reply_markup" to mapOf(
                         "inline_keyboard" to listOf(
+                            listOf(mapOf("text" to "Accepter", "callback_data" to "accept:9")),
+                            listOf(mapOf("text" to "Refuser", "callback_data" to "decline:9")),
+                            listOf(mapOf("text" to "Voir le mandat", "callback_data" to "view:9")),
+                        ),
+                    ),
+                ),
+            ),
+            eq(TelegramMessageResponse::class.java),
+            eq(emptyMap()),
+        )
+    }
+
+    @Test
+    fun `sendMessageRows keeps a row's buttons together`() {
+        doReturn(TelegramMessageResponse(ok = true))
+            .whenever(http).post(eq("$base/sendMessage"), any(), eq(TelegramMessageResponse::class.java), eq(emptyMap()))
+
+        client.sendMessageRows(
+            123L,
+            "Digest",
+            listOf(
+                listOf(TelegramButton("Accepter", "accept:9"), TelegramButton("Refuser", "decline:9")),
+                listOf(TelegramButton("Voir le mandat", url = "https://pc.example/mandates/11")),
+            ),
+        )
+
+        verify(http).post(
+            eq("$base/sendMessage"),
+            eq(
+                mapOf(
+                    "chat_id" to 123L,
+                    "text" to "Digest",
+                    "reply_markup" to mapOf(
+                        "inline_keyboard" to listOf(
                             listOf(
                                 mapOf("text" to "Accepter", "callback_data" to "accept:9"),
                                 mapOf("text" to "Refuser", "callback_data" to "decline:9"),
                             ),
+                            listOf(mapOf("text" to "Voir le mandat", "url" to "https://pc.example/mandates/11")),
                         ),
                     ),
                 ),
@@ -167,7 +206,7 @@ class TelegramClientTest {
     }
 
     @Test
-    fun `editMessageText with a URL button replaces the keyboard`() {
+    fun `editMessageText with buttons posts one keyboard row per button`() {
         doReturn(TelegramMessageResponse(ok = true))
             .whenever(http).post(eq("$base/editMessageText"), any(), eq(TelegramMessageResponse::class.java), eq(emptyMap()))
 
@@ -175,7 +214,10 @@ class TelegramClientTest {
             123L,
             50L,
             "Mandat accepté.",
-            listOf(TelegramButton("Voir le mandat", url = "https://npc.example/mandates/10")),
+            listOf(
+                TelegramButton("Voir le mandat", url = "https://npc.example/mandates/10"),
+                TelegramButton("Voir la visite", url = "https://npc.example/visits/2"),
+            ),
         )
 
         verify(http).post(
@@ -188,6 +230,7 @@ class TelegramClientTest {
                     "reply_markup" to mapOf(
                         "inline_keyboard" to listOf(
                             listOf(mapOf("text" to "Voir le mandat", "url" to "https://npc.example/mandates/10")),
+                            listOf(mapOf("text" to "Voir la visite", "url" to "https://npc.example/visits/2")),
                         ),
                     ),
                 ),
@@ -273,7 +316,7 @@ class TelegramClientTest {
     }
 
     @Test
-    fun `sendPhoto posts the image, its caption and its button`() {
+    fun `sendPhoto posts the image, its caption and one keyboard row per button`() {
         val bytes = byteArrayOf(1, 2, 3)
         doReturn(TelegramMessageResponse(ok = true))
             .whenever(http).postMultipart(
@@ -285,6 +328,7 @@ class TelegramClientTest {
                         "reply_markup" to mapOf(
                             "inline_keyboard" to listOf(
                                 listOf(mapOf("text" to "Voir l'annonce", "url" to "https://www.ndopify.com/listing")),
+                                listOf(mapOf("text" to "Voir le mandat", "url" to "https://npc.example/mandates/10")),
                             ),
                         ),
                     ),
@@ -303,7 +347,10 @@ class TelegramClientTest {
             "1.jpg",
             "image/jpeg",
             "En ligne",
-            listOf(TelegramButton("Voir l'annonce", url = "https://www.ndopify.com/listing")),
+            listOf(
+                TelegramButton("Voir l'annonce", url = "https://www.ndopify.com/listing"),
+                TelegramButton("Voir le mandat", url = "https://npc.example/mandates/10"),
+            ),
         )
 
         verify(http).postMultipart(
