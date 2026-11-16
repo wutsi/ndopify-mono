@@ -176,17 +176,25 @@ class RequestMandateApprovalEndpointTest : AuthorizationAwareEndpointIntegration
     }
 
     @Test
-    fun `request approval with terms - a reused contract is updated before the content`() {
+    fun `request approval with terms - a reused contract states them in its content and keeps them`() {
         val request = RequestMandateApprovalRequest(durationMonths = 3, visitFee = Money(5000, "XAF"))
 
         val response = rest.postForEntity("/v1/mandates/4/request-approval", request, Any::class.java)
 
         assertEquals(HttpStatus.OK, response.statusCode)
 
-        verify(contractService).setTerms("c-4", 3, Money(5000, "XAF"))
-        val order = inOrder(contractService, contractGenerator)
-        order.verify(contractService).setTerms("c-4", 3, Money(5000, "XAF"))
+        // The content is generated from the terms before anything is written: the contract the customer can still sign
+        // keeps its old content and terms until step 3 applies both together.
+        val generated = argumentCaptor<ContractEntity>()
+        verify(contractGenerator).generate(any(), generated.capture())
+        assertEquals(3, generated.firstValue.durationMonths)
+        assertEquals(5000, generated.firstValue.visitFeeAmount)
+
+        val order = inOrder(contractGenerator, contractService)
         order.verify(contractGenerator).generate(any(), any())
+        order.verify(contractService).setTerms("c-4", 3, Money(5000, "XAF"))
+        order.verify(contractService).setContent(eq("c-4"), any(), any())
+        order.verify(contractService).requestSignature("c-4")
     }
 
     @Test

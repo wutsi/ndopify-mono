@@ -386,13 +386,15 @@ class MandateService(
      * held while the contract's content is uploaded (creating a contract locks the tenant's contract sequence until
      * commit):
      * 1. Under the contract's lock, then the mandate's (the order of a signature, so that they can't deadlock): its
-     *    contract, the current one with its new terms, or a new one (none yet, or expired), linked to the mandate right
-     *    away. A concurrent request waits for the lock, then reuses it: never 2 contracts for a mandate.
-     * 2. Its content, generated from the mandate (read-only), then uploaded outside any transaction.
-     * 3. Under the contract's lock, then the mandate's again: the content is set, the mandate is PENDING_APPROVAL and
-     *    the signature is requested. 409 MANDATE_VERSION_CONFLICT if the mandate changed since 2: the content would be
-     *    stale.
-     * A failure after 1 leaves the mandate as it was, with its DRAFT contract, which the next request reuses.
+     *    contract, or a new one (none yet, or expired), with the requested terms, linked to the mandate right away. A
+     *    concurrent request waits for the lock, then reuses it: never 2 contracts for a mandate.
+     * 2. Its content, generated from the mandate and an in-memory copy of the contract with the requested terms
+     *    (read-only), then uploaded outside any transaction.
+     * 3. Under the contract's lock, then the mandate's again: the terms are applied, the content is set, the mandate is
+     *    PENDING_APPROVAL and the signature is requested — one transaction, so that a contract the customer can still
+     *    sign never has terms that differ from its content. 409 MANDATE_VERSION_CONFLICT if the mandate changed since
+     *    2: the content would be stale.
+     * A failure after 1 leaves the mandate and its DRAFT contract as they were, which the next request reuses.
      * Not @Transactional: each step is its own transaction.
      */
     fun requestApproval(id: Long, request: RequestMandateApprovalRequest? = null): MandateEntity {
@@ -402,12 +404,15 @@ class MandateService(
         val contractId = tx.execute { prepareApproval(id, request) }
         val (version, html) = tx.execute {
             val mandate = findById(id)
-            mandate.version to contractGenerator.generate(mandate, contractService.findById(contractId))
+            mandate.version to contractGenerator.generate(
+                mandate,
+                contractService.findById(contractId).withTerms(request),
+            )
         }
         val content = html.toByteArray(Charsets.UTF_8)
         val url = storeContent(id, contractId, content)
         val contentHash = ContractHasher.contentHash(content)
-        return tx.execute { completeApproval(id, contractId, version, url, contentHash) }
+        return tx.execute { completeApproval(id, contractId, request, version, url, contentHash) }
     }
 
     /**
@@ -651,13 +656,19 @@ class MandateService(
         val current = contractId?.let { contractService.findById(it) }
         // A contract cancelled by an update can't be signed any more, like an expired one: a new one replaces it
         if (current != null && current.status != ContractStatus.EXPIRED && current.status != ContractStatus.CANCELLED) {
-            contractService.setTerms(current.id, request?.durationMonths, request?.visitFee)
-            return current.id
+            return current.id // Its terms are applied in step 3, with the content they are stated in
         }
         val contract = createContract(mandate, request)
         dao.save(mandate.copy(contractId = contract.id, modifiedAt = Date(clock.millis())))
         return contract.id
     }
+
+    /** The contract with the terms being sent, without persisting them: step 2 generates their content, step 3 saves. */
+    private fun ContractEntity.withTerms(request: RequestMandateApprovalRequest?): ContractEntity =
+        copy(
+            durationMonths = request?.durationMonths ?: durationMonths,
+            visitFeeAmount = request?.visitFee?.amount ?: visitFeeAmount,
+        )
 
     /** Returns the content's URL. A new path each time: a content being signed is never overwritten. */
     private fun storeContent(id: Long, contractId: String, content: ByteArray): String {
@@ -671,6 +682,7 @@ class MandateService(
     private fun completeApproval(
         id: Long,
         contractId: String,
+        request: RequestMandateApprovalRequest?,
         version: Long?,
         url: String,
         contentHash: String,
@@ -683,6 +695,9 @@ class MandateService(
             throw ConflictException(Error(ErrorCode.MANDATE_VERSION_CONFLICT))
         }
 
+        // With the content, so that a contract still signable never states terms other than these (a signature since
+        // step 1 wins: setTerms then answers 409 and nothing here is saved)
+        contractService.setTerms(contractId, request?.durationMonths, request?.visitFee)
         contractService.setContent(contractId, SetContractRequest(url = url), contentHash)
         val updated = dao.save(
             mandate.copy(
