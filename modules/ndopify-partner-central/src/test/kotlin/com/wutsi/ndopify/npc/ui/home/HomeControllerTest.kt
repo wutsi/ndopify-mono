@@ -123,6 +123,9 @@ class HomeControllerTest {
 
         assertEquals("index", result.modelAndView?.viewName)
         assertEquals("SN", model(result)["initials"])
+        assertEquals(AGENT.id, model(result)["userAgentId"])
+        assertEquals("Serge Ngono", model(result)["userName"])
+        assertEquals("serge@gmail.com", model(result)["userEmail"])
         assertEquals("https://cdn.ndopify.com/party/100/photo/a.jpg", model(result)["userPhotoUrl"])
         assertEquals(false, model(result)["photoMissing"])
         assertEquals(false, model(result)["biographyMissing"])

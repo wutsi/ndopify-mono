@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<body>
+<!--/*
+  The header's account menu, on every signed-in page: the signed-in agent's identity — photo or initials, full name,
+  e-mail — opening its own agent page (/agent?id=…), then a divider and the entries "Modifier mon profil" (/profile)
+  and "Déconnexion" (POST /logout: a form, never a link). Model attributes: "signedIn", "userAgentId", "userName",
+  "userEmail", "userPhotoUrl", "initials" (see ProfileRules.header), and optional "accountCurrent" ("profile" marks
+  the profile edit page).
+*/-->
+<nav th:fragment="menu" class="user-menu" aria-label="Compte" th:if="${signedIn}">
+    <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+            data-user-menu-toggle>
+        <span class="visually-hidden">Menu du compte</span>
+        <img class="user-menu__photo" th:if="${userPhotoUrl}" th:src="${userPhotoUrl}" alt="" width="44" height="44"
+             data-user-photo>
+        <span aria-hidden="true" data-user-initials th:unless="${userPhotoUrl}" th:text="${initials}">NP</span>
+    </button>
+    <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+        <li>
+            <a class="user-menu__account" th:href="@{/agent(id=${userAgentId})}">
+                <span class="user-menu__account-photo" aria-hidden="true">
+                    <img th:if="${userPhotoUrl}" th:src="${userPhotoUrl}" alt="" width="40" height="40">
+                    <span th:unless="${userPhotoUrl}" th:text="${initials}">NP</span>
+                </span>
+                <span class="user-menu__account-text">
+                    <span class="user-menu__account-name" th:text="${userName}">Serge Ngono</span>
+                    <span class="user-menu__account-email" th:text="${userEmail}">serge@gmail.com</span>
+                </span>
+            </a>
+        </li>
+        <li>
+            <a class="user-menu__item" th:href="@{/profile}"
+               th:attr="aria-current=${accountCurrent == 'profile' ? 'page' : null}">Modifier mon profil</a>
+        </li>
+        <li>
+            <form method="post" th:action="@{/logout}" data-logout>
+                <button class="user-menu__item" type="submit">Déconnexion</button>
+            </form>
+        </li>
+    </ul>
+</nav>
+</body>
+</html>

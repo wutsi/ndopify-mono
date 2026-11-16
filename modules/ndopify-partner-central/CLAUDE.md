@@ -73,8 +73,12 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   and session, and so does a 401 from ndopify-server or a `SignInRequiredException` (`HttpClientErrorHandler`), which
   a page throws when the caller isn't an agent (`CurrentAgent`) or has no party (`CurrentParty`). Sign-in changes the
   session id.
-  The header's account menu (`<nav class="user-menu">`) is wrapped in `th:if="${signedIn}"`, a model attribute
-  that `SignedInAdvice` (`ui/layout/`) sets on every page: give any new page's menu the same guard.
+  The header's account menu is the one fragment `fragments/user-menu.html` on every signed-in page
+  (`<nav th:replace="~{fragments/user-menu :: menu}"></nav>`): the signed-in agent's identity block — photo or
+  initials, full name, e-mail, opening `/agent?id=<its id>` — then a divider and *Modifier mon profil* (`/profile`)
+  and *Déconnexion* (`POST /logout`). `ProfileRules.header` fills its model attributes; the profile edit page also
+  sets `accountCurrent = "profile"` for its `aria-current="page"`. Its `th:if="${signedIn}"` guard (a model attribute
+  `SignedInAdvice` in `ui/layout/` sets on every page) lives in the fragment: include it, don't copy it.
 - Tenant is resolved by `TenantContext` (web-core) matching the request URL against each active tenant's
   `partnerCentralUrl` (from `GET /v1/tenants`). Dates and amounts shown to users go through `TenantFormatter` (web-core, built from the
   `Tenant`, like ndopify-server's): the tenant's `dateFormat` / `monetaryFormat` / `numberFormat`, first locale and

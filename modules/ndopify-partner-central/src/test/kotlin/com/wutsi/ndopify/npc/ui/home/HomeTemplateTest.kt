@@ -153,6 +153,30 @@ class HomeTemplateTest {
         Jsoup.parse(mvc.perform(request).andReturn().response.contentAsString)
 
     @Test
+    fun `the account menu names the signed-in agent and opens its agent page`() {
+        val page = render(get("/"))
+
+        val account = page.selectFirst(".user-menu__list > li")!!.selectFirst("a.user-menu__account")!!
+        assertEquals("/agent?id=20", account.attr("href"))
+        assertEquals("Serge Ngono", account.selectFirst(".user-menu__account-name")?.text())
+        assertEquals("serge@gmail.com", account.selectFirst(".user-menu__account-email")?.text())
+        assertEquals(AGENT.party.photoUrl, account.selectFirst(".user-menu__account-photo img")?.attr("src"))
+        assertEquals("Modifier mon profil", page.select(".user-menu__item").first()?.text())
+        assertEquals("/profile", page.select(".user-menu__item").first()?.attr("href"))
+        assertNull(page.selectFirst(".user-menu__item[aria-current]"))
+    }
+
+    @Test
+    fun `an agent without a photo shows its initials in the account block`() {
+        doReturn(AGENT.copy(party = AGENT.party.copy(photoUrl = null))).whenever(currentAgent).get()
+
+        val account = render(get("/")).selectFirst("a.user-menu__account")!!
+
+        assertEquals("SN", account.selectFirst(".user-menu__account-photo span")?.text())
+        assertNull(account.selectFirst(".user-menu__account-photo img"))
+    }
+
+    @Test
     fun `the telegram banner links to the connect page`() {
         val page = render(get("/"))
 

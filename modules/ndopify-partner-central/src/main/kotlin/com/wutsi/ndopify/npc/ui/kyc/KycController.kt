@@ -3,6 +3,7 @@ package com.wutsi.ndopify.npc.ui.kyc
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
+import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.service.security.CurrentParty
 import com.wutsi.ndopify.npc.service.security.SignInRequiredException
 import com.wutsi.ndopify.npc.ui.kyc.KycRules.PHOTOS
@@ -10,11 +11,11 @@ import com.wutsi.ndopify.npc.ui.kyc.KycRules.STEPS
 import com.wutsi.ndopify.npc.ui.kyc.KycRules.STEP_CONFIRMATION
 import com.wutsi.ndopify.npc.ui.kyc.KycRules.STEP_FRONT
 import com.wutsi.ndopify.npc.ui.kyc.KycRules.STEP_REVIEW
+import com.wutsi.ndopify.npc.ui.profile.ProfileRules
 import com.wutsi.ndopify.party.dto.KycCase
 import com.wutsi.ndopify.party.dto.KycImage
 import com.wutsi.ndopify.party.dto.KycImageType
 import com.wutsi.ndopify.party.dto.KycStatus
-import com.wutsi.ndopify.party.dto.Party
 import jakarta.servlet.http.HttpSession
 import org.apache.tika.Tika
 import org.slf4j.LoggerFactory
@@ -46,6 +47,7 @@ import org.springframework.web.multipart.MultipartFile
 class KycController(
     private val kycClient: NdKycClient,
     private val currentParty: CurrentParty,
+    private val currentAgent: CurrentAgent,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(KycController::class.java)
@@ -70,12 +72,12 @@ class KycController(
 
         val submitted = session.getAttribute(SubmittedKyc.SESSION_ATTRIBUTE) as SubmittedKyc?
         if (requestedStep == STEP_CONFIRMATION && status != null && submitted?.caseId == case?.id) {
-            header(party, model)
+            header(model)
             model.addAttribute("view", "confirmation")
             return VIEW
         }
         if (status != null) {
-            return status(party, status, case!!, model)
+            return status(status, case!!, model)
         }
 
         val photos = KycRules.photos(case)
@@ -84,7 +86,7 @@ class KycController(
         val shown = STEPS[minOf(requested, allowed)]
         val error =
             if (uploadError == ERROR_TOO_LARGE && shown == requestedStep) "Cette photo dépasse la taille maximale de 5 Mo." else null
-        return wizard(party, shown, photos, returnTo, error, model)
+        return wizard(shown, photos, returnTo, error, model)
     }
 
     @PostMapping("/{step:front|back|selfie}")
@@ -104,20 +106,20 @@ class KycController(
         if (photo == null || photo.isEmpty) {
             // "Suivant" on a step whose photo is already in the case just moves on.
             if (imageType !in photos) {
-                return wizard(party, step, photos, returnTo, "Ajoutez une photo pour continuer.", model)
+                return wizard(step, photos, returnTo, "Ajoutez une photo pour continuer.", model)
             }
         } else {
             val content = photo.bytes
             // The browser's content type is a claim; the bytes are the truth.
             val mimeType = TIKA.detect(content)
             KycRules.photo(photo.size, mimeType)
-                ?.let { error -> return wizard(party, step, photos, returnTo, error, model) }
+                ?.let { error -> return wizard(step, photos, returnTo, error, model) }
             try {
                 kycClient.upload(case.id, imageType, content, mimeType)
             } catch (ex: RestClientException) {
                 val code = failureCode(ex)
                 if (code == ErrorCode.KYC_CASE_NOT_PENDING) return "redirect:/kyc"
-                return wizard(party, step, photos, returnTo, toMessage(code), model)
+                return wizard(step, photos, returnTo, toMessage(code), model)
             }
         }
 
@@ -141,7 +143,7 @@ class KycController(
         } catch (ex: RestClientException) {
             val code = failureCode(ex)
             if (code == ErrorCode.KYC_CASE_NOT_PENDING) return "redirect:/kyc"
-            return wizard(party, STEP_REVIEW, photos, null, toMessage(code), model)
+            return wizard(STEP_REVIEW, photos, null, toMessage(code), model)
         }
 
         session.setAttribute(SubmittedKyc.SESSION_ATTRIBUTE, SubmittedKyc(caseId = case.id))
@@ -179,8 +181,8 @@ class KycController(
         else -> "Envoi impossible pour le moment. Réessayez dans quelques instants."
     }
 
-    private fun status(party: Party, status: String, case: KycCase, model: Model): String {
-        header(party, model)
+    private fun status(status: String, case: KycCase, model: Model): String {
+        header(model)
         model.addAttribute("view", "status")
         model.addAttribute("status", status)
         if (status == KycRules.STATUS_REJECTED) {
@@ -190,14 +192,13 @@ class KycController(
     }
 
     private fun wizard(
-        party: Party,
         step: String,
         photos: Map<KycImageType, KycImage>,
         returnTo: String?,
         error: String?,
         model: Model,
     ): String {
-        header(party, model)
+        header(model)
         model.addAttribute("view", "wizard")
         model.addAttribute("step", step)
         model.addAttribute("stepNumber", STEPS.indexOf(step) + 1)
@@ -219,9 +220,10 @@ class KycController(
         return VIEW
     }
 
-    private fun header(party: Party, model: Model) {
-        model.addAttribute("userPhotoUrl", party.photoUrl?.ifBlank { null })
-        model.addAttribute("initials", KycRules.initials(party.firstName, party.lastName))
+    /** The account menu: the signed-in agent is read again, for its id, name and e-mail (KYC only knows the party). */
+    private fun header(model: Model) {
+        val agent = currentAgent.get() ?: throw SignInRequiredException()
+        ProfileRules.header(agent, model)
     }
 
     private fun redirect(step: String): String =

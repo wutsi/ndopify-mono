@@ -8,10 +8,12 @@ import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
+import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.service.security.CurrentParty
 import com.wutsi.ndopify.npc.ui.layout.HttpClientErrorHandler
 import com.wutsi.ndopify.party.dto.KycCase
@@ -45,6 +47,8 @@ class KycControllerTest {
 
     private val kycClient = mock<NdKycClient>()
     private val currentParty = mock<CurrentParty>()
+    private val currentAgent = mock<CurrentAgent>()
+    private val party = Party(id = PARTY_ID, firstName = "Ray", lastName = "Sponsible", email = "ray@gmail.com")
     private lateinit var session: MockHttpSession
     private lateinit var mvc: MockMvc
 
@@ -61,12 +65,12 @@ class KycControllerTest {
 
     @BeforeEach
     fun setUp() {
-        doReturn(Party(id = PARTY_ID, firstName = "Ray", lastName = "Sponsible", email = "ray@gmail.com"))
-            .whenever(currentParty).get()
+        doReturn(party).whenever(currentParty).get()
+        doReturn(Agent(id = 20L, party = party)).whenever(currentAgent).get()
         whenever(kycClient.imageUrl(any())).thenAnswer { invocation -> "https://s3/${invocation.getArgument<String>(0)}.jpg" }
 
         // The view is named after its URL ("kyc" at /kyc); the default resolver would take that for a loop.
-        mvc = MockMvcBuilders.standaloneSetup(KycController(kycClient, currentParty))
+        mvc = MockMvcBuilders.standaloneSetup(KycController(kycClient, currentParty, currentAgent))
             .setControllerAdvice(HttpClientErrorHandler(mock()))
             .setViewResolvers(InternalResourceViewResolver("/templates/", ".html"))
             .build()
@@ -91,6 +95,9 @@ class KycControllerTest {
         assertEquals(emptyMap<String, String>(), model(result)["photoUrls"])
         assertEquals("RS", model(result)["initials"])
         assertNull(model(result)["userPhotoUrl"])
+        assertEquals(20L, model(result)["userAgentId"])
+        assertEquals("Ray Sponsible", model(result)["userName"])
+        assertEquals("ray@gmail.com", model(result)["userEmail"])
     }
 
     @Test

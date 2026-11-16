@@ -216,6 +216,11 @@ class ProfileTemplateTest {
         assertTrue(page.select(".field__error[id]").all { it.hasAttr("hidden") })
         assertNull(page.selectFirst(".alert--error"))
         assertEquals("page", page.selectFirst(".user-menu__item[href=/profile]")?.attr("aria-current"))
+
+        val account = page.selectFirst("a.user-menu__account")!!
+        assertEquals("/agent?id=20", account.attr("href"))
+        assertEquals("Serge Ngono", account.selectFirst(".user-menu__account-name")?.text())
+        assertEquals("serge@gmail.com", account.selectFirst(".user-menu__account-email")?.text())
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.agent.dto.AgentType
 import com.wutsi.ndopify.agent.dto.ExperienceLevel
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
+import org.springframework.ui.ExtendedModelMap
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -33,5 +34,18 @@ class ProfileRulesTest {
         )
         // Unknown answers show as unanswered.
         assertEquals(ProfileForm(version = 0), ProfileForm.of(Agent()))
+    }
+
+    @Test
+    fun `header names the signed-in agent`() {
+        val model = ExtendedModelMap()
+
+        ProfileRules.header(AGENT, model)
+
+        assertEquals(20L, model["userAgentId"])
+        assertEquals("Serge Ngono", model["userName"])
+        assertEquals("serge@gmail.com", model["userEmail"])
+        assertEquals(AGENT.party.photoUrl, model["userPhotoUrl"])
+        assertEquals("SN", model["initials"])
     }
 }

@@ -4,7 +4,9 @@ import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
+import com.wutsi.ndopify.npc.service.security.CurrentAgent
 import com.wutsi.ndopify.npc.service.security.CurrentParty
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdvice
 import com.wutsi.ndopify.npc.ui.layout.SignedInAdviceTest
@@ -46,6 +48,8 @@ class KycTemplateTest {
 
     private val kycClient = mock<NdKycClient>()
     private val currentParty = mock<CurrentParty>()
+    private val currentAgent = mock<CurrentAgent>()
+    private val party = Party(id = PARTY_ID, firstName = "Ray", lastName = "Sponsible", email = "ray@gmail.com")
     private lateinit var session: MockHttpSession
     private lateinit var mvc: MockMvc
 
@@ -69,8 +73,8 @@ class KycTemplateTest {
     @BeforeEach
     fun setUp() {
         SignedInAdviceTest.signIn()
-        doReturn(Party(id = PARTY_ID, firstName = "Ray", lastName = "Sponsible", email = "ray@gmail.com"))
-            .whenever(currentParty).get()
+        doReturn(party).whenever(currentParty).get()
+        doReturn(Agent(id = 20L, party = party)).whenever(currentAgent).get()
         whenever(kycClient.imageUrl(any())).thenAnswer { invocation -> "https://s3/${invocation.getArgument<String>(0)}.jpg" }
 
         val engine = SpringTemplateEngine().apply {
@@ -86,7 +90,7 @@ class KycTemplateTest {
             templateEngine = engine
             characterEncoding = "UTF-8"
         }
-        mvc = MockMvcBuilders.standaloneSetup(KycController(kycClient, currentParty))
+        mvc = MockMvcBuilders.standaloneSetup(KycController(kycClient, currentParty, currentAgent))
             .setControllerAdvice(SignedInAdvice())
             .setViewResolvers(viewResolver)
             .build()
