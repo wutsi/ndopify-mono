@@ -93,8 +93,11 @@
       }
     });
 
-    // Opened on load when the page comes back from the server with #visit or #ask, or from a shared link
-    var target = location.hash && document.getElementById(location.hash.slice(1));
+    // Opened on load when the page comes back from the server with #visit or #ask, or from a shared link; also adopts
+    // the popup the server renders open (`is-open`: the form posted and came back with its errors), so that its close
+    // button, its backdrop and Escape work, and the page behind it doesn't scroll
+    var target = (location.hash && document.getElementById(location.hash.slice(1))) ||
+      document.querySelector('.modal.is-open');
     if (target && target.classList.contains('modal')) open(target, null);
   }
 
