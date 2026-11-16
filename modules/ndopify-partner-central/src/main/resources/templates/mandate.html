@@ -423,6 +423,17 @@
                                                th:if="${match.visit != null ? !#strings.isEmpty(match.sent) : match.answer != null}"
                                                th:text="${match.visit != null ? match.sent : match.answer}"
                                                data-match-answer>Envoyé le 28 octobre 2026</p>
+                                            <!-- Sent, unanswered or answered with interest: the client's link can be e-mailed
+                                                 again, its status left as is. -->
+                                            <th:block th:if="${match.resendable}">
+                                                <div class="assignment__actions match__actions" data-match-resend-actions>
+                                                    <form method="post"
+                                                          th:action="@{/mandates/{mid}/matches/{id}/resend(mid=${m.id},id=${match.id})}">
+                                                        <button type="submit" class="btn btn--outline" data-match-resend>Renvoyer le lien<span
+                                                                class="visually-hidden"> au client</span></button>
+                                                    </form>
+                                                </div>
+                                            </th:block>
                                             <th:block th:if="${match.visit != null}">
                                                 <div th:replace="~{fragments/visit-detail :: detail(${match.visit}, ${match.title + ' · annonce n° ' + match.listingId})}"></div>
                                             </th:block>

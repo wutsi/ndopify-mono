@@ -13,6 +13,7 @@ import com.wutsi.ndopify.agent.server.service.AgentService
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.error.server.exception.ConflictException
+import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
@@ -22,17 +23,21 @@ import com.wutsi.ndopify.match.dto.RejectMatchRequest
 import com.wutsi.ndopify.match.server.dao.MatchRepository
 import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.match.server.event.MatchAnsweredEvent
+import com.wutsi.ndopify.match.server.event.MatchResentEvent
 import com.wutsi.ndopify.match.server.mail.MatchProposedMailet
 import org.mockito.Mockito.verifyNoInteractions
 import org.springframework.context.ApplicationEventPublisher
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
+import java.util.Date
 import java.util.Optional
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 
 class MatchProposalServiceTest {
     private val dao = mock<MatchRepository>()
@@ -45,6 +50,7 @@ class MatchProposalServiceTest {
     private val clock = Clock.fixed(Instant.parse("2026-11-15T10:00:00Z"), ZoneId.of("UTC"))
     private val service = MatchProposalService(
         dao, matchService, customerService, agentService, mailet, notifier, eventPublisher, clock, mock(), 7L,
+        Duration.ofMinutes(15),
     )
 
     private val mandate = MandateEntity(
@@ -54,7 +60,7 @@ class MatchProposalServiceTest {
         agentId = 20L,
         status = MandateStatus.APPROVED,
     )
-    private val listing = ListingEntity(id = 102L, title = "Small apartment")
+    private val listing = ListingEntity(id = 102L, title = "Small apartment", status = ListingStatus.PUBLISHED)
     private val match = MatchEntity(
         id = 2L,
         tenantId = 1L,
@@ -155,6 +161,87 @@ class MatchProposalServiceTest {
         service.sendAnsweredNotification(999L)
 
         verifyNoInteractions(notifier)
+    }
+
+    @Test
+    fun `resend a proposed match restarts its window`() {
+        service.resend(2L)
+
+        val saved = saved()
+        assertEquals(MatchStatus.PROPOSED, saved.status)
+        assertEquals(Date.from(clock.instant()), saved.proposedAt)
+        assertEquals(Date.from(clock.instant()), saved.resentAt)
+        val event = argumentCaptor<MatchResentEvent>()
+        verify(eventPublisher).publishEvent(event.capture())
+        assertEquals(MatchResentEvent(matchId = 2L, tenantId = 1L), event.firstValue)
+    }
+
+    @Test
+    fun `resend an accepted match keeps its answer`() {
+        val answeredAt = Date.from(clock.instant().minusSeconds(3600))
+        doReturn(match.copy(status = MatchStatus.ACCEPTED, answeredAt = answeredAt)).whenever(matchService).findById(2L)
+
+        service.resend(2L)
+
+        val saved = saved()
+        assertEquals(MatchStatus.ACCEPTED, saved.status)
+        assertEquals(answeredAt, saved.answeredAt)
+        assertNull(saved.proposedAt)
+        assertEquals(Date.from(clock.instant()), saved.resentAt)
+    }
+
+    @Test
+    fun `resend too soon`() {
+        doReturn(match.copy(resentAt = Date.from(clock.instant().minusSeconds(60)))).whenever(matchService).findById(2L)
+
+        assertFailsWith<ConflictException> { service.resend(2L) }
+        verify(dao, never()).save(any())
+        verify(eventPublisher, never()).publishEvent(any())
+    }
+
+    @Test
+    fun `resend a match not proposed nor accepted`() {
+        doReturn(match.copy(status = MatchStatus.ACTIVE)).whenever(matchService).findById(2L)
+
+        assertFailsWith<ConflictException> { service.resend(2L) }
+        verify(eventPublisher, never()).publishEvent(any())
+    }
+
+    @Test
+    fun `resend a proposed match of a closed search`() {
+        doReturn(match.copy(mandate = mandate.copy(status = MandateStatus.CLOSED))).whenever(matchService).findById(2L)
+
+        assertFailsWith<ConflictException> { service.resend(2L) }
+    }
+
+    @Test
+    fun `resend a proposed match whose listing is gone`() {
+        doReturn(match.copy(listing = listing.copy(status = ListingStatus.RENTED))).whenever(matchService).findById(2L)
+
+        assertFailsWith<ConflictException> { service.resend(2L) }
+    }
+
+    @Test
+    fun `resent - the customer is e-mailed for proposed and accepted`() {
+        doReturn(Optional.of(match)).whenever(dao).findById(2L)
+        doReturn(customer).whenever(customerService).findById(10L)
+        doReturn(agent).whenever(agentService).findById(20L)
+        service.sendResentEmail(2L)
+        verify(mailet).send(listOf(match), customer, agent)
+
+        val accepted = match.copy(status = MatchStatus.ACCEPTED)
+        doReturn(Optional.of(accepted)).whenever(dao).findById(2L)
+        service.sendResentEmail(2L)
+        verify(mailet).send(listOf(accepted), customer, agent)
+    }
+
+    @Test
+    fun `resent - nothing for another status`() {
+        doReturn(Optional.of(match.copy(status = MatchStatus.REJECTED))).whenever(dao).findById(2L)
+
+        service.sendResentEmail(2L)
+
+        verifyNoInteractions(mailet)
     }
 
     private fun saved(): MatchEntity {

@@ -39,6 +39,16 @@ class MatchRulesTest {
     }
 
     @Test
+    fun `resendable - sent, answered or not`() {
+        assertTrue(MatchStatus.PROPOSED in MatchRules.RESENDABLE)
+        assertTrue(MatchStatus.ACCEPTED in MatchRules.RESENDABLE)
+        assertFalse(MatchStatus.ACTIVE in MatchRules.RESENDABLE)
+        assertFalse(MatchStatus.EXPIRED in MatchRules.RESENDABLE)
+        assertFalse(MatchStatus.REJECTED in MatchRules.RESENDABLE)
+        assertFalse(MatchStatus.DISMISSED in MatchRules.RESENDABLE)
+    }
+
+    @Test
     fun `fit - listing A`() {
         val fit = MatchRules.fit(MATCH_A, MANDATE, LISTING_A)
 

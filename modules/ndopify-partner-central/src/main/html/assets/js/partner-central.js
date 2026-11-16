@@ -1848,6 +1848,15 @@
                     [true, "3 chambres, comme demandé"], [true, "Les 3 équipements demandés"],
                     [true, "Disponible dès maintenant"], [true, "Non meublé, comme demandé"]]
             },
+            // Sent 2 days ago, no answer yet: the agent can e-mail the link again, the status left as is.
+            {
+                id: "9010", listingId: "3019", propertyType: "APARTMENT", rooms: 3, neighbourhood: "Bonapriso",
+                price: 260000, availableIn: 18, score: 0.76,
+                initial: { status: "PROPOSED", sentAt: -2 },
+                fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"], [true, "3 chambres, comme demandé"],
+                    [false, "2 équipements sur 3 : Clôturé et sécurisé. Manque : Groupe électrogène"],
+                    [true, "Disponible avant la date d'emménagement"], [true, "Non meublé, comme demandé"]]
+            },
             // Co-brokerage: another agent's published listing (Clarisse Mbarga's, see agent.js). Its card opens the
             // read-only listing page, with that agent's contact instead of a customer.
             {
@@ -3021,6 +3030,17 @@
                 setMatch(match.id, { status: "DISMISSED" });
                 showMatchFlash("Annonce n° " + match.listingId + " écartée : elle ne vous sera plus proposée pour ce mandat.");
             });
+            // Sent and unanswered, or answered with interest: the client may have lost the link, or needs a fresh one
+            // to book a visit. A match whose visit is open has nothing left to resend.
+            var resendActions = $("[data-match-resend-actions]", item);
+            var resend = match.status === "PROPOSED" && !match.visit;
+            resendActions.hidden = !resend;
+            if (resend) {
+                $("[data-match-resend]", item).addEventListener("click", function () {
+                    // PROTOTYPE: simulates POST /v1/matches/{id}/resend: a fresh link, the status is unchanged.
+                    showMatchFlash("Lien renvoyé à " + c.email + ".");
+                });
+            }
             return item;
         }
 

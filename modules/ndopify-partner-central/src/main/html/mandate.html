@@ -463,6 +463,12 @@
                                 </div>
                                 <dl class="match__facts" data-match-facts></dl>
                                 <p class="match__answer" hidden data-match-answer></p>
+                                <!-- Sent, unanswered or answered with interest: the client's link can be e-mailed again,
+                                     its status left as is. -->
+                                <div class="assignment__actions match__actions" data-match-resend-actions hidden>
+                                    <button type="button" class="btn btn--outline" data-match-resend>Renvoyer le lien<span
+                                            class="visually-hidden"> au client</span></button>
+                                </div>
                                 <div class="visit-detail" data-match-visit hidden>
                                     <p class="visit-detail__when">
                                         <span class="visit-detail__icon" data-visit-icon aria-hidden="true"></span>

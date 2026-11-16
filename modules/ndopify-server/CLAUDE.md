@@ -419,7 +419,13 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   SHORTLISTED or EXPIRED → PROPOSED, `proposedAt`, all or none; 409 `MATCH_NOT_ACTIVE`, `MANDATE_NOT_APPROVED`,
   `LISTING_NOT_PUBLISHED`. It publishes one `MatchProposedEvent` (`matchIds`): `MatchProposedMailet` sends the
   customer one e-mail with the listings, best score first, each with a link to its proposal page,
-  `{publicPortalUrl}/match/{matchId}?token={jwt}` (`mail/match/proposed.mjml`), where the customer answers it. The
+  `{publicPortalUrl}/match/{matchId}?token={jwt}` (`mail/match/proposed.mjml`), where the customer answers it.
+  `POST /{id}/resend` e-mails that link again, for a PROPOSED or ACCEPTED match only and without changing its status
+  (`MatchProposalService.resend`, after commit `MatchResentEvent` → `sendResentEmail`): 409 `MATCH_NOT_PROPOSED`,
+  `MANDATE_NOT_APPROVED`, `LISTING_NOT_PUBLISHED`, then `MATCH_RATE_LIMITED` when the last resend is younger than
+  `ndopify.match.resend.min-interval` (15m, `resent_at` `V12_2`). A PROPOSED match gets a fresh `proposedAt`; an
+  ACCEPTED one keeps its `answeredAt` and `proposedAt`, and its e-mail carries the visit invitation line (the
+  template's `accepted` flag). The
   customer reads it with `GET /v1/matches/{id}` (and its mandate), only once PROPOSED, ACCEPTED, REJECTED or EXPIRED (else 403
   `MANDATE_ACCESS_DENIED`; as `ensureCanRead` for an admin or agent: an agent only its own / offered mandates). The
   token (`MatchLinkTokenService`, one per e-mail) is a `public-portal` JWT of the customer's own user and party, so
@@ -445,7 +451,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `EXPIRED` the PROPOSED matches whose `proposedAt` is older than `ndopify.match.expire.days` (7), oldest first, 100
   per run; each save is its own transaction, so a match answered meanwhile fails on its `@Version` and is skipped. No
   e-mail, no event. The customer can no longer answer it (409 `MATCH_NOT_PROPOSED`); the agent may propose it again
-  (new `proposedAt` and e-mail) or dismiss it. Config: `ndopify.match.*`. Tenant-scoped.
+  (new `proposedAt` and e-mail) or dismiss it. A resend of a PROPOSED match also restarts `proposedAt`, so it gets 7
+  more days; an ACCEPTED one keeps its clock (see *Proposal*). Config: `ndopify.match.*`. Tenant-scoped.
   **Auto-proposal**: `MatchJobs.autoPropose` (every 15 minutes, hourly in prod, `ndopify.match.auto-propose.cron`)
   has `MatchAutoProposalService.autoProposeDue` propose the `ACTIVE` matches of an `APPROVED` search whose listing is
   `PUBLISHED` and that the agent hasn't touched for `after-hours` (24): `batch-size` (100) matches per run, grouped by

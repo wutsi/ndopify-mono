@@ -331,6 +331,8 @@ ndopify:
         expire:
             days: 7                     # A proposal the customer doesn't answer within 7 days expires
             cron: "0 0 2 * * ?"         # Every day at 02:00: expires the proposals not answered in time
+        resend:
+            min-interval: 15m           # A match can't be resent to its customer before this delay
         auto-propose:
             after-hours: 24                 # A match the agent hasn't touched for 24h is proposed to the customer
             batch-size: 100                 # Matches examined per run

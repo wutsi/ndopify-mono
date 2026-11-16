@@ -102,6 +102,7 @@ class MatchProposedMailetTest {
                 "agent_whatsapp" to null,
                 "agent_whatsapp_url" to null,
                 "count" to null,
+                "accepted" to false,
                 "online" to true,
                 "listings" to listOf(
                     mapOf(
@@ -124,6 +125,13 @@ class MatchProposedMailetTest {
         assertEquals("<html>proposed</html>", email.firstValue.body)
         assertEquals("Kim Possible", email.firstValue.sender?.displayName)
         assertEquals("", email.firstValue.sender?.email)
+    }
+
+    @Test
+    fun `accepted - the visit invitation`() {
+        mailet.send(listOf(match.copy(status = MatchStatus.ACCEPTED)), customer, agent)
+
+        assertEquals(true, context()["accepted"])
     }
 
     @Test

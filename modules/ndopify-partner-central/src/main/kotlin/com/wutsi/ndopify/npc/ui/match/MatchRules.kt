@@ -34,6 +34,9 @@ object MatchRules {
     /** What can be sent to the client or set aside: never sent, or sent and not answered in time. */
     val ACTIONABLE: Set<MatchStatus> = setOf(MatchStatus.ACTIVE, MatchStatus.EXPIRED)
 
+    /** A sent match the customer may still be brought back to: pending, or interested without a visit yet. */
+    val RESENDABLE: Set<MatchStatus> = setOf(MatchStatus.PROPOSED, MatchStatus.ACCEPTED)
+
     /** What [outcomes] counts (the *Mes mandats* cards search it): [ORDER] and REJECTED. */
     val COUNTED: List<MatchStatus> = ORDER + MatchStatus.REJECTED
 

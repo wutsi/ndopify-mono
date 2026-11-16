@@ -474,7 +474,9 @@ class MandateController(
         val listing = listingId?.let { "Annonce n° $it" } ?: "Annonce"
         val text = when (outcome) {
             MatchController.PROPOSED -> "$listing envoyée ${view.contact?.let { "à ${it.email}" } ?: view.words.to}."
+            MatchController.RESENT -> "$listing renvoyée ${view.contact?.let { "à ${it.email}" } ?: view.words.to}."
             MatchController.DISMISSED -> "$listing écartée : elle ne vous sera plus proposée pour ce mandat."
+            MatchController.RATE_LIMITED -> "Un lien vient d'être envoyé au client. Réessayez dans quelques minutes."
             MatchController.CHANGED -> "Ce bien a changé entre-temps : vérifiez son état avant de recommencer."
             MatchController.FAILED -> "Action impossible pour le moment. Réessayez dans quelques instants."
             else -> return
@@ -483,7 +485,7 @@ class MandateController(
         model.addAttribute(
             "matchOutcomeStyle",
             when (outcome) {
-                MatchController.CHANGED -> "warning"
+                MatchController.RATE_LIMITED, MatchController.CHANGED -> "warning"
                 MatchController.FAILED -> "error"
                 else -> "success"
             },

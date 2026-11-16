@@ -124,6 +124,8 @@ object MatchViews {
             answer = MatchRules.answer(match, formatter),
             fit = MatchRules.fit(match, mandate, listing),
             actionable = match.status in MatchRules.ACTIONABLE,
+            // A sent match the client may still come back to; nothing to resend once its visit is open
+            resendable = match.status in MatchRules.RESENDABLE && visit == null,
             // The listing agent appears once: in the card's footer, not again inside its visit block.
             visit = if (match.coBrokerage) visit?.copy(coBrokerage = false, agent = null) else visit,
             sent = match.proposedAt?.let { "Envoyé le ${formatter.date(it)}" },

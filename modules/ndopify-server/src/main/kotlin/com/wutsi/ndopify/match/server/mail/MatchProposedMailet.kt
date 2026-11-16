@@ -5,6 +5,7 @@ import com.wutsi.ndopify.agent.server.mail.AgentMailContext
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.mandate.server.mail.MandateMailLabels
+import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.match.server.service.MatchLinkTokenService
 import com.wutsi.ndopify.platform.mail.Email
@@ -66,6 +67,7 @@ class MatchProposedMailet(
                         "recipient_name" to fullName,
                         "agent_full_name" to agentName,
                         "count" to matches.size.takeIf { it > 1 },
+                        "accepted" to matches.any { it.status == MatchStatus.ACCEPTED },
                         "online" to tenant.publicPortalUrl?.let { true },
                         "listings" to matches.map { match -> listing(match, tenant, formatter, token) },
                     ) + AgentMailContext.of(agent, formatter),

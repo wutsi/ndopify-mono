@@ -16,7 +16,7 @@ import org.springframework.transaction.event.TransactionalEventListener
 /**
  * Matches a search mandate once it's APPROVED, and a listing once it's PUBLISHED, against the agent's inventory / open
  * searches. Lets the mandate and listing domains stay unaware of matches. E-mails the customer a match once proposed,
- * and tells the agent once its customer answers one.
+ * and again when the agent resends it, and tells the agent once its customer answers one.
  *
  * Runs on an executor thread once the approval / publication is committed, so a matching failure never fails, nor
  * rolls back, it: it's only logged (`POST /v1/matches/run` re-runs a mandate). That thread has no request: the tenant
@@ -92,6 +92,29 @@ class MatchEventListener(
             logger.add("match_ids", event.matchIds)
 
             proposalService.sendProposedEmail(event.matchIds)
+            logger.add("success", true)
+        } catch (ex: Exception) {
+            logger.add("success", false)
+            logger.setException(ex)
+        } finally {
+            logger.log()
+            TenantContext.remove()
+            KVLoggerThreadLocal.remove()
+        }
+    }
+
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    fun onMatchResent(event: MatchResentEvent) {
+        val logger = DefaultKVLogger()
+        KVLoggerThreadLocal.set(logger)
+        TenantContext.set(event.tenantId)
+        try {
+            logger.add("event", MatchResentEvent::class.java.simpleName)
+            logger.add("tenant_id", event.tenantId)
+            logger.add("match_id", event.matchId)
+
+            proposalService.sendResentEmail(event.matchId)
             logger.add("success", true)
         } catch (ex: Exception) {
             logger.add("success", false)
