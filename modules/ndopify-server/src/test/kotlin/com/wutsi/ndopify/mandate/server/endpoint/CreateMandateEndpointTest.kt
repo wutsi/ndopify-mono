@@ -316,6 +316,30 @@ class CreateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(ErrorCode.LISTING_NOT_FOUND, response.body?.error?.code)
     }
 
+    @Test
+    fun `an existing search of the same city and type gets the listing as a match`() {
+        val first = rest.postForEntity("/v1/mandates", visitor, CreateMandateResponse::class.java)
+        val second = rest.postForEntity("/v1/mandates", visitor, CreateMandateResponse::class.java)
+        awaitAsyncTasks()
+
+        assertEquals(HttpStatus.OK, second.statusCode)
+        assertEquals(first.body!!.mandateId, second.body!!.mandateId) // the same search, not a duplicate
+        assertEquals(1, countSearches(visitor.email))
+    }
+
+    private fun countSearches(email: String): Int = ds.connection.use { conn ->
+        conn.prepareStatement(
+            "SELECT COUNT(*) FROM T_MANDATE m JOIN T_CUSTOMER c ON c.id = m.customer_id " +
+                "JOIN T_PARTY p ON p.id = c.party_id WHERE p.email = ? AND m.mandate_type = 'SEARCH'",
+        ).use { stmt ->
+            stmt.setString(1, email)
+            stmt.executeQuery().use { rs ->
+                rs.next()
+                rs.getInt(1)
+            }
+        }
+    }
+
     private fun assertNeighborhoods(mandateId: Long, expectedNeighborhoodIds: List<Long>) {
         val actualNeighborhoodIds = ds.connection.use { conn ->
             conn.prepareStatement("SELECT neighborhood_id FROM T_MANDATE_NEIGHBORHOOD WHERE mandate_id = ?")

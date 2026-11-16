@@ -34,6 +34,7 @@ import com.wutsi.ndopify.mandate.server.dao.AssignmentRepository
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.mandate.server.domain.AssignmentEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.mandate.server.event.ExistingSearchInterestEvent
 import com.wutsi.ndopify.mandate.server.event.MandateApprovedEvent
 import com.wutsi.ndopify.mandate.server.event.MandateClosedEvent
 import com.wutsi.ndopify.mandate.server.event.MandateCreatedEvent
@@ -77,6 +78,13 @@ class MandateService(
 
     @param:Value("\${ndopify.mandate.contract.duration-months}") private val contractDurationMonths: Int,
 ) {
+    companion object {
+        // New SEARCH mandates a visitor's page may create for one customer in 24 h (attaching to an existing search
+        // isn't counted: it creates nothing)
+        const val MAX_NEW_SEARCHES_PER_DAY = 3L
+        private const val DAY_MILLIS = 86_400_000L
+    }
+
     fun search(request: SearchMandateRequest): List<MandateEntity> {
         val spec = Specification<MandateEntity> { root, query, cb ->
             query.distinct(true)
@@ -160,6 +168,34 @@ class MandateService(
         )
 
         val now = Date(clock.millis())
+        if (origin != null) {
+            // One search of a city and listing type per customer: the listing attaches to it instead of duplicating it
+            dao.findFirstByCustomerIdAndMandateTypeAndCityIdAndListingTypeAndStatusNotInOrderByIdDesc(
+                customerId = customer.id!!,
+                mandateType = MandateType.SEARCH,
+                cityId = criteria.cityId,
+                listingType = criteria.listingType,
+                statuses = listOf(MandateStatus.CLOSED, MandateStatus.CANCELLED),
+            )?.let { existing ->
+                eventPublisher.publishEvent(
+                    ExistingSearchInterestEvent(
+                        mandateId = existing.id!!,
+                        listingId = origin.id,
+                        tenantId = TenantContext.get()!!,
+                    ),
+                )
+                return existing
+            }
+            // A visitor can't flood an agent with offers: their page creates at most 3 new searches per day
+            val recent = dao.countByCustomerIdAndMandateTypeAndCreatedAtAfter(
+                customerId = customer.id!!,
+                mandateType = MandateType.SEARCH,
+                after = Date(now.time - DAY_MILLIS),
+            )
+            if (recent >= MAX_NEW_SEARCHES_PER_DAY) {
+                throw ConflictException(error = Error(code = ErrorCode.MANDATE_RATE_LIMITED))
+            }
+        }
         val mandate = dao.save(
             MandateEntity(
                 customerId = customer.id ?: -1,

@@ -31,8 +31,10 @@ import com.wutsi.ndopify.mandate.dto.UpdateMandateRequest
 import com.wutsi.ndopify.mandate.server.dao.AssignmentRepository
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.mandate.server.event.ExistingSearchInterestEvent
 import com.wutsi.ndopify.mandate.server.event.MandateApprovedEvent
 import com.wutsi.ndopify.mandate.server.event.MandateClosedEvent
+import com.wutsi.ndopify.mandate.server.event.MandateCreatedEvent
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
@@ -171,6 +173,64 @@ class MandateServiceTest {
         assertEquals(ErrorCode.LISTING_NOT_FOUND, ex.error.code)
         verify(customerService, never()).findOrCreate(any())
         verify(dao, never()).save(any())
+    }
+
+    private fun givenExistingSearch(mandate: MandateEntity?) {
+        doReturn(mandate).whenever(dao)
+            .findFirstByCustomerIdAndMandateTypeAndCityIdAndListingTypeAndStatusNotInOrderByIdDesc(
+                any(), any(), any(), any(), any(),
+            )
+    }
+
+    @Test
+    fun `create attaches to an active search of the same city and type`() {
+        givenCustomer()
+        doReturn(OriginListing(7L, 70L, true, criteria)).whenever(originListingResolver).resolve(7L)
+        givenExistingSearch(MandateEntity(id = 42L, customerId = 10L, cityId = 2370201L))
+
+        val mandate = service.create(visitor)
+
+        assertEquals(42L, mandate.id)
+        verify(dao, never()).save(any())
+        verify(eventPublisher).publishEvent(ExistingSearchInterestEvent(mandateId = 42L, listingId = 7L, tenantId = 1L))
+    }
+
+    @Test
+    fun `another city or listing type creates a second mandate`() {
+        givenCustomer()
+        doReturn(OriginListing(7L, 70L, true, criteria)).whenever(originListingResolver).resolve(7L)
+        givenExistingSearch(null)
+
+        val mandate = service.create(visitor)
+
+        assertEquals(1L, mandate.id)
+        assertEquals(2370201L, mandate.cityId)
+        verify(eventPublisher).publishEvent(MandateCreatedEvent(mandateId = 1L, tenantId = 1L))
+        verify(eventPublisher, never())
+            .publishEvent(ExistingSearchInterestEvent(mandateId = 42L, listingId = 7L, tenantId = 1L))
+    }
+
+    @Test
+    fun `a fourth new search within 24 hours is refused`() {
+        givenCustomer()
+        doReturn(OriginListing(7L, 70L, true, criteria)).whenever(originListingResolver).resolve(7L)
+        givenExistingSearch(null)
+        doReturn(3L).whenever(dao).countByCustomerIdAndMandateTypeAndCreatedAtAfter(any(), any(), any())
+
+        val ex = assertFailsWith<ConflictException> { service.create(visitor) }
+
+        assertEquals(ErrorCode.MANDATE_RATE_LIMITED, ex.error.code)
+        verify(dao, never()).save(any())
+    }
+
+    @Test
+    fun `attaching is not capped`() {
+        givenCustomer()
+        doReturn(OriginListing(7L, 70L, true, criteria)).whenever(originListingResolver).resolve(7L)
+        givenExistingSearch(MandateEntity(id = 42L, customerId = 10L, cityId = 2370201L))
+        doReturn(3L).whenever(dao).countByCustomerIdAndMandateTypeAndCreatedAtAfter(any(), any(), any())
+
+        assertEquals(42L, service.create(visitor).id)
     }
 
     @BeforeTest
