@@ -158,6 +158,7 @@ class ProfileController(
         model: Model,
     ): String {
         ProfileRules.header(agent, model)
+        model.addAttribute("accountCurrent", "profile")
         model.addAttribute("fullName", ProfileRules.fullName(agent))
         model.addAttribute("email", agent.party.email.ifBlank { null })
         model.addAttribute("photoUrl", agent.party.photoUrl?.ifBlank { null })
