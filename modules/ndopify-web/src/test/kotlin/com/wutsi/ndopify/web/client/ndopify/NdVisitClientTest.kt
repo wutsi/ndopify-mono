@@ -1,11 +1,14 @@
 package com.wutsi.ndopify.web.client.ndopify
 
+import com.wutsi.ndopify.match.dto.MatchRejectionReason
 import com.wutsi.ndopify.visit.dto.CancelVisitRequest
 import com.wutsi.ndopify.visit.dto.CreateVisitRequest
 import com.wutsi.ndopify.visit.dto.CreateVisitResponse
 import com.wutsi.ndopify.visit.dto.GetVisitResponse
 import com.wutsi.ndopify.visit.dto.SearchVisitResponse
 import com.wutsi.ndopify.visit.dto.Visit
+import com.wutsi.ndopify.visit.dto.VisitFeedbackRequest
+import com.wutsi.ndopify.visit.dto.VisitInterest
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.visit.dto.VisitType
@@ -99,6 +102,26 @@ class NdVisitClientTest {
             .andRespond(withStatus(HttpStatus.OK))
 
         client.cancel(9, CancelVisitRequest("Empêchement"))
+        server.verify()
+    }
+
+    @Test
+    fun feedback() {
+        server.expect(requestTo("http://localhost:8080/v1/visits/9/feedback"))
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(jsonPath("$.interest").value("NOT_INTERESTED"))
+            .andExpect(jsonPath("$.reasonCode").value("PRICE"))
+            .andExpect(jsonPath("$.comment").value("Trop cher"))
+            .andRespond(withStatus(HttpStatus.OK))
+
+        client.feedback(
+            9,
+            VisitFeedbackRequest(
+                interest = VisitInterest.NOT_INTERESTED,
+                reasonCode = MatchRejectionReason.PRICE,
+                comment = "Trop cher",
+            ),
+        )
         server.verify()
     }
 
