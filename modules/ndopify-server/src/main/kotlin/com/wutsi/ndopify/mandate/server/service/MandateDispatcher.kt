@@ -3,6 +3,7 @@ package com.wutsi.ndopify.mandate.server.service
 import com.wutsi.ndopify.agent.dto.SearchAgentRequest
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.agent.server.service.AgentService
+import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
 import com.wutsi.ndopify.mandate.dto.MandateStatus
@@ -47,6 +48,7 @@ class MandateDispatcher(
     private val eventPublisher: ApplicationEventPublisher,
     private val clock: Clock,
     private val logger: KVLogger,
+    private val originListingResolver: OriginListingResolver,
 
     @param:Value("\${ndopify.mandate.assignment.ttl-minutes}") private val ttlMinutes: Long,
     @param:Value("\${ndopify.mandate.assignment.manual-after-days}") private val manualAfterDays: Long,
@@ -129,9 +131,17 @@ class MandateDispatcher(
         }
 
         val distances = distances(mandate)
-        val candidates = findCandidates(mandate, distances)
-        val excluded = candidates.excluded.toMutableMap()
-        val scored = score(mandate, candidates.eligible, distances, excluded)
+        val excludeIds = assignmentDao.findByMandateAndStatusIn(
+            mandate,
+            listOf(AssignmentStatus.DECLINED, AssignmentStatus.EXPIRED),
+        ).map { it.agentId }.toSet()
+        val customer = customerService.findById(mandate.customerId)
+        val excluded = mutableMapOf<CandidateRuleOut, Int>()
+        // A mandate seeded from a listing is offered to that listing's agent first: it knows the property
+        val preferred = preferredCandidate(mandate, distances, excludeIds, customer, excluded)
+        val candidates = findCandidates(mandate, distances, excludeIds, customer)
+        candidates.excluded.forEach { (reason, count) -> excluded.merge(reason, count, Int::plus) }
+        val scored = if (preferred != null) listOf(preferred) else score(mandate, candidates.eligible, distances, excluded)
         val best = scored.maxByOrNull { it.total }
         val diagnostics = DispatchDiagnostics(candidates.searched, excluded, scored)
         if (best == null) {
@@ -223,15 +233,12 @@ class MandateDispatcher(
         val searched: Int,
     )
 
-    private fun findCandidates(mandate: MandateEntity, distances: Map<Long, Double>): CandidatePool {
-        // Agents that already declined or ignored the mandate are never offered it again
-        val excludeIds = assignmentDao.findByMandateAndStatusIn(
-            mandate,
-            listOf(AssignmentStatus.DECLINED, AssignmentStatus.EXPIRED),
-        ).map { it.agentId }.toSet()
-
-        val customer = customerService.findById(mandate.customerId)
-
+    private fun findCandidates(
+        mandate: MandateEntity,
+        distances: Map<Long, Double>,
+        excludeIds: Set<Long>,
+        customer: CustomerEntity,
+    ): CandidatePool {
         // Always in the mandate's city. The 2nd search makes sure the agents covering the mandate's or a nearby
         // neighbourhood aren't cut off by the 1st one's limit. Least recently offered first (never offered: NULL,
         // first in MySQL): past 100 agents, the cut drops the ones fairness would rank last anyway, never the newest
@@ -275,6 +282,36 @@ class MandateDispatcher(
             }
         }
         return CandidatePool(eligible, excluded, merged.size)
+    }
+
+    // The origin listing's agent, when the mandate has one and it passes every hard filter (verified, same city, not the
+    // customer, never declined nor ignored the mandate, under its load and pending caps): scored alone, so that the
+    // ranking doesn't prefer a higher-scoring agent. Null: the normal dispatch runs.
+    private fun preferredCandidate(
+        mandate: MandateEntity,
+        distances: Map<Long, Double>,
+        excludeIds: Set<Long>,
+        customer: CustomerEntity,
+        excluded: MutableMap<CandidateRuleOut, Int>,
+    ): CandidateScore? {
+        val agentId = mandate.originListingId?.let { originListingResolver.resolve(it)?.agentId } ?: return null
+        if (agentId in excludeIds) {
+            return null
+        }
+        val agent = agentService.search(
+            SearchAgentRequest(
+                ids = listOf(agentId),
+                kycStatus = listOf(KycStatus.VERIFIED),
+                cityId = mandate.cityId,
+                limit = 1,
+            ),
+            AgentService.SORT_LEAST_RECENTLY_ASSIGNED,
+        ).firstOrNull() ?: return null
+        if (agent.party.id == customer.party.id) {
+            return null
+        }
+        // The same caps as any candidate: at capacity or too many offers, it's dropped and the ranking decides
+        return score(mandate, listOf(agent), distances, excluded).firstOrNull()
     }
 
     private fun score(

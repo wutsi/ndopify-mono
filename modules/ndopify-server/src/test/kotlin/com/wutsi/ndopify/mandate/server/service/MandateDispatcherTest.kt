@@ -15,6 +15,7 @@ import com.wutsi.ndopify.agent.server.service.AgentService
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.mandate.dto.AssignmentStatus
+import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.server.dao.AgentAssignmentCount
 import com.wutsi.ndopify.mandate.server.dao.AgentMandateCount
@@ -77,6 +78,7 @@ class MandateDispatcherTest {
     private val tenantService = mock<TenantService>()
     private val eventPublisher = mock<ApplicationEventPublisher>()
     private val clock = mock<Clock>()
+    private val originListingResolver = mock<OriginListingResolver>()
 
     // Noon in Douala: daytime
     private var now = time("2026-10-15T12:00")
@@ -105,6 +107,7 @@ class MandateDispatcherTest {
         eventPublisher = eventPublisher,
         clock = clock,
         logger = DefaultKVLogger(),
+        originListingResolver = originListingResolver,
         ttlMinutes = 60,
         manualAfterDays = 3,
         maxLoad = 5,
@@ -124,7 +127,9 @@ class MandateDispatcherTest {
         doReturn(TenantEntity(id = TENANT_ID, timeZone = DOUALA.id)).whenever(tenantService).findById(TENANT_ID)
         doAnswer { inv ->
             val request = inv.getArgument<SearchAgentRequest>(0)
-            if (request.neighborhoodIds.isEmpty()) inCity else nearby
+            val found = if (request.neighborhoodIds.isEmpty()) inCity else nearby
+            // The origin listing's agent is looked up by its id
+            if (request.ids.isEmpty()) found else found.filter { it.id in request.ids }
         }.whenever(agentService).search(any(), any())
         doAnswer {
             nearest.map { (id, distance) -> LocationEntity(id = id, type = LocationType.NEIGHBORHOOD) to distance }
@@ -187,6 +192,65 @@ class MandateDispatcherTest {
         verify(assignmentDao, never()).save(any())
         verify(agentService, never()).markAssigned(any(), any())
         verify(eventPublisher, never()).publishEvent(any<Any>())
+    }
+
+    // --- A mandate seeded from a listing: its agent is offered first
+
+    private fun givenOrigin(agentId: Long?) {
+        mandate = mandate.copy(originListingId = 5L)
+        doReturn(agentId?.let { OriginListing(id = 5L, agentId = it, published = true, criteria = CreateMandateRequest()) })
+            .whenever(originListingResolver).resolve(5L)
+    }
+
+    @Test
+    fun `the origin listing's agent is offered first, even when it scores less`() {
+        givenOrigin(77L)
+        inCity = listOf(agent(20), agent(77, neighborhoodIds = emptyList()))
+
+        assertEquals(77L, dispatcher().dispatch(MANDATE_ID)?.agentId)
+    }
+
+    @Test
+    fun `the origin's agent is skipped when it is the customer`() {
+        givenOrigin(77L)
+        inCity = listOf(agent(20), agent(77, partyId = CUSTOMER_PARTY_ID))
+
+        assertEquals(20L, dispatcher().dispatch(MANDATE_ID)?.agentId)
+    }
+
+    @Test
+    fun `the origin's agent is skipped when it already declined`() {
+        givenOrigin(77L)
+        inCity = listOf(agent(20), agent(77))
+        doReturn(listOf(AssignmentEntity(mandate = mandate, agentId = 77, status = AssignmentStatus.DECLINED)))
+            .whenever(assignmentDao).findByMandateAndStatusIn(any(), any())
+
+        assertEquals(20L, dispatcher().dispatch(MANDATE_ID)?.agentId)
+    }
+
+    @Test
+    fun `the origin's agent is skipped when it is at capacity`() {
+        givenOrigin(77L)
+        inCity = listOf(agent(20), agent(77))
+        loads(77L to 5L)
+
+        assertEquals(20L, dispatcher().dispatch(MANDATE_ID)?.agentId)
+    }
+
+    @Test
+    fun `the origin's agent is skipped when it is not verified`() {
+        givenOrigin(77L)
+        inCity = listOf(agent(20)) // The search of the origin's agent finds nothing
+
+        assertEquals(20L, dispatcher().dispatch(MANDATE_ID)?.agentId)
+    }
+
+    @Test
+    fun `an unknown origin listing falls back to the normal dispatch`() {
+        givenOrigin(null)
+        inCity = listOf(agent(20))
+
+        assertEquals(20L, dispatcher().dispatch(MANDATE_ID)?.agentId)
     }
 
     private fun searchRequests(): List<SearchAgentRequest> {
