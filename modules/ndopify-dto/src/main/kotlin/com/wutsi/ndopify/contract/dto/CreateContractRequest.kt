@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.contract.dto
 
+import com.wutsi.ndopify.refdata.dto.Money
 import jakarta.validation.Valid
 import jakarta.validation.constraints.NotEmpty
 
@@ -10,6 +11,9 @@ data class CreateContractRequest(
 
     // How long the contract is valid, from its signature by the last party
     val durationMonths: Int = 0,
+
+    // Null = none; the currency is the tenant's, or blank to mean it
+    val visitFee: Money? = null,
 )
 
 data class CreateContractParty(

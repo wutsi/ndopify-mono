@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.contract.dto
 
+import com.wutsi.ndopify.refdata.dto.Money
 import java.util.Date
 
 data class Contract(
@@ -12,6 +13,7 @@ data class Contract(
     val parties: List<ContractParty> = emptyList(),
     val createdAt: Date = Date(),
     val durationMonths: Int = 0,
+    val visitFee: Money = Money(), // Per visit, paid to the agent offline; 0 = none
     val signatureRequestedAt: Date? = null, // When the signature was last requested
     val signatureDeadline: Date? = null,
     val validFrom: Date? = null,
