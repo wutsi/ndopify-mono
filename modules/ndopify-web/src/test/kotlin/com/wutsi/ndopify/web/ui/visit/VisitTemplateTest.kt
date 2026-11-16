@@ -108,7 +108,7 @@ class VisitTemplateTest {
         longitude = 9.6943,
     )
 
-    private fun of(visit: Visit, customer: Customer? = this.customer) = VisitPages.of(
+    private fun of(visit: Visit, customer: Customer? = this.customer, feedback: String? = null) = VisitPages.of(
         visit,
         listing,
         images,
@@ -119,6 +119,7 @@ class VisitTemplateTest {
         FORMATTER,
         LocalDate.of(2026, 10, 31),
         null,
+        feedback,
     )
 
     private fun render(page: VisitPage): Document {
@@ -176,7 +177,7 @@ class VisitTemplateTest {
         val page = VisitPages.of(
             visit(VisitStatus.CONFIRMED, VisitType.VIDEO),
             null, images, locations, agent, Customer(whatsappNumber = "+237699887766"),
-            tenant, FORMATTER, LocalDate.of(2026, 10, 31), null,
+            tenant, FORMATTER, LocalDate.of(2026, 10, 31), null, null,
         )
         val doc = render(page)
         assertNull(doc.selectFirst(".visit-address__landmark"))

@@ -83,6 +83,7 @@ class VisitController(
         @PathVariable id: Long,
         @RequestParam(name = "token", required = false) token: String?,
         @RequestParam(name = "cancel", required = false) cancel: String?,
+        @RequestParam(name = "feedback", required = false) feedback: String?,
         request: HttpServletRequest,
         model: Model,
     ): Any {
@@ -105,7 +106,7 @@ class VisitController(
             val customer = customer(visit.customerId)
             val tenant = model.getAttribute("tenant") as Tenant
             val formatter = TenantFormatter(tenant)
-            val page = VisitPages.of(visit, listing, images, locations, agent, customer, tenant, formatter, formatter.today(clock), cancel)
+            val page = VisitPages.of(visit, listing, images, locations, agent, customer, tenant, formatter, formatter.today(clock), cancel, feedback)
             model.addAttribute("page", page)
             VIEW
         }

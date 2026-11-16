@@ -7,6 +7,7 @@ import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Tenant
 import com.wutsi.ndopify.visit.dto.Visit
+import com.wutsi.ndopify.visit.dto.VisitInterest
 import com.wutsi.ndopify.visit.dto.VisitParty
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
@@ -27,6 +28,9 @@ import java.time.ZoneId
  */
 object VisitPages {
     private const val NO_AGENT_NAME = "votre agent"
+
+    /** `VisitController`'s `?feedback=` value when a post had no usable answer. */
+    const val FEEDBACK_INVALID = "invalid"
 
     /** Each status's badge label and tone, as `visite.js` sets them; UNKNOWN falls back to "Visite"/"neutral". */
     private val STATUS: Map<VisitStatus, Pair<String, String>> = mapOf(
@@ -55,6 +59,7 @@ object VisitPages {
         formatter: TenantFormatter,
         today: LocalDate,
         cancel: String?,
+        feedback: String?,
     ): VisitPage {
         val (statusLabel, statusTone) = STATUS[visit.status] ?: ("Visite" to "neutral")
         val typeLabel = TYPES[visit.type] ?: "Visite"
@@ -62,6 +67,14 @@ object VisitPages {
         // the page: the listing's city, neighbourhood and landmark do.
         val fromConfirmed = visit.status != VisitStatus.REQUESTED && visit.status != VisitStatus.UNKNOWN
         val code = if (fromConfirmed) visit.code?.ifBlank { null } else null
+        val intro = feedbackIntro(visit, tenant, formatter)
+        val error = if (
+            feedback == FEEDBACK_INVALID && visit.status == VisitStatus.COMPLETED && visit.interest == null
+        ) {
+            "Répondez par oui ou par non."
+        } else {
+            null
+        }
 
         return VisitPage(
             id = visit.id,
@@ -84,6 +97,9 @@ object VisitPages {
             noShowReason = visit.noShowReason,
             canCancel = visit.status == VisitStatus.REQUESTED || visit.status == VisitStatus.CONFIRMED,
             flash = flash(visit, cancel),
+            feedbackInterest = visit.interest,
+            feedbackIntro = intro,
+            feedbackError = error,
             listing = listing?.let { ListingPages.of(it, images, locations, tenant, formatter, today) },
             agent = agent?.let { agent(it) },
             matchUrl = "/match/${visit.matchId}",
@@ -104,6 +120,17 @@ object VisitPages {
         }
         val localDate = visit.requestedAt.toInstant().atZone(ZoneId.of(tenant.timeZone)).toLocalDate()
         return "Vous aviez demandé ${formatter.date(localDate, "EEEE d MMMM yyyy")} à ${formatter.time(visit.requestedAt)} : l'agent a proposé un autre créneau."
+    }
+
+    /** "Votre visite sur place du samedi 7 novembre 2026 à 11:00 est terminée." — COMPLETED only, tenant-local. */
+    private fun feedbackIntro(visit: Visit, tenant: Tenant, formatter: TenantFormatter): String? {
+        if (visit.status != VisitStatus.COMPLETED) {
+            return null
+        }
+        val at = visit.scheduledAt ?: visit.requestedAt
+        val local = at.toInstant().atZone(ZoneId.of(tenant.timeZone)).toLocalDate()
+        val type = if (visit.type == VisitType.VIDEO) "vidéo" else "sur place"
+        return "Votre visite $type du ${formatter.date(local, "EEEE d MMMM yyyy")} à ${formatter.time(at)} est terminée."
     }
 
     /** The outcome of the cancellation just posted; "done" only when the visit really is CANCELLED by its customer. */

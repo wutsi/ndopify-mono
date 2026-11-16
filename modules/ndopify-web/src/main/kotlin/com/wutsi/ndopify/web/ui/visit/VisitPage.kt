@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.web.ui.visit
 
+import com.wutsi.ndopify.visit.dto.VisitInterest
 import com.wutsi.ndopify.visit.dto.VisitNoShowReason
 import com.wutsi.ndopify.visit.dto.VisitParty
 import com.wutsi.ndopify.visit.dto.VisitStatus
@@ -40,6 +41,12 @@ data class VisitPage(
     val canCancel: Boolean,
     /** The outcome of the cancellation just posted, null otherwise. */
     val flash: String?,
+    /** The answer given, null while the customer hasn't answered. */
+    val feedbackInterest: VisitInterest?,
+    /** "Votre visite sur place du … à … est terminée." for a COMPLETED visit, null otherwise. */
+    val feedbackIntro: String?,
+    /** "Répondez par oui ou par non." when `?feedback=invalid` found no answer; null otherwise. */
+    val feedbackError: String?,
     val listing: ListingPage?,
     val agent: VisitAgent?,
     /** "/match/{matchId}", back to the proposal. */

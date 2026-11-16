@@ -467,4 +467,15 @@ class VisitControllerTest {
         assertEquals(VisitController.VIEW_LINK, result.modelAndView?.viewName)
         verify(visitClient, never()).feedback(any(), any())
     }
+
+    @Test
+    fun `feedback invalid reaches the page`() {
+        MatchFixtures.signIn()
+        doReturn(Visit(id = 9, listingId = 123, agentId = 3, customerId = 42, status = VisitStatus.COMPLETED, type = VisitType.ON_SITE))
+            .whenever(visitClient).get(9)
+
+        val page = page(request("/visits/9?feedback=invalid"))
+
+        assertEquals("Répondez par oui ou par non.", page.feedbackError)
+    }
 }
