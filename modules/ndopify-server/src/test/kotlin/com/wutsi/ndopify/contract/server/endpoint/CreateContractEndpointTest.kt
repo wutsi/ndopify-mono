@@ -11,6 +11,7 @@ import com.wutsi.ndopify.contract.server.dao.ContractPartyRepository
 import com.wutsi.ndopify.contract.server.dao.ContractRepository
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -95,6 +96,38 @@ class CreateContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals("john.smith@gmail.com", parties[1].legalEmail)
         assertFalse(parties[1].signatureRequired)
         assertFalse(parties[1].signed)
+    }
+
+    @Test
+    fun `create - stores the visit fee`() {
+        val response = rest.postForEntity(
+            "/v1/contracts",
+            request.copy(visitFee = Money(5000, "XAF")),
+            CreateContractResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val contract = dao.findById(response.body!!.contractId).get()
+        assertEquals(5000, contract.visitFeeAmount)
+        assertEquals("XAF", contract.visitFeeCurrency)
+    }
+
+    @Test
+    fun `create - a blank fee currency is the tenant's`() {
+        val response = rest.postForEntity(
+            "/v1/contracts",
+            request.copy(visitFee = Money(5000, "")),
+            CreateContractResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals("XAF", dao.findById(response.body!!.contractId).get().visitFeeCurrency)
+    }
+
+    @Test
+    fun `create - rejects a negative fee or another currency`() {
+        assertBadRequest(request.copy(visitFee = Money(-1, "XAF")), ErrorCode.HTTP_INVALID_PARAMETER, "visitFee.amount")
+        assertBadRequest(request.copy(visitFee = Money(5000, "EUR")), ErrorCode.HTTP_INVALID_PARAMETER, "visitFee.currency")
     }
 
     @Test

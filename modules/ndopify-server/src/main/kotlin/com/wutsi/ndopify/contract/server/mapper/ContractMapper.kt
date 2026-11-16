@@ -6,6 +6,7 @@ import com.wutsi.ndopify.contract.dto.ContractSignature
 import com.wutsi.ndopify.contract.dto.ContractSummary
 import com.wutsi.ndopify.contract.server.domain.ContractEntity
 import com.wutsi.ndopify.contract.server.domain.ContractPartyEntity
+import com.wutsi.ndopify.refdata.dto.Money
 import org.springframework.stereotype.Service
 
 @Service
@@ -21,6 +22,7 @@ class ContractMapper {
             parties = parties.map { party -> toContractParty(party) },
             createdAt = entity.createdAt,
             durationMonths = entity.durationMonths,
+            visitFee = Money(entity.visitFeeAmount, entity.visitFeeCurrency),
             signatureRequestedAt = entity.signatureRequestedAt,
             signatureDeadline = entity.signatureDeadline,
             validFrom = entity.validFrom,

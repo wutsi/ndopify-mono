@@ -7,6 +7,7 @@ import com.wutsi.ndopify.contract.dto.ContractType
 import com.wutsi.ndopify.contract.dto.GetContractResponse
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.http.HttpStatus
 import org.springframework.test.context.jdbc.Sql
@@ -45,6 +46,7 @@ class GetContractEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals("https://cdn.ndopify.com/contracts/c-1.pdf", contract.contentUrl)
         assertEquals("https://cdn.ndopify.com/contracts/MNDT-2024-000001.pdf", contract.signedContentUrl)
         assertEquals(6, contract.durationMonths)
+        assertEquals(Money(5000, "XAF"), contract.visitFee)
         assertEquals(Date.from(Instant.parse("2099-05-25T00:00:00Z")), contract.signatureRequestedAt)
         assertNotNull(contract.signatureDeadline)
         assertNull(contract.validFrom)

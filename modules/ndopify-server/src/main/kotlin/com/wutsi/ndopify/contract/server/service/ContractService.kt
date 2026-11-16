@@ -26,6 +26,7 @@ import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.party.server.service.PartyService
 import com.wutsi.ndopify.platform.tenant.TenantContext
+import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
@@ -149,13 +150,15 @@ class ContractService(
 
         // Last, once the request is valid: the sequence stays locked until the commit
         val tenantId = TenantContext.get()!!
+        val tenant = tenantService.findById(tenantId)
         val now = Date(clock.millis())
         val number = numberGenerator.generate(
             tenantId = tenantId,
             type = request.type,
             now = now.toInstant(),
-            timeZone = ZoneId.of(tenantService.findById(tenantId).timeZone),
+            timeZone = ZoneId.of(tenant.timeZone),
         )
+        val (visitFeeAmount, visitFeeCurrency) = normalizeVisitFee(request.visitFee, tenant.currencyCode)
 
         val contract = dao.save(
             ContractEntity(
@@ -163,6 +166,8 @@ class ContractService(
                 type = request.type,
                 status = ContractStatus.DRAFT,
                 durationMonths = request.durationMonths,
+                visitFeeAmount = visitFeeAmount,
+                visitFeeCurrency = visitFeeCurrency,
                 createdAt = now,
             )
         )
@@ -427,6 +432,16 @@ class ContractService(
 
     private fun isSignatureLate(contract: ContractEntity, now: Date): Boolean =
         contract.status == ContractStatus.PENDING_SIGNATURE && contract.signatureDeadline?.before(now) == true
+
+    // Null = no fee; a blank currency means the tenant's, and no other is accepted
+    private fun normalizeVisitFee(money: Money?, tenantCurrency: String): Pair<Long, String> {
+        if (money == null) return 0L to tenantCurrency
+        if (money.amount < 0) throw invalidParameter("visitFee.amount", money.amount.toString())
+        if (money.currency.isNotBlank() && money.currency != tenantCurrency) {
+            throw invalidParameter("visitFee.currency", money.currency)
+        }
+        return money.amount to tenantCurrency
+    }
 
     private fun invalidParameter(name: String, value: String): BadRequestException {
         return BadRequestException(
