@@ -15,7 +15,8 @@ import org.springframework.stereotype.Service
  *
  * One message per run while the digest fits Telegram's [MAX_LENGTH]; over it, split at listing-group boundaries, and a
  * single listing over it at agent-row boundaries with its header repeated: a row is never cut nor lost. The digest
- * never carries the search customer. [send]'s recipient is the agent's chat from #135's link
+ * never carries the search customer. It names the interested agents without their contact: the mandate page's
+ * proposal card carries it. [send]'s recipient is the agent's chat from #135's link
  * (`AgentTelegramService.chatId`), never its e-mail; Telegram refusing throws
  * ([com.wutsi.ndopify.platform.telegram.TelegramException]), and the notifier then falls back to the e-mail.
  */
@@ -137,14 +138,8 @@ class CoBrokerageInterestBotlet(private val client: TelegramClient) {
         return "$title\n$price\n\n"
     }
 
-    private fun row(agent: InterestedAgent): String {
-        val contact = when {
-            agent.whatsapp != null -> " — WhatsApp ${agent.whatsapp}"
-            agent.email != null -> " — ${agent.email}"
-            else -> ""
-        }
-        return "• ${agent.fullName}$contact\n  ${criteria(agent)}\n"
-    }
+    private fun row(agent: InterestedAgent): String =
+        "• ${agent.fullName}\n  ${criteria(agent)}\n"
 
     // Ex: "Location - Appartement à Bastos (Yaounde) - 2 pièces - 100 000 FCFA / mois - 2 recherches"
     private fun criteria(agent: InterestedAgent): String = buildString {
@@ -163,7 +158,7 @@ class CoBrokerageInterestBotlet(private val client: TelegramClient) {
     }
 
     private fun tail(digest: CoBrokerageInterestDigest): String =
-        "Contactez l'agent intéressé pour organiser la visite.\n\nCordialement,\nL'équipe ${digest.tenant.name}"
+        "Retrouvez les coordonnées de chaque agent dans le mandat.\n\nCordialement,\nL'équipe ${digest.tenant.name}"
 
     private fun button(listing: ListingInterest): TelegramButton? {
         val url = listing.mandateUrl ?: return null

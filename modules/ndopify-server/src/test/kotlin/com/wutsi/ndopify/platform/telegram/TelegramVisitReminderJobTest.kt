@@ -46,12 +46,15 @@ class TelegramVisitReminderJobTest : BaseEndpointIntegrationTest() {
         assertTrue(text.firstValue.contains("Ray Sponsible"))
         assertTrue(text.firstValue.contains("Type: Sur place"))
         assertTrue(text.firstValue.contains("Lieu: Bastos, Yaounde"))
-        assertTrue(text.firstValue.contains("WhatsApp: +237 6 00 00 00 01"))
+        assertFalse(text.firstValue.contains("WhatsApp:"))
         assertFalse(text.firstValue.contains("1111"))
         assertFalse(text.firstValue.contains("Rue 1.234"))
         assertFalse(text.firstValue.contains("Derrière la pharmacie"))
         assertEquals(
-            listOf(TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1")),
+            listOf(
+                TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1"),
+                TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237600000001"),
+            ),
             buttons.firstValue,
         )
 

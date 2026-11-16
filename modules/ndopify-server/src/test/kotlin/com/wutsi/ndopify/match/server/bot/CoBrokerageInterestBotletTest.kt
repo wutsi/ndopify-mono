@@ -45,6 +45,12 @@ class CoBrokerageInterestBotletTest {
         budget = "100 000 FCFA / mois",
         searchCount = null,
     )
+    private val kimByEmail = kim.copy(
+        whatsapp = null,
+        whatsappUrl = null,
+        email = "kim.possible@example.com",
+        emailUrl = "mailto:kim.possible@example.com",
+    )
 
     @Test
     fun `one listing - text and one-row button`() {
@@ -55,9 +61,14 @@ class CoBrokerageInterestBotletTest {
         assertTrue(text.contains("1 agent s'intéresse à vos annonces :"))
         assertTrue(text.contains("Villa Bastos"))
         assertTrue(text.contains("90 000 FCFA / mois — Bastos (Yaounde)"))
-        assertTrue(text.contains("• Kim Possible — WhatsApp +237 6 99 00 00 01"))
+        assertTrue(text.contains("• Kim Possible\n"))
+        assertFalse(text.contains("WhatsApp"))
         assertTrue(text.contains("Location - Appartement à Bastos (Yaounde) - 2 pièces - 100 000 FCFA / mois"))
-        assertTrue(text.endsWith("Cordialement,\nL'équipe Ndopify"))
+        assertTrue(
+            text.endsWith(
+                "Retrouvez les coordonnées de chaque agent dans le mandat.\n\nCordialement,\nL'équipe Ndopify",
+            ),
+        )
         assertEquals(
             listOf(listOf(TelegramButton("Voir le mandat — Villa Bastos", url = "https://pc.ndopify.com/mandates/11"))),
             rows,
@@ -126,11 +137,21 @@ class CoBrokerageInterestBotletTest {
 
     @Test
     fun `an agent without contact keeps its name and criteria`() {
-        send(digest(listOf(listing(agents = listOf(kim.copy(whatsapp = null, whatsappUrl = null))))))
+        send(digest(listOf(listing(agents = listOf(kim)))))
 
         val (text, _) = sent().single()
         assertTrue(text.contains("• Kim Possible\n"))
         assertTrue(text.contains("Location - Appartement à Bastos (Yaounde)"))
+    }
+
+    @Test
+    fun `an agent contacted by e-mail leaks no contact either`() {
+        send(digest(listOf(listing(agents = listOf(kimByEmail)))))
+
+        val (text, _) = sent().single()
+        assertTrue(text.contains("• Kim Possible\n"))
+        assertFalse(text.contains("kim.possible@example.com"))
+        assertFalse(text.contains("mailto:"))
     }
 
     @Test
