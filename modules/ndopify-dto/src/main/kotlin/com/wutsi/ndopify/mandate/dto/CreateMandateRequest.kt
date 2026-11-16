@@ -15,6 +15,9 @@ data class CreateMandateRequest(
     val mandateType: MandateType = MandateType.UNKNOWN,
     val listingType: ListingType = ListingType.UNKNOWN,
 
+    /** The listing the visitor asked about, when the mandate comes from its public page; null otherwise. */
+    val originListingId: Long? = null,
+
     val cityId: Long = -1,
     val neighbourhoodIds: List<Long> = emptyList(),
 

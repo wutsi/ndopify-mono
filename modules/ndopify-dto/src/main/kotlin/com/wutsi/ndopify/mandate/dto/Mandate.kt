@@ -16,6 +16,9 @@ data class Mandate(
     val agentId: Long? = null,
     val contractId: String? = null,
 
+    /** The listing the visitor asked about, when the mandate comes from its public page; null otherwise. */
+    val originListingId: Long? = null,
+
     val propertyCategory: PropertyCategory = PropertyCategory.UNKNOWN,
     val status: MandateStatus = MandateStatus.UNKNOWN,
     val mandateType: MandateType = MandateType.UNKNOWN,

@@ -87,6 +87,7 @@ object ErrorCode {
     val MANDATE_CANNOT_BE_APPROVED = "$PREFIX:mandate:cannot-be-approved"
     val MANDATE_ALREADY_APPROVED = "$PREFIX:mandate:already-approved"
     val MANDATE_ALREADY_CLOSED = "$PREFIX:mandate:already-closed"
+    val MANDATE_RATE_LIMITED = "$PREFIX:mandate:rate-limited"
     val MANDATE_VERSION_CONFLICT = "$PREFIX:mandate:version-conflict"
 
     val MATCH_NOT_FOUND = "$PREFIX:match:not-found"
