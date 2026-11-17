@@ -14,6 +14,7 @@ import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /** Renders `templates/index.html` with a real Thymeleaf engine. */
@@ -103,6 +104,16 @@ class IndexTemplateTest {
         val page = render("tenant" to tenant)
 
         assertTrue(page.select(".cta-row").isEmpty())
+    }
+
+    @Test
+    fun `no pre-MVP promise`() {
+        val text = render("tenant" to tenant, "findPropertyUrl" to "https://partner.ndopify.cm/find-property").text()
+
+        listOf("Pass Visite", "sous 24 h", "visites sont-elles payantes", "vidéos", "GPS").forEach {
+            assertFalse(text.contains(it), it)
+        }
+        assertTrue(text.contains("Lancer ma recherche"))
     }
 
     @Test
