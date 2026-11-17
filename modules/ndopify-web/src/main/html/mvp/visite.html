@@ -21,7 +21,7 @@
   Visit page (source doc): the customer's visit of a listing its agent proposed (a match ACCEPTED, then "Demander une
   visite" on proposition.html). The link of every visit e-mail: /visits/{id}?token= (a public-portal token, kept in
   the cookie and stripped from the address, as the match link). Only the mandate's customer sees it: the agent has its
-  own page in Partner Central. Visits are free: no fee, no payment.
+  own page in Partner Central. The visit fee is paid to the agent offline, never through Ndopify.
   Two types, shown wherever the date is ("Sur place · …" / "Visite vidéo · …"): ON_SITE, at the property; VIDEO, a
   live WhatsApp video call from the agent, at the property, to the customer's WhatsApp number at the time set. The
   customer picks the type, the agent may change it (and the date) when confirming. Same states, same code, same
@@ -123,6 +123,12 @@
                     <svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg>WhatsApp<span class="visually-hidden"> : écrire à Serge</span>
                 </a>
             </div>
+            <!-- Only while the visit is still to happen: an ended visit owes nothing (visite.js hides it). -->
+            <p class="notice notice--info" data-visit-only="REQUESTED CONFIRMED CHECKED_IN">
+                <svg aria-hidden="true" class="icon"><use href="#i-info"/></svg>
+                <span>Frais de visite&nbsp;: <strong>5&nbsp;000&nbsp;FCFA</strong>, à régler directement à Serge lors de
+                    la visite. Ndopify ne perçoit aucun paiement.</span>
+            </p>
         </div>
 
         <!--
@@ -221,6 +227,8 @@
                         passeport).</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-key"/></svg>Votre code de visite, sur votre
                         téléphone ou noté.</li>
+                    <li><svg aria-hidden="true" class="icon"><use href="#i-info"/></svg>5&nbsp;000&nbsp;FCFA pour les
+                        frais de visite, à régler à Serge.</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-chat"/></svg>Vos questions : charges, eau,
                         électricité, voisinage.</li>
                     <li><svg aria-hidden="true" class="icon"><use href="#i-clock"/></svg>Soyez à l'heure : après

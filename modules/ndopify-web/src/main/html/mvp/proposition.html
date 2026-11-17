@@ -31,8 +31,9 @@
           every 30 minutes, an optional note; the contact is the mandate's, its WhatsApp number shown read-only),
           offered only once the search mandate is signed (APPROVED); "Visite vidéo" only when the client has a WhatsApp
           number. Before the signature (or without the form): "Pour organiser une visite, contactez Serge" (the
-          ACCEPTED_NO_VISIT block). Visits are free: the agent confirms the date and the type (or changes them) by
-          e-mail with the visit code; the visit page (visite.html) is the link of the visit e-mails. Without a visit
+          ACCEPTED_NO_VISIT block). The visit fee is paid to the agent offline: the agent confirms the date and the
+          type (or changes them) by e-mail with the visit code; the visit page (visite.html) is the link of the
+          visit e-mails. Without a visit
           after a few days, the client gets a reminder e-mail inviting them to book one.
         - Accepted, a visit requested (or any open visit: one per match): "Visite demandée : <type> · <date>" and
           "Voir ma visite" (visite.html) instead of the button.
@@ -276,7 +277,7 @@
                         <tr><th scope="row">Disponible</th><td>À partir du 1<sup>er</sup> décembre 2026</td></tr>
                         </tbody>
                     </table>
-                    <p class="terms-note">Les visites sont gratuites et organisées par votre agent.</p>
+                    <p class="terms-note">Les visites sont organisées par votre agent. Frais de visite&nbsp;: <strong>5&nbsp;000&nbsp;FCFA</strong> par visite, réglés directement à lui.</p>
                 </section>
 
                 <section aria-labelledby="location-heading" class="listing__section">
@@ -329,8 +330,7 @@
                         <a class="btn btn-primary price-card__cta" data-modal-open href="#visit">
                             <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Demander une visite
                         </a>
-                        <p class="price-card__hint">Choisissez un créneau : Serge vous confirme la date par
-                            e-mail.</p>
+                        <p class="price-card__hint">Visite&nbsp;: <strong>5&nbsp;000&nbsp;FCFA</strong> de frais, réglés directement à Serge. Il vous confirme la date par e-mail.</p>
                     </div>
 
                     <!-- Accepted, no visit to request yet (the search mandate isn't signed) and none open -->
@@ -474,8 +474,8 @@
   number, needed for a video visit). A day among the 7 starting tomorrow, a time from 8h00 to 20h00 on a 30-minute
   boundary (the tenant's time zone), an optional note (≤ 500): POST, the visit is REQUESTED and the agent is e-mailed.
   The agent confirms the date and the type by e-mail (both may differ from the requested ones), the visit is then CONFIRMED with its
-  code (visite.html). Visits are free: nothing to pay. Without JavaScript it opens with :target (#visit) and the form
-  posts; the type, the day and the time are required.
+  code (visite.html). The visit fee is paid to the agent offline, never through Ndopify. Without JavaScript it opens
+  with :target (#visit) and the form posts; the type, the day and the time are required.
 -->
 <div aria-labelledby="visit-title" class="modal" id="visit">
     <a aria-hidden="true" class="modal__backdrop" data-modal-close href="#main" tabindex="-1"></a>
@@ -568,6 +568,11 @@
                 <textarea id="visit-note" maxlength="500" name="note" placeholder="Ex : je peux aussi venir en fin de journée."
                           rows="2"></textarea>
             </div>
+            <p class="visit-request__fee">
+                <svg aria-hidden="true" class="icon"><use href="#i-info"/></svg>
+                <span>Frais de visite&nbsp;: <strong>5&nbsp;000&nbsp;FCFA</strong>, à régler directement à Serge lors de
+                    la visite. Ndopify ne perçoit aucun paiement.</span>
+            </p>
             <button class="btn btn-primary interest-form__submit" type="submit">Envoyer la demande</button>
             <p class="interest-form__privacy">Serge vous confirme la date par e-mail, avec votre code de visite.</p>
         </form>
