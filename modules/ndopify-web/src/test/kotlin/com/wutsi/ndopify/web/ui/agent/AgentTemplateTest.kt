@@ -14,6 +14,7 @@ import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /** Renders `templates/agent.html` with a real Thymeleaf engine. */
@@ -103,6 +104,16 @@ class AgentTemplateTest {
         val page = render("tenant" to tenant)
 
         assertTrue(page.select(".cta-row").isEmpty())
+    }
+
+    @Test
+    fun `no pre-MVP promise`() {
+        val text = render("tenant" to tenant, "joinUrl" to "https://partner.ndopify.cm/join").text()
+
+        listOf("NIU", "indemnité", "sous 24 h", "anti-sautage").forEach {
+            assertFalse(text.contains(it), it)
+        }
+        assertTrue(text.contains("Rejoindre le réseau"))
     }
 
     @Test
