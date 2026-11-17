@@ -31,8 +31,8 @@ import java.time.LocalDate
  * "Pourquoi ce logement ?" only says what is true and was searched: one line per criterion fully met (score 1.0) that
  * the mandate sets (the neighbourhood when the listing is inside a searched one, `distanceKm == 0`), and the searched
  * amenities, matched or missing. The flash (`answer`: `accepted` / `rejected`, set by the answer's
- * redirect) is only shown when the match is in that state, so a hand-typed `?answer=` says nothing false. No text says
- * the agent was told of the answer: ndopify-server doesn't notify the agent yet.
+ * redirect) is only shown when the match is in that state, so a hand-typed `?answer=` says nothing false. The page says
+ * the agent is told of the answer: ndopify-server doesn't notify it yet, but the agent sees the match's status.
  *
  * The visit block appears once the match is ACCEPTED: the open visit when one exists, otherwise the request form when
  * the mandate is approved. An UNAVAILABLE match still shows its open visit when the listing went away after the
@@ -119,8 +119,10 @@ object MatchPages {
             criteria = if (listingPage != null) criteria(match, mandate) else emptyList(),
             listing = listingPage,
             flash = when {
-                answer == "accepted" && state == AnswerState.ACCEPTED -> "C'est noté : ce logement vous intéresse."
-                answer == "rejected" && state == AnswerState.REJECTED -> "C'est noté : vous avez écarté ce logement."
+                answer == "accepted" && state == AnswerState.ACCEPTED ->
+                    "C'est noté : ce logement vous intéresse, votre agent est prévenu."
+                answer == "rejected" && state == AnswerState.REJECTED ->
+                    "C'est noté : vous avez écarté ce logement, votre agent est prévenu."
                 else -> null
             },
             visit = panel,
