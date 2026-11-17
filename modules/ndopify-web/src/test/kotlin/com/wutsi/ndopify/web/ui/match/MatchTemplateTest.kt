@@ -214,15 +214,15 @@ class MatchTemplateTest {
     }
 
     @Test
-    fun `never says the agent got the answer`() {
-        listOf(MatchStatus.PROPOSED, MatchStatus.ACCEPTED, MatchStatus.REJECTED).forEach { status ->
-            val text = render(page(status, answer = status.name.lowercase())).text()
-            listOf("transmise", "prévenu", "il vous").forEach { assertFalse(text.contains(it), "$status: $it") }
-        }
+    fun `says the agent got the answer`() {
         val rejected = render(page(MatchStatus.REJECTED, answer = "rejected"))
-        assertEquals("C'est noté : vous avez écarté ce logement.", rejected.selectFirst(".proposal-flash")?.text())
-        assertEquals("Serge continue de chercher pour vous.", rejected.select("[data-answer=REJECTED] p")[1].text())
-        assertTrue(render().select("#location-heading ~ p").text().contains("communiqués par Serge avant la visite"))
+        assertEquals("C'est noté : vous avez écarté ce logement, votre agent est prévenu.", rejected.selectFirst(".proposal-flash")?.text())
+        assertEquals(
+            "Serge est prévenu et continue de chercher pour vous : il vous enverra d'autres logements.",
+            rejected.select("[data-answer=REJECTED] p")[1].text(),
+        )
+        val accepted = render(page(MatchStatus.ACCEPTED, answer = "accepted"))
+        assertEquals("C'est noté : ce logement vous intéresse, votre agent est prévenu.", accepted.selectFirst(".proposal-flash")?.text())
     }
 
     @Test
@@ -234,7 +234,7 @@ class MatchTemplateTest {
         assertNull(doc.selectFirst("#answer"))
         assertNull(doc.selectFirst("#reject"))
         assertEquals("Vous intéresse", doc.selectFirst("[data-state-badge]")?.text())
-        assertEquals("C'est noté : ce logement vous intéresse.", doc.selectFirst(".proposal-flash")?.text())
+        assertEquals("C'est noté : ce logement vous intéresse, votre agent est prévenu.", doc.selectFirst(".proposal-flash")?.text())
         assertEquals("Contacter Serge sur WhatsApp", doc.selectFirst("[data-next-step] a")?.text())
     }
 
@@ -256,7 +256,7 @@ class MatchTemplateTest {
             ),
         )
 
-        assertEquals("C'est noté : ce logement vous intéresse.", doc.selectFirst(".proposal-flash")?.text())
+        assertEquals("C'est noté : ce logement vous intéresse, votre agent est prévenu.", doc.selectFirst(".proposal-flash")?.text())
         val next = doc.selectFirst(".proposal [data-next-step]")
         assertNotNull(next)
         assertEquals("#visit", next.selectFirst("a[data-modal-open]")?.attr("href"))
@@ -428,6 +428,10 @@ class MatchTemplateTest {
     fun `no visit request`() {
         val doc = render(page(MatchStatus.ACCEPTED))
 
+        assertEquals(
+            "Serge est prévenu. Pour organiser une visite, contactez-le : vous pourrez la demander ici dès que votre mandat de recherche sera signé.",
+            doc.selectFirst("[data-answer=ACCEPTED] p:not(.answer__status)")?.text(),
+        )
         assertNull(doc.selectFirst("#visit"))
         assertNull(doc.selectFirst("#ask"))
         assertTrue(doc.select("a[href=#visit], a[href=#ask]").isEmpty())

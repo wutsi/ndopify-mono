@@ -46,8 +46,8 @@ Package `com.wutsi.ndopify.web`:
   EXPIRED (not answered within ndopify-server's `ndopify.match.expire.days`) → the listing, "Cette proposition a
   expiré", no form, contact the agent;
   UNAVAILABLE (listing 403/404 or not PUBLISHED, whatever the answer) → no listing, no form, the agent's WhatsApp.
-  An answer redirects to `/match/{id}?answer=accepted|rejected` (the flash, shown only in that state; no text says the
-  agent was told: it isn't notified yet); a second answer
+  An answer redirects to `/match/{id}?answer=accepted|rejected` (the flash, shown only in that state, and the page says
+  the agent was told of the answer: ndopify-server notifies it, `MatchAnsweredNotifier`); a second answer
   (409 `MATCH_NOT_PROPOSED`) to `/match/{id}`.
   Once ACCEPTED, the visit block: the match's open visit (REQUESTED / CONFIRMED / CHECKED_IN, `NdVisitClient.openForMatch`)
   with its slot and "Voir ma visite" (`/visits/{id}`); without one, and when the mandate is APPROVED, "Demander une

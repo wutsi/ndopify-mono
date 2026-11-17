@@ -14,6 +14,7 @@ import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /** Renders `templates/owner.html` with a real Thymeleaf engine. */
@@ -103,6 +104,16 @@ class OwnerTemplateTest {
         val page = render("tenant" to tenant)
 
         assertTrue(page.select(".cta-row").isEmpty())
+    }
+
+    @Test
+    fun `no pre-MVP promise`() {
+        val text = render("tenant" to tenant, "offerPropertyUrl" to "https://partner.ndopify.cm/offer-property").text()
+
+        listOf("sous 24 h", "vidéos", "Pass Visite", "l'équipe examine votre dossier").forEach {
+            assertFalse(text.contains(it), it)
+        }
+        assertTrue(text.contains("Proposer mon bien"))
     }
 
     @Test

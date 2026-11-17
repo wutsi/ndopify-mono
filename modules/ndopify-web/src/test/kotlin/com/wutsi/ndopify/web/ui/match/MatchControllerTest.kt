@@ -170,7 +170,7 @@ class MatchControllerTest {
 
         val result = request("/match/12?answer=accepted")
 
-        assertEquals("C'est noté : ce logement vous intéresse.", page(result).flash)
+        assertEquals("C'est noté : ce logement vous intéresse, votre agent est prévenu.", page(result).flash)
     }
 
     @Test
