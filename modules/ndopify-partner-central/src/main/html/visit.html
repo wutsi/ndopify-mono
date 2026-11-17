@@ -27,7 +27,8 @@
     The header: the status tag, then the date once (the page's key fact), then "Qui contacter" — each number named
     with its owner's role, the client and, in co-brokerage, the listing's agent — then the listing (title ·
     neighbourhood linking to its page, number, rent). Dates are the tenant's dateFormat with the year,
-    "sam. 7 novembre 2026 à 10h30". Visits are free: no fee, no payment. Two types (VisitType), the client's
+    "sam. 7 novembre 2026 à 10h30". The visit fee is paid by the client to the agent offline, never through
+    Ndopify. Two types (VisitType), the client's
     choice, shown in the header (and on the home cards and mandate.html's match line): ON_SITE ("Sur place"), and
     VIDEO ("Visite vidéo"): at the time set, the agent, at the property, calls the client by WhatsApp video (the
     mandate's WhatsApp number). The rest is the same for both: the client reads the code out during the call, the
@@ -173,6 +174,13 @@
                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false" data-type-icon="ON_SITE"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
                         <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false" hidden data-type-icon="VIDEO"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="m16 10 6-3v10l-6-3z"/></svg>
                         <span data-v="typeLabel">Visite sur place</span>
+                    </p>
+                    <!-- The fee comes from the search mandate's contract: the client pays it to the agent, offline.
+                         Only while the visit is to happen (visit.js hides it once done or called off). -->
+                    <p class="visit-fee" data-visit-fee>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <span>Frais de visite&nbsp;: <strong>5 000 FCFA</strong>, à encaisser auprès du client à la
+                            visite.</span>
                     </p>
                 </div>
 

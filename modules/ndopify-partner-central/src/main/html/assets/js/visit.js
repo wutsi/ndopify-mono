@@ -898,6 +898,9 @@
                         formatAt(v.requestedAt) + ". Le client a été prévenu par e-mail.";
                 }
             }
+            // The fee is collected at the visit: it has no meaning once the visit is done or called off.
+            var fee = $("[data-visit-fee]");
+            if (fee) fee.hidden = ["REQUESTED", "CONFIRMED", "WINDOW", "CHECKED_IN"].indexOf(panel) === -1;
             // A video visit's panel owns the call: the header keeps only the number then.
             var headerWhatsapp = $("[data-client-whatsapp-header]");
             if (headerWhatsapp) headerWhatsapp.hidden = panel === "WINDOW" && v.video;
