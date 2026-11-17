@@ -32,7 +32,7 @@ import java.time.LocalDate
  * the mandate sets (the neighbourhood when the listing is inside a searched one, `distanceKm == 0`), and the searched
  * amenities, matched or missing. The flash (`answer`: `accepted` / `rejected`, set by the answer's
  * redirect) is only shown when the match is in that state, so a hand-typed `?answer=` says nothing false. The page says
- * the agent is told of the answer: ndopify-server doesn't notify it yet, but the agent sees the match's status.
+ * the agent is told of the answer: ndopify-server notifies it when the match is answered (Telegram, else e-mail).
  *
  * The visit block appears once the match is ACCEPTED: the open visit when one exists, otherwise the request form when
  * the mandate is approved. An UNAVAILABLE match still shows its open visit when the listing went away after the
