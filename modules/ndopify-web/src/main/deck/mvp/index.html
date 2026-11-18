@@ -1,0 +1,894 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>Ndopify — Présentation de la plateforme</title>
+    <meta content="Ndopify en 18 diapositives : des agents vérifiés, le mandat, la mise en relation et les visites. Pour un public non technique."
+          name="description">
+    <link href="assets/images/icon.png" rel="icon">
+    <link href="https://fonts.googleapis.com" rel="preconnect">
+    <link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
+    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@700&family=Montserrat:wght@400;600;700&display=swap"
+          rel="stylesheet">
+    <!--
+      Ndopify MVP deck, for a non-technical audience. Presenter mode: few words per slide, the detail is in the
+      speaker notes (press N). Every fact here is what the code does today (ndopify-server, Partner Central, the
+      e-signature portal, ndopify-web), and nothing the MVP leaves out is promised (see ../../html/mvp/README.md).
+
+      Navigation: ← → / Space / PageUp PageDown / Home End, a click on the right or left half, #<n> in the URL.
+      N toggles the speaker notes, F the full screen. Print (Ctrl/Cmd+P) gives one slide per page, for a PDF.
+
+      Design: DESIGN.md tokens (primary #1d7edf, Lora + Montserrat). 1920×1080 stage scaled to the window,
+      96px safe zone, 8pt spacing, type scale 1.5 (24 / 36 / 54 / 81 / 121 px).
+    -->
+    <style>
+        :root {
+            --primary: #1d7edf;
+            --primary-strong: #0f5fae; /* accent for text under 54px: 6.2:1 on white */
+            --ink: #040404;
+            --muted: #4a4f57;
+            --bg: #ffffff;
+            --bg-soft: #e4edf7;
+            --surface-low: #f8f8f8;
+            --border: #dfdfdf;
+
+            --t-cap: 24px;
+            --t-body: 36px;
+            --t-title: 54px;
+            --t-big: 81px;
+            --t-hero: 121px;
+
+            --safe-y: 96px;
+            --safe-x: 128px;
+            --radius: 24px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            height: 100%;
+            background: #1b1e23;
+            color: var(--ink);
+            font-family: Montserrat, system-ui, sans-serif;
+            overflow: hidden;
+        }
+
+        .deck { position: fixed; inset: 0; }
+
+        .slide {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 1920px;
+            height: 1080px;
+            padding: var(--safe-y) var(--safe-x);
+            background: var(--bg);
+            transform-origin: center center;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .slide.is-active { display: flex; }
+
+        /* ---------- type ---------- */
+        h1, h2 { font-family: Lora, Georgia, serif; font-weight: 700; line-height: 1.1; letter-spacing: -0.01em; }
+        h1 { font-size: var(--t-big); max-width: 22ch; }
+        h2 { font-size: var(--t-title); max-width: 36ch; }
+        p, li { font-size: var(--t-body); line-height: 1.45; }
+        .lead { font-size: var(--t-body); line-height: 1.45; color: var(--muted); max-width: 48ch; margin-top: 32px; }
+        .cap { font-size: var(--t-cap); line-height: 1.5; color: var(--muted); }
+        .kicker {
+            font-size: var(--t-cap);
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--primary-strong);
+            margin-bottom: 24px;
+        }
+        .accent { color: var(--primary); }
+        strong { font-weight: 700; }
+
+        /* ---------- layout ---------- */
+        .body { flex: 1; display: flex; flex-direction: column; justify-content: center; margin-top: 64px; }
+        .grid { display: grid; gap: 32px; }
+        .cols-2 { grid-template-columns: repeat(2, 1fr); }
+        .cols-3 { grid-template-columns: repeat(3, 1fr); }
+        .cols-4 { grid-template-columns: repeat(4, 1fr); }
+
+        .card {
+            background: var(--surface-low);
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            padding: 48px 40px;
+        }
+        .card h3 { font-size: var(--t-body); font-weight: 700; line-height: 1.2; margin-bottom: 16px; }
+        .card p { font-size: var(--t-cap); line-height: 1.5; color: var(--muted); }
+        .card.is-key { background: var(--bg-soft); border-color: var(--primary); }
+
+        .icon {
+            width: 96px;
+            height: 96px;
+            border-radius: 50%;
+            background: var(--bg-soft);
+            display: grid;
+            place-items: center;
+            margin-bottom: 32px;
+        }
+        .icon svg { width: 48px; height: 48px; stroke: var(--primary-strong); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+        .num {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: var(--ink);
+            color: #fff;
+            font-size: var(--t-cap);
+            font-weight: 700;
+            display: grid;
+            place-items: center;
+            margin-bottom: 24px;
+        }
+        .is-key .num { background: var(--primary); }
+
+        /* steps with a connector line */
+        .steps { display: grid; gap: 32px; position: relative; }
+        .steps::before {
+            content: "";
+            position: absolute;
+            top: 32px;
+            left: 32px;
+            right: calc((100% - 96px) / 4 - 32px);
+            height: 2px;
+            background: var(--border);
+            z-index: 0;
+        }
+        .step { position: relative; z-index: 1; }
+        .step h3 { font-size: var(--t-body); font-weight: 700; line-height: 1.2; margin-bottom: 16px; }
+        .step p { font-size: var(--t-cap); line-height: 1.5; color: var(--muted); max-width: 22ch; }
+
+        /* big figures */
+        .stat-value { font-family: Lora, Georgia, serif; font-size: var(--t-big); font-weight: 700; line-height: 1.05; }
+        .stat-label { font-size: var(--t-cap); line-height: 1.5; color: var(--muted); margin-top: 16px; max-width: 18ch; }
+
+        /* ticks list */
+        .ticks { list-style: none; display: grid; gap: 24px; }
+        .ticks li { display: flex; gap: 24px; align-items: flex-start; font-size: var(--t-body); }
+        .ticks li::before {
+            content: "✓";
+            flex: none;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--bg-soft);
+            color: var(--primary-strong);
+            font-size: var(--t-cap);
+            font-weight: 700;
+            display: grid;
+            place-items: center;
+            margin-top: 2px;
+        }
+        .ticks.is-out li::before { content: "—"; color: var(--muted); background: var(--surface-low); }
+
+        /* footer: logo bottom-left, number bottom-right, inside the safe zone */
+        .foot {
+            position: absolute;
+            left: var(--safe-x);
+            right: var(--safe-x);
+            bottom: 48px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .foot img { height: 48px; width: auto; display: block; }
+        .foot .page { font-size: var(--t-cap); color: var(--muted); font-variant-numeric: tabular-nums; }
+
+        /* ---------- per slide ---------- */
+        .hero { justify-content: center; }
+        .hero .logo-big { align-self: flex-start; height: 192px; width: auto; margin-bottom: 64px; margin-left: -16px; }
+        .hero h1 { font-size: var(--t-big); }
+
+        .statement { justify-content: center; }
+        .statement h1 { font-size: var(--t-big); max-width: 24ch; }
+
+        .split { display: grid; grid-template-columns: 1fr 1fr; gap: 96px; align-items: center; }
+
+        /* match proposal mock-up */
+        .mock {
+            background: var(--bg);
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: 0 4px 0 var(--border);
+            overflow: hidden;
+        }
+        .mock-photo {
+            height: 216px;
+            background: linear-gradient(0deg, var(--bg-soft), var(--bg-soft));
+            display: grid;
+            place-items: center;
+        }
+        .mock-photo svg { width: 96px; height: 96px; stroke: var(--primary-strong); fill: none; stroke-width: 1.5; }
+        .mock-body { padding: 32px 40px 40px; }
+        .mock-title { font-size: var(--t-body); font-weight: 700; line-height: 1.2; }
+        .mock-price { font-size: var(--t-cap); color: var(--muted); margin-top: 8px; }
+        .mock-why { margin-top: 24px; font-size: var(--t-cap); line-height: 1.6; }
+        .mock-why b { font-weight: 700; }
+        .mock-why .no { color: var(--muted); }
+        .mock-actions { display: flex; gap: 16px; margin-top: 32px; }
+        .btn {
+            font-size: var(--t-cap);
+            font-weight: 600;
+            border-radius: 30px;
+            padding: 16px 32px;
+            border: 2px solid transparent;
+        }
+        .btn-primary { background: var(--primary-strong); color: #fff; }
+        .btn-outline { background: var(--bg); border-color: var(--border); }
+
+        /* visit code */
+        .code {
+            display: inline-flex;
+            gap: 16px;
+        }
+        .code span {
+            width: 96px;
+            height: 128px;
+            border-radius: 16px;
+            background: var(--bg-soft);
+            border: 2px solid var(--primary);
+            font-family: Lora, Georgia, serif;
+            font-size: var(--t-big);
+            font-weight: 700;
+            display: grid;
+            place-items: center;
+        }
+
+        /* flow diagram (matching) */
+        .flow { display: grid; grid-template-columns: 1fr 128px 1fr 128px 1fr; align-items: stretch; }
+        .arrow { display: grid; place-items: center; }
+        .arrow svg { width: 96px; height: 48px; stroke: var(--muted); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+        .closing { justify-content: center; align-items: flex-start; }
+        .closing h1 { max-width: 20ch; }
+        .try { margin-top: 64px; padding: 32px 40px; }
+        .try .kicker { margin-bottom: 16px; }
+        .try-link {
+            display: block;
+            font-size: var(--t-body);
+            font-weight: 600;
+            color: var(--primary-strong);
+            text-decoration: underline;
+            text-underline-offset: 6px;
+            margin-bottom: 16px;
+        }
+
+        /* ---------- speaker notes ---------- */
+        .notes { display: none; }
+        .notes-panel {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            max-height: 40vh;
+            overflow: auto;
+            background: #fffbe6;
+            color: var(--ink);
+            border-top: 4px solid #e0b100;
+            padding: 16px 24px;
+            font-size: 16px;
+            line-height: 1.5;
+            display: none;
+            z-index: 10;
+        }
+        .notes-panel.is-open { display: block; }
+        .notes-panel p, .notes-panel li { font-size: 16px; }
+        .notes-panel ul { padding-left: 24px; }
+
+        .hint {
+            position: fixed;
+            right: 16px;
+            top: 16px;
+            font-size: 13px;
+            color: #c9ccd1;
+            opacity: 0.8;
+            z-index: 5;
+        }
+
+        @media print {
+            @page { size: 1920px 1080px; margin: 0; }
+            html, body { overflow: visible; height: auto; background: #fff; }
+            .deck { position: static; }
+            .slide {
+                display: flex !important;
+                position: relative;
+                left: 0;
+                top: 0;
+                transform: none !important;
+                page-break-after: always;
+                break-after: page;
+            }
+            .hint, .notes-panel { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+<div class="hint" id="hint">← → pour naviguer · N : notes · F : plein écran</div>
+
+<main class="deck" id="deck">
+
+    <!-- 1 — Title -->
+    <section class="slide hero" data-title="Ndopify">
+        <img alt="Ndopify" class="logo-big" src="assets/images/logo.png">
+        <h1>Des agents vérifiés pour trouver et louer un logement</h1>
+        <p class="lead">Présentation de la plateforme — MVP</p>
+        <aside class="notes">
+            <p>Ndopify met en relation les personnes qui cherchent un logement et les propriétaires avec des agents
+                immobiliers vérifiés de leur quartier. Cette présentation décrit ce que la plateforme fait
+                aujourd'hui, sans jargon technique.</p>
+        </aside>
+    </section>
+
+    <!-- 2 — The problem -->
+    <section class="slide" data-title="Le problème">
+        <p class="kicker">Le constat</p>
+        <h2>Chercher un logement, c'est souvent chercher seul</h2>
+        <div class="body">
+            <div class="grid cols-3">
+                <div class="card">
+                    <div class="icon">
+                        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+                    </div>
+                    <h3>Des annonces à trier</h3>
+                    <p>Des dizaines d'annonces, souvent incomplètes ou déjà louées.</p>
+                </div>
+                <div class="card">
+                    <div class="icon">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/><path d="M18 3l3 3M21 3l-3 3"/></svg>
+                    </div>
+                    <h3>Des intermédiaires inconnus</h3>
+                    <p>Impossible de savoir à qui l'on confie sa recherche ou son bien.</p>
+                </div>
+                <div class="card">
+                    <div class="icon">
+                        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4M9 14l6 5M15 14l-6 5"/></svg>
+                    </div>
+                    <h3>Des visites pour rien</h3>
+                    <p>Des déplacements pour des biens qui ne correspondent pas.</p>
+                </div>
+            </div>
+        </div>
+        <aside class="notes">
+            <p>Trois frustrations, côté locataire comme côté propriétaire : trop d'informations non fiables, aucune
+                garantie sur l'intermédiaire, et beaucoup de temps perdu en visites inutiles.</p>
+        </aside>
+    </section>
+
+    <!-- 3 — The idea -->
+    <section class="slide statement" data-title="L'idée">
+        <p class="kicker">Notre idée</p>
+        <h1>Chaque besoin est confié à <span class="accent">un agent vérifié</span> de son quartier</h1>
+        <p class="lead">Pas une liste d'annonces : une personne qui travaille pour vous.</p>
+        <aside class="notes">
+            <p>C'est le cœur du concept. Ndopify n'est pas un site d'annonces de plus. Le client décrit son besoin,
+                et la plateforme le confie à un seul agent, vérifié, qui connaît le secteur. Cet agent reçoit un
+                mandat écrit et signé, et c'est lui qui propose les biens et organise les visites.</p>
+        </aside>
+    </section>
+
+    <!-- 4 — Three profiles -->
+    <section class="slide" data-title="Trois profils">
+        <p class="kicker">Qui utilise Ndopify ?</p>
+        <h2>Trois profils, une seule plateforme</h2>
+        <div class="body">
+            <div class="grid cols-3">
+                <div class="card">
+                    <div class="icon">
+                        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+                    </div>
+                    <h3>Le locataire</h3>
+                    <p>Cherche un logement : ville, quartiers, budget, équipements, date d'emménagement.</p>
+                </div>
+                <div class="card">
+                    <div class="icon">
+                        <svg viewBox="0 0 24 24"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
+                    </div>
+                    <h3>Le propriétaire</h3>
+                    <p>Veut louer son bien : loyer, avance, caution, date de disponibilité.</p>
+                </div>
+                <div class="card is-key">
+                    <div class="icon">
+                        <svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>
+                    </div>
+                    <h3>L'agent vérifié</h3>
+                    <p>Accompagne les deux, dans les quartiers où il travaille.</p>
+                </div>
+            </div>
+        </div>
+        <aside class="notes">
+            <p>Le locataire et le propriétaire sont les clients. L'agent est le professionnel du terrain : il peut
+                être indépendant ou rattaché à une agence. Ndopify fait le lien entre eux.</p>
+        </aside>
+    </section>
+
+    <!-- 5 — Three pillars -->
+    <section class="slide" data-title="Trois piliers">
+        <p class="kicker">Le MVP</p>
+        <h2>Trois piliers</h2>
+        <div class="body">
+            <div class="grid cols-3">
+                <div class="card">
+                    <div class="num">1</div>
+                    <h3>Des agents vérifiés</h3>
+                    <p>Identité et Mobile Money contrôlés avant tout premier client.</p>
+                </div>
+                <div class="card">
+                    <div class="num">2</div>
+                    <h3>La mise en relation</h3>
+                    <p>Un mandat, un agent, puis les biens qui correspondent.</p>
+                </div>
+                <div class="card">
+                    <div class="num">3</div>
+                    <h3>Les visites</h3>
+                    <p>Un créneau, un code, un avis après la visite.</p>
+                </div>
+            </div>
+        </div>
+        <aside class="notes">
+            <p>Tout ce qui suit se range dans ces trois piliers. Ce sont les trois choses que la plateforme sait
+                faire de bout en bout aujourd'hui.</p>
+        </aside>
+    </section>
+
+    <!-- 6 — Pillar 1: becoming an agent -->
+    <section class="slide" data-title="Devenir agent">
+        <p class="kicker">Pilier 1 · Des agents vérifiés</p>
+        <h2>Vérifié avant de recevoir un premier client</h2>
+        <div class="body">
+            <div class="steps cols-4 grid">
+                <div class="step">
+                    <div class="num">1</div>
+                    <h3>S'inscrire</h3>
+                    <p>E-mail, numéro WhatsApp et quartiers de travail.</p>
+                </div>
+                <div class="step">
+                    <div class="num">2</div>
+                    <h3>Envoyer sa pièce</h3>
+                    <p>Recto, verso et un selfie, depuis son téléphone.</p>
+                </div>
+                <div class="step">
+                    <div class="num">3</div>
+                    <h3>Mobile Money</h3>
+                    <p>Le compte doit être à son propre nom.</p>
+                </div>
+                <div class="step is-key">
+                    <div class="num">✓</div>
+                    <h3>Agent vérifié</h3>
+                    <p>Il peut maintenant recevoir des mandats.</p>
+                </div>
+            </div>
+        </div>
+        <aside class="notes">
+            <p>L'inscription est gratuite. Après l'inscription, l'agent reçoit un lien par e-mail pour envoyer ses
+                documents. La vérification est automatique : la pièce d'identité et le selfie sont lus par
+                intelligence artificielle, et le nom du compte Mobile Money est comparé à celui de la pièce.
+                L'agent est prévenu du résultat par e-mail. Sans vérification, aucun mandat.</p>
+        </aside>
+    </section>
+
+    <!-- 7 — The mandate -->
+    <section class="slide" data-title="Le mandat">
+        <p class="kicker">Pilier 2 · La mise en relation</p>
+        <h2>Tout commence par un mandat, signé en ligne</h2>
+        <div class="body">
+            <div class="grid cols-2">
+                <div class="card">
+                    <h3>Mandat de recherche</h3>
+                    <p>Le locataire décrit ce qu'il cherche : ville, quartiers, type de bien, budget, équipements,
+                        date d'emménagement.</p>
+                </div>
+                <div class="card">
+                    <h3>Mandat de location</h3>
+                    <p>Le propriétaire décrit son bien : quartier, loyer, avance, caution, équipements,
+                        disponibilité.</p>
+                </div>
+            </div>
+            <p class="cap" style="margin-top: 48px;">Le client le reçoit par e-mail et le signe lui-même, sans se déplacer.</p>
+        </div>
+        <aside class="notes">
+            <p>Le mandat est un contrat simple qui écrit noir sur blanc ce que veut le client et ce que fait
+                l'agent. Il est généré par la plateforme une fois l'agent trouvé, puis signé électroniquement.
+                Personne ne peut signer à la place du client. Une fois signé, le mandat est « approuvé » et le
+                travail commence vraiment.</p>
+        </aside>
+    </section>
+
+    <!-- 8 — Dispatch -->
+    <section class="slide" data-title="Qui reçoit le mandat">
+        <p class="kicker">Pilier 2 · La mise en relation</p>
+        <h2>Le bon agent, choisi automatiquement</h2>
+        <div class="body">
+            <div class="split">
+                <ul class="ticks">
+                    <li>Il travaille dans le quartier</li>
+                    <li>Il est disponible</li>
+                    <li>Chacun son tour, équitablement</li>
+                    <li>Il répond vite et ses clients sont satisfaits</li>
+                </ul>
+                <div class="grid cols-3">
+                    <div>
+                        <div class="stat-value">1</div>
+                        <p class="stat-label">agent à la fois</p>
+                    </div>
+                    <div>
+                        <div class="stat-value accent">1 h</div>
+                        <p class="stat-label">pour accepter ou refuser</p>
+                    </div>
+                    <div>
+                        <div class="stat-value">5</div>
+                        <p class="stat-label">mandats en cours au maximum</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <aside class="notes">
+            <p>Dès qu'un client dépose sa demande, Ndopify la propose à un seul agent vérifié de sa ville, choisi
+                selon ces critères. L'agent la reçoit sur Telegram ou par e-mail et a une heure, en journée, pour
+                l'accepter. Sans réponse ou s'il refuse, elle passe à l'agent suivant. La nuit, rien n'est envoyé.
+                Un agent ne suit jamais plus de 5 mandats à la fois, pour que chaque client soit bien suivi.
+                Quand l'agent accepte, le client reçoit son nom, son WhatsApp et sa présentation.</p>
+        </aside>
+    </section>
+
+    <!-- 9 — Owner side: audit & publication -->
+    <section class="slide" data-title="Audit du bien">
+        <p class="kicker">Pilier 2 · Côté propriétaire</p>
+        <h2>Le bien est vérifié sur place avant d'être publié</h2>
+        <div class="body">
+            <div class="steps cols-4 grid">
+                <div class="step">
+                    <div class="num">1</div>
+                    <h3>Visite</h3>
+                    <p>L'agent se rend dans le bien du propriétaire.</p>
+                </div>
+                <div class="step">
+                    <div class="num">2</div>
+                    <h3>Relevés</h3>
+                    <p>Au moins 5 photos, position GPS, compteurs, équipements.</p>
+                </div>
+                <div class="step">
+                    <div class="num">3</div>
+                    <h3>Contrôle</h3>
+                    <p>La plateforme vérifie l'annonce, ou la renvoie « À corriger ».</p>
+                </div>
+                <div class="step is-key">
+                    <div class="num">✓</div>
+                    <h3>Publication</h3>
+                    <p>Titre et description rédigés, annonce en ligne.</p>
+                </div>
+            </div>
+        </div>
+        <aside class="notes">
+            <p>L'audit, les photos et la publication sont gratuits pour le propriétaire. L'agent remplit une liste
+                de contrôle section par section. La plateforme vérifie automatiquement l'annonce et les photos ;
+                s'il manque quelque chose, l'annonce revient à l'agent avec ce qu'il faut corriger. Une fois
+                validée, l'intelligence artificielle rédige le titre et la description et choisit la meilleure
+                photo. L'agent est prévenu dès que l'annonce est en ligne.</p>
+        </aside>
+    </section>
+
+    <!-- 10 — Matching -->
+    <section class="slide" data-title="Le rapprochement">
+        <p class="kicker">Pilier 2 · Le rapprochement</p>
+        <h2>Ndopify trouve les biens qui correspondent</h2>
+        <div class="body">
+            <div class="flow">
+                <div class="card">
+                    <h3>Une recherche</h3>
+                    <p>Le mandat signé du locataire.</p>
+                </div>
+                <div class="arrow" aria-hidden="true">
+                    <svg viewBox="0 0 48 24"><path d="M2 12h42M36 4l8 8-8 8"/></svg>
+                </div>
+                <div class="card is-key">
+                    <h3>Comparaison</h3>
+                    <p>Quartier, prix, pièces, équipements, disponibilité, meublé.</p>
+                </div>
+                <div class="arrow" aria-hidden="true">
+                    <svg viewBox="0 0 48 24"><path d="M2 12h42M36 4l8 8-8 8"/></svg>
+                </div>
+                <div class="card">
+                    <h3>Des biens classés</h3>
+                    <p>Ceux de l'agent d'abord, puis ceux de ses confrères.</p>
+                </div>
+            </div>
+            <p class="cap" style="margin-top: 48px;">Pour chaque bien, l'agent voit pourquoi il correspond — et ce qui manque.</p>
+        </div>
+        <aside class="notes">
+            <p>Dès qu'un mandat de recherche est signé, la plateforme compare la recherche à toutes les annonces
+                publiées, et recommence chaque fois qu'une nouvelle annonce est publiée. Elle écarte ce qui ne
+                peut pas convenir (autre ville, hors budget…) et classe le reste.</p>
+            <p>Si l'agent n'a rien dans son propre portefeuille, Ndopify lui montre les biens de ses confrères :
+                c'est le co-courtage. L'agent du bien est prévenu que son bien intéresse, sans jamais connaître le
+                client de son confrère.</p>
+        </aside>
+    </section>
+
+    <!-- 11 — Proposal -->
+    <section class="slide" data-title="La proposition">
+        <p class="kicker">Pilier 2 · La proposition</p>
+        <h2>Le client répond en un clic</h2>
+        <div class="body">
+            <div class="split">
+                <div class="mock" aria-label="Exemple de proposition reçue par le client">
+                    <div class="mock-photo">
+                        <svg viewBox="0 0 24 24"><path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></svg>
+                    </div>
+                    <div class="mock-body">
+                        <p class="mock-title">Appartement 2 chambres</p>
+                        <p class="mock-price">Exemple de proposition</p>
+                        <p class="mock-why"><b>Pourquoi ce logement ?</b><br>
+                            ✓ Dans votre quartier · ✓ Dans votre budget<br>
+                            <span class="no">— Sans citerne d'eau</span></p>
+                        <div class="mock-actions">
+                            <span class="btn btn-primary">Ça m'intéresse</span>
+                            <span class="btn btn-outline">Pas pour moi</span>
+                        </div>
+                    </div>
+                </div>
+                <ul class="ticks">
+                    <li>Reçue par e-mail, avec les photos</li>
+                    <li>L'agent est prévenu de la réponse</li>
+                    <li>« Pas pour moi » : le client dit pourquoi</li>
+                </ul>
+            </div>
+        </div>
+        <aside class="notes">
+            <p>L'agent choisit les biens à proposer. S'il ne fait rien pendant 24 heures, la plateforme les propose
+                elle-même au client. Le client reçoit un e-mail avec un lien vers chaque bien. Il a 7 jours pour
+                répondre, et sa réponse est définitive. S'il refuse, il donne une raison (prix, quartier,
+                taille…) pour que l'agent ajuste sa recherche. S'il est intéressé mais ne demande pas de visite,
+                il reçoit un rappel 3 jours plus tard.</p>
+        </aside>
+    </section>
+
+    <!-- 12 — Visits -->
+    <section class="slide" data-title="La visite">
+        <p class="kicker">Pilier 3 · Les visites</p>
+        <h2>Une visite, du créneau à l'avis</h2>
+        <div class="body">
+            <div class="steps cols-4 grid">
+                <div class="step">
+                    <div class="num">1</div>
+                    <h3>Demande</h3>
+                    <p>Sur place ou en vidéo WhatsApp, sur les 7 prochains jours.</p>
+                </div>
+                <div class="step">
+                    <div class="num">2</div>
+                    <h3>Confirmation</h3>
+                    <p>L'agent confirme ; le client reçoit son code de visite.</p>
+                </div>
+                <div class="step">
+                    <div class="num">3</div>
+                    <h3>Le jour J</h3>
+                    <p>Rappel la veille. Le client donne son code à l'arrivée.</p>
+                </div>
+                <div class="step is-key">
+                    <div class="num">4</div>
+                    <h3>L'avis</h3>
+                    <p>Après la visite, le client dit si le bien l'intéresse.</p>
+                </div>
+            </div>
+        </div>
+        <aside class="notes">
+            <p>Le client demande une visite depuis un bien qui l'intéresse, une fois son mandat signé. L'agent la
+                confirme, éventuellement à une autre heure. L'adresse exacte n'est donnée qu'après confirmation.
+                Le client peut annuler jusqu'au début de la visite. Si l'agent ne se présente pas, la visite est
+                marquée comme manquée. L'avis du client est transmis à l'agent.</p>
+        </aside>
+    </section>
+
+    <!-- 13 — The visit code -->
+    <section class="slide statement" data-title="Le code de visite">
+        <p class="kicker">Pilier 3 · Les visites</p>
+        <div class="split">
+            <div>
+                <h1 style="font-size: var(--t-title);">Le code de visite prouve que la visite a eu lieu</h1>
+                <p class="lead">Seul le client le connaît. L'agent le saisit à son arrivée.</p>
+            </div>
+            <div class="code" aria-label="Exemple de code de visite : 4 chiffres">
+                <span>4</span><span>8</span><span>1</span><span>7</span>
+            </div>
+        </div>
+        <aside class="notes">
+            <p>Le code à 4 chiffres est envoyé uniquement au client. Sur place, l'agent le saisit pour démarrer la
+                visite, puis la termine avec un commentaire. Après 5 codes faux, la visite est bloquée. C'est ce
+                qui rend chaque visite traçable, pour le client comme pour l'agent.</p>
+        </aside>
+    </section>
+
+    <!-- 14 — Trust -->
+    <section class="slide" data-title="Confiance">
+        <p class="kicker">Confiance</p>
+        <h2>La confiance est inscrite dans les règles</h2>
+        <div class="body">
+            <ul class="ticks">
+                <li>Chaque agent a une identité et un Mobile Money vérifiés</li>
+                <li>Chacun signe son mandat lui-même, personne à sa place</li>
+                <li>L'adresse exacte n'est donnée qu'une fois la visite confirmée</li>
+                <li>Le client d'un agent n'est jamais dévoilé à un confrère</li>
+            </ul>
+        </div>
+        <aside class="notes">
+            <p>Ces règles ne sont pas des promesses : elles sont appliquées par la plateforme elle-même. Même un
+                administrateur ne peut pas signer à la place d'un client. En co-courtage, l'agent du bien ne
+                connaît jamais le nom ni le contact du client de son confrère, et le client ne connaît que son
+                propre agent.</p>
+        </aside>
+    </section>
+
+    <!-- 15 — Channels -->
+    <section class="slide" data-title="Où ça se passe">
+        <p class="kicker">Où ça se passe</p>
+        <h2>Quatre portes d'entrée</h2>
+        <div class="body">
+            <div class="grid cols-4">
+                <div class="card">
+                    <h3>Le site</h3>
+                    <p>Pour les clients : déposer un besoin, voir une annonce, répondre, suivre sa visite.</p>
+                </div>
+                <div class="card">
+                    <h3>Partner Central</h3>
+                    <p>L'espace des agents : mandats, annonces, biens proposés, visites.</p>
+                </div>
+                <div class="card">
+                    <h3>La signature</h3>
+                    <p>Une page pour lire et signer son mandat en ligne.</p>
+                </div>
+                <div class="card">
+                    <h3>Telegram & e-mail</h3>
+                    <p>Les alertes, et l'agent accepte un mandat d'un geste.</p>
+                </div>
+            </div>
+        </div>
+        <aside class="notes">
+            <p>Le client n'a pas de compte à créer : il suit tout par les liens des e-mails qu'il reçoit. L'agent
+                travaille depuis Partner Central, sur téléphone ou ordinateur, et peut relier son compte Telegram
+                pour recevoir ses alertes et accepter ou refuser un mandat directement depuis la conversation.</p>
+        </aside>
+    </section>
+
+    <!-- 16 — Business model -->
+    <section class="slide" data-title="Combien ça coûte">
+        <p class="kicker">Combien ça coûte</p>
+        <h2>Gratuit jusqu'à la signature du bail</h2>
+        <div class="body">
+            <div class="grid cols-3">
+                <div>
+                    <div class="stat-value">0</div>
+                    <p class="stat-label">frais d'inscription pour l'agent</p>
+                </div>
+                <div>
+                    <div class="stat-value">0</div>
+                    <p class="stat-label">frais d'audit et de photos pour le propriétaire</p>
+                </div>
+                <div>
+                    <div class="stat-value accent">1 mois</div>
+                    <p class="stat-label">de loyer de commission, si un bail est signé</p>
+                </div>
+            </div>
+            <p class="cap" style="margin-top: 64px;">Le propriétaire encaisse ses loyers directement. Aucun paiement ne passe par la plateforme.</p>
+        </div>
+        <aside class="notes">
+            <p>La commission d'un mois de loyer est écrite dans le mandat et n'est due que si un bail est signé pour
+                un bien trouvé par l'agent. Dans ce MVP, elle se règle en dehors de la plateforme : Ndopify ne
+                collecte aucun paiement. Le propriétaire choisit lui-même son locataire.</p>
+        </aside>
+    </section>
+
+    <!-- 17 — Out of scope -->
+    <section class="slide" data-title="Pas encore">
+        <p class="kicker">Ce que le MVP ne fait pas encore</p>
+        <h2>Un périmètre volontairement resserré</h2>
+        <div class="body">
+            <ul class="ticks is-out">
+                <li>Les paiements en ligne : commission, frais de visite, Pass Visite</li>
+                <li>La vérification des dossiers des locataires</li>
+                <li>La signature du bail et l'encaissement des loyers</li>
+                <li>Un catalogue d'annonces à parcourir librement</li>
+                <li>La vente de biens</li>
+                <li>La location courte durée</li>
+            </ul>
+        </div>
+        <aside class="notes">
+            <p>Ces sujets ont été écartés volontairement pour le MVP. L'objectif est de prouver d'abord que le
+                mandat confié à un agent vérifié fonctionne : des mandats signés, des biens proposés, des visites
+                réalisées. Le reste viendra ensuite.</p>
+        </aside>
+    </section>
+
+    <!-- 18 — Closing -->
+    <section class="slide closing" data-title="En résumé">
+        <p class="kicker">En résumé</p>
+        <h1>Un besoin, <span class="accent">un agent vérifié</span>, des visites qui comptent</h1>
+        <p class="lead">Merci. Questions ?</p>
+        <div class="card try">
+            <p class="kicker">Essayer la plateforme</p>
+            <a class="try-link" href="https://ndopify-web-test-97e7bcf0539c.herokuapp.com" rel="noopener" target="_blank">ndopify-web-test-97e7bcf0539c.herokuapp.com</a>
+            <p class="cap">Environnement de test : il peut être lent au démarrage. Si une page ne s'affiche pas,
+                rechargez-la.</p>
+        </div>
+        <aside class="notes">
+            <p>Rappel des trois piliers : des agents vérifiés, une mise en relation par mandat et par rapprochement
+                automatique, et des visites suivies du créneau jusqu'à l'avis du client.</p>
+        </aside>
+    </section>
+
+</main>
+
+<div aria-live="polite" class="notes-panel" id="notes"></div>
+
+<script>
+    (function () {
+        const slides = Array.from(document.querySelectorAll('.slide'));
+        const notes = document.getElementById('notes');
+        const total = slides.length;
+        let index = 0;
+
+        // Footer (logo + page number) on every slide but the title one, which shows the big logo.
+        slides.forEach(function (slide, i) {
+            if (i === 0) return;
+            const foot = document.createElement('div');
+            foot.className = 'foot';
+            foot.innerHTML = '<img alt="Ndopify" src="assets/images/logo.png"><span class="page">' + (i + 1) + ' / ' + total + '</span>';
+            slide.appendChild(foot);
+        });
+
+        function fit() {
+            const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+            slides.forEach(function (s) {
+                s.style.transform = 'translate(-50%, -50%) scale(' + scale + ')';
+            });
+        }
+
+        function show(i) {
+            index = Math.max(0, Math.min(total - 1, i));
+            slides.forEach(function (s, j) { s.classList.toggle('is-active', j === index); });
+            const aside = slides[index].querySelector('.notes');
+            notes.innerHTML = '<strong>' + (index + 1) + ' — ' + (slides[index].dataset.title || '') + '</strong>' + (aside ? aside.innerHTML : '');
+            if (location.hash !== '#' + (index + 1)) history.replaceState(null, '', '#' + (index + 1));
+        }
+
+        function fromHash() {
+            const n = parseInt(location.hash.replace('#', ''), 10);
+            return isNaN(n) ? 0 : n - 1;
+        }
+
+        document.addEventListener('keydown', function (e) {
+            if (['ArrowRight', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); show(index + 1); }
+            else if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); show(index - 1); }
+            else if (e.key === 'Home') show(0);
+            else if (e.key === 'End') show(total - 1);
+            else if (e.key === 'n' || e.key === 'N') notes.classList.toggle('is-open');
+            else if (e.key === 'f' || e.key === 'F') {
+                if (document.fullscreenElement) document.exitFullscreen();
+                else document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
+            }
+        });
+
+        document.getElementById('deck').addEventListener('click', function (e) {
+            if (e.target.closest('a')) return; // let links open without changing slide
+            show(e.clientX > window.innerWidth / 2 ? index + 1 : index - 1);
+        });
+
+        window.addEventListener('resize', fit);
+        window.addEventListener('hashchange', function () { show(fromHash()); });
+
+        setTimeout(function () { document.getElementById('hint').style.display = 'none'; }, 4000);
+
+        fit();
+        show(fromHash());
+    })();
+</script>
+</body>
+</html>

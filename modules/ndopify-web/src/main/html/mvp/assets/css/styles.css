@@ -75,7 +75,7 @@ h2 { font-size: var(--h2-size); }
 h3 { font-size: var(--h3-size); }
 h4, legend { font-size: var(--h4-size); }
 
-p { margin: 0 0 1em; max-width: 68ch; }
+p { margin: 0 0 1em; }
 img { max-width: 100%; display: block; }
 /* var(--color-primary) on white is 4.1:1, below AA 4.5:1 for text — the documented
    DESIGN.md exception covers the primary button only; link/accent text uses the
@@ -104,7 +104,7 @@ a { color: var(--color-text-info); }
 }
 .section--default { background: var(--color-bg-default); }
 .section--secondary { background: var(--color-bg-secondary); }
-.section__head { max-width: 42rem; margin-bottom: var(--space-xl); }
+.section__head { margin-bottom: var(--space-xl); }
 .section__head p { color: var(--color-text-default); }
 
 .visually-hidden {
@@ -268,7 +268,7 @@ a { color: var(--color-text-info); }
   padding: var(--space-md) var(--space-lg);
   margin-bottom: var(--space-lg);
 }
-.hero__sub { font-size: 1.125rem; max-width: 42rem; }
+.hero__sub { font-size: 1.125rem }
 .proof-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));

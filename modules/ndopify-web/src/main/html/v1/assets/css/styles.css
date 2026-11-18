@@ -104,7 +104,7 @@ a { color: var(--color-text-info); }
 }
 .section--default { background: var(--color-bg-default); }
 .section--secondary { background: var(--color-bg-secondary); }
-.section__head { max-width: 42rem; margin-bottom: var(--space-xl); }
+.section__head { margin-bottom: var(--space-xl); }
 .section__head p { color: var(--color-text-default); }
 
 .visually-hidden {
@@ -268,7 +268,7 @@ a { color: var(--color-text-info); }
   padding: var(--space-md) var(--space-lg);
   margin-bottom: var(--space-lg);
 }
-.hero__sub { font-size: 1.125rem; max-width: 42rem; }
+.hero__sub { font-size: 1.125rem }
 .proof-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));

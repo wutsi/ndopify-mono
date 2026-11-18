@@ -4,24 +4,28 @@
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1" name="viewport">
     <title>Ndopify — Recevez des mandats de clients dans votre secteur</title>
-    <meta content="Rejoignez le réseau d'agents vérifiés Ndopify : des mandats de recherche et de location dans vos quartiers, les biens qui correspondent à vos clients, vos visites organisées. Inscription gratuite."
-          name="description">
+    <meta
+        content="Rejoignez le réseau d'agents vérifiés Ndopify : des mandats de recherche et de location dans vos quartiers, les biens qui correspondent à vos clients, vos visites organisées. Inscription gratuite."
+        name="description">
     <!--/* The tenant's logo and icon, falling back to Ndopify's when it has none. */-->
     <th:block th:with="logoUrl=${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl},
                        iconUrl=${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
-        <link rel="canonical" th:if="${!#strings.isEmpty(tenant.publicPortalUrl)}" th:href="${tenant.publicPortalUrl} + '/agent'">
+        <link rel="canonical" th:href="${tenant.publicPortalUrl} + '/agent'"
+              th:if="${!#strings.isEmpty(tenant.publicPortalUrl)}">
         <meta content="website" property="og:type">
         <meta content="Ndopify — Des mandats de clients dans votre secteur" property="og:title">
-        <meta content="Mandats signés dans vos quartiers, biens correspondants trouvés pour vous, visites organisées. Inscription gratuite."
-              property="og:description">
+        <meta
+            content="Mandats signés dans vos quartiers, biens correspondants trouvés pour vous, visites organisées. Inscription gratuite."
+            property="og:description">
         <meta property="og:image" th:content="${logoUrl}">
-        <meta property="og:url" th:if="${!#strings.isEmpty(tenant.publicPortalUrl)}" th:content="${tenant.publicPortalUrl} + '/agent'">
+        <meta property="og:url" th:content="${tenant.publicPortalUrl} + '/agent'"
+              th:if="${!#strings.isEmpty(tenant.publicPortalUrl)}">
         <meta content="summary_large_image" name="twitter:card">
         <meta content="#1d7edf" name="theme-color">
         <link rel="icon" th:href="${iconUrl}">
         <link rel="apple-touch-icon" th:href="${iconUrl}">
         <link rel="stylesheet" th:href="@{/assets/css/styles.css}">
-        <script type="application/ld+json" th:inline="javascript">
+        <script th:inline="javascript" type="application/ld+json">
             {
                 "@context": "https://schema.org",
                 "@type": "Organization",
@@ -40,9 +44,9 @@
 <a class="skip-link" href="#main">Aller au contenu principal</a>
 <header class="site-header">
     <a aria-label="Ndopify — accueil" class="site-header__logo" th:href="@{/}">
-        <img alt="Ndopify" height="36" width="140"
-             th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
-             th:src="${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}">
+        <img alt="Ndopify" height="36" th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
+             th:src="${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}"
+             width="140">
     </a>
     <nav aria-label="Navigation principale" class="site-nav">
         <button aria-controls="primary-nav-list" aria-expanded="false" class="nav-toggle"><span aria-hidden="true"
@@ -66,7 +70,7 @@
                 proposés aux agents vérifiés de leurs quartiers : acceptez ceux qui vous conviennent, Ndopify s'occupe
                 du reste.</p>
             <ul class="proof-stats">
-                <li><strong>0 FCFA</strong>de frais d'inscription ou d'abonnement</li>
+                <li><strong>0 FCFA</strong>de frais d'inscription</li>
                 <li><strong>Plusieurs</strong>quartiers de travail, choisis par vous</li>
                 <li><strong>1 h</strong>pour accepter un mandat</li>
             </ul>
@@ -212,9 +216,9 @@
 
 <footer class="site-footer">
     <div class="container site-footer__inner">
-        <img alt="Ndopify" height="32" width="32"
-             th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
-             th:src="${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
+        <img alt="Ndopify" height="32" th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
+             th:src="${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}"
+             width="32">
         <nav aria-label="Navigation du pied de page">
             <ul>
                 <li><a th:href="@{/}">Locataires</a></li>

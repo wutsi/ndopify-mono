@@ -10,20 +10,21 @@
     <!--/* The tenant's logo and icon, falling back to Ndopify's when it has none. */-->
     <th:block th:with="logoUrl=${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl},
                        iconUrl=${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
-        <link rel="canonical" th:if="${!#strings.isEmpty(tenant.publicPortalUrl)}" th:href="${tenant.publicPortalUrl}">
+        <link rel="canonical" th:href="${tenant.publicPortalUrl}" th:if="${!#strings.isEmpty(tenant.publicPortalUrl)}">
         <meta content="website" property="og:type">
         <meta content="Ndopify — Un agent vérifié pour votre recherche de logement" property="og:title">
         <meta
             content="Un agent vérifié de votre secteur, des biens choisis pour vous, des visites organisées. Gratuit jusqu'à la signature du bail."
             property="og:description">
         <meta property="og:image" th:content="${logoUrl}">
-        <meta property="og:url" th:if="${!#strings.isEmpty(tenant.publicPortalUrl)}" th:content="${tenant.publicPortalUrl}">
+        <meta property="og:url" th:content="${tenant.publicPortalUrl}"
+              th:if="${!#strings.isEmpty(tenant.publicPortalUrl)}">
         <meta content="summary_large_image" name="twitter:card">
         <meta content="#1d7edf" name="theme-color">
         <link rel="icon" th:href="${iconUrl}">
         <link rel="apple-touch-icon" th:href="${iconUrl}">
         <link rel="stylesheet" th:href="@{/assets/css/styles.css}">
-        <script type="application/ld+json" th:inline="javascript">
+        <script th:inline="javascript" type="application/ld+json">
             {
                 "@context": "https://schema.org",
                 "@type": "Organization",
@@ -42,9 +43,9 @@
 <a class="skip-link" href="#main">Aller au contenu principal</a>
 <header class="site-header">
     <a aria-label="Ndopify — accueil" class="site-header__logo" th:href="@{/}">
-        <img alt="Ndopify" height="36" width="140"
-             th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
-             th:src="${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}">
+        <img alt="Ndopify" height="36" th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
+             th:src="${#strings.isEmpty(tenant.logoUrl)} ? @{/assets/images/logo.png} : ${tenant.logoUrl}"
+             width="140">
     </a>
     <nav aria-label="Navigation principale" class="site-nav">
         <button aria-controls="primary-nav-list" aria-expanded="false" class="nav-toggle"><span aria-hidden="true"
@@ -67,9 +68,9 @@
             <p class="hero__sub">Décrivez ce que vous cherchez en quelques minutes. Un agent de votre secteur prend
                 votre recherche en charge, vous propose des biens qui vous correspondent et organise vos visites.</p>
             <ul class="proof-stats">
-                <li><strong>100 %</strong>des agents vérifiés : pièce d'identité et compte Mobile Money</li>
-                <li><strong>0 FCFA</strong>pour lancer votre recherche</li>
-                <li><strong>1 mois</strong>de loyer en commission, seulement si vous signez un bail</li>
+                <li><strong>100 %</strong>des agents vérifiés</li>
+                <li><strong>100 %</strong>des propriétés vérifiées</li>
+                <li><strong>1 mois</strong>de frais à la signature du bail</li>
             </ul>
             <div class="cta-row" th:if="${findPropertyUrl}">
                 <a class="btn btn-primary" th:href="${findPropertyUrl}">Lancer ma recherche</a>
@@ -218,9 +219,9 @@
 
 <footer class="site-footer">
     <div class="container site-footer__inner">
-        <img alt="Ndopify" height="32" width="32"
-             th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
-             th:src="${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
+        <img alt="Ndopify" height="32" th:alt="${#strings.isEmpty(tenant.name)} ? 'Ndopify' : ${tenant.name}"
+             th:src="${#strings.isEmpty(tenant.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}"
+             width="32">
         <nav aria-label="Navigation du pied de page">
             <ul>
                 <li><a th:href="@{/}">Locataires</a></li>
