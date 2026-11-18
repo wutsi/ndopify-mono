@@ -166,7 +166,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   status), for its match proposal page.
   A search's `MandateSummary` has what a card shows (criteria, amenities, `movingPeriod`, `availableFrom`) and its
   `contractId` only (a client needing the contract's dates searches `/v1/contracts?id=`), not the terms nor the
-  customer's comments. Reads are checked by `MandateEndpoints`, changes by `MandateService` (under the mandate's lock); the server's own
+  customer's comments. `GET /v1/mandates/{id}` carries `visitFee` (`Money`), read through from the mandate's signed
+  contract (`MandateService.visitFee`): no fee when the mandate has no contract, or a legacy contract with a blank
+  currency. `MandateSummary` doesn't carry it. Reads are checked by `MandateEndpoints`, changes by `MandateService` (under the mandate's lock); the server's own
   reads (dispatch, listeners, jobs) aren't. Partner Central has no admin role: admins only exist in the admin console.
   `POST /v1/mandates/{id}` (update) locks the mandate's contract, then the mandate (see *Lock order*), then 409
   `MANDATE_ALREADY_CLOSED` (CLOSED / CANCELLED), `MANDATE_ALREADY_APPROVED`, then `MANDATE_VERSION_CONFLICT` (stale
@@ -500,7 +502,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   customer alone requests / answers / cancels as itself, the visit's agent alone checks in, marks a no-show and checks out
   (no admin bypass); schedule and cancel-as-agent follow `MandateAccessService`. A search filters by `mandate-id`,
   `match-id`, `listing-id`, `agent-id` and `customer-id` (repeatable), and is restricted to the caller's own visits
-  (`agent-id` or `customer-id` forced). Co-brokerage visits: the listing's agent (B) is a read-only backstage
+  (`agent-id` or `customer-id` forced). `GET /v1/visits/{id}` carries `visitFee` (`Money`), read through from the
+  mandate's contract (`MandateService.visitFee`); `VisitSummary` and `CoBrokerageVisitSummary` don't, so the listing
+  agent (B) never sees it, and neither does a search. Co-brokerage visits: the listing's agent (B) is a read-only backstage
   participant. `GET /v1/visits/co-brokerage?listing-id=` returns only `CONFIRMED`/`CHECKED_IN` visits of another
   agent (`agentId != listing.agent.id`), as `CoBrokerageVisitSummary` (no customer, note, code, address, report or
   feedback), to the listing's agent only. Without `listing-id`, the same endpoint returns the caller agent's

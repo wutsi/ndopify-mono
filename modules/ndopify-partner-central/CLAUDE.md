@@ -365,7 +365,10 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `templates/visit.html`, `VisitViews` → `VisitPage`, `VisitRules`, `VisitSlots`) is the prototype's page: one panel per
   status (REQUESTED, CONFIRMED, WINDOW in the check-in window, CHECKED_IN, COMPLETED, CANCELLED, EXPIRED, NO_SHOW) and
   its forms: schedule (`POST /visits/{id}/schedule`), refuse / cancel (`/cancel`), check-in with the customer's code and
-  an optional position (`/check-in`), no-show (`/no-show`), check-out with the private report (`/check-out`). The visit
+  an optional position (`/check-in`), no-show (`/no-show`), check-out with the private report (`/check-out`). Its header
+  states the fee to collect (`VisitPage.visitFee`, from `Visit.visitFee`, formatted by `TenantFormatter`;
+  *Aucun frais de visite.* when 0) while REQUESTED, CONFIRMED (the check-in window included) or CHECKED_IN, and hides it
+  once done or called off. The visit
   is required (another agent's visit, a 403, or a 404 is the locked view); the listing and customer are secondary. The
   listing's agent, when the visit is on another agent's listing, is a third secondary read (`NdAgentClient`): a boxed
   standard `agent-card` (`agent-card--standalone`, no "Visite organisée avec", no phone number) from `VisitPage.agent`;

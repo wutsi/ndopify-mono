@@ -24,7 +24,9 @@ Package `com.wutsi.ndopify.web`:
   `ListingPages` builds the `ListingPage` view (every text formatted, never `agentRemarks`); its body (head, gallery,
   content sections) is `templates/fragments/listing-body.html`, shared with `match.html`. A SOLD or RENTED listing keeps
   its public page, marked "Vendu"/"Loué": its price card and bottom bar show its last published listing price, never a
-  closing price, its conditions are left out, and it has no call to action.
+  closing price, its conditions are left out, and it has no call to action. Its *Conditions de location* note is
+  `ListingPage.termsNote`: on the public page the neutral *Les visites sont organisées par votre agent.* (never the
+  Pass Visite promise), which the match page replaces with the fee.
   "Être contacté par un agent" (price card, and bottom bar below 1024px) opens the `#visit` popup: the
   `ListingInterestForm` posts to `POST /listings/{id}/interest` the visitor's contact, its moving period and the
   `website` honeypot (`ListingInterestRules` validates them in French), and `NdMandateClient.create` creates a SEARCH
@@ -56,14 +58,19 @@ Package `com.wutsi.ndopify.web`:
   optional note (≤ 500), and a contact line from `NdCustomerClient` (video only with a WhatsApp number) →
   `POST /match/{id}/visit`, then `?visit=requested|invalid-slot|conflict` for the flash (a 400: the slot is gone; a
   409: already requested). An ACCEPTED match whose listing went away still shows its open visit; with no form and no
-  open visit, the page only gives the agent's contact.
+  open visit, the page only gives the agent's contact. The contract's per-visit fee (`Mandate.visitFee`, formatted by
+  `TenantFormatter` into `MatchPage.visitFee`) is stated in the *Conditions de location* note
+  (*Frais de visite : 5 000 FCFA par visite, réglés directement à lui.*, or *Aucun frais de visite.*), and, once
+  ACCEPTED with no open visit, in the price card's hint and the `#visit` popup (*Ndopify ne perçoit aucun paiement*).
 - `ui/visit/` — `VisitController`, the link of the "visite" e-mail (`/visits/{id}?token=`): the same token handling as
   the match link (cookie, 302, `visit-link.html` with `reason = expired` / `not-yours`, a bad-shaped token never set),
   then `visit.html`, the `VisitPage` that `VisitPages` builds from the visit: the listing (linked to `/match/{id}`),
   the agent, the customer's contact when readable, and one block for the visit's status — REQUESTED, CONFIRMED,
   CHECKED_IN, COMPLETED, CANCELLED, EXPIRED, NO_SHOW. The customer's code is shown on a CONFIRMED visit; the exact
   address and map never are, only the city, neighbourhood and landmark; a changed slot is called out on a CONFIRMED
-  visit. "Annuler
+  visit. The summary states the visit fee to pay (`VisitPage.visitFee`, from `Visit.visitFee`, formatted by
+  `TenantFormatter`; *Aucun frais de visite.* when 0) only while REQUESTED, CONFIRMED or CHECKED_IN, never once ended.
+  "Annuler
   ma demande" / "Annuler la visite" (`#cancel` popup, `CancelVisitForm`, optional reason ≤ 500) posts
   `POST /visits/{id}/cancel` while REQUESTED or CONFIRMED, before the check-in; `?cancel=done|conflict` drives the
   flash. The COMPLETED block is the feedback: "Le bien vous intéresse ?" (Oui / Non), the match reply's six reasons
