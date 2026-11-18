@@ -16,6 +16,9 @@ data class Mandate(
     val agentId: Long? = null,
     val contractId: String? = null,
 
+    /** The signed contract's per-visit fee, paid to the agent offline; 0 = none. */
+    val visitFee: Money = Money(),
+
     /** The listing the visitor asked about, when the mandate comes from its public page; null otherwise. */
     val originListingId: Long? = null,
 

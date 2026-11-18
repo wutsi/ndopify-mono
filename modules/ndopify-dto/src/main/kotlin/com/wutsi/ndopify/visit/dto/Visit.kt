@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.visit.dto
 
 import com.wutsi.ndopify.match.dto.MatchRejectionReason
+import com.wutsi.ndopify.refdata.dto.Money
 import java.util.Date
 
 data class Visit(
@@ -12,6 +13,9 @@ data class Visit(
     val customerId: Long = -1,
     val status: VisitStatus = VisitStatus.UNKNOWN,
     val type: VisitType = VisitType.UNKNOWN,
+
+    // The search mandate's contract fee, paid to the agent offline; 0 = none
+    val visitFee: Money = Money(),
 
     val requestedAt: Date = Date(),
     val note: String? = null,
