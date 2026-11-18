@@ -43,23 +43,9 @@
 **Interfaces:**
 - Produces: the prototype the user approves before any DTO/server/BFF code. No code interface.
 
-- [ ] **Step 1: Add an accepted match without a visit to the prototype data**
+- [ ] **Step 1: Use the existing fixture**
 
-In `MATCHES[204]` (around line 1783 of `partner-central.js`), add one fixture after `9006`:
-
-```javascript
-// Accepted 1 day ago, no visit yet: the agent must phone the client and schedule it.
-{
-    id: "9007", listingId: "3005", propertyType: "APARTMENT", rooms: 2, neighbourhood: "Bonapriso",
-    price: 230000, availableIn: 10, score: 0.9,
-    initial: { status: "PROPOSED", sentAt: -2, answer: "ACCEPTED", answeredAt: -1 },
-    fit: [[true, "Dans le secteur recherché"], [true, "Dans le budget"], [true, "2 chambres, comme demandé"],
-        [true, "Les 3 équipements demandés"], [true, "Disponible avant la date d'emménagement"],
-        [true, "Non meublé, comme demandé"]]
-},
-```
-
-Use an existing listing id of the prototype (pick one not already matched to 204; `3005` if unused, else the next free one) so its card renders a title and a price.
+No fixture is added: `MATCHES[204]` already has match `9008` (listing `501`), an ACCEPTED match with no visit — exactly the card this story adds the action to. It is the demo card.
 
 - [ ] **Step 2: Add the action and the slot form to the match template**
 
@@ -86,7 +72,7 @@ In `partner-central.js`'s `matchItem`, after the visit block:
 - [ ] **Step 4: Verify in a browser**
 
 Open `modules/ndopify-partner-central/src/main/html/mandate.html?id=204` (the prototype renders its cards from JavaScript; the no-JavaScript path is the served template's, in Task 8). Check:
-- match 9007 shows *Planifier une visite*; 9001/9004/9006 (visits) do not;
+- match 9008 (ACCEPTED, no visit) shows *Planifier une visite*; 9001/9004/9006/9009 (visits) do not;
 - clicking opens the form, and submitting puts a confirmed visit in the card and removes the button.
 
 - [ ] **Step 5: Stop for the user's OK**
