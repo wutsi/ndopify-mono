@@ -394,8 +394,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `MatchEventListener.onMandateApproved` after `matchMandate`) accepts that match at approval, with the customer's
   e-mail and no agent notification. Anti-sautage: a customer never
   learns the counterpart agent's identity/contact, and a counterpart agent never learns the customer's
-  identity/contact/mandate; the customer-facing proposal still names only the search agent. The same
-  `Matcher`, `min-score` and distances apply. A co-brokerage row is never deleted (sticky when own inventory appears
+  identity/contact/mandate; the customer-facing proposal still names only the search agent. The same `Matcher` and
+  distances apply to the matcher path, and a co-brokerage row is never deleted (sticky when own inventory appears
   later); an own-inventory row keeps the re-score/delete behaviour. `GET /v1/matches` lists the agent's own inventory
   first, then co-brokerage, best score first. `matchListing` never creates co-brokerage rows: the daily `rematch`
   picks a newly published listing up. `Matcher` (pure, unit
