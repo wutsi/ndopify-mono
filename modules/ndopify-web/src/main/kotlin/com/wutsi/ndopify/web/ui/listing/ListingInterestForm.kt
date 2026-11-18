@@ -5,9 +5,9 @@ import com.wutsi.ndopify.mandate.dto.CreateMandateRequest
 import com.wutsi.ndopify.mandate.dto.MandateType
 
 /**
- * The "Visiter ce logement" form's fields: the visitor's contact, its moving period, and the honeypot. Everything else
- * of the search mandate — city, type, criteria, budget — comes from the listing, which the server reads itself: the
- * form can't be turned into an arbitrary mandate.
+ * The "Être contacté par un agent" form's fields: the visitor's contact, its moving period, and the honeypot.
+ * Everything else of the search mandate — city, type, criteria, budget — comes from the listing, which the server
+ * reads itself: the form can't be turned into an arbitrary mandate.
  */
 data class ListingInterestForm(
     val firstName: String? = null,

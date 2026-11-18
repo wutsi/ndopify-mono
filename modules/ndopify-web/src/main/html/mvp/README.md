@@ -44,9 +44,8 @@ Nothing collects it.
 
 These are in this prototype but not in `src/main/resources/templates/`:
 
-- `listing.html`: it still offers the old "Visiter ce logement" form (with its "sous 24 h" promise and the steps
-  list) until story #195 lands, and the chat drawer is still served, with the `#visit` popup in the page for
-  SOLD/RENTED listings.
+- `listing.html`: the chat drawer is still served (with its canned answers), with the `#visit` popup in the page for
+  SOLD/RENTED listings; its call to action, popup and confirmation match this prototype's.
 - `match.html`: the flash messages say the agent was told (ndopify-server now notifies it).
 - `visit.html`: the 3-step progress, "À prévoir" / "Le jour J", and the line "Serge vous communique l'adresse exacte…".
 - `index.html`, `owner.html`, `agent.html`: the rewritten copy.
