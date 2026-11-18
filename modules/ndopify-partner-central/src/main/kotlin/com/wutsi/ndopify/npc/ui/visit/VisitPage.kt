@@ -75,4 +75,6 @@ data class VisitPage(
     val videoPossible: Boolean,
     /** The listing agent's standard card when the visit is on another agent's listing; null on own inventory. */
     val agent: AgentCardView? = null,
+    /** "Frais de visite : 5 000 FCFA, à encaisser auprès du client à la visite.": only while the visit is open. */
+    val visitFee: String? = null,
 )

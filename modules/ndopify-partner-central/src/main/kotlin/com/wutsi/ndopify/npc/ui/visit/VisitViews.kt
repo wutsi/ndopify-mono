@@ -84,6 +84,13 @@ object VisitViews {
         val agentNumber = agent?.whatsappNumber?.trim()?.ifEmpty { null }
         val agentPhone = agentNumber?.let { displayPhone(it) }
         val noShowFrom = VisitRules.noShowFrom(visit)?.let { VisitSlots.dateTimeLabel(Date(it), tenant, formatter) }
+        val visitFee = if (visit.status in VisitRules.OPEN) {
+            visit.visitFee.takeIf { it.amount > 0 }?.let {
+                "Frais de visite : ${formatter.money(it.amount, it.currency)}, à encaisser auprès du client à la visite."
+            } ?: "Aucun frais de visite."
+        } else {
+            null
+        }
 
         return VisitPage(
             id = visit.id,
@@ -170,6 +177,7 @@ object VisitViews {
             selectedTime = selectedTime,
             videoPossible = videoPossible,
             agent = agent?.let { AgentCardViews.of(it, "/visits/${visit.id}") }?.takeIf { it.name.isNotBlank() },
+            visitFee = visitFee,
         )
     }
 
