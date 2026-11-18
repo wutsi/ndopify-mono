@@ -4,7 +4,7 @@
 
 **Goal:** Let an agent create a `CONFIRMED` visit for an accepted match from the mandate page, and nudge the agent (Telegram, e-mail fallback) once when an accepted match still has no visit after 48 h.
 
-**Architecture:** A new match-scoped endpoint (`POST /v1/matches/{id}/visits`) writes the visit straight to `CONFIRMED` through `VisitService.createForAgent`, reusing the customer-request rules and the scheduling code. The visit keeps a `createdBy` marker that only the customer's confirmation e-mail reads. A sibling of `MatchVisitReminderService` selects idle accepted matches and hands them to a notifier that prefers Telegram. Partner Central adds one action to the match card, reusing its existing slot list and WhatsApp contact button.
+**Architecture:** A new match-scoped endpoint (`POST /v1/matches/{id}/visits`) writes the visit straight to `CONFIRMED` through `VisitService.createForAgent`, reusing the customer-request rules and the scheduling code. The visit keeps a `createdBy` marker that only the customer's confirmation e-mail reads. A sibling of `MatchVisitReminderService` selects idle accepted matches and hands them to a notifier that prefers Telegram. Partner Central adds one action under the client's contact, reusing its existing slot list and WhatsApp contact button.
 
 **Tech Stack:** Kotlin, Spring Boot, Spring Data JPA, Flyway, Thymeleaf, MJML, Maven, ktlint, JaCoCo, JUnit 5 + `kotlin.test` + `mockito-kotlin`.
 
@@ -45,35 +45,37 @@
 
 - [ ] **Step 1: Use the existing fixture**
 
-No fixture is added: `MATCHES[204]` already has match `9008` (listing `501`), an ACCEPTED match with no visit — exactly the card this story adds the action to. It is the demo card.
+No fixture is added: `MATCHES[204]` already has match `9008` (listing `501`), an ACCEPTED match with no visit — exactly the case this story adds the action for. It is the demo.
 
-- [ ] **Step 2: Add the action and the slot form to the match template**
+- [ ] **Step 2: Add the action and the slot form under the client's contact**
 
-In `[data-match-template]` (after the `[data-match-visit]` block), add a block rendered only for an accepted match without a visit:
+In the contact card's `[data-contact-actions]` row, add a primary `data-contact-schedule` button labelled *Planifier une visite*, hidden by default (the row already holds *Modifier*).
 
-- a button/link `data-match-schedule` labelled *Planifier une visite*;
-- a form `data-match-schedule-form`, hidden by default, with:
-  - a `<select data-match-schedule-day>` listing the 7 days from tomorrow,
-  - a `<select data-match-schedule-time>` listing 08:00 → 20:00 every 30 min,
-  - a type `<select data-match-schedule-type>` with *Sur place* (`ON_SITE`) and *Visite vidéo* (`VIDEO`),
-  - a submit *Confirmer la visite* and a link *Annuler*.
+Right after the `.contact-card`, add a `data-contact-schedule-panel` block, hidden by default, holding a `form`:
+- a `<select data-contact-schedule-property>` labelled *Bien* (the accepted matches, one option each),
+- a `<select data-contact-schedule-day>` (the 7 days from tomorrow),
+- a `<select data-contact-schedule-time>` (08:00 → 20:00 every 30 min),
+- a type `<select data-contact-schedule-type>` with *Sur place* (`ON_SITE`) and *Visite vidéo* (`VIDEO`),
+- *Confirmer la visite* and *Annuler*.
 
-The markup and the wording mirror `src/main/html/visit.html`'s slot picker; ids are suffixed with the match id.
+The slot markup and wording mirror `src/main/html/visit.html`'s picker.
 
-- [ ] **Step 3: Wire it in `matchItem`**
+- [ ] **Step 3: Wire it in `initMandate`**
 
-In `partner-central.js`'s `matchItem`, after the visit block:
+In `partner-central.js`'s `initMandate`, after the contact block is filled:
 
-- show the schedule block when `match.status === "ACCEPTED" && !match.visit`;
-- fill the day/time selects once (the prototype's `visit.js` has the same lists — reuse them if exported there, else duplicate the two arrays into `partner-central.js` as `SCHEDULE_DAYS` / `SCHEDULE_TIMES`);
-- clicking `data-match-schedule` reveals the form;
-- submitting simulates `POST /v1/matches/{id}/visits`: `setMatch(match.id, { visit: { at: Date.now() + n * MS, time, type } })` with the chosen slot, then `showMatchFlash("Visite planifiée pour le … : le client a reçu la date, l'adresse et son code.")`.
+- `acceptedToSchedule()` = `matchesOf(id)` filtered to `answerOf(m) === "ACCEPTED"` (accepted and no visit);
+- show the button only when that list isn't empty; fill the property select with `matchTitle(m) — m.neighbourhood — formatCompactRent(m.price)`;
+- fill the day/time selects from `window.NpcVisits.days()` / `times()` (already exported);
+- clicking the button opens the panel and hides the button; *Annuler* does the reverse;
+- submitting simulates `POST /v1/matches/{id}/visits` for the selected match: `setMatch(match.id, <the match's state + a CONFIRMED visit>)`, close the panel, `showFlash("Visite planifiée le … : <client> a reçu la date, l'adresse et son code par e-mail.")`, and re-sync the button (hidden when no accepted property remains).
 
 - [ ] **Step 4: Verify in a browser**
 
-Open `modules/ndopify-partner-central/src/main/html/mandate.html?id=204` (the prototype renders its cards from JavaScript; the no-JavaScript path is the served template's, in Task 8). Check:
-- match 9008 (ACCEPTED, no visit) shows *Planifier une visite*; 9001/9004/9006/9009 (visits) do not;
-- clicking opens the form, and submitting puts a confirmed visit in the card and removes the button.
+Open `modules/ndopify-partner-central/src/main/html/mandate.html?id=204` (the prototype renders its content from JavaScript; the no-JavaScript path is the served template's, in Task 8). Check:
+- *Planifier une visite* sits next to *Modifier*, under the client's contact, because 9008 is accepted without a visit;
+- clicking opens the form with the property (9008), day, time and type; confirming moves that card to *Visites à venir* and shows the "Visite planifiée…" message at the top;
+- a mandate without such a match (ex: 206) has no button.
 
 - [ ] **Step 5: Stop for the user's OK**
 
@@ -674,7 +676,7 @@ In `MatchViewsTest`:
 `MatchView`, after `resendable`:
 
 ```kotlin
-/** ACCEPTED and no open visit: the agent may book it (the card's *Planifier une visite*). */
+/** ACCEPTED and no open visit: the mandate page may book it (*Planifier une visite*, by the client's contact). */
 val schedulable: Boolean = false,
 ```
 
@@ -693,37 +695,41 @@ git commit -m "feat(partner-central): flag the accepted matches the agent may bo
 ### Task 8: Partner Central schedules the visit
 
 **Files:**
-- Create: `modules/ndopify-partner-central/src/main/kotlin/com/wutsi/ndopify/npc/ui/match/MatchVisitForm.kt`
-- Modify: `modules/ndopify-partner-central/src/main/kotlin/com/wutsi/ndopify/npc/ui/match/MatchController.kt`
+- Modify: `modules/ndopify-partner-central/src/main/kotlin/com/wutsi/ndopify/npc/ui/visit/VisitForms.kt` (add `MandateVisitForm`)
 - Modify: `modules/ndopify-partner-central/src/main/kotlin/com/wutsi/ndopify/npc/ui/mandate/MandateController.kt`
 - Modify: `modules/ndopify-partner-central/src/main/resources/templates/mandate.html`
-- Test: `.../ui/match/MatchVisitFormTest.kt`
-- Test: `.../ui/match/MatchControllerTest.kt`
+- Test: `.../ui/visit/MandateVisitFormTest.kt`
 - Test: `.../ui/mandate/MandateControllerTest.kt`
 - Test: `.../ui/mandate/MandateTemplateTest.kt`
 
 **Interfaces:**
 - Consumes: `MatchView.schedulable` (Task 7), `NdVisitClient.createForMatch`, `VisitSlots.days/times/at`.
-- Produces: `MatchVisitForm(date, time, type).toRequest(tenant): CreateMatchVisitRequest?`; `POST /mandates/{mandateId}/matches/{matchId}/visit` with the flash `match` = `scheduled` | `invalid-slot` | `whatsapp-missing` | `changed` | `error`; `GET /mandates/{id}?schedule={matchId}` opens the card's form.
+- Produces: `MandateVisitForm(matchId, date, time, type).toRequest(tenant): CreateMatchVisitRequest?` and `.matchId(): Long?`; `POST /mandates/{id}/visits` with the flash `visit` = `scheduled` | `invalid-slot` | `whatsapp-missing` | `changed` | `error`; `GET /mandates/{id}?schedule=1` opens the form without JavaScript.
 
 - [ ] **Step 1: Write the failing form test**
 
-`MatchVisitFormTest`:
+`MandateVisitFormTest`:
 
-- a valid `date=2026-11-21`, `time=10:30`, `type=VIDEO` → `CreateMatchVisitRequest(VIDEO, <that instant in Africa/Douala>)`;
-- a missing/blank date, time or type → null;
+- a valid `matchId=9001`, `date=2026-11-21`, `time=10:30`, `type=VIDEO` → `matchId() == 9001` and `CreateMatchVisitRequest(VIDEO, <that instant in Africa/Douala>)`;
+- a missing/blank/non-numeric match id, date, time or type → `toRequest` null;
 - `type=UNKNOWN` → null;
 - a malformed date or time → null.
 
 - [ ] **Step 2: Write the form**
 
 ```kotlin
-/** The match card's schedule form: a day and a time from the lists, and the visit's type. A hand-edited value that can't be parsed is null. */
-data class MatchVisitForm(
+/**
+ * The mandate page's schedule form, under the client's contact: the accepted property, a day and a time from the
+ * lists, and the visit's type. A hand-edited value that can't be parsed is null.
+ */
+data class MandateVisitForm(
+    val matchId: String? = null,
     val date: String? = null,
     val time: String? = null,
     val type: String? = null,
 ) {
+    fun matchId(): Long? = matchId?.toLongOrNull()
+
     fun toRequest(tenant: Tenant): CreateMatchVisitRequest?
 }
 ```
@@ -732,97 +738,102 @@ Mirror `VisitScheduleForm.toRequest`, except that the type is required (`ON_SITE
 
 - [ ] **Step 3: Write the failing controller tests**
 
-In `MatchControllerTest` (the controller now takes `NdVisitClient` and `TenantContext`; `setUp` mocks them):
+In `MandateControllerTest` (the controller now takes `NdVisitClient`; its test setUp mocks it):
 
-- `visit` — `post("/mandates/204/matches/9001/visit").param("date", "2026-11-21")…` with `MATCH_A` ACCEPTED → `verify(visitClient).createForMatch(9001, request)`, redirect `/mandates/204#matches-title`, flash `scheduled`;
+- `create a visit` — `post("/mandates/204/visits")` with `matchId=9001`, a valid date/time/type, and match 9001 ACCEPTED of mandate 204 → `verify(visitClient).createForMatch(9001, request)`, redirect `/mandates/204#contact-title`, flash `visit=scheduled`;
 - a 400 `VISIT_INVALID_SLOT` → `invalid-slot`;
 - a 409 `VISIT_WHATSAPP_MISSING` → `whatsapp-missing`;
 - a 409 `VISIT_ALREADY_EXISTS`, a 403 and a 404 → `changed`;
-- a non-numeric id or a match of another mandate / not ACCEPTED → `changed` without a call;
-- a 5xx → `error`.
-
-In `MandateControllerTest` (or `MandateTemplateTest`): `?schedule=9001` is passed to the view for a schedulable match only; a hand-edited id of a match with a visit or another status is ignored.
+- an unparseable form, or a match of another mandate / not ACCEPTED → `changed` (or `invalid-slot` for the form) without a call;
+- a 5xx → `error`;
+- `?schedule=1` with a schedulable match → the model's `scheduling` true; without one → false.
 
 - [ ] **Step 4: Add the controller action**
 
-In `MatchController`, add `private val visitClient: NdVisitClient` and `private val tenantContext: TenantContext`, then:
+`MandateController`, after the cancel action:
 
 ```kotlin
-@PostMapping("/visit")
-fun visit(
-    @PathVariable mandateId: String,
-    @PathVariable matchId: String,
-    @ModelAttribute form: MatchVisitForm,
+@PostMapping("/{id}/visits")
+fun createVisit(
+    @PathVariable id: String,
+    @ModelAttribute form: MandateVisitForm,
     redirect: RedirectAttributes,
 ): String
 ```
 
-Read the match first (like `act`): a bad id, another mandate, or a status other than `ACCEPTED` is `CHANGED` with no call; a request that doesn't parse is `INVALID_SLOT` (the form's own error); otherwise call `visitClient.createForMatch`. Map the server's errors as in Step 3. Add the outcome constants `SCHEDULED = "scheduled"`, `INVALID_SLOT = "invalid-slot"`, `WHATSAPP_MISSING = "whatsapp-missing"`. Redirect to `/mandates/$mid#matches-title` and flash `LISTING` as today.
+Read the match (`matchClient.get(matchId)`) first: an unparseable form, a match of another mandate, or a status other than `ACCEPTED` is `CHANGED` with no call; otherwise call `visitClient.createForMatch`. Map the server's errors as in Step 3. Add the constants `VISIT_SCHEDULED = "scheduled"`, `VISIT_INVALID_SLOT = "invalid-slot"`, `VISIT_WHATSAPP_MISSING = "whatsapp-missing"` and the flash name `VISIT_OUTCOME = "visit"`. Redirect to `/mandates/$id#contact-title`.
 
 - [ ] **Step 5: Add the mandate page's model**
 
 In `MandateController.show`, accept `@RequestParam(required = false) schedule: String?`, then:
 
 ```kotlin
-model.addAttribute("scheduling", scheduling(section, schedule))
-if (section.matches.any { it.schedulable }) {
+val scheduleMatches = section.matches.filter { it.schedulable }
+model.addAttribute("scheduleMatches", scheduleMatches)
+model.addAttribute("scheduling", schedule != null && scheduleMatches.isNotEmpty())
+if (scheduleMatches.isNotEmpty()) {
     model.addAttribute("scheduleDays", VisitSlots.days(today(), formatter()))
     model.addAttribute("scheduleTimes", VisitSlots.times())
 }
 ```
 
-`scheduling(section, schedule)` returns the id only when that match is `schedulable`, like `dismissing`.
-
-Extend `matchOutcome`:
+Word the visit flash in a `visitOutcome` function (called where the other flashes are read):
 
 ```kotlin
-MatchController.SCHEDULED ->
-    "Visite planifiée : le client a reçu par e-mail la date, l'adresse et son code."
-MatchController.INVALID_SLOT -> "Ce créneau n'est plus disponible. Choisissez-en un autre."
-MatchController.WHATSAPP_MISSING -> "Le client n'a pas de numéro WhatsApp : choisissez une visite sur place."
+VISIT_SCHEDULED -> "Visite planifiée : le client a reçu par e-mail la date, l'adresse et son code."
+VISIT_INVALID_SLOT -> "Ce créneau n'est plus disponible. Choisissez-en un autre."
+VISIT_WHATSAPP_MISSING -> "Le client n'a pas de numéro WhatsApp : choisissez une visite sur place."
 ```
 
 with `warning` for the last two and `success` for `scheduled`.
 
 - [ ] **Step 6: Add the template**
 
-In `templates/mandate.html`'s match card, after the visit block:
+In `templates/mandate.html`'s contact actions row, before *Modifier*:
 
 ```html
-<!-- ACCEPTED and no open visit: the agent phones the client, then books the slot. No JavaScript needed:
-     the button reloads the page with ?schedule={matchId}, which opens this form. -->
-<div class="match__schedule" th:if="${match.schedulable}" data-match-schedule-block>
-    <a class="btn btn--primary" data-match-schedule
-       th:href="@{|/mandates/${m.id}?schedule=${match.id}#match-${match.id}-title|}">Planifier une visite</a>
-    <form method="post" data-match-schedule-form
-          th:action="@{/mandates/{mid}/matches/{id}/visit(mid=${m.id},id=${match.id})}"
-          th:attr="hidden=${scheduling == match.id} ? null : 'hidden'">
-        <select name="date" data-match-schedule-day aria-label="Jour">
-            <option th:each="day : ${scheduleDays}" th:value="${day.value}" th:text="${day.label}">sam. 21 novembre 2026</option>
-        </select>
-        <select name="time" data-match-schedule-time aria-label="Heure">
-            <option th:each="time : ${scheduleTimes}" th:value="${time.first}" th:text="${time.second}">10h30</option>
-        </select>
-        <select name="type" data-match-schedule-type aria-label="Type de visite">
-            <option value="ON_SITE">Sur place</option>
-            <option value="VIDEO">Visite vidéo</option>
-        </select>
-        <button type="submit" class="btn btn--primary">Confirmer la visite</button>
-        <a class="btn btn--outline" th:href="@{|/mandates/${m.id}#match-${match.id}-title|}">Annuler</a>
-    </form>
-</div>
+<button type="submit" form="mandate-visit" class="btn btn--primary btn--compact"
+        th:if="${!#lists.isEmpty(scheduleMatches) and !scheduling}">Planifier une visite</button>
 ```
 
-Keep the existing `match__actions` block for ACTIVE / EXPIRED untouched.
+Right after the contact card, add the panel (hidden unless `?schedule=1`):
+
+```html
+<!-- The agent books a visit for the client: the accepted property, then the slot. No JavaScript needed: the
+     button above reloads the page with ?schedule=1, which opens this form. -->
+<form id="mandate-visit" class="contact-schedule" method="post"
+      th:if="${!#lists.isEmpty(scheduleMatches)}"
+      th:action="@{/mandates/{id}/visits(id=${m.id})}"
+      th:attr="hidden=${scheduling} ? null : 'hidden'">
+    <div class="visit-form">
+        <h3 class="visit-form__title">Planifier la visite</h3>
+        <p class="field__optional">Le client reçoit la date, l'adresse et son code par e-mail.</p>
+        <div class="field">
+            <span class="field__label">Bien</span>
+            <select class="input select" name="matchId" aria-label="Bien" data-contact-schedule-property>
+                <option th:each="match : ${scheduleMatches}" th:value="${match.id}"
+                        th:text="|${match.title} — annonce n° ${match.listingId}|">Appartement · 3 chambres — annonce n° 501</option>
+            </select>
+        </div>
+        ... the day/time/type selects, as in the prototype (name=date / time / type) ...
+        <div class="form__actions">
+            <button type="submit" class="btn btn--primary">Confirmer la visite</button>
+            <a class="btn btn--outline" th:href="@{|/mandates/${m.id}#contact-title|}">Annuler</a>
+        </div>
+    </div>
+</form>
+```
+
+Keep the existing match-card blocks untouched: the card only shows the resulting visit.
 
 - [ ] **Step 7: Write the failing template test**
 
-In `MandateTemplateTest`: with match 9001 ACCEPTED and no visit, the card has one `[data-match-schedule]` linking to `/mandates/204?schedule=9001#match-9001-title`, a hidden form posting to `/mandates/204/matches/9001/visit`, 7 day options and 25 time options. With a visit on 9001 the block is absent. With `?schedule=9001` the form is not hidden. A landlord's mandate has none.
+In `MandateTemplateTest`: with match 9001 ACCEPTED and no visit, the contact actions hold one *Planifier une visite* button, the form posts to `/mandates/204/visits` with 9001 in the property select, 7 day options and 25 time options; the form is hidden by default. With `?schedule=1` it is not hidden. With a visit on 9001, or a landlord's mandate, the button and the form are absent.
 
 - [ ] **Step 8: Run the BFF tests**
 
 ```bash
-mvn test -Dtest='Match*Test,MandateTemplateTest,MandateControllerTest'
+mvn test -Dtest='Mandate*Test,NdVisitClientTest,MatchViewsTest'
 ```
 
 Expected: PASS.
@@ -832,7 +843,7 @@ Expected: PASS.
 ```bash
 mvn verify
 git add modules/ndopify-partner-central
-git commit -m "feat(partner-central): schedule a visit from an accepted match" -m "Refs #196"
+git commit -m "feat(partner-central): schedule a visit from the client's contact" -m "Refs #196"
 ```
 
 ---
@@ -845,11 +856,11 @@ git commit -m "feat(partner-central): schedule a visit from an accepted match" -
 - Modify: `modules/ndopify-partner-central/CLAUDE.md`
 
 **Interfaces:**
-- Consumes: Task 8's `data-match-schedule` / `data-match-schedule-form` hooks.
+- Consumes: Task 8's `data-contact-schedule` hooks and the `?schedule=1` no-JS fallback.
 
 - [ ] **Step 1: Enhance the page**
 
-In `mandate.js`'s match-card setup (the same place as the dismiss confirmation): a click on `[data-match-schedule]` prevents the default, clears `hidden` on that card's `[data-match-schedule-form]`, hides the button, and focuses the first select; *Annuler* hides the form and shows the button again. No rule is re-implemented: the server checks the slot and the type.
+In `mandate.js`, next to the contact block's setup: a click on `[data-contact-schedule]` prevents the default, clears `hidden` on `[data-contact-schedule-panel]`, hides the button, and focuses the property select; *Annuler* hides the panel and shows the button again. No rule is re-implemented: the server checks the slot and the type.
 
 - [ ] **Step 2: Document the server**
 
@@ -861,7 +872,7 @@ In `modules/ndopify-server/CLAUDE.md`'s **visit** section:
 
 - [ ] **Step 3: Document Partner Central**
 
-In `modules/ndopify-partner-central/CLAUDE.md`'s *Biens correspondants* paragraph: an ACCEPTED card without an open visit shows *Planifier une visite* → the slot form (no JS: `GET /mandates/{id}?schedule={matchId}`), `POST /mandates/{mid}/matches/{id}/visit` → `NdVisitClient.createForMatch`, outcomes `scheduled` / `invalid-slot` / `whatsapp-missing` / `changed` / `error`; the mandate page's existing WhatsApp button is unchanged.
+In `modules/ndopify-partner-central/CLAUDE.md`'s mandate page paragraph: when a signed search has an ACCEPTED match without an open visit, the client's contact block shows *Planifier une visite* → the schedule form under it (property, day, time, type; no JS: `GET /mandates/{id}?schedule=1`), `POST /mandates/{id}/visits` → `NdVisitClient.createForMatch`, outcomes `scheduled` / `invalid-slot` / `whatsapp-missing` / `changed` / `error`; the card only carries the resulting visit, and the existing WhatsApp button is unchanged.
 
 - [ ] **Step 4: Final verification**
 
@@ -884,6 +895,6 @@ git commit -m "docs(visit): record the agent-scheduled visit and its nudge" -m "
 
 ## Self-review notes
 
-- **Spec coverage:** agent create (T3), CONFIRMED + code + e-mails (T3/T4), 48 h once nudge over Telegram with e-mail fallback (T5/T6), card action with the existing WhatsApp button untouched (T8), prototype first (T1), no DTO `createdBy` (T3), docs (T9). Out of scope stays out: the listing-page flow, any WhatsApp API, the customer's own booking.
+- **Spec coverage:** agent create (T3), CONFIRMED + code + e-mails (T3/T4), 48 h once nudge over Telegram with e-mail fallback (T5/T6), the action next to the client's contact with the existing WhatsApp button untouched (T8), prototype first (T1), no DTO `createdBy` (T3), docs (T9). Out of scope stays out: the listing-page flow, any WhatsApp API, the customer's own booking.
 - **Library release:** only `ndopify-dto` changes (T2); `push` releases it, then bumps the root `pom.xml`.
 - **Coverage:** every behavior change has a test; the prototype is static and is the one deliverable without one.
