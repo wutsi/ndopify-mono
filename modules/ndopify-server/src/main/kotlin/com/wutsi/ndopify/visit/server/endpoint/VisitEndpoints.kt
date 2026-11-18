@@ -9,6 +9,7 @@ import com.wutsi.ndopify.listing.server.service.ListingService
 import com.wutsi.ndopify.mandate.server.service.MandateAccessService
 import com.wutsi.ndopify.mandate.server.service.MandateService
 import com.wutsi.ndopify.match.server.service.MatchService
+import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import com.wutsi.ndopify.visit.dto.CancelVisitRequest
 import com.wutsi.ndopify.visit.dto.CheckInVisitRequest
@@ -113,7 +114,10 @@ class VisitEndpoints(
         val visit = service.findById(id)
         access.ensureCanRead(visit)
         val listing = listingService.findById(visit.listingId)
-        return GetVisitResponse(visit = mapper.toVisit(visit, listing, showCode = access.isCustomer(visit)))
+        val visitFee = mandateService.findByIdOrNull(visit.mandateId)?.let { mandateService.visitFee(it) } ?: Money()
+        return GetVisitResponse(
+            visit = mapper.toVisit(visit, listing, showCode = access.isCustomer(visit), visitFee = visitFee),
+        )
     }
 
     // The listing agent sees the visits another agent organizes on its property, never their customer
