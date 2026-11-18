@@ -8,12 +8,13 @@ import org.springframework.stereotype.Service
 
 @Service
 class MandateMapper {
-    fun toMandate(entity: MandateEntity): Mandate {
+    fun toMandate(entity: MandateEntity, visitFee: Money = Money()): Mandate {
         return Mandate(
             id = entity.id ?: -1,
             customerId = entity.customerId,
             agentId = entity.agentId,
             contractId = entity.contractId,
+            visitFee = visitFee,
             originListingId = entity.originListingId,
             propertyCategory = entity.propertyCategory,
             status = entity.status,

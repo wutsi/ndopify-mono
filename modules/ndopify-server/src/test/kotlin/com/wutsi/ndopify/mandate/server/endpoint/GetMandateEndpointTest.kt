@@ -12,6 +12,7 @@ import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.mandate.dto.GetMandateResponse
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
+import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.dto.RoleCode
 import org.springframework.http.HttpStatus
@@ -75,6 +76,7 @@ class GetMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(LocalDate.of(2026, 11, 3), mandate.availableFrom)
         assertEquals(ContactPeriodType.entries[1], mandate.preferredContactPeriod)
         assertEquals("Close to the market", mandate.comments)
+        assertEquals(Money(5000, "XAF"), mandate.visitFee)
         assertNull(mandate.dealMatchId)
         assertFalse(mandate.dealOutside)
     }

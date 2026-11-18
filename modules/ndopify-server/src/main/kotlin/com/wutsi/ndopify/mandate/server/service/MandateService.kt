@@ -149,6 +149,16 @@ class MandateService(
 
     fun findAllByIds(ids: Collection<Long>): List<MandateEntity> = dao.findAllById(ids).toList()
 
+    /** The signed contract's per-visit fee, or no fee when the mandate has no contract (or a legacy blank currency). */
+    fun visitFee(mandate: MandateEntity): Money {
+        val contract = mandate.contractId?.let { contractService.findByIdOrNull(it) } ?: return Money()
+        return if (contract.visitFeeCurrency.isBlank()) {
+            Money()
+        } else {
+            Money(contract.visitFeeAmount, contract.visitFeeCurrency)
+        }
+    }
+
     @Transactional
     fun create(request: CreateMandateRequest): MandateEntity {
         validateRentalTerms(request.securityDeposit, request.advanceRent)
