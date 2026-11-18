@@ -1,4 +1,4 @@
-// Ndopify — listing page: the "Je cherche un bien comme celui-ci" popup, the photo viewer and the share button; its
+// Ndopify — listing page: the "Être contacté par un agent" popup, the photo viewer and the share button; its
 // popups code is shared with proposition.html and visite.html. Everything only enhances: without JavaScript the popups
 // open with :target and their forms post, the photos are links.
 (function () {
@@ -176,11 +176,9 @@
         form.querySelector('[aria-invalid="true"]').focus();
         return;
       }
-      var phone = iti.getNumber(window.intlTelInput.utils.numberFormat.E164);
       form.hidden = true;
       done.querySelector('[data-interest-done-text]').textContent = 'Merci ' + firstName.value.trim() + ' ! ' +
-        'Votre recherche est enregistrée : dès qu\'un agent vérifié de ce secteur la prend en charge, vous recevez un e-mail. ' +
-        'Il pourra vous joindre sur WhatsApp au ' + formatPhone(phone) + '.';
+        'Un agent vous contacte sous 24 h par WhatsApp ou par e-mail pour organiser la visite.';
       done.hidden = false;
       done.focus();
     });
@@ -196,11 +194,6 @@
         default: return 'Ce numéro n\'est pas un numéro mobile valide, vérifiez-le.';
       }
     }
-  }
-
-  function formatPhone(e164) {
-    var utils = window.intlTelInput && window.intlTelInput.utils;
-    return utils ? utils.formatNumber(e164, null, utils.numberFormat.INTERNATIONAL) : e164;
   }
 
   function showError(control, message) {

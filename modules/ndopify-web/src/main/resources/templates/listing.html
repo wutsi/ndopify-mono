@@ -39,8 +39,8 @@
 <!--/*
   A listing's public page (ListingController), from the prototype src/main/html/annonce.html. Every text comes
   formatted in `page` (ListingPage); a section the listing has nothing for is left out.
-  The "Visiter ce logement" call to action (price card and bottom bar) opens the #visit popup: a real form posting the
-  visitor's contact and moving period to /listings/{id}/interest. The "Poser une question" drawer below is still the
+  The "Être contacté par un agent" call to action (price card and bottom bar) opens the #visit popup: a real form posting
+  the visitor's contact and moving period to /listings/{id}/interest. The "Poser une question" drawer below is still the
   prototype's: listing.js answers from canned replies, nothing on the server handles its form.
 */-->
 <body class="listing-page">
@@ -110,10 +110,10 @@
                     </ul>
                     <a class="btn btn-primary price-card__cta" data-modal-open th:href="'#visit'"
                        th:if="${page.closedNotice == null}">
-                        <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Visiter ce logement
+                        <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Être contacté par un agent
                     </a>
-                    <p class="price-card__hint" th:if="${page.closedNotice == null}">Un agent vous contacte sous 24 h
-                        pour convenir de la visite.</p>
+                    <p class="price-card__hint" th:if="${page.closedNotice == null}">Un agent vous contacte sous 24 h pour
+                        organiser la visite.</p>
                 </div>
             </aside>
         </div>
@@ -124,18 +124,19 @@
         <p class="cta-bar__price"><strong th:text="${page.priceAmount}">175K FCFA</strong><th:block
                 th:if="${page.pricePeriod}" th:text="| ${page.pricePeriod}|"> / mois</th:block></p>
         <div class="cta-bar__actions" th:if="${page.closedNotice == null}">
-            <a class="btn btn-primary" data-modal-open th:href="'#visit'">Visiter ce logement</a>
+            <a class="btn btn-primary" data-modal-open th:href="'#visit'">Être contacté par un agent</a>
         </div>
     </div>
 </main>
 
 <!--/*
-  "Visiter ce logement" popup. The visitor asks for the property, not a slot: a visit needs an agent and a signed search
-  mandate, so no day or time here. Without JavaScript it opens with :target (#visit) and the form posts; the server
-  answers with the confirmation (?#interest=done), or the page again with the fields' errors (the popup then has
-  `is-open`). listing.js makes it a modal dialog and binds the WhatsApp number (E.164 in a hidden whatsappNumber); it
-  never posts, nor fakes an answer. Hidden field: website, the honeypot; movingPeriod, one of the three periods.
-  Everything else — city, type, budget — comes from the listing.
+  "Être contacté par un agent" popup: the visitor asks an agent to call about the listing, never a booking. With no
+  search of this city and type yet, the server creates one seeded from the listing; with one, it records the interest
+  as an accepted match. The confirmation is the same either way. No day or time here. Without JavaScript it opens with
+  :target (#visit) and the form posts; the server answers with the confirmation (?#interest=done), or the page again with
+  the fields' errors (the popup then has `is-open`). listing.js makes it a modal dialog and binds the WhatsApp number
+  (E.164 in a hidden whatsappNumber); it never posts, nor fakes an answer. Hidden field: website, the honeypot;
+  movingPeriod, one of the three periods. Everything else — city, type, budget — comes from the listing.
 */-->
 <div aria-labelledby="visit-title" class="modal" id="visit"
      th:classappend="${errors != null && !errors.isEmpty()} ? ' is-open'">
@@ -143,7 +144,7 @@
     <div class="modal__panel">
         <header class="modal__header">
             <div>
-                <h2 class="modal__title" id="visit-title">Visiter ce logement</h2>
+                <h2 class="modal__title" id="visit-title">Être contacté par un agent</h2>
                 <p class="modal__subtitle"><th:block th:text="${page.title}">Appartement meublé 2 chambres</th:block><span
                         class="modal__price" th:if="${page.closedNotice == null}">&nbsp;· <strong th:text="${page.price}">175K FCFA / mois</strong></span></p>
             </div>
@@ -211,12 +212,7 @@
         <div class="modal__body interest-done" data-listing-interest-done th:hidden="${!done}" tabindex="-1">
             <svg aria-hidden="true" class="icon icon--lg"><use href="#i-check"/></svg>
             <h3>Merci, votre demande est enregistrée</h3>
-            <p>Un agent vous contacte sous 24 h par WhatsApp ou par e-mail.</p>
-            <ol class="interest-done__steps">
-                <li>Vous signez votre mandat de recherche — gratuit, une commission seulement à la signature du
-                    bail.</li>
-                <li>Vous choisissez ensemble le créneau de la visite.</li>
-            </ol>
+            <p>Un agent vous contacte sous 24 h par WhatsApp ou par e-mail pour organiser la visite.</p>
             <a class="btn btn-secondary" data-modal-close href="#main">Fermer</a>
         </div>
     </div>
@@ -272,7 +268,7 @@
             </button>
         </form>
         <p class="chat__disclaimer">Réponses générées par IA à partir de l'annonce : l'agent confirme tout lors de la
-            visite. <a data-modal-open href="#visit">Visiter ce logement</a></p>
+            visite. <a data-modal-open href="#visit">Être contacté par un agent</a></p>
     </div>
 </div>
 

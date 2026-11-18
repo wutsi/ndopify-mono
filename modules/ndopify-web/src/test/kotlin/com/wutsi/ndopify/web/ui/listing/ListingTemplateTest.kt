@@ -226,15 +226,19 @@ class ListingTemplateTest {
     }
 
     @Test
-    fun `a published listing shows the visit call to action`() {
+    fun `a published listing shows the contact call to action`() {
         val doc = render()
 
         val card = doc.selectFirst(".price-card__cta")!!
-        assertEquals("Visiter ce logement", card.text())
+        assertEquals("Être contacté par un agent", card.text())
         assertEquals("#visit", card.attr("href"))
         assertTrue(card.hasAttr("data-modal-open"))
-        assertEquals("Visiter ce logement", doc.selectFirst(".cta-bar__actions a")?.text())
-        assertNotNull(doc.selectFirst(".price-card__hint"))
+        assertEquals("Être contacté par un agent", doc.selectFirst(".cta-bar__actions a")?.text())
+        assertEquals(
+            "Un agent vous contacte sous 24 h pour organiser la visite.",
+            doc.selectFirst(".price-card__hint")?.text(),
+        )
+        assertEquals("Être contacté par un agent", doc.selectFirst("#visit-title")?.text())
     }
 
     @Test
@@ -282,8 +286,17 @@ class ListingTemplateTest {
         assertTrue(doc.selectFirst("form[data-listing-interest-form]")!!.hasAttr("hidden"))
         val done = doc.selectFirst("[data-listing-interest-done]")!!
         assertFalse(done.hasAttr("hidden"))
-        assertTrue(done.text().contains("sous 24 h"))
-        assertTrue(done.text().contains("mandat de recherche"))
+        assertTrue(done.text().contains("Merci, votre demande est enregistrée"))
+        assertTrue(done.text().contains("Un agent vous contacte sous 24 h"))
+        assertTrue(done.text().contains("pour organiser la visite"))
+    }
+
+    @Test
+    fun `the confirmation has no steps`() {
+        val doc = render(done = true)
+
+        assertTrue(doc.select(".interest-done__steps").isEmpty())
+        assertTrue(doc.selectFirst("[data-listing-interest-done]")!!.select("ol, li").isEmpty())
     }
 
     @Test
