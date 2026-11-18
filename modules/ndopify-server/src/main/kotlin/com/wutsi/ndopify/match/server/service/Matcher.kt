@@ -97,20 +97,40 @@ class Matcher(
                 "search=${search.rooms} listing=${listing.rooms}",
             )
         }
-        return MatchResult.Scored(
-            MatchScore(
-                neighborhood = neighborhood(search, listing, distances),
-                price = price(search, listing),
-                rooms = rooms,
-                amenities = amenities(search, listing),
-                availability = availability(search, listing, today),
-                furniture = furniture(search, listing),
-                type = type,
-                distanceKm = distanceKm(search, listing, distances),
-                missingAmenities = requested(search, listing).filterNot { (_, has) -> has }.map { (key, _) -> key },
-            ),
-        )
+        return MatchResult.Scored(partials(search, listing, distances, today))
     }
+
+    /**
+     * The score of a pair the customer explicitly asked for: no rule refuses it but the customer's own property, which
+     * isn't a lead. The partials still show the gap (an over-budget price scores 0, a vetoed type multiplies by 0).
+     */
+    fun scoreInterest(
+        search: MandateEntity,
+        listing: ListingEntity,
+        distances: Map<Long, Double>,
+        today: LocalDate,
+    ): MatchScore? = if (listing.mandate.customerId == search.customerId) {
+        null
+    } else {
+        partials(search, listing, distances, today)
+    }
+
+    private fun partials(
+        search: MandateEntity,
+        listing: ListingEntity,
+        distances: Map<Long, Double>,
+        today: LocalDate,
+    ): MatchScore = MatchScore(
+        neighborhood = neighborhood(search, listing, distances),
+        price = price(search, listing),
+        rooms = rooms(search, listing),
+        amenities = amenities(search, listing),
+        availability = availability(search, listing, today),
+        furniture = furniture(search, listing),
+        type = typeScore(search.propertyType, listing.propertyType),
+        distanceKm = distanceKm(search, listing, distances),
+        missingAmenities = requested(search, listing).filterNot { (_, has) -> has }.map { (key, _) -> key },
+    )
 
     private fun ruleOut(search: MandateEntity, listing: ListingEntity): MatchResult.RuledOut? = when {
         listing.mandate.customerId == search.customerId ->
