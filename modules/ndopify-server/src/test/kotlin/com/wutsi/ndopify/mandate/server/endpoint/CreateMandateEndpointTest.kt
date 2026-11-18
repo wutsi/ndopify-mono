@@ -351,6 +351,7 @@ class CreateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
             message.allRecipients.single().toString().contains("listing.agent@gmail.com")
         }
         assertTrue(agentMessage.content.toString().contains("Awa Ndiaye"))
+        assertTrue(agentMessage.content.toString().contains("Contactez-le pour organiser la visite"))
     }
 
     private fun countSearches(email: String): Int = ds.connection.use { conn ->

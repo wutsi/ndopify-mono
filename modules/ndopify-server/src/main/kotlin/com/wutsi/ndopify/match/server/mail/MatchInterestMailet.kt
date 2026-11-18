@@ -10,6 +10,7 @@ import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.Receipient
+import com.wutsi.ndopify.platform.util.PhoneNumberUtils
 import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantFormatter
 import com.wutsi.ndopify.refdata.server.service.TenantService
@@ -17,8 +18,8 @@ import org.springframework.stereotype.Service
 
 /**
  * Tells the agent that its customer asked for a listing on its public page: who, which listing (title, place, price),
- * and a link to the search's page on Partner Central, where it proposes the visit. The customer keeps its agent: this
- * message never names another one.
+ * how to reach the customer (a WhatsApp button when it has a number) and a link to the search's page on Partner
+ * Central, where it organises the visit. The customer keeps its agent: this message never names another one.
  */
 @Service
 class MatchInterestMailet(
@@ -62,6 +63,8 @@ class MatchInterestMailet(
                         ),
                         "place" to place(listing),
                         "mandate_url" to mandateUrl,
+                        "whatsapp_url" to customer.whatsappNumber?.takeIf { it.isNotBlank() }
+                            ?.let { PhoneNumberUtils.toWhatsappUrl(it) },
                     ),
                 ),
             ),
