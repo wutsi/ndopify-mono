@@ -24,6 +24,8 @@ data class ListingPage(
     /** "/ mois"; null for a price without periodicity (a sale). */
     val pricePeriod: String?,
     val terms: List<Pair<String, String>>,
+    /** "Les visites sont organisées par votre agent." (the public page), or the match page's note with its fee. */
+    val termsNote: String,
     val asideTerms: List<String>,
     val schemaType: String,
     val area: Int?,

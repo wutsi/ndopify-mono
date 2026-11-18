@@ -114,18 +114,31 @@ class MatchTemplateTest {
         answer: String? = null,
         visitPanel: VisitPanel? = null,
         visitFlash: String? = null,
-    ) = MatchPages.of(
-        match.copy(status = status),
-        mandate,
-        agent,
-        listing,
-        images,
-        listOf(Location(id = 1, name = "Douala"), Location(id = 5, name = "Bonapriso")),
-        tenant,
-        FORMATTER,
-        LocalDate.of(2026, 10, 31),
-        answer,
-    ).copy(visit = visitPanel, visitFlash = visitFlash)
+        visitFee: String? = null,
+    ): MatchPage {
+        val built = MatchPages.of(
+            match.copy(status = status),
+            mandate,
+            agent,
+            listing,
+            images,
+            listOf(Location(id = 1, name = "Douala"), Location(id = 5, name = "Bonapriso")),
+            tenant,
+            FORMATTER,
+            LocalDate.of(2026, 10, 31),
+            answer,
+        )
+        val termsNote = "Les visites sont organisées par votre agent. " + (
+            visitFee?.let { "Frais de visite : $it par visite, réglés directement à lui." }
+                ?: "Aucun frais de visite."
+            )
+        return built.copy(
+            visit = visitPanel,
+            visitFlash = visitFlash,
+            visitFee = visitFee,
+            listing = built.listing?.copy(termsNote = termsNote),
+        )
+    }
 
     private fun html(page: MatchPage = page()): String {
         controller.attributes = mapOf("tenant" to tenant, "page" to page)
@@ -186,6 +199,30 @@ class MatchTemplateTest {
         assertEquals("Serge Ngono", doc.selectFirst(".agent-card__name")?.text())
         assertEquals("https://wa.me/237677000111", doc.selectFirst(".agent-card a")?.attr("href"))
         assertTrue(doc.selectFirst("#listing-photos")!!.data().replace("\\/", "/").contains("https://cdn/3.jpg"))
+    }
+
+    @Test
+    fun `the visit fee is stated before the request`() {
+        val doc = render(
+            page(
+                MatchStatus.ACCEPTED,
+                visitFee = "5 000 FCFA",
+                visitPanel = VisitPanel(
+                    open = null,
+                    form = VisitForm(
+                        days = VisitSlots.days(LocalDate.of(2026, 10, 31), FORMATTER),
+                        times = VisitSlots.times(),
+                        contact = "Sandrine",
+                        video = false,
+                    ),
+                ),
+            ),
+        )
+
+        assertTrue(doc.selectFirst(".terms-note")!!.text().contains("Frais de visite : 5 000 FCFA"))
+        assertTrue(doc.selectFirst(".answer[data-answer=ACCEPTED] .price-card__hint")!!.text().contains("5 000 FCFA"))
+        assertTrue(doc.selectFirst("#visit .visit-request__fee")!!.text().contains("Ndopify ne perçoit aucun paiement"))
+        assertFalse(doc.text().contains("Pass Visite"))
     }
 
     @Test

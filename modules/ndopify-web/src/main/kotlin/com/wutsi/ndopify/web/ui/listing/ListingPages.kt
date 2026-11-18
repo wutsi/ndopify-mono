@@ -136,6 +136,7 @@ object ListingPages {
                     "Disponible" to (available?.let { "À partir du $it" } ?: "Immédiatement"),
                 )
             },
+            termsNote = "Les visites sont organisées par votre agent.",
             asideTerms = if (closed) {
                 emptyList()
             } else {

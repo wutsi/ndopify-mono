@@ -105,6 +105,10 @@
                         class="visually-hidden" th:text="| : écrire à ${page.agent.name}|"> : écrire à Serge</span>
                 </a>
             </div>
+            <p class="notice notice--info" data-visit-fee th:if="${page.visitFee}">
+                <svg aria-hidden="true" class="icon"><use href="#i-info"/></svg>
+                <span th:text="${page.visitFee}">Frais de visite : 5 000 FCFA, à régler directement à Serge lors de la visite. Ndopify ne perçoit aucun paiement.</span>
+            </p>
         </div>
 
         <!-- ============================================================ REQUESTED -->

@@ -31,6 +31,8 @@ data class MatchPage(
     /** "Vos critères": the amenities the customer searched for, each matched or missing. */
     val criteria: List<AmenityMatch>,
     val listing: ListingPage?,
+    /** "5 000 FCFA": the contract's per-visit fee, null when there is none. */
+    val visitFee: String?,
     /** The outcome of the answer just posted, null otherwise. */
     val flash: String?,
     /** The visit of an accepted match: the open visit, or the form to request one; null otherwise. */
