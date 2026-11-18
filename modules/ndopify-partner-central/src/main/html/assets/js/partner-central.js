@@ -2635,6 +2635,17 @@
         edit.hidden = !editable;
         $("[data-contact-actions]").hidden = !editable;
 
+        // The visit the agent books for the client: its own page (mandate/visit.html), reached from the contact block.
+        // It opens only while the client has an accepted property without an open visit.
+        var scheduleButton = $("[data-contact-schedule]");
+        if (scheduleButton) {
+            scheduleButton.href = "mandate/visit.html?id=" + encodeURIComponent(id);
+            var scheduleCandidates = hasMatches(id) ? matchesOf(id).filter(function (m) {
+                return answerOf(m) === "ACCEPTED";
+            }) : [];
+            scheduleButton.hidden = scheduleCandidates.length === 0;
+        }
+
         function criterion(list, row) {
             var item = document.createElement("div");
             item.className = "review__item";
@@ -3272,6 +3283,20 @@
             window.history.replaceState(null, "", window.location.pathname + "?" + params.toString());
         }
 
+        // Back from mandate/visit.html: the visit was planned for the client.
+        var planned = params.get("visit");
+        if (planned) {
+            var plannedMatch = matchesOf(id).filter(function (m) {
+                return m.id === planned;
+            })[0];
+            if (plannedMatch && plannedMatch.visit) {
+                showFlash("Visite planifiée le " + window.NpcVisits.formatAt(plannedMatch.visit.at) + " : " + name +
+                    " a reçu la date, l'adresse et son code par e-mail.");
+            }
+            params.delete("visit");
+            window.history.replaceState(null, "", window.location.pathname + "?" + params.toString());
+        }
+
         // Back from mandate/close.html: its wizard closed this mandate (and the deal's other mandate).
         if (params.get("closed")) {
             var closedState = stateOf(id);
@@ -3463,6 +3488,77 @@
                 }
             );
         }
+    }
+
+    /* ---------- mandate/visit.html — the agent books a visit for the client ---------- */
+
+    function initMandateVisit() {
+        var id = new URLSearchParams(window.location.search).get("id");
+        var back = "../mandate.html?id=" + encodeURIComponent(id || "");
+        $all("[data-back-link]").forEach(function (a) {
+            a.href = back;
+        });
+        var lockedBox = $("[data-visit-locked]");
+        if (!ownsMandate(id)) {
+            lockedBox.hidden = false;
+            return;
+        }
+        var state = stateOf(id);
+        var candidates = hasMatches(id) ? matchesOf(id).filter(function (m) {
+            return answerOf(m) === "ACCEPTED";
+        }) : [];
+        if (state.status !== "APPROVED" || !candidates.length) {
+            $("[data-visit-locked-title]").textContent = "Aucune visite à planifier";
+            $("[data-visit-locked-text]").textContent = state.status !== "APPROVED"
+                ? "Le mandat n'est plus actif : une visite ne s'y planifie plus."
+                : "Le client n'a aucun bien accepté sans visite : il n'y a rien à planifier pour l'instant.";
+            lockedBox.hidden = false;
+            return;
+        }
+
+        var c = contactOf(id);
+        document.title = "Planifier la visite — Mandat n° " + id + " — Ndopify Partner Central";
+        $("[data-visit-meta]").textContent = "Mandat n° " + id + " · " + contactName(c);
+        var form = $("[data-visit-form]");
+        var property = $("[data-visit-property]");
+        candidates.forEach(function (m) {
+            property.appendChild(new Option(matchTitle(m) + " — annonce n° " + m.listingId, m.id));
+        });
+        var day = $("[data-visit-day]");
+        var time = $("[data-visit-time]");
+        window.NpcVisits.days().forEach(function (d) {
+            day.appendChild(new Option(d.label, d.value));
+        });
+        window.NpcVisits.times().forEach(function (t) {
+            time.appendChild(new Option(t.value.replace(":", "h"), t.value));
+        });
+
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            var matchId = property.value;
+            var match = candidates.filter(function (m) {
+                return m.id === matchId;
+            })[0];
+            if (!match) return;
+            var at = new Date(day.value + "T" + time.value + ":00").getTime();
+            // PROTOTYPE: simulates POST /v1/matches/{id}/visits: the client is e-mailed the date, address, code.
+            saveMatchState(id, match.id, {
+                status: match.status,
+                sentAt: match.sentAt,
+                answer: match.answer,
+                answeredAt: match.answeredAt,
+                reason: match.reason,
+                visit: {
+                    status: "CONFIRMED",
+                    at: at,
+                    time: time.value.replace(":", "h"),
+                    type: $("[data-visit-type]").value
+                }
+            });
+            window.location.href = back + "&visit=" + encodeURIComponent(match.id);
+        });
+
+        $("[data-visit]").hidden = false;
     }
 
     /* ---------- mandate/edit.html — edit a mandate before its approval ---------- */
@@ -5173,6 +5269,7 @@
         mandate: initMandate,
         "mandate-edit": initMandateEdit,
         "mandate-close": initMandateClose,
+        "mandate-visit": initMandateVisit,
         "customer-edit": initCustomerEdit,
         listing: initListing,
         "listing-section": initListingSection

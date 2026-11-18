@@ -451,6 +451,10 @@
                 todayOwn: todayOwn
             };
         },
+        // The allowed slots, for the match card's schedule form: the 7 days starting tomorrow, 08:00-20:00 every
+        // 30 min, as visit.html offers them.
+        days: homeDays,
+        times: homeTimes,
         formatAt: formatAt,
         formatWhen: formatWhen,
         formatLeft: formatLeft

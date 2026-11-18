@@ -15,11 +15,11 @@
     <link rel="stylesheet" href="assets/css/partner-central.css?v=20261116a">
     <link rel="stylesheet" href="assets/css/rejoindre.css">
     <link rel="stylesheet" href="assets/css/find-property.css">
-    <link rel="stylesheet" href="assets/css/home.css?v=20261116a">
+    <link rel="stylesheet" href="assets/css/home.css?v=20261118c">
     <link rel="stylesheet" href="assets/css/listing.css">
     <link rel="stylesheet" href="assets/css/visit.css">
-    <script src="assets/js/partner-central.js?v=20261116a" defer></script>
-    <script src="assets/js/visit.js" defer></script>
+    <script src="assets/js/partner-central.js?v=20261118c" defer></script>
+    <script src="assets/js/visit.js?v=20261118a" defer></script>
 </head>
 <!--
     Mandate page (source doc): the detail of one of the agent's mandates, unlocked by the acceptance (anti-bypass:
@@ -64,6 +64,13 @@
         confirmed, "Visite en cours" once started, "Visité · le …" once done. The meta line keeps only "Envoyé le …".
         A cancelled, expired or missed visit leaves the match "Intéressé" (the client may ask again). The card stays
         in place throughout.
+        An ACCEPTED match still without a visit makes "Planifier une visite" appear next to the client's contact, at
+        the top of the page. It opens its own page (mandate/visit.html?id=): the agent calls the client on WhatsApp,
+        then picks the accepted property, the type (sur place or video), the day and the time; the client is e-mailed
+        the date, the address and its code, and the property's card carries the confirmed visit. No message to the
+        agent: it booked it.
+        PROTOTYPE: 204 has one accepted match without a visit (9008); booking it on mandate/visit.html moves that card
+        to "Visites à venir" and the mandate page confirms it.
         PROTOTYPE: visit.js's visits 7001 (match 9001), 7004 (match 9004) and 7019 (match 9006, in video), as changed
         on visit.html.
       - A landlord's published listing (Actif, LISTING) says how many clients it interested, like the Espace
@@ -162,6 +169,8 @@
                             <span><span class="visually-hidden">Adresse e-mail&nbsp;: </span><a data-contact="email"></a></span>
                         </p>
                         <p class="contact-card__actions" data-contact-actions>
+                            <a class="btn btn--primary btn--compact" data-contact-schedule hidden>Planifier une
+                                visite</a>
                             <a class="btn btn--outline btn--compact" data-contact-edit>Modifier</a>
                         </p>
                     </div>
@@ -472,6 +481,8 @@
                                                 class="visually-hidden"> au client</span></button>
                                     </div>
                                 </div>
+                                <!-- Accepted and no visit yet: the agent books it from the client's contact block, at
+                                     the top of the page; its visit then fills this block. -->
                                 <div class="visit-detail" data-match-visit hidden>
                                     <p class="visit-detail__when">
                                         <span class="visit-detail__icon" data-visit-icon aria-hidden="true"></span>

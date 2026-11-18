@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Planifier la visite — Ndopify Partner Central</title>
+    <meta name="description" content="Planifier la visite d'un bien accepté par le client : type, jour et heure.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="../assets/images/icon.png">
+    <link rel="apple-touch-icon" href="../assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="../assets/css/partner-central.css">
+    <link rel="stylesheet" href="../assets/css/rejoindre.css">
+    <link rel="stylesheet" href="../assets/css/home.css">
+    <link rel="stylesheet" href="../assets/css/visit.css">
+    <script src="../assets/js/partner-central.js?v=20261118c" defer></script>
+    <script src="../assets/js/visit.js?v=20261118a" defer></script>
+</head>
+<!--
+    Book a visit for the client (story #196): the client accepted one or more of the matched listings; the agent has
+    called it on WhatsApp from the mandate's contact block, and books the slot here. The property, the type (on site,
+    or a video call the agent makes from the property), the day and the time — the same 7 days starting tomorrow,
+    08:00-20:00 every 30 min, as visit.html. On confirm the visit is CONFIRMED in one step: the client is e-mailed the
+    date, the address and its 4-digit code, and the property's card on the mandate page carries it (Visites à venir).
+    Reached from "Planifier une visite", next to the client's contact; a mandate without an accepted match, or not
+    active, shows the unavailable view.
+    PROTOTYPE: ?id=204 (one accepted match without a visit, 9008). The visit is kept in the session (KEYS.matches, by
+    the match's state), and back on the mandate page "?visit=<matchId>" shows the confirmation. 9008 is also the
+    listing of mandate 203: closing on it closes that landlord's mandate too.
+-->
+<body data-page="mandate-visit">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" href="../index.html">
+                <img src="../assets/images/logo.png" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav class="user-menu" aria-label="Compte">
+                <button type="button" class="user-menu__toggle" aria-expanded="false" aria-controls="user-menu"
+                        data-user-menu-toggle>
+                    <span class="visually-hidden">Menu du compte</span>
+                    <span aria-hidden="true" data-user-initials>NP</span>
+                </button>
+                <ul id="user-menu" class="user-menu__list" hidden data-user-menu-list>
+                    <li>
+                        <a class="user-menu__account" href="../agent.html">
+                            <span class="user-menu__account-photo" aria-hidden="true" data-user-initials>SN</span>
+                            <span class="user-menu__account-text">
+                                <span class="user-menu__account-name">Serge Ngono</span>
+                                <span class="user-menu__account-email" data-user-email>serge@gmail.com</span>
+                            </span>
+                        </a>
+                    </li>
+                    <li><a class="user-menu__item" href="../profile/edit.html">Modifier mon profil</a></li>
+                    <li><a class="user-menu__item" href="../login.html" data-logout>Déconnexion</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="back-link"><a href="../mandate.html" data-back-link>← Retour au mandat</a></p>
+
+            <!-- Locked: not the agent's mandate, not active, or no accepted property left to visit. -->
+            <div class="alert alert--warning" hidden data-visit-locked>
+                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <div>
+                    <h1 class="alert__title" data-visit-locked-title>Ce mandat n'est pas disponible</h1>
+                    <p data-visit-locked-text>Vous ne planifiez une visite que pour le client d'un de vos mandats
+                        actifs.</p>
+                </div>
+            </div>
+
+            <div hidden data-visit>
+                <div class="page-intro">
+                    <h1 data-visit-title>Planifier la visite</h1>
+                    <p class="mandate__meta" data-visit-meta></p>
+                </div>
+
+                <form class="form" novalidate data-visit-form>
+                    <div class="hint">
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <div>
+                            <p>Le client reçoit par e-mail la date, l'adresse et son code de visite. Il garde la main :
+                                il peut annuler depuis son espace.</p>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="field__label" for="matchId">Bien accepté par le client</label>
+                        <select class="input select" id="matchId" name="matchId" data-visit-property></select>
+                    </div>
+
+                    <div class="visit-slot">
+                        <div class="field">
+                            <label class="field__label" for="date">Jour</label>
+                            <select class="input select" id="date" name="date" data-visit-day></select>
+                        </div>
+                        <div class="field">
+                            <label class="field__label" for="time">Heure</label>
+                            <select class="input select" id="time" name="time" data-visit-time></select>
+                        </div>
+                    </div>
+
+                    <div class="field">
+                        <label class="field__label" for="type">Type de visite</label>
+                        <select class="input select" id="type" name="type" data-visit-type>
+                            <option value="ON_SITE">Sur place</option>
+                            <option value="VIDEO">Visite vidéo</option>
+                        </select>
+                    </div>
+
+                    <div class="form__actions">
+                        <a class="btn btn--outline" href="../mandate.html" data-back-link>Annuler</a>
+                        <button type="submit" class="btn btn--primary" data-visit-submit>Confirmer la visite</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
