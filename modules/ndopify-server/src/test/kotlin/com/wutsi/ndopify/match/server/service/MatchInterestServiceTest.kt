@@ -26,14 +26,12 @@ import kotlin.test.assertNull
 
 class MatchInterestServiceTest {
     private val matchService = mock<MatchService>()
-    private val proposalService = mock<MatchProposalService>()
     private val agentService = mock<AgentService>()
     private val customerService = mock<CustomerService>()
     private val notifier = mock<MatchInterestNotifier>()
     private val mandateService = mock<MandateService>()
     private val service = MatchInterestService(
         matchService,
-        proposalService,
         agentService,
         customerService,
         mandateService,
@@ -42,13 +40,12 @@ class MatchInterestServiceTest {
     )
 
     private fun match(
-        createdStatus: MatchStatus = MatchStatus.ACTIVE,
         mandateStatus: MandateStatus = MandateStatus.APPROVED,
     ) = MatchEntity(
         id = 9L,
         mandate = MandateEntity(id = 1L, tenantId = 1L, customerId = 10L, agentId = 20L, status = mandateStatus),
         listing = ListingEntity(id = 2L),
-        status = createdStatus,
+        status = MatchStatus.ACCEPTED,
     )
 
     @BeforeTest
@@ -58,64 +55,56 @@ class MatchInterestServiceTest {
     }
 
     @Test
-    fun `a created match is notified and proposed when approved`() {
-        doReturn(Interest(match(), true)).whenever(matchService).ensureInterest(1L, 2L)
+    fun `a changed match is notified`() {
+        doReturn(Interest(match(), true)).whenever(matchService).acceptInterest(1L, 2L)
 
-        service.registerInterest(1L, 2L)
+        assertEquals(9L, service.registerInterest(1L, 2L))
 
         verify(notifier).send(any(), any(), any(), any())
-        verify(proposalService).propose(listOf(9L))
     }
 
     @Test
-    fun `a reused match is not notified again`() {
-        doReturn(Interest(match(mandateStatus = MandateStatus.ASSIGNED), false)).whenever(matchService).ensureInterest(1L, 2L)
+    fun `an already accepted match is not notified again`() {
+        doReturn(Interest(match(mandateStatus = MandateStatus.ASSIGNED), false)).whenever(matchService).acceptInterest(1L, 2L)
 
         service.registerInterest(1L, 2L)
 
         verify(notifier, never()).send(any(), any(), any(), any())
-        verify(proposalService, never()).propose(any())
     }
 
     @Test
     fun `a notifier failure does not fail the interest`() {
-        doReturn(Interest(match(), true)).whenever(matchService).ensureInterest(1L, 2L)
+        doReturn(Interest(match(), true)).whenever(matchService).acceptInterest(1L, 2L)
         doThrow(RuntimeException("smtp down")).whenever(notifier).send(any(), any(), any(), any())
 
         assertNotNull(service.registerInterest(1L, 2L))
-
-        verify(proposalService).propose(listOf(9L))
     }
 
     @Test
-    fun `proposeOrigin proposes the origin match`() {
+    fun `proposeOrigin accepts the origin, never notifies the agent`() {
         doReturn(approvedMandate(originListingId = 2L)).whenever(mandateService).findByIdOrNull(1L)
-        doReturn(Interest(match(), false)).whenever(matchService).ensureInterest(1L, 2L)
+        doReturn(Interest(match(), true)).whenever(matchService).acceptInterest(1L, 2L)
 
         assertEquals(9L, service.proposeOrigin(1L))
 
-        verify(proposalService).propose(listOf(9L))
         verify(notifier, never()).send(any(), any(), any(), any())
     }
 
     @Test
-    fun `no origin, nothing proposed`() {
+    fun `no origin, nothing accepted`() {
         doReturn(approvedMandate(originListingId = null)).whenever(mandateService).findByIdOrNull(1L)
 
         assertNull(service.proposeOrigin(1L))
 
-        verify(matchService, never()).ensureInterest(any(), any())
-        verify(proposalService, never()).propose(any())
+        verify(matchService, never()).acceptInterest(any(), any())
     }
 
     @Test
-    fun `a sold listing is not proposed`() {
+    fun `a sold listing is not accepted`() {
         doReturn(approvedMandate(originListingId = 2L)).whenever(mandateService).findByIdOrNull(1L)
-        doReturn(null as Interest?).whenever(matchService).ensureInterest(1L, 2L)
+        doReturn(null as Interest?).whenever(matchService).acceptInterest(1L, 2L)
 
         assertNull(service.proposeOrigin(1L))
-
-        verify(proposalService, never()).propose(any())
     }
 
     private fun approvedMandate(originListingId: Long?) = MandateEntity(
