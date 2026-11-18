@@ -339,12 +339,18 @@ class CreateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(402L, response.body!!.mandateId) // the search it already has
         assertEquals(1, countSearches("existing.search@gmail.com"))
         assertEquals(1, countMatches(402L, 500L))
+        assertEquals("ACCEPTED", matchStatus(402L, 500L))
 
-        // Its agent is told, so it proposes the visit from its mandate
-        assertTrue(smtp.waitForIncomingEmail(5000, 1), "no email received")
-        val message = smtp.receivedMessages.single()
-        assertEquals("Listing Agent <listing.agent@gmail.com>", message.allRecipients.single().toString())
-        assertTrue(message.content.toString().contains("Awa Ndiaye"))
+        // Its agent is told to contact the customer, and the customer gets its booking link
+        assertTrue(smtp.waitForIncomingEmail(5000, 2), "emails not received")
+        val recipients = smtp.receivedMessages.map { it.allRecipients.single().toString() }
+        assertTrue(recipients.contains("Listing Agent <listing.agent@gmail.com>"), recipients.toString())
+        assertTrue(recipients.any { it.contains("existing.search@gmail.com") }, recipients.toString())
+
+        val agentMessage = smtp.receivedMessages.single { message ->
+            message.allRecipients.single().toString().contains("listing.agent@gmail.com")
+        }
+        assertTrue(agentMessage.content.toString().contains("Awa Ndiaye"))
     }
 
     private fun countSearches(email: String): Int = ds.connection.use { conn ->
@@ -367,6 +373,16 @@ class CreateMandateEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
             stmt.executeQuery().use { rs ->
                 rs.next()
                 rs.getInt(1)
+            }
+        }
+    }
+
+    private fun matchStatus(mandateId: Long, listingId: Long): String? = ds.connection.use { conn ->
+        conn.prepareStatement("SELECT status FROM T_MATCH WHERE mandate_id = ? AND listing_id = ?").use { stmt ->
+            stmt.setLong(1, mandateId)
+            stmt.setLong(2, listingId)
+            stmt.executeQuery().use { rs ->
+                if (rs.next()) rs.getString(1) else null
             }
         }
     }

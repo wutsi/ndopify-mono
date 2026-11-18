@@ -4,7 +4,9 @@ import com.wutsi.ndopify.agent.server.service.AgentService
 import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.mandate.server.service.MandateService
 import com.wutsi.ndopify.match.server.domain.MatchEntity
+import com.wutsi.ndopify.match.server.event.MatchInterestAcceptedEvent
 import com.wutsi.ndopify.platform.logger.KVLogger
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -24,6 +26,7 @@ class MatchInterestService(
     private val customerService: CustomerService,
     private val mandateService: MandateService,
     private val notifier: MatchInterestNotifier,
+    private val eventPublisher: ApplicationEventPublisher,
     private val logger: KVLogger,
 ) {
     /** Returns the match's id, or null when nothing could be accepted (see the class KDoc). */
@@ -35,21 +38,27 @@ class MatchInterestService(
         logger.add("match_changed", interest.changed)
         if (interest.changed) {
             notify(match)
+            eventPublisher.publishEvent(MatchInterestAcceptedEvent(match.id!!, match.tenantId!!))
         }
         return match.id
     }
 
     /**
      * The mandate an approval just made APPROVED had a search seeded from a listing: accepts the match of that listing
-     * (no agent notification, the approval's own message is enough). Null when it has no origin, the listing is gone or
-     * no longer published, or it's the customer's own property.
+     * (no agent notification, the approval's own message is enough) and e-mails the customer its booking link. Null
+     * when it has no origin, the listing is gone or no longer published, or it's the customer's own property.
      */
     @Transactional
     fun proposeOrigin(mandateId: Long): Long? {
         val mandate = mandateService.findByIdOrNull(mandateId) ?: return null
         val listingId = mandate.originListingId ?: return null
-        val match = matchService.acceptInterest(mandateId, listingId)?.match ?: return null
+        val interest = matchService.acceptInterest(mandateId, listingId) ?: return null
+        val match = interest.match
         logger.add("origin_match_id", match.id)
+        logger.add("origin_match_changed", interest.changed)
+        if (interest.changed) {
+            eventPublisher.publishEvent(MatchInterestAcceptedEvent(match.id!!, match.tenantId!!))
+        }
         return match.id
     }
 

@@ -17,7 +17,9 @@ import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.mandate.server.service.MandateService
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.domain.MatchEntity
+import com.wutsi.ndopify.match.server.event.MatchInterestAcceptedEvent
 import com.wutsi.ndopify.platform.logger.DefaultKVLogger
+import org.springframework.context.ApplicationEventPublisher
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -30,12 +32,14 @@ class MatchInterestServiceTest {
     private val customerService = mock<CustomerService>()
     private val notifier = mock<MatchInterestNotifier>()
     private val mandateService = mock<MandateService>()
+    private val eventPublisher = mock<ApplicationEventPublisher>()
     private val service = MatchInterestService(
         matchService,
         agentService,
         customerService,
         mandateService,
         notifier,
+        eventPublisher,
         DefaultKVLogger(),
     )
 
@@ -43,6 +47,7 @@ class MatchInterestServiceTest {
         mandateStatus: MandateStatus = MandateStatus.APPROVED,
     ) = MatchEntity(
         id = 9L,
+        tenantId = 1L,
         mandate = MandateEntity(id = 1L, tenantId = 1L, customerId = 10L, agentId = 20L, status = mandateStatus),
         listing = ListingEntity(id = 2L),
         status = MatchStatus.ACCEPTED,
@@ -55,21 +60,23 @@ class MatchInterestServiceTest {
     }
 
     @Test
-    fun `a changed match is notified`() {
+    fun `a changed match is notified and its customer e-mailed`() {
         doReturn(Interest(match(), true)).whenever(matchService).acceptInterest(1L, 2L)
 
         assertEquals(9L, service.registerInterest(1L, 2L))
 
         verify(notifier).send(any(), any(), any(), any())
+        verify(eventPublisher).publishEvent(MatchInterestAcceptedEvent(9L, 1L))
     }
 
     @Test
-    fun `an already accepted match is not notified again`() {
+    fun `an already accepted match is neither notified nor e-mailed`() {
         doReturn(Interest(match(mandateStatus = MandateStatus.ASSIGNED), false)).whenever(matchService).acceptInterest(1L, 2L)
 
         service.registerInterest(1L, 2L)
 
         verify(notifier, never()).send(any(), any(), any(), any())
+        verify(eventPublisher, never()).publishEvent(any<MatchInterestAcceptedEvent>())
     }
 
     @Test
@@ -78,16 +85,18 @@ class MatchInterestServiceTest {
         doThrow(RuntimeException("smtp down")).whenever(notifier).send(any(), any(), any(), any())
 
         assertNotNull(service.registerInterest(1L, 2L))
+        verify(eventPublisher).publishEvent(MatchInterestAcceptedEvent(9L, 1L))
     }
 
     @Test
-    fun `proposeOrigin accepts the origin, never notifies the agent`() {
+    fun `proposeOrigin accepts the origin and e-mails the customer, never the agent`() {
         doReturn(approvedMandate(originListingId = 2L)).whenever(mandateService).findByIdOrNull(1L)
         doReturn(Interest(match(), true)).whenever(matchService).acceptInterest(1L, 2L)
 
         assertEquals(9L, service.proposeOrigin(1L))
 
         verify(notifier, never()).send(any(), any(), any(), any())
+        verify(eventPublisher).publishEvent(MatchInterestAcceptedEvent(9L, 1L))
     }
 
     @Test
