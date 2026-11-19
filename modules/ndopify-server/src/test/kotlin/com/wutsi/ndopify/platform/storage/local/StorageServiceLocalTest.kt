@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.platform.storage.local
 
+import com.wutsi.ndopify.platform.storage.StoredObject
 import com.wutsi.ndopify.refdata.dto.StorageType
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -85,6 +86,19 @@ class StorageServiceLocalTest {
         val url = service.generatePresignedUrl("foo/bar.txt", 3600)
 
         assertEquals("http://localhost:8080/storage/foo/bar.txt", url.toString())
+    }
+
+    @Test
+    fun `metadata, read prefix and delete`() {
+        service.store("a/b.txt", ByteArrayInputStream("hello-world".toByteArray()), "text/plain")
+
+        assertEquals(StoredObject("text/plain", 11), service.metadata("a/b.txt"))
+        assertEquals("hello", String(service.readPrefix("a/b.txt", 5)))
+        assertNull(service.metadata("a/missing.txt"))
+        assertEquals(0, service.readPrefix("a/missing.txt", 5).size)
+
+        service.delete("a/b.txt")
+        assertNull(service.metadata("a/b.txt"))
     }
 
     @Test

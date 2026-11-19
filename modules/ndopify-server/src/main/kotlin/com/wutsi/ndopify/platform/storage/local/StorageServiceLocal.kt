@@ -1,6 +1,8 @@
 package com.wutsi.ndopify.platform.storage.local
 
 import com.wutsi.ndopify.platform.storage.StorageService
+import com.wutsi.ndopify.platform.storage.StoredObject
+import com.wutsi.ndopify.platform.util.MimeUtils
 import com.wutsi.ndopify.refdata.dto.StorageType
 import java.io.File
 import java.io.FileInputStream
@@ -46,6 +48,20 @@ class StorageServiceLocal(
 
     override fun publicUrl(path: String): URL {
         return URL("http://localhost:$port/${servletPath.removePrefix("/")}/${path.removePrefix("/")}")
+    }
+
+    override fun metadata(path: String): StoredObject? {
+        val file = toFile(path)
+        return if (file.isFile) StoredObject(MimeUtils.getMimeTypeFromExtension(file.extension), file.length()) else null
+    }
+
+    override fun readPrefix(path: String, maxBytes: Int): ByteArray {
+        val file = toFile(path)
+        return if (file.isFile) FileInputStream(file).use { it.readNBytes(maxBytes) } else ByteArray(0)
+    }
+
+    override fun delete(path: String) {
+        toFile(path).delete()
     }
 
     private fun toFile(path: String) = File("$directory/" + path.removePrefix("/"))
