@@ -76,9 +76,7 @@ class VisitRequestedBotletTest {
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
         assertEquals(
             """
-            Bonjour Kim Possible,
-
-            Ray Sponsible souhaite visiter un bien que vous lui avez proposé.
+            Ray Sponsible demande une visite
 
             Bien: Nice apartment
             Date souhaitée: 01/12/2026 à 10:00
