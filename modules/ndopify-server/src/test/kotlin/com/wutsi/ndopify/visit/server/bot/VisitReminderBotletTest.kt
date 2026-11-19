@@ -9,9 +9,9 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.listing.server.bot.ListingTelegramSender
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
-import com.wutsi.ndopify.platform.telegram.TelegramClient
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
 import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
@@ -34,11 +34,11 @@ import kotlin.test.assertTrue
 class VisitReminderBotletTest {
     private val tenantService = mock<TenantService>()
     private val locationService = mock<LocationService>()
-    private val client = mock<TelegramClient>()
+    private val sender = mock<ListingTelegramSender>()
 
     // 2026-12-01 10:00 in Douala
     private val clock = Clock.fixed(Instant.parse("2026-12-01T09:00:00Z"), ZoneId.of("UTC"))
-    private val botlet = VisitReminderBotlet(tenantService, locationService, client, clock)
+    private val botlet = VisitReminderBotlet(tenantService, locationService, sender, clock)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -84,7 +84,7 @@ class VisitReminderBotletTest {
 
         val text = argumentCaptor<String>()
         val buttons = argumentCaptor<List<TelegramButton>>()
-        verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
+        verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertEquals(
             """
             Rappel de la visite avec Ray Sponsible
@@ -110,7 +110,7 @@ class VisitReminderBotletTest {
         botlet.send(visit.copy(type = VisitType.VIDEO), customer, agent, listing, 1000L)
 
         val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
         assertEquals(
             """
             Rappel de la visite avec Ray Sponsible
@@ -132,7 +132,7 @@ class VisitReminderBotletTest {
         botlet.send(visit.copy(scheduledAt = date(2026, 12, 1, 20, 0)), customer, agent, listing, 1000L)
 
         val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
         assertTrue(text.firstValue.contains("a lieu aujourd'hui, 01/12/2026 à 20:00"))
     }
 
@@ -142,14 +142,14 @@ class VisitReminderBotletTest {
         val midnight = VisitReminderBotlet(
             tenantService,
             locationService,
-            client,
+            sender,
             Clock.fixed(Instant.parse("2026-12-01T23:30:00Z"), ZoneId.of("UTC")),
         )
 
         midnight.send(visit.copy(scheduledAt = date(2026, 12, 2, 8, 0)), customer, agent, listing, 1000L)
 
         val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
         assertTrue(text.firstValue.contains("a lieu aujourd'hui, 02/12/2026 à 08:00"))
     }
 
@@ -159,7 +159,7 @@ class VisitReminderBotletTest {
 
         val text = argumentCaptor<String>()
         val buttons = argumentCaptor<List<TelegramButton>>()
-        verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
+        verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertFalse(text.firstValue.contains("WhatsApp:"))
         assertEquals(
             listOf(TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1")),
@@ -172,7 +172,7 @@ class VisitReminderBotletTest {
         botlet.send(visit, customer, agent, listing.copy(title = " "), 1000L)
 
         val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        verify(sender).send(eq(1000L), eq(listing.copy(title = " ")), text.capture(), any())
         assertTrue(text.firstValue.contains("La visite du bien Bien n° 101 avec Ray Sponsible"))
     }
 
@@ -183,7 +183,7 @@ class VisitReminderBotletTest {
         botlet.send(visit, customer, agent, listing, 1000L)
 
         val buttons = argumentCaptor<List<TelegramButton>>()
-        verify(client).sendMessage(eq(1000L), any(), buttons.capture())
+        verify(sender).send(eq(1000L), eq(listing), any(), buttons.capture())
         assertEquals(
             listOf(TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237600000001")),
             buttons.firstValue,
@@ -192,16 +192,18 @@ class VisitReminderBotletTest {
 
     @Test
     fun `no visit code and no exact address in the text`() {
+        val withAddress = listing.copy(landmark = "Rue 1.234", accessDirections = "Derrière la pharmacie")
+
         botlet.send(
             visit,
             customer,
             agent,
-            listing.copy(landmark = "Rue 1.234", accessDirections = "Derrière la pharmacie"),
+            withAddress,
             1000L,
         )
 
         val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        verify(sender).send(eq(1000L), eq(withAddress), text.capture(), any())
         assertFalse(text.firstValue.contains("1234"))
         assertFalse(text.firstValue.contains("Rue 1.234"))
         assertFalse(text.firstValue.contains("Derrière la pharmacie"))
