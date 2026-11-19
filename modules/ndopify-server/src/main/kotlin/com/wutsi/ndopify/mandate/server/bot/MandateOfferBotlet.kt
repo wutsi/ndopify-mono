@@ -33,7 +33,7 @@ class MandateOfferBotlet(
         val formatter = TenantFormatter(tenant)
         client.sendMessage(
             chatId,
-            text(assignment, agent, city, formatter),
+            text(assignment, city, formatter),
             listOf(
                 TelegramButton(
                     "Accepter",
@@ -49,20 +49,21 @@ class MandateOfferBotlet(
 
     private fun text(
         assignment: AssignmentEntity,
-        agent: AgentEntity,
         city: String,
         formatter: TenantFormatter,
     ): String {
         val mandate = assignment.mandate
         val listing = mandate.mandateType == MandateType.LISTING
         val lines = mutableListOf<String>()
-        lines.add("Bonjour ${agent.party.fullName()},")
+        lines.add(
+            "Un nouveau mandat vous est proposé" + (if (city.isEmpty()) "" else " à $city")
+        )
         lines.add("")
         lines.add(
             if (listing) {
-                "Un propriétaire vous propose son mandat en exclusivité à $city."
+                "Un propriétaire vous propose son mandat en exclusivité."
             } else {
-                "Un client recherche un bien à $city, et nous vous proposons son mandat en exclusivité."
+                "Un client recherche un bien, et nous vous proposons son mandat en exclusivité."
             }
         )
         lines.add("")
