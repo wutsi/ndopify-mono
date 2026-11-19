@@ -18,14 +18,17 @@
     <link rel="stylesheet" th:href="@{/assets/css/home.css}">
     <link rel="stylesheet" th:href="@{/assets/css/listing.css}">
     <script th:src="@{/assets/js/partner-central.js}" defer></script>
+    <script th:src="@{/assets/js/direct-upload.js}" defer></script>
     <script th:src="@{/assets/js/listing.js}" defer></script>
 </head>
 <!--/*
   The photos of a listing's checklist (ListingPhotoController), from the prototype's listing/photos.html: "section" is
   the SectionView (absent when "locked" or "unavailable"), "photos" the PhotosView, "photoError" why the last upload
   or deletion failed. Without JS, the photos taken or chosen are sent with "Envoyer les photos" (POST, multipart, one
-  or several "photo" files); listing.js shrinks each and sends it as soon as it's chosen. Each photo is deleted with
-  its own form, and opens full size in a new tab (listing.js: in a full-screen viewer instead). Once sent ("section.editable" false), the photos are only shown.
+  or several "photo" files); listing.js shrinks each and sends it as soon as it's chosen, straight to the storage
+  through direct-upload.js when it's loaded (presign, PUT, attach), else with the multipart post. Each photo is
+  deleted with its own form, and opens full size in a new tab (listing.js: in a full-screen viewer instead). Once
+  sent ("section.editable" false), the photos are only shown.
 */-->
 <body data-page="listing-photos" th:attr="data-section=${section} ? 'photos' : null">
     <a class="skip-link" href="#main">Aller au contenu</a>
