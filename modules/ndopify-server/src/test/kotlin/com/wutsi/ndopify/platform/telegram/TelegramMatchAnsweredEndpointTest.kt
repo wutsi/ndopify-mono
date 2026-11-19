@@ -46,7 +46,7 @@ class TelegramMatchAnsweredEndpointTest : AuthorizationAwareEndpointIntegrationT
         val text = argumentCaptor<String>()
         val buttons = argumentCaptor<List<TelegramButton>>()
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
-        assertTrue(text.firstValue.contains("Bonne nouvelle : Ray Sponsible a accepté la proposition."))
+        assertTrue(text.firstValue.startsWith("Ray Sponsible a accepté la proposition"))
         assertTrue(text.firstValue.contains("Bien: Small apartment"))
         assertTrue(text.firstValue.contains("Loyer: 140 000 FCFA / mois"))
         assertTrue(text.firstValue.contains("Recherche: Location - Appartement"))
@@ -73,7 +73,7 @@ class TelegramMatchAnsweredEndpointTest : AuthorizationAwareEndpointIntegrationT
 
         val text = argumentCaptor<String>()
         verify(client).sendMessage(eq(1000L), text.capture(), any())
-        assertTrue(text.firstValue.contains("Ray Sponsible a refusé la proposition."))
+        assertTrue(text.firstValue.startsWith("Ray Sponsible a refusé la proposition"))
         assertTrue(text.firstValue.contains("Motif: trop cher"))
         assertTrue(text.firstValue.contains("Commentaire: Trop loin du travail."))
     }

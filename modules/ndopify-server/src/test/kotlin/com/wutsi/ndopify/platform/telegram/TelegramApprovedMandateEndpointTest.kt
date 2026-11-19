@@ -65,7 +65,8 @@ class TelegramApprovedMandateEndpointTest : AuthorizationAwareEndpointIntegratio
         val text = argumentCaptor<String>()
         val buttons = argumentCaptor<List<TelegramButton>>()
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
-        assertTrue(text.firstValue.contains("Votre client a signé le mandat à Yaounde"))
+        assertTrue(text.firstValue.startsWith("Votre mandat à Yaounde est approuvé"))
+        assertTrue(text.firstValue.contains("Votre client a signé le mandat. Vous pouvez commencer."))
         assertTrue(text.firstValue.contains("Recherche: Location"))
         assertTrue(text.firstValue.contains("Budget: 150 000 FCFA / mois"), text.firstValue)
         assertEquals(

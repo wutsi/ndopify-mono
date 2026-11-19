@@ -39,7 +39,7 @@ class TelegramVisitCancelledEndpointTest : AuthorizationAwareEndpointIntegration
         val text = argumentCaptor<String>()
         val buttons = argumentCaptor<List<TelegramButton>>()
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
-        assertTrue(text.firstValue.contains("Le client a annulé la visite."))
+        assertTrue(text.firstValue.startsWith("Le client a annulé la visite"))
         assertTrue(text.firstValue.contains("Bien: Small apartment"))
         assertTrue(text.firstValue.contains("Ville: Yaounde"))
         assertTrue(text.firstValue.contains("Quartier: Bastos"))

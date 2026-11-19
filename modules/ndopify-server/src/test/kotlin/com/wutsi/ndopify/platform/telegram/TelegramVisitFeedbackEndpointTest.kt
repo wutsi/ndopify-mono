@@ -43,7 +43,7 @@ class TelegramVisitFeedbackEndpointTest : AuthorizationAwareEndpointIntegrationT
         val text = argumentCaptor<String>()
         val buttons = argumentCaptor<List<TelegramButton>>()
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
-        assertTrue(text.firstValue.contains("Ray Sponsible a donné son avis sur la visite."))
+        assertTrue(text.firstValue.startsWith("L'avis de Ray Sponsible sur la visite"))
         assertTrue(text.firstValue.contains("Bien: Nice apartment"))
         // The fixture's DATETIME is read in the JVM's zone: the exact hour is tenant-dependent (see
         // VisitFeedbackBotletTest, which builds its dates in Africa/Douala), the day is not
