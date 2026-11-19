@@ -3579,6 +3579,35 @@
         return /^\d+$/.test(digits) && parseInt(digits, 10) > 0 ? parseInt(digits, 10) : NaN;
     }
 
+    var MAX_AMOUNT_DIGITS = 12;
+
+    function digitsOf(value) {
+        return String(value || "").replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+    }
+
+    // "5000" → "5 000": the digits grouped by thousands, capped like the server's amount.
+    function formatAmount(value) {
+        var digits = digitsOf(value).slice(0, MAX_AMOUNT_DIGITS);
+        return digits ? Number(digits).toLocaleString("fr-FR") : "";
+    }
+
+    // Regroups an amount's digits by thousands while typing, keeping the caret after the same digit.
+    // A value made of anything else ("abc", "5.5") is left for the server to refuse, as typed.
+    function bindAmount(input) {
+        if (!input) return;
+        if (/^[\d\s\u00a0\u202f]*$/.test(input.value)) input.value = formatAmount(input.value);
+        input.addEventListener("input", function () {
+            var caretDigits = digitsOf(input.value.slice(0, input.selectionStart)).length;
+            var formatted = formatAmount(input.value);
+            var pos = 0;
+            for (var seen = 0; pos < formatted.length && seen < caretDigits; pos++) {
+                if (/\d/.test(formatted.charAt(pos))) seen++;
+            }
+            input.value = formatted;
+            input.setSelectionRange(pos, pos);
+        });
+    }
+
     function initMandateEdit() {
         var id = new URLSearchParams(window.location.search).get("id");
         $all("[data-back-link]").forEach(function (a) {
@@ -5248,6 +5277,13 @@
         $("[data-close-page]").hidden = false;
     }
 
+    /* ---------- mandate/contract.html ---------- */
+
+    // The visit fee: "5000" becomes "5 000" as it is typed, like the closing page's rent.
+    function initMandateContract() {
+        bindAmount($("#visitFee"));
+    }
+
     // For the pages' own scripts (visit.js): the helpers they share with this file.
     window.NPC = {
         store: store,
@@ -5269,6 +5305,7 @@
         mandate: initMandate,
         "mandate-edit": initMandateEdit,
         "mandate-close": initMandateClose,
+        "mandate-contract": initMandateContract,
         "mandate-visit": initMandateVisit,
         "customer-edit": initCustomerEdit,
         listing: initListing,

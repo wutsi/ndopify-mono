@@ -1,9 +1,9 @@
 /*
  * Ndopify Partner Central — the mandate page (templates/mandate.html), its edit page (templates/mandate/edit.html),
- * its customer edit page (templates/mandate/customer-edit.html) and the closing wizard
- * (templates/mandate/close.html). All work without this file: the forms post to their controllers,
- * "Annuler" opens its form through ?end=cancel, the closing page parses "240 000" or "240000", and the edit page shows
- * every follow-up question. This script only enhances them:
+ * its customer edit page (templates/mandate/customer-edit.html), its contract page (templates/mandate/contract.html)
+ * and the closing wizard (templates/mandate/close.html). All work without this file: the forms post to their
+ * controllers, "Annuler" opens its form through ?end=cancel, the closing page parses "240 000" or "240000", and the
+ * edit page shows every follow-up question. This script only enhances them:
  * - mandate page: "Annuler le mandat" opens its form in place, "Retour" closes it; the form is checked before posting,
  *   with the server's messages; a button that posted is disabled ("Envoi…", "Annulation…"), so a double click doesn't
  *   post twice; the outcome of the last action gets the focus;
@@ -12,6 +12,7 @@
  * - edit page: the types of the chosen category only, the follow-up questions of the type only, each folded group's
  *   summary kept up to date, the neighbourhoods a slim-select over the mandate's city (GET /locations, at most 3),
  *   amounts formatted as typed;
+ * - contract page: the visit fee formatted as typed, like the closing page's rent;
  * - closing page: the agreed rent formatted as typed, the same way.
  * Ported from the prototype (src/main/html/assets/js/partner-central.js: initMandate, initMandateEdit,
  * initCustomerEdit).
@@ -85,7 +86,8 @@
     // Regroups an amount's digits by thousands while typing, keeping the caret after the same digit.
     function bindAmount(input) {
         if (!input) return;
-        input.value = formatAmount(input.value);
+        // A value the server sent back as invalid ("abc", "5.5") stays as typed: its error is about that value.
+        if (/^[\d\s\u00a0\u202f]*$/.test(input.value)) input.value = formatAmount(input.value);
         input.addEventListener("input", function () {
             var caretDigits = digitsOf(input.value.slice(0, input.selectionStart)).length;
             var formatted = formatAmount(input.value);
@@ -487,6 +489,13 @@
         bindAmount($("#finalPrice"));
     }
 
+    /* ---------- mandate/contract.html ---------- */
+
+    // The visit fee: "5000" becomes "5 000" as it is typed, like the closing page's rent.
+    function initMandateContract() {
+        bindAmount($("#visitFee"));
+    }
+
     /* ---------- mandate/customer-edit.html ---------- */
 
     // libphonenumber's reason for an invalid number, as intl-tel-input's validationError code.
@@ -555,6 +564,7 @@
         if (page === "mandate") initMandate();
         if (page === "mandate-edit") initMandateEdit();
         if (page === "mandate-close") initMandateClose();
+        if (page === "mandate-contract") initMandateContract();
         if (page === "customer-edit") initCustomerEdit();
     });
 })();
