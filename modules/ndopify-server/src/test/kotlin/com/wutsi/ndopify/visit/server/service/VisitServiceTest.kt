@@ -17,16 +17,23 @@ import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.agent.server.service.AgentService
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.customer.server.service.CustomerService
+import com.wutsi.ndopify.error.dto.ErrorCode
+import com.wutsi.ndopify.error.server.exception.BadRequestException
+import com.wutsi.ndopify.error.server.exception.ConflictException
+import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingService
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
+import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.dao.MatchRepository
+import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.logger.DefaultKVLogger
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
+import com.wutsi.ndopify.visit.dto.CreateMatchVisitRequest
 import com.wutsi.ndopify.visit.dto.ScheduleVisitRequest
 import com.wutsi.ndopify.visit.dto.VisitFeedbackRequest
 import com.wutsi.ndopify.visit.dto.VisitInterest
@@ -37,7 +44,9 @@ import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.visit.server.dao.VisitRepository
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
 import com.wutsi.ndopify.visit.server.event.VisitCancelledEvent
+import com.wutsi.ndopify.visit.server.event.VisitConfirmedEvent
 import com.wutsi.ndopify.visit.server.event.VisitFeedbackSentEvent
+import com.wutsi.ndopify.visit.server.event.VisitRequestedEvent
 import com.wutsi.ndopify.visit.server.mail.VisitCancelledMailet
 import com.wutsi.ndopify.visit.server.mail.VisitCompletedMailet
 import com.wutsi.ndopify.visit.server.mail.VisitConfirmedMailet
@@ -59,6 +68,7 @@ import java.util.Optional
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 
@@ -173,6 +183,109 @@ class VisitServiceTest {
         service.schedule(1L, ScheduleVisitRequest(scheduledAt = date(2026, 12, 2, 10, 0)))
 
         assertNull(saved().reminderSentAt)
+    }
+
+    // The agent books a visit for an accepted match (POST /v1/matches/{id}/visits)
+
+    private val acceptedMatch = MatchEntity(
+        id = 1L,
+        tenantId = 1L,
+        mandate = MandateEntity(id = 1L, customerId = 10L, agentId = 20L, status = MandateStatus.APPROVED),
+        listing = ListingEntity(id = 101L, status = ListingStatus.PUBLISHED),
+        agentId = 20L,
+        status = MatchStatus.ACCEPTED,
+    )
+
+    private fun givenBookable(match: MatchEntity = acceptedMatch) {
+        doReturn(match).whenever(matchDao).findByIdForUpdate(1L)
+        doReturn(false).whenever(dao).existsByMatchIdAndStatusIn(1L, VisitService.OPEN_STATUSES)
+        // The saved row gets its generated id: the confirmation event carries it
+        doAnswer { (it.arguments[0] as VisitEntity).copy(id = 1L) }.whenever(dao).save(any())
+    }
+
+    @Test
+    fun `booked - CONFIRMED, created by the agent, and only the confirmation is published`() {
+        givenBookable()
+
+        service.createForAgent(1L, CreateMatchVisitRequest(VisitType.ON_SITE, date(2026, 12, 2, 10, 0)))
+
+        val saved = saved()
+        assertEquals(VisitStatus.CONFIRMED, saved.status)
+        assertEquals(VisitParty.AGENT, saved.createdBy)
+        assertEquals(1L, saved.matchId)
+        assertEquals(1L, saved.mandateId)
+        assertEquals(101L, saved.listingId)
+        assertEquals(20L, saved.agentId)
+        assertEquals(10L, saved.customerId)
+        assertEquals(VisitType.ON_SITE, saved.type)
+        assertEquals(date(2026, 12, 2, 10, 0), saved.scheduledAt)
+        assertEquals("1234", saved.code)
+        assertEquals(0, saved.codeAttempts)
+        assertNull(saved.reminderSentAt) // more than 24 h ahead
+        verify(eventPublisher).publishEvent(VisitConfirmedEvent(visitId = 1L, tenantId = 1L))
+        verify(eventPublisher, never()).publishEvent(any<VisitRequestedEvent>())
+    }
+
+    @Test
+    fun `booked less than 24h ahead is its own reminder`() {
+        givenBookable()
+
+        service.createForAgent(1L, CreateMatchVisitRequest(VisitType.ON_SITE, date(2026, 12, 2, 8, 0)))
+
+        assertEquals(Date(clock.millis()), saved().reminderSentAt)
+    }
+
+    @Test
+    fun `booked - the type, then the slot, are checked before the match's state`() {
+        givenBookable(acceptedMatch.copy(status = MatchStatus.PROPOSED))
+
+        // UNKNOWN type, today: the type is reported, not the slot
+        assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, assertFailsWith<BadRequestException> {
+            service.createForAgent(1L, CreateMatchVisitRequest(VisitType.UNKNOWN, date(2026, 12, 1, 10, 0)))
+        }.error.code)
+        // A valid type, today: the slot is reported, not the match's status
+        assertEquals(ErrorCode.VISIT_INVALID_SLOT, assertFailsWith<BadRequestException> {
+            service.createForAgent(1L, CreateMatchVisitRequest(VisitType.ON_SITE, date(2026, 12, 1, 10, 0)))
+        }.error.code)
+        // A valid slot: the match's status
+        assertEquals(ErrorCode.MATCH_NOT_ACCEPTED, assertFailsWith<ConflictException> {
+            service.createForAgent(1L, CreateMatchVisitRequest(VisitType.ON_SITE, date(2026, 12, 2, 10, 0)))
+        }.error.code)
+        verify(dao, never()).save(any())
+    }
+
+    @Test
+    fun `booked - an ended mandate or an unpublished listing is refused`() {
+        givenBookable(acceptedMatch.copy(mandate = acceptedMatch.mandate.copy(status = MandateStatus.CLOSED)))
+        assertEquals(ErrorCode.MANDATE_NOT_APPROVED, assertFailsWith<ConflictException> {
+            service.createForAgent(1L, CreateMatchVisitRequest(VisitType.ON_SITE, date(2026, 12, 2, 10, 0)))
+        }.error.code)
+
+        givenBookable(acceptedMatch.copy(listing = ListingEntity(id = 101L, status = ListingStatus.DRAFT)))
+        assertEquals(ErrorCode.LISTING_NOT_PUBLISHED, assertFailsWith<ConflictException> {
+            service.createForAgent(1L, CreateMatchVisitRequest(VisitType.ON_SITE, date(2026, 12, 2, 10, 0)))
+        }.error.code)
+        verify(dao, never()).save(any())
+    }
+
+    @Test
+    fun `booked - an unknown match`() {
+        doReturn(null).whenever(matchDao).findByIdForUpdate(999L)
+
+        assertEquals(ErrorCode.MATCH_NOT_FOUND, assertFailsWith<NotFoundException> {
+            service.createForAgent(999L, CreateMatchVisitRequest(VisitType.ON_SITE, date(2026, 12, 2, 10, 0)))
+        }.error.code)
+    }
+
+    @Test
+    fun `booked - an open visit already exists`() {
+        givenBookable()
+        doReturn(true).whenever(dao).existsByMatchIdAndStatusIn(1L, VisitService.OPEN_STATUSES)
+
+        assertEquals(ErrorCode.VISIT_ALREADY_EXISTS, assertFailsWith<ConflictException> {
+            service.createForAgent(1L, CreateMatchVisitRequest(VisitType.ON_SITE, date(2026, 12, 2, 10, 0)))
+        }.error.code)
+        verify(dao, never()).save(any())
     }
 
     @Test

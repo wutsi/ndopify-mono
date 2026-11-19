@@ -169,4 +169,21 @@ interface MatchRepository : CrudRepository<MatchEntity, Long>, JpaSpecificationE
             "WHERE v.matchId = :matchId AND v.status IN :statuses"
     )
     fun existsOpenVisit(@Param("matchId") matchId: Long, @Param("statuses") statuses: Collection<VisitStatus>): Boolean
+
+    // The accepted matches whose agent wasn't nudged yet and still has no visit (MatchVisitAgentNudgeService)
+    @Query(
+        "SELECT m FROM MatchEntity m WHERE m.status = :status AND m.agentVisitNudgedAt IS NULL " +
+            "AND m.answeredAt <= :before AND m.mandate.status = :mandateStatus " +
+            "AND m.listing.status = :listingStatus " +
+            "AND NOT EXISTS (SELECT v.id FROM VisitEntity v WHERE v.matchId = m.id AND v.status IN :visitStatuses) " +
+            "ORDER BY m.answeredAt ASC, m.id ASC"
+    )
+    fun findAgentVisitNudgeDue(
+        @Param("status") status: MatchStatus,
+        @Param("before") before: Date,
+        @Param("mandateStatus") mandateStatus: MandateStatus,
+        @Param("listingStatus") listingStatus: ListingStatus,
+        @Param("visitStatuses") visitStatuses: Collection<VisitStatus>,
+        page: Pageable,
+    ): List<MatchEntity>
 }

@@ -1,0 +1,69 @@
+<mjml>
+    <mj-head>
+        <mj-style inline="inline">
+            {{__css__}}
+        </mj-style>
+    </mj-head>
+    <mj-body css-class="body">
+        <mj-wrapper background-color="#ffffff" border-radius="30px" padding="20px">
+            <mj-section padding="0">
+                <mj-column>
+                    <!-- Logo -->
+                    <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
+
+                    <!-- Divider with class for CSS injection -->
+                    <mj-divider css-class="divider"/>
+
+                    <!-- Body Text -->
+                    <mj-text>
+                        Bonjour <strong>{{recipient_name}}</strong>,
+                    </mj-text>
+                    <mj-text>
+                        <strong>{{customer_name}}</strong> a accepté votre proposition il y a plus de 48 h, mais
+                        aucune visite n'est encore planifiée.
+                    </mj-text>
+                    <mj-text>
+                        Appelez-le sur WhatsApp pour convenir d'un créneau, puis planifiez la visite depuis le mandat.
+                    </mj-text>
+
+                    <!-- The listing's cover and its price -->
+                    {{#image_url}}
+                    <mj-image src="{{image_url}}" alt="{{listing_title}}" border-radius="8px" padding="10px 0"/>
+                    {{/image_url}}
+                    <!-- In an mj-text: MJML drops raw HTML outside of it -->
+                    <mj-text>
+                        <ul>
+                            <li>
+                                <b>{{listing_title}}</b>
+                            </li>
+                            <li>
+                                <b>{{price_label}}</b>&#160;: {{price}}
+                            </li>
+                        </ul>
+                    </mj-text>
+
+                    <!-- The two next steps: the call, then the booking -->
+                    {{#whatsapp_url}}
+                    <mj-button href="{{whatsapp_url}}" css-class="btn-primary" align="center">
+                        Contacter sur WhatsApp
+                    </mj-button>
+                    {{/whatsapp_url}}
+                    {{#visit_url}}
+                    <mj-button href="{{visit_url}}" css-class="btn-primary" align="center">
+                        Planifier la visite
+                    </mj-button>
+                    {{/visit_url}}
+
+                    <!-- Sign-off -->
+                    <mj-spacer/>
+                    <mj-text>
+                        Cordialement,{{^agent_full_name}}
+                        <br/>
+                        L'équipe {{tenant_name}}{{/agent_full_name}}
+                    </mj-text>
+                </mj-column>
+            </mj-section>
+            {{> mail/fragments/agent-footer.mjml}}
+        </mj-wrapper>
+    </mj-body>
+</mjml>

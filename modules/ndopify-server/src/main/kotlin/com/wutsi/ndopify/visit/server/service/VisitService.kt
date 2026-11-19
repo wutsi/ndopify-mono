@@ -23,6 +23,7 @@ import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import com.wutsi.ndopify.visit.dto.CancelVisitRequest
 import com.wutsi.ndopify.visit.dto.CheckInVisitRequest
 import com.wutsi.ndopify.visit.dto.CheckOutVisitRequest
+import com.wutsi.ndopify.visit.dto.CreateMatchVisitRequest
 import com.wutsi.ndopify.visit.dto.CreateVisitRequest
 import com.wutsi.ndopify.visit.dto.NoShowVisitRequest
 import com.wutsi.ndopify.visit.dto.ScheduleVisitRequest
@@ -189,6 +190,75 @@ class VisitService(
             )
         )
         eventPublisher.publishEvent(VisitRequestedEvent(visitId = visit.id!!, tenantId = match.tenantId!!))
+        return visit
+    }
+
+    /**
+     * The agent books a visit for an accepted match, straight to CONFIRMED: locks the match (one booking at a time), then
+     * 400 HTTP_INVALID_PARAMETER for an UNKNOWN type, 400 VISIT_INVALID_SLOT for a date outside [VisitSlots], then
+     * 409 MATCH_NOT_ACCEPTED, MANDATE_NOT_APPROVED, LISTING_NOT_PUBLISHED, VISIT_WHATSAPP_MISSING (a VIDEO visit needs
+     * the customer's WhatsApp number) and VISIT_ALREADY_EXISTS. The code is generated here; a visit booked less than
+     * [VisitPolicyProperties.remindBefore] ahead is its own reminder. Publishes [VisitConfirmedEvent]: the customer's
+     * e-mail, the co-brokerage notice, never a request notification.
+     */
+    @Transactional
+    fun createForAgent(matchId: Long, request: CreateMatchVisitRequest): VisitEntity {
+        val now = Date(clock.millis())
+        val match = matchDao.findByIdForUpdate(matchId)
+            ?: throw NotFoundException(error = Error(code = ErrorCode.MATCH_NOT_FOUND))
+
+        if (request.type != VisitType.ON_SITE && request.type != VisitType.VIDEO) {
+            throw BadRequestException(
+                error = Error(
+                    code = ErrorCode.HTTP_INVALID_PARAMETER,
+                    parameter = Parameter(name = "type", type = ParameterType.PARAMETER_TYPE_PAYLOAD),
+                ),
+            )
+        }
+
+        val tenant = tenantService.findById(match.tenantId!!)
+        if (!VisitSlots.isValid(request.scheduledAt, tenant, now)) {
+            throw BadRequestException(error = Error(code = ErrorCode.VISIT_INVALID_SLOT))
+        }
+
+        if (match.status != MatchStatus.ACCEPTED) {
+            throw ConflictException(error = Error(code = ErrorCode.MATCH_NOT_ACCEPTED))
+        }
+        if (match.mandate.status != MandateStatus.APPROVED) {
+            throw ConflictException(error = Error(code = ErrorCode.MANDATE_NOT_APPROVED))
+        }
+        if (match.listing.status != ListingStatus.PUBLISHED) {
+            throw ConflictException(error = Error(code = ErrorCode.LISTING_NOT_PUBLISHED))
+        }
+        if (request.type == VisitType.VIDEO) {
+            val customer = customerService.findById(match.mandate.customerId)
+            if (customer.whatsappNumber.isNullOrBlank()) {
+                throw ConflictException(error = Error(code = ErrorCode.VISIT_WHATSAPP_MISSING))
+            }
+        }
+        if (dao.existsByMatchIdAndStatusIn(match.id!!, OPEN_STATUSES)) {
+            throw ConflictException(error = Error(code = ErrorCode.VISIT_ALREADY_EXISTS))
+        }
+
+        val visit = dao.save(
+            VisitEntity(
+                matchId = match.id,
+                mandateId = match.mandate.id!!,
+                listingId = match.listing.id!!,
+                agentId = match.agentId,
+                customerId = match.mandate.customerId,
+                status = VisitStatus.CONFIRMED,
+                type = request.type,
+                requestedAt = now,
+                scheduledAt = request.scheduledAt,
+                code = codeGenerator.generate(),
+                codeAttempts = 0,
+                reminderSentAt = now.takeIf { request.scheduledAt.time - now.time < policy.remindBefore.toMillis() },
+                createdBy = VisitParty.AGENT,
+                createdAt = now,
+            ),
+        )
+        eventPublisher.publishEvent(VisitConfirmedEvent(visitId = visit.id!!, tenantId = match.tenantId!!))
         return visit
     }
 

@@ -5,6 +5,7 @@ import com.wutsi.ndopify.match.server.service.MatchAutoProposalService
 import com.wutsi.ndopify.match.server.service.MatchNotificationService
 import com.wutsi.ndopify.match.server.service.MatchProposalService
 import com.wutsi.ndopify.match.server.service.MatchService
+import com.wutsi.ndopify.match.server.service.MatchVisitAgentNudgeService
 import com.wutsi.ndopify.match.server.service.MatchVisitReminderService
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.server.service.TenantService
@@ -25,6 +26,7 @@ class MatchJobs(
     private val autoProposalService: MatchAutoProposalService,
     private val matchService: MatchService,
     private val reminderService: MatchVisitReminderService,
+    private val agentNudgeService: MatchVisitAgentNudgeService,
     private val tenantService: TenantService,
 ) {
     companion object {
@@ -63,6 +65,12 @@ class MatchJobs(
     @Scheduled(cron = "\${ndopify.match.visit-reminder.cron}")
     fun remindAcceptedWithoutVisit() {
         forEachTenant("remindAcceptedWithoutVisit", "match(es)") { reminderService.remindDue() }
+    }
+
+    /** Nudges the agents whose accepted match still has no visit after 48 h. */
+    @Scheduled(cron = "\${ndopify.match.agent-visit-nudge.cron}")
+    fun nudgeAcceptedWithoutVisitAgent() {
+        forEachTenant("nudgeAcceptedWithoutVisitAgent", "match(es)") { agentNudgeService.nudgeDue() }
     }
 
     private fun forEachTenant(job: String, unit: String, run: () -> Int) {

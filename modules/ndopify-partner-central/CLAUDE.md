@@ -212,7 +212,15 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `customer-saved-unsent` (ndopify-server cancelled the contract and put the mandate back to ASSIGNED); an e-mail
   another party owns is the e-mail field's error, a 403/404/409 `changed`, a 5xx the form again with a generic error.
   `public/assets/js/mandate.js` only enhances both pages (`data-page` `mandate` / `mandate-edit`), and the customer
-  edit one (`data-page` `customer-edit`). ndopify-server
+  edit one (`data-page` `customer-edit`). When a signed search has an ACCEPTED match without an open visit
+  (`MatchView.schedulable`, `MandateController`'s `canScheduleVisit`), the contact block also shows *Planifier une
+  visite*, opening its own page (`GET /mandates/{id}/visits`, `MandateVisitController`, `mandate/visit.html`): the
+  accepted property (a picker when several), the day and the time (the same `VisitSlots` as the visit page) and the type
+  (`Sur place` / `Visite vidéo`). `POST /mandates/{id}/visits` validates (`MandateVisitRules`) and books through
+  `NdVisitClient.createForMatch`, then returns to `/mandates/{id}#contact-title` with the `visitOutcome` flash:
+  `scheduled`, `invalid-slot` (400 `VISIT_INVALID_SLOT`), `whatsapp-missing` (409 `VISIT_WHATSAPP_MISSING`), `changed`
+  (403/404/409) or `error`. The page has no script and works without JS; the match's card then only carries the
+  resulting visit, and the contact block's WhatsApp button is unchanged. ndopify-server
   checks ownership (see the mandate domain in `modules/ndopify-server/CLAUDE.md`): another agent's mandate is a 403, which the page shows as the locked view
   (and an action as `changed`, like a 404/409). A 403 / 404 from ndopify-server that no page catches goes to
   `HttpClientErrorHandler` (`ui/layout/`), which answers the same status so that Spring Boot renders

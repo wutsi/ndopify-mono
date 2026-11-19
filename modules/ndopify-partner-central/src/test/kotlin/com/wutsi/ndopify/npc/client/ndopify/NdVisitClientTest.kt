@@ -4,6 +4,7 @@ import com.wutsi.ndopify.visit.dto.CancelVisitRequest
 import com.wutsi.ndopify.visit.dto.CheckInVisitRequest
 import com.wutsi.ndopify.visit.dto.CheckOutVisitRequest
 import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
+import com.wutsi.ndopify.visit.dto.CreateMatchVisitRequest
 import com.wutsi.ndopify.visit.dto.GetVisitResponse
 import com.wutsi.ndopify.visit.dto.NoShowVisitRequest
 import com.wutsi.ndopify.visit.dto.ScheduleVisitRequest
@@ -157,6 +158,35 @@ class NdVisitClientTest {
             7001,
             ScheduleVisitRequest(Date.from(Instant.parse("2026-11-07T09:30:00Z")), VisitType.ON_SITE),
         )
+        server.verify()
+    }
+
+    @Test
+    fun `create for a match`() {
+        server.expect(requestTo("http://localhost:8080/v1/matches/9001/visits"))
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(jsonPath("$.scheduledAt").exists())
+            .andExpect(jsonPath("$.type").value("VIDEO"))
+            .andRespond(withSuccess())
+
+        client.createForMatch(
+            9001,
+            CreateMatchVisitRequest(VisitType.VIDEO, Date.from(Instant.parse("2026-11-07T09:30:00Z"))),
+        )
+        server.verify()
+    }
+
+    @Test
+    fun `create for a match - a conflict surfaces`() {
+        server.expect(requestTo("http://localhost:8080/v1/matches/9001/visits"))
+            .andRespond(withStatus(HttpStatus.CONFLICT))
+
+        assertFailsWith<HttpClientErrorException> {
+            client.createForMatch(
+                9001,
+                CreateMatchVisitRequest(VisitType.ON_SITE, Date.from(Instant.parse("2026-11-07T09:30:00Z"))),
+            )
+        }
         server.verify()
     }
 

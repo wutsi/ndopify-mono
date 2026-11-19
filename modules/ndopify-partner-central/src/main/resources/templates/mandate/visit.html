@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Planifier la visite — Ndopify Partner Central</title>
+    <meta name="description" content="Planifier la visite d'un bien accepté par le client : type, jour et heure.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
+    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/rejoindre.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/home.css}">
+    <link rel="stylesheet" th:href="@{/assets/css/visit.css}">
+    <script th:src="@{/assets/js/partner-central.js}" defer></script>
+</head>
+<!--/*
+    Booking a visit for a property the customer accepted (MandateVisitController), on its own page reached from the
+    mandate page's "Planifier une visite", next to the client's contact: the agent called the customer on WhatsApp,
+    and confirms the property, the type (on site, or a video call the agent makes from the property), the day and the
+    time. The visit is created CONFIRMED: the customer is e-mailed the date, the address and its code at once.
+
+    No page script: partner-central.js only drives the header's account menu, every field posts, and the rules are
+    re-checked server-side and by ndopify-server.
+
+    "mandate" the mandate, "client" the customer (may be null), "properties" the accepted matches to pick from
+    (MandateVisitProperty), "days" / "times" the slots (VisitSlots), "types" the visit types, "form"
+    (MandateVisitForm) the answers and "errors" its errors per field.
+*/-->
+<body data-page="mandate-visit">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <a class="site-header__brand" th:href="@{/}">
+                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
+            </a>
+            <nav th:replace="~{fragments/user-menu :: menu}"></nav>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <p class="back-link">
+                <a th:href="@{/mandates/{id}(id=${mandate.id})}" data-back-link>← Retour au mandat</a>
+            </p>
+
+            <div class="page-intro">
+                <h1>Planifier la visite</h1>
+                <p class="mandate__meta">
+                    Mandat n° <span th:text="${mandate.id}">204</span>
+                    <span th:if="${clientName != null}" th:text="|· ${clientName}|">· Ray Sponsible</span>
+                </p>
+            </div>
+
+            <form class="form" method="post" novalidate th:action="@{/mandates/{id}/visits(id=${mandate.id})}"
+                  data-visit-form>
+                <div class="hint">
+                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <p>Le client reçoit par e-mail la date, l'adresse et son code de visite. Il garde la main : il peut
+                        annuler depuis sa page de visite.</p>
+                </div>
+
+                <div class="field">
+                    <label class="field__label" for="matchId">Bien accepté par le client</label>
+                    <select class="input select" id="matchId" name="matchId" data-visit-property
+                            th:attr="aria-invalid=${errors['matchId'] != null ? 'true' : null}">
+                        <option th:each="property : ${properties}" th:value="${property.matchId}"
+                                th:text="${property.label}"
+                                th:selected="${#strings.toString(property.matchId) == form.matchId}">Nice apartment
+                        </option>
+                    </select>
+                    <p class="field__error" th:if="${errors['matchId']}" th:text="${errors['matchId']}"
+                       data-match-error></p>
+                </div>
+
+                <div class="visit-slot">
+                    <div class="field">
+                        <label class="field__label" for="date">Jour</label>
+                        <select class="input select" id="date" name="date" data-visit-day
+                                th:attr="aria-invalid=${errors['date'] != null ? 'true' : null}">
+                            <option th:each="day : ${days}" th:value="${day.value}" th:text="${day.label}"
+                                    th:selected="${day.value == form.date}">sam. 21 novembre 2026</option>
+                        </select>
+                        <p class="field__error" th:if="${errors['date']}" th:text="${errors['date']}"
+                           data-date-error></p>
+                    </div>
+                    <div class="field">
+                        <label class="field__label" for="time">Heure</label>
+                        <select class="input select" id="time" name="time" data-visit-time
+                                th:attr="aria-invalid=${errors['time'] != null ? 'true' : null}">
+                            <option th:each="time : ${times}" th:value="${time.first}" th:text="${time.second}"
+                                    th:selected="${time.first == form.time}">10h30</option>
+                        </select>
+                        <p class="field__error" th:if="${errors['time']}" th:text="${errors['time']}"
+                           data-time-error></p>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="field__label" for="type">Type de visite</label>
+                    <select class="input select" id="type" name="type" data-visit-type
+                            th:attr="aria-invalid=${errors['type'] != null ? 'true' : null}">
+                        <option value="" th:selected="${#strings.isEmpty(form.type)}">Choisissez…</option>
+                        <option th:each="type : ${types}" th:value="${type.first.name()}" th:text="${type.second}"
+                                th:selected="${type.first.name() == form.type}">Sur place</option>
+                    </select>
+                    <p class="field__error" th:if="${errors['type']}" th:text="${errors['type']}"
+                       data-type-error></p>
+                </div>
+
+                <div class="form__actions form__actions--end">
+                    <a class="btn btn--outline" th:href="@{/mandates/{id}(id=${mandate.id})}">Annuler</a>
+                    <button type="submit" class="btn btn--primary" data-visit-submit>Confirmer la visite</button>
+                </div>
+            </form>
+        </div>
+    </main>
+</body>
+</html>

@@ -4,6 +4,7 @@ import com.wutsi.ndopify.visit.dto.CancelVisitRequest
 import com.wutsi.ndopify.visit.dto.CheckInVisitRequest
 import com.wutsi.ndopify.visit.dto.CheckOutVisitRequest
 import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
+import com.wutsi.ndopify.visit.dto.CreateMatchVisitRequest
 import com.wutsi.ndopify.visit.dto.GetVisitResponse
 import com.wutsi.ndopify.visit.dto.NoShowVisitRequest
 import com.wutsi.ndopify.visit.dto.ScheduleVisitRequest
@@ -108,6 +109,11 @@ class NdVisitClient(
     /** Confirms a REQUESTED visit at [request]'s slot and type. */
     fun schedule(id: Long, request: ScheduleVisitRequest) {
         rest.post().uri("/v1/visits/{id}/schedule", id).body(request).retrieve().toBodilessEntity()
+    }
+
+    /** Books a visit for an accepted match; the agent picks the type and the slot. */
+    fun createForMatch(matchId: Long, request: CreateMatchVisitRequest) {
+        rest.post().uri("/v1/matches/{id}/visits", matchId).body(request).retrieve().toBodilessEntity()
     }
 
     /** Cancels a REQUESTED or CONFIRMED visit. */

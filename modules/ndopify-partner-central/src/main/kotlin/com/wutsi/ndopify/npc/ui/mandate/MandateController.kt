@@ -143,6 +143,12 @@ class MandateController(
         const val CUSTOMER_SAVED = "customer-saved"
         const val CUSTOMER_SAVED_UNSENT = "customer-saved-unsent"
 
+        // Booking a visit for an accepted match (MandateVisitController)
+        const val VISIT_OUTCOME = "visitOutcome"
+        const val VISIT_SCHEDULED = "scheduled"
+        const val VISIT_INVALID_SLOT = "invalid-slot"
+        const val VISIT_WHATSAPP_MISSING = "whatsapp-missing"
+
         const val CHANGED = "changed"
         const val FAILED = "error"
 
@@ -408,6 +414,7 @@ class MandateController(
                 matchAgents,
             ).copy(visitsUnavailable = cards.unavailable)
             model.addAttribute("matchSection", section)
+            model.addAttribute("canScheduleVisit", section.matches.any { it.schedulable })
             model.addAttribute("dismissing", dismissing(section, dismiss))
             pendingVisit = PendingVisit.of(
                 section.matches.mapNotNull { match ->
@@ -450,6 +457,7 @@ class MandateController(
         } ?: pendingVisit
         model.addAttribute("pendingVisit", pendingVisit)
         (model.getAttribute(OUTCOME) as? String)?.let { outcome -> outcome(outcome, view, model) }
+        (model.getAttribute(VISIT_OUTCOME) as? String)?.let { outcome -> visitOutcome(outcome, model) }
         (model.getAttribute(MatchController.OUTCOME) as? String)?.let { outcome ->
             matchOutcome(outcome, model.getAttribute(MatchController.LISTING) as? Long, view, model)
         }
@@ -559,6 +567,30 @@ class MandateController(
                 listingClient.searchByIds(visits.map { it.listingId }.distinct()).associateBy { it.id }
             }
         }
+
+    /**
+     * The flash outcome of the visit page ([MandateVisitController]): the booking, a slot the server refused, the
+     * customer's missing WhatsApp for a video visit, or a stale page.
+     */
+    private fun visitOutcome(outcome: String, model: Model) {
+        val text = when (outcome) {
+            VISIT_SCHEDULED -> "Visite planifiée : le client a reçu par e-mail la date, l'adresse et son code."
+            VISIT_INVALID_SLOT -> "Ce créneau n'est plus disponible. Choisissez-en un autre."
+            VISIT_WHATSAPP_MISSING -> "Le client n'a pas de numéro WhatsApp : choisissez une visite sur place."
+            CHANGED -> "Ce mandat ou ce bien a changé entre-temps : vérifiez son état avant de recommencer."
+            FAILED -> "Action impossible pour le moment. Réessayez dans quelques instants."
+            else -> return
+        }
+        model.addAttribute("outcomeText", text)
+        model.addAttribute(
+            "outcomeStyle",
+            when (outcome) {
+                VISIT_SCHEDULED -> "success"
+                FAILED -> "error"
+                else -> "warning"
+            },
+        )
+    }
 
     /** The flash outcome of the last action, worded after the mandate as it is now. */
     private fun outcome(outcome: String, view: MandateView, model: Model) {

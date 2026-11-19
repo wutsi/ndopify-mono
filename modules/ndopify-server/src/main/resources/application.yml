@@ -341,6 +341,10 @@ ndopify:
             delay-days: 3                   # An ACCEPTED match with no visit is reminded after this delay
             batch-size: 100                 # Matches reminded per run
             cron: "0 0 9 * * ?"             # Every day at 09:00: reminds the customers who accepted a match but booked no visit
+        agent-visit-nudge:
+            delay-hours: 48                 # An ACCEPTED match with no visit nudges its agent after this delay
+            batch-size: 100                 # Matches examined per run
+            cron: "0 30 9 * * ?"            # Every day at 09:30, after the customer reminder (09:00)
 
     mobile-money:
         mtn:

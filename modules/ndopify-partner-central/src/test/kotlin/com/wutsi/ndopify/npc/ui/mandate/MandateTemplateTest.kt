@@ -649,6 +649,73 @@ class MandateTemplateTest {
     }
 
     @Test
+    fun `contact - plan a visit for an accepted match`() {
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.ACCEPTED, proposedAt = proposedAt))
+        doReturn(emptyList<VisitSummary>()).whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
+
+        val page = render(APPROVED)
+
+        val action = page.selectFirst("[data-contact-actions] [data-contact-schedule]")!!
+        assertEquals("Planifier une visite", action.text())
+        assertEquals("/mandates/201/visits", action.attr("href"))
+        assertEquals("Planifier une visite pour Ray Sponsible", action.attr("aria-label"))
+        // The primary action of the row, before the edit
+        val actions = page.select("[data-contact-actions]").select("a")
+        assertTrue(actions[0].hasAttr("data-contact-schedule"))
+        assertTrue(actions[1].hasAttr("data-contact-edit"))
+    }
+
+    @Test
+    fun `contact - no visit link once the accepted match has one`() {
+        withVisits(VisitFixtures.summary(VisitFixtures.requested().copy(mandateId = 201, matchId = 9001)))
+
+        val page = render(APPROVED)
+
+        assertNull(page.selectFirst("[data-contact-schedule]"))
+        assertNotNull(page.selectFirst("[data-contact-edit]"))
+    }
+
+    @Test
+    fun `contact - no visit link without an accepted match`() {
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.PROPOSED, proposedAt = proposedAt))
+
+        assertNull(render(APPROVED).selectFirst("[data-contact-schedule]"))
+    }
+
+    @Test
+    fun `contact - no visit link on a landlord's mandate`() {
+        assertNull(render(APPROVED.copy(mandateType = MandateType.LISTING)).selectFirst("[data-contact-schedule]"))
+    }
+
+    @Test
+    fun `contact - a scheduled visit is confirmed at the top`() {
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.ACCEPTED, proposedAt = proposedAt))
+        doReturn(emptyList<VisitSummary>()).whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
+
+        val page = render(get("/mandates/201").flashAttr(MandateController.VISIT_OUTCOME, MandateController.VISIT_SCHEDULED))
+
+        assertEquals(
+            "Visite planifiée : le client a reçu par e-mail la date, l'adresse et son code.",
+            page.selectFirst("[data-mandate-flash-text]")?.text(),
+        )
+        assertEquals("alert alert--success", page.selectFirst("[data-mandate-flash]")?.className())
+    }
+
+    @Test
+    fun `contact - a refused slot warns`() {
+        withMatches(MatchFixtures.MATCH_A.copy(mandateId = 201, status = MatchStatus.ACCEPTED, proposedAt = proposedAt))
+        doReturn(emptyList<VisitSummary>()).whenever(visitClient).search(AGENT.id, VisitRules.COUNTED, 20, 201L)
+
+        val page = render(get("/mandates/201").flashAttr(MandateController.VISIT_OUTCOME, MandateController.VISIT_INVALID_SLOT))
+
+        assertEquals(
+            "Ce créneau n'est plus disponible. Choisissez-en un autre.",
+            page.selectFirst("[data-mandate-flash-text]")?.text(),
+        )
+        assertEquals("alert alert--warning", page.selectFirst("[data-mandate-flash]")?.className())
+    }
+
+    @Test
     fun contact() {
         val page = render(PENDING.copy(preferredContactPeriod = com.wutsi.ndopify.listing.dto.ContactPeriodType.MORNING))
 

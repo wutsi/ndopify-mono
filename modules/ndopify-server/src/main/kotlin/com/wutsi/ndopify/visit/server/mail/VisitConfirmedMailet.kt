@@ -13,6 +13,7 @@ import com.wutsi.ndopify.platform.mail.Receipient
 import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantFormatter
 import com.wutsi.ndopify.refdata.server.service.TenantService
+import com.wutsi.ndopify.visit.dto.VisitParty
 import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
 import org.springframework.stereotype.Service
@@ -76,6 +77,7 @@ class VisitConfirmedMailet(
                         "visit_time" to formatter.time(visit.scheduledAt),
                         "on_site" to onSite,
                         "code" to visit.code,
+                        "by_agent" to (visit.createdBy == VisitParty.AGENT),
                         "visit_url" to customerUrl,
                     ) + AgentMailContext.of(agent, formatter),
                 ),

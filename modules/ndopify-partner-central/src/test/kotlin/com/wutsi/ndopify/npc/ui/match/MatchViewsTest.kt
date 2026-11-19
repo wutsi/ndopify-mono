@@ -122,6 +122,34 @@ class MatchViewsTest {
     }
 
     @Test
+    fun `schedulable - an accepted match without a visit`() {
+        val view = section(listOf(MATCH_A.copy(status = MatchStatus.ACCEPTED))).matches.single()
+
+        assertTrue(view.schedulable)
+        assertTrue(view.resendable)
+    }
+
+    @Test
+    fun `schedulable - an accepted match with a visit`() {
+        val section = section(
+            listOf(MATCH_A.copy(status = MatchStatus.ACCEPTED)),
+            visits = mapOf(9001L to visitCard()),
+        )
+
+        assertFalse(section.matches.single().schedulable)
+    }
+
+    @Test
+    fun `schedulable - a proposed match`() {
+        assertFalse(section(listOf(MATCH_A.copy(status = MatchStatus.PROPOSED))).matches.single().schedulable)
+    }
+
+    @Test
+    fun `schedulable - an active match`() {
+        assertFalse(section(listOf(MATCH_A)).matches.single().schedulable)
+    }
+
+    @Test
     fun `co-brokerage card links with its match`() {
         val section = section(listOf(MATCH_A.copy(coBrokerage = true)))
 

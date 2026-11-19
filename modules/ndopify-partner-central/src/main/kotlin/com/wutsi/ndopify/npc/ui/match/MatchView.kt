@@ -27,6 +27,9 @@ data class MatchView(
     /** PROPOSED or ACCEPTED without an open visit: the client's link can be e-mailed again. */
     val resendable: Boolean = false,
 
+    /** ACCEPTED and no open visit: the mandate page may book it (*Planifier une visite*, by the client's contact). */
+    val schedulable: Boolean = false,
+
     /** The visit the client asked for, inside the card that led to it; null without one. */
     val visit: VisitCardView? = null,
     /** "Envoyé le 28 oct. 2026"; the only meta line a visit card shows. */
