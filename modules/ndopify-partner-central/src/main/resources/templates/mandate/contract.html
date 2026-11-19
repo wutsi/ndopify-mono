@@ -22,7 +22,8 @@
     Sending a mandate's contract (MandateContractController), on its own page reached from the mandate page's
     "Envoyer au client" (ASSIGNED) or "Renvoyer" (PENDING_APPROVAL). The agent confirms the terms the customer accepts
     by signing: the duration, and the visit fee the visitors pay the agent for each visit, offline, Ndopify
-    collecting nothing. The form posts without any script: no page script, the rules are re-checked server-side.
+    collecting nothing. The form posts without any script: mandate.js only formats the fee, and the rules are
+    re-checked server-side.
 
     "mandate" is the mandate, "form" (MandateContractForm) the two answers, "errors" its errors per field, "resend"
     true for PENDING_APPROVAL (the button reads "Renvoyer"), "email" the address the contract goes to (may be null),
@@ -52,7 +53,7 @@
 
             <form class="form" method="post" novalidate
                   th:action="@{/mandates/{id}/contract(id=${mandate.id})}" data-contract-form>
-                <!-- The two terms on one line. -->
+                <!-- The two terms: one per line on phones, on one line from 640px. -->
                 <div class="mandate-terms__fields">
                     <div class="field">
                         <label class="field__label" for="contractDuration">Durée</label>
