@@ -11,6 +11,7 @@ import com.wutsi.ndopify.match.dto.MatchRejectionReason
 import com.wutsi.ndopify.npc.service.TenantFixtures
 import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.refdata.dto.Location
+import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.visit.dto.Visit
 import com.wutsi.ndopify.visit.dto.VisitInterest
@@ -67,6 +68,7 @@ object VisitFixtures {
         customerId = CUSTOMER_ID,
         status = VisitStatus.REQUESTED,
         type = VisitType.ON_SITE,
+        visitFee = Money(5000, "XAF"),
         requestedAt = date("2026-11-07T09:30:00Z"),
         note = "Je viendrai avec mon mari.",
         createdAt = date("2026-11-05T04:00:00Z"),

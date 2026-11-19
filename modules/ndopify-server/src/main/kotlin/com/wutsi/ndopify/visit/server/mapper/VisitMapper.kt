@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.visit.server.mapper
 
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
+import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.visit.dto.CoBrokerageVisitSummary
 import com.wutsi.ndopify.visit.dto.Visit
 import com.wutsi.ndopify.visit.dto.VisitSummary
@@ -15,7 +16,7 @@ import org.springframework.stereotype.Service
  */
 @Service
 class VisitMapper {
-    fun toVisit(visit: VisitEntity, listing: ListingEntity, showCode: Boolean): Visit {
+    fun toVisit(visit: VisitEntity, listing: ListingEntity, showCode: Boolean, visitFee: Money = Money()): Visit {
         val showAddress = showCode && visit.type == VisitType.ON_SITE && visit.scheduledAt != null
         return Visit(
             id = visit.id ?: -1,
@@ -26,6 +27,7 @@ class VisitMapper {
             customerId = visit.customerId,
             status = visit.status,
             type = visit.type,
+            visitFee = visitFee,
             requestedAt = visit.requestedAt,
             note = visit.note,
             scheduledAt = visit.scheduledAt,

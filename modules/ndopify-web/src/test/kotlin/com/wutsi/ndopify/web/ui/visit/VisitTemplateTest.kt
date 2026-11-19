@@ -8,6 +8,7 @@ import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.refdata.dto.Location
+import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.visit.dto.Visit
 import com.wutsi.ndopify.visit.dto.VisitInterest
@@ -300,5 +301,20 @@ class VisitTemplateTest {
             .forEach { status ->
                 assertNull(render(of(visit(status, VisitType.ON_SITE))).selectFirst("form.feedback"), status.name)
             }
+    }
+
+    @Test
+    fun `an open visit states the fee`() {
+        val doc = render(of(visit(VisitStatus.CONFIRMED, VisitType.ON_SITE).copy(visitFee = Money(5000, "XAF"))))
+
+        assertTrue(doc.selectFirst("[data-visit-fee]")!!.text().contains("5 000 FCFA"))
+    }
+
+    @Test
+    fun `an ended visit states no fee`() {
+        assertNull(
+            render(of(visit(VisitStatus.COMPLETED, VisitType.ON_SITE).copy(visitFee = Money(5000, "XAF"))))
+                .selectFirst("[data-visit-fee]"),
+        )
     }
 }

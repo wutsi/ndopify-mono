@@ -468,6 +468,23 @@
     flex: none;
 }
 
+/* The fee the agent collects at the visit: a quiet line under the type, in every state. */
+.visit-fee {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    font-size: var(--step-hint);
+    line-height: 1.5;
+}
+
+.visit-fee .icon {
+    flex: none;
+    width: 1.125rem;
+    height: 1.125rem;
+    margin-top: 0.1em;
+    color: var(--color-info-fg);
+}
+
 .visit-card__listing {
     display: flex;
     align-items: center;

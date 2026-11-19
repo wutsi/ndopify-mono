@@ -52,7 +52,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-/** Approving, closing and cancelling: the age, the events and the notification, that the endpoint tests can't see. */
+/** Approving, closing, cancelling and the fee read: the age, the events and the notification, that the endpoint tests can't see. */
 class MandateServiceTest {
     private val dao = mock<MandateRepository>()
     private val assignmentDao = mock<AssignmentRepository>()
@@ -504,5 +504,30 @@ class MandateServiceTest {
         assertFalse(service.sendApprovedNotification(1L))
 
         verifyNoInteractions(approvedNotifier)
+    }
+
+    @Test
+    fun `visit fee - from the mandate's contract`() {
+        val mandate = mandate(MandateStatus.APPROVED).copy(contractId = "c-1")
+        doReturn(ContractEntity(id = "c-1", visitFeeAmount = 5000, visitFeeCurrency = "XAF"))
+            .whenever(contractService).findByIdOrNull("c-1")
+
+        assertEquals(Money(5000, "XAF"), service.visitFee(mandate))
+    }
+
+    @Test
+    fun `visit fee - no contract`() {
+        assertEquals(Money(), service.visitFee(mandate(MandateStatus.APPROVED)))
+
+        verify(contractService, never()).findByIdOrNull(any())
+    }
+
+    // A contract written before #188, or outside the API: the amount may be set but its currency blank
+    @Test
+    fun `visit fee - a legacy blank currency is no fee`() {
+        val mandate = mandate(MandateStatus.APPROVED).copy(contractId = "c-1")
+        doReturn(ContractEntity(id = "c-1", visitFeeAmount = 5000)).whenever(contractService).findByIdOrNull("c-1")
+
+        assertEquals(Money(), service.visitFee(mandate))
     }
 }

@@ -167,6 +167,8 @@ img.proposal__avatar {
   line-height: 1.45;
 }
 .visit-request__contact .icon { margin-top: 0.1em; color: var(--color-text-info); }
+.visit-request__fee { display: flex; align-items: flex-start; gap: var(--space-sm); margin: var(--space-md) 0 0; font-size: 0.875rem; line-height: 1.5; }
+.visit-request__fee .icon { flex: none; width: 1.125rem; height: 1.125rem; margin-top: 0.15em; color: var(--color-text-info); }
 /* The type: the chosen one's line only, where :has is supported */
 .visit-type__hint { margin: var(--space-sm) 0 0; font-size: 0.8125rem; line-height: 1.45; }
 @supports selector(:has(*)) {

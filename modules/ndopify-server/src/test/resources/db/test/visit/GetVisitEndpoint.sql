@@ -13,3 +13,9 @@ INSERT INTO T_VISIT(
      '2026-10-01 10:00:00', '2026-12-02 10:00:00', '9999', '2026-10-01 10:00:00', NULL),
     (9, 2, 9, 9, 901, 90, 90, 'CONFIRMED', 'ON_SITE',
      '2026-10-01 10:00:00', '2026-12-01 10:00:00', '0000', '2026-10-01 10:00:00', NULL);
+
+-- Mandate 1's signed contract carries the visit fee; mandate 2 has none
+INSERT INTO T_CONTRACT(id, tenant_id, number, type, status, duration_months, visit_fee_amount, visit_fee_currency, created_at)
+VALUES ('c-1', 1, 'MNDT-2024-000001', 'SEARCH', 'SIGNED', 6, 5000, 'XAF', '2024-05-20 00:00:00');
+
+UPDATE T_MANDATE SET contract_id = 'c-1' WHERE id = 1;

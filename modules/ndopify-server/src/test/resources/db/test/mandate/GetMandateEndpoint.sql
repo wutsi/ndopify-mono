@@ -64,3 +64,9 @@ INSERT INTO T_MANDATE(
 INSERT INTO T_MANDATE_NEIGHBORHOOD(mandate_id, neighborhood_id) VALUES
     (1, 111),
     (1, 222);
+
+-- The signed contract of mandate 1, with a per-visit fee
+INSERT INTO T_CONTRACT(id, tenant_id, number, type, status, duration_months, visit_fee_amount, visit_fee_currency, created_at)
+VALUES ('c-1', 1, 'MNDT-2024-000001', 'SEARCH', 'SIGNED', 6, 5000, 'XAF', '2024-05-20 00:00:00');
+
+UPDATE T_MANDATE SET contract_id = 'c-1' WHERE id = 1;

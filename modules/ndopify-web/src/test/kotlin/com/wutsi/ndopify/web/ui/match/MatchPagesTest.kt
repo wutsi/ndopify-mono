@@ -214,6 +214,29 @@ class MatchPagesTest {
     }
 
     @Test
+    fun `the visit fee is stated before the request`() {
+        val page = page(mandate = mandate.copy(visitFee = Money(5000, "XAF")))
+
+        assertEquals("5 000 FCFA", page.visitFee!!.replace('\u00a0', ' '))
+        assertEquals(
+            "Les visites sont organisées par votre agent. Frais de visite : 5 000 FCFA par visite, réglés directement à lui."
+                .replace('\u00a0', ' '),
+            page.listing!!.termsNote.replace('\u00a0', ' '),
+        )
+    }
+
+    @Test
+    fun `no fee reads aucun frais de visite`() {
+        val page = page()
+
+        assertNull(page.visitFee)
+        assertEquals(
+            "Les visites sont organisées par votre agent. Aucun frais de visite.",
+            page.listing!!.termsNote,
+        )
+    }
+
+    @Test
     fun `unavailable - listing not readable`() {
         val page = page(listing = null)
 

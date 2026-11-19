@@ -92,8 +92,7 @@
             <tr th:each="term : ${listing.terms}"><th scope="row" th:text="${term.first}">Loyer</th><td th:text="${term.second}">175K FCFA / mois</td></tr>
             </tbody>
         </table>
-        <p class="terms-note">Aucun paiement en espèces : les visites se règlent avec le Pass Visite par
-            Mobile Money.</p>
+        <p class="terms-note" th:if="${listing.termsNote}" th:text="${listing.termsNote}">Les visites sont organisées par votre agent.</p>
     </section>
 
     <section aria-labelledby="location-heading" class="listing__section">

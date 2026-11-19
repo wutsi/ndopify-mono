@@ -150,6 +150,14 @@ class ListingTemplateTest {
     }
 
     @Test
+    fun `the conditions note is neutral`() {
+        val doc = render()
+
+        assertTrue(doc.selectFirst(".terms-note")!!.text().contains("Les visites sont organisées par votre agent."))
+        assertFalse(doc.text().contains("Pass Visite"))
+    }
+
+    @Test
     fun `closed listing`() {
         val doc = render(
             page(

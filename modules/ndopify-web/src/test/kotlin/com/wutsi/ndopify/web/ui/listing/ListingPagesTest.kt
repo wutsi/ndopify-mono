@@ -357,4 +357,9 @@ class ListingPagesTest {
 
         assertFalse(page.toString().contains("Clé chez le gardien"))
     }
+
+    @Test
+    fun `the conditions note is neutral`() {
+        assertEquals("Les visites sont organisées par votre agent.", page().termsNote)
+    }
 }

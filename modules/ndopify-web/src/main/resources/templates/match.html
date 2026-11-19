@@ -224,6 +224,8 @@
                            th:if="${page.visit?.form}">
                             <svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Demander une visite
                         </a>
+                        <p class="price-card__hint" th:if="${page.visit?.form != null and page.visitFee != null}">Visite&nbsp;: <strong th:text="${page.visitFee}">5 000 FCFA</strong> de frais, réglés directement à <span th:text="${page.agentFirstName}">Serge</span>. Il vous confirme la date par e-mail.</p>
+                        <p class="price-card__hint" th:if="${page.visit?.form != null and page.visitFee == null}">Aucun frais de visite. <span th:text="${page.agentFirstName}">Serge</span> vous confirme la date par e-mail.</p>
 
                         <!-- A visit is open: its slot, its page, and the status hint -->
                         <div class="answer__visit" th:if="${page.visit?.open}" th:with="open=${page.visit.open}">
@@ -416,6 +418,13 @@
                 <label for="visit-note">Un mot pour <th:block th:text="${page.agentFirstName}">Serge</th:block> <span class="field__optional">(facultatif)</span></label>
                 <textarea id="visit-note" maxlength="500" name="note" rows="2"></textarea>
             </div>
+            <p class="visit-request__fee" th:if="${page.visitFee}">
+                <svg aria-hidden="true" class="icon"><use href="#i-info"/></svg>
+                <span>Frais de visite&nbsp;: <strong th:text="${page.visitFee}">5 000 FCFA</strong>, à régler directement à <span th:text="${page.agentFirstName}">Serge</span> lors de la visite. Ndopify ne perçoit aucun paiement.</span>
+            </p>
+            <p class="visit-request__fee" th:unless="${page.visitFee}">
+                <svg aria-hidden="true" class="icon"><use href="#i-info"/></svg><span>Aucun frais de visite.</span>
+            </p>
             <button class="btn btn-primary interest-form__submit" type="submit">Envoyer la demande</button>
         </form>
     </div>

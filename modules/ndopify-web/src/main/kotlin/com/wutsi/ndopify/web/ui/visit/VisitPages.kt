@@ -48,6 +48,9 @@ object VisitPages {
         VisitType.VIDEO to "Visite vidéo",
     )
 
+    /** The statuses whose visit is still ahead: the page states the fee to collect only for those. */
+    private val OPEN_STATUSES = setOf(VisitStatus.REQUESTED, VisitStatus.CONFIRMED, VisitStatus.CHECKED_IN)
+
     fun of(
         visit: Visit,
         listing: Listing?,
@@ -68,6 +71,15 @@ object VisitPages {
         val fromConfirmed = visit.status != VisitStatus.REQUESTED && visit.status != VisitStatus.UNKNOWN
         val code = if (fromConfirmed) visit.code?.ifBlank { null } else null
         val intro = feedbackIntro(visit, tenant, formatter)
+        val visitFee = if (visit.status in OPEN_STATUSES) {
+            visit.visitFee.takeIf { it.amount > 0 }?.let {
+                "Frais de visite : ${formatter.money(it.amount, it.currency)}, à régler directement à " +
+                    "${agent?.party?.firstName?.ifBlank { null } ?: NO_AGENT_NAME} lors de la visite. " +
+                    "Ndopify ne perçoit aucun paiement."
+            } ?: "Aucun frais de visite."
+        } else {
+            null
+        }
         val error = if (
             feedback == FEEDBACK_INVALID && visit.status == VisitStatus.COMPLETED && visit.interest == null
         ) {
@@ -102,6 +114,7 @@ object VisitPages {
             feedbackError = error,
             listing = listing?.let { ListingPages.of(it, images, locations, tenant, formatter, today) },
             agent = agent?.let { agent(it) },
+            visitFee = visitFee,
             matchUrl = "/match/${visit.matchId}",
         )
     }

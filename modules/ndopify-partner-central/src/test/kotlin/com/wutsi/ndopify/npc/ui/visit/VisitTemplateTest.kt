@@ -22,6 +22,7 @@ import com.wutsi.ndopify.npc.ui.visit.VisitFixtures.confirmed
 import com.wutsi.ndopify.npc.ui.visit.VisitFixtures.date
 import com.wutsi.ndopify.npc.ui.visit.VisitFixtures.requested
 import com.wutsi.ndopify.npc.ui.visit.VisitFixtures.window
+import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.visit.dto.Visit
 import com.wutsi.ndopify.visit.dto.VisitNoShowReason
 import com.wutsi.ndopify.visit.dto.VisitParty
@@ -278,6 +279,39 @@ class VisitTemplateTest {
 
         assertTrue(panel.text().contains("Le client ne répond pas"))
         assertTrue(panel.text().contains("Déclaré par vous : l'absence du client est enregistrée."))
+    }
+
+    @Test
+    fun `open visits state the fee to collect`() {
+        listOf(requested(), confirmed(), checkedIn()).forEach { visit ->
+            val fee = render(visit).selectFirst("[data-visit-fee]")
+
+            assertNotNull(fee, visit.status.name)
+            assertTrue(
+                fee.text().replace('\u00a0', ' ').replace('\u202f', ' ')
+                    .contains("Frais de visite : 5 000 FCFA, à encaisser auprès du client à la visite."),
+                visit.status.name,
+            )
+        }
+    }
+
+    @Test
+    fun `an ended visit states no fee`() {
+        listOf(
+            completed(),
+            confirmed().copy(status = VisitStatus.CANCELLED),
+            requested().copy(status = VisitStatus.EXPIRED),
+            confirmed().copy(status = VisitStatus.NO_SHOW),
+        ).forEach { visit ->
+            assertNull(render(visit).selectFirst("[data-visit-fee]"), visit.status.name)
+        }
+    }
+
+    @Test
+    fun `no fee reads aucun frais de visite`() {
+        val fee = render(requested().copy(visitFee = Money())).selectFirst("[data-visit-fee]")!!
+
+        assertEquals("Aucun frais de visite.", fee.text())
     }
 
     @Test

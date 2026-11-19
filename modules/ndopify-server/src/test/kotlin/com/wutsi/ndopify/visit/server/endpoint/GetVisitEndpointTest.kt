@@ -3,6 +3,7 @@ package com.wutsi.ndopify.visit.server.endpoint
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
+import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.visit.dto.GetVisitResponse
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
@@ -70,6 +71,22 @@ class GetVisitEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(VisitStatus.REQUESTED, response.body!!.visit.status)
         assertNull(response.body!!.visit.code)
         assertNull(response.body!!.visit.address)
+    }
+
+    @Test
+    fun `the visit fee comes from the mandate's contract`() {
+        val response = rest.getForEntity("/v1/visits/1", GetVisitResponse::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(Money(5000, "XAF"), response.body!!.visit.visitFee)
+    }
+
+    @Test
+    fun `no contract, no visit fee`() {
+        val response = rest.getForEntity("/v1/visits/4", GetVisitResponse::class.java)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        assertEquals(Money(), response.body!!.visit.visitFee)
     }
 
     @Test

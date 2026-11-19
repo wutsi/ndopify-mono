@@ -75,8 +75,15 @@ object MatchPages {
         visit: String? = null,
     ): MatchPage {
         val state = state(match, listing)
+        val visitFee = mandate.visitFee.takeIf { it.amount > 0 }
+            ?.let { formatter.money(it.amount, it.currency) }
+        val termsNote = "Les visites sont organisées par votre agent. " +
+            (
+                visitFee?.let { "Frais de visite : $it par visite, réglés directement à lui." }
+                    ?: "Aucun frais de visite."
+                )
         val listingPage = listing?.takeIf { state != AnswerState.UNAVAILABLE }
-            ?.let { ListingPages.of(it, images, locations, tenant, formatter, today) }
+            ?.let { ListingPages.of(it, images, locations, tenant, formatter, today).copy(termsNote = termsNote) }
         val firstName = agent.party.firstName.trim().ifEmpty { NO_AGENT_NAME }
         val fullName = "${agent.party.firstName} ${agent.party.lastName}".trim().ifEmpty { NO_AGENT_NAME }
         val open = openVisit?.let { OpenVisit(it.id, typeLabel(it.type), slot(it, tenant, formatter), it.status) }
@@ -118,6 +125,7 @@ object MatchPages {
             },
             criteria = if (listingPage != null) criteria(match, mandate) else emptyList(),
             listing = listingPage,
+            visitFee = visitFee,
             flash = when {
                 answer == "accepted" && state == AnswerState.ACCEPTED ->
                     "C'est noté : ce logement vous intéresse, votre agent est prévenu."

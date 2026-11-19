@@ -6,6 +6,7 @@ import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.refdata.dto.Location
+import com.wutsi.ndopify.refdata.dto.Money
 import com.wutsi.ndopify.visit.dto.Visit
 import com.wutsi.ndopify.visit.dto.VisitInterest
 import com.wutsi.ndopify.visit.dto.VisitParty
@@ -177,5 +178,34 @@ class VisitPagesTest {
 
         assertNull(page.feedbackError)
         assertNull(page.feedbackIntro)
+    }
+
+    @Test
+    fun `an open visit states the fee`() {
+        listOf(VisitStatus.REQUESTED, VisitStatus.CONFIRMED, VisitStatus.CHECKED_IN).forEach { status ->
+            val page = of(visit(status, VisitType.ON_SITE).copy(visitFee = Money(5000, "XAF")))
+
+            assertTrue(page.visitFee!!.replace('\u00a0', ' ').contains("5 000 FCFA"), status.name)
+            assertTrue(page.visitFee!!.contains("Ndopify ne perçoit aucun paiement"), status.name)
+        }
+    }
+
+    @Test
+    fun `an ended visit states no fee`() {
+        listOf(VisitStatus.COMPLETED, VisitStatus.CANCELLED, VisitStatus.EXPIRED, VisitStatus.NO_SHOW).forEach { status ->
+            assertNull(of(visit(status, VisitType.ON_SITE).copy(visitFee = Money(5000, "XAF"))).visitFee)
+        }
+    }
+
+    @Test
+    fun `no fee`() {
+        assertEquals("Aucun frais de visite.", of(visit(VisitStatus.REQUESTED, VisitType.ON_SITE)).visitFee)
+    }
+
+    @Test
+    fun `a video visit states the same fee`() {
+        val page = of(visit(VisitStatus.CONFIRMED, VisitType.VIDEO).copy(visitFee = Money(5000, "XAF")))
+
+        assertTrue(page.visitFee!!.replace('\u00a0', ' ').contains("5 000 FCFA"))
     }
 }
