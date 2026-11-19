@@ -40,7 +40,7 @@ class VisitReminderBotlet(
         val url = tenant.partnerCentralUrl?.removeSuffix("/")
         client.sendMessage(
             chatId,
-            text(visit, customer, agent, listing, tenant, formatter),
+            text(visit, customer, listing, tenant, formatter),
             listOfNotNull(
                 url?.let { TelegramButton("Voir la visite", url = "$it/visits/${visit.id}") },
                 customer.whatsappNumber?.takeIf { it.isNotBlank() }?.let {
@@ -53,16 +53,15 @@ class VisitReminderBotlet(
     private fun text(
         visit: VisitEntity,
         customer: CustomerEntity,
-        agent: AgentEntity,
         listing: ListingEntity,
         tenant: TenantEntity,
         formatter: TenantFormatter,
     ): String {
         val lines = mutableListOf<String>()
-        lines.add("Bonjour ${agent.party.fullName()},")
+        lines.add("Rappel de la visite avec ${customer.party.fullName()}")
         lines.add("")
         lines.add(
-            "Petit rappel : la visite du bien ${listingTitle(listing)} avec ${customer.party.fullName()} " +
+            "La visite du bien ${listingTitle(listing)} avec ${customer.party.fullName()} " +
                 "a lieu ${dayWord(visit, tenant)}, ${formatter.date(visit.scheduledAt!!)} à " +
                 "${formatter.time(visit.scheduledAt)}.",
         )

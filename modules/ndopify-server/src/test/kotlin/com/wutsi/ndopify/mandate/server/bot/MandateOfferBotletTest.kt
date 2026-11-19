@@ -27,6 +27,7 @@ import java.util.Date
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class MandateOfferBotletTest {
@@ -62,7 +63,8 @@ class MandateOfferBotletTest {
         val text = argumentCaptor<String>()
         val buttons = argumentCaptor<List<TelegramButton>>()
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
-        assertTrue(text.firstValue.contains("Bonjour Kim Possible"))
+        assertTrue(text.firstValue.startsWith("Un nouveau mandat vous est proposé à Yaounde"))
+        assertTrue(text.firstValue.contains("Un client recherche un bien, et nous vous proposons son mandat en exclusivité."))
         assertTrue(text.firstValue.contains("Recherche: Location - Appartement"))
         assertTrue(text.firstValue.contains("Quartier(s): Bastos"))
         assertTrue(text.firstValue.contains("Budget: 150"))
@@ -91,5 +93,25 @@ class MandateOfferBotletTest {
         assertTrue(text.firstValue.contains("Prix: 25"))
         assertTrue(text.firstValue.contains("Surface: 250 m²"))
         assertTrue(text.firstValue.contains("Disponible à partir du: 01/12/2026"))
+    }
+
+    @Test
+    fun `a mandate without a resolvable city has no dangling place`() {
+        val assignment = AssignmentEntity(
+            id = 98L,
+            mandate = MandateEntity(
+                id = 3L, tenantId = 1L, cityId = -1L, listingType = ListingType.RENTAL,
+                propertyType = PropertyType.APARTMENT, price = 150000, currencyCode = "XAF",
+                pricePeriodicityType = PeriodicityType.MONTHLY, mandateType = MandateType.SEARCH,
+            ),
+            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
+        )
+
+        botlet.send(assignment, agent, 1000L)
+
+        val text = argumentCaptor<String>()
+        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        assertTrue(text.firstValue.startsWith("Un nouveau mandat vous est proposé\n"))
+        assertFalse(text.firstValue.contains(" à \n"))
     }
 }

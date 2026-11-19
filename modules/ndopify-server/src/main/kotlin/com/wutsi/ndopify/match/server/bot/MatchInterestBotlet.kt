@@ -34,18 +34,18 @@ class MatchInterestBotlet(
         }
         client.sendMessage(
             chatId,
-            text(agent, customer, listing),
+            text(customer, listing),
             listOfNotNull(whatsapp, mandateButton),
         )
     }
 
-    private fun text(agent: AgentEntity, customer: CustomerEntity, listing: ListingEntity): String {
+    private fun text(customer: CustomerEntity, listing: ListingEntity): String {
         val lines = mutableListOf<String>()
-        lines.add("Bonjour ${agent.party.fullName()},")
-        lines.add("")
-        lines.add("${customer.party.fullName()} s'intéresse à un logement. Contactez-le pour organiser la visite.")
+        lines.add("${customer.party.fullName()} s'intéresse à un logement")
         lines.add("")
         lines.add("Bien: " + (listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"))
+        lines.add("")
+        lines.add("Contactez-le pour organiser la visite.")
         return lines.joinToString("\n")
     }
 }

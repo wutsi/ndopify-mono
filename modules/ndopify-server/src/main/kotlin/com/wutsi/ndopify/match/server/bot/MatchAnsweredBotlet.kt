@@ -35,7 +35,7 @@ class MatchAnsweredBotlet(
         val formatter = TenantFormatter(tenant)
         client.sendMessage(
             chatId,
-            text(match, customer, agent, city, formatter),
+            text(match, customer, city, formatter),
             tenant.partnerCentralUrl?.removeSuffix("/")?.let { url ->
                 listOf(TelegramButton("Voir le mandat", url = "$url/mandates/${match.mandate.id}"))
             } ?: emptyList(),
@@ -45,7 +45,6 @@ class MatchAnsweredBotlet(
     private fun text(
         match: MatchEntity,
         customer: CustomerEntity,
-        agent: AgentEntity,
         city: String,
         formatter: TenantFormatter,
     ): String {
@@ -53,12 +52,7 @@ class MatchAnsweredBotlet(
         val listing = match.listing
         val accepted = match.status == MatchStatus.ACCEPTED
         val lines = mutableListOf<String>()
-        lines.add("Bonjour ${agent.party.fullName()},")
-        lines.add("")
-        lines.add(
-            (if (accepted) "Bonne nouvelle : " else "") +
-                "${customer.party.fullName()} a ${if (accepted) "accepté" else "refusé"} la proposition.",
-        )
+        lines.add("${customer.party.fullName()} a ${if (accepted) "accepté" else "refusé"} la proposition")
         MatchAnsweredLabels.rejectionReason(match.rejectionReasonCode)
             ?.let { lines.add("Motif: $it") }
         match.rejectionReason?.ifBlank { null }?.let { lines.add("Commentaire: $it") }

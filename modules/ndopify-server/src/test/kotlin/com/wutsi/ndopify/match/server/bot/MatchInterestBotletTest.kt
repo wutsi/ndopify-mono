@@ -9,7 +9,6 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
-import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
@@ -27,22 +26,17 @@ class MatchInterestBotletTest {
     private val client = mock<TelegramClient>()
     private val botlet = MatchInterestBotlet(tenantService, client)
 
-    private val tenant = TenantEntity(
-        id = 1L,
-        name = "Ndopify",
-        partnerCentralUrl = "https://partner.ndopify.com/",
-    )
-    private val mandate = MandateEntity(id = 1L, tenantId = 1L, listingType = ListingType.RENTAL)
-    private val listing = ListingEntity(id = 102L, title = "Small apartment")
-    private val customer = CustomerEntity(
-        id = 10L,
-        party = PartyEntity(id = 100L, firstName = "Ray", lastName = "Sponsible"),
-        whatsappNumber = "+237600000001",
-    )
+    private val tenant = TenantEntity(id = 1L, partnerCentralUrl = "https://partner.ndopify.com/")
     private val agent = AgentEntity(
         id = 20L,
         party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible"),
     )
+    private val customer = CustomerEntity(
+        id = 10L,
+        party = PartyEntity(id = 100L, firstName = "Ray", lastName = "Sponsible"),
+    )
+    private val mandate = MandateEntity(id = 5L, tenantId = 1L)
+    private val listing = ListingEntity(id = 101L, title = "Nice apartment")
 
     @BeforeTest
     fun setUp() {
@@ -50,34 +44,63 @@ class MatchInterestBotletTest {
     }
 
     @Test
-    fun `tells the agent to contact the customer, with WhatsApp and the mandate`() {
-        botlet.send(agent, customer, mandate, listing, 99L)
+    fun `the interest opens with the event, not a greeting`() {
+        botlet.send(agent, customer, mandate, listing, 1000L)
 
-        val captor = argumentCaptor<String>()
+        val text = argumentCaptor<String>()
+        val buttons = argumentCaptor<List<TelegramButton>>()
+        verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
+        assertEquals(
+            """
+            Ray Sponsible s'intéresse à un logement
+
+            Bien: Nice apartment
+
+            Contactez-le pour organiser la visite.
+            """.trimIndent(),
+            text.firstValue,
+        )
+        assertEquals(
+            listOf(TelegramButton("Voir le mandat", url = "https://partner.ndopify.com/mandates/5")),
+            buttons.firstValue,
+        )
+    }
+
+    @Test
+    fun `a listing without a title is named by its id`() {
+        botlet.send(agent, customer, mandate, listing.copy(title = null), 1000L)
+
+        val text = argumentCaptor<String>()
+        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        assertTrue(text.firstValue.contains("Bien: Bien n° 101"))
+    }
+
+    @Test
+    fun `a customer with a WhatsApp number gets a contact button`() {
+        botlet.send(agent, customer.copy(whatsappNumber = "+237600000001"), mandate, listing, 1000L)
+
+        val text = argumentCaptor<String>()
         verify(client).sendMessage(
-            eq(99L),
-            captor.capture(),
+            eq(1000L),
+            text.capture(),
             eq(
                 listOf(
                     TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237600000001"),
-                    TelegramButton("Voir le mandat", url = "https://partner.ndopify.com/mandates/1"),
+                    TelegramButton("Voir le mandat", url = "https://partner.ndopify.com/mandates/5"),
                 ),
             ),
         )
-        assertTrue(captor.firstValue.contains("Contactez-le pour organiser la visite."))
-        assertTrue(captor.firstValue.contains("Ray Sponsible"))
-        assertTrue(captor.firstValue.contains("Kim Possible"))
-        assertTrue(captor.firstValue.contains("Small apartment"))
+        assertTrue(text.firstValue.startsWith("Ray Sponsible s'intéresse à un logement"))
     }
 
     @Test
     fun `no WhatsApp number, no WhatsApp button`() {
-        botlet.send(agent, customer.copy(whatsappNumber = null), mandate, listing, 99L)
+        botlet.send(agent, customer, mandate, listing, 1000L)
 
         verify(client).sendMessage(
-            eq(99L),
+            eq(1000L),
             any(),
-            eq(listOf(TelegramButton("Voir le mandat", url = "https://partner.ndopify.com/mandates/1"))),
+            eq(listOf(TelegramButton("Voir le mandat", url = "https://partner.ndopify.com/mandates/5"))),
         )
     }
 
@@ -85,10 +108,10 @@ class MatchInterestBotletTest {
     fun `no partner central, only the WhatsApp button`() {
         doReturn(tenant.copy(partnerCentralUrl = null)).whenever(tenantService).findById(1L)
 
-        botlet.send(agent, customer, mandate, listing, 99L)
+        botlet.send(agent, customer.copy(whatsappNumber = "+237600000001"), mandate, listing, 1000L)
 
         verify(client).sendMessage(
-            eq(99L),
+            eq(1000L),
             any(),
             eq(listOf(TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237600000001"))),
         )

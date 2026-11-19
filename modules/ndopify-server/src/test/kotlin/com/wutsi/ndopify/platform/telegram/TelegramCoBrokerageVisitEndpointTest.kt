@@ -55,8 +55,8 @@ class TelegramCoBrokerageVisitEndpointTest : AuthorizationAwareEndpointIntegrati
         val text = argumentCaptor<String>()
         val buttons = argumentCaptor<List<TelegramButton>>()
         verify(client).sendMessage(eq(2000L), text.capture(), buttons.capture())
-        assertTrue(text.firstValue.contains("Bonjour Kim Possible"))
-        assertTrue(text.firstValue.contains("J'ai organisé une visite de votre bien Nice apartment le "))
+        assertTrue(text.firstValue.startsWith("Visite de votre bien confirmée"))
+        assertTrue(text.firstValue.contains("J'ai organisé une visite de Nice apartment le "))
         assertTrue(text.firstValue.contains(" à 10:00 (Sur place)."))
         assertTrue(text.firstValue.contains("Visite organisée par John Doe."))
         assertEquals(

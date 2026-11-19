@@ -33,7 +33,7 @@ class VisitRequestedBotlet(
         val url = tenant.partnerCentralUrl?.removeSuffix("/")
         client.sendMessage(
             chatId,
-            text(visit, customer, agent, listing, formatter),
+            text(visit, customer, listing, formatter),
             listOfNotNull(
                 url?.let { TelegramButton("Voir la visite", url = "$it/visits/${visit.id}") },
                 customer.whatsappNumber?.takeIf { it.isNotBlank() }?.let {
@@ -46,14 +46,11 @@ class VisitRequestedBotlet(
     private fun text(
         visit: VisitEntity,
         customer: CustomerEntity,
-        agent: AgentEntity,
         listing: ListingEntity,
         formatter: TenantFormatter,
     ): String {
         val lines = mutableListOf<String>()
-        lines.add("Bonjour ${agent.party.fullName()},")
-        lines.add("")
-        lines.add("${customer.party.fullName()} souhaite visiter un bien que vous lui avez proposé.")
+        lines.add("${customer.party.fullName()} demande une visite")
         lines.add("")
         lines.add("Bien: " + (listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"))
         lines.add("Date souhaitée: ${formatter.date(visit.requestedAt)} à ${formatter.time(visit.requestedAt)}")

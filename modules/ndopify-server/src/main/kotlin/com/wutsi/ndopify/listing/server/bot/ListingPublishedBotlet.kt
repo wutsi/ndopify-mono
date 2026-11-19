@@ -44,7 +44,7 @@ class ListingPublishedBotlet(
      * ([com.wutsi.ndopify.platform.telegram.TelegramException]): the notifier then falls back to the e-mail.
      */
     fun send(listing: ListingEntity, customer: CustomerEntity, agent: AgentEntity, chatId: Long) {
-        val caption = caption(listing, customer, agent)
+        val caption = caption(listing, customer)
         val buttons = ListingUrls.publicUrl(tenantService.findById(listing.tenantId!!), listing)
             ?.let { url -> listOf(TelegramButton("Voir l'annonce", url = url)) }
             ?: emptyList()
@@ -56,14 +56,15 @@ class ListingPublishedBotlet(
         client.sendMessage(chatId, caption, buttons)
     }
 
-    private fun caption(listing: ListingEntity, customer: CustomerEntity, agent: AgentEntity): String {
+    private fun caption(listing: ListingEntity, customer: CustomerEntity): String {
         val lines = mutableListOf<String>()
-        lines.add("Bonjour ${agent.party.fullName()},")
+        val city = locationService.findByIdOrNull(listing.cityId)?.name?.ifBlank { null }
+        lines.add("Votre annonce" + (city?.let { " à $it" } ?: "") + " est publiée")
         lines.add("")
-        lines.add("L'annonce du bien de ${customer.party.fullName()} est désormais publiée.")
+        lines.add("Le bien de ${customer.party.fullName()} est en ligne.")
         lines.add("")
         lines.add("Annonce: " + (listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"))
-        locationService.findByIdOrNull(listing.cityId)?.name?.ifBlank { null }?.let { lines.add("Ville: $it") }
+        city?.let { lines.add("Ville: $it") }
         listing.neighborhoodId
             ?.let { id -> locationService.findByIdOrNull(id)?.name }
             ?.ifBlank { null }

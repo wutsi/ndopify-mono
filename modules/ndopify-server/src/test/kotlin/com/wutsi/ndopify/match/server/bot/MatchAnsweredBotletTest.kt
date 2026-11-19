@@ -95,9 +95,7 @@ class MatchAnsweredBotletTest {
 
         assertEquals(
             """
-            Bonjour Kim Possible,
-
-            Bonne nouvelle : Ray Sponsible a accepté la proposition.
+            Ray Sponsible a accepté la proposition
 
             Bien: Small apartment
             Loyer: 140 000 FCFA / mois
@@ -132,7 +130,7 @@ class MatchAnsweredBotletTest {
 
         assertTrue(
             text().contains(
-                "Ray Sponsible a refusé la proposition.\nMotif: trop cher\nCommentaire: Trop loin du travail.\n",
+                "Ray Sponsible a refusé la proposition\nMotif: trop cher\nCommentaire: Trop loin du travail.\n",
             ),
         )
     }

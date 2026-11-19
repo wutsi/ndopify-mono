@@ -32,14 +32,14 @@ class MatchVisitAgentNudgeBotlet(
                 TelegramButton("Planifier la visite", url = "$it/mandates/${match.mandate.id}#match-${match.id}")
             },
         )
-        client.sendMessage(chatId, text(match, customer, agent), buttons)
+        client.sendMessage(chatId, text(match, customer), buttons)
     }
 
-    private fun text(match: MatchEntity, customer: CustomerEntity, agent: AgentEntity): String {
+    private fun text(match: MatchEntity, customer: CustomerEntity): String {
         val listing = match.listing
         val title = listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"
         return listOf(
-            "Bonjour ${agent.party.fullName()},",
+            "${customer.party.fullName()} attend une visite",
             "",
             "${customer.party.fullName()} a accepté votre proposition pour $title il y a plus de 48 h, " +
                 "mais aucune visite n'est planifiée.",

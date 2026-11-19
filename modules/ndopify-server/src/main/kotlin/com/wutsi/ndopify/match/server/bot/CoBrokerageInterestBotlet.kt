@@ -33,18 +33,18 @@ class CoBrokerageInterestBotlet(private val client: TelegramClient) {
 
     /** Sends one or more messages to [chatId]; nothing for a digest without a listing. */
     fun send(agent: AgentEntity, digest: CoBrokerageInterestDigest, chatId: Long) {
-        messages(agent, digest).forEach { message ->
+        messages(digest).forEach { message ->
             client.sendMessageRows(chatId, message.text, message.buttons.map { button -> listOf(button) })
         }
     }
 
-    private fun messages(agent: AgentEntity, digest: CoBrokerageInterestDigest): List<Message> {
+    private fun messages(digest: CoBrokerageInterestDigest): List<Message> {
         if (digest.listings.isEmpty()) {
             return emptyList()
         }
 
         val messages = mutableListOf<Message>()
-        var buffer = StringBuilder(lead(agent, digest))
+        var buffer = StringBuilder(lead(digest))
         var buttons = mutableListOf<TelegramButton>()
 
         fun flush() {
@@ -123,14 +123,12 @@ class CoBrokerageInterestBotlet(private val client: TelegramClient) {
         return parts
     }
 
-    private fun lead(agent: AgentEntity, digest: CoBrokerageInterestDigest): String {
-        val count = if (digest.agentCount == 1) {
-            "1 agent s'intéresse à vos annonces :"
+    private fun lead(digest: CoBrokerageInterestDigest): String =
+        if (digest.agentCount == 1) {
+            "1 agent s'intéresse à votre bien\n\n"
         } else {
-            "${digest.agentCount} agents s'intéressent à vos annonces :"
+            "${digest.agentCount} agents s'intéressent à vos biens\n\n"
         }
-        return "Bonjour ${agent.party.fullName()},\n\n$count\n\n"
-    }
 
     private fun header(listing: ListingInterest): String {
         val title = listing.title ?: "Bien n° ${listing.listingId}"
