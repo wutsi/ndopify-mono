@@ -620,7 +620,11 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
   number/holder-name match. `MoMoGateway` is the interface; `MoMoGatewayProvider` picks an implementation from
   `MoMoGatewayType` (`refdata.dto`). Only `MTN` (`mtn/MoMoGatewayMtn`) is wired up today.
 - `platform/storage` — file storage (`StorageService`, `StorageServiceProvider`) with `local` and `s3`
-  implementations, selected via `ndopify.storage.default-type`.
+  implementations, selected via `ndopify.storage.default-type`. `upload/DirectUploadService` presigns a browser upload
+  under a prefix (`presignedUploadUrl`, TTL `ndopify.storage.upload-url-ttl-seconds`, 600) and verifies the uploaded
+  file (path under the prefix, presence, size, sniffed type; deletes a rejected one): image-only (JPEG / PNG / WEBP,
+  5 MB). Domains call it from their own *presign* / *attach* endpoints, after their access checks, and keep their
+  multipart endpoint as the fallback. S3 only: on `local` the presign answers `{url: null}`.
 - `platform/mail` — e-mail sending (`MailService`, `MailBodyResolver`, `MailFilter`); MJML templates under
   `src/main/resources/mail/`.
 - `platform/logger` — key-value request logging (`KVLogger`, `KVLoggerFilter`).
