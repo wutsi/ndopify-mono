@@ -9,9 +9,9 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.listing.server.bot.ListingTelegramSender
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
-import com.wutsi.ndopify.platform.telegram.TelegramClient
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
 import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
@@ -33,8 +33,8 @@ import kotlin.test.assertTrue
 class VisitCancelledBotletTest {
     private val tenantService = mock<TenantService>()
     private val locationService = mock<LocationService>()
-    private val client = mock<TelegramClient>()
-    private val botlet = VisitCancelledBotlet(tenantService, locationService, client)
+    private val sender = mock<ListingTelegramSender>()
+    private val botlet = VisitCancelledBotlet(tenantService, locationService, sender)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -79,7 +79,7 @@ class VisitCancelledBotletTest {
 
         val text = argumentCaptor<String>()
         val buttons = argumentCaptor<List<TelegramButton>>()
-        verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
+        verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertEquals(
             """
             Le client a annulé la visite
@@ -110,7 +110,7 @@ class VisitCancelledBotletTest {
         )
 
         val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        verify(sender).send(eq(1000L), eq(listing.copy(neighborhoodId = null)), text.capture(), any())
         assertFalse(text.firstValue.contains("Motif:"))
         assertFalse(text.firstValue.contains("Quartier:"))
     }
@@ -120,7 +120,7 @@ class VisitCancelledBotletTest {
         botlet.send(visit, customer, agent, listing.copy(title = null), 1000L)
 
         val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        verify(sender).send(eq(1000L), eq(listing.copy(title = null)), text.capture(), any())
         assertTrue(text.firstValue.contains("Bien: Bien n° 101"))
     }
 
@@ -131,7 +131,7 @@ class VisitCancelledBotletTest {
         botlet.send(visit, customer, agent, listing, 1000L)
 
         val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
         assertFalse(text.firstValue.contains("Ville:"))
     }
 
@@ -141,7 +141,7 @@ class VisitCancelledBotletTest {
 
         botlet.send(visit, customer, agent, listing, 1000L)
 
-        verify(client).sendMessage(eq(1000L), any(), eq(emptyList<TelegramButton>()))
+        verify(sender).send(eq(1000L), eq(listing), any(), eq(emptyList<TelegramButton>()))
     }
 
     private fun date(year: Int, month: Int, day: Int, hour: Int, minute: Int): Date =

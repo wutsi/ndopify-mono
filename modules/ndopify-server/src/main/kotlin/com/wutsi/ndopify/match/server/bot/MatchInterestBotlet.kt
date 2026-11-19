@@ -2,9 +2,9 @@ package com.wutsi.ndopify.match.server.bot
 
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.listing.server.bot.ListingTelegramSender
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
-import com.wutsi.ndopify.platform.telegram.TelegramClient
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
 import com.wutsi.ndopify.platform.util.PhoneNumberUtils
 import com.wutsi.ndopify.refdata.server.service.TenantService
@@ -22,7 +22,7 @@ import org.springframework.stereotype.Service
 @Service
 class MatchInterestBotlet(
     private val tenantService: TenantService,
-    private val client: TelegramClient,
+    private val sender: ListingTelegramSender,
 ) {
     fun send(agent: AgentEntity, customer: CustomerEntity, mandate: MandateEntity, listing: ListingEntity, chatId: Long) {
         val tenant = tenantService.findById(mandate.tenantId!!)
@@ -32,8 +32,9 @@ class MatchInterestBotlet(
         val mandateButton = tenant.partnerCentralUrl?.removeSuffix("/")?.let { url ->
             TelegramButton("Voir le mandat", url = "$url/mandates/${mandate.id}")
         }
-        client.sendMessage(
+        sender.send(
             chatId,
+            listing,
             text(customer, listing),
             listOfNotNull(whatsapp, mandateButton),
         )

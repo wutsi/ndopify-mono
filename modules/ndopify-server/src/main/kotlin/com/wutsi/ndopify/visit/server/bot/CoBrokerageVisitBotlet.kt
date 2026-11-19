@@ -1,8 +1,8 @@
 package com.wutsi.ndopify.visit.server.bot
 
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
+import com.wutsi.ndopify.listing.server.bot.ListingTelegramSender
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
-import com.wutsi.ndopify.platform.telegram.TelegramClient
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
 import com.wutsi.ndopify.refdata.server.service.TenantFormatter
 import com.wutsi.ndopify.refdata.server.service.TenantService
@@ -16,8 +16,9 @@ import org.springframework.stereotype.Service
  * four messages as `CoBrokerageVisitMailet`, in French plain text, so that a linked B gets the message instead of the
  * e-mail.
  *
- * [listing]'s agent is the recipient B, [agent] is A, the organizer whose voice the message carries: the bot is the
- * sender, so the text closes with A's name instead of the e-mail's agent footer. [sendX]'s chat id comes from #135's
+ * [listing]'s agent is the recipient B, [agent] is A, the organizer whose voice the message carries: the text closes
+ * with A's name instead of the e-mail's agent footer. [ListingTelegramSender] sends the message with the listing's
+ * photo as its caption when it fits, else as the text alone. [sendX]'s chat id comes from #135's
  * link (`AgentTelegramService.chatId`), never B's e-mail. The customer is only ever "mon client": this botlet never
  * reads it, and its text carries none of its data.
  *
@@ -27,7 +28,7 @@ import org.springframework.stereotype.Service
 @Service
 class CoBrokerageVisitBotlet(
     private val tenantService: TenantService,
-    private val client: TelegramClient,
+    private val sender: ListingTelegramSender,
 ) {
     fun sendConfirmed(visit: VisitEntity, listing: ListingEntity, agent: AgentEntity, chatId: Long) =
         send(visit, listing, agent, chatId) { title, slot, type ->
@@ -91,8 +92,9 @@ class CoBrokerageVisitBotlet(
         lines.add("")
         lines.add("Visite organisée par ${agent.party.fullName()}.")
 
-        client.sendMessage(
+        sender.send(
             chatId,
+            listing,
             lines.joinToString("\n"),
             tenant.partnerCentralUrl?.removeSuffix("/")?.takeIf { it.isNotBlank() }?.let { url ->
                 listOf(TelegramButton("Voir l'annonce", url = "$url/listings/${listing.id}#visits-title"))

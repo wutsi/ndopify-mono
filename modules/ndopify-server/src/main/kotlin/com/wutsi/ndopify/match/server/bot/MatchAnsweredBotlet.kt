@@ -2,12 +2,12 @@ package com.wutsi.ndopify.match.server.bot
 
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.listing.server.bot.ListingTelegramSender
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.mandate.server.mail.MandateMailLabels
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.match.server.mail.MatchAnsweredLabels
-import com.wutsi.ndopify.platform.telegram.TelegramClient
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
 import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantFormatter
@@ -27,14 +27,15 @@ import org.springframework.stereotype.Service
 class MatchAnsweredBotlet(
     private val tenantService: TenantService,
     private val locationService: LocationService,
-    private val client: TelegramClient,
+    private val sender: ListingTelegramSender,
 ) {
     fun send(match: MatchEntity, customer: CustomerEntity, agent: AgentEntity, chatId: Long) {
         val tenant = tenantService.findById(match.tenantId!!)
         val city = locationService.findByIdOrNull(match.mandate.cityId)?.name ?: ""
         val formatter = TenantFormatter(tenant)
-        client.sendMessage(
+        sender.send(
             chatId,
+            match.listing,
             text(match, customer, city, formatter),
             tenant.partnerCentralUrl?.removeSuffix("/")?.let { url ->
                 listOf(TelegramButton("Voir le mandat", url = "$url/mandates/${match.mandate.id}"))

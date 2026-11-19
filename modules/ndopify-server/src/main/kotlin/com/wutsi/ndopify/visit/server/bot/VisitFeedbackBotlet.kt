@@ -2,8 +2,8 @@ package com.wutsi.ndopify.visit.server.bot
 
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.listing.server.bot.ListingTelegramSender
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
-import com.wutsi.ndopify.platform.telegram.TelegramClient
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
 import com.wutsi.ndopify.refdata.server.service.TenantFormatter
 import com.wutsi.ndopify.refdata.server.service.TenantService
@@ -25,13 +25,14 @@ import org.springframework.stereotype.Service
 @Service
 class VisitFeedbackBotlet(
     private val tenantService: TenantService,
-    private val client: TelegramClient,
+    private val sender: ListingTelegramSender,
 ) {
     fun send(visit: VisitEntity, customer: CustomerEntity, agent: AgentEntity, listing: ListingEntity, chatId: Long) {
         val tenant = tenantService.findById(visit.tenantId!!)
         val formatter = TenantFormatter(tenant)
-        client.sendMessage(
+        sender.send(
             chatId,
+            listing,
             text(visit, customer, listing, formatter),
             tenant.partnerCentralUrl?.removeSuffix("/")?.let { url ->
                 listOf(TelegramButton("Voir la visite", url = "$url/visits/${visit.id}"))

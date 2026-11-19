@@ -9,9 +9,9 @@ import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
+import com.wutsi.ndopify.listing.server.bot.ListingTelegramSender
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
-import com.wutsi.ndopify.platform.telegram.TelegramClient
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
@@ -31,8 +31,8 @@ import kotlin.test.assertTrue
 
 class CoBrokerageVisitBotletTest {
     private val tenantService = mock<TenantService>()
-    private val client = mock<TelegramClient>()
-    private val botlet = CoBrokerageVisitBotlet(tenantService, client)
+    private val sender = mock<ListingTelegramSender>()
+    private val botlet = CoBrokerageVisitBotlet(tenantService, sender)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -80,7 +80,7 @@ class CoBrokerageVisitBotletTest {
 
         val text = argumentCaptor<String>()
         val buttons = argumentCaptor<List<TelegramButton>>()
-        verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
+        verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertEquals(
             """
             Visite de votre bien confirmée
@@ -104,7 +104,7 @@ class CoBrokerageVisitBotletTest {
         botlet.sendConfirmed(visit.copy(type = VisitType.VIDEO), listing, searchAgent, 1000L)
 
         val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
         assertTrue(text.firstValue.contains("(Visite vidéo)"))
         assertTrue(text.firstValue.contains("Je serai sur place pour vous ouvrir ; le client suivra en visio."))
         assertFalse(text.firstValue.contains("Je vous y retrouve avec mon client."))
@@ -115,7 +115,7 @@ class CoBrokerageVisitBotletTest {
         botlet.sendReminder(visit, listing, searchAgent, 1000L)
 
         val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
         assertEquals(
             """
             Rappel de la visite de votre bien
@@ -140,7 +140,7 @@ class CoBrokerageVisitBotletTest {
         )
 
         val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
         assertEquals(
             """
             La visite de votre bien est annulée
@@ -162,7 +162,7 @@ class CoBrokerageVisitBotletTest {
         botlet.sendCancelled(visit.copy(cancelledBy = VisitParty.CUSTOMER), listing, searchAgent, 1000L)
         botlet.sendCancelled(visit.copy(cancelledBy = VisitParty.SYSTEM), listing, searchAgent, 1000L)
 
-        verify(client, times(2)).sendMessage(eq(1000L), text.capture(), any())
+        verify(sender, times(2)).send(eq(1000L), eq(listing), text.capture(), any())
         assertTrue(text.allValues[0].contains("Le client a annulé la visite."))
         assertTrue(text.allValues[1].contains("La visite est annulée."))
     }
@@ -173,7 +173,7 @@ class CoBrokerageVisitBotletTest {
         botlet.sendNoShow(visit.copy(noShowReason = VisitNoShowReason.CUSTOMER_ABSENT), listing, searchAgent, 1000L)
         botlet.sendNoShow(visit.copy(noShowReason = VisitNoShowReason.CODE_REFUSED), listing, searchAgent, 1000L)
 
-        verify(client, times(2)).sendMessage(eq(1000L), text.capture(), any())
+        verify(sender, times(2)).send(eq(1000L), eq(listing), text.capture(), any())
         assertTrue(
             text.allValues[0].startsWith("La visite de votre bien n'a pas eu lieu\n\nVilla Bastos (Sur place), prévue le ")
         )
@@ -183,10 +183,12 @@ class CoBrokerageVisitBotletTest {
 
     @Test
     fun `a listing without a title is named by its id`() {
-        botlet.sendConfirmed(visit, listing.copy(title = null), searchAgent, 1000L)
+        val withoutTitle = listing.copy(title = null)
+
+        botlet.sendConfirmed(visit, withoutTitle, searchAgent, 1000L)
 
         val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        verify(sender).send(eq(1000L), eq(withoutTitle), text.capture(), any())
         assertTrue(text.firstValue.contains("une visite de Bien n° 101 le"))
     }
 
@@ -196,7 +198,7 @@ class CoBrokerageVisitBotletTest {
 
         botlet.sendConfirmed(visit, listing, searchAgent, 1000L)
 
-        verify(client).sendMessage(eq(1000L), any(), eq(emptyList<TelegramButton>()))
+        verify(sender).send(eq(1000L), eq(listing), any(), eq(emptyList<TelegramButton>()))
     }
 
     @Test
@@ -204,7 +206,7 @@ class CoBrokerageVisitBotletTest {
         botlet.sendConfirmed(visit, listing, searchAgent, 1000L)
 
         val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
         assertFalse(text.firstValue.contains("Secret Client"))
         assertFalse(text.firstValue.contains("secret@example.com"))
         assertFalse(text.firstValue.contains("1234"))

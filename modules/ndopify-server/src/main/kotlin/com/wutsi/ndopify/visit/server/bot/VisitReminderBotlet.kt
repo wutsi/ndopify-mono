@@ -2,8 +2,8 @@ package com.wutsi.ndopify.visit.server.bot
 
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.listing.server.bot.ListingTelegramSender
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
-import com.wutsi.ndopify.platform.telegram.TelegramClient
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
 import com.wutsi.ndopify.platform.util.PhoneNumberUtils
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
@@ -31,15 +31,16 @@ import java.time.ZoneId
 class VisitReminderBotlet(
     private val tenantService: TenantService,
     private val locationService: LocationService,
-    private val client: TelegramClient,
+    private val sender: ListingTelegramSender,
     private val clock: Clock,
 ) {
     fun send(visit: VisitEntity, customer: CustomerEntity, agent: AgentEntity, listing: ListingEntity, chatId: Long) {
         val tenant = tenantService.findById(visit.tenantId!!)
         val formatter = TenantFormatter(tenant)
         val url = tenant.partnerCentralUrl?.removeSuffix("/")
-        client.sendMessage(
+        sender.send(
             chatId,
+            listing,
             text(visit, customer, listing, tenant, formatter),
             listOfNotNull(
                 url?.let { TelegramButton("Voir la visite", url = "$it/visits/${visit.id}") },
