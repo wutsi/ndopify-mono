@@ -98,12 +98,15 @@ class MandateContractTemplateTest {
     }
 
     @Test
-    fun `the page loads no page script`() {
+    fun `the page loads the mandate script`() {
         withContract()
 
         val page = render("/mandates/201/contract")
 
-        assertEquals(listOf("/assets/js/partner-central.js"), page.select("script[src]").map { it.attr("src") })
+        assertEquals(
+            listOf("/assets/js/partner-central.js", "/assets/js/mandate.js"),
+            page.select("script[src]").map { it.attr("src") },
+        )
         assertEquals("mandate-contract", page.body().attr("data-page"))
     }
 
