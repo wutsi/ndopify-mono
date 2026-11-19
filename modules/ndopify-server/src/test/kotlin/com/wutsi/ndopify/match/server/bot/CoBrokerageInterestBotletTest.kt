@@ -57,8 +57,8 @@ class CoBrokerageInterestBotletTest {
         send(digest(listOf(listing())))
 
         val (text, rows) = sent().single()
-        assertTrue(text.startsWith("Bonjour John Doe,"))
-        assertTrue(text.contains("1 agent s'intéresse à vos annonces :"))
+        assertTrue(text.startsWith("1 agent s'intéresse à votre bien\n\n"))
+        assertFalse(text.contains("vos annonces"))
         assertTrue(text.contains("Villa Bastos"))
         assertTrue(text.contains("90 000 FCFA / mois — Bastos (Yaounde)"))
         assertTrue(text.contains("• Kim Possible\n"))
@@ -130,7 +130,7 @@ class CoBrokerageInterestBotletTest {
         send(digest(listOf(listing(agents = agents, more = 1)), agentCount = 6))
 
         val (text, _) = sent().single()
-        assertTrue(text.contains("6 agents s'intéressent à vos annonces :"))
+        assertTrue(text.contains("6 agents s'intéressent à vos biens"))
         assertTrue(text.contains("et 1 autre agent"))
         assertEquals(5, text.lines().count { line -> line.startsWith("•") })
     }
@@ -172,7 +172,10 @@ class CoBrokerageInterestBotletTest {
 
         val messages = sent()
         assertTrue(messages.size > 1)
-        messages.forEach { (text, _) -> assertTrue(text.length <= 4096, "a message has ${text.length} characters") }
+        messages.forEach { (text, _) ->
+            assertTrue(text.length <= 4096, "a message has ${text.length} characters")
+            assertFalse(text.startsWith("Bonjour"), "a part starts with the greeting")
+        }
 
         val all = messages.joinToString("\n") { (text, _) -> text }
         listings.forEach { listing ->
@@ -203,6 +206,7 @@ class CoBrokerageInterestBotletTest {
         assertTrue(messages.size >= 2)
         messages.forEach { (text, _) ->
             assertTrue(text.length <= 4096, "a message has ${text.length} characters")
+            assertFalse(text.startsWith("Bonjour"), "a part starts with the greeting")
         }
         val groups = messages.filter { (text, _) -> text.contains("•") }
         assertTrue(groups.size >= 2)
