@@ -41,6 +41,9 @@ data class VisitEntity(
     val status: VisitStatus = VisitStatus.UNKNOWN,
     val type: VisitType = VisitType.UNKNOWN,
 
+    // Who created the visit: the customer's request, or the agent booking it for an accepted match
+    val createdBy: VisitParty = VisitParty.CUSTOMER,
+
     val requestedAt: Date = Date(),
     val note: String? = null,
     val scheduledAt: Date? = null,
