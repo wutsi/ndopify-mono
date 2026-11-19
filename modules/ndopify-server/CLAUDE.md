@@ -316,7 +316,7 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `ContractExpiredEvent` (no listener yet). Tenant-scoped.
 - **listing** — the property a LISTING mandate offers, as checked on site by its agent (`ListingEntity`, one per
   mandate, `@Version`-ed; its photos `ListingImageEntity`; its checklist `ListingSectionEntity`; `V8_0`, `V8_1`,
-  `V8_2`). `/v1/listings`: search, get, create, update, `GET /stats`, `POST /{id}/verify`, `POST /{id}/publish`, `POST /{id}/images/upload`, `GET /{id}/images`,
+  `V8_2`). `/v1/listings`: search, get, create, update, `GET /stats`, `POST /{id}/verify`, `POST /{id}/publish`, `POST /{id}/images/upload`, `POST /{id}/images/presign`, `POST /{id}/images/attach`, `GET /{id}/images`,
   `DELETE /images/{id}`. `GET /stats?listing-id=` aggregates each requested listing's interested clients (its ACCEPTED
   matches, any agent's) and its upcoming/completed visits in the database: one row per distinct id, in request order,
   zeros included, no counters on `ListingEntity`; it needs a token and the agent of every listing (404
@@ -337,7 +337,14 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   409 `LISTING_VERSION_CONFLICT` (`UpdateListingRequest.version`), 409 `LISTING_NOT_DRAFT` once sent, then 400 for no
   section or `PHOTOS`, a missing required field, or a neighbourhood outside the listing's city. The city never
   changes: it's the mandate's, the agent's area. Photos (JPEG / PNG / WEBP) are added `PENDING_VERIFICATION`, and
-  can only be deleted from a DRAFT listing; the file stays in the storage (`StorageService` can't delete one).
+  can only be deleted from a DRAFT listing; the file stays in the storage (a deleted photo isn't removed from it).
+  A photo can also be uploaded straight to the storage, so its bytes never go through the server:
+  `POST /{id}/images/presign` (`PresignUploadRequest` → `PresignUploadResponse`, `{url: null}` on local storage)
+  then `POST /{id}/images/attach` (`AttachUploadRequest` → `AttachListingImageResponse`), through
+  `DirectUploadService`: 404 `LISTING_NOT_FOUND`, 403 `HTTP_ACCESS_DENIED`, then the upload's 400s (path outside
+  `listings/{id}/images`, missing object, over 5 MB, bytes not JPEG/PNG/WEBP or not matching the extension, the
+  object deleted). Attach is idempotent on `path`: the listing's image recorded for it is returned, never a second
+  one. The multipart upload stays the no-JS / local / fallback path.
   **Send**: `POST /{id}/verify` moves a DRAFT to `UNDER_VERIFICATION`, checked asynchronously: 404
   `LISTING_NOT_FOUND`, 409 `LISTING_NOT_DRAFT`, then 409 `LISTING_INCOMPLETE` while a required section of the
   checklist isn't `VERIFIED`. `ListingJobs.verify` runs an UNDER_VERIFICATION listing through

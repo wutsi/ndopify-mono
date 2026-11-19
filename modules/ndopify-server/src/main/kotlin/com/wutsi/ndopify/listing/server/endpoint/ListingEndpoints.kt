@@ -1,11 +1,15 @@
 package com.wutsi.ndopify.listing.server.endpoint
 
+import com.wutsi.ndopify.common.dto.AttachUploadRequest
+import com.wutsi.ndopify.common.dto.PresignUploadRequest
+import com.wutsi.ndopify.common.dto.PresignUploadResponse
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
 import com.wutsi.ndopify.error.dto.ParameterType
 import com.wutsi.ndopify.error.server.exception.BadRequestException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
+import com.wutsi.ndopify.listing.dto.AttachListingImageResponse
 import com.wutsi.ndopify.listing.dto.CreateListingRequest
 import com.wutsi.ndopify.listing.dto.CreateListingResponse
 import com.wutsi.ndopify.listing.dto.GetListingResponse
@@ -115,6 +119,16 @@ class ListingEndpoints(
     ) {
         imageService.upload(id, multipartFile)
     }
+
+    /** A short-lived URL to upload a photo straight to the storage; no url with local storage (use `/images/upload`). */
+    @PostMapping("/{id}/images/presign")
+    fun presignImage(@PathVariable id: Long, @RequestBody request: PresignUploadRequest): PresignUploadResponse =
+        imageService.presign(id, request.contentType)
+
+    /** Attaches a photo uploaded straight to the storage, at the path given by `/images/presign`. */
+    @PostMapping("/{id}/images/attach")
+    fun attachImage(@PathVariable id: Long, @RequestBody request: AttachUploadRequest): AttachListingImageResponse =
+        AttachListingImageResponse(imageId = imageService.attach(id, request.path).id ?: -1)
 
     /** Removes a photo of a DRAFT listing. */
     @DeleteMapping("/images/{id}")

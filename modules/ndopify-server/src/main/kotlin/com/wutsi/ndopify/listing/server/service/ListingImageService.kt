@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.listing.server.service
 
+import com.wutsi.ndopify.common.dto.PresignUploadResponse
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
@@ -14,6 +15,7 @@ import com.wutsi.ndopify.listing.server.dao.ListingImageRepository
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
+import com.wutsi.ndopify.platform.storage.upload.DirectUploadService
 import com.wutsi.ndopify.platform.util.MimeUtils
 import jakarta.transaction.Transactional
 import org.springframework.stereotype.Service
@@ -29,10 +31,14 @@ class ListingImageService(
     private val listingService: ListingService,
     private val accessService: ListingAccessService,
     private val storageProvider: StorageServiceProvider,
+    private val directUpload: DirectUploadService,
     private val clock: Clock,
 ) {
     companion object {
         val IMAGE_MIME_TYPES = listOf("image/jpeg", "image/png", "image/webp")
+
+        /** The folder of a listing's photos: the multipart upload and the direct upload share it. */
+        fun prefix(listingId: Long) = "listings/$listingId/images"
     }
 
     /**
@@ -77,10 +83,51 @@ class ListingImageService(
         val mimeType = ensureImage(file)
 
         // A new path each time: the storage is public, an image is never overwritten
-        val path = "listings/${listing.id}/images/${UUID.randomUUID()}.${MimeUtils.getExtensionFromMimeType(mimeType)}"
+        val path = "${prefix(listing.id!!)}/${UUID.randomUUID()}.${MimeUtils.getExtensionFromMimeType(mimeType)}"
         val storage = storageProvider.get()
         storage.store(path, file.inputStream, mimeType)
 
+        val now = Date(clock.millis())
+        return dao.save(
+            ListingImageEntity(
+                listingId = listingId,
+                path = path,
+                url = storage.publicUrl(path).toString(),
+                mimeType = mimeType,
+                status = ImageStatus.PENDING_VERIFICATION,
+                createdAt = now,
+                modifiedAt = now,
+            )
+        )
+    }
+
+    /**
+     * A short-lived URL to upload a photo straight to the storage, for the listing's own folder. 404
+     * LISTING_NOT_FOUND, 403 HTTP_ACCESS_DENIED but for an admin or its agent, then 400 HTTP_INVALID_PARAMETER (by
+     * [DirectUploadService.presign]) for a type that isn't JPEG, PNG or WEBP. No URL when the storage can't presign
+     * (local): the caller falls back to [upload].
+     */
+    fun presign(listingId: Long, contentType: String?): PresignUploadResponse {
+        val listing = listingService.findById(listingId)
+        accessService.ensureCanUpdate(listing)
+        return directUpload.presign(prefix(listing.id!!), contentType)
+    }
+
+    /**
+     * Attaches a photo uploaded straight to the storage, PENDING_VERIFICATION, once [DirectUploadService.verify] has
+     * checked it. 404 LISTING_NOT_FOUND, 403 HTTP_ACCESS_DENIED but for an admin or its agent, then the upload's 400s.
+     * Idempotent on [path]: the listing's image already recorded for it is returned, not a second one. A path of
+     * another listing is a 400, even when a row exists for it.
+     */
+    @Transactional
+    fun attach(listingId: Long, path: String): ListingImageEntity {
+        val listing = listingService.findById(listingId)
+        accessService.ensureCanUpdate(listing)
+        val prefix = prefix(listing.id!!)
+        dao.findByPath(path)?.let { if (it.listingId == listingId) return it }
+
+        val mimeType = directUpload.verify(path, prefix)
+        val storage = storageProvider.get()
         val now = Date(clock.millis())
         return dao.save(
             ListingImageEntity(
