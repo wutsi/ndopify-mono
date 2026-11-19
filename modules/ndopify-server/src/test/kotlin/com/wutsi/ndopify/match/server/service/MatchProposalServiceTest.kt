@@ -244,6 +244,36 @@ class MatchProposalServiceTest {
         verifyNoInteractions(mailet)
     }
 
+    @Test
+    fun `sendAcceptedEmail e-mails the customer an accepted match`() {
+        val accepted = match.copy(status = MatchStatus.ACCEPTED)
+        doReturn(Optional.of(accepted)).whenever(dao).findById(2L)
+        doReturn(customer).whenever(customerService).findById(10L)
+        doReturn(agent).whenever(agentService).findById(20L)
+
+        service.sendAcceptedEmail(2L)
+
+        verify(mailet).send(listOf(accepted), customer, agent)
+    }
+
+    @Test
+    fun `sendAcceptedEmail ignores a match that isn't accepted`() {
+        doReturn(Optional.of(match)).whenever(dao).findById(2L) // PROPOSED
+
+        service.sendAcceptedEmail(2L)
+
+        verifyNoInteractions(mailet)
+    }
+
+    @Test
+    fun `sendAcceptedEmail ignores an unknown match`() {
+        doReturn(Optional.empty<MatchEntity>()).whenever(dao).findById(99L)
+
+        service.sendAcceptedEmail(99L)
+
+        verifyNoInteractions(mailet)
+    }
+
     private fun saved(): MatchEntity {
         val saved = argumentCaptor<MatchEntity>()
         verify(dao).save(saved.capture())

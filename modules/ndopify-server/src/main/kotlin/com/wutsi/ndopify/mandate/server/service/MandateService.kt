@@ -179,7 +179,7 @@ class MandateService(
                 statuses = listOf(MandateStatus.CLOSED, MandateStatus.CANCELLED),
             )?.let { existing ->
                 // The listing the customer asked for is remembered as the search's origin: a search without an agent
-                // yet can't have a match, and an approved one proposes it at once (MatchInterestService, and
+                // yet can't have a match, and an approved one records it ACCEPTED (MatchInterestService, and
                 // MatchInterestService.proposeOrigin on its approval)
                 val attached = if (existing.originListingId == null) {
                     dao.save(existing.copy(originListingId = origin.id, modifiedAt = now))

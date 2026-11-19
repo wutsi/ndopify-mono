@@ -25,14 +25,15 @@ Package `com.wutsi.ndopify.web`:
   content sections) is `templates/fragments/listing-body.html`, shared with `match.html`. A SOLD or RENTED listing keeps
   its public page, marked "Vendu"/"Loué": its price card and bottom bar show its last published listing price, never a
   closing price, its conditions are left out, and it has no call to action.
-  "Visiter ce logement" (price card, and bottom bar below 1024px) opens the `#visit` popup: the `ListingInterestForm`
-  posts to `POST /listings/{id}/interest` the visitor's contact, its moving period and the `website` honeypot
-  (`ListingInterestRules` validates them in French), and `NdMandateClient.create` creates a SEARCH mandate seeded from
-  the listing (`originListingId`: the server reads every criterion and the budget from it). Success, a filled honeypot
-  and a 409 `MANDATE_RATE_LIMITED` all redirect to the same server-rendered confirmation
-  (`{url}?interest=done#visit`, the `done` state: an agent within 24 h, the mandate to sign, then the slot); an invalid
-  form or a 400 re-renders the page with the popup open (`is-open`), the French messages and the typed values. No slot
-  picker: a visit needs an agent and a signed mandate. The "Poser une question" drawer is still the prototype's (no
+  "Être contacté par un agent" (price card, and bottom bar below 1024px) opens the `#visit` popup: the
+  `ListingInterestForm` posts to `POST /listings/{id}/interest` the visitor's contact, its moving period and the
+  `website` honeypot (`ListingInterestRules` validates them in French), and `NdMandateClient.create` creates a SEARCH
+  mandate seeded from the listing (`originListingId`: the server reads every criterion and the budget from it) — when
+  the visitor's e-mail already has a SEARCH of that city and type, ndopify-server records the interest as an ACCEPTED
+  match instead (no client change). Success, a filled honeypot and a 409 `MANDATE_RATE_LIMITED` all redirect to the
+  same server-rendered confirmation (`{url}?interest=done#visit`: `Un agent vous contacte sous 24 h par WhatsApp ou par
+  e-mail pour organiser la visite.`, no steps list); an invalid form or a 400 re-renders the page with the popup open
+  (`is-open`), the French messages and the typed values. No slot picker: the visit is organised with the agent. The "Poser une question" drawer is still the prototype's (no
   trigger, canned answers); ndopify-server supports the visits themselves from the match page, not here.
 - `ui/match/` — `MatchController`, the link of the proposition e-mail (`/match/{id}?token=`): the token goes to the
   cookie and is stripped from the address (302); signed out or a 401 from ndopify-server (cookie cleared) → `match-link.html`

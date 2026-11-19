@@ -1,6 +1,6 @@
-// Ndopify — listing page: the "Visiter ce logement" form, the "Poser une question" drawer, the photo viewer and the
-// share button. Everything only enhances: without JavaScript the popup and the drawer open with :target and their
-// forms post, the photos are links.
+// Ndopify — listing page: the "Être contacté par un agent" form, the "Poser une question" drawer, the photo viewer
+// and the share button. Everything only enhances: without JavaScript the popup and the drawer open with :target and
+// their forms post, the photos are links.
 (function () {
   'use strict';
 
@@ -18,8 +18,8 @@
   // ---------------------------------------------------------------- Popup and drawer
 
   // Any [data-modal-open] link opens the dialog its href names (#visit, #ask), [data-modal-close] closes it. One
-  // dialog at a time: opening one from the other ("Visiter ce logement" in the drawer) replaces it, and focus goes
-  // back to what opened the first one.
+  // dialog at a time: opening one from the other ("Être contacté par un agent" in the drawer) replaces it, and focus
+  // goes back to what opened the first one.
   function initDialogs() {
     var current = null;
 
@@ -191,8 +191,8 @@
     },
     {
       keys: ['visite', 'visiter', 'voir', 'rendez'],
-      text: 'Dans « Visiter ce logement », indiquez vos coordonnées et votre date d\'emménagement : un agent vous ' +
-        'contacte sous 24 h, puis vous signez votre mandat de recherche et vous choisissez le créneau de la visite.',
+      text: 'Dans « Être contacté par un agent », indiquez vos coordonnées et votre date d\'emménagement : ' +
+        'un agent vous contacte sous 24 h par WhatsApp ou par e-mail pour organiser la visite.',
       visit: true
     },
     {
@@ -267,7 +267,7 @@
         var msg = add('bot', reply.text);
         if (reply.visit) {
           var link = el('a', 'btn btn-secondary chat__visit',
-            '<svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Visiter ce logement');
+            '<svg aria-hidden="true" class="icon"><use href="#i-calendar"/></svg>Être contacté par un agent');
           link.href = '#visit';
           link.setAttribute('data-modal-open', '');
           msg.appendChild(link);

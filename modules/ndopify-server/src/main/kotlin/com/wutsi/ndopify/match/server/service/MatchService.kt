@@ -394,13 +394,15 @@ class MatchService(
     }
 
     /**
-     * The match of (mandate, listing) the customer asked for on the listing's public page: stored ACTIVE even under
-     * `min-score` (the explicit interest outweighs the score), the hard rules still applying. An existing ACTIVE match
-     * is reused (`created = false`); a match in any other status (REJECTED, DISMISSED…) is left as is and returns null.
-     * Null too when the mandate isn't an APPROVED-style SEARCH with an agent, or the listing isn't PUBLISHED.
+     * The match of (mandate, listing) the customer asked for on the listing's public page: recorded ACCEPTED,
+     * `answeredAt` = now, whatever the row's prior status (ACTIVE, PROPOSED, SHORTLISTED, EXPIRED, DISMISSED,
+     * REJECTED: the old rejection reason is cleared). An already-ACCEPTED row is left as is (`changed = false`). The
+     * explicit interest bypasses `min-score` and every Matcher rule but the customer's own property. [changed] tells
+     * the caller to notify the agent and e-mail the customer once. Null when the mandate isn't a SEARCH with an agent,
+     * the listing isn't PUBLISHED, or it's the customer's own property.
      */
     @Transactional
-    fun ensureInterest(mandateId: Long, listingId: Long): Interest? {
+    fun acceptInterest(mandateId: Long, listingId: Long): Interest? {
         val mandate = mandateDao.findWithNeighborhoodsById(mandateId) ?: return null
         if (mandate.mandateType != MandateType.SEARCH || mandate.agentId == null) {
             return null
@@ -409,23 +411,54 @@ class MatchService(
         if (listing.status != ListingStatus.PUBLISHED) {
             return null
         }
-        val score = matcher.score(mandate, listing, distances(mandate), today(mandate.tenantId!!)) ?: return null
+        val score = matcher.scoreInterest(mandate, listing, distances(mandate), today(mandate.tenantId!!)) ?: return null
         val existing = dao.findByMandateAndListing(mandate, listing)
-        if (existing != null && existing.status != MatchStatus.ACTIVE) {
-            return null
+        if (existing?.status == MatchStatus.ACCEPTED) {
+            return Interest(existing, changed = false)
         }
 
-        val outcome = try {
-            store(mandate, listing, score, force = true)
-        } catch (ex: DataIntegrityViolationException) {
-            StoreOutcome.STORED // a concurrent request inserted the pair: read it below
+        val now = Date(clock.millis())
+        val match = existing ?: MatchEntity(
+            mandate = mandate,
+            listing = listing,
+            agentId = mandate.agentId,
+            coBrokerage = listing.agent.id != mandate.agentId,
+            status = MatchStatus.ACCEPTED,
+            createdAt = now,
+        )
+        return try {
+            Interest(dao.save(accepted(match, listing, score, now)), changed = true)
+        } catch (_: DataIntegrityViolationException) {
+            // A concurrent request inserted the pair: read it, and reopen it only if it isn't accepted yet
+            val row = dao.findByMandateAndListing(mandate, listing) ?: return null
+            if (row.status == MatchStatus.ACCEPTED) {
+                Interest(row, changed = false)
+            } else {
+                Interest(dao.save(accepted(row, listing, score, now)), changed = true)
+            }
         }
-        if (outcome != StoreOutcome.STORED) {
-            return null
-        }
-        val match = dao.findByMandateAndListing(mandate, listing) ?: return null
-        return Interest(match, created = existing == null)
     }
+
+    private fun accepted(match: MatchEntity, listing: ListingEntity, score: MatchScore, now: Date): MatchEntity =
+        match.copy(
+            coBrokerage = listing.agent.id != match.mandate.agentId,
+            status = MatchStatus.ACCEPTED,
+            answeredAt = now,
+            rejectionReasonCode = null,
+            rejectionReason = null,
+            score = score.total,
+            typeScore = score.type,
+            neighborhoodScore = score.neighborhood,
+            priceScore = score.price,
+            roomsScore = score.rooms,
+            amenitiesScore = score.amenities,
+            availabilityScore = score.availability,
+            furnitureScore = score.furniture,
+            distanceKm = score.distanceKm,
+            missingAmenities = score.missingAmenities,
+            listingPrice = listing.price,
+            modifiedAt = now,
+        )
 
     // Distance (km) from each neighbourhood of the mandate's city to the nearest of the mandate's: 0 for its own
     private fun distances(mandate: MandateEntity): Map<Long, Double> {

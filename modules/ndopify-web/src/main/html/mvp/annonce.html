@@ -233,10 +233,9 @@
                         <li>Disponible le 1<sup>er</sup> décembre 2026</li>
                     </ul>
                     <a class="btn btn-primary price-card__cta" data-modal-open href="#visit">
-                        <svg aria-hidden="true" class="icon"><use href="#i-search"/></svg>Je cherche un bien comme celui-ci
+                        <svg aria-hidden="true" class="icon"><use href="#i-search"/></svg>Être contacté par un agent
                     </a>
-                    <p class="price-card__hint">Un agent vérifié de ce secteur prend votre recherche en charge et vous
-                        propose ce bien et ceux qui vous correspondent.</p>
+                    <p class="price-card__hint">Un agent vous contacte sous 24 h pour organiser la visite.</p>
                     <!--
                       SOLD / RENTED listing: the price card keeps the last published price, with the notice below
                       instead of the terms, the call to action and the hint; the bottom bar and the #visit popup are
@@ -253,26 +252,27 @@
     <div class="cta-bar">
         <p class="cta-bar__price"><strong>175K FCFA</strong> / mois</p>
         <div class="cta-bar__actions">
-            <a class="btn btn-primary" data-modal-open href="#visit">Je cherche un bien comme celui-ci</a>
+            <a class="btn btn-primary" data-modal-open href="#visit">Être contacté par un agent</a>
         </div>
     </div>
 </main>
 
 <!--
-  "Je cherche un bien comme celui-ci" popup: the listing is an entry point to a SEARCH mandate seeded from it
-  (originListingId), not a booking. No day or time here: a visit needs an agent and a signed search mandate, and is
-  requested later from the match page (proposition.html). Without JavaScript it opens with :target (#visit) and the form posts; the server
-  answers with the confirmation, or the form again with the fields' errors. annonce.js makes it a modal dialog, binds
-  the WhatsApp number (E.164 in a hidden whatsappNumber) and shows the confirmation in place. Hidden field: website,
-  the honeypot (always empty); movingPeriod, one of the three periods. Everything else — city, type, budget — comes
-  from the listing.
+  "Être contacté par un agent" popup: the customer asks an agent to call them about this listing, never a booking. With
+  no search of this city and type yet, the listing is an entry point to a SEARCH mandate seeded from it
+  (originListingId); with one, the server records the interest as an accepted match. The confirmation is the same in
+  every case. No day or time here: the visit itself is organised with the agent. Without JavaScript it opens with
+  :target (#visit) and the form posts; the server answers with the confirmation, or the form again with the fields'
+  errors. annonce.js makes it a modal dialog, binds the WhatsApp number (E.164 in a hidden whatsappNumber) and shows
+  the confirmation in place. Hidden field: website, the honeypot (always empty); movingPeriod, one of the three
+  periods. Everything else — city, type, budget — comes from the listing.
 -->
 <div aria-labelledby="visit-title" class="modal" id="visit">
     <a aria-hidden="true" class="modal__backdrop" data-modal-close href="#main" tabindex="-1"></a>
     <div class="modal__panel">
         <header class="modal__header">
             <div>
-                <h2 class="modal__title" id="visit-title">Je cherche un bien comme celui-ci</h2>
+                <h2 class="modal__title" id="visit-title">Être contacté par un agent</h2>
                 <p class="modal__subtitle">Appartement meublé 2 chambres · Bonapriso<span
                         class="modal__price">&nbsp;· <strong>175K FCFA</strong> / mois</span></p>
             </div>
@@ -323,22 +323,15 @@
                 <label for="website">Site web</label>
                 <input autocomplete="off" id="website" name="website" tabindex="-1" type="text">
             </div>
-            <button class="btn btn-primary interest-form__submit" type="submit">Lancer ma recherche</button>
-            <p class="interest-form__privacy">Vos critères — ville, type de bien, budget — sont repris de ce bien.
-                Seul votre agent voit vos coordonnées.</p>
+            <button class="btn btn-primary interest-form__submit" type="submit">Envoyer ma demande</button>
+            <p class="interest-form__privacy">Un agent vous contacte sous 24 h. Seul l'agent voit vos coordonnées.</p>
         </form>
 
         <div class="modal__body interest-done" data-interest-done hidden tabindex="-1">
             <svg aria-hidden="true" class="icon icon--lg"><use href="#i-check"/></svg>
-            <h3>Merci, votre recherche est enregistrée</h3>
-            <p data-interest-done-text>Dès qu'un agent vérifié de ce secteur la prend en charge, vous recevez un
-                e-mail.</p>
-            <ol class="interest-done__steps">
-                <li>Vous signez en ligne votre mandat de recherche — gratuit, une commission seulement à la signature
-                    du bail.</li>
-                <li>Votre agent vous propose ce bien et d'autres qui vous correspondent, par e-mail.</li>
-                <li>Vous demandez une visite, sur place ou en vidéo, au créneau qui vous convient.</li>
-            </ol>
+            <h3>Merci, votre demande est enregistrée</h3>
+            <p data-interest-done-text>Un agent vous contacte sous 24 h par WhatsApp ou par e-mail pour organiser la
+                visite.</p>
             <a class="btn btn-secondary" data-modal-close href="#main">Fermer</a>
         </div>
     </div>

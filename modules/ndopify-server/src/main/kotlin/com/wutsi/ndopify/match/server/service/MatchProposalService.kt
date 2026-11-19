@@ -239,6 +239,24 @@ class MatchProposalService(
     }
 
     /**
+     * E-mails the customer an ACCEPTED match's link, through the accepted proposal e-mail; called by
+     * `MatchEventListener` after the interest is committed. Nothing for an unknown match or another status (answered,
+     * expired, reopened meanwhile).
+     */
+    @Transactional
+    fun sendAcceptedEmail(matchId: Long) {
+        val match = dao.findById(matchId).orElse(null) ?: return
+        if (match.status != MatchStatus.ACCEPTED) {
+            return
+        }
+        mailet.send(
+            listOf(match),
+            customerService.findById(match.mandate.customerId),
+            agentService.findById(match.agentId),
+        )
+    }
+
+    /**
      * E-mails the customer the matches proposed together. Called by `MatchEventListener`; leaves out those no longer
      * PROPOSED, nothing when none is.
      */

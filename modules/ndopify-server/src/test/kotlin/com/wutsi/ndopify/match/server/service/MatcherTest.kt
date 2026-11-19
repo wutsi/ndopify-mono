@@ -568,4 +568,28 @@ class MatcherTest {
 
         assertEquals(emptyList(), score(none, listingC)?.missingAmenities)
     }
+
+    @Test
+    fun `scoreInterest scores an over-budget pair`() {
+        val score = matcher.scoreInterest(search, listingA.copy(price = 290_000), distances, TODAY)
+
+        assertNotNull(score)
+        assertEquals(0.0, score.price, DELTA) // 250 000 + 10 % is the limit; 290 000 is over
+    }
+
+    @Test
+    fun `scoreInterest refuses the customer's own property`() {
+        val listing = listingA.copy(mandate = listingA.mandate.copy(customerId = search.customerId))
+
+        assertNull(matcher.scoreInterest(search, listing, distances, TODAY))
+    }
+
+    @Test
+    fun `scoreInterest keeps a vetoed property type, scored zero`() {
+        val score = matcher.scoreInterest(search, listingA.copy(propertyType = PropertyType.LAND), distances, TODAY)
+
+        assertNotNull(score)
+        assertEquals(0.0, score.type, DELTA)
+        assertEquals(0.0, score.total, DELTA)
+    }
 }

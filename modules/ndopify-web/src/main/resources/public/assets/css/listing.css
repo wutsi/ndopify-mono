@@ -357,13 +357,6 @@
 .interest-done .icon--lg { color: var(--color-text-success); margin-bottom: var(--space-lg); }
 .interest-done h3 { font-size: var(--h4-size); }
 .interest-done p { margin-inline: auto; }
-.interest-done__steps {
-  max-width: 32rem;
-  margin: var(--space-lg) auto 0;
-  padding-left: var(--space-xl);
-  text-align: left;
-  font-size: 0.875rem;
-}
 .interest-done .btn { margin-top: var(--space-xl); }
 
 /* "Poser une question" drawer: the conversation scrolls, the composer stays at the bottom */

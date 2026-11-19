@@ -23,11 +23,13 @@ import java.time.Clock
  * good (301), so the page has one address. ndopify-server returns a PUBLISHED, SOLD or RENTED listing without a token:
  * any other is a 404 ([com.wutsi.ndopify.web.ui.layout.HttpClientErrorHandler]).
  *
- * Its "Visiter ce logement" form posts the visitor's contact and moving period to [interest], which creates a SEARCH
- * mandate seeded from the listing (`NdMandateClient.create`, `originListingId`) and answers with the same confirmation
- * in every case: the page itself when it has to be shown again (`?interest=done#visit`). The honeypot, the form's
- * validation and the rate cap are the server's business too: a filled honeypot or a 409 `MANDATE_RATE_LIMITED` shows
- * the confirmation, nothing created. The "Poser une question" drawer is still the prototype's: nothing handles it.
+ * Its "Être contacté par un agent" form posts the visitor's contact and moving period to [interest], which creates a
+ * SEARCH mandate seeded from the listing (`NdMandateClient.create`, `originListingId`) — or, when the visitor's e-mail
+ * already has a search of that city and type, lets ndopify-server record the interest as an accepted match — and answers
+ * with the same confirmation in every case: the page itself when it has to be shown again (`?interest=done#visit`). The
+ * honeypot, the form's validation and the rate cap are the server's business too: a filled honeypot or a 409
+ * `MANDATE_RATE_LIMITED` shows the confirmation, nothing created. The "Poser une question" drawer is still the
+ * prototype's: nothing handles it.
  *
  * The tenant is the one [com.wutsi.ndopify.web.ui.layout.TenantAdvice] put in the model, read from there rather than
  * taken as a `@ModelAttribute` parameter, which request parameters could bind.
@@ -69,7 +71,8 @@ class ListingController(
     }
 
     /**
-     * The "Visiter ce logement" form: creates the visitor's SEARCH mandate, seeded from the listing, then shows the
+     * The "Être contacté par un agent" form: creates the visitor's SEARCH mandate seeded from the listing, or attaches
+     * the interest to the search it already has (ndopify-server then records an accepted match), then shows the
      * confirmation. A filled honeypot or a rate-limited request (409 `MANDATE_RATE_LIMITED`) also shows it, without
      * anything created: the page never says which case it was. An invalid form or a 400 shows the page again, its
      * popup open, with the French messages and the typed values.

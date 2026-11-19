@@ -1,8 +1,8 @@
 package com.wutsi.ndopify.web.ui.listing
 
 /**
- * Checks the "Visiter ce logement" form's fields, which the server would otherwise trust (the public endpoint only
- * requires the contact to be non-empty): each invalid field gets its French message, by form field name.
+ * Checks the "Être contacté par un agent" form's fields, which the server would otherwise trust (the public endpoint
+ * only requires the contact to be non-empty): each invalid field gets its French message, by form field name.
  */
 object ListingInterestRules {
     private val EMAIL = "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$".toRegex()

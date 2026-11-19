@@ -383,16 +383,19 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   failed Telegram send, and `CoBrokerageInterestNotifier` throws when both fail, so `listingAgentNotifiedAt` stays null
   for the next run. Both ride `MatchJobs.notifyAgents`;
   `notifiedAt` is the forward one-shot and `listingAgentNotifiedAt` the reverse one. **A customer's interest** (a
-  listing's public page): `ExistingSearchInterestEvent` → `MatchInterestService.registerInterest` stores
-  `MatchService.ensureInterest`'s match on the search the customer already has (the hard rules still apply, `min-score`
-  doesn't, an ACTIVE row is reused and a REJECTED one stays), tells the search's agent once (`MatchInterestNotifier`:
-  `MatchInterestBotlet` over Telegram when its chat is linked, `MatchInterestMailet` otherwise or as the fallback), and
-  proposes it at once when the search is APPROVED. A search without an agent yet can't have a match: the listing stays
-  its `originListingId`, and `proposeOrigin` (called by `MatchEventListener.onMandateApproved` after
-  `matchMandate`) ensures and proposes that match once the search is approved. Anti-sautage: a customer never
+  listing's public page): `ExistingSearchInterestEvent` → `MatchInterestService.registerInterest` records the pair
+  `ACCEPTED` (`MatchService.acceptInterest`; `answeredAt` = now; any prior status reopened, the rejection reason cleared;
+  an ACCEPTED row untouched; every Matcher rule but the customer's own property bypassed, `min-score` too), tells the
+  search's agent once when the row moved (`MatchInterestNotifier`: `MatchInterestBotlet` over Telegram when its chat is
+  linked, `MatchInterestMailet` otherwise or as the fallback: the customer's name, the listing, `Contacter sur
+  WhatsApp` and `Voir le mandat`), and e-mails the customer the accepted proposal link (`MatchInterestAcceptedEvent` →
+  `MatchProposalService.sendAcceptedEmail`). Nothing is proposed for an existing search any more. A search without an
+  agent keeps the listing as its `originListingId`, and `proposeOrigin` (called by
+  `MatchEventListener.onMandateApproved` after `matchMandate`) accepts that match at approval, with the customer's
+  e-mail and no agent notification. Anti-sautage: a customer never
   learns the counterpart agent's identity/contact, and a counterpart agent never learns the customer's
-  identity/contact/mandate; the customer-facing proposal still names only the search agent. The same
-  `Matcher`, `min-score` and distances apply. A co-brokerage row is never deleted (sticky when own inventory appears
+  identity/contact/mandate; the customer-facing proposal still names only the search agent. The same `Matcher` and
+  distances apply to the matcher path, and a co-brokerage row is never deleted (sticky when own inventory appears
   later); an own-inventory row keeps the re-score/delete behaviour. `GET /v1/matches` lists the agent's own inventory
   first, then co-brokerage, best score first. `matchListing` never creates co-brokerage rows: the daily `rematch`
   picks a newly published listing up. `Matcher` (pure, unit

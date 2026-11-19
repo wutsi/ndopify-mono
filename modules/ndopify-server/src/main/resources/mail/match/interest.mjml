@@ -42,8 +42,14 @@
                 </mj-text>
 
                 <mj-text>
-                    Ce logement a été ajouté à son mandat de recherche. Proposez-lui la visite depuis son mandat.
+                    Contactez-le pour organiser la visite.
                 </mj-text>
+
+                {{#whatsapp_url}}
+                <mj-button href="{{whatsapp_url}}" css-class="btn-primary" align="center">
+                    Contacter sur WhatsApp
+                </mj-button>
+                {{/whatsapp_url}}
 
                 {{#mandate_url}}
                 <mj-button href="{{mandate_url}}" css-class="btn-primary" align="center">

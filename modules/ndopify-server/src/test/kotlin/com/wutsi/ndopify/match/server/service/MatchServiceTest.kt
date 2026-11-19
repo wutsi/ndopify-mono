@@ -23,6 +23,7 @@ import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.mandate.server.service.MandateService
+import com.wutsi.ndopify.match.dto.MatchRejectionReason
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.dao.MatchRepository
 import com.wutsi.ndopify.match.server.domain.MatchEntity
@@ -38,11 +39,14 @@ import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import java.util.Date
 import java.util.Optional
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -527,70 +531,157 @@ class MatchServiceTest {
 
     private fun givenInterest(score: MatchScore?, match: MatchEntity?) {
         doReturn(Optional.of(listing1)).whenever(listingDao).findById(LISTING_ID)
-        doReturn(score).whenever(matcher).score(eq(search), eq(listing1), any(), eq(today))
+        doReturn(score).whenever(matcher).scoreInterest(eq(search), eq(listing1), any(), eq(today))
         doReturn(match).whenever(matchDao).findByMandateAndListing(search, listing1)
     }
 
     @Test
-    fun `ensureInterest stores a pair under the min score`() {
+    fun `acceptInterest stores an ACCEPTED match under the min score`() {
         givenInterest(score(0.2), null)
-        val saved = MatchEntity(id = 9L, mandate = search, listing = listing1)
-        // The lookups: not the customer's interest yet, not a row store() reuses, then the row it just stored
-        doReturn(null, null, saved).whenever(matchDao).findByMandateAndListing(search, listing1)
 
-        val interest = service.ensureInterest(MANDATE_ID, LISTING_ID)!!
+        val interest = service.acceptInterest(MANDATE_ID, LISTING_ID)!!
 
-        assertTrue(interest.created)
-        assertEquals(9L, interest.match.id)
+        assertTrue(interest.changed)
         val captor = argumentCaptor<MatchEntity>()
         verify(matchDao).save(captor.capture())
-        assertEquals(MatchStatus.ACTIVE, captor.firstValue.status)
+        assertEquals(MatchStatus.ACCEPTED, captor.firstValue.status)
         assertEquals(0.2, captor.firstValue.score, 0.000001)
+        assertEquals(Date(clock.millis()), captor.firstValue.answeredAt)
+        assertEquals(listing1.price, captor.firstValue.listingPrice)
     }
 
     @Test
-    fun `ensureInterest reuses an existing active match`() {
-        val existing = MatchEntity(id = 9L, mandate = search, listing = listing1, status = MatchStatus.ACTIVE)
-        givenInterest(score(0.2), existing)
+    fun `acceptInterest reopens an ACTIVE match`() {
+        givenInterest(score(0.9), MatchEntity(id = 9L, mandate = search, listing = listing1, status = MatchStatus.ACTIVE))
 
-        val interest = service.ensureInterest(MANDATE_ID, LISTING_ID)!!
+        val interest = service.acceptInterest(MANDATE_ID, LISTING_ID)!!
 
-        assertEquals(false, interest.created)
+        assertTrue(interest.changed)
+        val captor = argumentCaptor<MatchEntity>()
+        verify(matchDao).save(captor.capture())
+        assertEquals(MatchStatus.ACCEPTED, captor.firstValue.status)
+        assertNotNull(captor.firstValue.answeredAt)
+    }
+
+    @Test
+    fun `acceptInterest reopens a REJECTED match and clears its reason`() {
+        givenInterest(
+            score(0.9),
+            MatchEntity(
+                id = 9L,
+                mandate = search,
+                listing = listing1,
+                status = MatchStatus.REJECTED,
+                rejectionReasonCode = MatchRejectionReason.PRICE,
+                rejectionReason = "Trop cher",
+            ),
+        )
+
+        val interest = service.acceptInterest(MANDATE_ID, LISTING_ID)!!
+
+        assertTrue(interest.changed)
+        val captor = argumentCaptor<MatchEntity>()
+        verify(matchDao).save(captor.capture())
+        assertEquals(MatchStatus.ACCEPTED, captor.firstValue.status)
+        assertNull(captor.firstValue.rejectionReasonCode)
+        assertNull(captor.firstValue.rejectionReason)
+    }
+
+    @Test
+    fun `acceptInterest reopens a DISMISSED match`() {
+        assertReopens(MatchStatus.DISMISSED)
+    }
+
+    @Test
+    fun `acceptInterest reopens a SHORTLISTED match`() {
+        assertReopens(MatchStatus.SHORTLISTED)
+    }
+
+    @Test
+    fun `acceptInterest reopens an EXPIRED match`() {
+        assertReopens(MatchStatus.EXPIRED)
+    }
+
+    @Test
+    fun `acceptInterest reopens a PROPOSED match`() {
+        assertReopens(MatchStatus.PROPOSED)
+    }
+
+    private fun assertReopens(status: MatchStatus) {
+        givenInterest(score(0.9), MatchEntity(id = 9L, mandate = search, listing = listing1, status = status))
+
+        val interest = service.acceptInterest(MANDATE_ID, LISTING_ID)!!
+
+        assertTrue(interest.changed)
+        val captor = argumentCaptor<MatchEntity>()
+        verify(matchDao).save(captor.capture())
+        assertEquals(MatchStatus.ACCEPTED, captor.firstValue.status)
+    }
+
+    @Test
+    fun `an accepted match is left untouched`() {
+        givenInterest(score(0.9), MatchEntity(id = 9L, mandate = search, listing = listing1, status = MatchStatus.ACCEPTED))
+
+        val interest = service.acceptInterest(MANDATE_ID, LISTING_ID)!!
+
+        assertFalse(interest.changed)
+        assertEquals(9L, interest.match.id)
+        verify(matchDao, never()).save(any<MatchEntity>())
+    }
+
+    @Test
+    fun `acceptInterest refuses the customer's own property`() {
+        givenInterest(null, null)
+
+        assertNull(service.acceptInterest(MANDATE_ID, LISTING_ID))
+
+        verify(matchDao, never()).save(any<MatchEntity>())
+    }
+
+    @Test
+    fun `acceptInterest accepts on a search that isn't approved`() {
+        val assigned = search.copy(status = MandateStatus.ASSIGNED)
+        val listing = listing1
+        doReturn(assigned).whenever(mandateDao).findWithNeighborhoodsById(MANDATE_ID)
+        doReturn(Optional.of(listing)).whenever(listingDao).findById(LISTING_ID)
+        doReturn(score(0.9)).whenever(matcher).scoreInterest(eq(assigned), eq(listing), any(), eq(today))
+        doReturn(null).whenever(matchDao).findByMandateAndListing(assigned, listing)
+
+        val interest = service.acceptInterest(MANDATE_ID, LISTING_ID)!!
+
+        assertTrue(interest.changed)
+        val captor = argumentCaptor<MatchEntity>()
+        verify(matchDao).save(captor.capture())
+        assertEquals(MatchStatus.ACCEPTED, captor.firstValue.status)
+    }
+
+    @Test
+    fun `a concurrent insert is read back, not accepted twice`() {
+        givenInterest(score(0.9), null)
+        doThrow(DataIntegrityViolationException("dup")).whenever(matchDao).save(any())
+        doReturn(null, MatchEntity(id = 9L, status = MatchStatus.ACCEPTED))
+            .whenever(matchDao).findByMandateAndListing(search, listing1)
+
+        val interest = service.acceptInterest(MANDATE_ID, LISTING_ID)!!
+
+        assertFalse(interest.changed)
         assertEquals(9L, interest.match.id)
     }
 
     @Test
-    fun `ensureInterest leaves a rejected match rejected`() {
-        givenInterest(score(0.9), MatchEntity(id = 9L, status = MatchStatus.REJECTED))
-
-        assertNull(service.ensureInterest(MANDATE_ID, LISTING_ID))
-
-        verify(matchDao, never()).save(any<MatchEntity>())
-    }
-
-    @Test
-    fun `ensureInterest still applies the hard rules`() {
-        givenInterest(null, null)
-
-        assertNull(service.ensureInterest(MANDATE_ID, LISTING_ID))
-
-        verify(matchDao, never()).save(any<MatchEntity>())
-    }
-
-    @Test
-    fun `ensureInterest needs a published listing`() {
+    fun `acceptInterest needs a published listing`() {
         doReturn(Optional.of(listing1.copy(status = ListingStatus.SOLD))).whenever(listingDao).findById(LISTING_ID)
 
-        assertNull(service.ensureInterest(MANDATE_ID, LISTING_ID))
+        assertNull(service.acceptInterest(MANDATE_ID, LISTING_ID))
 
         verify(matchDao, never()).save(any<MatchEntity>())
     }
 
     @Test
-    fun `ensureInterest needs an agent`() {
+    fun `acceptInterest needs an agent`() {
         doReturn(search.copy(agentId = null)).whenever(mandateDao).findWithNeighborhoodsById(MANDATE_ID)
 
-        assertNull(service.ensureInterest(MANDATE_ID, LISTING_ID))
+        assertNull(service.acceptInterest(MANDATE_ID, LISTING_ID))
 
         verify(matchDao, never()).save(any<MatchEntity>())
     }

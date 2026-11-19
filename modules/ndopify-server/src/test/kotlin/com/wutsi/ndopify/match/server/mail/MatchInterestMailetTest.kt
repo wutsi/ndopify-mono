@@ -88,6 +88,7 @@ class MatchInterestMailetTest {
                 "price" to "175 000 FCFA / mois",
                 "place" to "Bonapriso, Douala",
                 "mandate_url" to "https://partner.ndopify.com/mandates/1",
+                "whatsapp_url" to "https://wa.me/237600000001",
             ),
             context(),
         )
@@ -114,6 +115,13 @@ class MatchInterestMailetTest {
         mailet.send(agent, customer, mandate, listing)
 
         assertNull(context()["mandate_url"])
+    }
+
+    @Test
+    fun `no whatsapp number - no WhatsApp link`() {
+        mailet.send(agent, customer.copy(whatsappNumber = null), mandate, listing)
+
+        assertNull(context()["whatsapp_url"])
     }
 
     private fun context(): Map<String, Any?> {

@@ -16,7 +16,8 @@ import org.springframework.transaction.event.TransactionalEventListener
 /**
  * Matches a search mandate once it's APPROVED, and a listing once it's PUBLISHED, against the agent's inventory / open
  * searches. Lets the mandate and listing domains stay unaware of matches. E-mails the customer a match once proposed,
- * and again when the agent resends it, and tells the agent once its customer answers one.
+ * the booking link once an interest asked for on a listing is accepted, and again when the agent resends it, and tells
+ * the agent once its customer answers one.
  *
  * Runs on an executor thread once the approval / publication is committed, so a matching failure never fails, nor
  * rolls back, it: it's only logged (`POST /v1/matches/run` re-runs a mandate). That thread has no request: the tenant
@@ -42,7 +43,7 @@ class MatchEventListener(
 
             val count = service.matchMandate(event.mandateId)
             logger.add("match_count", count)
-            // A search seeded from a listing: its listing is proposed at once, the customer asked for it
+            // A search seeded from a listing: its listing is accepted at once, the customer asked for it
             val originMatchId = interestService.proposeOrigin(event.mandateId)
             logger.add("origin_match_id", originMatchId)
             logger.add("success", true)
@@ -115,6 +116,29 @@ class MatchEventListener(
             logger.add("match_id", event.matchId)
 
             proposalService.sendResentEmail(event.matchId)
+            logger.add("success", true)
+        } catch (ex: Exception) {
+            logger.add("success", false)
+            logger.setException(ex)
+        } finally {
+            logger.log()
+            TenantContext.remove()
+            KVLoggerThreadLocal.remove()
+        }
+    }
+
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    fun onMatchInterestAccepted(event: MatchInterestAcceptedEvent) {
+        val logger = DefaultKVLogger()
+        KVLoggerThreadLocal.set(logger)
+        TenantContext.set(event.tenantId)
+        try {
+            logger.add("event", MatchInterestAcceptedEvent::class.java.simpleName)
+            logger.add("tenant_id", event.tenantId)
+            logger.add("match_id", event.matchId)
+
+            proposalService.sendAcceptedEmail(event.matchId)
             logger.add("success", true)
         } catch (ex: Exception) {
             logger.add("success", false)

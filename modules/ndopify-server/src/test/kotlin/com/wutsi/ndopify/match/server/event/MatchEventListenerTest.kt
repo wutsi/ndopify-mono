@@ -34,7 +34,7 @@ class MatchEventListenerTest {
         listener.onMandateApproved(MandateApprovedEvent(mandateId = 10L, tenantId = 7L))
 
         verify(service).matchMandate(10L)
-        verify(interestService).proposeOrigin(10L) // Its origin listing is proposed at once
+        verify(interestService).proposeOrigin(10L) // Its origin listing is accepted at once
         assertEquals(7L, tenantId)
         assertNull(TenantContext.get()) // Removed: the executor threads are reused
         assertNull(KVLoggerThreadLocal.get())
