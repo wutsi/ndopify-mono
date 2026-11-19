@@ -32,7 +32,7 @@ class VisitFeedbackBotlet(
         val formatter = TenantFormatter(tenant)
         client.sendMessage(
             chatId,
-            text(visit, customer, agent, listing, formatter),
+            text(visit, customer, listing, formatter),
             tenant.partnerCentralUrl?.removeSuffix("/")?.let { url ->
                 listOf(TelegramButton("Voir la visite", url = "$url/visits/${visit.id}"))
             } ?: emptyList(),
@@ -42,15 +42,12 @@ class VisitFeedbackBotlet(
     private fun text(
         visit: VisitEntity,
         customer: CustomerEntity,
-        agent: AgentEntity,
         listing: ListingEntity,
         formatter: TenantFormatter,
     ): String {
         val at = visit.scheduledAt ?: visit.requestedAt
         val lines = mutableListOf<String>()
-        lines.add("Bonjour ${agent.party.fullName()},")
-        lines.add("")
-        lines.add("${customer.party.fullName()} a donné son avis sur la visite.")
+        lines.add("L'avis de ${customer.party.fullName()} sur la visite")
         lines.add("")
         lines.add("Bien: " + (listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"))
         lines.add("Date: ${formatter.date(at)} à ${formatter.time(at)}")

@@ -72,9 +72,7 @@ class VisitFeedbackBotletTest {
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
         assertEquals(
             """
-            Bonjour Kim Possible,
-
-            Ray Sponsible a donné son avis sur la visite.
+            L'avis de Ray Sponsible sur la visite
 
             Bien: Nice apartment
             Date: 01/12/2026 à 10:00
