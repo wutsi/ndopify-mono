@@ -43,7 +43,7 @@ class MatchEventListener(
 
             val count = service.matchMandate(event.mandateId)
             logger.add("match_count", count)
-            // A search seeded from a listing: its listing is proposed at once, the customer asked for it
+            // A search seeded from a listing: its listing is accepted at once, the customer asked for it
             val originMatchId = interestService.proposeOrigin(event.mandateId)
             logger.add("origin_match_id", originMatchId)
             logger.add("success", true)
