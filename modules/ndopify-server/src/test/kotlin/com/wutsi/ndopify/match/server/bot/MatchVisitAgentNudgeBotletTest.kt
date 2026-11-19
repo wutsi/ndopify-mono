@@ -57,7 +57,7 @@ class MatchVisitAgentNudgeBotletTest {
 
         assertEquals(
             """
-            Bonjour Kim Possible,
+            Ray Sponsible attend une visite
 
             Ray Sponsible a accepté votre proposition pour Nice apartment il y a plus de 48 h, mais aucune visite n'est planifiée.
 
