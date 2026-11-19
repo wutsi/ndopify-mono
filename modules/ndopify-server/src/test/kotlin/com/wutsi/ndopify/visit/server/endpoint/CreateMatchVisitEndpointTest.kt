@@ -78,6 +78,17 @@ class CreateMatchVisitEndpointTest : AuthorizationAwareEndpointIntegrationTest()
     }
 
     @Test
+    fun `the listing agent of a co-brokerage match`() {
+        userId = 12L // agent 30 owns listing 109; match 8 is agent 20's, whose customer accepted it
+
+        val response = postError(8L, CreateMatchVisitRequest(VisitType.ON_SITE, slot(2, 10, 0)))
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.MANDATE_ACCESS_DENIED, response.body?.error?.code)
+        assertTrue(visits(8L).isEmpty())
+    }
+
+    @Test
     fun anonymous() {
         anonymousUser = true
 
