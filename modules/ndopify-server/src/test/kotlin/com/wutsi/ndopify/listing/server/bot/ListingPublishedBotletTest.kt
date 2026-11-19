@@ -74,9 +74,9 @@ class ListingPublishedBotletTest {
     private val bytes = byteArrayOf(1, 2, 3)
 
     private val caption = """
-        Bonjour Kim Possible,
+        Votre annonce à Yaounde est publiée
 
-        L'annonce du bien de Ray Sponsible est désormais publiée.
+        Le bien de Ray Sponsible est en ligne.
 
         Annonce: Appartement à louer, 3 chambres, Yaounde (Bastos)
         Ville: Yaounde
@@ -153,6 +153,18 @@ class ListingPublishedBotletTest {
         botlet.send(listing, customer, agent, 1000L)
 
         verify(client).sendMessage(1000L, caption, emptyList())
+    }
+
+    @Test
+    fun `a tenant without a resolvable city has no dangling place`() {
+        doReturn(null).whenever(locationService).findByIdOrNull(2370201L)
+        doReturn(null).whenever(imageService).cover(listing)
+
+        botlet.send(listing, customer, agent, 1000L)
+
+        val text = argumentCaptor<String>()
+        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        assertTrue(text.firstValue.startsWith("Votre annonce est publiée"))
     }
 
     @Test
