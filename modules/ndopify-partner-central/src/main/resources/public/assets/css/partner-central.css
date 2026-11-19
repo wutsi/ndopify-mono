@@ -939,7 +939,12 @@ button.user-menu__item:hover {
 
 .tracker [data-state="done"] .tracker__mark {
     border-color: var(--color-success-fg);
-    color: var(--color-success-fg);
+    background: var(--color-success-fg);
+}
+
+/* A done step is a filled green dot: no check drawn inside. */
+.tracker [data-state="done"] .tracker__mark svg {
+    display: none;
 }
 
 .tracker [data-state="current"] .tracker__mark {
