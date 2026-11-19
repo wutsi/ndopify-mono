@@ -35,7 +35,7 @@ class VisitCancelledBotlet(
         val formatter = TenantFormatter(tenant)
         client.sendMessage(
             chatId,
-            text(visit, customer, agent, listing, formatter),
+            text(visit, customer, listing, formatter),
             tenant.partnerCentralUrl?.removeSuffix("/")?.let { url ->
                 listOf(TelegramButton("Voir la visite", url = "$url/visits/${visit.id}"))
             } ?: emptyList(),
@@ -45,14 +45,11 @@ class VisitCancelledBotlet(
     private fun text(
         visit: VisitEntity,
         customer: CustomerEntity,
-        agent: AgentEntity,
         listing: ListingEntity,
         formatter: TenantFormatter,
     ): String {
         val lines = mutableListOf<String>()
-        lines.add("Bonjour ${agent.party.fullName()},")
-        lines.add("")
-        lines.add(VisitCancelledMailet.LABEL_BY_CUSTOMER)
+        lines.add(VisitCancelledMailet.LABEL_BY_CUSTOMER.removeSuffix("."))
         lines.add("")
         lines.add("Bien: " + (listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"))
         locationService.findByIdOrNull(listing.cityId)?.name?.ifBlank { null }?.let { lines.add("Ville: $it") }

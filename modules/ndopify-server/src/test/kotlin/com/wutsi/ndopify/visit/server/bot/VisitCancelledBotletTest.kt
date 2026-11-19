@@ -82,9 +82,7 @@ class VisitCancelledBotletTest {
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
         assertEquals(
             """
-            Bonjour Kim Possible,
-
-            Le client a annulé la visite.
+            Le client a annulé la visite
 
             Bien: Nice apartment
             Ville: Yaounde
