@@ -67,7 +67,7 @@ Scheduled jobs live in `<domain>/server/job/`: `KycJobs` (party), `MandateJobs` 
 `ListingVerifierService`; `publish`, the VERIFIED ones sent for publication, then the PUBLISHING ones through `ListingPublisherService`;
 `close`, daily, the PUBLISHED listings of closed mandates) and
 `MatchJobs` (match: `notifyAgents` hourly, `autoPropose` every 15 minutes (hourly in prod), `rematch` and `expire`
-daily, `remindAcceptedWithoutVisit` daily, see *match* below), and
+daily, `remindAcceptedWithoutVisit` and `nudgeAcceptedWithoutVisitAgent` daily, see *match* below), and
 `VisitJobs` (visit: `expire` hourly, `reminder` every 15 minutes, `noShow` hourly, see *visit* below). They loop over the
 active tenants, setting `TenantContext` for each.
 
@@ -486,13 +486,29 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `publicPortalUrl`). The row is marked only after a successful send, so a failure retries on the next run; a customer
   without e-mail is marked without an e-mail; a match answered, closed or visited meanwhile is skipped (`@Version` /
   re-check). One reminder per match in v1, and the agent isn't told.
+  **Agent nudge** (`docs/superpowers/plans/2026-11-18-agent-scheduled-visits.md`): `agentVisitNudgedAt` (`V14_1`) is
+  set once the agent was told its ACCEPTED match still has no open visit. `MatchJobs.nudgeAcceptedWithoutVisitAgent`
+  (daily, `ndopify.match.agent-visit-nudge.cron`) has `MatchVisitAgentNudgeService.nudgeDue` select the same matches as
+  the customer reminder, answered at least `delay-hours` (48) ago, whose agent wasn't nudged yet, oldest first,
+  `batch-size` (100) per run. `MatchVisitAgentNudgeNotifier` messages a linked agent over Telegram
+  (`MatchVisitAgentNudgeBotlet`) and e-mails the others (`MatchVisitAgentNudgeMailet`,
+  `mail/match/agent_visit_nudge.mjml`), falling back to the e-mail on a failed send; both carry the customer, the
+  listing and its price, and two buttons — `Contacter sur WhatsApp` (`wa.me`) and `Planifier la visite`
+  (`{partnerCentralUrl}/mandates/{mandateId}#match-{matchId}`). The row is marked after the notifier returns (an agent
+  with no channel at all is marked too: nothing to retry), and a failed send leaves it to the next run; a match
+  answered, closed or visited meanwhile is skipped (`@Version` / re-check). The nudge goes to `match.agentId` only,
+  never the listing agent, and never carries its customer.
 - **visit** — a customer's visit of a listing an agent matched to its search (`VisitEntity`, `T_VISIT`, `V10_0`,
   `@Version`-ed), see `docs/superpowers/plans/2026-11-02-visit-management.md`. The customer requests an `ON_SITE` or
   `VIDEO` visit (the agent, at the property, calls it on WhatsApp video) of one of its ACCEPTED matches, on a slot in the
   7 days starting tomorrow, 08:00-20:00 in the tenant's `timeZone`, on a 30-minute boundary (`VisitSlots`); a `VIDEO`
   request needs its `whatsappNumber`. The agent, or an admin, schedules it (the requested date and type may change) with a
   4-digit code (`VisitCodeGenerator`, `SecureRandom`); a `CONFIRMED` visit less than 24 h ahead is its own reminder
-  (`reminderSentAt`). The agent checks the customer in with that code from 1 h before to 4 h after the time (a wrong code
+  (`reminderSentAt`). The agent (or an admin) also **books** a visit for an ACCEPTED match that has no open visit, in
+  one step: `POST /v1/matches/{id}/visits` (`CreateMatchVisitRequest`: the type and the slot) locks the match, then
+  runs the customer's request checks plus `schedule`'s slot and code, and writes it straight to `CONFIRMED` with
+  `createdBy = AGENT` (`V14_0`); the customer's e-mail says the agent planned it and can be cancelled, the
+  co-brokerage notice is unchanged, and no *visite demandée* message is sent. The agent checks the customer in with that code from 1 h before to 4 h after the time (a wrong code
   is counted, the 5th locks the check-in for good: `VISIT_CODE_INVALID` / `VISIT_CODE_LOCKED`), marks the customer's
   no-show from 15 min to 4 h after (`CUSTOMER_ABSENT`, `CODE_REFUSED`), checks out at least 10 min after the check-in with
   a private comment, and cancels before the check-in. The customer gives its feedback once `COMPLETED`. A location, when
