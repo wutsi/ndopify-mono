@@ -74,4 +74,46 @@ class MatchInterestBotletTest {
         verify(client).sendMessage(eq(1000L), text.capture(), any())
         assertTrue(text.firstValue.contains("Bien: Bien n° 101"))
     }
+
+    @Test
+    fun `a customer with a WhatsApp number gets a contact button`() {
+        botlet.send(agent, customer.copy(whatsappNumber = "+237600000001"), mandate, listing, 1000L)
+
+        val text = argumentCaptor<String>()
+        verify(client).sendMessage(
+            eq(1000L),
+            text.capture(),
+            eq(
+                listOf(
+                    TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237600000001"),
+                    TelegramButton("Voir le mandat", url = "https://partner.ndopify.com/mandates/5"),
+                ),
+            ),
+        )
+        assertTrue(text.firstValue.startsWith("Ray Sponsible s'intéresse à un logement"))
+    }
+
+    @Test
+    fun `no WhatsApp number, no WhatsApp button`() {
+        botlet.send(agent, customer, mandate, listing, 1000L)
+
+        verify(client).sendMessage(
+            eq(1000L),
+            any(),
+            eq(listOf(TelegramButton("Voir le mandat", url = "https://partner.ndopify.com/mandates/5"))),
+        )
+    }
+
+    @Test
+    fun `no partner central, only the WhatsApp button`() {
+        doReturn(tenant.copy(partnerCentralUrl = null)).whenever(tenantService).findById(1L)
+
+        botlet.send(agent, customer.copy(whatsappNumber = "+237600000001"), mandate, listing, 1000L)
+
+        verify(client).sendMessage(
+            eq(1000L),
+            any(),
+            eq(listOf(TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237600000001"))),
+        )
+    }
 }
