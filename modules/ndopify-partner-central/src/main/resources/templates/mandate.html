@@ -152,7 +152,7 @@
                         <li th:each="step, it : ${m.steps}" th:attr="data-step=${step.status},
                                 data-state=${step.done} ? 'done' : (${it.index == m.currentStep} ? 'current' : 'todo'),
                                 aria-current=${it.index == m.currentStep} ? 'step' : null">
-                            <span class="tracker__mark"><svg th:if="${step.done}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+                            <span class="tracker__mark"><span class="visually-hidden" th:if="${step.done}">Terminé</span></span>
                             <span class="mandate-steps__text"><span class="mandate-steps__label" th:text="${step.label}">Assigné</span>
                                 <span class="mandate-steps__date" data-step-date th:text="${step.date}"></span></span>
                         </li>

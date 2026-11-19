@@ -221,6 +221,13 @@ class KycTemplateTest {
         assertNull(page.selectFirst("[data-status=verified]"))
         assertNull(page.selectFirst("form[data-kyc-form]"))
         assertNull(page.selectFirst(".progress"))
+
+        val steps = page.select("[data-status=pending] .tracker li")
+        assertEquals(listOf("done", "current", "todo"), steps.map { it.attr("data-state") })
+        assertNull(steps[0].selectFirst(".tracker__mark svg"))
+        assertEquals("Terminé", steps[0].selectFirst(".tracker__mark .visually-hidden")?.text())
+        assertNull(steps[1].selectFirst(".tracker__mark .visually-hidden"))
+        assertNull(steps[2].selectFirst(".tracker__mark .visually-hidden"))
     }
 
     @Test

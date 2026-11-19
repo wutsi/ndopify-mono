@@ -1699,6 +1699,8 @@
     // The cards' dates (Mes mandats, Biens correspondants), as the BFF's tenant dateFormat: "1 nov. 2026".
     var SHORT_DATE_FORMAT = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", year: "numeric" });
     var CHECK_MARK = '<svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    // A done tracker step: filled by CSS, the state is carried for screen readers only.
+    var DONE_MARK = '<span class="visually-hidden">Terminé</span>';
 
     function formatDate(ms) {
         return DATE_FORMAT.format(new Date(ms));
@@ -2761,7 +2763,7 @@
                 // A mandate closed without a lease may skip steps (ex: cancelled before its approval): never done.
                 var done = closed ? i === current || !!dates[i] : i < current;
                 li.setAttribute("data-state", done ? "done" : i === current ? "current" : "todo");
-                $(".tracker__mark", li).innerHTML = done ? CHECK_MARK : "";
+                $(".tracker__mark", li).innerHTML = done ? DONE_MARK : "";
                 if (i === current) li.setAttribute("aria-current", "step");
                 else li.removeAttribute("aria-current");
                 $("[data-step-date]", li).textContent = i <= current && dates[i] ? formatDate(dates[i]) : "";
