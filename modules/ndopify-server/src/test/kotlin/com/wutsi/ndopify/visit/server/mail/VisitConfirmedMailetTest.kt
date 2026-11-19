@@ -23,6 +23,7 @@ import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
+import com.wutsi.ndopify.visit.dto.VisitParty
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType
 import com.wutsi.ndopify.visit.server.domain.VisitEntity
@@ -128,6 +129,7 @@ class VisitConfirmedMailetTest {
                 "visit_time" to "10:00",
                 "on_site" to true,
                 "code" to "1234",
+                "by_agent" to false,
                 "visit_url" to "https://www.ndopify.com/visits/1?token=xxx.yyy.zzz",
             ),
             customerContext(),
@@ -148,6 +150,13 @@ class VisitConfirmedMailetTest {
             ),
             agentContext(),
         )
+    }
+
+    @Test
+    fun `a visit the agent booked is flagged for the template`() {
+        mailet.send(visit.copy(createdBy = VisitParty.AGENT), customer, agent, listing)
+
+        assertEquals(true, customerContext()["by_agent"])
     }
 
     @Test

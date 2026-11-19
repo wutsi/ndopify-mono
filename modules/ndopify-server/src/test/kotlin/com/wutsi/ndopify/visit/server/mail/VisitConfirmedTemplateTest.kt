@@ -35,6 +35,7 @@ class VisitConfirmedTemplateTest {
         "address" to "Rue 1.234, Bonapriso, Derrière la pharmacie",
         "code" to "1234",
         "visit_url" to "https://www.ndopify.com/visits/1?token=xxx.yyy.zzz",
+        "by_agent" to false,
     )
 
     private val agentContext = onSite + mapOf(
@@ -59,10 +60,24 @@ class VisitConfirmedTemplateTest {
         assertFalse(html.contains("Rue 1.234"))
         assertFalse(html.contains("<b>Adresse</b>"))
         assertTrue(html.contains("1234"))
+        assertTrue(html.contains("Votre visite du bien"))
+        assertTrue(html.contains("est confirmée le"))
+        assertFalse(html.contains("a planifié votre visite"))
         assertTrue(html.contains("https://www.ndopify.com/visits/1?token=xxx.yyy.zzz"))
         assertTrue(html.contains("https://wa.me/237699000001"))
         assertTrue(html.contains("src=\"https://cdn.ndopify.com/agent.jpg\""))
         assertFalse(html.contains("Je vous appellerai en vidéo"))
+    }
+
+    @Test
+    fun `customer - booked by the agent`() {
+        val html = resolver.resolve(VisitConfirmedMailet.TEMPLATE_CUSTOMER, onSite + mapOf("by_agent" to true))
+
+        assertTrue(html.contains("Kim Possible"))
+        assertTrue(html.contains("a planifié votre visite"))
+        assertTrue(html.contains("Vous pouvez l'annuler"))
+        assertTrue(html.contains("1234"))
+        assertFalse(html.contains("Votre visite du bien"))
     }
 
     @Test

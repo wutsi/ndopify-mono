@@ -25,8 +25,14 @@
                         Bonjour <strong>{{recipient_name}}</strong>,
                     </mj-text>
                     <mj-text>
+                        {{#by_agent}}
+                        Votre agent <strong>{{agent_full_name}}</strong> a planifié votre visite du bien
+                        <strong>{{listing_title}}</strong> le <strong>{{visit_date}} à {{visit_time}}</strong>.
+                        {{/by_agent}}
+                        {{^by_agent}}
                         Votre visite du bien <strong>{{listing_title}}</strong> est confirmée le
                         <strong>{{visit_date}} à {{visit_time}}</strong>.
+                        {{/by_agent}}
                     </mj-text>
                     {{#place}}
                     <mj-text>
@@ -55,6 +61,13 @@
                         Votre code de visite est <strong>{{code}}</strong>. Lisez-le-moi pendant l'appel.
                     </mj-text>
                     {{/on_site}}
+
+                    {{#by_agent}}
+                    <mj-text>
+                        Cette visite a été planifiée par votre agent. Vous pouvez l'annuler à tout moment depuis votre
+                        page de visite.
+                    </mj-text>
+                    {{/by_agent}}
 
                     {{#visit_url}}
                     <mj-button href="{{visit_url}}" css-class="btn-primary" align="center">
