@@ -77,9 +77,9 @@ class MandateApprovedBotletTest {
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
         assertEquals(
             """
-            Bonjour Kim Possible,
+            Votre mandat à Yaounde est approuvé
 
-            Votre client a signé le mandat à Yaounde. Le mandat est approuvé : vous pouvez commencer.
+            Votre client a signé le mandat. Vous pouvez commencer.
 
             Recherche: Location - Appartement
             Ville: Yaounde
@@ -121,9 +121,9 @@ class MandateApprovedBotletTest {
         verify(client).sendMessage(eq(1000L), text.capture(), any())
         assertEquals(
             """
-            Bonjour Kim Possible,
+            Votre mandat à Yaounde est approuvé
 
-            Votre client a signé le mandat à Yaounde. Le mandat est approuvé : vous pouvez commencer.
+            Votre client a signé le mandat. Vous pouvez commencer.
 
             Bien: Vente - Villa
             Ville: Yaounde
@@ -175,9 +175,9 @@ class MandateApprovedBotletTest {
         verify(client).sendMessage(eq(1000L), text.capture(), any())
         assertEquals(
             """
-            Bonjour Kim Possible,
+            Votre mandat est approuvé
 
-            Votre client a signé le mandat. Le mandat est approuvé : vous pouvez commencer.
+            Votre client a signé le mandat. Vous pouvez commencer.
 
             Recherche: Location
             Budget: 1 500 000 XAF / mois

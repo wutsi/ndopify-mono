@@ -32,22 +32,19 @@ class MandateApprovedBotlet(
         val formatter = TenantFormatter(tenant)
         client.sendMessage(
             chatId,
-            text(mandate, agent, city, formatter),
+            text(mandate, city, formatter),
             tenant.partnerCentralUrl?.let { url ->
                 listOf(TelegramButton("Voir le mandat", url = "${url.removeSuffix("/")}/mandates/${mandate.id}"))
             } ?: emptyList(),
         )
     }
 
-    private fun text(mandate: MandateEntity, agent: AgentEntity, city: String, formatter: TenantFormatter): String {
+    private fun text(mandate: MandateEntity, city: String, formatter: TenantFormatter): String {
         val listing = mandate.mandateType == MandateType.LISTING
         val lines = mutableListOf<String>()
-        lines.add("Bonjour ${agent.party.fullName()},")
+        lines.add("Votre mandat" + (if (city.isEmpty()) "" else " à $city") + " est approuvé")
         lines.add("")
-        lines.add(
-            "Votre client a signé le mandat${if (city.isEmpty()) "" else " à $city"}. " +
-                "Le mandat est approuvé : vous pouvez commencer."
-        )
+        lines.add("Votre client a signé le mandat. Vous pouvez commencer.")
         lines.add("")
         lines.add("${if (listing) "Bien" else "Recherche"}: " + criteria(mandate))
         if (city.isNotEmpty()) {
