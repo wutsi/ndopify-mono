@@ -16,6 +16,7 @@
     <link rel="stylesheet" th:href="@{/assets/css/rejoindre.css}">
     <link rel="stylesheet" th:href="@{/assets/css/home.css}">
     <link rel="stylesheet" th:href="@{/assets/css/visit.css}">
+    <script th:src="@{/assets/js/partner-central.js}" defer></script>
 </head>
 <!--/*
     Booking a visit for a property the customer accepted (MandateVisitController), on its own page reached from the
@@ -23,7 +24,8 @@
     and confirms the property, the type (on site, or a video call the agent makes from the property), the day and the
     time. The visit is created CONFIRMED: the customer is e-mailed the date, the address and its code at once.
 
-    No page script: every field posts, and the rules are re-checked server-side and by ndopify-server.
+    No page script: partner-central.js only drives the header's account menu, every field posts, and the rules are
+    re-checked server-side and by ndopify-server.
 
     "mandate" the mandate, "client" the customer (may be null), "properties" the accepted matches to pick from
     (MandateVisitProperty), "days" / "times" the slots (VisitSlots), "types" the visit types, "form"
