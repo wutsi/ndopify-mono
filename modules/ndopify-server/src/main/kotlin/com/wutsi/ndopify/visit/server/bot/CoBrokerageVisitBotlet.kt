@@ -32,9 +32,9 @@ class CoBrokerageVisitBotlet(
     fun sendConfirmed(visit: VisitEntity, listing: ListingEntity, agent: AgentEntity, chatId: Long) =
         send(visit, listing, agent, chatId) { title, slot, type ->
             listOf(
-                "Bonjour ${listing.agent.party.fullName()},",
+                "Visite de votre bien confirmée",
                 "",
-                "J'ai organisé une visite de votre bien $title le $slot ($type).",
+                "J'ai organisé une visite de $title le $slot ($type).",
                 "",
                 onSite(visit.type),
             )
@@ -43,9 +43,9 @@ class CoBrokerageVisitBotlet(
     fun sendReminder(visit: VisitEntity, listing: ListingEntity, agent: AgentEntity, chatId: Long) =
         send(visit, listing, agent, chatId) { title, slot, type ->
             listOf(
-                "Bonjour ${listing.agent.party.fullName()},",
+                "Rappel de la visite de votre bien",
                 "",
-                "Rappel : la visite de votre bien $title a lieu le $slot ($type).",
+                "La visite de $title a lieu le $slot ($type).",
                 "",
                 onSite(visit.type),
             )
@@ -54,9 +54,9 @@ class CoBrokerageVisitBotlet(
     fun sendCancelled(visit: VisitEntity, listing: ListingEntity, agent: AgentEntity, chatId: Long) =
         send(visit, listing, agent, chatId) { title, slot, type ->
             listOf(
-                "Bonjour ${listing.agent.party.fullName()},",
+                "La visite de votre bien est annulée",
                 "",
-                "La visite de votre bien $title ($type) prévue le $slot a été annulée.",
+                "$title ($type), prévue le $slot.",
                 "",
                 CoBrokerageVisitLabels.cancelledBy(visit.cancelledBy),
             )
@@ -65,9 +65,9 @@ class CoBrokerageVisitBotlet(
     fun sendNoShow(visit: VisitEntity, listing: ListingEntity, agent: AgentEntity, chatId: Long) =
         send(visit, listing, agent, chatId) { title, slot, type ->
             listOf(
-                "Bonjour ${listing.agent.party.fullName()},",
+                "La visite de votre bien n'a pas eu lieu",
                 "",
-                "La visite de votre bien $title ($type) prévue le $slot n'a pas eu lieu.",
+                "$title ($type), prévue le $slot.",
                 "",
                 CoBrokerageVisitLabels.noShowReason(visit.noShowReason),
             )

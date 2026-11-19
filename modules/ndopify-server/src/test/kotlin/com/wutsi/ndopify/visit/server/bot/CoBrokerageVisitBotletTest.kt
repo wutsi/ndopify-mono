@@ -75,7 +75,7 @@ class CoBrokerageVisitBotletTest {
     }
 
     @Test
-    fun `confirmed - B is greeted, A signs, one listing button`() {
+    fun `confirmed - B is told why, A signs, one listing button`() {
         botlet.sendConfirmed(visit, listing, searchAgent, 1000L)
 
         val text = argumentCaptor<String>()
@@ -83,9 +83,9 @@ class CoBrokerageVisitBotletTest {
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
         assertEquals(
             """
-            Bonjour John Doe,
+            Visite de votre bien confirmée
 
-            J'ai organisé une visite de votre bien Villa Bastos le 02/12/2026 à 10:00 (Sur place).
+            J'ai organisé une visite de Villa Bastos le 02/12/2026 à 10:00 (Sur place).
 
             Je vous y retrouve avec mon client.
 
@@ -118,9 +118,9 @@ class CoBrokerageVisitBotletTest {
         verify(client).sendMessage(eq(1000L), text.capture(), any())
         assertEquals(
             """
-            Bonjour John Doe,
+            Rappel de la visite de votre bien
 
-            Rappel : la visite de votre bien Villa Bastos a lieu le 02/12/2026 à 10:00 (Sur place).
+            La visite de Villa Bastos a lieu le 02/12/2026 à 10:00 (Sur place).
 
             Je vous y retrouve avec mon client.
 
@@ -143,9 +143,9 @@ class CoBrokerageVisitBotletTest {
         verify(client).sendMessage(eq(1000L), text.capture(), any())
         assertEquals(
             """
-            Bonjour John Doe,
+            La visite de votre bien est annulée
 
-            La visite de votre bien Villa Bastos (Sur place) prévue le 02/12/2026 à 10:00 a été annulée.
+            Villa Bastos (Sur place), prévue le 02/12/2026 à 10:00.
 
             J'ai annulé la visite.
 
@@ -174,6 +174,9 @@ class CoBrokerageVisitBotletTest {
         botlet.sendNoShow(visit.copy(noShowReason = VisitNoShowReason.CODE_REFUSED), listing, searchAgent, 1000L)
 
         verify(client, times(2)).sendMessage(eq(1000L), text.capture(), any())
+        assertTrue(
+            text.allValues[0].startsWith("La visite de votre bien n'a pas eu lieu\n\nVilla Bastos (Sur place), prévue le ")
+        )
         assertTrue(text.allValues[0].contains("Le client ne s'est pas présenté à la visite."))
         assertTrue(text.allValues[1].contains("Le client a refusé de donner le code de visite."))
     }
@@ -184,7 +187,7 @@ class CoBrokerageVisitBotletTest {
 
         val text = argumentCaptor<String>()
         verify(client).sendMessage(eq(1000L), text.capture(), any())
-        assertTrue(text.firstValue.contains("votre bien Bien n° 101 le"))
+        assertTrue(text.firstValue.contains("une visite de Bien n° 101 le"))
     }
 
     @Test
