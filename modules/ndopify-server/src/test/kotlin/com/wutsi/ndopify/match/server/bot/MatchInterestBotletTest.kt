@@ -9,10 +9,10 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.listing.server.bot.ListingTelegramSender
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
-import com.wutsi.ndopify.platform.telegram.TelegramClient
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
@@ -23,8 +23,8 @@ import kotlin.test.assertTrue
 
 class MatchInterestBotletTest {
     private val tenantService = mock<TenantService>()
-    private val client = mock<TelegramClient>()
-    private val botlet = MatchInterestBotlet(tenantService, client)
+    private val sender = mock<ListingTelegramSender>()
+    private val botlet = MatchInterestBotlet(tenantService, sender)
 
     private val tenant = TenantEntity(id = 1L, partnerCentralUrl = "https://partner.ndopify.com/")
     private val agent = AgentEntity(
@@ -49,7 +49,7 @@ class MatchInterestBotletTest {
 
         val text = argumentCaptor<String>()
         val buttons = argumentCaptor<List<TelegramButton>>()
-        verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
+        verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertEquals(
             """
             Ray Sponsible s'intéresse à un logement
@@ -68,10 +68,12 @@ class MatchInterestBotletTest {
 
     @Test
     fun `a listing without a title is named by its id`() {
-        botlet.send(agent, customer, mandate, listing.copy(title = null), 1000L)
+        val withoutTitle = listing.copy(title = null)
+
+        botlet.send(agent, customer, mandate, withoutTitle, 1000L)
 
         val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        verify(sender).send(eq(1000L), eq(withoutTitle), text.capture(), any())
         assertTrue(text.firstValue.contains("Bien: Bien n° 101"))
     }
 
@@ -80,8 +82,9 @@ class MatchInterestBotletTest {
         botlet.send(agent, customer.copy(whatsappNumber = "+237600000001"), mandate, listing, 1000L)
 
         val text = argumentCaptor<String>()
-        verify(client).sendMessage(
+        verify(sender).send(
             eq(1000L),
+            eq(listing),
             text.capture(),
             eq(
                 listOf(
@@ -97,8 +100,9 @@ class MatchInterestBotletTest {
     fun `no WhatsApp number, no WhatsApp button`() {
         botlet.send(agent, customer, mandate, listing, 1000L)
 
-        verify(client).sendMessage(
+        verify(sender).send(
             eq(1000L),
+            eq(listing),
             any(),
             eq(listOf(TelegramButton("Voir le mandat", url = "https://partner.ndopify.com/mandates/5"))),
         )
@@ -110,8 +114,9 @@ class MatchInterestBotletTest {
 
         botlet.send(agent, customer.copy(whatsappNumber = "+237600000001"), mandate, listing, 1000L)
 
-        verify(client).sendMessage(
+        verify(sender).send(
             eq(1000L),
+            eq(listing),
             any(),
             eq(listOf(TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237600000001"))),
         )

@@ -9,11 +9,11 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.listing.server.bot.ListingTelegramSender
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
-import com.wutsi.ndopify.platform.telegram.TelegramClient
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
@@ -24,8 +24,8 @@ import kotlin.test.assertTrue
 
 class MatchVisitAgentNudgeBotletTest {
     private val tenantService = mock<TenantService>()
-    private val client = mock<TelegramClient>()
-    private val botlet = MatchVisitAgentNudgeBotlet(tenantService, client)
+    private val sender = mock<ListingTelegramSender>()
+    private val botlet = MatchVisitAgentNudgeBotlet(tenantService, sender)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -109,20 +109,22 @@ class MatchVisitAgentNudgeBotletTest {
 
     @Test
     fun `a listing without a title is named by its id`() {
-        botlet.send(match.copy(listing = match.listing.copy(title = "")), customer, agent, 1000L)
+        val withoutTitle = match.copy(listing = match.listing.copy(title = ""))
 
-        assertTrue(text().contains("pour Bien n° 501 il y a plus de 48 h"))
+        botlet.send(withoutTitle, customer, agent, 1000L)
+
+        assertTrue(text(withoutTitle.listing).contains("pour Bien n° 501 il y a plus de 48 h"))
     }
 
-    private fun text(): String {
+    private fun text(listing: ListingEntity = match.listing): String {
         val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
         return text.firstValue
     }
 
-    private fun buttons(): List<TelegramButton> {
+    private fun buttons(listing: ListingEntity = match.listing): List<TelegramButton> {
         val buttons = argumentCaptor<List<TelegramButton>>()
-        verify(client).sendMessage(eq(1000L), any(), buttons.capture())
+        verify(sender).send(eq(1000L), eq(listing), any(), buttons.capture())
         return buttons.firstValue
     }
 }

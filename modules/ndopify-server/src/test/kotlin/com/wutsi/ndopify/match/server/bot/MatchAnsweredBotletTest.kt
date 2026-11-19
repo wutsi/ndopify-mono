@@ -11,6 +11,7 @@ import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.listing.server.bot.ListingTelegramSender
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
@@ -18,7 +19,6 @@ import com.wutsi.ndopify.match.dto.MatchRejectionReason
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
-import com.wutsi.ndopify.platform.telegram.TelegramClient
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.server.domain.LocationEntity
@@ -34,8 +34,8 @@ import kotlin.test.assertTrue
 class MatchAnsweredBotletTest {
     private val tenantService = mock<TenantService>()
     private val locationService = mock<LocationService>()
-    private val client = mock<TelegramClient>()
-    private val botlet = MatchAnsweredBotlet(tenantService, locationService, client)
+    private val sender = mock<ListingTelegramSender>()
+    private val botlet = MatchAnsweredBotlet(tenantService, locationService, sender)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -154,9 +154,11 @@ class MatchAnsweredBotletTest {
 
     @Test
     fun `a listing without a title is named by its id`() {
-        botlet.send(match.copy(listing = listing.copy(title = null)), customer, agent, 1000L)
+        val withoutTitle = match.copy(listing = listing.copy(title = null))
 
-        assertTrue(text().contains("Bien: Bien n° 102"))
+        botlet.send(withoutTitle, customer, agent, 1000L)
+
+        assertTrue(text(withoutTitle.listing).contains("Bien: Bien n° 102"))
     }
 
     @Test
@@ -168,15 +170,15 @@ class MatchAnsweredBotletTest {
         assertEquals(emptyList<TelegramButton>(), buttons())
     }
 
-    private fun text(): String {
+    private fun text(listing: ListingEntity = match.listing): String {
         val text = argumentCaptor<String>()
-        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
         return text.firstValue
     }
 
-    private fun buttons(): List<TelegramButton> {
+    private fun buttons(listing: ListingEntity = match.listing): List<TelegramButton> {
         val buttons = argumentCaptor<List<TelegramButton>>()
-        verify(client).sendMessage(eq(1000L), any(), buttons.capture())
+        verify(sender).send(eq(1000L), eq(listing), any(), buttons.capture())
         return buttons.firstValue
     }
 }

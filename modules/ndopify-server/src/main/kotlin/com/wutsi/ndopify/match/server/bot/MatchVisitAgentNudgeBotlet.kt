@@ -2,8 +2,8 @@ package com.wutsi.ndopify.match.server.bot
 
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.listing.server.bot.ListingTelegramSender
 import com.wutsi.ndopify.match.server.domain.MatchEntity
-import com.wutsi.ndopify.platform.telegram.TelegramClient
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.springframework.stereotype.Service
@@ -20,7 +20,7 @@ import org.springframework.stereotype.Service
 @Service
 class MatchVisitAgentNudgeBotlet(
     private val tenantService: TenantService,
-    private val client: TelegramClient,
+    private val sender: ListingTelegramSender,
 ) {
     fun send(match: MatchEntity, customer: CustomerEntity, agent: AgentEntity, chatId: Long) {
         val tenant = tenantService.findById(match.tenantId!!)
@@ -32,7 +32,7 @@ class MatchVisitAgentNudgeBotlet(
                 TelegramButton("Planifier la visite", url = "$it/mandates/${match.mandate.id}#match-${match.id}")
             },
         )
-        client.sendMessage(chatId, text(match, customer), buttons)
+        sender.send(chatId, match.listing, text(match, customer), buttons)
     }
 
     private fun text(match: MatchEntity, customer: CustomerEntity): String {
