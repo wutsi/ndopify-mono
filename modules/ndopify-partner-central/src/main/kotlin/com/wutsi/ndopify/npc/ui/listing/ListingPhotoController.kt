@@ -1,6 +1,10 @@
 package com.wutsi.ndopify.npc.ui.listing
 
 import com.wutsi.ndopify.agent.dto.Agent
+import com.wutsi.ndopify.common.dto.AttachUploadRequest
+import com.wutsi.ndopify.common.dto.PresignUploadRequest
+import com.wutsi.ndopify.common.dto.PresignUploadResponse
+import com.wutsi.ndopify.listing.dto.AttachListingImageResponse
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingSection
@@ -14,13 +18,18 @@ import com.wutsi.ndopify.web.core.service.TenantContext
 import com.wutsi.ndopify.web.core.service.TenantFormatter
 import org.apache.tika.Tika
 import org.slf4j.LoggerFactory
+import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClientException
 import org.springframework.web.multipart.MultipartFile
@@ -136,6 +145,59 @@ class ListingPhotoController(
         return back(id, error, redirect)
     }
 
+    /**
+     * A short-lived URL to upload a photo straight to the storage, for `listing.js`. 404 for an unknown or another
+     * agent's listing, 409 once the listing isn't a DRAFT any more, else the storage's answer (ndopify-server's status
+     * when it refuses).
+     */
+    @PostMapping("/presign", produces = [MediaType.APPLICATION_JSON_VALUE])
+    @ResponseBody
+    fun presign(
+        @PathVariable("id") value: String,
+        @RequestBody request: PresignUploadRequest,
+    ): ResponseEntity<PresignUploadResponse> {
+        val agent = currentAgent.get() ?: throw SignInRequiredException()
+        val id = value.toLongOrNull() ?: return ResponseEntity.notFound().build()
+        return when (state(id, agent)) {
+            is Draft.Open -> try {
+                ResponseEntity.ok(listingClient.presignImage(id, request.contentType.orEmpty()))
+            } catch (ex: HttpClientErrorException) {
+                LOGGER.warn("Presign of listing $id refused: ${ex.statusCode}")
+                ResponseEntity.status(ex.statusCode).build()
+            }
+            Draft.Locked -> ResponseEntity.notFound().build()
+            Draft.Changed -> ResponseEntity.status(HttpStatus.CONFLICT).build()
+            Draft.Unavailable -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()
+        }
+    }
+
+    /**
+     * Attaches a photo uploaded straight to the storage, for `listing.js`. Same 404 / 409 as [presign], else the
+     * image's id (ndopify-server's status and error body when it refuses the upload).
+     */
+    @PostMapping("/attach", produces = [MediaType.APPLICATION_JSON_VALUE])
+    @ResponseBody
+    fun attach(
+        @PathVariable("id") value: String,
+        @RequestBody request: AttachUploadRequest,
+    ): ResponseEntity<*> {
+        val agent = currentAgent.get() ?: throw SignInRequiredException()
+        val id = value.toLongOrNull() ?: return ResponseEntity.notFound().build<String>()
+        return when (state(id, agent)) {
+            is Draft.Open -> try {
+                ResponseEntity.ok(listingClient.attachImage(id, request.path))
+            } catch (ex: HttpClientErrorException) {
+                LOGGER.warn("Attach of listing $id refused: ${ex.statusCode}")
+                ResponseEntity.status(ex.statusCode)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body<String>(ex.responseBodyAsString)
+            }
+            Draft.Locked -> ResponseEntity.notFound().build<String>()
+            Draft.Changed -> ResponseEntity.status(HttpStatus.CONFLICT).build<String>()
+            Draft.Unavailable -> ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build<String>()
+        }
+    }
+
     /** ndopify-server doesn't check which listing an image is of: only one of this listing's is deleted. */
     @PostMapping("/{imageId}/delete")
     fun delete(
@@ -164,6 +226,22 @@ class ListingPhotoController(
         }
         return back(id, null, redirect)
     }
+
+    /** What [state] found: the agent's DRAFT listing, or why the JSON proxies can't go on. */
+    private sealed interface Draft {
+        data class Open(val listing: Listing) : Draft
+        data object Locked : Draft
+        data object Changed : Draft
+        data object Unavailable : Draft
+    }
+
+    private fun state(id: Long, agent: Agent): Draft =
+        when (val result = access.load(id, agent)) {
+            is ListingAccess.Found ->
+                if (ListingRules.editable(result.listing)) Draft.Open(result.listing) else Draft.Changed
+            ListingAccess.Locked -> Draft.Locked
+            ListingAccess.Unavailable -> Draft.Unavailable
+        }
 
     /** The agent's DRAFT listing; null when it's not (or no longer) one, with the checklist's outcome to show. */
     private fun draft(id: Long, agent: Agent, redirect: RedirectAttributes): Listing? {

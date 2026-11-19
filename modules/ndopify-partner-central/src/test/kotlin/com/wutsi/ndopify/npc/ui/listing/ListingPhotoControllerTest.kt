@@ -10,6 +10,8 @@ import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.common.dto.PresignUploadResponse
+import com.wutsi.ndopify.listing.dto.AttachListingImageResponse
 import com.wutsi.ndopify.listing.dto.ImageStatus
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingStatus
@@ -24,13 +26,16 @@ import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.MvcResult
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.ResourceAccessException
@@ -227,6 +232,95 @@ class ListingPhotoControllerTest {
         val result = mvc.perform(multipart("/listings/abc/photos").file(photo("salon.jpg", JPEG))).andReturn()
 
         assertEquals("redirect:/", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun `presign - returns the upload url`() {
+        doReturn(PresignUploadResponse("https://s3.example.com/put", "listings/501/images/a.jpg"))
+            .whenever(listingClient).presignImage(501L, "image/jpeg")
+
+        val result = mvc.perform(
+            post("/listings/501/photos/presign")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"contentType":"image/jpeg"}"""),
+        ).andExpect(status().isOk).andReturn()
+
+        assertTrue(result.response.contentAsString.contains("https://s3.example.com/put"))
+    }
+
+    @Test
+    fun `presign - listing moved on`() {
+        doReturn(LISTING.copy(status = ListingStatus.UNDER_VERIFICATION)).whenever(listingClient).get(501)
+
+        mvc.perform(
+            post("/listings/501/photos/presign")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"contentType":"image/jpeg"}"""),
+        ).andExpect(status().isConflict)
+
+        verify(listingClient, never()).presignImage(any(), any())
+    }
+
+    @Test
+    fun `presign - not the agent's listing`() {
+        doReturn(LISTING.copy(agentId = 999)).whenever(listingClient).get(501)
+
+        mvc.perform(
+            post("/listings/501/photos/presign")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"contentType":"image/jpeg"}"""),
+        ).andExpect(status().isNotFound)
+
+        verify(listingClient, never()).presignImage(any(), any())
+    }
+
+    @Test
+    fun `attach - returns the image id`() {
+        val path = "listings/501/images/a.jpg"
+        doReturn(AttachListingImageResponse(7L)).whenever(listingClient).attachImage(501L, path)
+
+        val result = mvc.perform(
+            post("/listings/501/photos/attach")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"path":"$path"}"""),
+        ).andExpect(status().isOk).andReturn()
+
+        assertTrue(result.response.contentAsString.contains("7"))
+    }
+
+    @Test
+    fun `attach - refused by the server`() {
+        val body = """{"error":{"code":"urn:wutsi:ndopify:error:common:http-invalid-parameter"}}"""
+        doThrow(
+            HttpClientErrorException.create(
+                HttpStatus.BAD_REQUEST,
+                "Bad Request",
+                HttpHeaders(),
+                body.toByteArray(),
+                Charsets.UTF_8,
+            ),
+        ).whenever(listingClient).attachImage(any(), any())
+
+        val result = mvc.perform(
+            post("/listings/501/photos/attach")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"path":"listings/501/images/a.jpg"}"""),
+        ).andExpect(status().isBadRequest).andReturn()
+
+        assertEquals(body, result.response.contentAsString)
+    }
+
+    @Test
+    fun `attach - listing moved on`() {
+        doReturn(LISTING.copy(status = ListingStatus.PUBLISHED)).whenever(listingClient).get(501)
+
+        mvc.perform(
+            post("/listings/501/photos/attach")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"path":"listings/501/images/a.jpg"}"""),
+        ).andExpect(status().isConflict)
+
+        verify(listingClient, never()).attachImage(any(), any())
     }
 
     @Test
