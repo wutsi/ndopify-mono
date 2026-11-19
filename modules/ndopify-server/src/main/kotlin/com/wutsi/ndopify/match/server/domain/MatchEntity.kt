@@ -82,6 +82,9 @@ data class MatchEntity(
     // When the customer was reminded that its accepted match still has no visit (MatchVisitReminderService)
     val visitRemindedAt: Date? = null,
 
+    // When the agent was nudged that its accepted match still has no visit (MatchVisitAgentNudgeService)
+    val agentVisitNudgedAt: Date? = null,
+
     val createdAt: Date = Date(),
     val modifiedAt: Date = Date(),
 

@@ -9,6 +9,7 @@ import com.wutsi.ndopify.match.server.service.MatchAutoProposalService
 import com.wutsi.ndopify.match.server.service.MatchNotificationService
 import com.wutsi.ndopify.match.server.service.MatchProposalService
 import com.wutsi.ndopify.match.server.service.MatchService
+import com.wutsi.ndopify.match.server.service.MatchVisitAgentNudgeService
 import com.wutsi.ndopify.match.server.service.MatchVisitReminderService
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
@@ -26,6 +27,7 @@ class MatchJobsTest {
     private val autoProposalService = mock<MatchAutoProposalService>()
     private val matchService = mock<MatchService>()
     private val reminderService = mock<MatchVisitReminderService>()
+    private val agentNudgeService = mock<MatchVisitAgentNudgeService>()
     private val tenantService = mock<TenantService>()
     private val jobs = MatchJobs(
         notificationService = notificationService,
@@ -34,6 +36,7 @@ class MatchJobsTest {
         autoProposalService = autoProposalService,
         matchService = matchService,
         reminderService = reminderService,
+        agentNudgeService = agentNudgeService,
         tenantService = tenantService,
     )
 
@@ -85,6 +88,19 @@ class MatchJobsTest {
         }.whenever(reminderService).remindDue()
 
         jobs.remindAcceptedWithoutVisit()
+
+        assertEquals(listOf<Long?>(1L, 2L), tenants)
+        assertNull(TenantContext.get())
+    }
+
+    @Test
+    fun `nudgeAcceptedWithoutVisitAgent - each active tenant, with its tenant set`() {
+        doAnswer {
+            tenants.add(TenantContext.get())
+            3
+        }.whenever(agentNudgeService).nudgeDue()
+
+        jobs.nudgeAcceptedWithoutVisitAgent()
 
         assertEquals(listOf<Long?>(1L, 2L), tenants)
         assertNull(TenantContext.get())
