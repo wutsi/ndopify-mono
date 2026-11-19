@@ -87,9 +87,9 @@ class VisitReminderBotletTest {
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
         assertEquals(
             """
-            Bonjour Kim Possible,
+            Rappel de la visite avec Ray Sponsible
 
-            Petit rappel : la visite du bien Nice apartment avec Ray Sponsible a lieu demain, 02/12/2026 à 10:00.
+            La visite du bien Nice apartment avec Ray Sponsible a lieu demain, 02/12/2026 à 10:00.
 
             Type: Sur place
             Lieu: Bastos, Yaounde
@@ -113,9 +113,9 @@ class VisitReminderBotletTest {
         verify(client).sendMessage(eq(1000L), text.capture(), any())
         assertEquals(
             """
-            Bonjour Kim Possible,
+            Rappel de la visite avec Ray Sponsible
 
-            Petit rappel : la visite du bien Nice apartment avec Ray Sponsible a lieu demain, 02/12/2026 à 10:00.
+            La visite du bien Nice apartment avec Ray Sponsible a lieu demain, 02/12/2026 à 10:00.
 
             Type: Visite vidéo
             Lieu: Bastos, Yaounde
@@ -173,7 +173,7 @@ class VisitReminderBotletTest {
 
         val text = argumentCaptor<String>()
         verify(client).sendMessage(eq(1000L), text.capture(), any())
-        assertTrue(text.firstValue.contains("la visite du bien Bien n° 101 avec Ray Sponsible"))
+        assertTrue(text.firstValue.contains("La visite du bien Bien n° 101 avec Ray Sponsible"))
     }
 
     @Test
