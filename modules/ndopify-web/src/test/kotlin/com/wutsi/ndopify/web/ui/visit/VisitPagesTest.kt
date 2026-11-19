@@ -182,10 +182,12 @@ class VisitPagesTest {
 
     @Test
     fun `an open visit states the fee`() {
-        val page = of(visit(VisitStatus.CONFIRMED, VisitType.ON_SITE).copy(visitFee = Money(5000, "XAF")))
+        listOf(VisitStatus.REQUESTED, VisitStatus.CONFIRMED, VisitStatus.CHECKED_IN).forEach { status ->
+            val page = of(visit(status, VisitType.ON_SITE).copy(visitFee = Money(5000, "XAF")))
 
-        assertTrue(page.visitFee!!.replace('\u00a0', ' ').contains("5 000 FCFA"))
-        assertTrue(page.visitFee!!.contains("Ndopify ne perçoit aucun paiement"))
+            assertTrue(page.visitFee!!.replace('\u00a0', ' ').contains("5 000 FCFA"), status.name)
+            assertTrue(page.visitFee!!.contains("Ndopify ne perçoit aucun paiement"), status.name)
+        }
     }
 
     @Test
