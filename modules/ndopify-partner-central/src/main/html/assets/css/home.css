@@ -774,6 +774,25 @@ h1.alert__title {
     font-size: var(--step-hint);
 }
 
+/* The contract's terms: one field per line on phones, the duration then the visit fee. */
+.mandate-terms__fields {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-3);
+}
+
+@media (min-width: 640px) {
+    /* The two terms on one line, the fee a little wider for its amount and suffix. */
+    .mandate-terms__fields {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr);
+    }
+}
+
+/* The label already says "Frais de visite": the suffix is the currency alone, leaving the amount its room. */
+.mandate-terms__fields .input-unit .input {
+    padding-right: 4.5rem;
+}
+
 /* The end section follows Sa recherche without the sections' separator: its box and a gap set it apart. */
 .home-section + .mandate-close {
     margin-top: var(--space-4);
