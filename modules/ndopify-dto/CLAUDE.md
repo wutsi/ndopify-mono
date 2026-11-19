@@ -9,7 +9,8 @@ dependencies are `jakarta.validation-api` (the `@NotEmpty` / `@Size`... the serv
 
 One package per server domain, `com.wutsi.ndopify.<domain>.dto` (`agent`, `contract`, `customer`, `listing`,
 `mandate`, `match`, `party`, `refdata`, `security`, `visit`), plus `common.dto` (`HttpHeader`: the custom header
-names, ex: `X-Tenant-ID`; import messages) and `error.dto` (`ErrorResponse`, `Error`, `Parameter`, `ErrorCode`).
+names, ex: `X-Tenant-ID`; import messages; the direct-upload contract shared by the domains — `PresignUploadRequest`,
+`PresignUploadResponse`, `AttachUploadRequest`) and `error.dto` (`ErrorResponse`, `Error`, `Parameter`, `ErrorCode`).
 
 Naming, per resource `<Entity>`:
 
