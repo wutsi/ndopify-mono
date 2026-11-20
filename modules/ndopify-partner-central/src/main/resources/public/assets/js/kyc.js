@@ -267,10 +267,22 @@
     // The profile photo page uploads straight to the storage when it can (direct-upload.js): "Enregistrer" still
     // starts it, so the agent can change their mind before. Local storage or any failure posts the form as usual,
     // the file still in its input; without a new photo, the form post keeps the current one.
-    function initDirectUpload(form) {
+    function initDirectUpload(form, refresh) {
         if (!window.NdDirectUpload) return;
         var action = form.getAttribute("action");
+        var button = $('[type="submit"]', form);
+        var label = button && button.textContent;
         var busy = false;
+
+        // While it runs, nothing else shows progress (no page load): the button says so, and stays inactive.
+        function setBusy(on) {
+            busy = on;
+            if (!button) return;
+            button.textContent = on ? "Envoi en cours…" : label;
+            if (on) button.setAttribute("aria-disabled", "true");
+            else refresh(); // inactive again only without a photo (initNext)
+        }
+
         form.addEventListener("submit", function (event) {
             if (event.defaultPrevented) return;
             var input = $(".upload__input", form);
@@ -279,14 +291,19 @@
             event.preventDefault();
             // One upload: a second click while it runs would upload the photo twice.
             if (busy) return;
-            busy = true;
+            setBusy(true);
             window.NdDirectUpload.upload(action, file).then(function (uploaded) {
                 if (uploaded) {
                     location.assign(action + "/saved");
                 } else {
+                    // Still busy: the form post leaves the page, and a second click would post it twice.
                     form.submit();
                 }
             });
+        });
+        // Back from the Espace agent restores this page from the cache: "Enregistrer" must work again.
+        window.addEventListener("pageshow", function (event) {
+            if (event.persisted) setBusy(false);
         });
     }
 
@@ -324,6 +341,6 @@
         initCamera(step, refresh);
         initSubmit(form);
         // Not on the KYC wizard: its steps keep the form post.
-        if (page === "profile-photo") initDirectUpload(form);
+        if (page === "profile-photo") initDirectUpload(form, refresh);
     });
 })();
