@@ -17,7 +17,7 @@
 - ktlint runs on `validate`; `mvn verify` (tests + JaCoCo gate) must be green in every touched module. `ndopify-server` needs local MySQL.
 - Conventional commits. Each commit touches one library module or none; this story touches no library, so no `ndopify-dto` / `ndopify-web-core` release and no root `pom.xml` `-SNAPSHOT` edit.
 - Supported types: `image/jpeg`, `image/png`, `image/webp`. Max size: 5 MB (`5 * 1024 * 1024`). URL TTL: `ndopify.storage.upload-url-ttl-seconds` (600).
-- KYC paths: direct upload `kyc/{caseId}/images/{uuid}.{ext}`; multipart `kyc/{caseId}/images/{imageId}.{ext}`. Both stay in the same folder and are read through presigned GETs only — never `publicUrl`.
+- KYC paths: every photo, direct or multipart, at a new `kyc/{caseId}/images/{uuid}.{ext}` (changed in review of #218: the multipart upload no longer overwrites `{imageId}.{ext}` in place, so no two writes share a path). Older photos at `{imageId}.{ext}` stay readable. All stay in the same folder and are read through presigned GETs only — never `publicUrl`.
 - KYC image write checks, in order: 404 `KYC_CASE_NOT_FOUND` (including another tenant) → 403 `HTTP_ACCESS_DENIED` (another party) → 400 `KYC_CASE_NOT_PENDING` → the upload's 400s.
 - The multipart endpoints stay (`POST /v1/kyc/cases/{id}/images/upload`, `POST /kyc/{step}`); only the added party check changes their behaviour.
 - No visual change and no `src/main/html/` change: this is not a UI story, so there is no prototype step.
