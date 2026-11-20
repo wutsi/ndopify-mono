@@ -18,7 +18,7 @@ interface KycCaseRepository : CrudRepository<KycCaseEntity, String>, JpaSpecific
 
     /**
      * The case's status, read from the database (not from the persistence context, which may hold an older one) with
-     * its row locked until the end of the transaction: see `KycService.attach`. Native, so not tenant-scoped: only
+     * its row locked until the end of the transaction: see `KycService.saveImage`. Native, so not tenant-scoped: only
      * for a case already loaded through the tenant-scoped repository.
      */
     @Query(value = "SELECT status FROM T_KYC_CASE WHERE id = :id FOR UPDATE", nativeQuery = true)

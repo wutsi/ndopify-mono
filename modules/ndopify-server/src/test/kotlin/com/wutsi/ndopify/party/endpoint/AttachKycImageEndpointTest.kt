@@ -216,6 +216,45 @@ class AttachKycImageEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `attach - path given to another image during the verification`() {
+        doReturn(StoredObject("image/png", 3)).whenever(storage).metadata(path)
+        doAnswer {
+            // A parallel attach gives the path to BACK while this one reads the object
+            jdbc.update("UPDATE T_KYC_IMAGE SET path='$path', storage_type='S3' WHERE id='kyc-image-100-back'")
+            png(1, 1)
+        }.whenever(storage).readPrefix(eq(path), any())
+
+        val response = attachError("kyc-case-100", KycImageType.FRONT, path)
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
+        assertEquals(0, imageDao.findAll().count { it.imageType == KycImageType.FRONT })
+        verify(storage, never()).delete(path) // BACK's object
+    }
+
+    @Test
+    fun `attach - failed retry keeps the recorded object`() {
+        doReturn(StoredObject("image/png", 3)).whenever(storage).metadata(path)
+        doAnswer {
+            // The first attach of this path committed, then the case was submitted, while this retry reads the object
+            jdbc.update(
+                "INSERT INTO T_KYC_IMAGE(id, tenant_id, case_id, identification_type, image_type, storage_type, path, " +
+                    "mime_type, created_at, modified_at) VALUES ('kyc-image-100-front', 1, 'kyc-case-100', " +
+                    "'NATIONAL_ID', 'FRONT', 'S3', '$path', 'image/png', NOW(), NOW())",
+            )
+            jdbc.update("UPDATE T_KYC_CASE SET status='SUBMITTED' WHERE id='kyc-case-100'")
+            png(1, 1)
+        }.whenever(storage).readPrefix(eq(path), any())
+
+        val response = attachError("kyc-case-100", KycImageType.FRONT, path)
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.KYC_CASE_NOT_PENDING, response.body?.error?.code)
+        assertEquals(path, imageDao.findById("kyc-image-100-front").orElseThrow().path)
+        verify(storage, never()).delete(path)
+    }
+
+    @Test
     fun `attach - another case's path`() {
         val other = "kyc/kyc-case-200/images/0f8fad5b-d9cb-469f-a165-70867728950e.png"
 
