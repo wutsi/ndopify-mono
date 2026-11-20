@@ -149,6 +149,43 @@ class UploadKycImageEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `re-upload in place updates the row`() {
+        doReturn(StorageType.S3).whenever(storage).type()
+
+        val response = rest.postForEntity(
+            url("kyc-case-100", KycImageType.BACK),
+            request("back.png", MediaType.IMAGE_PNG, byteArrayOf(1, 2, 3)),
+            Void::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val image = imageDao.findById("kyc-image-100-back").get()
+        assertEquals("kyc/kyc-case-100/images/kyc-image-100-back.png", image.path)
+        assertEquals(StorageType.S3, image.storageType)
+        assertTrue(image.modifiedAt.after(image.createdAt))
+        verify(storage, never()).delete(any())
+        verify(s3, never()).delete(any())
+    }
+
+    @Test
+    fun `case submitted during an in-place re-upload keeps the object`() {
+        doAnswer {
+            jdbc.update("UPDATE T_KYC_CASE SET status='SUBMITTED' WHERE id='kyc-case-100'")
+            null
+        }.whenever(storage).store(any(), any(), any())
+
+        val response = rest.postForEntity(
+            url("kyc-case-100", KycImageType.BACK),
+            request("back.png", MediaType.IMAGE_PNG, byteArrayOf(1, 2, 3)),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.KYC_CASE_NOT_PENDING, response.body?.error?.code)
+        verify(storage, never()).delete(any())
+    }
+
+    @Test
     fun `re-upload replaces a direct upload and deletes its object`() {
         val direct = "kyc/kyc-case-100/images/0f8fad5b-d9cb-469f-a165-70867728950e.png"
         jdbc.update("UPDATE T_KYC_IMAGE SET path='$direct', storage_type='S3' WHERE id='kyc-image-100-back'")

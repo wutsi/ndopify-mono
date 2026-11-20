@@ -170,7 +170,6 @@ class KycService(
             createdAt = now,
             modifiedAt = now,
         )
-        val ownPath = image.path
 
         // Store
         val mimeType = file.contentType
@@ -180,10 +179,9 @@ class KycService(
         storage.store(path, file.inputStream, mimeType)
 
         val (saved, previous) = try {
-            saveImage(case, image, path, storage.type(), mimeType, now)
+            saveImage(case, image, path, storage.type(), mimeType, now, inPlace = true)
         } catch (ex: Exception) {
-            // Referenced by no row, unless it overwrote the row's own object
-            if (path != ownPath) deleteQuietly(case, path) { storage.delete(path) }
+            deleteUnreferenced(case, path) { storage.delete(path) }
             throw ex
         }
         deletePrevious(case, previous, path)
@@ -231,7 +229,7 @@ class KycService(
         if (existing != null && existing.path == path) {
             return existing
         }
-        ensurePathNotUsed(case, path)
+        ensurePathNotUsed(case, path, existing?.id)
 
         // Storage I/O outside the transaction, like upload()
         val mimeType = directUpload.verify(path, prefix(case.id))
@@ -245,10 +243,10 @@ class KycService(
             modifiedAt = now,
         )
         val (saved, previous) = try {
-            saveImage(case, image, path, storage.type(), mimeType, now)
+            saveImage(case, image, path, storage.type(), mimeType, now, inPlace = false)
         } catch (ex: Exception) {
-            // Submitted meanwhile, or the save failed: the uploaded object is referenced by no row
-            deleteQuietly(case, path) { storage.delete(path) }
+            // Submitted meanwhile, or the save failed
+            deleteUnreferenced(case, path) { storage.delete(path) }
             throw ex
         }
         deletePrevious(case, previous, path)
@@ -257,9 +255,11 @@ class KycService(
 
     /**
      * Saves [image] at [path], in a transaction holding the case's lock: the case must still be PENDING_VERIFICATION
-     * (a submit committed during the storage I/O wins), and the step's image is read again from the database, so
-     * that concurrent writes on one step update a single row and each replaced object is deleted once. Returns the
-     * saved image and the step's row as it was before the save (null when there was none).
+     * (a submit committed during the storage I/O wins), no other image of the case may have [path], and the step's
+     * image is read again from the database, so that concurrent writes on one step update a single row and each
+     * replaced object is deleted once. [inPlace] (the multipart upload) rewrites the row's own path, so the row is
+     * always saved; otherwise a row already at [path] (a concurrent attach) is returned as is. Returns the saved image
+     * and the step's row as it was before the save (null when there was none).
      */
     private fun saveImage(
         case: KycCaseEntity,
@@ -268,13 +268,14 @@ class KycService(
         storageType: StorageType,
         mimeType: String?,
         now: Date,
+        inPlace: Boolean,
     ): Pair<KycImageEntity, KycImageRow?> = tx.execute {
         ensureStillPending(case)
         val current = kycImageDao.findRow(case.id, image.identificationType.name, image.imageType.name)
-        if (current?.getPath() == path) {
-            // A concurrent write already recorded this path
+        if (!inPlace && current?.getPath() == path) {
             return@execute kycImageDao.findById(current.getId()).orElseThrow() to null
         }
+        ensurePathNotUsed(case, path, current?.getId())
 
         val base = current?.let { row -> kycImageDao.findById(row.getId()).orElseThrow() } ?: image
         kycImageDao.save(
@@ -560,11 +561,11 @@ class KycService(
     }
 
     /**
-     * A path already recorded by another image of the case is refused: two rows would share one object, which the
+     * A path already recorded by an image of the case other than [imageId] is refused: two rows would share one object, which the
      * replacement of either deletes.
      */
-    private fun ensurePathNotUsed(case: KycCaseEntity, path: String) {
-        if (kycImageDao.findByKycCaseAndPath(case, path).isNotEmpty()) {
+    private fun ensurePathNotUsed(case: KycCaseEntity, path: String, imageId: String?) {
+        if (kycImageDao.findByKycCaseAndPath(case, path).any { it.id != imageId }) {
             throw BadRequestException(
                 error = Error(
                     code = ErrorCode.HTTP_INVALID_PARAMETER,
@@ -576,6 +577,16 @@ class KycService(
                     ),
                 )
             )
+        }
+    }
+
+    /**
+     * After a failed save: deletes the new object at [path], unless a row of the case records it (a concurrent write
+     * of the same path, or the multipart upload's in-place rewrite of the row's own object).
+     */
+    private fun deleteUnreferenced(case: KycCaseEntity, path: String, delete: () -> Unit) {
+        if (kycImageDao.findByKycCaseAndPath(case, path).isEmpty()) {
+            deleteQuietly(case, path, delete)
         }
     }
 
