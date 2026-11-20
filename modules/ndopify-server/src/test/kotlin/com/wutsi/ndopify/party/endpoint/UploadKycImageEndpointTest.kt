@@ -137,6 +137,20 @@ class UploadKycImageEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `case of another party`() {
+        val response = rest.postForEntity(
+            url("kyc-case-200", KycImageType.FRONT),
+            request("front.jpg", MediaType.IMAGE_JPEG, byteArrayOf(1, 2, 3)),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
+        verify(storage, never()).store(any(), any(), any())
+        assertEquals(1, imageDao.findAll().count()) // only the fixture's BACK image
+    }
+
+    @Test
     fun `case of another tenant`() {
         val response = rest.postForEntity(
             url("kyc-case-900", KycImageType.FRONT),

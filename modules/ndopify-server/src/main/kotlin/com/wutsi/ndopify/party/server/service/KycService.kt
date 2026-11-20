@@ -4,6 +4,7 @@ import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
 import com.wutsi.ndopify.error.server.exception.BadRequestException
+import com.wutsi.ndopify.error.server.exception.ForbiddenException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.party.dto.CreateKycCaseRequest
 import com.wutsi.ndopify.party.dto.IdentificationType
@@ -25,6 +26,7 @@ import com.wutsi.ndopify.platform.logger.KVLogger
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.platform.util.MimeUtils
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
+import com.wutsi.ndopify.security.server.service.CallerService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
@@ -58,6 +60,7 @@ class KycService(
     private val clock: Clock,
     private val logger: KVLogger,
     private val eventPublisher: ApplicationEventPublisher,
+    private val callerService: CallerService,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(KycService::class.java)
@@ -128,18 +131,23 @@ class KycService(
         )
     }
 
+    /**
+     * Stores a KYC photo posted as multipart, replacing the case's image for that (identification type, image type).
+     * Errors, in order: 404 KYC_CASE_NOT_FOUND (including another tenant's case), 403 HTTP_ACCESS_DENIED but for the
+     * case's own party, 400 KYC_CASE_NOT_PENDING (once submitted, the documents under review must not change), then
+     * 400 KYC_IMAGE_INVALID_MIME_TYPE.
+     */
     fun upload(
         id: String,
         identificationType: IdentificationType,
         imageType: KycImageType,
         file: MultipartFile
     ): KycImageEntity {
+        val case = findById(id)
+        ensureOwnCase(case)
+        ensureStatusIsPending(case)
         ensureImage(file)
 
-        // Images can only be added or replaced while the case is PENDING_VERIFICATION: once submitted, the documents under
-        // review (or already reviewed) must not change.
-        val case = findById(id)
-        ensureStatusIsPending(case)
         val now = Date(clock.millis())
         val image = kycImageDao.findByKycCaseAndIdentificationTypeAndImageType(
             case, identificationType, imageType
@@ -401,6 +409,14 @@ class KycService(
 
         val verifier = verifierProvider.get(verificationType)
         return verifier?.verify(case) ?: emptyList()
+    }
+
+    /** The case's own party only: no admin bypass, a KYC document is personal. */
+    private fun ensureOwnCase(case: KycCaseEntity) {
+        val partyId = callerService.findPartyIdOrNull(callerService.getPrincipal())
+        if (partyId == null || partyId != case.party.id) {
+            throw ForbiddenException(error = Error(code = ErrorCode.HTTP_ACCESS_DENIED))
+        }
     }
 
     private fun ensureStatusIsPending(case: KycCaseEntity) {

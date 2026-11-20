@@ -123,7 +123,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   filter), 404 `PARTY_NOT_FOUND`, 403 `HTTP_ACCESS_DENIED`, then the upload's 400s),
   S3 only: presign answers `{url:null}` on local storage, and the multipart `POST /v1/parties/{id}/photo` stays the
   fallback. A replaced photo's object is kept, so e-mails already sent keep showing it.
-  Tenant-scoped (see Multi-Tenancy below).
+  Tenant-scoped (see Multi-Tenancy below). The image writes are the case's own party's only (`CallerService`, through
+  the token's membership; no admin bypass): 404 `KYC_CASE_NOT_FOUND` (another tenant too) → 403 `HTTP_ACCESS_DENIED` →
+  400 `KYC_CASE_NOT_PENDING` → the upload's 400s. `create`, `submit`, `get` and `search` stay tenant-scoped only.
 - **agent** — mobile-money agents (`AgentEntity`; `/v1/agents`: get, search, me, create, update). `GET /v1/agents/me`
   resolves the caller's agent from its token (`CallerService`): 404 `AGENT_NOT_FOUND` when the caller has no party or
   isn't an agent. `WelcomeMailet` sends
