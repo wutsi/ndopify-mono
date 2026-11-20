@@ -1,5 +1,8 @@
 package com.wutsi.ndopify.npc.client.ndopify
 
+import com.wutsi.ndopify.common.dto.AttachUploadRequest
+import com.wutsi.ndopify.common.dto.PresignUploadRequest
+import com.wutsi.ndopify.common.dto.PresignUploadResponse
 import com.wutsi.ndopify.party.dto.CreateKycCaseRequest
 import com.wutsi.ndopify.party.dto.CreateKycCaseResponse
 import com.wutsi.ndopify.party.dto.GetKycCaseResponse
@@ -89,6 +92,47 @@ class NdKycClient(
             }
             .contentType(MediaType.MULTIPART_FORM_DATA)
             .body(body)
+            .retrieve()
+            .toBodilessEntity()
+    }
+
+    /**
+     * A short-lived URL to upload a KYC photo straight to the storage, with the path to attach it at: no url with local
+     * storage (the caller falls back to [upload]).
+     */
+    fun presign(
+        caseId: String,
+        identificationType: IdentificationType,
+        imageType: KycImageType,
+        contentType: String,
+    ): PresignUploadResponse =
+        rest.post()
+            .uri { uri ->
+                uri.path("/v1/kyc/cases/{id}/images/presign")
+                    .queryParam("identificationType", identificationType)
+                    .queryParam("imageType", imageType)
+                    .build(caseId)
+            }
+            .body(PresignUploadRequest(contentType))
+            .retrieve()
+            .body<PresignUploadResponse>()
+            ?: PresignUploadResponse()
+
+    /** Attaches a KYC photo uploaded straight to the storage, at the path [presign] returned, replacing that step's image. */
+    fun attach(
+        caseId: String,
+        identificationType: IdentificationType,
+        imageType: KycImageType,
+        path: String,
+    ) {
+        rest.post()
+            .uri { uri ->
+                uri.path("/v1/kyc/cases/{id}/images/attach")
+                    .queryParam("identificationType", identificationType)
+                    .queryParam("imageType", imageType)
+                    .build(caseId)
+            }
+            .body(AttachUploadRequest(path))
             .retrieve()
             .toBodilessEntity()
     }
