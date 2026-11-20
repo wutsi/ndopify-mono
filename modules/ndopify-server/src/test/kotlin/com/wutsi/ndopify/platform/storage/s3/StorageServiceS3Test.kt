@@ -1,16 +1,21 @@
 package com.wutsi.ndopify.platform.storage.s3
 
+import com.amazonaws.HttpMethod
 import com.amazonaws.services.s3.AmazonS3
+import com.amazonaws.services.s3.model.AmazonS3Exception
 import com.amazonaws.services.s3.model.GeneratePresignedUrlRequest
 import com.amazonaws.services.s3.model.GetObjectRequest
+import com.amazonaws.services.s3.model.ObjectMetadata
 import com.amazonaws.services.s3.model.PutObjectRequest
 import com.amazonaws.services.s3.model.S3Object
 import com.amazonaws.services.s3.model.S3ObjectInputStream
 import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doReturn
+import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.platform.storage.StoredObject
 import com.wutsi.ndopify.refdata.dto.StorageType
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
@@ -20,6 +25,7 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import java.net.URL
 import java.time.Clock
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
@@ -92,6 +98,61 @@ class StorageServiceS3Test {
         assertEquals("test", request.value.bucketName)
         assertEquals("document/test.txt", request.value.key)
         assertEquals(now + 5 * 1000L, request.value.expiration.time)
+    }
+
+    @Test
+    fun `presigned upload url`() {
+        val expected = URL("https://s3.amazonaws.com/test/listings/1/images/a.jpg?X-Amz-Signature=x")
+        doReturn(expected).whenever(s3).generatePresignedUrl(any())
+
+        val url = storage.presignedUploadUrl("listings/1/images/a.jpg", "image/jpeg", 600)
+
+        assertEquals(expected, url)
+        val request = ArgumentCaptor.forClass(GeneratePresignedUrlRequest::class.java)
+        verify(s3).generatePresignedUrl(request.capture())
+        assertEquals("listings/1/images/a.jpg", request.value.key)
+        assertEquals(HttpMethod.PUT, request.value.method)
+        assertEquals("image/jpeg", request.value.contentType)
+        assertEquals(now + 600 * 1000L, request.value.expiration.time)
+    }
+
+    @Test
+    fun metadata() {
+        val meta = ObjectMetadata().apply {
+            contentType = "image/png"
+            contentLength = 123
+        }
+        doReturn(meta).whenever(s3).getObjectMetadata("test", "listings/1/images/a.png")
+
+        assertEquals(StoredObject("image/png", 123), storage.metadata("listings/1/images/a.png"))
+    }
+
+    @Test
+    fun `metadata - missing object`() {
+        doThrow(AmazonS3Exception("not found").apply { statusCode = 404 })
+            .whenever(s3).getObjectMetadata("test", "listings/1/images/a.png")
+
+        assertNull(storage.metadata("listings/1/images/a.png"))
+    }
+
+    @Test
+    fun `read prefix`() {
+        val obj: S3Object = mock()
+        doReturn(S3ObjectInputStream(ByteArrayInputStream("hello".toByteArray()), null)).whenever(obj).objectContent
+        doReturn(obj).whenever(s3).getObject(any<GetObjectRequest>())
+
+        assertEquals("hello", String(storage.readPrefix("listings/1/images/a.jpg", 16)))
+
+        val request = ArgumentCaptor.forClass(GetObjectRequest::class.java)
+        verify(s3).getObject(request.capture())
+        assertContentEquals(longArrayOf(0L, 15L), request.value.range)
+    }
+
+    @Test
+    fun delete() {
+        storage.delete("listings/1/images/a.jpg")
+
+        verify(s3).deleteObject("test", "listings/1/images/a.jpg")
     }
 
     @Test

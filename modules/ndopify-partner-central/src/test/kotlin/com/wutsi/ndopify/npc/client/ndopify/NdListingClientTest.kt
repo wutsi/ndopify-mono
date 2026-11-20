@@ -1,5 +1,7 @@
 package com.wutsi.ndopify.npc.client.ndopify
 
+import com.wutsi.ndopify.common.dto.PresignUploadResponse
+import com.wutsi.ndopify.listing.dto.AttachListingImageResponse
 import com.wutsi.ndopify.listing.dto.GetListingResponse
 import com.wutsi.ndopify.listing.dto.ImageStatus
 import com.wutsi.ndopify.listing.dto.Listing
@@ -253,6 +255,45 @@ class NdListingClientTest {
             .andRespond(withSuccess())
 
         client.upload(501, byteArrayOf(1, 2, 3), "image/jpeg", "salon.jpg")
+        server.verify()
+    }
+
+    @Test
+    fun presignImage() {
+        server.expect(requestTo("http://localhost:8080/v1/listings/501/images/presign"))
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(content().json("""{"contentType":"image/jpeg"}"""))
+            .andRespond(
+                withSuccess(
+                    """{"url":"https://s3.example.com/put","path":"listings/501/images/a.jpg"}""",
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val response = client.presignImage(501, "image/jpeg")
+        assertEquals("https://s3.example.com/put", response.url)
+        assertEquals("listings/501/images/a.jpg", response.path)
+        server.verify()
+    }
+
+    @Test
+    fun `presignImage - local storage`() {
+        server.expect(requestTo("http://localhost:8080/v1/listings/501/images/presign"))
+            .andRespond(withSuccess("""{"url":null,"path":null}""", MediaType.APPLICATION_JSON))
+
+        val response = client.presignImage(501, "image/png")
+        assertNull(response.url)
+        assertNull(response.path)
+    }
+
+    @Test
+    fun attachImage() {
+        server.expect(requestTo("http://localhost:8080/v1/listings/501/images/attach"))
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(content().json("""{"path":"listings/501/images/a.jpg"}"""))
+            .andRespond(withSuccess("""{"imageId":7}""", MediaType.APPLICATION_JSON))
+
+        assertEquals(7L, client.attachImage(501, "listings/501/images/a.jpg").imageId)
         server.verify()
     }
 

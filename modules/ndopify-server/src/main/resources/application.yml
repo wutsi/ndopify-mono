@@ -365,6 +365,7 @@ ndopify:
 
     storage:
         default-type: local
+        upload-url-ttl-seconds: 600    # How long a browser has to PUT a file straight to the storage
         local:
             directory: /${user.home}/ndopify
             servlet-path: /storage

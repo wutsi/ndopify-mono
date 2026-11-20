@@ -7,9 +7,9 @@
  * - sections: a button that posted is disabled ("Enregistrement…"), a field's error goes once it's changed; "Le bien"
  *   shows the types of the chosen category and the questions of the type only; "Position GPS" takes the phone's
  *   position (the typed latitude / longitude stay the fallback), with its accuracy and a map link;
- * - photos: each photo taken or chosen is checked, shrunk and sent at once, without "Envoyer les photos"; a photo
- *   opens in a full-screen viewer (a <dialog>), swiped or browsed with its buttons and the arrow keys, instead of a
- *   new tab.
+ * - photos: each photo taken or chosen is checked, shrunk and sent at once, straight to the storage when the page
+ *   loads direct-upload.js (the multipart post otherwise), without "Envoyer les photos"; a photo opens in a
+ *   full-screen viewer (a <dialog>), swiped or browsed with its buttons and the arrow keys, instead of a new tab.
  * Ported from the prototype (src/main/html/assets/js/partner-central.js: initListing, initListingSection,
  * initListingProperty, initListingGps, initListingPhotos).
  */
@@ -447,6 +447,30 @@
             form.submit();
         }
 
+        // One photo after another, straight to the storage when the page offers it (direct-upload.js); a photo that
+        // can't go that way (local storage, no bucket CORS, any error) and the ones after it are posted to the form.
+        function sendAll(input, files) {
+            if (!window.NdDirectUpload) return send(input, files);
+            var action = form.getAttribute("action");
+            var i = 0;
+            (function next() {
+                if (i >= files.length) {
+                    // Everything is attached: reload to show the photos (as the form post does)
+                    location.reload();
+                    return;
+                }
+                var photo = files[i++];
+                window.NdDirectUpload.upload(action, photo).then(function (uploaded) {
+                    if (uploaded) {
+                        existing++;
+                        return next();
+                    }
+                    // Not uploaded directly: the remaining photos go through the normal form post
+                    send(input, files.slice(i - 1));
+                });
+            })();
+        }
+
         inputs.forEach(function (input) {
             input.addEventListener("change", function () {
                 var files = Array.prototype.slice.call(input.files || []);
@@ -462,7 +486,7 @@
                 var shrunk = [];
                 var total = 0;
                 (function next(i) {
-                    if (i === files.length) return send(input, shrunk);
+                    if (i === files.length) return sendAll(input, shrunk);
                     shrink(files[i], function (small) {
                         var photo = small || files[i];
                         if (photo.size > MAX_PHOTO_BYTES) return fail(photo.name + " dépasse 5 Mo.");

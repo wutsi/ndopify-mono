@@ -17,4 +17,6 @@ interface ListingImageRepository : CrudRepository<ListingImageEntity, Long> {
     ): List<ListingImageEntity>
 
     fun findByIdAndListingId(id: Long, listingId: Long): ListingImageEntity?
+
+    fun findByPath(path: String): ListingImageEntity?
 }

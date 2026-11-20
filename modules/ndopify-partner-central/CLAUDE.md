@@ -35,7 +35,10 @@ key for a landlord's listing, from the views' `owner`; `fragments/agent-card.htm
 another agent — photo or initials, name linked to `/agent?id=&back=…`, WhatsApp text link, no phone number — built by
 `ui/agent/AgentCardViews.of`, used as a card footer on the visit, proposal and match cards and boxed (`standalone`) on
 the visit and the read-only listing pages; a null `AgentCardView` renders "un autre agent"), and page scripts in `public/assets/js/`, one per
-page (`<page>.js`, picked by the body's `data-page`) plus `partner-central.js` / `util.js`. Every page works without
+page (`<page>.js`, picked by the body's `data-page`) plus `partner-central.js` / `util.js`. `direct-upload.js` is the
+shared browser half of a direct upload: `NdDirectUpload.upload(action, file)` runs presign → PUT → attach against
+`<action>/presign` and `<action>/attach` and resolves false on any failure, for the page to fall back to its form
+post (the KYC and profile photo stories reuse it). Every page works without
 JS: a script only enhances it, and the rules it mirrors are always re-checked server-side by `<Feature>Rules`.
 `src/main/html/` is the prototype (see below).
 
@@ -292,10 +295,17 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   field the agent changed, the landlord's answer from the mandate (`ListingViews.ownerHints`, server-side only). Once
   sent, a section is read-only: its answers only, disabled. GPS without JS is typed (latitude / longitude, "4,0335"
   accepted); `listing.js` takes the phone's position instead. Photos are `ListingPhotoController`
-  (`GET|POST /listings/{id}/photos`, `POST /listings/{id}/photos/{imageId}/delete`, `templates/listing/photos.html`):
-  sent straight to ndopify-server (`POST /v1/listings/{id}/images/upload`), sniffed with Tika, 5 Mo and 20 photos at
+  (`GET|POST /listings/{id}/photos`, `POST /listings/{id}/photos/presign`, `POST /listings/{id}/photos/attach`,
+  `POST /listings/{id}/photos/{imageId}/delete`, `templates/listing/photos.html`):
+  the multipart post sends them straight to ndopify-server (`POST /v1/listings/{id}/images/upload`), sniffed with
+  Tika, 5 Mo and 20 photos at
   most, the first problem as the `photoError` flash attribute; only one of the listing's own images is deleted
   (`DELETE /v1/listings/images/{id}`, which ndopify-server checks against the listing's agent and DRAFT status).
+  With JS, `listing.js` first sends each shrunk photo straight to the storage via `direct-upload.js`
+  (`POST /listings/{id}/photos/presign` → PUT → `POST /listings/{id}/photos/attach`), and falls back to the
+  multipart post for that photo and the rest when presign has no URL (local storage) or any step fails; the
+  multipart path is the no-JS path. The two proxies answer JSON: 404 for an unknown or another agent's listing, 409
+  once it isn't a DRAFT, else ndopify-server's answer (its error body for attach).
   `KycUploadErrorHandler` sends an upload over the multipart limit
   back with `?error=too-large`. `public/assets/js/listing.js` only enhances the three pages (`data-page` `listing`,
   `listing-section`, `listing-photos`): the types and questions of the type, geolocation, photos shrunk and sent as

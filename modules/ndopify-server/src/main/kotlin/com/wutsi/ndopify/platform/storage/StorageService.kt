@@ -6,6 +6,8 @@ import java.io.OutputStream
 import java.net.URL
 import java.net.URLDecoder
 
+data class StoredObject(val contentType: String?, val contentLength: Long)
+
 interface StorageService {
     fun type(): StorageType
 
@@ -18,6 +20,18 @@ interface StorageService {
     fun get(path: String, os: OutputStream)
 
     fun generatePresignedUrl(path: String, expirationInSeconds: Int): URL
+
+    /**
+     * A short-lived URL to PUT [path] with [contentType]. Null when this storage can't presign an upload (ex: local):
+     * the caller falls back to uploading the file through the server.
+     */
+    fun presignedUploadUrl(path: String, contentType: String, expirationInSeconds: Int): URL? = null
+
+    fun metadata(path: String): StoredObject?
+
+    fun readPrefix(path: String, maxBytes: Int): ByteArray
+
+    fun delete(path: String)
 
     /**
      * The file's permanent URL, for files meant to be public (ex: a profile photo shown in e-mails). It only

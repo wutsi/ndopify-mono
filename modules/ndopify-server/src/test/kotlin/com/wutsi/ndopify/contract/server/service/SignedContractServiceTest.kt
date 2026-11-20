@@ -15,6 +15,7 @@ import com.wutsi.ndopify.contract.server.domain.ContractEntity
 import com.wutsi.ndopify.contract.server.domain.ContractPartyEntity
 import com.wutsi.ndopify.platform.storage.StorageService
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
+import com.wutsi.ndopify.platform.storage.StoredObject
 import com.wutsi.ndopify.platform.tenant.TenantContext
 import com.wutsi.ndopify.refdata.dto.StorageType
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
@@ -51,6 +52,17 @@ class SignedContractServiceTest {
         }
 
         override fun generatePresignedUrl(path: String, expirationInSeconds: Int) = publicUrl(path)
+
+        override fun metadata(path: String) =
+            files[path]?.let { StoredObject(contentTypes[path], it.size.toLong()) }
+
+        override fun readPrefix(path: String, maxBytes: Int) =
+            files[path]?.take(maxBytes)?.toByteArray() ?: ByteArray(0)
+
+        override fun delete(path: String) {
+            files.remove(path)
+            contentTypes.remove(path)
+        }
 
         override fun publicUrl(path: String) = URL("https://s.com/$path")
     }

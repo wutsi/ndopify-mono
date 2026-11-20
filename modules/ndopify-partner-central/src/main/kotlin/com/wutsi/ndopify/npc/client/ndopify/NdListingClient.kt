@@ -1,5 +1,9 @@
 package com.wutsi.ndopify.npc.client.ndopify
 
+import com.wutsi.ndopify.common.dto.AttachUploadRequest
+import com.wutsi.ndopify.common.dto.PresignUploadRequest
+import com.wutsi.ndopify.common.dto.PresignUploadResponse
+import com.wutsi.ndopify.listing.dto.AttachListingImageResponse
 import com.wutsi.ndopify.listing.dto.CreateListingRequest
 import com.wutsi.ndopify.listing.dto.CreateListingResponse
 import com.wutsi.ndopify.listing.dto.GetListingResponse
@@ -195,6 +199,24 @@ class NdListingClient(
     fun deleteImage(imageId: Long) {
         rest.delete().uri("/v1/listings/images/{id}", imageId).retrieve().toBodilessEntity()
     }
+
+    /** A short-lived URL to upload a photo straight to the storage: no url with local storage. */
+    fun presignImage(id: Long, contentType: String): PresignUploadResponse =
+        rest.post()
+            .uri("/v1/listings/{id}/images/presign", id)
+            .body(PresignUploadRequest(contentType))
+            .retrieve()
+            .body<PresignUploadResponse>()
+            ?: PresignUploadResponse()
+
+    /** Attaches a photo that was uploaded straight to the storage, at the path [presignImage] returned. */
+    fun attachImage(id: Long, path: String): AttachListingImageResponse =
+        rest.post()
+            .uri("/v1/listings/{id}/images/attach", id)
+            .body(AttachUploadRequest(path))
+            .retrieve()
+            .body<AttachListingImageResponse>()
+            ?: AttachListingImageResponse()
 
     /** The listing's photos, oldest first. */
     fun images(id: Long): List<ListingImage> =
