@@ -18,6 +18,7 @@ import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.apache.tika.Tika
 import org.slf4j.LoggerFactory
+import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Controller
@@ -161,13 +162,13 @@ class ProfileController(
 
     /**
      * A short-lived URL to upload the profile photo straight to the storage, for `kyc.js` (`direct-upload.js`). The
-     * party is the signed-in agent's, never one from the request. ndopify-server's status when it refuses; a null
-     * `url` with local storage.
+     * party is the signed-in agent's, never one from the request. 401 without a signed-in agent ([jsonAgent]),
+     * ndopify-server's status when it refuses; a null `url` with local storage.
      */
     @PostMapping("/photo/presign", produces = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseBody
     fun presignPhoto(@RequestBody request: PresignUploadRequest): ResponseEntity<PresignUploadResponse> {
-        val agent = currentAgent.get() ?: throw SignInRequiredException()
+        val agent = jsonAgent() ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
         return try {
             ResponseEntity.ok(partyClient.presignPhoto(agent.party.id, request.contentType.orEmpty()))
         } catch (ex: HttpClientErrorException) {
@@ -178,12 +179,13 @@ class ProfileController(
 
     /**
      * Makes the photo uploaded straight to the storage the signed-in agent's profile photo, for `kyc.js`. An empty
-     * 200, else ndopify-server's status and error body when it refuses the upload.
+     * 200, else 401 without a signed-in agent ([jsonAgent]), or ndopify-server's status and error body when it
+     * refuses the upload.
      */
     @PostMapping("/photo/attach", produces = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseBody
     fun attachPhoto(@RequestBody request: AttachUploadRequest): ResponseEntity<*> {
-        val agent = currentAgent.get() ?: throw SignInRequiredException()
+        val agent = jsonAgent() ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build<String>()
         return try {
             partyClient.attachPhoto(agent.party.id, request.path)
             ResponseEntity.ok().build<String>()
@@ -194,6 +196,19 @@ class ProfileController(
                 .body<String>(ex.responseBodyAsString)
         }
     }
+
+    /**
+     * The signed-in agent of a JSON endpoint called by `fetch`, or null (a 401 for the caller). Never the sign-out
+     * redirect of [SignInRequiredException] / a 401 from ndopify-server: `fetch` would follow it to the login page's 200
+     * and take it for a success. The JS then falls back to the form post, which signs the agent out.
+     */
+    private fun jsonAgent(): Agent? =
+        try {
+            currentAgent.get()
+        } catch (ex: HttpClientErrorException.Unauthorized) {
+            LOGGER.warn("401 from ndopify-server on a direct photo upload")
+            null
+        }
 
     /** Where a direct upload ends: the browser never posts the form, so this hands back the form post's outcome. */
     @GetMapping("/photo/saved")

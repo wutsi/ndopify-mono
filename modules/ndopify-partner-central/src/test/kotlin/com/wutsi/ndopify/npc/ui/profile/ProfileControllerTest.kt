@@ -418,7 +418,24 @@ class ProfileControllerTest {
                 .content("""{"contentType":"image/jpeg"}"""),
         ).andReturn()
 
-        assertEquals("redirect:/login", result.modelAndView?.viewName)
+        assertEquals(HttpStatus.UNAUTHORIZED.value(), result.response.status)
+        assertNull(result.response.redirectedUrl)
+        verify(partyClient, never()).presignPhoto(any(), any())
+    }
+
+    @Test
+    fun `presign - token rejected by ndopify-server`() {
+        doThrow(HttpClientErrorException.create(HttpStatus.UNAUTHORIZED, "Unauthorized", HttpHeaders.EMPTY, ByteArray(0), null))
+            .whenever(currentAgent).get()
+
+        val result = mvc.perform(
+            post("/profile/photo/presign")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"contentType":"image/jpeg"}"""),
+        ).andReturn()
+
+        assertEquals(HttpStatus.UNAUTHORIZED.value(), result.response.status)
+        assertNull(result.response.redirectedUrl)
         verify(partyClient, never()).presignPhoto(any(), any())
     }
 
@@ -464,7 +481,24 @@ class ProfileControllerTest {
                 .content("""{"path":"party/100/photo/a.jpg"}"""),
         ).andReturn()
 
-        assertEquals("redirect:/login", result.modelAndView?.viewName)
+        assertEquals(HttpStatus.UNAUTHORIZED.value(), result.response.status)
+        assertNull(result.response.redirectedUrl)
+        verify(partyClient, never()).attachPhoto(any(), any())
+    }
+
+    @Test
+    fun `attach - token rejected by ndopify-server`() {
+        doThrow(HttpClientErrorException.create(HttpStatus.UNAUTHORIZED, "Unauthorized", HttpHeaders.EMPTY, ByteArray(0), null))
+            .whenever(currentAgent).get()
+
+        val result = mvc.perform(
+            post("/profile/photo/attach")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"path":"party/100/photo/a.jpg"}"""),
+        ).andReturn()
+
+        assertEquals(HttpStatus.UNAUTHORIZED.value(), result.response.status)
+        assertNull(result.response.redirectedUrl)
         verify(partyClient, never()).attachPhoto(any(), any())
     }
 

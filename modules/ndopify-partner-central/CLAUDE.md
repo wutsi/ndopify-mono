@@ -144,7 +144,8 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `GET|POST /profile/photo` (`templates/profile/photo.html`, sniffed with Tika, 5 Mo, sent to `POST
   /v1/parties/{id}/photo`). Both go back to `/` with a `saved` flash attribute. With JS, the photo goes straight to
   the storage: `POST /profile/photo/presign` → PUT → `POST /profile/photo/attach` (JSON proxies, the party taken from
-  `CurrentAgent`, ndopify-server's status and, for attach, its error body), then `GET /profile/photo/saved` sets the
+  `CurrentAgent`, ndopify-server's status and, for attach, its error body; a 401 — never the sign-out redirect, which
+  `fetch` would follow to a 200 — without a signed-in agent), then `GET /profile/photo/saved` sets the
   same flash and redirects to `/`; the multipart post stays the no-JS / local storage / failure path.
   `join.js` and `kyc.js` enhance them (`data-page` `profile-edit` / `profile-photo`); on `profile-photo` only,
   `kyc.js`'s submit handler sends the shrunk photo through `direct-upload.js` (loaded by `profile/photo.html`) and
