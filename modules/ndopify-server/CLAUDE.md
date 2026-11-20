@@ -130,8 +130,11 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   hands out a PUT URL for `kyc/{caseId}/images/{uuid}.{ext}` (`{url: null}` with local storage: the caller falls back to
   the multipart upload, which stays, at `kyc/{caseId}/images/{imageId}.{ext}`), then `POST .../images/attach` verifies the
   object and **replaces** the case's one image for that (identification type, image type): the row is updated, and the
-  previous object deleted with its own `storageType` after the save (a failed deletion is only logged). Idempotent on
-  `path`. KYC files are private: only read through presigned GETs (`GET /v1/kyc/cases/images/{id}/url`), never `publicUrl`.
+  previous object deleted with its own `storageType` after the save (a failed deletion is only logged; the multipart
+  upload deletes it too when it was at another path). Idempotent on `path`; a path another image of the case has is a
+  400. Both writes re-check `PENDING_VERIFICATION` with the case locked (`findStatusForUpdateById`, native: the
+  persistence context may hold the status read before the storage I/O) in the save's transaction, so a case submitted
+  during the I/O keeps its photos (the new object is deleted). KYC files are private: only read through presigned GETs (`GET /v1/kyc/cases/images/{id}/url`), never `publicUrl`.
 - **agent** — mobile-money agents (`AgentEntity`; `/v1/agents`: get, search, me, create, update). `GET /v1/agents/me`
   resolves the caller's agent from its token (`CallerService`): 404 `AGENT_NOT_FOUND` when the caller has no party or
   isn't an agent. `WelcomeMailet` sends

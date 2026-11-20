@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.party.endpoint
 
 import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
@@ -27,6 +28,7 @@ import org.springframework.http.HttpEntity
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.jdbc.Sql
 import org.springframework.util.LinkedMultiValueMap
@@ -43,14 +45,22 @@ class UploadKycImageEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     @Autowired
     private lateinit var imageDao: KycImageRepository
 
+    @Autowired
+    private lateinit var jdbc: JdbcTemplate
+
     @MockitoBean
     private lateinit var storageProvider: StorageServiceProvider
 
     private val storage = mock<StorageService>()
 
+    // Where a directly uploaded photo is
+    private val s3 = mock<StorageService>()
+
     @BeforeEach
     fun setUpStorage() {
         doReturn(storage).whenever(storageProvider).get()
+        doReturn(storage).whenever(storageProvider).get(StorageType.LOCAL)
+        doReturn(s3).whenever(storageProvider).get(StorageType.S3)
         doReturn(StorageType.LOCAL).whenever(storage).type()
     }
 
@@ -121,6 +131,60 @@ class UploadKycImageEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
         assertEquals(1, imageDao.findAll().count())
         verify(storage).store(eq("kyc/kyc-case-100/images/kyc-image-100-back.jpg"), any(), eq("image/jpeg"))
+        // The .png is at another path: deleted
+        verify(storage).delete("kyc/kyc-case-100/images/kyc-image-100-back.png")
+    }
+
+    @Test
+    fun `re-upload of the same path deletes nothing`() {
+        val response = rest.postForEntity(
+            url("kyc-case-100", KycImageType.BACK),
+            request("back.png", MediaType.IMAGE_PNG, byteArrayOf(1, 2, 3)),
+            Void::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        verify(storage).store(eq("kyc/kyc-case-100/images/kyc-image-100-back.png"), any(), eq("image/png"))
+        verify(storage, never()).delete(any())
+    }
+
+    @Test
+    fun `re-upload replaces a direct upload and deletes its object`() {
+        val direct = "kyc/kyc-case-100/images/0f8fad5b-d9cb-469f-a165-70867728950e.png"
+        jdbc.update("UPDATE T_KYC_IMAGE SET path='$direct', storage_type='S3' WHERE id='kyc-image-100-back'")
+
+        val response = rest.postForEntity(
+            url("kyc-case-100", KycImageType.BACK),
+            request("back.jpg", MediaType.IMAGE_JPEG, byteArrayOf(1, 2, 3)),
+            Void::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val image = imageDao.findById("kyc-image-100-back").get()
+        assertEquals("kyc/kyc-case-100/images/kyc-image-100-back.jpg", image.path)
+        assertEquals(StorageType.LOCAL, image.storageType)
+        verify(s3).delete(direct)
+        verify(storage, never()).delete(any())
+    }
+
+    @Test
+    fun `case submitted during the store`() {
+        doAnswer {
+            // Another tab submits the case while the photo is stored: a plain SQL update, outside the request's session
+            jdbc.update("UPDATE T_KYC_CASE SET status='SUBMITTED' WHERE id='kyc-case-100'")
+            null
+        }.whenever(storage).store(any(), any(), any())
+
+        val response = rest.postForEntity(
+            url("kyc-case-100", KycImageType.FRONT),
+            request("front.jpg", MediaType.IMAGE_JPEG, byteArrayOf(1, 2, 3)),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.KYC_CASE_NOT_PENDING, response.body?.error?.code)
+        assertEquals(1, imageDao.findAll().count()) // only the fixture's BACK image
+        verify(storage).delete(any())
     }
 
     @Test
