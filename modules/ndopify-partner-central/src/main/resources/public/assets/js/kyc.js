@@ -54,7 +54,9 @@
             var shrinking = input.hasAttribute("data-shrinking");
             // Also inactive while the direct upload runs (data-busy): another photo must not re-enable the button.
             var busy = input.form.hasAttribute("data-busy");
-            setActive(next, !shrinking && !busy && (saved || !!(input.files && input.files.length)));
+            // data-saved: the direct upload has put the photo in the case (the input was then cleared).
+            var inCase = saved || input.form.hasAttribute("data-saved");
+            setActive(next, !shrinking && !busy && (inCase || !!(input.files && input.files.length)));
         }
 
         input.form.addEventListener("submit", function (event) {
@@ -283,11 +285,17 @@
         var input = $(".upload__input", form);
         if (!input) return;
         var next = $("[data-next]", form);
+        var camera = $("[data-camera-start]", form);
+        var shoot = $("[data-camera-shoot]", form);
         var sending = false;
 
-        // While it runs, "Suivant" says so and stays inactive (data-busy: initNext's refresh keeps it so).
+        // While it runs, "Suivant" says so and stays inactive (data-busy: initNext's refresh keeps it so), and the photo
+        // can't be changed (input and camera disabled): the photo on its way is the step's.
         function setBusy(on) {
             sending = on;
+            input.disabled = on;
+            if (camera) camera.disabled = on;
+            if (shoot) shoot.disabled = on;
             if (on) {
                 form.setAttribute("data-busy", "");
                 if (next) {
@@ -322,8 +330,12 @@
                     return false;
                 })
                 .then(function (uploaded) {
-                    // Another photo chosen meanwhile: it is posted with the form, the case's last word.
-                    if (uploaded && input.files && input.files[0] === file) input.value = "";
+                    // Re-enabled, or the fallback would post no photo (a disabled input isn't sent)
+                    input.disabled = false;
+                    if (uploaded) {
+                        form.setAttribute("data-saved", "");
+                        input.value = "";
+                    }
                     // Native submit: the submit listeners don't run again.
                     form.submit();
                 });
