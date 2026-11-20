@@ -47,8 +47,10 @@
         // The server only renders a preview <img> for a photo the case already has.
         var saved = !!$("[data-preview] img", step);
 
+        // Inactive while a chosen photo is being shrunk: the input still holds the original, not yet checked.
         function refresh() {
-            setActive(next, saved || !!(input.files && input.files.length));
+            var shrinking = input.hasAttribute("data-shrinking");
+            setActive(next, !shrinking && (saved || !!(input.files && input.files.length)));
         }
 
         input.form.addEventListener("submit", function (event) {
@@ -116,6 +118,7 @@
         var input = $(".upload__input", step);
         if (!input) return;
         input.addEventListener("change", function () {
+            input.removeAttribute("data-shrinking");
             refresh();
             var file = input.files && input.files[0];
             if (!file) return;
@@ -126,7 +129,10 @@
                 return;
             }
             setError(step, "");
+            input.setAttribute("data-shrinking", "");
+            refresh();
             shrink(file, function (small) {
+                input.removeAttribute("data-shrinking");
                 // Can't shrink (or can't swap the file): post the original and let the server check it.
                 var chosen = small && useFile(step, small) ? small : file;
                 if (chosen.size > MAX_FILE_BYTES) {
