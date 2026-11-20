@@ -29,6 +29,7 @@ import java.util.UUID
 @Service
 class PartyService(
     private val dao: PartyRepository,
+    private val accessService: PartyAccessService,
     private val storageProvider: StorageServiceProvider,
     private val clock: Clock,
 ) {
@@ -120,10 +121,13 @@ class PartyService(
      * Stores the party's profile photo and makes it its [PartyEntity.photoUrl]. The photo is public (customers see
      * it, ex: in the e-mail of an assigned mandate), so it gets the storage's permanent URL, not a presigned one.
      * Each upload gets a new file name, so mail clients and caches never show a replaced photo.
+     * Errors, in order: 404 PARTY_NOT_FOUND, 401 AUTH_UNAUTHORIZED / 403 HTTP_ACCESS_DENIED but for the party itself
+     * ([PartyAccessService]), then 400 HTTP_INVALID_PARAMETER for a file that isn't a JPEG, PNG or WEBP image.
      */
     @Transactional
     fun uploadPhoto(id: Long, file: MultipartFile): PartyEntity {
         val party = findById(id)
+        accessService.ensureIsParty(party)
         val mimeType = ensurePhoto(file)
 
         val path = "party/${party.id}/photo/${UUID.randomUUID()}.${MimeUtils.getExtensionFromMimeType(mimeType)}"
