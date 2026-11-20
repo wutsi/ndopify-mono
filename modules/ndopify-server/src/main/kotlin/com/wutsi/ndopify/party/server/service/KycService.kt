@@ -1,9 +1,12 @@
 package com.wutsi.ndopify.party.server.service
 
+import com.wutsi.ndopify.common.dto.PresignUploadResponse
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
+import com.wutsi.ndopify.error.dto.ParameterType
 import com.wutsi.ndopify.error.server.exception.BadRequestException
+import com.wutsi.ndopify.error.server.exception.ForbiddenException
 import com.wutsi.ndopify.error.server.exception.NotFoundException
 import com.wutsi.ndopify.party.dto.CreateKycCaseRequest
 import com.wutsi.ndopify.party.dto.IdentificationType
@@ -14,6 +17,7 @@ import com.wutsi.ndopify.party.dto.PaymentMethodStatus
 import com.wutsi.ndopify.party.dto.SearchKycCaseRequest
 import com.wutsi.ndopify.party.server.dao.KycCaseRepository
 import com.wutsi.ndopify.party.server.dao.KycImageRepository
+import com.wutsi.ndopify.party.server.dao.KycImageRow
 import com.wutsi.ndopify.party.server.dao.KycVerificationRepository
 import com.wutsi.ndopify.party.server.domain.KycCaseEntity
 import com.wutsi.ndopify.party.server.domain.KycImageEntity
@@ -23,8 +27,11 @@ import com.wutsi.ndopify.party.server.event.KycCaseCompletedEvent
 import com.wutsi.ndopify.party.server.mail.KycMailet
 import com.wutsi.ndopify.platform.logger.KVLogger
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
+import com.wutsi.ndopify.platform.storage.upload.DirectUploadService
 import com.wutsi.ndopify.platform.util.MimeUtils
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
+import com.wutsi.ndopify.refdata.dto.StorageType
+import com.wutsi.ndopify.security.server.service.CallerService
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
 import jakarta.transaction.Transactional
@@ -40,6 +47,7 @@ import org.springframework.web.multipart.MultipartFile
 import java.net.URL
 import java.time.Clock
 import java.util.Date
+import java.util.UUID
 
 @Service
 class KycService(
@@ -58,10 +66,15 @@ class KycService(
     private val clock: Clock,
     private val logger: KVLogger,
     private val eventPublisher: ApplicationEventPublisher,
+    private val callerService: CallerService,
+    private val directUpload: DirectUploadService,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(KycService::class.java)
         private val MAX_RETRIES = 3
+
+        /** The folder of a case's photos: the multipart upload and the direct upload share it. */
+        fun prefix(caseId: String) = "kyc/$caseId/images"
     }
 
     fun findById(id: String): KycCaseEntity {
@@ -128,18 +141,27 @@ class KycService(
         )
     }
 
+    /**
+     * Stores a KYC photo posted as multipart, replacing the case's image for that (identification type, image type).
+     * Errors, in order: 404 KYC_CASE_NOT_FOUND (including another tenant's case), 403 HTTP_ACCESS_DENIED but for the
+     * case's own party, 400 KYC_CASE_NOT_PENDING (once submitted, the documents under review must not change), then
+     * 400 KYC_IMAGE_INVALID_MIME_TYPE. Each photo is stored at a new `kyc/{caseId}/images/{uuid}.{ext}`, like the direct
+     * upload, never over the row's object: no two writes share a path. The row is saved by [saveImage]: a case submitted
+     * during the store keeps its rows and objects, and the new object is deleted. The replaced object is deleted after
+     * the save, with its own storage; a failed deletion is logged, not fatal. Photos stored before at
+     * `{imageId}.{ext}` stay readable.
+     */
     fun upload(
         id: String,
         identificationType: IdentificationType,
         imageType: KycImageType,
         file: MultipartFile
     ): KycImageEntity {
+        val case = findById(id)
+        ensureOwnCase(case)
+        ensureStatusIsPending(case)
         ensureImage(file)
 
-        // Images can only be added or replaced while the case is PENDING_VERIFICATION: once submitted, the documents under
-        // review (or already reviewed) must not change.
-        val case = findById(id)
-        ensureStatusIsPending(case)
         val now = Date(clock.millis())
         val image = kycImageDao.findByKycCaseAndIdentificationTypeAndImageType(
             case, identificationType, imageType
@@ -154,19 +176,130 @@ class KycService(
         // Store
         val mimeType = file.contentType
         val extension = MimeUtils.getExtensionFromMimeType(mimeType)
-        val path = "kyc/${case.id}/images/${image.id}.$extension"
+        val path = "${prefix(case.id)}/${UUID.randomUUID()}.$extension"
         val storage = storageProvider.get()
         storage.store(path, file.inputStream, mimeType)
 
-        return tx.execute {
-            kycImageDao.save(
-                image.copy(
-                    path = path,
-                    storageType = storage.type(),
-                    mimeType = mimeType,
-                    modifiedAt = now,
-                )
+        val (saved, previous) = try {
+            saveImage(case, image, path, storage.type(), mimeType, now)
+        } catch (ex: Exception) {
+            deleteUnreferenced(case, path) { storage.delete(path) }
+            throw ex
+        }
+        deletePrevious(case, previous, path)
+        return saved
+    }
+
+    /**
+     * A short-lived URL to upload a KYC photo straight to the storage, for the case's own party. Errors, in order: 404
+     * KYC_CASE_NOT_FOUND, 403 HTTP_ACCESS_DENIED but for the case's party, 400 KYC_CASE_NOT_PENDING, then 400
+     * HTTP_INVALID_PARAMETER (by [DirectUploadService.presign]) for a type that isn't JPEG, PNG or WEBP. No URL when the
+     * storage can't presign (local): the caller falls back to [upload].
+     */
+    fun presign(
+        id: String,
+        identificationType: IdentificationType,
+        imageType: KycImageType,
+        contentType: String?,
+    ): PresignUploadResponse {
+        val case = findById(id)
+        ensureOwnCase(case)
+        ensureStatusIsPending(case)
+        return directUpload.presign(prefix(case.id), contentType)
+    }
+
+    /**
+     * Attaches a KYC photo uploaded straight to the storage, replacing the case's image for that (identification type,
+     * image type): one image per step. Errors, in order: 404 KYC_CASE_NOT_FOUND, 403 HTTP_ACCESS_DENIED but for the
+     * case's party, 400 KYC_CASE_NOT_PENDING, 400 HTTP_INVALID_PARAMETER for a path another image of the case already
+     * has, then [DirectUploadService.verify]'s 400s. Idempotent on [path]: the image already recorded for it is
+     * returned. The row is saved by [saveImage]: a case submitted during the verification is left as it was, and the
+     * uploaded object is deleted whenever the save fails. The replaced object is deleted after the new row is saved,
+     * with its own storage; a failed deletion is logged, not fatal.
+     */
+    fun attach(
+        id: String,
+        identificationType: IdentificationType,
+        imageType: KycImageType,
+        path: String,
+    ): KycImageEntity {
+        val case = findById(id)
+        ensureOwnCase(case)
+        ensureStatusIsPending(case)
+
+        val existing = kycImageDao.findByKycCaseAndIdentificationTypeAndImageType(case, identificationType, imageType)
+        if (existing != null && existing.path == path) {
+            return existing
+        }
+        ensurePathNotUsed(case, path, existing?.id)
+
+        // Storage I/O outside the transaction, like upload()
+        val mimeType = directUpload.verify(path, prefix(case.id))
+        val storage = storageProvider.get()
+        val now = Date(clock.millis())
+        val image = existing ?: KycImageEntity(
+            kycCase = case,
+            identificationType = identificationType,
+            imageType = imageType,
+            createdAt = now,
+            modifiedAt = now,
+        )
+        val (saved, previous) = try {
+            saveImage(case, image, path, storage.type(), mimeType, now)
+        } catch (ex: Exception) {
+            // Submitted meanwhile, or the save failed
+            deleteUnreferenced(case, path) { storage.delete(path) }
+            throw ex
+        }
+        deletePrevious(case, previous, path)
+        return saved
+    }
+
+    /**
+     * Saves [image] at [path], in a transaction holding the case's lock: the case must still be PENDING_VERIFICATION
+     * (a submit committed during the storage I/O wins), no other image of the case may have [path], and the step's
+     * image is read again from the database, so that concurrent writes on one step update a single row and each
+     * replaced object is deleted once. A row already at [path] (a concurrent attach of the same path) is returned as
+     * is. Returns the saved image
+     * and the step's row as it was before the save (null when there was none).
+     */
+    private fun saveImage(
+        case: KycCaseEntity,
+        image: KycImageEntity,
+        path: String,
+        storageType: StorageType,
+        mimeType: String?,
+        now: Date,
+    ): Pair<KycImageEntity, KycImageRow?> = tx.execute {
+        ensureStillPending(case)
+        val current = kycImageDao.findRow(case.id, image.identificationType.name, image.imageType.name)
+        if (current?.getPath() == path) {
+            return@execute kycImageDao.findById(current.getId()).orElseThrow() to null
+        }
+        ensurePathNotUsed(case, path, current?.getId())
+
+        val base = current?.let { row -> kycImageDao.findById(row.getId()).orElseThrow() } ?: image
+        kycImageDao.save(
+            base.copy(
+                path = path,
+                storageType = storageType,
+                mimeType = mimeType,
+                modifiedAt = now,
             )
+        ) to current
+    }!!
+
+    /** Deletes the object of the row [saveImage] replaced, with its own storage, unless it is at [path]. */
+    private fun deletePrevious(case: KycCaseEntity, previous: KycImageRow?, path: String) {
+        val oldPath = previous?.getPath() ?: return
+        if (oldPath == path) return
+
+        // A row with no (or an unknown) storage type was written to the default storage
+        val storageType = StorageType.entries.firstOrNull { it.name == previous.getStorageType() }
+            ?.takeIf { it != StorageType.UNKNOWN }
+        deleteQuietly(case, oldPath) {
+            val storage = storageType?.let { type -> storageProvider.get(type) } ?: storageProvider.get()
+            storage.delete(oldPath)
         }
     }
 
@@ -403,11 +536,74 @@ class KycService(
         return verifier?.verify(case) ?: emptyList()
     }
 
+    /** The case's own party only: no admin bypass, a KYC document is personal. */
+    private fun ensureOwnCase(case: KycCaseEntity) {
+        val partyId = callerService.findPartyIdOrNull(callerService.getPrincipal())
+        if (partyId == null || partyId != case.party.id) {
+            throw ForbiddenException(error = Error(code = ErrorCode.HTTP_ACCESS_DENIED))
+        }
+    }
+
     private fun ensureStatusIsPending(case: KycCaseEntity) {
         if (case.status != KycStatus.PENDING_VERIFICATION) {
+            throw notPending()
+        }
+    }
+
+    private fun notPending() = BadRequestException(
+        error = Error(code = ErrorCode.KYC_CASE_NOT_PENDING)
+    )
+
+    /**
+     * Within the image's save transaction: the case is locked and still PENDING_VERIFICATION, so no image is saved
+     * once a SUBMITTED status is committed (a submit committed during the storage I/O wins). [submit] itself reads the
+     * case without the lock: only its final update waits for an image save in progress, so an image saved just before
+     * that update is part of the submitted case.
+     */
+    private fun ensureStillPending(case: KycCaseEntity) {
+        val status = dao.findStatusForUpdateById(case.id)
+        // Compared by name: a name the enum no longer has isn't pending either (no valueOf exception)
+        if (status != KycStatus.PENDING_VERIFICATION.name) {
+            throw notPending()
+        }
+    }
+
+    /**
+     * A path already recorded by an image of the case other than [imageId] is refused: two rows would share one object, which the
+     * replacement of either deletes.
+     */
+    private fun ensurePathNotUsed(case: KycCaseEntity, path: String, imageId: String?) {
+        if (kycImageDao.findByKycCaseAndPath(case, path).any { it.id != imageId }) {
             throw BadRequestException(
-                error = Error(code = ErrorCode.KYC_CASE_NOT_PENDING)
+                error = Error(
+                    code = ErrorCode.HTTP_INVALID_PARAMETER,
+                    message = "$path is already the path of another image of Case#${case.id}.",
+                    parameter = Parameter(
+                        name = "path",
+                        type = ParameterType.PARAMETER_TYPE_PAYLOAD,
+                        value = path,
+                    ),
+                )
             )
+        }
+    }
+
+    /**
+     * After a failed save: deletes the new object at [path], unless a row of the case records it (a concurrent attach
+     * of the same path).
+     */
+    private fun deleteUnreferenced(case: KycCaseEntity, path: String, delete: () -> Unit) {
+        if (kycImageDao.findByKycCaseAndPath(case, path).isEmpty()) {
+            deleteQuietly(case, path, delete)
+        }
+    }
+
+    /** Deletes an object no row references any more; a failure is logged, not fatal. */
+    private fun deleteQuietly(case: KycCaseEntity, path: String, delete: () -> Unit) {
+        try {
+            delete()
+        } catch (ex: Exception) {
+            LOGGER.warn(">>> KYC#${case.id} - Could not delete the image $path", ex)
         }
     }
 

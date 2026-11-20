@@ -128,6 +128,16 @@ class KycTemplateTest {
     }
 
     @Test
+    fun `direct upload script before kyc js`() {
+        given(case())
+
+        val scripts = render(get("/kyc")).select("script[src]").map { it.attr("src") }
+
+        assertTrue(scripts.contains("/assets/js/direct-upload.js"), scripts.toString())
+        assertTrue(scripts.indexOf("/assets/js/direct-upload.js") < scripts.indexOf("/assets/js/kyc.js"), scripts.toString())
+    }
+
+    @Test
     fun `signed out`() {
         given(case())
         SecurityContextHolder.clearContext()

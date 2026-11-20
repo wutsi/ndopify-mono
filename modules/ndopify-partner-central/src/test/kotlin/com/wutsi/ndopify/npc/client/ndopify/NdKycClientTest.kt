@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.client.ndopify
 
+import com.wutsi.ndopify.party.dto.IdentificationType
 import com.wutsi.ndopify.party.dto.KycImageType
 import com.wutsi.ndopify.party.dto.KycStatus
 import org.junit.jupiter.api.BeforeEach
@@ -119,5 +120,66 @@ class NdKycClientTest {
 
         assertEquals("https://s3/img-1.jpg", client.imageUrl("img-1"))
         server.verify()
+    }
+
+    @Test
+    fun presign() {
+        server.expect(
+            requestTo("http://localhost:8080/v1/kyc/cases/case-1/images/presign?identificationType=NATIONAL_ID&imageType=FRONT"),
+        )
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(content().json("""{"contentType":"image/jpeg"}"""))
+            .andRespond(
+                withSuccess(
+                    """{"url":"https://s3.example.com/put","path":"kyc/case-1/images/a.jpg"}""",
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val response = client.presign("case-1", IdentificationType.NATIONAL_ID, KycImageType.FRONT, "image/jpeg")
+
+        assertEquals("https://s3.example.com/put", response.url)
+        assertEquals("kyc/case-1/images/a.jpg", response.path)
+        server.verify()
+    }
+
+    @Test
+    fun `presign with local storage`() {
+        server.expect(
+            requestTo("http://localhost:8080/v1/kyc/cases/case-1/images/presign?identificationType=NATIONAL_ID&imageType=SELFIE"),
+        )
+            .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON))
+
+        val response = client.presign("case-1", IdentificationType.NATIONAL_ID, KycImageType.SELFIE, "image/png")
+
+        assertNull(response.url)
+        assertNull(response.path)
+        server.verify()
+    }
+
+    @Test
+    fun attach() {
+        server.expect(
+            requestTo("http://localhost:8080/v1/kyc/cases/case-1/images/attach?identificationType=NATIONAL_ID&imageType=BACK"),
+        )
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(content().json("""{"path":"kyc/case-1/images/a.jpg"}"""))
+            .andRespond(withSuccess())
+
+        client.attach("case-1", IdentificationType.NATIONAL_ID, KycImageType.BACK, "kyc/case-1/images/a.jpg")
+
+        server.verify()
+    }
+
+    @Test
+    fun `attach refused`() {
+        server.expect(
+            requestTo("http://localhost:8080/v1/kyc/cases/case-1/images/attach?identificationType=NATIONAL_ID&imageType=FRONT"),
+        )
+            .andRespond(withStatus(HttpStatus.BAD_REQUEST))
+
+        assertFailsWith<HttpClientErrorException> {
+            client.attach("case-1", IdentificationType.NATIONAL_ID, KycImageType.FRONT, "kyc/case-1/images/a.jpg")
+        }
     }
 }

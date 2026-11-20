@@ -4,7 +4,9 @@
  *   doesn't hit the upload limit, and the preview shows the chosen photo at once;
  * - the selfie step uses the front camera in the page (getUserMedia) when it can, under an oval guide; otherwise
  *   the <input type="file" capture="user"> that the page already shows is kept;
- * - "Suivant" stays inactive until the step has its photo: one chosen here, or one the case already has.
+ * - "Suivant" stays inactive until the step has its photo: one chosen here, or one the case already has;
+ * - with direct-upload.js on the page, "Suivant" sends the photo straight to the storage (<action>/presign, PUT,
+ *   <action>/attach), then posts the step without it; on any failure the photo is posted with the form, as without JS.
  * The profile photo page (templates/profile/photo.html) is enhanced the same way, as a one-step upload, and also
  * sends the photo straight to the storage when it can (direct-upload.js), falling back to the form post.
  * Ported from the prototype (src/main/html/assets/js/partner-central.js: kycUpload, kycCamera).
@@ -52,7 +54,9 @@
             var shrinking = input.hasAttribute("data-shrinking");
             // Also inactive while the direct upload runs (data-busy): another photo must not re-enable the button.
             var busy = input.form.hasAttribute("data-busy");
-            setActive(next, !shrinking && !busy && (saved || !!(input.files && input.files.length)));
+            // data-saved: the direct upload has put the photo in the case (the input was then cleared).
+            var inCase = saved || input.form.hasAttribute("data-saved");
+            setActive(next, !shrinking && !busy && (inCase || !!(input.files && input.files.length)));
         }
 
         input.form.addEventListener("submit", function (event) {
@@ -272,6 +276,76 @@
         window.addEventListener("pagehide", stop);
     }
 
+    /*
+     * "Suivant" on an upload step: the photo goes straight to the storage, then the form posts without it, so the
+     * server moves on as usual (the case already has the photo). Local storage, a failed PUT or attach: the form
+     * posts the photo, the multipart upload.
+     */
+    function initKycDirectUpload(form, refresh) {
+        var input = $(".upload__input", form);
+        if (!input) return;
+        var next = $("[data-next]", form);
+        var camera = $("[data-camera-start]", form);
+        var shoot = $("[data-camera-shoot]", form);
+        var sending = false;
+
+        // While it runs, "Suivant" says so and stays inactive (data-busy: initNext's refresh keeps it so), and the photo
+        // can't be changed (input and camera disabled): the photo on its way is the step's.
+        function setBusy(on) {
+            sending = on;
+            input.disabled = on;
+            if (camera) camera.disabled = on;
+            if (shoot) shoot.disabled = on;
+            if (on) {
+                form.setAttribute("data-busy", "");
+                if (next) {
+                    next.setAttribute("data-label", next.textContent);
+                    next.textContent = "Envoi en cours…";
+                }
+            } else {
+                form.removeAttribute("data-busy");
+                if (next && next.hasAttribute("data-label")) {
+                    next.textContent = next.getAttribute("data-label");
+                    next.removeAttribute("data-label");
+                }
+                var status = $("[data-upload-status]", form);
+                if (status) status.textContent = "";
+            }
+            refresh();
+        }
+
+        form.addEventListener("submit", function (event) {
+            // initNext already refused the post ("Suivant" without a photo).
+            if (event.defaultPrevented) return;
+            var file = input.files && input.files[0];
+            if (!file || !window.NdDirectUpload) return;
+
+            event.preventDefault();
+            if (sending) return; // a second click while the photo is on its way
+            setBusy(true);
+            var status = $("[data-upload-status]", form);
+            if (status) status.textContent = "Envoi de la photo en cours…";
+            window.NdDirectUpload.upload(form.getAttribute("action"), file)
+                .catch(function () {
+                    return false;
+                })
+                .then(function (uploaded) {
+                    // Re-enabled, or the fallback would post no photo (a disabled input isn't sent)
+                    input.disabled = false;
+                    if (uploaded) {
+                        form.setAttribute("data-saved", "");
+                        input.value = "";
+                    }
+                    // Native submit: the submit listeners don't run again.
+                    form.submit();
+                });
+        });
+        // Back from the next page restores this one from the cache: "Suivant" must work again, if it has a photo.
+        window.addEventListener("pageshow", function (event) {
+            if (event.persisted) setBusy(false);
+        });
+    }
+
     function initSubmit(form) {
         var submit = $("[data-submit]", form);
         if (!submit) return;
@@ -361,8 +435,10 @@
         var refresh = initNext(step);
         initUpload(step, refresh);
         initCamera(step, refresh);
+        // After initNext: its submit listener runs first, and may refuse the post.
+        if (page === "kyc") initKycDirectUpload(form, refresh);
         initSubmit(form);
-        // Not on the KYC wizard: its steps keep the form post.
+        // The profile photo's own flow: it goes to "<action>/saved" once attached.
         if (page === "profile-photo") initDirectUpload(form, refresh);
     });
 })();
