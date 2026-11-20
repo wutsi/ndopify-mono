@@ -190,6 +190,32 @@ class AttachKycImageEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     }
 
     @Test
+    fun `attach - step's image recorded during the verification`() {
+        val concurrent = "kyc/kyc-case-100/images/7c9e6679-7425-40de-944b-e07fc1f90ae7.png"
+        doReturn(storage).whenever(storageProvider).get(StorageType.S3)
+        doReturn(StoredObject("image/png", 3)).whenever(storage).metadata(path)
+        doAnswer {
+            // Another request attaches FRONT while this one reads the object: a plain SQL insert, outside the session
+            jdbc.update(
+                "INSERT INTO T_KYC_IMAGE(id, tenant_id, case_id, identification_type, image_type, storage_type, path, " +
+                    "mime_type, created_at, modified_at) VALUES ('kyc-image-100-front', 1, 'kyc-case-100', " +
+                    "'NATIONAL_ID', 'FRONT', 'S3', '$concurrent', 'image/png', NOW(), NOW())",
+            )
+            png(1, 1)
+        }.whenever(storage).readPrefix(eq(path), any())
+
+        val response = attach("kyc-case-100", KycImageType.FRONT, path)
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        val fronts = imageDao.findAll().filter { it.imageType == KycImageType.FRONT }
+        assertEquals(1, fronts.size)
+        assertEquals("kyc-image-100-front", fronts[0].id)
+        assertEquals(path, fronts[0].path)
+        verify(storage).delete(concurrent)
+        verify(storage, never()).delete(path)
+    }
+
+    @Test
     fun `attach - another case's path`() {
         val other = "kyc/kyc-case-200/images/0f8fad5b-d9cb-469f-a165-70867728950e.png"
 
