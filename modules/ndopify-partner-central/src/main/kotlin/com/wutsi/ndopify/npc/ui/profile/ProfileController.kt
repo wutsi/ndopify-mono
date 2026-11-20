@@ -2,6 +2,9 @@ package com.wutsi.ndopify.npc.ui.profile
 
 import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.agent.dto.UpdateAgentRequest
+import com.wutsi.ndopify.common.dto.AttachUploadRequest
+import com.wutsi.ndopify.common.dto.PresignUploadRequest
+import com.wutsi.ndopify.common.dto.PresignUploadResponse
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
@@ -15,13 +18,18 @@ import com.wutsi.ndopify.npc.ui.location.SectorValidator
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.apache.tika.Tika
 import org.slf4j.LoggerFactory
+import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.ModelAttribute
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClientException
 import org.springframework.web.multipart.MultipartFile
@@ -32,7 +40,9 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes
  * - `profile/edit` (`GET /profile`, `POST /profile`): WhatsApp number, experience, agent type, area and biography.
  *   The name isn't editable: it's the one of the verified identity document. The e-mail is shown, not editable
  *   (yet): changing it must check that the agent owns both the old and the new address.
- * - `profile/photo` (`GET /profile/photo`, `POST /profile/photo`): the profile photo, shown to customers.
+ * - `profile/photo` (`GET /profile/photo`, `POST /profile/photo`): the profile photo, shown to customers. With
+ *   JavaScript, it goes straight to the storage instead (`/profile/photo/presign`, a PUT, `/profile/photo/attach`,
+ *   then `GET /profile/photo/saved`); the form post is the no-JS / local storage / failure path.
  * Both go back to the Espace agent with a success message.
  */
 @Controller
@@ -146,6 +156,70 @@ class ProfileController(
             return photo(agent, SAVE_FAILED, model)
         }
 
+        redirect.addFlashAttribute(ProfileRules.SAVED, ProfileRules.SAVED_PHOTO)
+        return ProfileRules.HOME
+    }
+
+    /**
+     * A short-lived URL to upload the profile photo straight to the storage, for `kyc.js` (`direct-upload.js`). The
+     * party is the signed-in agent's, never one from the request. 401 without a signed-in agent ([jsonAgent]),
+     * ndopify-server's status when it refuses, 502 when it can't be reached or fails; a null `url` with local storage.
+     */
+    @PostMapping("/photo/presign", produces = [MediaType.APPLICATION_JSON_VALUE])
+    @ResponseBody
+    fun presignPhoto(@RequestBody request: PresignUploadRequest): ResponseEntity<PresignUploadResponse> {
+        val agent = jsonAgent() ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build()
+        return try {
+            ResponseEntity.ok(partyClient.presignPhoto(agent.party.id, request.contentType.orEmpty()))
+        } catch (ex: HttpClientErrorException) {
+            LOGGER.warn("Presign of the photo of party ${agent.party.id} refused: ${ex.statusCode}")
+            ResponseEntity.status(ex.statusCode).build()
+        } catch (ex: RestClientException) {
+            LOGGER.error("Server error: ${ex.message}", ex)
+            ResponseEntity.status(HttpStatus.BAD_GATEWAY).build()
+        }
+    }
+
+    /**
+     * Makes the photo uploaded straight to the storage the signed-in agent's profile photo, for `kyc.js`. An empty
+     * 200, else 401 without a signed-in agent ([jsonAgent]), or ndopify-server's status and error body when it
+     * refuses the upload, 502 when it can't be reached or fails.
+     */
+    @PostMapping("/photo/attach", produces = [MediaType.APPLICATION_JSON_VALUE])
+    @ResponseBody
+    fun attachPhoto(@RequestBody request: AttachUploadRequest): ResponseEntity<*> {
+        val agent = jsonAgent() ?: return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build<String>()
+        return try {
+            partyClient.attachPhoto(agent.party.id, request.path)
+            ResponseEntity.ok().build<String>()
+        } catch (ex: HttpClientErrorException) {
+            LOGGER.warn("Attach of the photo of party ${agent.party.id} refused: ${ex.statusCode}")
+            ResponseEntity.status(ex.statusCode)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body<String>(ex.responseBodyAsString)
+        } catch (ex: RestClientException) {
+            LOGGER.error("Server error: ${ex.message}", ex)
+            ResponseEntity.status(HttpStatus.BAD_GATEWAY).build<String>()
+        }
+    }
+
+    /**
+     * The signed-in agent of a JSON endpoint called by `fetch`, or null (a 401 for the caller). Never the sign-out
+     * redirect of [SignInRequiredException] / a 401 from ndopify-server: `fetch` would follow it to the login page's 200
+     * and take it for a success. The JS then falls back to the form post, which signs the agent out.
+     */
+    private fun jsonAgent(): Agent? =
+        try {
+            currentAgent.get()
+        } catch (ex: HttpClientErrorException.Unauthorized) {
+            LOGGER.warn("401 from ndopify-server on a direct photo upload")
+            null
+        }
+
+    /** Where a direct upload ends: the browser never posts the form, so this hands back the form post's outcome. */
+    @GetMapping("/photo/saved")
+    fun photoSaved(redirect: RedirectAttributes): String {
+        currentAgent.get() ?: throw SignInRequiredException()
         redirect.addFlashAttribute(ProfileRules.SAVED, ProfileRules.SAVED_PHOTO)
         return ProfileRules.HOME
     }

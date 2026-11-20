@@ -142,8 +142,15 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `ui/profile/`) are open whatever the KYC
   status: `GET|POST /profile` (`templates/profile/edit.html`, `POST /v1/agents/{id}`; the name isn't editable, the party's e-mail is shown read-only until changing it checks ownership of both addresses) and
   `GET|POST /profile/photo` (`templates/profile/photo.html`, sniffed with Tika, 5 Mo, sent to `POST
-  /v1/parties/{id}/photo`). Both go back to `/` with a `saved` flash attribute.
-  `join.js` and `kyc.js` enhance them (`data-page` `profile-edit` / `profile-photo`). `SectorValidator`
+  /v1/parties/{id}/photo`). Both go back to `/` with a `saved` flash attribute. With JS, the photo goes straight to
+  the storage: `POST /profile/photo/presign` → PUT → `POST /profile/photo/attach` (JSON proxies, the party taken from
+  `CurrentAgent`, ndopify-server's status and, for attach, its error body; a 401 — never the sign-out redirect, which
+  `fetch` would follow to a 200 — without a signed-in agent; `direct-upload.js` also takes a redirected answer, ex: the
+  login redirect of an expired session, for a failure), then `GET /profile/photo/saved` sets the
+  same flash and redirects to `/`; the multipart post stays the no-JS / local storage / failure path.
+  `join.js` and `kyc.js` enhance them (`data-page` `profile-edit` / `profile-photo`); on `profile-photo` only,
+  `kyc.js`'s submit handler sends the shrunk photo through `direct-upload.js` (loaded by `profile/photo.html`) and
+  posts the form when it resolves false; the KYC wizard keeps its form post. `SectorValidator`
   (`ui/location/`) is the city/neighbourhood check shared with the join wizard.
   A VERIFIED agent's Espace agent also lists the mandates offered to it (*Mandats proposés*): `HomeController` reads
   its PENDING assignments (`NdAssignmentClient` → `GET /v1/assignments?agent-id=&status=PENDING`, leaving out those

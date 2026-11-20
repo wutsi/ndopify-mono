@@ -5,7 +5,8 @@
  * - the selfie step uses the front camera in the page (getUserMedia) when it can, under an oval guide; otherwise
  *   the <input type="file" capture="user"> that the page already shows is kept;
  * - "Suivant" stays inactive until the step has its photo: one chosen here, or one the case already has.
- * The profile photo page (templates/profile/photo.html) is enhanced the same way, as a one-step upload.
+ * The profile photo page (templates/profile/photo.html) is enhanced the same way, as a one-step upload, and also
+ * sends the photo straight to the storage when it can (direct-upload.js), falling back to the form post.
  * Ported from the prototype (src/main/html/assets/js/partner-central.js: kycUpload, kycCamera).
  */
 (function () {
@@ -46,8 +47,12 @@
         // The server only renders a preview <img> for a photo the case already has.
         var saved = !!$("[data-preview] img", step);
 
+        // Inactive while a chosen photo is being shrunk: the input still holds the original, not yet checked.
         function refresh() {
-            setActive(next, saved || !!(input.files && input.files.length));
+            var shrinking = input.hasAttribute("data-shrinking");
+            // Also inactive while the direct upload runs (data-busy): another photo must not re-enable the button.
+            var busy = input.form.hasAttribute("data-busy");
+            setActive(next, !shrinking && !busy && (saved || !!(input.files && input.files.length)));
         }
 
         input.form.addEventListener("submit", function (event) {
@@ -91,30 +96,42 @@
     }
 
     function shrink(file, callback) {
-        var url = URL.createObjectURL(file);
+        var url;
         var img = new Image();
         img.onload = function () {
-            URL.revokeObjectURL(url);
-            var scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height));
-            var canvas = document.createElement("canvas");
-            canvas.width = Math.round(img.width * scale);
-            canvas.height = Math.round(img.height * scale);
-            canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-            canvas.toBlob(function (blob) {
-                callback(blob ? new File([blob], "photo.jpg", { type: "image/jpeg" }) : null);
-            }, "image/jpeg", 0.85);
+            try {
+                URL.revokeObjectURL(url);
+                var scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height));
+                var canvas = document.createElement("canvas");
+                canvas.width = Math.round(img.width * scale);
+                canvas.height = Math.round(img.height * scale);
+                canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob(function (blob) {
+                    callback(blob ? new File([blob], "photo.jpg", { type: "image/jpeg" }) : null);
+                }, "image/jpeg", 0.85);
+            } catch (e) {
+                callback(null); // e.g. out of memory: the original photo is posted
+            }
         };
         img.onerror = function () {
             URL.revokeObjectURL(url);
             callback(null);
         };
-        img.src = url;
+        try {
+            url = URL.createObjectURL(file);
+            img.src = url;
+        } catch (e) {
+            callback(null);
+        }
     }
 
     function initUpload(step, refresh) {
         var input = $(".upload__input", step);
         if (!input) return;
+        var latest = 0; // the change whose photo the input must hold: an older shrink that ends later is dropped
         input.addEventListener("change", function () {
+            var change = ++latest;
+            input.removeAttribute("data-shrinking");
             refresh();
             var file = input.files && input.files[0];
             if (!file) return;
@@ -125,7 +142,11 @@
                 return;
             }
             setError(step, "");
+            input.setAttribute("data-shrinking", "");
+            refresh();
             shrink(file, function (small) {
+                if (change !== latest) return;
+                input.removeAttribute("data-shrinking");
                 // Can't shrink (or can't swap the file): post the original and let the server check it.
                 var chosen = small && useFile(step, small) ? small : file;
                 if (chosen.size > MAX_FILE_BYTES) {
@@ -263,6 +284,51 @@
         });
     }
 
+    // The profile photo page uploads straight to the storage when it can (direct-upload.js): "Enregistrer" still
+    // starts it, so the agent can change their mind before. Local storage or any failure posts the form as usual,
+    // the file still in its input; without a new photo, the form post keeps the current one.
+    function initDirectUpload(form, refresh) {
+        if (!window.NdDirectUpload) return;
+        var action = form.getAttribute("action");
+        var button = $('[type="submit"]', form);
+        var label = button && button.textContent;
+        var busy = false;
+
+        // While it runs, nothing else shows progress (no page load): the button says so, and stays inactive.
+        function setBusy(on) {
+            busy = on;
+            if (on) form.setAttribute("data-busy", "");
+            else form.removeAttribute("data-busy");
+            if (!button) return;
+            button.textContent = on ? "Envoi en cours…" : label;
+            if (on) button.setAttribute("aria-disabled", "true");
+            else refresh(); // inactive again only without a photo (initNext)
+        }
+
+        form.addEventListener("submit", function (event) {
+            if (event.defaultPrevented) return;
+            var input = $(".upload__input", form);
+            var file = input && input.files && input.files[0];
+            if (!file) return;
+            event.preventDefault();
+            // One upload: a second click while it runs would upload the photo twice.
+            if (busy) return;
+            setBusy(true);
+            window.NdDirectUpload.upload(action, file).then(function (uploaded) {
+                if (uploaded) {
+                    location.assign(action + "/saved");
+                } else {
+                    // Still busy: the form post leaves the page, and a second click would post it twice.
+                    form.submit();
+                }
+            });
+        });
+        // Back from the Espace agent restores this page from the cache: "Enregistrer" must work again.
+        window.addEventListener("pageshow", function (event) {
+            if (event.persisted) setBusy(false);
+        });
+    }
+
     // The rejected case's "Soumettre de nouveaux documents": once, a second press would open a second case.
     function initRestart(form) {
         var button = $('[type="submit"]', form);
@@ -296,5 +362,7 @@
         initUpload(step, refresh);
         initCamera(step, refresh);
         initSubmit(form);
+        // Not on the KYC wizard: its steps keep the form post.
+        if (page === "profile-photo") initDirectUpload(form, refresh);
     });
 })();

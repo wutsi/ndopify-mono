@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.party.server.service
 
+import com.wutsi.ndopify.common.dto.PresignUploadResponse
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
@@ -14,6 +15,7 @@ import com.wutsi.ndopify.party.dto.UpdatePartyRequest
 import com.wutsi.ndopify.party.server.dao.PartyRepository
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
+import com.wutsi.ndopify.platform.storage.upload.DirectUploadService
 import com.wutsi.ndopify.platform.util.MimeUtils
 import com.wutsi.ndopify.util.jpa.OffsetLimitPageRequest
 import jakarta.persistence.criteria.Predicate
@@ -29,11 +31,16 @@ import java.util.UUID
 @Service
 class PartyService(
     private val dao: PartyRepository,
+    private val accessService: PartyAccessService,
     private val storageProvider: StorageServiceProvider,
+    private val directUpload: DirectUploadService,
     private val clock: Clock,
 ) {
     companion object {
         val PHOTO_MIME_TYPES = listOf("image/jpeg", "image/png", "image/webp")
+
+        /** The folder of a party's profile photo: the multipart upload and the direct upload share it. */
+        fun prefix(partyId: Long) = "party/$partyId/photo"
     }
 
     fun findById(id: Long): PartyEntity {
@@ -120,13 +127,17 @@ class PartyService(
      * Stores the party's profile photo and makes it its [PartyEntity.photoUrl]. The photo is public (customers see
      * it, ex: in the e-mail of an assigned mandate), so it gets the storage's permanent URL, not a presigned one.
      * Each upload gets a new file name, so mail clients and caches never show a replaced photo.
+     * Errors, in order: 401 AUTH_UNAUTHORIZED without a token (security filter), 404 PARTY_NOT_FOUND, 403
+     * HTTP_ACCESS_DENIED but for the party itself ([PartyAccessService]), then 400 HTTP_INVALID_PARAMETER for a file
+     * that isn't a JPEG, PNG or WEBP image.
      */
     @Transactional
     fun uploadPhoto(id: Long, file: MultipartFile): PartyEntity {
         val party = findById(id)
+        accessService.ensureIsParty(party)
         val mimeType = ensurePhoto(file)
 
-        val path = "party/${party.id}/photo/${UUID.randomUUID()}.${MimeUtils.getExtensionFromMimeType(mimeType)}"
+        val path = "${prefix(party.id!!)}/${UUID.randomUUID()}.${MimeUtils.getExtensionFromMimeType(mimeType)}"
         val storage = storageProvider.get()
         storage.store(path, file.inputStream, mimeType)
 
@@ -134,6 +145,39 @@ class PartyService(
         return dao.save(
             party.copy(
                 photoUrl = storage.publicUrl(path).toString(),
+                modifiedAt = now,
+            )
+        )
+    }
+
+    /**
+     * A short-lived URL to upload the profile photo straight to the storage, for the party itself. Errors, in order:
+     * 401 AUTH_UNAUTHORIZED without a token (security filter), 404 PARTY_NOT_FOUND, 403 HTTP_ACCESS_DENIED but for the
+     * party itself, then 400 HTTP_INVALID_PARAMETER (by [DirectUploadService.presign]) for a type that isn't JPEG, PNG
+     * or WEBP. No URL when the storage can't presign (local): the caller falls back to [uploadPhoto].
+     */
+    fun presign(id: Long, contentType: String?): PresignUploadResponse {
+        val party = findById(id)
+        accessService.ensureIsParty(party)
+        return directUpload.presign(prefix(party.id!!), contentType)
+    }
+
+    /**
+     * Makes the photo uploaded straight to the storage at [path] the party's [PartyEntity.photoUrl], once
+     * [DirectUploadService.verify] has checked it. Errors, in order: 401 AUTH_UNAUTHORIZED without a token
+     * (security filter), 404 PARTY_NOT_FOUND, 403 HTTP_ACCESS_DENIED but for the party itself, then the upload's 400s.
+     * The previous object stays in the storage: e-mails already sent keep showing it.
+     */
+    @Transactional
+    fun attach(id: Long, path: String): PartyEntity {
+        val party = findById(id)
+        accessService.ensureIsParty(party)
+        directUpload.verify(path, prefix(party.id!!))
+
+        val now = Date(clock.millis())
+        return dao.save(
+            party.copy(
+                photoUrl = storageProvider.get().publicUrl(path).toString(),
                 modifiedAt = now,
             )
         )

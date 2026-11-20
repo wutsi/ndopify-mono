@@ -137,4 +137,34 @@ class UpdatePartyPhotoEndpointTest : AuthorizationAwareEndpointIntegrationTest()
         assertEquals(HttpStatus.NOT_FOUND, response.statusCode)
         assertEquals(ErrorCode.PARTY_NOT_FOUND, response.body?.error?.code)
     }
+
+    @Test
+    fun `photo - another party's photo`() {
+        val response = rest.postForEntity(
+            "/v1/parties/101/photo",
+            request("me.jpg", MediaType.IMAGE_JPEG, byteArrayOf(1, 2, 3)),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.FORBIDDEN, response.statusCode)
+        assertEquals(ErrorCode.HTTP_ACCESS_DENIED, response.body?.error?.code)
+        assertNull(dao.findById(101L).get().photoUrl)
+        verify(storage, never()).store(any(), any(), any())
+    }
+
+    @Test
+    fun `photo - anonymous`() {
+        anonymousUser = true
+
+        val response = rest.postForEntity(
+            "/v1/parties/100/photo",
+            request("me.jpg", MediaType.IMAGE_JPEG, byteArrayOf(1, 2, 3)),
+            ErrorResponse::class.java,
+        )
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.statusCode)
+        assertEquals(ErrorCode.AUTH_UNAUTHORIZED, response.body?.error?.code)
+        assertNull(dao.findById(100L).get().photoUrl)
+        verify(storage, never()).store(any(), any(), any())
+    }
 }

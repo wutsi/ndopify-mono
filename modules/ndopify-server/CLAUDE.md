@@ -116,6 +116,13 @@ Current domains:
   `POST .../verify` → `UNDER_VERIFICATION` → `VERIFIED` / `REJECTED`, which publishes a `KycCaseCompletedEvent`: the
 status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint or `KycJobs` verified the case. `GET /v1/kyc/cases` returns the newest case first.
   Verification runs offline (`KycJobs`), never from a UI: `POST .../verify` is an `@OpsEndpoint`, off in prod.
+  The profile photo (`Party.photoUrl`, the storage's public URL of `party/{id}/photo/{uuid}.{ext}`) is changed only
+  by the party itself (`PartyAccessService.ensureIsParty`: JWT user → membership → party, else 403
+  `HTTP_ACCESS_DENIED`), no admin bypass. It goes straight to the storage (`POST /v1/parties/{id}/photo/presign`, a PUT,
+  then `/attach`, through `DirectUploadService`; errors in order: 401 `AUTH_UNAUTHORIZED` (security
+  filter), 404 `PARTY_NOT_FOUND`, 403 `HTTP_ACCESS_DENIED`, then the upload's 400s),
+  S3 only: presign answers `{url:null}` on local storage, and the multipart `POST /v1/parties/{id}/photo` stays the
+  fallback. A replaced photo's object is kept, so e-mails already sent keep showing it.
   Tenant-scoped (see Multi-Tenancy below).
 - **agent** — mobile-money agents (`AgentEntity`; `/v1/agents`: get, search, me, create, update). `GET /v1/agents/me`
   resolves the caller's agent from its token (`CallerService`): 404 `AGENT_NOT_FOUND` when the caller has no party or
