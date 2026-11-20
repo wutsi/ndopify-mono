@@ -138,9 +138,10 @@ class KycController(
     }
 
     /**
-     * A short-lived URL to upload the step's photo straight to the storage, for `kyc.js`. 409 when there is no open case
-     * (already submitted) or the step is ahead of the first missing photo, as the form post would redirect; else the
-     * storage's answer (no url with local storage), or ndopify-server's status when it refuses.
+     * A short-lived URL to upload the step's photo straight to the storage, for `kyc.js`. Like the form post, a case is
+     * opened when the agent has none (or a cancelled one); 409 once it is submitted or when the step is ahead of the
+     * first missing photo, as the form post would redirect; else the storage's answer (no url with local storage), or
+     * ndopify-server's status when it refuses (a 401 signs the agent out).
      */
     @PostMapping("/{step:front|back|selfie}/presign", produces = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseBody
@@ -168,8 +169,8 @@ class KycController(
     }
 
     /**
-     * Attaches the step's photo uploaded straight to the storage, replacing the case's one, for `kyc.js`. Same 409s as
-     * [presign], else 200, or ndopify-server's status when it refuses the file: `kyc.js` then posts it to [upload].
+     * Attaches the step's photo uploaded straight to the storage, replacing the case's one, for `kyc.js`. Same case and 409s
+     * as [presign], else 200, or ndopify-server's status when it refuses the file: `kyc.js` then posts it to [upload].
      */
     @PostMapping("/{step:front|back|selfie}/attach", produces = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseBody

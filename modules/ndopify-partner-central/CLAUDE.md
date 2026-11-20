@@ -134,7 +134,8 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   limit). `public/assets/js/kyc.js` only enhances (shrinks photos, in-page selfie camera); every step posts without it.
   **Direct upload** (#205): `kyc.html` loads `direct-upload.js` before `kyc.js`; on *Suivant*, `kyc.js` sends the shrunk
   photo (or the selfie) through `POST /kyc/{step}/presign` → PUT → `POST /kyc/{step}/attach` (JSON proxies to
-  ndopify-server; 409 when no case is open or the step is ahead of the first missing photo), clears the input and
+  ndopify-server; like the form post, they open a case when the agent has none or a cancelled one, and answer 409
+  once it is submitted or when the step is ahead of the first missing photo), clears the input and
   submits the form, which moves on as for a photo the case already has. Any failure (local storage: no url, a failed
   PUT or attach) posts the photo with the form: the multipart upload above stays the fallback, and the path without JS.
 - Login redirects to `/`, the *Espace agent* (`HomeController`, `ui/home/`, `templates/index.html`), whatever the
