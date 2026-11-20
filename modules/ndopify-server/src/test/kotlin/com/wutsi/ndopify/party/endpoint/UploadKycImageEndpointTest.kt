@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.party.endpoint
 
 import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.argThat
 import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
@@ -88,6 +89,16 @@ class UploadKycImageEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
     private fun url(caseId: String, imageType: KycImageType) =
         "/v1/kyc/cases/$caseId/images/upload?identificationType=NATIONAL_ID&imageType=$imageType"
 
+    private val old = "kyc/kyc-case-100/images/kyc-image-100-back.png"
+
+    // Every multipart upload gets a new path, like the direct upload
+    private fun assertNewPath(path: String?, extension: String) {
+        assertTrue(
+            path!!.matches(Regex("kyc/kyc-case-100/images/[0-9a-f-]{36}\\.$extension")),
+            path,
+        )
+    }
+
     @Test
     fun `upload new image`() {
         val response = rest.postForEntity(
@@ -105,12 +116,13 @@ class UploadKycImageEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
             KycImageType.FRONT,
         )
         assertNotNull(image)
-        assertEquals("kyc/kyc-case-100/images/${image.id}.jpg", image.path)
+        assertNewPath(image.path, "jpg")
         assertEquals("image/jpeg", image.mimeType)
         assertEquals(StorageType.LOCAL, image.storageType)
         assertEquals(1L, image.tenantId)
 
-        verify(storage).store(eq("kyc/kyc-case-100/images/${image.id}.jpg"), any(), eq("image/jpeg"))
+        verify(storage).store(eq(image.path!!), any(), eq("image/jpeg"))
+        verify(storage, never()).delete(any())
     }
 
     @Test
@@ -124,32 +136,18 @@ class UploadKycImageEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
         assertEquals(HttpStatus.OK, response.statusCode)
 
         val image = imageDao.findById("kyc-image-100-back").get()
-        assertEquals("kyc/kyc-case-100/images/kyc-image-100-back.jpg", image.path)
+        assertNewPath(image.path, "jpg")
         assertEquals("image/jpeg", image.mimeType)
         assertEquals(StorageType.LOCAL, image.storageType)
         assertTrue(image.modifiedAt.after(image.createdAt))
 
         assertEquals(1, imageDao.findAll().count())
-        verify(storage).store(eq("kyc/kyc-case-100/images/kyc-image-100-back.jpg"), any(), eq("image/jpeg"))
-        // The .png is at another path: deleted
-        verify(storage).delete("kyc/kyc-case-100/images/kyc-image-100-back.png")
+        verify(storage).store(eq(image.path!!), any(), eq("image/jpeg"))
+        verify(storage).delete(old)
     }
 
     @Test
-    fun `re-upload of the same path deletes nothing`() {
-        val response = rest.postForEntity(
-            url("kyc-case-100", KycImageType.BACK),
-            request("back.png", MediaType.IMAGE_PNG, byteArrayOf(1, 2, 3)),
-            Void::class.java,
-        )
-
-        assertEquals(HttpStatus.OK, response.statusCode)
-        verify(storage).store(eq("kyc/kyc-case-100/images/kyc-image-100-back.png"), any(), eq("image/png"))
-        verify(storage, never()).delete(any())
-    }
-
-    @Test
-    fun `re-upload in place updates the row`() {
+    fun `re-upload with the same extension never overwrites the row's object`() {
         doReturn(StorageType.S3).whenever(storage).type()
 
         val response = rest.postForEntity(
@@ -160,16 +158,17 @@ class UploadKycImageEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
         assertEquals(HttpStatus.OK, response.statusCode)
         val image = imageDao.findById("kyc-image-100-back").get()
-        assertEquals("kyc/kyc-case-100/images/kyc-image-100-back.png", image.path)
+        assertNewPath(image.path, "png")
         assertEquals(StorageType.S3, image.storageType)
         assertTrue(image.modifiedAt.after(image.createdAt))
-        verify(storage, never()).delete(any())
-        verify(s3, never()).delete(any())
+        verify(storage, never()).store(eq(old), any(), any())
+        verify(storage).delete(old) // the LOCAL row's object, through its own storage
     }
 
     @Test
-    fun `case submitted during an in-place re-upload keeps the object`() {
+    fun `case submitted during a re-upload keeps its photo`() {
         doAnswer {
+            // Another tab submits the case while the photo is stored: a plain SQL update, outside the request's session
             jdbc.update("UPDATE T_KYC_CASE SET status='SUBMITTED' WHERE id='kyc-case-100'")
             null
         }.whenever(storage).store(any(), any(), any())
@@ -182,7 +181,10 @@ class UploadKycImageEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
         assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
         assertEquals(ErrorCode.KYC_CASE_NOT_PENDING, response.body?.error?.code)
-        verify(storage, never()).delete(any())
+        assertEquals(old, imageDao.findById("kyc-image-100-back").get().path)
+        verify(storage, never()).store(eq(old), any(), any())
+        verify(storage, never()).delete(old)
+        verify(storage).delete(argThat<String> { this != old }) // the new object only
     }
 
     @Test
@@ -198,10 +200,27 @@ class UploadKycImageEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
         assertEquals(HttpStatus.OK, response.statusCode)
         val image = imageDao.findById("kyc-image-100-back").get()
-        assertEquals("kyc/kyc-case-100/images/kyc-image-100-back.jpg", image.path)
+        assertNewPath(image.path, "jpg")
         assertEquals(StorageType.LOCAL, image.storageType)
         verify(s3).delete(direct)
         verify(storage, never()).delete(any())
+    }
+
+    @Test
+    fun `re-upload of a row with no storage type deletes its object from the default storage`() {
+        jdbc.update("UPDATE T_KYC_IMAGE SET storage_type=NULL WHERE id='kyc-image-100-back'")
+        val default = mock<StorageService>()
+        doReturn(StorageType.S3).whenever(default).type()
+        doReturn(default).whenever(storageProvider).get()
+
+        val response = rest.postForEntity(
+            url("kyc-case-100", KycImageType.BACK),
+            request("back.jpg", MediaType.IMAGE_JPEG, byteArrayOf(1, 2, 3)),
+            Void::class.java,
+        )
+
+        assertEquals(HttpStatus.OK, response.statusCode)
+        verify(default).delete(old)
     }
 
     @Test

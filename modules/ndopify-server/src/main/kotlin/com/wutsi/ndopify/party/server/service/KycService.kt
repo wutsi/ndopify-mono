@@ -47,6 +47,7 @@ import org.springframework.web.multipart.MultipartFile
 import java.net.URL
 import java.time.Clock
 import java.util.Date
+import java.util.UUID
 
 @Service
 class KycService(
@@ -144,10 +145,11 @@ class KycService(
      * Stores a KYC photo posted as multipart, replacing the case's image for that (identification type, image type).
      * Errors, in order: 404 KYC_CASE_NOT_FOUND (including another tenant's case), 403 HTTP_ACCESS_DENIED but for the
      * case's own party, 400 KYC_CASE_NOT_PENDING (once submitted, the documents under review must not change), then
-     * 400 KYC_IMAGE_INVALID_MIME_TYPE. The row is saved by [saveImage]: a case submitted during the store keeps its
-     * rows, but a photo stored at the row's own path (`{imageId}.{ext}`, the same extension) has already been
-     * overwritten, since the multipart upload writes in place. The replaced object is deleted after the save when it is
-     * at another path (a direct upload, another extension); a failed deletion is logged, not fatal.
+     * 400 KYC_IMAGE_INVALID_MIME_TYPE. Each photo is stored at a new `kyc/{caseId}/images/{uuid}.{ext}`, like the direct
+     * upload, never over the row's object: no two writes share a path. The row is saved by [saveImage]: a case submitted
+     * during the store keeps its rows and objects, and the new object is deleted. The replaced object is deleted after
+     * the save, with its own storage; a failed deletion is logged, not fatal. Photos stored before at
+     * `{imageId}.{ext}` stay readable.
      */
     fun upload(
         id: String,
@@ -174,12 +176,12 @@ class KycService(
         // Store
         val mimeType = file.contentType
         val extension = MimeUtils.getExtensionFromMimeType(mimeType)
-        val path = "${prefix(case.id)}/${image.id}.$extension"
+        val path = "${prefix(case.id)}/${UUID.randomUUID()}.$extension"
         val storage = storageProvider.get()
         storage.store(path, file.inputStream, mimeType)
 
         val (saved, previous) = try {
-            saveImage(case, image, path, storage.type(), mimeType, now, inPlace = true)
+            saveImage(case, image, path, storage.type(), mimeType, now)
         } catch (ex: Exception) {
             deleteUnreferenced(case, path) { storage.delete(path) }
             throw ex
@@ -243,7 +245,7 @@ class KycService(
             modifiedAt = now,
         )
         val (saved, previous) = try {
-            saveImage(case, image, path, storage.type(), mimeType, now, inPlace = false)
+            saveImage(case, image, path, storage.type(), mimeType, now)
         } catch (ex: Exception) {
             // Submitted meanwhile, or the save failed
             deleteUnreferenced(case, path) { storage.delete(path) }
@@ -257,8 +259,8 @@ class KycService(
      * Saves [image] at [path], in a transaction holding the case's lock: the case must still be PENDING_VERIFICATION
      * (a submit committed during the storage I/O wins), no other image of the case may have [path], and the step's
      * image is read again from the database, so that concurrent writes on one step update a single row and each
-     * replaced object is deleted once. [inPlace] (the multipart upload) rewrites the row's own path, so the row is
-     * always saved; otherwise a row already at [path] (a concurrent attach) is returned as is. Returns the saved image
+     * replaced object is deleted once. A row already at [path] (a concurrent attach of the same path) is returned as
+     * is. Returns the saved image
      * and the step's row as it was before the save (null when there was none).
      */
     private fun saveImage(
@@ -268,11 +270,10 @@ class KycService(
         storageType: StorageType,
         mimeType: String?,
         now: Date,
-        inPlace: Boolean,
     ): Pair<KycImageEntity, KycImageRow?> = tx.execute {
         ensureStillPending(case)
         val current = kycImageDao.findRow(case.id, image.identificationType.name, image.imageType.name)
-        if (!inPlace && current?.getPath() == path) {
+        if (current?.getPath() == path) {
             return@execute kycImageDao.findById(current.getId()).orElseThrow() to null
         }
         ensurePathNotUsed(case, path, current?.getId())
@@ -293,8 +294,13 @@ class KycService(
         val oldPath = previous?.getPath() ?: return
         if (oldPath == path) return
 
-        val storageType = StorageType.entries.firstOrNull { it.name == previous.getStorageType() } ?: StorageType.UNKNOWN
-        deleteQuietly(case, oldPath) { storageProvider.get(storageType).delete(oldPath) }
+        // A row with no (or an unknown) storage type was written to the default storage
+        val storageType = StorageType.entries.firstOrNull { it.name == previous.getStorageType() }
+            ?.takeIf { it != StorageType.UNKNOWN }
+        deleteQuietly(case, oldPath) {
+            val storage = storageType?.let { type -> storageProvider.get(type) } ?: storageProvider.get()
+            storage.delete(oldPath)
+        }
     }
 
     fun getImageUrl(imageId: String): URL {
@@ -581,8 +587,8 @@ class KycService(
     }
 
     /**
-     * After a failed save: deletes the new object at [path], unless a row of the case records it (a concurrent write
-     * of the same path, or the multipart upload's in-place rewrite of the row's own object).
+     * After a failed save: deletes the new object at [path], unless a row of the case records it (a concurrent attach
+     * of the same path).
      */
     private fun deleteUnreferenced(case: KycCaseEntity, path: String, delete: () -> Unit) {
         if (kycImageDao.findByKycCaseAndPath(case, path).isEmpty()) {
