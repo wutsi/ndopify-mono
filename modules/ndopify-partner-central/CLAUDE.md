@@ -136,7 +136,7 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   photo (or the selfie) through `POST /kyc/{step}/presign` → PUT → `POST /kyc/{step}/attach` (JSON proxies to
   ndopify-server, 502 when it fails; like the form post, they open a case when the agent has none or a cancelled
   one, and answer 409 once it is submitted or when the step is ahead of the first missing photo; *Suivant* stays
-  inactive meanwhile, and a photo changed during the upload is posted with the form), clears the input and
+  inactive meanwhile and the photo can't be changed; `direct-upload.js` aborts a stalled call, which falls back), clears the input and
   submits the form, which moves on as for a photo the case already has. Any failure (local storage: no url, a failed
   PUT or attach) posts the photo with the form: the multipart upload above stays the fallback, and the path without JS.
 - Login redirects to `/`, the *Espace agent* (`HomeController`, `ui/home/`, `templates/index.html`), whatever the
