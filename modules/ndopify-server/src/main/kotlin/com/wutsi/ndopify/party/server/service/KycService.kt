@@ -555,8 +555,10 @@ class KycService(
     )
 
     /**
-     * Within the image's save transaction: the case is locked and still PENDING_VERIFICATION, so a submit committed
-     * during the storage I/O (before the save) wins, and one started after it waits for the save.
+     * Within the image's save transaction: the case is locked and still PENDING_VERIFICATION, so no image is saved
+     * once a SUBMITTED status is committed (a submit committed during the storage I/O wins). [submit] itself reads the
+     * case without the lock: only its final update waits for an image save in progress, so an image saved just before
+     * that update is part of the submitted case.
      */
     private fun ensureStillPending(case: KycCaseEntity) {
         val status = dao.findStatusForUpdateById(case.id)
