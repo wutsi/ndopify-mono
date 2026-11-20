@@ -282,6 +282,7 @@
     function initKycDirectUpload(form) {
         var input = $(".upload__input", form);
         if (!input) return;
+        var next = $("[data-next]", form);
         var sending = false;
         form.addEventListener("submit", function (event) {
             // initNext already refused the post ("Suivant" without a photo).
@@ -292,6 +293,12 @@
             event.preventDefault();
             if (sending) return; // a second click while the photo is on its way
             sending = true;
+            // Visibly busy: the PUT can take a while on a mobile network
+            if (next) {
+                next.setAttribute("data-label", next.textContent);
+                next.setAttribute("aria-disabled", "true");
+                next.textContent = "Envoi en cours…";
+            }
             var status = $("[data-upload-status]", form);
             if (status) status.textContent = "Envoi de la photo en cours…";
             window.NdDirectUpload.upload(form.getAttribute("action"), file)
@@ -306,7 +313,13 @@
         });
         // Back from the next page restores this one from the cache: "Suivant" must work again.
         window.addEventListener("pageshow", function (event) {
-            if (event.persisted) sending = false;
+            if (!event.persisted) return;
+            sending = false;
+            if (next && next.hasAttribute("data-label")) {
+                next.textContent = next.getAttribute("data-label");
+                next.removeAttribute("data-label");
+                next.removeAttribute("aria-disabled");
+            }
         });
     }
 
