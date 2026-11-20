@@ -5,7 +5,15 @@ INSERT INTO T_TENANT(id, name, domain_name, locales, country_code) VALUES
 
 INSERT INTO T_PARTY(id, tenant_id, email, first_name, last_name, created_at, modified_at) VALUES
     (100, 1, 'ray.sponsible@gmail.com', 'Ray', 'Sponsible', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    (200, 1, 'jane.doe@gmail.com', 'Jane', 'Doe', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     (900, 2, 'other.tenant@example.com', 'Other', 'Tenant', '2024-06-10 00:00:00', '2024-06-10 00:00:00');
+
+-- The caller is user 11, member of party 100; party 200 is another party of the same tenant.
+INSERT INTO T_USER(id, email, deleted, created_at) VALUES
+    (11, 'ray.sponsible@gmail.com', false, '2024-06-10 00:00:00');
+
+INSERT INTO T_MEMBERSHIP(id, tenant_id, user_id, party_id, deleted) VALUES
+    (11, 1, 11, 100, false);
 
 INSERT INTO T_IDENTIFICATION(id, tenant_id, party_id, type, issuing_country_code, status, created_at, modified_at) VALUES
     ('identification-100', 1, 100, 'NATIONAL_ID', 'CM', 'PENDING_VERIFICATION', '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
@@ -21,6 +29,7 @@ INSERT INTO T_KYC_CASE(id, tenant_id, party_id, score, status, error_code, creat
     ('case-rejected', 1, 100, NULL, 'REJECTED', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     ('case-requires-manual-verification', 1, 100, NULL, 'REQUIRES_MANUAL_VERIFICATION', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     ('case-cancelled', 1, 100, NULL, 'CANCELLED', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
+    ('kyc-case-200', 1, 200, NULL, 'PENDING_VERIFICATION', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00'),
     ('kyc-case-900', 2, 900, NULL, 'PENDING_VERIFICATION', NULL, '2024-06-10 00:00:00', '2024-06-10 00:00:00');
 
 INSERT INTO T_KYC_IMAGE(id, tenant_id, case_id, identification_type, image_type, storage_type, path, mime_type, created_at, modified_at) VALUES
