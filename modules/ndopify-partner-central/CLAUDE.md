@@ -146,7 +146,9 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   the storage: `POST /profile/photo/presign` → PUT → `POST /profile/photo/attach` (JSON proxies, the party taken from
   `CurrentAgent`, ndopify-server's status and, for attach, its error body), then `GET /profile/photo/saved` sets the
   same flash and redirects to `/`; the multipart post stays the no-JS / local storage / failure path.
-  `join.js` and `kyc.js` enhance them (`data-page` `profile-edit` / `profile-photo`). `SectorValidator`
+  `join.js` and `kyc.js` enhance them (`data-page` `profile-edit` / `profile-photo`); on `profile-photo` only,
+  `kyc.js`'s submit handler sends the shrunk photo through `direct-upload.js` (loaded by `profile/photo.html`) and
+  posts the form when it resolves false; the KYC wizard keeps its form post. `SectorValidator`
   (`ui/location/`) is the city/neighbourhood check shared with the join wizard.
   A VERIFIED agent's Espace agent also lists the mandates offered to it (*Mandats proposés*): `HomeController` reads
   its PENDING assignments (`NdAssignmentClient` → `GET /v1/assignments?agent-id=&status=PENDING`, leaving out those

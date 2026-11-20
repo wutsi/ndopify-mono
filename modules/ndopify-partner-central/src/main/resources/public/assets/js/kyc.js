@@ -5,7 +5,8 @@
  * - the selfie step uses the front camera in the page (getUserMedia) when it can, under an oval guide; otherwise
  *   the <input type="file" capture="user"> that the page already shows is kept;
  * - "Suivant" stays inactive until the step has its photo: one chosen here, or one the case already has.
- * The profile photo page (templates/profile/photo.html) is enhanced the same way, as a one-step upload.
+ * The profile photo page (templates/profile/photo.html) is enhanced the same way, as a one-step upload, and also
+ * sends the photo straight to the storage when it can (direct-upload.js), falling back to the form post.
  * Ported from the prototype (src/main/html/assets/js/partner-central.js: kycUpload, kycCamera).
  */
 (function () {
@@ -263,6 +264,32 @@
         });
     }
 
+    // The profile photo page uploads straight to the storage when it can (direct-upload.js): "Enregistrer" still
+    // starts it, so the agent can change their mind before. Local storage or any failure posts the form as usual,
+    // the file still in its input; without a new photo, the form post keeps the current one.
+    function initDirectUpload(form) {
+        if (!window.NdDirectUpload) return;
+        var action = form.getAttribute("action");
+        var busy = false;
+        form.addEventListener("submit", function (event) {
+            if (event.defaultPrevented) return;
+            var input = $(".upload__input", form);
+            var file = input && input.files && input.files[0];
+            if (!file) return;
+            event.preventDefault();
+            // One upload: a second click while it runs would upload the photo twice.
+            if (busy) return;
+            busy = true;
+            window.NdDirectUpload.upload(action, file).then(function (uploaded) {
+                if (uploaded) {
+                    location.assign(action + "/saved");
+                } else {
+                    form.submit();
+                }
+            });
+        });
+    }
+
     // The rejected case's "Soumettre de nouveaux documents": once, a second press would open a second case.
     function initRestart(form) {
         var button = $('[type="submit"]', form);
@@ -296,5 +323,7 @@
         initUpload(step, refresh);
         initCamera(step, refresh);
         initSubmit(form);
+        // Not on the KYC wizard: its steps keep the form post.
+        if (page === "profile-photo") initDirectUpload(form);
     });
 })();
