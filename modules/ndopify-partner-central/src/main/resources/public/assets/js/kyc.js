@@ -117,7 +117,9 @@
     function initUpload(step, refresh) {
         var input = $(".upload__input", step);
         if (!input) return;
+        var latest = 0; // the change whose photo the input must hold: an older shrink that ends later is dropped
         input.addEventListener("change", function () {
+            var change = ++latest;
             input.removeAttribute("data-shrinking");
             refresh();
             var file = input.files && input.files[0];
@@ -132,6 +134,7 @@
             input.setAttribute("data-shrinking", "");
             refresh();
             shrink(file, function (small) {
+                if (change !== latest) return;
                 input.removeAttribute("data-shrinking");
                 // Can't shrink (or can't swap the file): post the original and let the server check it.
                 var chosen = small && useFile(step, small) ? small : file;
