@@ -4,7 +4,9 @@
  *   doesn't hit the upload limit, and the preview shows the chosen photo at once;
  * - the selfie step uses the front camera in the page (getUserMedia) when it can, under an oval guide; otherwise
  *   the <input type="file" capture="user"> that the page already shows is kept;
- * - "Suivant" stays inactive until the step has its photo: one chosen here, or one the case already has.
+ * - "Suivant" stays inactive until the step has its photo: one chosen here, or one the case already has;
+ * - with direct-upload.js on the page, "Suivant" sends the photo straight to the storage (<action>/presign, PUT,
+ *   <action>/attach), then posts the step without it; on any failure the photo is posted with the form, as without JS.
  * The profile photo page (templates/profile/photo.html) is enhanced the same way, as a one-step upload, and also
  * sends the photo straight to the storage when it can (direct-upload.js), falling back to the form post.
  * Ported from the prototype (src/main/html/assets/js/partner-central.js: kycUpload, kycCamera).
@@ -272,6 +274,42 @@
         window.addEventListener("pagehide", stop);
     }
 
+    /*
+     * "Suivant" on an upload step: the photo goes straight to the storage, then the form posts without it, so the
+     * server moves on as usual (the case already has the photo). Local storage, a failed PUT or attach: the form
+     * posts the photo, the multipart upload.
+     */
+    function initKycDirectUpload(form) {
+        var input = $(".upload__input", form);
+        if (!input) return;
+        var sending = false;
+        form.addEventListener("submit", function (event) {
+            // initNext already refused the post ("Suivant" without a photo).
+            if (event.defaultPrevented) return;
+            var file = input.files && input.files[0];
+            if (!file || !window.NdDirectUpload) return;
+
+            event.preventDefault();
+            if (sending) return; // a second click while the photo is on its way
+            sending = true;
+            var status = $("[data-upload-status]", form);
+            if (status) status.textContent = "Envoi de la photo en cours…";
+            window.NdDirectUpload.upload(form.getAttribute("action"), file)
+                .catch(function () {
+                    return false;
+                })
+                .then(function (uploaded) {
+                    if (uploaded) input.value = "";
+                    // Native submit: the submit listeners don't run again.
+                    form.submit();
+                });
+        });
+        // Back from the next page restores this one from the cache: "Suivant" must work again.
+        window.addEventListener("pageshow", function (event) {
+            if (event.persisted) sending = false;
+        });
+    }
+
     function initSubmit(form) {
         var submit = $("[data-submit]", form);
         if (!submit) return;
@@ -361,8 +399,10 @@
         var refresh = initNext(step);
         initUpload(step, refresh);
         initCamera(step, refresh);
+        // After initNext: its submit listener runs first, and may refuse the post.
+        if (page === "kyc") initKycDirectUpload(form);
         initSubmit(form);
-        // Not on the KYC wizard: its steps keep the form post.
+        // The profile photo's own flow: it goes to "<action>/saved" once attached.
         if (page === "profile-photo") initDirectUpload(form, refresh);
     });
 })();
