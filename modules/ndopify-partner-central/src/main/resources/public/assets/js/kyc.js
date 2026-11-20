@@ -50,7 +50,9 @@
         // Inactive while a chosen photo is being shrunk: the input still holds the original, not yet checked.
         function refresh() {
             var shrinking = input.hasAttribute("data-shrinking");
-            setActive(next, !shrinking && (saved || !!(input.files && input.files.length)));
+            // Also inactive while the direct upload runs (data-busy): another photo must not re-enable the button.
+            var busy = input.form.hasAttribute("data-busy");
+            setActive(next, !shrinking && !busy && (saved || !!(input.files && input.files.length)));
         }
 
         input.form.addEventListener("submit", function (event) {
@@ -94,24 +96,33 @@
     }
 
     function shrink(file, callback) {
-        var url = URL.createObjectURL(file);
+        var url;
         var img = new Image();
         img.onload = function () {
-            URL.revokeObjectURL(url);
-            var scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height));
-            var canvas = document.createElement("canvas");
-            canvas.width = Math.round(img.width * scale);
-            canvas.height = Math.round(img.height * scale);
-            canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
-            canvas.toBlob(function (blob) {
-                callback(blob ? new File([blob], "photo.jpg", { type: "image/jpeg" }) : null);
-            }, "image/jpeg", 0.85);
+            try {
+                URL.revokeObjectURL(url);
+                var scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height));
+                var canvas = document.createElement("canvas");
+                canvas.width = Math.round(img.width * scale);
+                canvas.height = Math.round(img.height * scale);
+                canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob(function (blob) {
+                    callback(blob ? new File([blob], "photo.jpg", { type: "image/jpeg" }) : null);
+                }, "image/jpeg", 0.85);
+            } catch (e) {
+                callback(null); // e.g. out of memory: the original photo is posted
+            }
         };
         img.onerror = function () {
             URL.revokeObjectURL(url);
             callback(null);
         };
-        img.src = url;
+        try {
+            url = URL.createObjectURL(file);
+            img.src = url;
+        } catch (e) {
+            callback(null);
+        }
     }
 
     function initUpload(step, refresh) {
@@ -286,6 +297,8 @@
         // While it runs, nothing else shows progress (no page load): the button says so, and stays inactive.
         function setBusy(on) {
             busy = on;
+            if (on) form.setAttribute("data-busy", "");
+            else form.removeAttribute("data-busy");
             if (!button) return;
             button.textContent = on ? "Envoi en cours…" : label;
             if (on) button.setAttribute("aria-disabled", "true");
