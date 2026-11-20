@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.party.server.service
 
+import com.wutsi.ndopify.common.dto.PresignUploadResponse
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.Parameter
@@ -24,6 +25,7 @@ import com.wutsi.ndopify.party.server.event.KycCaseCompletedEvent
 import com.wutsi.ndopify.party.server.mail.KycMailet
 import com.wutsi.ndopify.platform.logger.KVLogger
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
+import com.wutsi.ndopify.platform.storage.upload.DirectUploadService
 import com.wutsi.ndopify.platform.util.MimeUtils
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
 import com.wutsi.ndopify.security.server.service.CallerService
@@ -61,10 +63,14 @@ class KycService(
     private val logger: KVLogger,
     private val eventPublisher: ApplicationEventPublisher,
     private val callerService: CallerService,
+    private val directUpload: DirectUploadService,
 ) {
     companion object {
         private val LOGGER = LoggerFactory.getLogger(KycService::class.java)
         private val MAX_RETRIES = 3
+
+        /** The folder of a case's photos: the multipart upload and the direct upload share it. */
+        fun prefix(caseId: String) = "kyc/$caseId/images"
     }
 
     fun findById(id: String): KycCaseEntity {
@@ -162,7 +168,7 @@ class KycService(
         // Store
         val mimeType = file.contentType
         val extension = MimeUtils.getExtensionFromMimeType(mimeType)
-        val path = "kyc/${case.id}/images/${image.id}.$extension"
+        val path = "${prefix(case.id)}/${image.id}.$extension"
         val storage = storageProvider.get()
         storage.store(path, file.inputStream, mimeType)
 
@@ -176,6 +182,82 @@ class KycService(
                 )
             )
         }
+    }
+
+    /**
+     * A short-lived URL to upload a KYC photo straight to the storage, for the case's own party. Errors, in order: 404
+     * KYC_CASE_NOT_FOUND, 403 HTTP_ACCESS_DENIED but for the case's party, 400 KYC_CASE_NOT_PENDING, then 400
+     * HTTP_INVALID_PARAMETER (by [DirectUploadService.presign]) for a type that isn't JPEG, PNG or WEBP. No URL when the
+     * storage can't presign (local): the caller falls back to [upload].
+     */
+    fun presign(
+        id: String,
+        identificationType: IdentificationType,
+        imageType: KycImageType,
+        contentType: String?,
+    ): PresignUploadResponse {
+        val case = findById(id)
+        ensureOwnCase(case)
+        ensureStatusIsPending(case)
+        return directUpload.presign(prefix(case.id), contentType)
+    }
+
+    /**
+     * Attaches a KYC photo uploaded straight to the storage, replacing the case's image for that (identification type,
+     * image type): one image per step. Errors, in order: 404 KYC_CASE_NOT_FOUND, 403 HTTP_ACCESS_DENIED but for the
+     * case's party, 400 KYC_CASE_NOT_PENDING, then [DirectUploadService.verify]'s 400s. Idempotent on [path]: the image
+     * already recorded for it is returned. The replaced object is deleted after the new row is saved, with its own
+     * storage; a failed deletion is logged, not fatal.
+     */
+    fun attach(
+        id: String,
+        identificationType: IdentificationType,
+        imageType: KycImageType,
+        path: String,
+    ): KycImageEntity {
+        val case = findById(id)
+        ensureOwnCase(case)
+        ensureStatusIsPending(case)
+
+        val existing = kycImageDao.findByKycCaseAndIdentificationTypeAndImageType(case, identificationType, imageType)
+        if (existing != null && existing.path == path) {
+            return existing
+        }
+
+        // Read before the save: the merge copies the new state onto the managed entity (open session in view)
+        val oldPath = existing?.path
+        val oldStorageType = existing?.storageType
+
+        // Storage I/O outside the transaction, like upload()
+        val mimeType = directUpload.verify(path, prefix(case.id))
+        val storage = storageProvider.get()
+        val now = Date(clock.millis())
+        val image = existing ?: KycImageEntity(
+            kycCase = case,
+            identificationType = identificationType,
+            imageType = imageType,
+            createdAt = now,
+            modifiedAt = now,
+        )
+        val saved = tx.execute {
+            kycImageDao.save(
+                image.copy(
+                    path = path,
+                    storageType = storage.type(),
+                    mimeType = mimeType,
+                    modifiedAt = now,
+                )
+            )
+        }
+
+        if (oldPath != null && oldStorageType != null) {
+            try {
+                storageProvider.get(oldStorageType).delete(oldPath)
+            } catch (ex: Exception) {
+                LOGGER.warn(">>> KYC#${case.id} - Could not delete the replaced image $oldPath", ex)
+            }
+        }
+        return saved
     }
 
     fun getImageUrl(imageId: String): URL {
