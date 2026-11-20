@@ -5,18 +5,22 @@
 // So is a stalled call: each one is aborted after its timeout, so the caller's fallback always runs.
 (function () {
     var CALL_TIMEOUT_MS = 30 * 1000;
-    var PUT_TIMEOUT_MS = 3 * 60 * 1000; // up to 5 Mo on a slow mobile network
+    var PUT_MIN_TIMEOUT_MS = 3 * 60 * 1000;
+    var PUT_MIN_BYTES_PER_MS = 10; // ~10 Ko/s: a slow mobile network still gets the time to send a 5 Mo photo
 
-    function timed(url, options, timeout) {
-        if (typeof AbortController !== "function") return fetch(url, options);
-        var controller = new AbortController();
-        var timer = setTimeout(function () { controller.abort(); }, timeout);
-        options.signal = controller.signal;
-        return fetch(url, options).then(function (response) {
-            clearTimeout(timer);
-            return response;
+    // fetch, then read(response), aborted when both haven't settled within timeout (the body can stall too)
+    function timed(url, options, timeout, read) {
+        var controller = typeof AbortController === "function" ? new AbortController() : null;
+        var timer = controller && setTimeout(function () { controller.abort(); }, timeout);
+        if (controller) options.signal = controller.signal;
+        function done() {
+            if (timer) clearTimeout(timer);
+        }
+        return fetch(url, options).then(read).then(function (result) {
+            done();
+            return result;
         }, function (error) {
-            clearTimeout(timer);
+            done();
             throw error;
         });
     }
@@ -30,7 +34,7 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ contentType: file.type })
-        }, CALL_TIMEOUT_MS).then(function (response) {
+        }, CALL_TIMEOUT_MS, function (response) {
             return ok(response) ? response.json() : null;
         }).then(function (presigned) {
             if (!presigned || !presigned.url) return false;
@@ -38,13 +42,15 @@
                 method: "PUT",
                 headers: { "Content-Type": file.type },
                 body: file
-            }, PUT_TIMEOUT_MS).then(function (put) {
-                if (!put.ok) return false;
+            }, Math.max(PUT_MIN_TIMEOUT_MS, file.size / PUT_MIN_BYTES_PER_MS), function (put) {
+                return put.ok;
+            }).then(function (stored) {
+                if (!stored) return false;
                 return timed(action + "/attach", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ path: presigned.path })
-                }, CALL_TIMEOUT_MS).then(function (attached) {
+                }, CALL_TIMEOUT_MS, function (attached) {
                     return ok(attached);
                 });
             });
