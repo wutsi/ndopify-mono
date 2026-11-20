@@ -409,6 +409,28 @@ class ProfileControllerTest {
     }
 
     @Test
+    fun `presign - server unreachable answers 502`() {
+        doThrow(ResourceAccessException("timeout")).whenever(partyClient).presignPhoto(any(), any())
+
+        mvc.perform(
+            post("/profile/photo/presign")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"contentType":"image/jpeg"}"""),
+        ).andExpect(status().isBadGateway)
+    }
+
+    @Test
+    fun `attach - server unreachable answers 502`() {
+        doThrow(ResourceAccessException("timeout")).whenever(partyClient).attachPhoto(any(), any())
+
+        mvc.perform(
+            post("/profile/photo/attach")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"path":"party/100/photo/a.jpg"}"""),
+        ).andExpect(status().isBadGateway)
+    }
+
+    @Test
     fun `presign - not an agent`() {
         doReturn(null).whenever(currentAgent).get()
 

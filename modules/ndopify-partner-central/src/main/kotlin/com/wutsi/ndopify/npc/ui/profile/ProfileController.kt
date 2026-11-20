@@ -163,7 +163,7 @@ class ProfileController(
     /**
      * A short-lived URL to upload the profile photo straight to the storage, for `kyc.js` (`direct-upload.js`). The
      * party is the signed-in agent's, never one from the request. 401 without a signed-in agent ([jsonAgent]),
-     * ndopify-server's status when it refuses; a null `url` with local storage.
+     * ndopify-server's status when it refuses, 502 when it can't be reached or fails; a null `url` with local storage.
      */
     @PostMapping("/photo/presign", produces = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseBody
@@ -174,13 +174,16 @@ class ProfileController(
         } catch (ex: HttpClientErrorException) {
             LOGGER.warn("Presign of the photo of party ${agent.party.id} refused: ${ex.statusCode}")
             ResponseEntity.status(ex.statusCode).build()
+        } catch (ex: RestClientException) {
+            LOGGER.error("Server error: ${ex.message}", ex)
+            ResponseEntity.status(HttpStatus.BAD_GATEWAY).build()
         }
     }
 
     /**
      * Makes the photo uploaded straight to the storage the signed-in agent's profile photo, for `kyc.js`. An empty
      * 200, else 401 without a signed-in agent ([jsonAgent]), or ndopify-server's status and error body when it
-     * refuses the upload.
+     * refuses the upload, 502 when it can't be reached or fails.
      */
     @PostMapping("/photo/attach", produces = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseBody
@@ -194,6 +197,9 @@ class ProfileController(
             ResponseEntity.status(ex.statusCode)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body<String>(ex.responseBodyAsString)
+        } catch (ex: RestClientException) {
+            LOGGER.error("Server error: ${ex.message}", ex)
+            ResponseEntity.status(HttpStatus.BAD_GATEWAY).build<String>()
         }
     }
 
