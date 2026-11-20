@@ -132,6 +132,11 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   submitting); `POST /kyc/restart` opens a new case after a rejection. A user with no party is signed out (`SignInRequiredException`).
   Photos are sniffed with Tika (`tika-core`) and capped at 5 Mo (`KycUploadErrorHandler` catches the multipart
   limit). `public/assets/js/kyc.js` only enhances (shrinks photos, in-page selfie camera); every step posts without it.
+  **Direct upload** (#205): `kyc.html` loads `direct-upload.js` before `kyc.js`; on *Suivant*, `kyc.js` sends the shrunk
+  photo (or the selfie) through `POST /kyc/{step}/presign` → PUT → `POST /kyc/{step}/attach` (JSON proxies to
+  ndopify-server; 409 when no case is open or the step is ahead of the first missing photo), clears the input and
+  submits the form, which moves on as for a photo the case already has. Any failure (local storage: no url, a failed
+  PUT or attach) posts the photo with the form: the multipart upload above stays the fallback, and the path without JS.
 - Login redirects to `/`, the *Espace agent* (`HomeController`, `ui/home/`, `templates/index.html`), whatever the
   KYC status: an agent who isn't `VERIFIED` gets a banner linking to `/kyc`, worded after its newest case (documents
   to send, under review, rejected), since the party's status only changes on verification. Its profile section only
