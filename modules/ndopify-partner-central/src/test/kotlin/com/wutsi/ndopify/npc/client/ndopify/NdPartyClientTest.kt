@@ -14,7 +14,9 @@ import org.springframework.test.web.client.response.MockRestResponseCreators.wit
 import org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClient
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 
 class NdPartyClientTest {
     private lateinit var server: MockRestServiceServer
@@ -46,5 +48,51 @@ class NdPartyClientTest {
             .andRespond(withStatus(HttpStatus.BAD_REQUEST))
 
         assertFailsWith<HttpClientErrorException> { client.uploadPhoto(100, byteArrayOf(1), "image/jpeg") }
+    }
+
+    @Test
+    fun presignPhoto() {
+        server.expect(requestTo("http://localhost:8080/v1/parties/100/photo/presign"))
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(content().json("""{"contentType":"image/jpeg"}"""))
+            .andRespond(
+                withSuccess(
+                    """{"url":"https://s3.example.com/put","path":"party/100/photo/a.jpg"}""",
+                    MediaType.APPLICATION_JSON,
+                ),
+            )
+
+        val response = client.presignPhoto(100, "image/jpeg")
+
+        assertEquals("https://s3.example.com/put", response.url)
+        assertEquals("party/100/photo/a.jpg", response.path)
+        server.verify()
+    }
+
+    @Test
+    fun `presignPhoto - local`() {
+        server.expect(requestTo("http://localhost:8080/v1/parties/100/photo/presign"))
+            .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON))
+
+        assertNull(client.presignPhoto(100, "image/jpeg").url)
+    }
+
+    @Test
+    fun attachPhoto() {
+        server.expect(requestTo("http://localhost:8080/v1/parties/100/photo/attach"))
+            .andExpect(method(HttpMethod.POST))
+            .andExpect(content().json("""{"path":"party/100/photo/a.jpg"}"""))
+            .andRespond(withSuccess())
+
+        client.attachPhoto(100, "party/100/photo/a.jpg")
+        server.verify()
+    }
+
+    @Test
+    fun `attachPhoto - rejected`() {
+        server.expect(requestTo("http://localhost:8080/v1/parties/100/photo/attach"))
+            .andRespond(withStatus(HttpStatus.BAD_REQUEST))
+
+        assertFailsWith<HttpClientErrorException> { client.attachPhoto(100, "party/100/photo/a.jpg") }
     }
 }
