@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.party.endpoint
 
 import com.nhaarman.mockitokotlin2.any
+import com.nhaarman.mockitokotlin2.doAnswer
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.eq
@@ -25,6 +26,7 @@ import com.wutsi.ndopify.refdata.dto.StorageType
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
+import org.springframework.jdbc.core.JdbcTemplate
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.context.jdbc.Sql
 import java.awt.image.BufferedImage
@@ -42,6 +44,9 @@ class AttachKycImageEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
     @Autowired
     private lateinit var imageDao: KycImageRepository
+
+    @Autowired
+    private lateinit var jdbc: JdbcTemplate
 
     @MockitoBean
     private lateinit var storageProvider: StorageServiceProvider
@@ -149,6 +154,39 @@ class AttachKycImageEndpointTest : AuthorizationAwareEndpointIntegrationTest() {
 
         assertEquals(HttpStatus.OK, response.statusCode)
         assertEquals(path, imageDao.findById("kyc-image-100-back").orElseThrow().path)
+    }
+
+    @Test
+    fun `attach - path of another image of the case`() {
+        uploaded(path)
+        attach("kyc-case-100", KycImageType.FRONT, path)
+
+        val response = attachError("kyc-case-100", KycImageType.BACK, path)
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.HTTP_INVALID_PARAMETER, response.body?.error?.code)
+        assertEquals(old, imageDao.findById("kyc-image-100-back").orElseThrow().path)
+        verify(storage, times(1)).metadata(path)
+        verify(storage, never()).delete(any())
+        verify(local, never()).delete(any())
+    }
+
+    @Test
+    fun `attach - case submitted during the verification`() {
+        doReturn(StoredObject("image/png", 3)).whenever(storage).metadata(path)
+        doAnswer {
+            // Another tab submits the case while the object is read: a plain SQL update, outside the request's session
+            jdbc.update("UPDATE T_KYC_CASE SET status='SUBMITTED' WHERE id='kyc-case-100'")
+            png(1, 1)
+        }.whenever(storage).readPrefix(eq(path), any())
+
+        val response = attachError("kyc-case-100", KycImageType.BACK, path)
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.statusCode)
+        assertEquals(ErrorCode.KYC_CASE_NOT_PENDING, response.body?.error?.code)
+        assertEquals(old, imageDao.findById("kyc-image-100-back").orElseThrow().path)
+        verify(storage).delete(path)
+        verify(local, never()).delete(any())
     }
 
     @Test

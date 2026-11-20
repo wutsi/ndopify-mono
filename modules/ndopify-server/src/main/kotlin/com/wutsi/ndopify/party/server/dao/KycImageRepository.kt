@@ -14,4 +14,6 @@ interface KycImageRepository : CrudRepository<KycImageEntity, String> {
         identificationType: IdentificationType,
         imageType: KycImageType
     ): KycImageEntity?
+
+    fun findByKycCaseAndPath(kycCase: KycCaseEntity, path: String): List<KycImageEntity>
 }
