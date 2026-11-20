@@ -12,6 +12,7 @@ import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.dto.AgentType
 import com.wutsi.ndopify.agent.dto.ExperienceLevel
 import com.wutsi.ndopify.agent.dto.UpdateAgentRequest
+import com.wutsi.ndopify.common.dto.PresignUploadResponse
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
@@ -32,7 +33,9 @@ import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.web.core.service.TenantContext
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.MvcResult
@@ -40,6 +43,8 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.content
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.ResourceAccessException
@@ -373,5 +378,108 @@ class ProfileControllerTest {
 
         assertEquals("redirect:/login", mvc.perform(upload(jpeg)).andReturn().modelAndView?.viewName)
         verify(partyClient, never()).uploadPhoto(any(), any(), any())
+    }
+
+    // POST /profile/photo/presign, /profile/photo/attach, GET /profile/photo/saved
+
+    @Test
+    fun `presign - returns the upload url`() {
+        doReturn(PresignUploadResponse("https://s3.example.com/put", "party/100/photo/a.jpg"))
+            .whenever(partyClient).presignPhoto(100L, "image/jpeg")
+
+        mvc.perform(
+            post("/profile/photo/presign")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"contentType":"image/jpeg"}"""),
+        ).andExpect(status().isOk)
+            .andExpect(content().json("""{"url":"https://s3.example.com/put","path":"party/100/photo/a.jpg"}"""))
+    }
+
+    @Test
+    fun `presign - refused keeps the status`() {
+        doThrow(HttpClientErrorException(HttpStatus.FORBIDDEN)).whenever(partyClient).presignPhoto(any(), any())
+
+        val result = mvc.perform(
+            post("/profile/photo/presign")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"contentType":"image/jpeg"}"""),
+        ).andExpect(status().isForbidden).andReturn()
+
+        assertEquals("", result.response.contentAsString)
+    }
+
+    @Test
+    fun `presign - not an agent`() {
+        doReturn(null).whenever(currentAgent).get()
+
+        val result = mvc.perform(
+            post("/profile/photo/presign")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"contentType":"image/jpeg"}"""),
+        ).andReturn()
+
+        assertEquals("redirect:/login", result.modelAndView?.viewName)
+        verify(partyClient, never()).presignPhoto(any(), any())
+    }
+
+    @Test
+    fun `attach - attaches the path for the signed-in party`() {
+        mvc.perform(
+            post("/profile/photo/attach")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"path":"party/100/photo/a.jpg"}"""),
+        ).andExpect(status().isOk)
+
+        verify(partyClient).attachPhoto(100L, "party/100/photo/a.jpg")
+    }
+
+    @Test
+    fun `attach - rejected keeps the server error body`() {
+        val ex = HttpClientErrorException.create(
+            HttpStatus.BAD_REQUEST,
+            "Bad Request",
+            HttpHeaders.EMPTY,
+            """{"error":{"code":"http:invalid-parameter"}}""".toByteArray(),
+            Charsets.UTF_8,
+        )
+        doThrow(ex).whenever(partyClient).attachPhoto(eq(100L), any())
+
+        val result = mvc.perform(
+            post("/profile/photo/attach")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"path":"party/100/photo/a.jpg"}"""),
+        ).andReturn()
+
+        assertEquals(HttpStatus.BAD_REQUEST.value(), result.response.status)
+        assertTrue(result.response.contentAsString.contains("http:invalid-parameter"))
+    }
+
+    @Test
+    fun `attach - not an agent`() {
+        doReturn(null).whenever(currentAgent).get()
+
+        val result = mvc.perform(
+            post("/profile/photo/attach")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"path":"party/100/photo/a.jpg"}"""),
+        ).andReturn()
+
+        assertEquals("redirect:/login", result.modelAndView?.viewName)
+        verify(partyClient, never()).attachPhoto(any(), any())
+    }
+
+    @Test
+    fun `saved - back to the Espace agent with the message`() {
+        val result = mvc.perform(get("/profile/photo/saved")).andReturn()
+
+        assertEquals("redirect:/", result.modelAndView?.viewName)
+        assertEquals(ProfileRules.SAVED_PHOTO, result.flashMap[ProfileRules.SAVED])
+    }
+
+    @Test
+    fun `saved - not an agent`() {
+        doReturn(null).whenever(currentAgent).get()
+
+        assertEquals("redirect:/login", mvc.perform(get("/profile/photo/saved")).andReturn().modelAndView?.viewName)
     }
 }
