@@ -134,8 +134,9 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   limit). `public/assets/js/kyc.js` only enhances (shrinks photos, in-page selfie camera); every step posts without it.
   **Direct upload** (#205): `kyc.html` loads `direct-upload.js` before `kyc.js`; on *Suivant*, `kyc.js` sends the shrunk
   photo (or the selfie) through `POST /kyc/{step}/presign` → PUT → `POST /kyc/{step}/attach` (JSON proxies to
-  ndopify-server; like the form post, they open a case when the agent has none or a cancelled one, and answer 409
-  once it is submitted or when the step is ahead of the first missing photo), clears the input and
+  ndopify-server, 502 when it fails; like the form post, they open a case when the agent has none or a cancelled
+  one, and answer 409 once it is submitted or when the step is ahead of the first missing photo; *Suivant* stays
+  inactive meanwhile, and a photo changed during the upload is posted with the form), clears the input and
   submits the form, which moves on as for a photo the case already has. Any failure (local storage: no url, a failed
   PUT or attach) posts the photo with the form: the multipart upload above stays the fallback, and the path without JS.
 - Login redirects to `/`, the *Espace agent* (`HomeController`, `ui/home/`, `templates/index.html`), whatever the
@@ -154,9 +155,10 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   `fetch` would follow to a 200 — without a signed-in agent; `direct-upload.js` also takes a redirected answer, ex: the
   login redirect of an expired session, for a failure), then `GET /profile/photo/saved` sets the
   same flash and redirects to `/`; the multipart post stays the no-JS / local storage / failure path.
-  `join.js` and `kyc.js` enhance them (`data-page` `profile-edit` / `profile-photo`); on `profile-photo` only,
-  `kyc.js`'s submit handler sends the shrunk photo through `direct-upload.js` (loaded by `profile/photo.html`) and
-  posts the form when it resolves false; the KYC wizard keeps its form post. `SectorValidator`
+  `join.js` and `kyc.js` enhance them (`data-page` `profile-edit` / `profile-photo`); on `profile-photo`,
+  `kyc.js`'s `initDirectUpload` sends the shrunk photo through `direct-upload.js` (loaded by `profile/photo.html`) and
+  posts the form when it resolves false; the KYC wizard uploads directly too, through its own `initKycDirectUpload`
+  (see the KYC page above). `SectorValidator`
   (`ui/location/`) is the city/neighbourhood check shared with the join wizard.
   A VERIFIED agent's Espace agent also lists the mandates offered to it (*Mandats proposés*): `HomeController` reads
   its PENDING assignments (`NdAssignmentClient` → `GET /v1/assignments?agent-id=&status=PENDING`, leaving out those

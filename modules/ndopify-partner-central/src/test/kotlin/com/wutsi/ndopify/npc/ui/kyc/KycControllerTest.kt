@@ -608,7 +608,16 @@ class KycControllerTest {
         given(case())
         doThrow(ResourceAccessException("down")).whenever(kycClient).presign(any(), any(), any(), any())
 
-        presign("front").andExpect(status().isInternalServerError)
+        presign("front").andExpect(status().isBadGateway)
+    }
+
+    @Test
+    fun `presign - case lookup fails - 502`() {
+        doThrow(HttpServerErrorException(HttpStatus.SERVICE_UNAVAILABLE)).whenever(kycClient).current(any())
+
+        presign("front").andExpect(status().isBadGateway)
+
+        verify(kycClient, never()).presign(any(), any(), any(), any())
     }
 
     @Test
@@ -680,7 +689,7 @@ class KycControllerTest {
         given(case())
         doThrow(HttpServerErrorException(HttpStatus.BAD_GATEWAY)).whenever(kycClient).attach(any(), any(), any(), any())
 
-        attach("front").andExpect(status().isInternalServerError)
+        attach("front").andExpect(status().isBadGateway)
     }
 
     @Test

@@ -279,11 +279,33 @@
      * server moves on as usual (the case already has the photo). Local storage, a failed PUT or attach: the form
      * posts the photo, the multipart upload.
      */
-    function initKycDirectUpload(form) {
+    function initKycDirectUpload(form, refresh) {
         var input = $(".upload__input", form);
         if (!input) return;
         var next = $("[data-next]", form);
         var sending = false;
+
+        // While it runs, "Suivant" says so and stays inactive (data-busy: initNext's refresh keeps it so).
+        function setBusy(on) {
+            sending = on;
+            if (on) {
+                form.setAttribute("data-busy", "");
+                if (next) {
+                    next.setAttribute("data-label", next.textContent);
+                    next.textContent = "Envoi en cours…";
+                }
+            } else {
+                form.removeAttribute("data-busy");
+                if (next && next.hasAttribute("data-label")) {
+                    next.textContent = next.getAttribute("data-label");
+                    next.removeAttribute("data-label");
+                }
+                var status = $("[data-upload-status]", form);
+                if (status) status.textContent = "";
+            }
+            refresh();
+        }
+
         form.addEventListener("submit", function (event) {
             // initNext already refused the post ("Suivant" without a photo).
             if (event.defaultPrevented) return;
@@ -292,13 +314,7 @@
 
             event.preventDefault();
             if (sending) return; // a second click while the photo is on its way
-            sending = true;
-            // Visibly busy: the PUT can take a while on a mobile network
-            if (next) {
-                next.setAttribute("data-label", next.textContent);
-                next.setAttribute("aria-disabled", "true");
-                next.textContent = "Envoi en cours…";
-            }
+            setBusy(true);
             var status = $("[data-upload-status]", form);
             if (status) status.textContent = "Envoi de la photo en cours…";
             window.NdDirectUpload.upload(form.getAttribute("action"), file)
@@ -306,22 +322,15 @@
                     return false;
                 })
                 .then(function (uploaded) {
-                    if (uploaded) input.value = "";
+                    // Another photo chosen meanwhile: it is posted with the form, the case's last word.
+                    if (uploaded && input.files && input.files[0] === file) input.value = "";
                     // Native submit: the submit listeners don't run again.
                     form.submit();
                 });
         });
-        // Back from the next page restores this one from the cache: "Suivant" must work again.
+        // Back from the next page restores this one from the cache: "Suivant" must work again, if it has a photo.
         window.addEventListener("pageshow", function (event) {
-            if (!event.persisted) return;
-            sending = false;
-            var status = $("[data-upload-status]", form);
-            if (status) status.textContent = "";
-            if (next && next.hasAttribute("data-label")) {
-                next.textContent = next.getAttribute("data-label");
-                next.removeAttribute("data-label");
-                next.removeAttribute("aria-disabled");
-            }
+            if (event.persisted) setBusy(false);
         });
     }
 
@@ -415,7 +424,7 @@
         initUpload(step, refresh);
         initCamera(step, refresh);
         // After initNext: its submit listener runs first, and may refuse the post.
-        if (page === "kyc") initKycDirectUpload(form);
+        if (page === "kyc") initKycDirectUpload(form, refresh);
         initSubmit(form);
         // The profile photo's own flow: it goes to "<action>/saved" once attached.
         if (page === "profile-photo") initDirectUpload(form, refresh);
