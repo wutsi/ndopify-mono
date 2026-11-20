@@ -315,6 +315,8 @@
         window.addEventListener("pageshow", function (event) {
             if (!event.persisted) return;
             sending = false;
+            var status = $("[data-upload-status]", form);
+            if (status) status.textContent = "";
             if (next && next.hasAttribute("data-label")) {
                 next.textContent = next.getAttribute("data-label");
                 next.removeAttribute("data-label");
