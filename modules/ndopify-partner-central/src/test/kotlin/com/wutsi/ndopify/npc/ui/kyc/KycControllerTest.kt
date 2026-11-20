@@ -25,6 +25,7 @@ import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.mock.web.MockHttpSession
@@ -611,6 +612,16 @@ class KycControllerTest {
     }
 
     @Test
+    fun `presign - token refused by the server - signed out`() {
+        given(case())
+        doThrow(HttpClientErrorException.create(HttpStatus.UNAUTHORIZED, "", HttpHeaders.EMPTY, null, null)).whenever(kycClient).presign(any(), any(), any(), any())
+
+        val result = presign("front").andReturn()
+
+        assertEquals("redirect:/login", result.modelAndView?.viewName)
+    }
+
+    @Test
     fun `presign without party - signed out`() {
         doReturn(null).whenever(currentParty).get()
 
@@ -670,6 +681,16 @@ class KycControllerTest {
         doThrow(HttpServerErrorException(HttpStatus.BAD_GATEWAY)).whenever(kycClient).attach(any(), any(), any(), any())
 
         attach("front").andExpect(status().isInternalServerError)
+    }
+
+    @Test
+    fun `attach - token refused by the server - signed out`() {
+        given(case())
+        doThrow(HttpClientErrorException.create(HttpStatus.UNAUTHORIZED, "", HttpHeaders.EMPTY, null, null)).whenever(kycClient).attach(any(), any(), any(), any())
+
+        val result = attach("front").andReturn()
+
+        assertEquals("redirect:/login", result.modelAndView?.viewName)
     }
 
     @Test

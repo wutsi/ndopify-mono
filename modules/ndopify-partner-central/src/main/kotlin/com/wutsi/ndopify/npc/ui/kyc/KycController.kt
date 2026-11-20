@@ -156,6 +156,8 @@ class KycController(
             ResponseEntity.ok(
                 kycClient.presign(case.id, NdKycClient.IDENTIFICATION_TYPE, PHOTOS.getValue(step), request.contentType.orEmpty()),
             )
+        } catch (ex: HttpClientErrorException.Unauthorized) {
+            throw ex // HttpClientErrorHandler signs the agent out
         } catch (ex: HttpClientErrorException) {
             LOGGER.warn("Presign of KYC case ${case.id} refused: ${ex.statusCode}")
             ResponseEntity.status(ex.statusCode).build()
@@ -182,6 +184,8 @@ class KycController(
         return try {
             kycClient.attach(case.id, NdKycClient.IDENTIFICATION_TYPE, PHOTOS.getValue(step), request.path)
             ResponseEntity.ok().build()
+        } catch (ex: HttpClientErrorException.Unauthorized) {
+            throw ex // HttpClientErrorHandler signs the agent out
         } catch (ex: HttpClientErrorException) {
             LOGGER.warn("Attach of KYC case ${case.id} refused: ${ex.statusCode}")
             ResponseEntity.status(ex.statusCode).build()
