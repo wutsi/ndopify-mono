@@ -141,32 +141,19 @@ class KycController(
      * A short-lived URL to upload the step's photo straight to the storage, for `kyc.js`. Like the form post, a case is
      * opened when the agent has none (or a cancelled one); 409 once it is submitted or when the step is ahead of the
      * first missing photo, as the form post would redirect; else the storage's answer (no url with local storage), or
-     * ndopify-server's status when it refuses (a 401 signs the agent out).
+     * ndopify-server's status when it refuses (a 401 signs the agent out), 502 when it fails.
      */
     @PostMapping("/{step:front|back|selfie}/presign", produces = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseBody
     fun presign(
         @PathVariable step: String,
         @RequestBody request: PresignUploadRequest,
-    ): ResponseEntity<PresignUploadResponse> {
-        val party = currentParty.get() ?: throw SignInRequiredException()
-        val case = openCase(party.id) ?: return ResponseEntity.status(HttpStatus.CONFLICT).build()
-        if (!stepAllowed(step, case)) return ResponseEntity.status(HttpStatus.CONFLICT).build()
-
-        return try {
+    ): ResponseEntity<PresignUploadResponse> =
+        proxy("Presign", step) { case ->
             ResponseEntity.ok(
                 kycClient.presign(case.id, NdKycClient.IDENTIFICATION_TYPE, PHOTOS.getValue(step), request.contentType.orEmpty()),
             )
-        } catch (ex: HttpClientErrorException.Unauthorized) {
-            throw ex // HttpClientErrorHandler signs the agent out
-        } catch (ex: HttpClientErrorException) {
-            LOGGER.warn("Presign of KYC case ${case.id} refused: ${ex.statusCode}")
-            ResponseEntity.status(ex.statusCode).build()
-        } catch (ex: RestClientException) {
-            LOGGER.error("Presign of KYC case ${case.id} failed", ex)
-            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()
         }
-    }
 
     /**
      * Attaches the step's photo uploaded straight to the storage, replacing the case's one, for `kyc.js`. Same case and 409s
@@ -177,22 +164,32 @@ class KycController(
     fun attach(
         @PathVariable step: String,
         @RequestBody request: AttachUploadRequest,
-    ): ResponseEntity<Void> {
-        val party = currentParty.get() ?: throw SignInRequiredException()
-        val case = openCase(party.id) ?: return ResponseEntity.status(HttpStatus.CONFLICT).build()
-        if (!stepAllowed(step, case)) return ResponseEntity.status(HttpStatus.CONFLICT).build()
-
-        return try {
+    ): ResponseEntity<Void> =
+        proxy("Attach", step) { case ->
             kycClient.attach(case.id, NdKycClient.IDENTIFICATION_TYPE, PHOTOS.getValue(step), request.path)
             ResponseEntity.ok().build()
+        }
+
+    /**
+     * The presign/attach proxies' frame: the signed-in party's open case (opened as the form post does), 409 when it is
+     * submitted or the step is ahead; ndopify-server's status when it refuses, a 401 rethrown (HttpClientErrorHandler
+     * signs the agent out), 502 when it fails or can't be reached — the case lookup included, so `fetch` always gets
+     * a status, never an HTML error page.
+     */
+    private fun <T : Any> proxy(operation: String, step: String, call: (KycCase) -> ResponseEntity<T>): ResponseEntity<T> {
+        val party = currentParty.get() ?: throw SignInRequiredException()
+        return try {
+            val case = openCase(party.id) ?: return ResponseEntity.status(HttpStatus.CONFLICT).build()
+            if (!stepAllowed(step, case)) return ResponseEntity.status(HttpStatus.CONFLICT).build()
+            call(case)
         } catch (ex: HttpClientErrorException.Unauthorized) {
-            throw ex // HttpClientErrorHandler signs the agent out
+            throw ex
         } catch (ex: HttpClientErrorException) {
-            LOGGER.warn("Attach of KYC case ${case.id} refused: ${ex.statusCode}")
+            LOGGER.warn("$operation of a KYC photo of Party#${party.id} refused: ${ex.statusCode}")
             ResponseEntity.status(ex.statusCode).build()
         } catch (ex: RestClientException) {
-            LOGGER.error("Attach of KYC case ${case.id} failed", ex)
-            ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build()
+            LOGGER.error("$operation of a KYC photo of Party#${party.id} failed", ex)
+            ResponseEntity.status(HttpStatus.BAD_GATEWAY).build()
         }
     }
 
