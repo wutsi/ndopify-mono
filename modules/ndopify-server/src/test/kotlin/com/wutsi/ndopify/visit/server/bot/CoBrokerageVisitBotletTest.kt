@@ -9,11 +9,15 @@ import com.nhaarman.mockitokotlin2.times
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
+import com.wutsi.ndopify.listing.server.bot.ListingTelegramLabels
 import com.wutsi.ndopify.listing.server.bot.ListingTelegramSender
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
+import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
+import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.visit.dto.VisitNoShowReason
 import com.wutsi.ndopify.visit.dto.VisitParty
@@ -31,8 +35,10 @@ import kotlin.test.assertTrue
 
 class CoBrokerageVisitBotletTest {
     private val tenantService = mock<TenantService>()
+    private val locationService = mock<LocationService>()
     private val sender = mock<ListingTelegramSender>()
-    private val botlet = CoBrokerageVisitBotlet(tenantService, sender)
+    private val labels = ListingTelegramLabels(locationService)
+    private val botlet = CoBrokerageVisitBotlet(tenantService, labels, sender)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -41,6 +47,8 @@ class CoBrokerageVisitBotletTest {
         dateFormat = "dd/MM/yyyy",
         timeFormat = "HH:mm",
         timeZone = "Africa/Douala",
+        currencyCode = "XAF",
+        monetaryFormat = "#,###,##0 FCFA",
     )
 
     // B, the listing agent: the recipient
@@ -55,7 +63,16 @@ class CoBrokerageVisitBotletTest {
         party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible", email = "kim.possible@gmail.com"),
     )
 
-    private val listing = ListingEntity(id = 101L, title = "Villa Bastos", agent = listingAgent)
+    private val listing = ListingEntity(
+        id = 101L,
+        title = "Villa Bastos",
+        agent = listingAgent,
+        cityId = 2370201L,
+        neighborhoodId = 1001L,
+        price = 150000,
+        currencyCode = "XAF",
+        pricePeriodicityType = PeriodicityType.MONTHLY,
+    )
     private val visit = VisitEntity(
         id = 1L,
         tenantId = 1L,
@@ -72,6 +89,8 @@ class CoBrokerageVisitBotletTest {
     @BeforeTest
     fun setUp() {
         doReturn(tenant).whenever(tenantService).findById(1L)
+        doReturn(LocationEntity(id = 2370201L, name = "Yaounde")).whenever(locationService).findByIdOrNull(2370201L)
+        doReturn(LocationEntity(id = 1001L, name = "Bastos")).whenever(locationService).findByIdOrNull(1001L)
     }
 
     @Test
@@ -83,12 +102,8 @@ class CoBrokerageVisitBotletTest {
         verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertEquals(
             """
-            Visite de votre bien confirmée
-
-            J'ai organisé une visite de Villa Bastos le 02/12/2026 à 10:00 (Sur place).
-
-            Je vous y retrouve avec mon client.
-
+            ✅ Visite confirmée : Villa Bastos (Bastos) — 150 000 FCFA / mois, 02/12/2026 à 10:00
+            Sur place — je vous y retrouve avec mon client.
             Visite organisée par Kim Possible.
             """.trimIndent(),
             text.firstValue,
@@ -105,9 +120,11 @@ class CoBrokerageVisitBotletTest {
 
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
-        assertTrue(text.firstValue.contains("(Visite vidéo)"))
-        assertTrue(text.firstValue.contains("Je serai sur place pour vous ouvrir ; le client suivra en visio."))
-        assertFalse(text.firstValue.contains("Je vous y retrouve avec mon client."))
+        assertEquals(
+            "Visite vidéo — je serai sur place pour vous ouvrir ; le client suivra en visio.",
+            text.firstValue.lines()[1],
+        )
+        assertFalse(text.firstValue.contains("je vous y retrouve avec mon client"))
     }
 
     @Test
@@ -118,12 +135,8 @@ class CoBrokerageVisitBotletTest {
         verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
         assertEquals(
             """
-            Rappel de la visite de votre bien
-
-            La visite de Villa Bastos a lieu le 02/12/2026 à 10:00 (Sur place).
-
-            Je vous y retrouve avec mon client.
-
+            ⏰ Rappel : Villa Bastos (Bastos) — 150 000 FCFA / mois, 02/12/2026 à 10:00
+            Sur place — je vous y retrouve avec mon client.
             Visite organisée par Kim Possible.
             """.trimIndent(),
             text.firstValue,
@@ -143,12 +156,8 @@ class CoBrokerageVisitBotletTest {
         verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
         assertEquals(
             """
-            La visite de votre bien est annulée
-
-            Villa Bastos (Sur place), prévue le 02/12/2026 à 10:00.
-
+            ❌ Visite annulée : Villa Bastos (Bastos) — 150 000 FCFA / mois, 02/12/2026 à 10:00
             J'ai annulé la visite.
-
             Visite organisée par Kim Possible.
             """.trimIndent(),
             text.firstValue,
@@ -163,8 +172,8 @@ class CoBrokerageVisitBotletTest {
         botlet.sendCancelled(visit.copy(cancelledBy = VisitParty.SYSTEM), listing, searchAgent, 1000L)
 
         verify(sender, times(2)).send(eq(1000L), eq(listing), text.capture(), any())
-        assertTrue(text.allValues[0].contains("Le client a annulé la visite."))
-        assertTrue(text.allValues[1].contains("La visite est annulée."))
+        assertTrue(text.allValues[0].lines()[1].contains("Le client a annulé la visite."))
+        assertTrue(text.allValues[1].lines()[1].contains("La visite est annulée."))
     }
 
     @Test
@@ -175,10 +184,11 @@ class CoBrokerageVisitBotletTest {
 
         verify(sender, times(2)).send(eq(1000L), eq(listing), text.capture(), any())
         assertTrue(
-            text.allValues[0].startsWith("La visite de votre bien n'a pas eu lieu\n\nVilla Bastos (Sur place), prévue le ")
+            text.allValues[0].lines().first()
+                .startsWith("⚠️ Visite non honorée : Villa Bastos (Bastos) — 150 000 FCFA / mois, "),
         )
-        assertTrue(text.allValues[0].contains("Le client ne s'est pas présenté à la visite."))
-        assertTrue(text.allValues[1].contains("Le client a refusé de donner le code de visite."))
+        assertTrue(text.allValues[0].lines()[1].contains("Le client ne s'est pas présenté à la visite."))
+        assertTrue(text.allValues[1].lines()[1].contains("Le client a refusé de donner le code de visite."))
     }
 
     @Test
@@ -189,7 +199,7 @@ class CoBrokerageVisitBotletTest {
 
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(withoutTitle), text.capture(), any())
-        assertTrue(text.firstValue.contains("une visite de Bien n° 101 le"))
+        assertTrue(text.firstValue.startsWith("✅ Visite confirmée : Bien n° 101 (Bastos) — 150 000 FCFA / mois, "))
     }
 
     @Test

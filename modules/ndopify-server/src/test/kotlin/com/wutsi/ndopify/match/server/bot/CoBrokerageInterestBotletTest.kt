@@ -57,17 +57,14 @@ class CoBrokerageInterestBotletTest {
         send(digest(listOf(listing())))
 
         val (text, rows) = sent().single()
-        assertTrue(text.startsWith("1 agent s'intéresse à votre bien\n\n"))
-        assertFalse(text.contains("vos annonces"))
-        assertTrue(text.contains("Villa Bastos"))
-        assertTrue(text.contains("90 000 FCFA / mois — Bastos (Yaounde)"))
-        assertTrue(text.contains("• Kim Possible\n"))
-        assertFalse(text.contains("WhatsApp"))
-        assertTrue(text.contains("Location - Appartement à Bastos (Yaounde) - 2 pièces - 100 000 FCFA / mois"))
-        assertTrue(
-            text.endsWith(
-                "Retrouvez les coordonnées de chaque agent dans le mandat.\n\nCordialement,\nL'équipe Ndopify",
-            ),
+        assertEquals(
+            """
+            👥 1 agent s'intéresse à votre bien
+
+            🏠 Villa Bastos (Bastos) — 90 000 FCFA / mois
+            • Kim Possible — Location - Appartement · 2 pièces · 100 000 FCFA / mois
+            """.trimIndent(),
+            text,
         )
         assertEquals(
             listOf(listOf(TelegramButton("Voir le mandat — Villa Bastos", url = "https://pc.ndopify.com/mandates/11"))),
@@ -87,8 +84,8 @@ class CoBrokerageInterestBotletTest {
         )
 
         val (text, rows) = sent().single()
-        assertTrue(text.contains("Villa Bastos"))
-        assertTrue(text.contains("Studio Mvan"))
+        assertTrue(text.contains("🏠 Villa Bastos (Bastos) — 90 000 FCFA / mois"))
+        assertTrue(text.contains("🏠 Studio Mvan (Bastos) — 90 000 FCFA / mois"))
         assertEquals(2, rows.size)
         assertEquals("Voir le mandat — Villa Bastos", rows[0].single().text)
         assertEquals("Voir le mandat — Studio Mvan", rows[1].single().text)
@@ -111,8 +108,17 @@ class CoBrokerageInterestBotletTest {
         send(digest(listOf(listing(title = null))))
 
         val (text, rows) = sent().single()
-        assertTrue(text.contains("Bien n° 101"))
+        assertTrue(text.contains("🏠 Bien n° 101 (Bastos) — 90 000 FCFA / mois"))
         assertEquals("Voir le mandat", rows.single().single().text)
+    }
+
+    @Test
+    fun `no neighbourhood - no empty parenthesis`() {
+        send(digest(listOf(listing(neighbourhood = ""))))
+
+        val (text, _) = sent().single()
+        assertTrue(text.contains("🏠 Villa Bastos — 90 000 FCFA / mois"))
+        assertFalse(text.contains("()"))
     }
 
     @Test
@@ -130,7 +136,7 @@ class CoBrokerageInterestBotletTest {
         send(digest(listOf(listing(agents = agents, more = 1)), agentCount = 6))
 
         val (text, _) = sent().single()
-        assertTrue(text.contains("6 agents s'intéressent à vos biens"))
+        assertTrue(text.contains("👥 6 agents s'intéressent à vos biens"))
         assertTrue(text.contains("et 1 autre agent"))
         assertEquals(5, text.lines().count { line -> line.startsWith("•") })
     }
@@ -140,8 +146,8 @@ class CoBrokerageInterestBotletTest {
         send(digest(listOf(listing(agents = listOf(kim)))))
 
         val (text, _) = sent().single()
-        assertTrue(text.contains("• Kim Possible\n"))
-        assertTrue(text.contains("Location - Appartement à Bastos (Yaounde)"))
+        assertTrue(text.contains("• Kim Possible — Location - Appartement · 2 pièces · 100 000 FCFA / mois"))
+        assertFalse(text.contains("Bastos (Yaounde)"), "the agent's place leaves its row")
     }
 
     @Test
@@ -149,7 +155,7 @@ class CoBrokerageInterestBotletTest {
         send(digest(listOf(listing(agents = listOf(kimByEmail)))))
 
         val (text, _) = sent().single()
-        assertTrue(text.contains("• Kim Possible\n"))
+        assertTrue(text.contains("• Kim Possible — "))
         assertFalse(text.contains("kim.possible@example.com"))
         assertFalse(text.contains("mailto:"))
     }
@@ -172,9 +178,13 @@ class CoBrokerageInterestBotletTest {
 
         val messages = sent()
         assertTrue(messages.size > 1)
+        assertTrue(messages.first().first.startsWith("👥 "), "the first message starts with the lead")
+        messages.drop(1).forEach { (text, _) ->
+            assertTrue(text.startsWith("🏠 "), "a continuation starts with a listing header, not the lead")
+            assertFalse(text.startsWith("Bonjour"), "a part starts with the greeting")
+        }
         messages.forEach { (text, _) ->
             assertTrue(text.length <= 4096, "a message has ${text.length} characters")
-            assertFalse(text.startsWith("Bonjour"), "a part starts with the greeting")
         }
 
         val all = messages.joinToString("\n") { (text, _) -> text }
@@ -204,15 +214,15 @@ class CoBrokerageInterestBotletTest {
 
         val messages = sent()
         assertTrue(messages.size >= 2)
-        messages.forEach { (text, _) ->
-            assertTrue(text.length <= 4096, "a message has ${text.length} characters")
+        assertTrue(messages.first().first.startsWith("👥 "), "the lead opens the first message")
+        messages.drop(1).forEach { (text, _) ->
+            assertTrue(text.startsWith("🏠 "), "a continuation starts with the repeated header")
             assertFalse(text.startsWith("Bonjour"), "a part starts with the greeting")
         }
-        val groups = messages.filter { (text, _) -> text.contains("•") }
-        assertTrue(groups.size >= 2)
-        groups.forEach { (text, _) ->
-            assertTrue(text.contains(title))
-            assertTrue(text.contains("90 000 FCFA / mois — Bastos (Yaounde)"))
+        messages.forEach { (text, _) ->
+            assertTrue(text.length <= 4096, "a message has ${text.length} characters")
+            assertTrue(text.contains(title), "a part repeats the header")
+            assertTrue(text.contains("90 000 FCFA / mois"), "a part repeats the price")
         }
         val all = messages.joinToString("\n") { (text, _) -> text }
         (1..5).forEach { i ->
@@ -239,6 +249,7 @@ class CoBrokerageInterestBotletTest {
     private fun listing(
         id: Long = 101L,
         title: String? = "Villa Bastos",
+        neighbourhood: String = "Bastos",
         mandateUrl: String? = "https://pc.ndopify.com/mandates/11",
         agents: List<InterestedAgent> = listOf(kim),
         more: Int? = null,
@@ -247,6 +258,7 @@ class CoBrokerageInterestBotletTest {
         title = title,
         price = "90 000 FCFA / mois",
         place = "Bastos (Yaounde)",
+        neighbourhood = neighbourhood,
         imageUrl = null,
         mandateUrl = mandateUrl,
         agents = agents,

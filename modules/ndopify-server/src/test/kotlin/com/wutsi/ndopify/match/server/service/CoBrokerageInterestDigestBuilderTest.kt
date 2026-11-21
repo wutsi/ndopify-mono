@@ -127,6 +127,7 @@ class CoBrokerageInterestDigestBuilderTest {
         assertEquals("Villa Bastos", interest.title)
         assertEquals("90 000 FCFA / mois", interest.price)
         assertEquals("Bastos (Yaounde)", interest.place)
+        assertEquals("Bastos", interest.neighbourhood)
         assertEquals("https://pc.ndopify.com/mandates/11", interest.mandateUrl)
         assertNull(interest.imageUrl)
         assertNull(interest.more)
@@ -247,6 +248,15 @@ class CoBrokerageInterestDigestBuilderTest {
         val digest = builder.build(listOf(match.copy(listing = listing.copy(title = " "))))
 
         assertNull(digest.listings.single().title)
+    }
+
+    @Test
+    fun `no neighbourhood - blank, while place keeps the city`() {
+        val interest = builder.build(listOf(match.copy(listing = listing.copy(neighborhoodId = null))))
+            .listings.single()
+
+        assertEquals("", interest.neighbourhood)
+        assertEquals("Yaounde", interest.place)
     }
 
     @Test

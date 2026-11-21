@@ -11,6 +11,7 @@ import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyType
+import com.wutsi.ndopify.listing.server.bot.ListingTelegramLabels
 import com.wutsi.ndopify.listing.server.bot.ListingTelegramSender
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.mandate.dto.MandateType
@@ -29,13 +30,13 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 class MatchAnsweredBotletTest {
     private val tenantService = mock<TenantService>()
     private val locationService = mock<LocationService>()
     private val sender = mock<ListingTelegramSender>()
-    private val botlet = MatchAnsweredBotlet(tenantService, locationService, sender)
+    private val labels = ListingTelegramLabels(locationService)
+    private val botlet = MatchAnsweredBotlet(tenantService, labels, sender)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -61,6 +62,7 @@ class MatchAnsweredBotletTest {
     private val listing = ListingEntity(
         id = 102L,
         title = "Small apartment",
+        neighborhoodId = 1001L,
         price = 140000,
         currencyCode = "XAF",
         pricePeriodicityType = PeriodicityType.MONTHLY,
@@ -90,23 +92,11 @@ class MatchAnsweredBotletTest {
     }
 
     @Test
-    fun `an acceptance names the customer, the listing and the mandate`() {
+    fun `an acceptance is one line naming the customer and the property`() {
         botlet.send(match, customer, agent, 1000L)
 
         assertEquals(
-            """
-            Ray Sponsible a accepté la proposition
-
-            Bien: Small apartment
-            Loyer: 140 000 FCFA / mois
-
-            Recherche: Location - Appartement
-            Ville: Yaounde
-            Quartier(s): Bastos
-            Budget: 150 000 FCFA / mois
-
-            Cette réponse est définitive.
-            """.trimIndent(),
+            "✅ Ray Sponsible a accepté la proposition : Small apartment (Bastos) — 140 000 FCFA / mois",
             text(),
         )
         assertEquals(
@@ -128,15 +118,17 @@ class MatchAnsweredBotletTest {
             1000L,
         )
 
-        assertTrue(
-            text().contains(
-                "Ray Sponsible a refusé la proposition\nMotif: trop cher\nCommentaire: Trop loin du travail.\n",
-            ),
+        assertEquals(
+            """
+            ❌ Ray Sponsible a refusé la proposition : Small apartment (Bastos) — 140 000 FCFA / mois
+            Motif : trop cher · « Trop loin du travail. »
+            """.trimIndent(),
+            text(),
         )
     }
 
     @Test
-    fun `a rejection without a comment leaves no line`() {
+    fun `a rejection without a comment leaves no comment line`() {
         botlet.send(
             match.copy(
                 status = MatchStatus.REJECTED,
@@ -148,8 +140,14 @@ class MatchAnsweredBotletTest {
             1000L,
         )
 
-        assertTrue(text().contains("Motif: autre raison"))
-        assertFalse(text().contains("Commentaire:"))
+        assertEquals(
+            """
+            ❌ Ray Sponsible a refusé la proposition : Small apartment (Bastos) — 140 000 FCFA / mois
+            Motif : autre raison
+            """.trimIndent(),
+            text(),
+        )
+        assertFalse(text().contains("Commentaire"))
     }
 
     @Test
@@ -158,7 +156,10 @@ class MatchAnsweredBotletTest {
 
         botlet.send(withoutTitle, customer, agent, 1000L)
 
-        assertTrue(text(withoutTitle.listing).contains("Bien: Bien n° 102"))
+        assertEquals(
+            "✅ Ray Sponsible a accepté la proposition : Bien n° 102 (Bastos) — 140 000 FCFA / mois",
+            text(withoutTitle.listing),
+        )
     }
 
     @Test

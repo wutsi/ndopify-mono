@@ -12,12 +12,14 @@ import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
+import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -25,19 +27,29 @@ class ListingPublishedBotletTest {
     private val tenantService = mock<TenantService>()
     private val locationService = mock<LocationService>()
     private val sender = mock<ListingTelegramSender>()
+    private val labels = ListingTelegramLabels(locationService)
     private val botlet = ListingPublishedBotlet(
         tenantService,
-        locationService,
+        labels,
         sender,
     )
 
-    private val tenant = TenantEntity(id = 1L, name = "Ndopify", publicPortalUrl = "https://www.ndopify.com/")
+    private val tenant = TenantEntity(
+        id = 1L,
+        name = "Ndopify",
+        publicPortalUrl = "https://www.ndopify.com/",
+        currencyCode = "XAF",
+        monetaryFormat = "#,###,##0 FCFA",
+    )
     private val listing = ListingEntity(
         id = 1L,
         tenantId = 1L,
         cityId = 2370201L,
         neighborhoodId = 111L,
-        title = "Appartement à louer, 3 chambres, Yaounde (Bastos)",
+        title = "Appartement à louer, 3 chambres",
+        price = 150000,
+        currencyCode = "XAF",
+        pricePeriodicityType = PeriodicityType.MONTHLY,
         url = "/yaounde/bastos/listing/1/appartement-a-louer-3-chambres-yaounde-bastos",
     )
     private val customer = CustomerEntity(
@@ -49,17 +61,8 @@ class ListingPublishedBotletTest {
         party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible"),
     )
 
-    private val caption = """
-        Votre annonce à Yaounde est publiée
-
-        Le bien de Ray Sponsible est en ligne.
-
-        Annonce: Appartement à louer, 3 chambres, Yaounde (Bastos)
-        Ville: Yaounde
-        Quartier: Bastos
-
-        Prochaine étape : partagez le lien de l'annonce et organisez les visites.
-    """.trimIndent()
+    private val caption =
+        "🏠 Votre annonce est publiée : Appartement à louer, 3 chambres (Bastos) — 150 000 FCFA / mois"
     private val button = TelegramButton(
         "Voir l'annonce",
         url = "https://www.ndopify.com/yaounde/bastos/listing/1/appartement-a-louer-3-chambres-yaounde-bastos",
@@ -89,33 +92,46 @@ class ListingPublishedBotletTest {
     }
 
     @Test
-    fun `a tenant without a resolvable city has no dangling place`() {
-        doReturn(null).whenever(locationService).findByIdOrNull(2370201L)
-
-        botlet.send(listing, customer, agent, 1000L)
-
-        val text = argumentCaptor<String>()
-        verify(sender).send(eq(1000L), any(), text.capture(), any())
-        assertTrue(text.firstValue.startsWith("Votre annonce est publiée"))
-    }
-
-    @Test
     fun `a blank title falls back to the listing id`() {
         val text = argumentCaptor<String>()
 
         botlet.send(listing.copy(title = null), customer, agent, 1000L)
 
         verify(sender).send(eq(1000L), any(), text.capture(), any())
-        assertTrue(text.firstValue.contains("Annonce: Bien n° 1"))
+        assertEquals(
+            "🏠 Votre annonce est publiée : Bien n° 1 (Bastos) — 150 000 FCFA / mois",
+            text.firstValue,
+        )
     }
 
     @Test
-    fun `no neighbourhood omits its line`() {
+    fun `no neighbourhood leaves no parenthesis`() {
         val text = argumentCaptor<String>()
 
         botlet.send(listing.copy(neighborhoodId = null), customer, agent, 1000L)
 
         verify(sender).send(eq(1000L), any(), text.capture(), any())
-        assertFalse(text.firstValue.contains("Quartier:"))
+        assertFalse(text.firstValue.contains("("))
+    }
+
+    @Test
+    fun `no price leaves no price suffix`() {
+        val text = argumentCaptor<String>()
+
+        botlet.send(listing.copy(price = -1), customer, agent, 1000L)
+
+        verify(sender).send(eq(1000L), any(), text.capture(), any())
+        assertEquals("🏠 Votre annonce est publiée : Appartement à louer, 3 chambres (Bastos)", text.firstValue)
+        assertFalse(text.firstValue.contains(" — "))
+    }
+
+    @Test
+    fun `the message opens with the publication emoji`() {
+        val text = argumentCaptor<String>()
+
+        botlet.send(listing, customer, agent, 1000L)
+
+        verify(sender).send(eq(1000L), any(), text.capture(), any())
+        assertTrue(text.firstValue.startsWith("🏠 "))
     }
 }

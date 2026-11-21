@@ -9,10 +9,12 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.listing.server.bot.ListingTelegramLabels
 import com.wutsi.ndopify.listing.server.bot.ListingTelegramSender
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
+import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.LocationService
@@ -38,7 +40,8 @@ class VisitReminderBotletTest {
 
     // 2026-12-01 10:00 in Douala
     private val clock = Clock.fixed(Instant.parse("2026-12-01T09:00:00Z"), ZoneId.of("UTC"))
-    private val botlet = VisitReminderBotlet(tenantService, locationService, sender, clock)
+    private val labels = ListingTelegramLabels(locationService)
+    private val botlet = VisitReminderBotlet(tenantService, labels, sender, clock)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -47,6 +50,8 @@ class VisitReminderBotletTest {
         timeZone = "Africa/Douala",
         dateFormat = "dd/MM/yyyy",
         timeFormat = "HH:mm",
+        currencyCode = "XAF",
+        monetaryFormat = "#,###,##0 FCFA",
     )
     private val customer = CustomerEntity(
         id = 10L,
@@ -57,7 +62,15 @@ class VisitReminderBotletTest {
         id = 20L,
         party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible"),
     )
-    private val listing = ListingEntity(id = 101L, title = "Nice apartment", cityId = 2370201L, neighborhoodId = 1001L)
+    private val listing = ListingEntity(
+        id = 101L,
+        title = "Nice apartment",
+        cityId = 2370201L,
+        neighborhoodId = 1001L,
+        price = 150000,
+        currencyCode = "XAF",
+        pricePeriodicityType = PeriodicityType.MONTHLY,
+    )
     private val visit = VisitEntity(
         id = 1L,
         tenantId = 1L,
@@ -87,12 +100,8 @@ class VisitReminderBotletTest {
         verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertEquals(
             """
-            Rappel de la visite avec Ray Sponsible
-
-            La visite du bien Nice apartment avec Ray Sponsible a lieu demain, 02/12/2026 à 10:00.
-
-            Type: Sur place
-            Lieu: Bastos, Yaounde
+            ⏰ Rappel : Nice apartment (Bastos) — 150 000 FCFA / mois, demain à 10:00 avec Ray Sponsible
+            Sur place
             """.trimIndent(),
             text.firstValue,
         )
@@ -113,18 +122,13 @@ class VisitReminderBotletTest {
         verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
         assertEquals(
             """
-            Rappel de la visite avec Ray Sponsible
-
-            La visite du bien Nice apartment avec Ray Sponsible a lieu demain, 02/12/2026 à 10:00.
-
-            Type: Visite vidéo
-            Lieu: Bastos, Yaounde
-
+            ⏰ Rappel : Nice apartment (Bastos) — 150 000 FCFA / mois, demain à 10:00 avec Ray Sponsible
+            Visite vidéo
             Depuis le bien, appelez Ray Sponsible en vidéo sur WhatsApp. Le client vous lira son code de visite pendant l'appel.
             """.trimIndent(),
             text.firstValue,
         )
-        assertFalse(text.firstValue.contains("Type: Sur place"))
+        assertFalse(text.firstValue.contains("Sur place"))
     }
 
     @Test
@@ -133,7 +137,7 @@ class VisitReminderBotletTest {
 
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
-        assertTrue(text.firstValue.contains("a lieu aujourd'hui, 01/12/2026 à 20:00"))
+        assertTrue(text.firstValue.contains(", aujourd'hui à 20:00 avec Ray Sponsible"))
     }
 
     @Test
@@ -141,7 +145,7 @@ class VisitReminderBotletTest {
         // 2026-12-02 00:30 in Douala: the visit is later that tenant day, though still 2026-12-01 in UTC
         val midnight = VisitReminderBotlet(
             tenantService,
-            locationService,
+            labels,
             sender,
             Clock.fixed(Instant.parse("2026-12-01T23:30:00Z"), ZoneId.of("UTC")),
         )
@@ -150,17 +154,15 @@ class VisitReminderBotletTest {
 
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
-        assertTrue(text.firstValue.contains("a lieu aujourd'hui, 02/12/2026 à 08:00"))
+        assertTrue(text.firstValue.contains(", aujourd'hui à 08:00 avec Ray Sponsible"))
     }
 
     @Test
     fun `no whatsapp number - no line and no whatsapp button`() {
         botlet.send(visit, customer.copy(whatsappNumber = null), agent, listing, 1000L)
 
-        val text = argumentCaptor<String>()
         val buttons = argumentCaptor<List<TelegramButton>>()
-        verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
-        assertFalse(text.firstValue.contains("WhatsApp:"))
+        verify(sender).send(eq(1000L), eq(listing), any(), buttons.capture())
         assertEquals(
             listOf(TelegramButton("Voir la visite", url = "https://partner.ndopify.com/visits/1")),
             buttons.firstValue,
@@ -173,7 +175,7 @@ class VisitReminderBotletTest {
 
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(listing.copy(title = " ")), text.capture(), any())
-        assertTrue(text.firstValue.contains("La visite du bien Bien n° 101 avec Ray Sponsible"))
+        assertTrue(text.firstValue.startsWith("⏰ Rappel : Bien n° 101 (Bastos) — 150 000 FCFA / mois, "))
     }
 
     @Test

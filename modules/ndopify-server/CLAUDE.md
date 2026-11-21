@@ -201,8 +201,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   messages its agent over Telegram when its chat is linked (`MandateApprovedBotlet`, via
   `AgentTelegramService.chatId`) and e-mails the others (`MandateApprovedMailet`, `mail/mandate/approved.mjml`),
   falling back to the e-mail when Telegram fails (the failure is logged, without the token nor the URL; nothing for
-  a mandate without agent, or no longer APPROVED). The message carries the city, the mandate's type, its
-  neighbourhoods and its budget or price, with a `Voir le mandat` button to `{partnerCentralUrl}/mandates/{id}`
+  a mandate without agent, or no longer APPROVED). The message opens with the signature's `✅` line, then the
+  mandate's property line — its type, its neighbourhoods and its budget or price — with a `Voir le mandat` button to `{partnerCentralUrl}/mandates/{id}`
   (none without a `partnerCentralUrl`); the customer's name, the contract number and the validity dates stay on the
   mandate page (summary only).
   `POST /{id}/close` (APPROVED only, else 409 `MANDATE_NOT_APPROVED`) → `CLOSED` with `finalPrice`, `closedAt` and
@@ -482,8 +482,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `MatchEventListener.onMatchAnswered` (async, after commit) calls `MatchProposalService.sendAnsweredNotification`:
   `MatchAnsweredNotifier` messages a linked agent (`AgentTelegramService.chatId(match.agentId)`) through
   `MatchAnsweredBotlet`, e-mails the others (`MatchAnsweredMailet`, `mail/match/answered.mjml`), and falls back to the
-  e-mail when Telegram fails (logged, without the token nor the URL). The message names the customer, the listing and
-  its price, the mandate's criteria via `MandateMailLabels`, and a rejection's reason and comment, with a
+  e-mail when Telegram fails (logged, without the token nor the URL). The message names the customer and the
+  listing's property line (title, neighbourhood, price), then a rejection's reason and comment, with a
   `Voir le mandat` button to `{partnerCentralUrl}/mandates/{mandateId}` (none without a `partnerCentralUrl`); one
   without a title is `Bien n° <id>`. It's final, and the listing's agent is never told. An `EXPIRED` proposal notifies
   nobody.
@@ -555,8 +555,9 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `AgentTelegramService.chatId(listing.agent.id)`) and e-mails the others (`CoBrokerageVisitMailet`), falling back to
   the e-mail on a failed send. It keeps the mailet's four triggers and exclusions exactly: confirmation, the 24 h
   reminder, a cancellation after confirmation while the listing's mandate is still live, and a customer-caused
-  no-show; never `REQUESTED`/`EXPIRED`/`COMPLETED`/agent no-show or an own-inventory visit. The message mirrors the
-  e-mail in French plain text and closes with `Visite organisée par <A>.`, because the bot is the sender (the e-mail's
+  no-show; never `REQUESTED`/`EXPIRED`/`COMPLETED`/agent no-show or an own-inventory visit. The message keeps the
+  mailet's four events as short emoji lines naming the property, the slot and the type or reason, and closes with
+  `Visite organisée par <A>.`, because the bot is the sender (the e-mail's
   agent footer has no equivalent); it carries one `Voir l'annonce` URL button to
   `{partnerCentralUrl}/listings/{id}#visits-title`, or none without a `partnerCentralUrl`, and never A's customer nor
   its data. The cancellation / no-show / type wording is shared by the e-mail and the message through
@@ -565,8 +566,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   (`VisitCancelledBotlet` through `VisitCancelledNotifier`, via `AgentTelegramService.chatId`, with a `Voir la visite`
   button to `{partnerCentralUrl}/visits/{id}`) or e-mail (`VisitCancelledMailet.sendToAgent`), the customer by e-mail
   (`sendToCustomer`); a `SYSTEM` cancellation (mandate ended, sweep) and a cancelled `REQUESTED` visit notify nobody.
-  The message carries the date, the listing's title, city and neighbourhood, the customer and the reason, never the
-  check-in code, the exact address nor the customer's token. **Request notification**:
+  The message carries the date, the listing's property line (title, neighbourhood, price), the customer and the
+  reason, never the check-in code, the exact address nor the customer's token. **Request notification**:
   `VisitRequestedNotifier` messages the agent over Telegram when its chat is linked (`VisitRequestedBotlet`, via
   `AgentTelegramService.chatId`), e-mails it otherwise (`VisitRequestedMailet`, `mail/visit/requested.mjml`), and
   falls back to the e-mail on a failed send (the failure is logged, without the token nor the URL). The message
@@ -577,8 +578,8 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `VisitFeedbackNotifier` messages the visit's agent when the customer answers the feedback form — over Telegram when
   its chat is linked (`VisitFeedbackBotlet`), e-mailed otherwise (`VisitFeedbackMailet`, `mail/visit/feedback.mjml`), with
   the e-mail as the fallback of a failed send (the failure is logged, without the token nor the URL). The message
-  carries the interest, the reason and comment when not interested, the listing (or `Bien n° <id>`), the date and time
-  in the tenant's `timeZone`, the customer, and a `Voir la visite` button to `{partnerCentralUrl}/visits/{id}` (none
+  carries the customer and the listing's property line (title, neighbourhood, price), the interest and, when not
+  interested, the reason and comment, and a `Voir la visite` button to `{partnerCentralUrl}/visits/{id}` (none
   without one); never the visit's code, exact address or the customer's `public-portal` token. Only a new answer
   notifies: a 409 (`VISIT_FEEDBACK_ALREADY_SENT` / `VISIT_NOT_COMPLETED`) does not. `MandateClosedEvent` now also reaches
   `VisitMandateEventListener`, an async

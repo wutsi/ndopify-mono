@@ -46,13 +46,11 @@ class TelegramMatchAnsweredEndpointTest : AuthorizationAwareEndpointIntegrationT
         val text = argumentCaptor<String>()
         val buttons = argumentCaptor<List<TelegramButton>>()
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
-        assertTrue(text.firstValue.startsWith("Ray Sponsible a accepté la proposition"))
-        assertTrue(text.firstValue.contains("Bien: Small apartment"))
-        assertTrue(text.firstValue.contains("Loyer: 140 000 FCFA / mois"))
-        assertTrue(text.firstValue.contains("Recherche: Location - Appartement"))
-        assertTrue(text.firstValue.contains("Ville: Yaounde"))
-        assertTrue(text.firstValue.contains("Quartier(s): Bastos"))
-        assertTrue(text.firstValue.contains("Budget: 150 000 FCFA / mois"))
+        assertTrue(
+            text.firstValue.startsWith(
+                "✅ Ray Sponsible a accepté la proposition : Small apartment (Bastos) — 140 000 FCFA / mois",
+            ),
+        )
         assertEquals(
             listOf(TelegramButton("Voir le mandat", url = "https://partner.ndopify.com/mandates/1")),
             buttons.firstValue,
@@ -73,8 +71,11 @@ class TelegramMatchAnsweredEndpointTest : AuthorizationAwareEndpointIntegrationT
 
         val text = argumentCaptor<String>()
         verify(client).sendMessage(eq(1000L), text.capture(), any())
-        assertTrue(text.firstValue.startsWith("Ray Sponsible a refusé la proposition"))
-        assertTrue(text.firstValue.contains("Motif: trop cher"))
-        assertTrue(text.firstValue.contains("Commentaire: Trop loin du travail."))
+        assertTrue(
+            text.firstValue.startsWith(
+                "❌ Ray Sponsible a refusé la proposition : Small apartment (Bastos) — 140 000 FCFA / mois",
+            ),
+        )
+        assertTrue(text.firstValue.contains("Motif : trop cher · « Trop loin du travail. »"))
     }
 }

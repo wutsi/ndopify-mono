@@ -52,7 +52,7 @@ class MandateApprovedBotletTest {
     }
 
     @Test
-    fun `a search approval carries its criteria, the city and the mandate link`() {
+    fun `a search approval carries its criteria and the mandate link`() {
         val mandate = MandateEntity(
             id = 1L,
             tenantId = 1L,
@@ -77,14 +77,8 @@ class MandateApprovedBotletTest {
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
         assertEquals(
             """
-            Votre mandat à Yaounde est approuvé
-
-            Votre client a signé le mandat. Vous pouvez commencer.
-
-            Recherche: Location - Appartement
-            Ville: Yaounde
-            Quartier(s): Bastos, Mvan
-            Budget: 1 500 000 XAF / mois
+            ✅ Le client a signé le mandat. Il va commencer à recevoir les offres.
+            Recherche : Location - Appartement (Bastos, Mvan) — 1 500 000 XAF / mois
             """.trimIndent(),
             text.firstValue,
         )
@@ -97,6 +91,7 @@ class MandateApprovedBotletTest {
         assertFalse(text.firstValue.contains("Sponsible"))
         assertFalse(text.firstValue.contains("MNDT-"))
         assertFalse(text.firstValue.contains("15/10/2026"))
+        assertFalse(text.firstValue.contains("Yaounde"), "the city leaves the first line")
     }
 
     @Test
@@ -108,6 +103,7 @@ class MandateApprovedBotletTest {
             status = MandateStatus.APPROVED,
             mandateType = MandateType.LISTING,
             cityId = 2370201L,
+            neighborhoodIds = listOf(111L),
             listingType = ListingType.SALE,
             propertyType = PropertyType.VILLA,
             price = 25_000_000,
@@ -121,13 +117,8 @@ class MandateApprovedBotletTest {
         verify(client).sendMessage(eq(1000L), text.capture(), any())
         assertEquals(
             """
-            Votre mandat à Yaounde est approuvé
-
-            Votre client a signé le mandat. Vous pouvez commencer.
-
-            Bien: Vente - Villa
-            Ville: Yaounde
-            Prix: 25 000 000 XAF
+            ✅ Le client a signé le mandat. Il va commencer à recevoir les offres.
+            Bien : Vente - Villa (Bastos) — 25 000 000 XAF
             """.trimIndent(),
             text.firstValue,
         )
@@ -155,7 +146,7 @@ class MandateApprovedBotletTest {
     }
 
     @Test
-    fun `a mandate without a resolvable city has no dangling place`() {
+    fun `a mandate without neighbourhoods or a property type leaves no dangling place`() {
         val mandate = MandateEntity(
             id = 1L,
             tenantId = 1L,
@@ -175,12 +166,8 @@ class MandateApprovedBotletTest {
         verify(client).sendMessage(eq(1000L), text.capture(), any())
         assertEquals(
             """
-            Votre mandat est approuvé
-
-            Votre client a signé le mandat. Vous pouvez commencer.
-
-            Recherche: Location
-            Budget: 1 500 000 XAF / mois
+            ✅ Le client a signé le mandat. Il va commencer à recevoir les offres.
+            Recherche : Location — 1 500 000 XAF / mois
             """.trimIndent(),
             text.firstValue,
         )

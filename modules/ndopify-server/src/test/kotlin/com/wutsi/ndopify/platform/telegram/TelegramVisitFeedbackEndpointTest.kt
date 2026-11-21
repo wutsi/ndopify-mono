@@ -43,14 +43,16 @@ class TelegramVisitFeedbackEndpointTest : AuthorizationAwareEndpointIntegrationT
         val text = argumentCaptor<String>()
         val buttons = argumentCaptor<List<TelegramButton>>()
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
-        assertTrue(text.firstValue.startsWith("L'avis de Ray Sponsible sur la visite"))
-        assertTrue(text.firstValue.contains("Bien: Nice apartment"))
-        // The fixture's DATETIME is read in the JVM's zone: the exact hour is tenant-dependent (see
-        // VisitFeedbackBotletTest, which builds its dates in Africa/Douala), the day is not
-        assertTrue(text.firstValue.contains("Date: 01/12/2026 à "))
-        assertTrue(text.firstValue.contains("Avis: Pas intéressé"))
-        assertTrue(text.firstValue.contains("Raison: autre raison"))
-        assertTrue(text.firstValue.contains("Commentaire: Trop cher"))
+        assertTrue(
+            text.firstValue.startsWith(
+                "⭐ Avis de Ray Sponsible : Nice apartment (Bastos) — 150 000 FCFA / mois",
+            ),
+        )
+        assertTrue(text.firstValue.contains("Pas intéressé"))
+        assertTrue(text.firstValue.contains("Raison : autre raison"))
+        assertTrue(text.firstValue.contains("Commentaire : « Trop cher »"))
+        assertFalse(text.firstValue.contains("Date:"))
+        assertFalse(text.firstValue.contains("Client:"))
         assertFalse(text.firstValue.contains("1234"), "never the visit code")
         assertFalse(text.firstValue.contains("Rue 1.234"), "never the exact address")
         assertEquals(

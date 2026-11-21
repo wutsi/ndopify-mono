@@ -13,7 +13,8 @@ import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.springframework.stereotype.Service
 
 /**
- * Offers a mandate to an agent over Telegram: the same wording as `MandateOfferMailet`, with an `Accepter` /
+ * Offers a mandate to an agent over Telegram: a `📋` line with the mandate's property — its criteria, its
+ * neighbourhoods and its budget or price — the listing's details, and the offer's expiry, with an `Accepter` /
  * `Refuser` keyboard so that the tap answers the offer.
  *
  * [send]'s recipient is the agent's chat, from #135's link (`AgentTelegramService.chatId`), never the agent's e-mail.
@@ -29,11 +30,10 @@ class MandateOfferBotlet(
     fun send(assignment: AssignmentEntity, agent: AgentEntity, chatId: Long) {
         val mandate = assignment.mandate
         val tenant = tenantService.findById(mandate.tenantId!!)
-        val city = locationService.findByIdOrNull(mandate.cityId)?.name ?: ""
         val formatter = TenantFormatter(tenant)
         client.sendMessage(
             chatId,
-            text(assignment, city, formatter),
+            text(assignment, formatter),
             listOf(
                 TelegramButton(
                     "Accepter",
@@ -47,44 +47,27 @@ class MandateOfferBotlet(
         )
     }
 
-    private fun text(
-        assignment: AssignmentEntity,
-        city: String,
-        formatter: TenantFormatter,
-    ): String {
+    private fun text(assignment: AssignmentEntity, formatter: TenantFormatter): String {
         val mandate = assignment.mandate
-        val listing = mandate.mandateType == MandateType.LISTING
-        val lines = mutableListOf<String>()
-        lines.add(
-            "Un nouveau mandat vous est proposé" + (if (city.isEmpty()) "" else " à $city")
+        val lines = mutableListOf(
+            "📋 Nouveau mandat : " + criteria(mandate) +
+                (MandateMailLabels.neighbourhoods(mandate, locationService)?.let { " ($it)" } ?: "") +
+                " — ${MandateMailLabels.budget(mandate, formatter)}",
         )
-        lines.add("")
-        lines.add(
-            if (listing) {
-                "Un propriétaire vous propose son mandat en exclusivité."
-            } else {
-                "Un client recherche un bien, et nous vous proposons son mandat en exclusivité."
-            }
-        )
-        lines.add("")
-        lines.add("${if (listing) "Bien" else "Recherche"}: " + criteria(mandate))
-        mandate.rooms?.ifBlank { null }?.let { lines.add("Pièces: $it") }
-        lines.add("Ville: $city")
-        MandateMailLabels.neighbourhoods(mandate, locationService)?.let { lines.add("Quartier(s): $it") }
-        if (listing) {
-            mandate.area?.let { lines.add("Surface: $it m²") }
-            lines.add("${MandateMailLabels.priceLabel(mandate)}: ${MandateMailLabels.budget(mandate, formatter)}")
-            mandate.availableFrom?.let { lines.add("Disponible à partir du: ${formatter.date(it)}") }
-        } else {
-            lines.add("Budget: ${MandateMailLabels.budget(mandate, formatter)}")
+        if (mandate.mandateType == MandateType.LISTING) {
+            details(mandate, formatter)?.let { lines.add(it) }
         }
-        lines.add("")
-        lines.add(
-            "Vous avez jusqu'au ${formatter.date(assignment.expiresAt)} à ${formatter.time(assignment.expiresAt)} " +
-                "pour accepter ce mandat. Passé ce délai, il sera proposé à un autre agent."
-        )
+        lines.add("Expire le ${formatter.date(assignment.expiresAt)} à ${formatter.time(assignment.expiresAt)}.")
         return lines.joinToString("\n")
     }
+
+    // The listing's facts on one line: "4 pièces · 250 m² · disponible le 01/12/2026"
+    private fun details(mandate: MandateEntity, formatter: TenantFormatter): String? =
+        listOfNotNull(
+            mandate.rooms?.trim()?.ifBlank { null }?.let { rooms -> "$rooms pièce" + if (rooms == "1") "" else "s" },
+            mandate.area?.let { "$it m²" },
+            mandate.availableFrom?.let { "disponible le ${formatter.date(it)}" },
+        ).ifEmpty { null }?.joinToString(" · ")
 
     // Ex: "Location - Appartement", or "Location" without a property type
     private fun criteria(mandate: MandateEntity): String {
