@@ -35,11 +35,14 @@
 <section aria-label="Photos du logement" class="gallery" th:fragment="gallery(listing)" th:unless="${#lists.isEmpty(listing.photos)}">
     <a th:each="photo, it : ${listing.photos}" th:if="${it.index < 5}"
        class="gallery__item" th:classappend="${it.first} ? 'gallery__item--hero'"
-       th:data-photo="${it.index}" th:href="${photo.src}">
-        <img th:alt="${photo.alt}" th:src="${photo.src}" th:attr="loading=${it.first} ? null : 'lazy'">
+       th:data-photo="${it.index}" th:href="${photo.fullSrc}">
+        <img th:alt="${photo.alt}" th:src="${photo.src}"
+             th:sizes="${it.first} ? '(min-width: 768px) 62vw, 88vw' : '(min-width: 768px) 31vw, 88vw'"
+             th:width="${photo.width}" th:height="${photo.height}"
+             th:attr="srcset=${photo.srcSet},fetchpriority=${it.first} ? 'high' : null,loading=${it.first} ? null : 'lazy'">
     </a>
     <a class="btn btn-outline gallery__all" data-photo="0" th:if="${#lists.size(listing.photos) > 5}"
-       th:href="${listing.photos[0].src}" th:text="'Voir les ' + ${#lists.size(listing.photos)} + ' photos'">Voir les 8 photos</a>
+       th:href="${listing.photos[0].fullSrc}" th:text="'Voir les ' + ${#lists.size(listing.photos)} + ' photos'">Voir les 8 photos</a>
 </section>
 
 <!--/*

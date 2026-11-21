@@ -9,6 +9,7 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.listing.dto.ImageStatus
+import com.wutsi.ndopify.listing.dto.ImageVariant
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingStats
@@ -246,6 +247,29 @@ class ListingTemplateTest {
         assertNotNull(page.selectFirst("[data-listing-details]"))
         assertNotNull(page.selectFirst("[data-listing-sheet]"))
         assertEquals("2 chambres", page.selectFirst("[data-listing-facts] li")?.text())
+    }
+
+    @Test
+    fun `published - the gallery carries the renditions`() {
+        val image = ListingImage(
+            id = 2,
+            url = "https://cdn/2.jpg",
+            status = ImageStatus.VERIFIED,
+            variants = listOf(
+                ImageVariant(240, 160, "https://ik/2-240.jpg"),
+                ImageVariant(960, 640, "https://ik/2-960.jpg"),
+                ImageVariant(2048, 1365, "https://ik/2-2048.jpg"),
+            ),
+        )
+        doReturn(listOf(image)).whenever(listingClient).images(501)
+        val page = render(COMPLETE.copy(status = ListingStatus.PUBLISHED, publishedAt = SENT))
+
+        val gallery = page.selectFirst("[data-listing-gallery]")!!
+        val rendered = gallery.selectFirst("[data-photo-link] img")!!
+        assertEquals("https://ik/2-960.jpg", rendered.attr("src"))
+        assertEquals("https://ik/2-240.jpg 240w, https://ik/2-960.jpg 960w, https://ik/2-2048.jpg 2048w", rendered.attr("srcset"))
+        assertEquals("(min-width: 640px) 62vw, 88vw", rendered.attr("sizes"))
+        assertEquals("https://ik/2-2048.jpg", gallery.selectFirst("[data-photo-open]")?.attr("href"))
     }
 
     @Test

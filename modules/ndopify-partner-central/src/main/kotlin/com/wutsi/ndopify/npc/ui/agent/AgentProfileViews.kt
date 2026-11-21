@@ -74,6 +74,6 @@ object AgentProfileViews {
     private fun heroImage(summary: ListingSummary, images: Map<Long, List<ListingImage>>): String? {
         val listingImages = images[summary.id].orEmpty()
         val image = summary.heroImageId?.let { id -> listingImages.find { it.id == id } } ?: listingImages.firstOrNull()
-        return image?.url?.ifBlank { null }
+        return image?.variants?.find { it.width == 240 }?.url?.ifBlank { null } ?: image?.url?.ifBlank { null }
     }
 }

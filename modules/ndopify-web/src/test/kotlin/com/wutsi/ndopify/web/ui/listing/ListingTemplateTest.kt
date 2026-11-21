@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.web.ui.listing
 
 import com.wutsi.ndopify.listing.dto.FurnitureType
+import com.wutsi.ndopify.listing.dto.ImageVariant
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingStatus
@@ -198,6 +199,42 @@ class ListingTemplateTest {
         assertEquals("Voir les 8 photos", doc.selectFirst(".gallery__all")?.text())
         assertTrue(doc.selectFirst("#listing-photos")!!.data().replace("\\/", "/").contains("https://cdn/8.jpg"))
         assertEquals("https://cdn/1.jpg", doc.selectFirst("meta[property=og:image]")?.attr("content"))
+    }
+
+    @Test
+    fun `responsive gallery`() {
+        val variants = listOf(
+            ImageVariant(240, 160, "https://ik/1-240.jpg"),
+            ImageVariant(960, 640, "https://ik/1-960.jpg"),
+            ImageVariant(2048, 1365, "https://ik/1-2048.jpg"),
+        )
+        val images = (1..2).map { index ->
+            ListingImage(
+                id = index.toLong(),
+                url = "https://cdn/$index.jpg",
+                title = "Photo $index",
+                variants = variants,
+                socialUrl = "https://ik/1-og.jpg",
+            )
+        }
+        val doc = render(page(images = images))
+
+        val hero = doc.selectFirst(".gallery__item--hero img")!!
+        assertEquals("https://ik/1-960.jpg", hero.attr("src"))
+        assertEquals("https://ik/1-240.jpg 240w, https://ik/1-960.jpg 960w, https://ik/1-2048.jpg 2048w", hero.attr("srcset"))
+        assertEquals("(min-width: 768px) 62vw, 88vw", hero.attr("sizes"))
+        assertEquals("960", hero.attr("width"))
+        assertEquals("640", hero.attr("height"))
+        assertEquals("high", hero.attr("fetchpriority"))
+        assertEquals("", hero.attr("loading"))
+        assertEquals("https://ik/1-2048.jpg", doc.selectFirst(".gallery__item--hero")!!.attr("href"))
+        assertEquals("https://ik/1-og.jpg", doc.selectFirst("meta[property=og:image]")?.attr("content"))
+        assertTrue(doc.selectFirst("#listing-photos")!!.data().replace("\\/", "/").contains("https://ik/1-2048.jpg"))
+
+        val tile = doc.select(".gallery__item")[1].selectFirst("img")!!
+        assertEquals("(min-width: 768px) 31vw, 88vw", tile.attr("sizes"))
+        assertEquals("lazy", tile.attr("loading"))
+        assertEquals("", tile.attr("fetchpriority"))
     }
 
     @Test

@@ -52,13 +52,19 @@ object PublishedListingViews {
         val hero = good.firstOrNull { it.id == listing.heroImageId }
         val ordered = listOfNotNull(hero) + good.filter { it !== hero }
         return ordered.mapIndexed { index, image ->
+            val base = image.variants.find { it.width == 960 } ?: image.variants.maxByOrNull { it.width }
+            val full = image.variants.maxByOrNull { it.width }
             GalleryPhotoView(
-                url = image.url,
+                url = base?.url ?: image.url,
                 alt = image.title?.trim()?.ifEmpty { null }
                     ?: image.description?.trim()?.ifEmpty { null }
                     ?: "Photo ${index + 1}",
                 hero = index == 0,
                 extra = index >= 5,
+                srcSet = image.variants.joinToString(", ") { variant -> "${variant.url} ${variant.width}w" },
+                fullUrl = full?.url ?: image.url,
+                width = base?.width ?: image.width ?: 0,
+                height = base?.height ?: image.height ?: 0,
             )
         }
     }

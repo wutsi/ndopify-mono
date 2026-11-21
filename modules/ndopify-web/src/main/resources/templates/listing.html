@@ -12,7 +12,7 @@
         <meta content="website" property="og:type">
         <meta property="og:title" th:content="${page.title}">
         <meta property="og:description" th:content="${page.metaDescription}">
-        <meta property="og:image" th:content="${#lists.isEmpty(page.photos)} ? ${logoUrl} : ${page.photos[0].src}">
+        <meta property="og:image" th:content="${#lists.isEmpty(page.photos)} ? ${logoUrl} : ${page.photos[0].socialUrl}">
         <meta property="og:url" th:if="${page.canonicalUrl}" th:content="${page.canonicalUrl}">
         <meta content="summary_large_image" name="twitter:card">
         <meta content="#1d7edf" name="theme-color">

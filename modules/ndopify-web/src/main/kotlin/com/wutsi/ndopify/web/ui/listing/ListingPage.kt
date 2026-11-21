@@ -1,5 +1,7 @@
 package com.wutsi.ndopify.web.ui.listing
 
+import com.wutsi.ndopify.listing.dto.ImageVariant
+
 /**
  * The public page of a listing, as [ListingPages] builds it: every text already formatted, so `listing.html` only
  * prints it. Lists are empty, and texts null, when the listing doesn't say: the template leaves them out.
@@ -39,7 +41,17 @@ data class ListingPage(
     val closedNotice: String? = null,
 )
 
-data class Photo(val src: String, val alt: String)
+data class Photo(
+    val src: String,
+    val alt: String,
+    val srcSet: String = "",
+    val width: Int = 0,
+    val height: Int = 0,
+    val fullSrc: String = "",
+    val thumbSrc: String = "",
+    val socialUrl: String = "",
+    val variants: List<ImageVariant> = emptyList(),
+)
 
 /** A key fact ("2 chambres"): [icon] is the sprite's symbol without `i-` ("bed"); [count] is null for "Meublé". */
 data class Fact(val icon: String, val count: String?, val label: String)

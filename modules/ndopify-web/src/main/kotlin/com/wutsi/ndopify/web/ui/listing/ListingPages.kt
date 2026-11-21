@@ -184,7 +184,20 @@ object ListingPages {
     private fun photos(listing: Listing, images: List<ListingImage>, title: String): List<Photo> {
         val hero = images.find { it.id == listing.heroImageId } ?: images.firstOrNull()
         return listOfNotNull(hero).plus(images.filter { it !== hero }).map { image ->
-            Photo(src = image.url, alt = image.title?.ifBlank { null } ?: image.description?.ifBlank { null } ?: title)
+            val base = image.variants.find { it.width == 960 } ?: image.variants.maxByOrNull { it.width }
+            val full = image.variants.maxByOrNull { it.width }
+            val thumb = image.variants.find { it.width == 240 } ?: base
+            Photo(
+                src = base?.url ?: image.url,
+                alt = image.title?.ifBlank { null } ?: image.description?.ifBlank { null } ?: title,
+                srcSet = image.variants.joinToString(", ") { variant -> "${variant.url} ${variant.width}w" },
+                width = base?.width ?: image.width ?: 0,
+                height = base?.height ?: image.height ?: 0,
+                fullSrc = full?.url ?: image.url,
+                thumbSrc = thumb?.url ?: image.url,
+                socialUrl = image.socialUrl.ifBlank { base?.url ?: image.url },
+                variants = image.variants,
+            )
         }
     }
 

@@ -84,7 +84,7 @@
         <div class="visit-summary">
             <a class="visit-listing" th:if="${page.listing}" th:href="${page.matchUrl}">
                 <img alt="" height="80" th:unless="${#lists.isEmpty(page.listing.photos)}"
-                     th:src="${page.listing.photos[0].src}" width="120">
+                     th:src="${page.listing.photos[0].thumbSrc}" width="120">
                 <span class="visit-listing__text">
                     <strong class="visit-listing__title" th:text="${page.listing.title}">Appartement 3 chambres à Bonapriso</strong>
                     <span class="visit-listing__place" th:text="${page.listing.place}">Bonapriso, Douala</span>

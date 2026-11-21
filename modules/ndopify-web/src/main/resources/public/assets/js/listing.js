@@ -299,9 +299,9 @@
 
   // ---------------------------------------------------------------- Photo viewer
 
-  // The photos are the #listing-photos list ({src, alt}, alt as caption): only the gallery's are in the page, the
-  // others load when shown. Any [data-photo] opens the viewer at that index. The track is a scroll-snap strip:
-  // swiping scrolls it, the buttons and arrows too.
+  // The photos are the #listing-photos list ({src, fullSrc, alt}, fullSrc shown, alt as caption): only the gallery's
+  // are in the page, the others load when shown. Any [data-photo] opens the viewer at that index. The track is a
+  // scroll-snap strip: swiping scrolls it, the buttons and arrows too.
   function initLightbox() {
     var box = document.querySelector('[data-lightbox]');
     var data = document.getElementById('listing-photos');
@@ -321,7 +321,7 @@
       var figure = el('figure');
       var img = el('img');
       img.alt = photo.alt;
-      img.dataset.src = photo.src;
+      img.dataset.src = photo.fullSrc || photo.src;
       img.decoding = 'async';
       var caption = el('figcaption');
       caption.textContent = photo.alt;

@@ -104,7 +104,7 @@
                 <p class="visually-hidden" aria-live="polite" data-photo-live></p>
                 <ul class="photos" data-photos>
                     <li th:each="photo : ${p.photos}" th:class="${photo.rejected} ? 'photo photo--rejected' : 'photo'">
-                        <a class="photo__link" th:href="${photo.url}" target="_blank" rel="noopener" data-photo-link>
+                        <a class="photo__link" th:href="${photo.fullUrl}" target="_blank" rel="noopener" data-photo-link>
                             <img th:src="${photo.url}" th:alt="${photo.alt}" width="480" height="480" loading="lazy">
                             <span class="visually-hidden">(nouvel onglet)</span></a>
                         <p class="photo__note" th:text="${photo.note}" data-photo-note>Envoyée</p>
