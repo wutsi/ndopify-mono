@@ -88,13 +88,6 @@ class CoBrokerageInterestBotlet(private val client: TelegramClient) {
             }
         }
 
-        val tail = tail(digest)
-        if (buffer.length + tail.length <= MAX_LENGTH) {
-            buffer.append(tail)
-        } else {
-            flush()
-            buffer.append(tail)
-        }
         flush()
 
         return messages
@@ -125,38 +118,32 @@ class CoBrokerageInterestBotlet(private val client: TelegramClient) {
 
     private fun lead(digest: CoBrokerageInterestDigest): String =
         if (digest.agentCount == 1) {
-            "1 agent s'intéresse à votre bien\n\n"
+            "👥 1 agent s'intéresse à votre bien\n\n"
         } else {
-            "${digest.agentCount} agents s'intéressent à vos biens\n\n"
+            "👥 ${digest.agentCount} agents s'intéressent à vos biens\n\n"
         }
 
     private fun header(listing: ListingInterest): String {
         val title = listing.title ?: "Bien n° ${listing.listingId}"
-        val price = if (listing.place.isBlank()) listing.price else "${listing.price} — ${listing.place}"
-        return "$title\n$price\n\n"
+        val neighbourhood = listing.neighbourhood.ifBlank { null }?.let { " ($it)" } ?: ""
+        return "🏠 $title$neighbourhood — ${listing.price}\n"
     }
 
     private fun row(agent: InterestedAgent): String =
-        "• ${agent.fullName}\n  ${criteria(agent)}\n"
+        "• ${agent.fullName} — ${criteria(agent)}\n"
 
-    // Ex: "Location - Appartement à Bastos (Yaounde) - 2 pièces - 100 000 FCFA / mois - 2 recherches"
+    // Ex: "Location - Appartement · 2 pièces · 100 000 FCFA / mois · 2 recherches"
     private fun criteria(agent: InterestedAgent): String = buildString {
         append(agent.listingType)
         agent.propertyType?.let { propertyType -> append(" - $propertyType") }
-        if (agent.place.isNotBlank()) {
-            append(" à ${agent.place}")
-        }
-        agent.roomsLabel?.let { rooms -> append(" - $rooms") }
-        append(" - ${agent.budget}")
-        agent.searchCount?.let { count -> append(" - $count recherches") }
+        agent.roomsLabel?.let { rooms -> append(" · $rooms") }
+        append(" · ${agent.budget}")
+        agent.searchCount?.let { count -> append(" · $count recherches") }
     }
 
     private fun more(listing: ListingInterest): String? = listing.more?.let { count ->
         if (count == 1) "et 1 autre agent" else "et $count autres agents"
     }
-
-    private fun tail(digest: CoBrokerageInterestDigest): String =
-        "Retrouvez les coordonnées de chaque agent dans le mandat.\n\nCordialement,\nL'équipe ${digest.tenant.name}"
 
     private fun button(listing: ListingInterest): TelegramButton? {
         val url = listing.mandateUrl ?: return null

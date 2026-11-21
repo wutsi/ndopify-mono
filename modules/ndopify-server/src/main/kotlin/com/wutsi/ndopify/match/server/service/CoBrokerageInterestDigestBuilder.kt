@@ -79,6 +79,7 @@ class CoBrokerageInterestDigestBuilder(
                 formatter,
             ),
             place = place(listing.cityId, listing.neighborhoodId),
+            neighbourhood = neighbourhood(listing.neighborhoodId),
             imageUrl = imageService.cover(listing)?.url?.ifBlank { null },
             mandateUrl = tenant.partnerCentralUrl?.let { url -> "$url/mandates/${listing.mandate.id}" },
             agents = interest.take(MAX_AGENTS),
@@ -126,4 +127,8 @@ class CoBrokerageInterestDigestBuilder(
             else -> "$neighbourhood ($city)"
         }
     }
+
+    // The neighbourhood alone: "" when unknown, so that a channel omits its parenthesis
+    private fun neighbourhood(neighborhoodId: Long?): String =
+        neighborhoodId?.let { id -> locationService.findByIdOrNull(id)?.name?.ifBlank { null } } ?: ""
 }

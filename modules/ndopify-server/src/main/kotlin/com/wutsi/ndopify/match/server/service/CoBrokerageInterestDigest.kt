@@ -21,9 +21,10 @@ data class CoBrokerageInterestDigest(
 
 /**
  * One of the listing agent's listings that other agents' searches showed interest in: its own [title] (null when it has
- * none), the [price] and [place] shown to the agent, its cover [imageUrl], the link to its [mandateUrl] (null without a
- * partner portal), and the interested [agents] (best score first, at most [CoBrokerageInterestDigestBuilder.MAX_AGENTS],
- * the others counted in [more], null when none are left out). [listingId] is the listing's id, for a channel's fallback
+ * none), the [price] and [place] shown to the agent, the [neighbourhood] alone (blank when unknown, so that a channel
+ * can render `title (neighbourhood)`), its cover [imageUrl], the link to its [mandateUrl] (null without a partner
+ * portal), and the interested [agents] (best score first, at most [CoBrokerageInterestDigestBuilder.MAX_AGENTS], the
+ * others counted in [more], null when none are left out). [listingId] is the listing's id, for a channel's fallback
  * label.
  */
 data class ListingInterest(
@@ -31,6 +32,7 @@ data class ListingInterest(
     val title: String?,
     val price: String,
     val place: String,
+    val neighbourhood: String,
     val imageUrl: String?,
     val mandateUrl: String?,
     val agents: List<InterestedAgent>,
