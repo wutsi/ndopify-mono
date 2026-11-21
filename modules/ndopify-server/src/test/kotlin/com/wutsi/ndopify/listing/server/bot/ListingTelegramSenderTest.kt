@@ -13,22 +13,29 @@ import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
+import com.wutsi.ndopify.platform.image.Crop
+import com.wutsi.ndopify.platform.image.Format
+import com.wutsi.ndopify.platform.image.ImageService
+import com.wutsi.ndopify.platform.image.Transformation
 import com.wutsi.ndopify.platform.storage.StorageService
 import com.wutsi.ndopify.platform.storage.StorageServiceProvider
 import com.wutsi.ndopify.platform.telegram.TelegramClient
 import com.wutsi.ndopify.platform.telegram.TelegramException
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
+import java.awt.Dimension
 import java.io.OutputStream
 import kotlin.test.BeforeTest
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class ListingTelegramSenderTest {
-    private val imageService = mock<ListingImageService>()
+    private val listingImageService = mock<ListingImageService>()
     private val storageProvider = mock<StorageServiceProvider>()
     private val storage = mock<StorageService>()
     private val client = mock<TelegramClient>()
-    private val sender = ListingTelegramSender(imageService, storageProvider, client)
+    private val imageService = mock<ImageService>()
+    private val sender = ListingTelegramSender(listingImageService, storageProvider, client, imageService)
 
     private val listing = ListingEntity(id = 101L, tenantId = 1L, title = "Nice apartment")
     private val cover = ListingImageEntity(
@@ -44,9 +51,10 @@ class ListingTelegramSenderTest {
     @BeforeTest
     fun setUp() {
         doReturn(storage).whenever(storageProvider).get()
-        doReturn(cover).whenever(imageService).cover(listing)
+        doReturn(cover).whenever(listingImageService).cover(listing)
         doAnswer { invocation -> (invocation.arguments[1] as OutputStream).write(bytes) }
             .whenever(storage).get(eq("listings/101/7.jpg"), any())
+        doReturn(cover.url).whenever(imageService).transform(eq(cover.url), any())
     }
 
     @Test
@@ -66,7 +74,7 @@ class ListingTelegramSenderTest {
 
     @Test
     fun `no cover sends the text`() {
-        doReturn(null).whenever(imageService).cover(listing)
+        doReturn(null).whenever(listingImageService).cover(listing)
 
         sender.send(1000L, listing, "Nice apartment, 2 chambres", buttons)
 
@@ -81,7 +89,7 @@ class ListingTelegramSenderTest {
         sender.send(1000L, listing, text, buttons)
 
         verify(client).sendMessage(1000L, text, buttons)
-        verify(imageService, never()).cover(any())
+        verify(listingImageService, never()).cover(any())
     }
 
     @Test
@@ -114,12 +122,61 @@ class ListingTelegramSenderTest {
 
     @Test
     fun `a refused text still throws`() {
-        doReturn(null).whenever(imageService).cover(listing)
+        doReturn(null).whenever(listingImageService).cover(listing)
         doThrow(TelegramException("Forbidden: bot was blocked by the user"))
             .whenever(client).sendMessage(any(), any(), any())
 
         assertFailsWith<TelegramException> {
             sender.send(1000L, listing, "Nice apartment, 2 chambres")
         }
+    }
+
+    @Test
+    fun `a resized cover is given to Telegram as a URL`() {
+        val resized = "https://ik.imagekit.io/key/tr:w-1280,h-1280,f-jpg,c-at_max,q-80/7.jpg"
+        doReturn(resized).whenever(imageService).transform(eq(cover.url), any())
+
+        sender.send(1000L, listing, "Nice apartment, 2 chambres", buttons)
+
+        verify(imageService).transform(cover.url, ListingTelegramSender.PHOTO_TRANSFORMATION)
+        verify(client).sendPhoto(1000L, resized, "Nice apartment, 2 chambres", buttons)
+        verify(storage, never()).get(any(), any())
+        verify(client, never()).sendMessage(any(), any(), any())
+    }
+
+    @Test
+    fun `a refused resized cover sends the text without reading the storage`() {
+        val resized = "https://ik.imagekit.io/key/tr:w-1280,h-1280,f-jpg,c-at_max,q-80/7.jpg"
+        doReturn(resized).whenever(imageService).transform(eq(cover.url), any())
+        doThrow(TelegramException("wrong file identifier/HTTP URL specified"))
+            .whenever(client).sendPhoto(eq(1000L), eq(resized), any(), any())
+
+        sender.send(1000L, listing, "Nice apartment, 2 chambres")
+
+        verify(client).sendMessage(1000L, "Nice apartment, 2 chambres", emptyList())
+        verify(storage, never()).get(any(), any())
+    }
+
+    @Test
+    fun `a failed resize sends the text without reading the storage`() {
+        doThrow(IllegalStateException("bad origin")).whenever(imageService).transform(eq(cover.url), any())
+
+        sender.send(1000L, listing, "Nice apartment, 2 chambres")
+
+        verify(client).sendMessage(1000L, "Nice apartment, 2 chambres", emptyList())
+        verify(storage, never()).get(any(), any())
+    }
+
+    @Test
+    fun `the photo transformation fits 1280 by 1280 as a JPEG at quality 80`() {
+        assertEquals(
+            Transformation(
+                dimension = Dimension(1280, 1280),
+                format = Format.JPG,
+                crop = Crop.AT_MAX,
+                quality = 80,
+            ),
+            ListingTelegramSender.PHOTO_TRANSFORMATION,
+        )
     }
 }

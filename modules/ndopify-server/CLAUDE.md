@@ -367,9 +367,11 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   tenant's `publicPortalUrl`; no neighbourhood nor title segment without them): `PUBLISHED`, or still `PUBLISHING` to be retried after a failure; after `MAX_RETRIES` failed attempts
   it's `PUBLISHED` without title, summary nor description (the UIs handle it), its last error kept. Either way it
   publishes `ListingPublishedEvent`: `ListingPublishedNotifier` messages a linked agent (its link's chat) through
-  `ListingPublishedBotlet` — the cover photo (`ListingImageService.cover`, none without one) is read from the storage and
-  uploaded as a `sendPhoto` whose caption is the text and whose keyboard is a `Voir l'annonce` link to
-  `{publicPortalUrl}{url}`; a failed download or upload only drops the photo — and e-mails the others
+  `ListingPublishedBotlet` — the cover photo (`ListingImageService.cover`, none without one) is resized to 1280×1280 at
+  quality 80 through the `ImageService` and handed to `sendPhoto` as a URL, or read from the storage and uploaded when
+  the URL can't be resized (local), with the text as caption and a `Voir l'annonce` keyboard link to
+  `{publicPortalUrl}{url}`; a failed resize, download or upload only drops the photo, never sending the original —
+  and e-mails the others
   (`ListingPublishedMailet`, `mail/listing/published_agent.mjml`; no link without either), falling back to the e-mail
   when the text send fails. The customer (the property's owner) is told nothing for now
   (`published_customer.mjml` is kept for when it is). **Close**: a mandate's
@@ -639,6 +641,10 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
   file (path under the prefix, presence, size, sniffed type; deletes a rejected one): image-only (JPEG / PNG / WEBP,
   5 MB). Domains call it from their own *presign* / *attach* endpoints, after their access checks, and keep their
   multipart endpoint as the fallback. S3 only: on `local` the presign answers `{url: null}`.
+- `platform/image` — resizing through ImageKit, wired by `config/platform/ImageConfiguration` from `ndopify.image.*`:
+  `ImageKit` rewrites a storage URL into an `ik.imagekit.io` transformation URL
+  (`tr:w-…,h-…,f-…,ar-…,c-…,cm-…,q-…`), `ImageServiceLocal` returns it unchanged. Only `ListingTelegramSender` uses it
+  today (see *listing*).
 - `platform/mail` — e-mail sending (`MailService`, `MailBodyResolver`, `MailFilter`); MJML templates under
   `src/main/resources/mail/`.
 - `platform/logger` — key-value request logging (`KVLogger`, `KVLoggerFilter`).
@@ -651,8 +657,8 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
 - `platform/telegram` — the Telegram bot, wired by `config/platform/TelegramConfiguration`: `TelegramClient` (a thin
   Bot API client over `platform/util/http/Http`; `sendMessage`, `sendPhoto` and `editMessageText` give each button its
   own keyboard row, while `sendMessageRows` sends the keyboard's rows given explicitly, ex: one row per listing of a
-  digest; `sendPhoto` uploads an image, never a URL Telegram would fetch, with its caption and
-  keyboard), `TelegramUpdateHandler` (routes a `callback_query` to its
+  digest; `sendPhoto` uploads an image, or sends a URL Telegram fetches itself (the resized listing photo), with its
+  caption and keyboard), `TelegramUpdateHandler` (routes a `callback_query` to its
   `TelegramCallbackHandler` — the mandate domain's offer buttons — gives a `message` the reply of the first
   `TelegramCommand` bean that recognizes it — the agent domain's `/start` and `/connect` — else `OK`, and ignores
   every other

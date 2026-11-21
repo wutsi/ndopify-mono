@@ -90,8 +90,8 @@ open class TelegramClient(
 
     /**
      * Sends [photo] as a photo message whose caption is [caption] and whose keyboard is [buttons]. The image is
-     * uploaded by us (a `multipart/form-data` file), never a URL Telegram would fetch; Telegram caps the caption at
-     * 1024 characters.
+     * uploaded by us (a `multipart/form-data` file); the other [sendPhoto] gives Telegram a URL to fetch instead.
+     * Telegram caps the caption at 1024 characters.
      */
     open fun sendPhoto(
         chatId: Long,
@@ -115,6 +115,28 @@ open class TelegramClient(
             TelegramMessageResponse::class.java,
             emptyMap(),
         ).check()
+    }
+
+    /**
+     * Sends the image at [photoUrl] as a photo message whose caption is [caption] and whose keyboard is [buttons].
+     * Telegram fetches the URL itself: unlike the other [sendPhoto], nothing is uploaded. Used for the resized
+     * listing photo (ImageKit serves it); Telegram caps the caption at 1024 characters.
+     */
+    open fun sendPhoto(
+        chatId: Long,
+        photoUrl: String,
+        caption: String,
+        buttons: List<TelegramButton> = emptyList(),
+    ) {
+        val fields = buildMap<String, Any> {
+            put("chat_id", chatId)
+            put("photo", photoUrl)
+            put("caption", caption)
+            if (buttons.isNotEmpty()) {
+                put("reply_markup", mapOf("inline_keyboard" to buttons.toKeyboard()))
+            }
+        }
+        http.post(url("sendPhoto"), fields, TelegramMessageResponse::class.java, emptyMap()).check()
     }
 
     open fun getMe(): TelegramUser {
