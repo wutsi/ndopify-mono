@@ -6,10 +6,12 @@ import com.wutsi.ndopify.listing.dto.ListingSectionSummary
 import com.wutsi.ndopify.listing.dto.ListingSummary
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
+import com.wutsi.ndopify.listing.server.image.ListingImages
+import com.wutsi.ndopify.platform.image.ImageService
 import org.springframework.stereotype.Service
 
 @Service
-class ListingMapper {
+class ListingMapper(private val imageService: ImageService) {
     fun toListing(entity: ListingEntity, sections: List<ListingSectionSummary>): Listing {
         return Listing(
             id = entity.id ?: -1,
@@ -118,6 +120,8 @@ class ListingMapper {
             width = entity.width,
             height = entity.height,
             quality = entity.quality,
+            variants = ListingImages.variants(entity.url, entity.width, imageService),
+            socialUrl = ListingImages.social(entity.url, imageService),
         )
     }
 }
