@@ -9,12 +9,16 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.listing.server.bot.ListingTelegramLabels
 import com.wutsi.ndopify.listing.server.bot.ListingTelegramSender
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.match.dto.MatchRejectionReason
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
+import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
+import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.visit.dto.VisitInterest
 import com.wutsi.ndopify.visit.dto.VisitStatus
@@ -31,8 +35,10 @@ import kotlin.test.assertTrue
 
 class VisitFeedbackBotletTest {
     private val tenantService = mock<TenantService>()
+    private val locationService = mock<LocationService>()
     private val sender = mock<ListingTelegramSender>()
-    private val botlet = VisitFeedbackBotlet(tenantService, sender)
+    private val labels = ListingTelegramLabels(locationService)
+    private val botlet = VisitFeedbackBotlet(tenantService, labels, sender)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -40,10 +46,19 @@ class VisitFeedbackBotletTest {
         partnerCentralUrl = "https://partner.ndopify.com/",
         dateFormat = "dd/MM/yyyy",
         timeFormat = "HH:mm",
+        currencyCode = "XAF",
+        monetaryFormat = "#,###,##0 FCFA",
     )
     private val customer = CustomerEntity(id = 10L, party = PartyEntity(firstName = "Ray", lastName = "Sponsible"))
     private val agent = AgentEntity(id = 20L, party = PartyEntity(firstName = "Kim", lastName = "Possible"))
-    private val listing = ListingEntity(id = 101L, title = "Nice apartment")
+    private val listing = ListingEntity(
+        id = 101L,
+        title = "Nice apartment",
+        neighborhoodId = 1001L,
+        price = 150000,
+        currencyCode = "XAF",
+        pricePeriodicityType = PeriodicityType.MONTHLY,
+    )
     private val visit = VisitEntity(
         id = 1L,
         tenantId = 1L,
@@ -61,6 +76,7 @@ class VisitFeedbackBotletTest {
     @BeforeTest
     fun setUp() {
         doReturn(tenant).whenever(tenantService).findById(1L)
+        doReturn(LocationEntity(id = 1001L, name = "Bastos")).whenever(locationService).findByIdOrNull(1001L)
     }
 
     @Test
@@ -72,14 +88,10 @@ class VisitFeedbackBotletTest {
         verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertEquals(
             """
-            L'avis de Ray Sponsible sur la visite
-
-            Bien: Nice apartment
-            Date: 01/12/2026 à 10:00
-            Client: Ray Sponsible
-            Avis: Pas intéressé
-            Raison: trop cher
-            Commentaire: Trop cher pour moi
+            ⭐ Avis de Ray Sponsible : Nice apartment (Bastos) — 150 000 FCFA / mois
+            Pas intéressé
+            Raison : trop cher
+            Commentaire : « Trop cher pour moi »
             """.trimIndent(),
             text.firstValue,
         )
@@ -98,9 +110,12 @@ class VisitFeedbackBotletTest {
 
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
-        assertTrue(text.firstValue.contains("Avis: Intéressé"))
-        assertFalse(text.firstValue.contains("Raison:"))
-        assertFalse(text.firstValue.contains("Commentaire:"))
+        assertEquals(
+            "Intéressé",
+            text.firstValue.lines()[1],
+        )
+        assertFalse(text.firstValue.contains("Raison"))
+        assertFalse(text.firstValue.contains("Commentaire"))
     }
 
     @Test
@@ -109,7 +124,10 @@ class VisitFeedbackBotletTest {
 
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(listing.copy(title = null)), text.capture(), any())
-        assertTrue(text.firstValue.contains("Bien: Bien n° 101"))
+        assertEquals(
+            "⭐ Avis de Ray Sponsible : Bien n° 101 (Bastos) — 150 000 FCFA / mois",
+            text.firstValue.lines().first(),
+        )
     }
 
     @Test
@@ -118,7 +136,7 @@ class VisitFeedbackBotletTest {
 
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
-        assertFalse(text.firstValue.contains("Raison:"))
+        assertFalse(text.firstValue.contains("Raison"))
     }
 
     @Test
