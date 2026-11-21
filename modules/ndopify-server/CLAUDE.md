@@ -643,8 +643,8 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
   multipart endpoint as the fallback. S3 only: on `local` the presign answers `{url: null}`.
 - `platform/image` — resizing through ImageKit, wired by `config/platform/ImageConfiguration` from `ndopify.image.*`:
   `ImageKit` rewrites a storage URL into an `ik.imagekit.io` transformation URL
-  (`tr:w-…,h-…,f-…,ar-…,c-…,cm-…,q-…`), `ImageServiceLocal` returns it unchanged. Only `ListingTelegramSender` uses it
-  today (see *listing*).
+  (`tr:w-…,h-…,f-…,ar-…,c-…,cm-…,q-…`), `ImageServiceLocal` returns it unchanged. `ListingTelegramSender` uses it for
+  Telegram (see *listing*); the e-mail mailets through `MailImages` (see *platform/mail*).
 - `platform/mail` — e-mail sending (`MailService`, `MailBodyResolver`, `MailFilter`); MJML templates under
   `src/main/resources/mail/`. E-mail listing images always go through `MailImages` (`COVER` 1200×800, `THUMBNAIL`
   160×120, JPEG quality 75), never the cover's original URL; a missing cover still sends no image.
