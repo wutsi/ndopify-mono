@@ -4,6 +4,7 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.listing.dto.ImageStatus
+import com.wutsi.ndopify.listing.dto.ImageVariant
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.npc.client.ndopify.NdListingClient
@@ -129,6 +130,27 @@ class ListingPhotoTemplateTest {
         assertEquals("/listings/501/photos/3/delete", delete.attr("action"))
         assertEquals("post", delete.attr("method"))
         assertEquals("Supprimer la photo 3", delete.selectFirst("button[data-photo-delete]")?.attr("aria-label"))
+    }
+
+    @Test
+    fun `photos - the grid is the 480 variant and the link the 2048 one`() {
+        val image = ListingImage(
+            id = 1,
+            listingId = 501,
+            url = "https://cdn/1.jpg",
+            status = ImageStatus.VERIFIED,
+            variants = listOf(
+                ImageVariant(240, 160, "https://ik/1-240.jpg"),
+                ImageVariant(480, 320, "https://ik/1-480.jpg"),
+                ImageVariant(2048, 1365, "https://ik/1-2048.jpg"),
+            ),
+        )
+        doReturn(listOf(image)).whenever(listingClient).images(501)
+
+        val photos = render().select("[data-photos] > li.photo")
+
+        assertEquals("https://ik/1-480.jpg", photos[0].selectFirst("img")?.attr("src"))
+        assertEquals("https://ik/1-2048.jpg", photos[0].selectFirst("a[data-photo-link]")?.attr("href"))
     }
 
     @Test

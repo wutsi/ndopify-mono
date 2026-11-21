@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.npc.ui.listing
 
 import com.wutsi.ndopify.listing.dto.ImageStatus
+import com.wutsi.ndopify.listing.dto.ImageVariant
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.npc.service.TenantFixtures.TENANT
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
@@ -78,6 +79,28 @@ class PublishedListingViewsTest {
 
         assertEquals(listOf("https://cdn/4.jpg", "https://cdn/1.jpg", "https://cdn/2.jpg"), view.photos.map { it.url })
         assertEquals("Photo 1", view.photos.first().alt)
+    }
+
+    @Test
+    fun `photos - the gallery is the 960 variant, the viewer the 2048 one`() {
+        val image = ListingImage(
+            id = 1,
+            url = "https://cdn/1.jpg",
+            status = ImageStatus.VERIFIED,
+            variants = listOf(
+                ImageVariant(240, 160, "https://ik/1-240.jpg"),
+                ImageVariant(960, 640, "https://ik/1-960.jpg"),
+                ImageVariant(2048, 1365, "https://ik/1-2048.jpg"),
+            ),
+        )
+
+        val photo = PublishedListingViews.of(listing, listOf(image), locations, formatter, owner = true).photos.single()
+
+        assertEquals("https://ik/1-960.jpg", photo.url)
+        assertEquals("https://ik/1-2048.jpg", photo.fullUrl)
+        assertEquals("https://ik/1-240.jpg 240w, https://ik/1-960.jpg 960w, https://ik/1-2048.jpg 2048w", photo.srcSet)
+        assertEquals(960, photo.width)
+        assertEquals(640, photo.height)
     }
 
     @Test

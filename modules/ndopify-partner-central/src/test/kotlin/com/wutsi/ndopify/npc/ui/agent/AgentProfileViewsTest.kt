@@ -1,5 +1,6 @@
 package com.wutsi.ndopify.npc.ui.agent
 
+import com.wutsi.ndopify.listing.dto.ImageVariant
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.npc.service.TenantFixtures
 import com.wutsi.ndopify.npc.ui.agent.AgentProfileFixtures.AGENT
@@ -68,6 +69,22 @@ class AgentProfileViewsTest {
 
         assertEquals("https://cdn.ndopify.com/listing/5003/9003.jpg", view.listings[2].photoUrl)
         assertNull(view.listings[1].photoUrl)
+    }
+
+    @Test
+    fun `listing cards use the 240 variant`() {
+        val image = ListingImage(
+            id = 9001,
+            url = "https://cdn.ndopify.com/listing/5001/9001.jpg",
+            variants = listOf(
+                ImageVariant(240, 160, "https://ik/9001-240.jpg"),
+                ImageVariant(960, 640, "https://ik/9001-960.jpg"),
+            ),
+        )
+
+        val view = AgentProfileViews.of(AGENT, page, mapOf(5001L to listOf(image)), LOCATIONS, formatter, null)
+
+        assertEquals("https://ik/9001-240.jpg", view.listings.first { it.id == 5001L }.photoUrl)
     }
 
     @Test

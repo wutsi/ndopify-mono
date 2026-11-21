@@ -29,6 +29,12 @@ data class GalleryPhotoView(
     val hero: Boolean = false,
     /** Beyond the fifth: hidden in the grid, still a slide of the viewer. */
     val extra: Boolean = false,
+    /** The `srcset` list, ascending width; empty when the image has no rendition. */
+    val srcSet: String = "",
+    /** The 2048 rendition the viewer and the links open; [url] otherwise. */
+    val fullUrl: String = "",
+    val width: Int = 0,
+    val height: Int = 0,
 ) {
     /** The tile's extra class; empty for a plain tile (`__` sequences break Thymeleaf's preprocessing in the template). */
     val cssClass: String

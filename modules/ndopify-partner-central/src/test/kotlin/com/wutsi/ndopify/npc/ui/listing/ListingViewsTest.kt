@@ -5,6 +5,7 @@ import com.wutsi.ndopify.customer.dto.CustomerSummary
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.listing.dto.FurnitureType
 import com.wutsi.ndopify.listing.dto.ImageStatus
+import com.wutsi.ndopify.listing.dto.ImageVariant
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingSection
@@ -541,6 +542,24 @@ class ListingViewsTest {
         assertEquals("Supprimer la photo 3", view.photos[2].deleteLabel)
         assertEquals("2 photos · supprimez la photo refusée et reprenez-la", view.count)
         assertFalse(view.full)
+    }
+
+    @Test
+    fun `photos - the grid is the 480 variant and the link the 2048 one`() {
+        val image = ListingImage(
+            id = 1,
+            url = "https://cdn/1.jpg",
+            variants = listOf(
+                ImageVariant(240, 160, "https://ik/1-240.jpg"),
+                ImageVariant(480, 320, "https://ik/1-480.jpg"),
+                ImageVariant(2048, 1365, "https://ik/1-2048.jpg"),
+            ),
+        )
+
+        val photo = ListingViews.photos(listOf(image), editable = false).photos.single()
+
+        assertEquals("https://ik/1-480.jpg", photo.url)
+        assertEquals("https://ik/1-2048.jpg", photo.fullUrl)
     }
 
     @Test

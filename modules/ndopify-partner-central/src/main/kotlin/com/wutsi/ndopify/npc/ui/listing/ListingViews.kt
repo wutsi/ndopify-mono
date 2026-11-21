@@ -218,9 +218,11 @@ object ListingViews {
         return PhotosView(
             photos = images.mapIndexed { i, image ->
                 val rejected = image.status == ImageStatus.REJECTED
+                val base = image.variants.find { it.width == 480 } ?: image.variants.maxByOrNull { it.width }
+                val full = image.variants.maxByOrNull { it.width }
                 PhotoView(
                     id = image.id,
-                    url = image.url,
+                    url = base?.url ?: image.url,
                     alt = "Photo ${i + 1}",
                     note = when {
                         rejected -> image.errorMessage?.ifBlank { null } ?: "Refusée"
@@ -229,6 +231,7 @@ object ListingViews {
                     },
                     rejected = rejected,
                     deleteLabel = "Supprimer la photo ${i + 1}",
+                    fullUrl = full?.url ?: image.url,
                 )
             },
             count = plural(good, "photo", "photos") + left,

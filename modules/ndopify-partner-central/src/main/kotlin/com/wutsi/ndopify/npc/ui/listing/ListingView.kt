@@ -188,6 +188,8 @@ data class PhotoView(
     val note: String,
     val rejected: Boolean,
     val deleteLabel: String,
+    /** The 2048 rendition the link opens; [url] otherwise. */
+    val fullUrl: String = "",
 )
 
 /**

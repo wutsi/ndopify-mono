@@ -128,12 +128,15 @@
                         <a class="listing-gallery__item"
                            th:classappend="${photo.cssClass}"
                            th:each="photo : ${l.published.photos}"
-                           th:href="${photo.url}" data-photo-link>
-                            <img th:src="${photo.url}" th:alt="${photo.alt}" width="900" height="600" loading="lazy">
+                           th:href="${photo.fullUrl}" data-photo-link>
+                            <img th:src="${photo.url}" th:alt="${photo.alt}"
+                                 th:sizes="${photo.hero} ? '(min-width: 640px) 62vw, 88vw' : '(min-width: 640px) 31vw, 88vw'"
+                                 th:width="${photo.width}" th:height="${photo.height}"
+                                 th:attr="srcset=${photo.srcSet},fetchpriority=${photo.hero} ? 'high' : null,loading=${photo.hero} ? null : 'lazy'">
                         </a>
                     </div>
                     <a class="btn btn--secondary btn--compact listing-gallery__all"
-                       th:href="${l.published.photos[0].url}" data-photo-open
+                       th:href="${l.published.photos[0].fullUrl}" data-photo-open
                        th:text="|Voir les ${#lists.size(l.published.photos)} photos|">Voir les 5 photos</a>
                 </section>
 

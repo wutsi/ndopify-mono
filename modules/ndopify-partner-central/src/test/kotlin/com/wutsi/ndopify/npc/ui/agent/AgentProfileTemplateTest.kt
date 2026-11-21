@@ -5,6 +5,7 @@ import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.doThrow
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
+import com.wutsi.ndopify.listing.dto.ImageVariant
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.SearchListingResponse
 import com.wutsi.ndopify.npc.client.ndopify.NdAgentClient
@@ -118,6 +119,27 @@ class AgentProfileTemplateTest {
         assertEquals("/agent?id=30&page=2", page.selectFirst("[data-listings-next]")?.attr("href"))
         assertNotNull(page.selectFirst("button.agent-pagination__button[disabled]"))
         assertNull(page.selectFirst("script[src=/assets/js/agent.js]"))
+    }
+
+    @Test
+    fun `listing cards use the 240 variant`() {
+        doReturn(
+            listOf(
+                ListingImage(
+                    id = 9001,
+                    listingId = 5001,
+                    url = "https://cdn.ndopify.com/listing/5001/9001.jpg",
+                    variants = listOf(
+                        ImageVariant(240, 160, "https://ik/9001-240.jpg"),
+                        ImageVariant(960, 640, "https://ik/9001-960.jpg"),
+                    ),
+                ),
+            ),
+        ).whenever(listingClient).images(5001)
+
+        val page = render()
+
+        assertEquals("https://ik/9001-240.jpg", page.selectFirst(".agent-listing img")?.attr("src"))
     }
 
     @Test
