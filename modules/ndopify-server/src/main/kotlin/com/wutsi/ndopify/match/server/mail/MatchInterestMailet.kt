@@ -6,8 +6,10 @@ import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.mandate.server.mail.MandateMailLabels
+import com.wutsi.ndopify.platform.image.ImageService
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
+import com.wutsi.ndopify.platform.mail.MailImages
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.Receipient
 import com.wutsi.ndopify.platform.util.PhoneNumberUtils
@@ -19,14 +21,16 @@ import org.springframework.stereotype.Service
 /**
  * Tells the agent that its customer asked for a listing on its public page: who, which listing (title, place, price),
  * how to reach the customer (a WhatsApp button when it has a number) and a link to the search's page on Partner
- * Central, where it organises the visit. The customer keeps its agent: this message never names another one.
+ * Central, where it organises the visit. The customer keeps its agent: this message never names another one. The photo
+ * is resized through [MailImages] for the e-mail (never the original URL).
  */
 @Service
 class MatchInterestMailet(
     private val tenantService: TenantService,
     private val mailService: MailService,
     private val mailBodyResolver: MailBodyResolver,
-    private val imageService: ListingImageService,
+    private val listingImageService: ListingImageService,
+    private val imageService: ImageService,
     private val locationService: LocationService,
 ) {
     companion object {
@@ -37,7 +41,7 @@ class MatchInterestMailet(
     fun send(agent: AgentEntity, customer: CustomerEntity, mandate: MandateEntity, listing: ListingEntity) {
         val tenant = tenantService.findById(mandate.tenantId!!)
         val formatter = TenantFormatter(tenant)
-        val imageUrl = imageService.cover(listing)?.url?.ifBlank { null }
+        val imageUrl = MailImages.imageUrl(listingImageService.cover(listing)?.url, imageService, MailImages.COVER)
         val customerName = customer.party.fullName()
         val agentName = agent.party.fullName()
         val mandateUrl = tenant.partnerCentralUrl?.removeSuffix("/")?.let { "$it/mandates/${mandate.id}" }

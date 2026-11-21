@@ -18,6 +18,7 @@ import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
+import com.wutsi.ndopify.platform.mail.mockMailImageService
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
@@ -32,9 +33,17 @@ class MatchInterestMailetTest {
     private val tenantService = mock<TenantService>()
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
-    private val imageService = mock<ListingImageService>()
+    private val listingImageService = mock<ListingImageService>()
+    private val imageService = mockMailImageService()
     private val locationService = mock<LocationService>()
-    private val mailet = MatchInterestMailet(tenantService, mailService, mailBodyResolver, imageService, locationService)
+    private val mailet = MatchInterestMailet(
+        tenantService,
+        mailService,
+        mailBodyResolver,
+        listingImageService,
+        imageService,
+        locationService,
+    )
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -66,7 +75,7 @@ class MatchInterestMailetTest {
 
     @BeforeTest
     fun setUp() {
-        doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(imageService).cover(any())
+        doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(listingImageService).cover(any())
         doReturn(tenant).whenever(tenantService).findById(1L)
         doReturn(LocationEntity(id = 100L, name = "Douala")).whenever(locationService).findByIdOrNull(100L)
         doReturn(LocationEntity(id = 200L, name = "Bonapriso")).whenever(locationService).findByIdOrNull(200L)
@@ -84,7 +93,7 @@ class MatchInterestMailetTest {
                 "recipient_name" to "Kim Possible",
                 "customer_name" to "Ray Sponsible",
                 "listing_title" to "Nice apartment",
-                "image_url" to "https://cdn.ndopify.com/7.jpg",
+                "image_url" to "https://ik.imagekit.io/key/tr:w-1200,h-800,f-jpg,q-75/7.jpg",
                 "price" to "175 000 FCFA / mois",
                 "place" to "Bonapriso, Douala",
                 "mandate_url" to "https://partner.ndopify.com/mandates/1",

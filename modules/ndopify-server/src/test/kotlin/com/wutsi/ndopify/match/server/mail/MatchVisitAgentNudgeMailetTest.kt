@@ -21,6 +21,7 @@ import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
+import com.wutsi.ndopify.platform.mail.mockMailImageService
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
@@ -33,8 +34,15 @@ class MatchVisitAgentNudgeMailetTest {
     private val tenantService = mock<TenantService>()
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
-    private val imageService = mock<ListingImageService>()
-    private val mailet = MatchVisitAgentNudgeMailet(tenantService, mailService, mailBodyResolver, imageService)
+    private val listingImageService = mock<ListingImageService>()
+    private val imageService = mockMailImageService()
+    private val mailet = MatchVisitAgentNudgeMailet(
+        tenantService,
+        mailService,
+        mailBodyResolver,
+        listingImageService,
+        imageService,
+    )
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -83,7 +91,7 @@ class MatchVisitAgentNudgeMailetTest {
         doReturn(tenant).whenever(tenantService).findById(1L)
         doReturn("<html>nudge</html>").whenever(mailBodyResolver).resolve(any(), any())
         doReturn(ListingImageEntity(id = 7L, listingId = 501L, url = "https://cdn.ndopify.com/7.jpg"))
-            .whenever(imageService).cover(any())
+            .whenever(listingImageService).cover(any())
     }
 
     @Test
@@ -97,7 +105,7 @@ class MatchVisitAgentNudgeMailetTest {
                 "recipient_name" to "Kim Possible",
                 "customer_name" to "Ray Sponsible",
                 "listing_title" to "Nice apartment",
-                "image_url" to "https://cdn.ndopify.com/7.jpg",
+                "image_url" to "https://ik.imagekit.io/key/tr:w-1200,h-800,f-jpg,q-75/7.jpg",
                 "price_label" to "Loyer",
                 "price" to "150 000 FCFA / mois",
                 "whatsapp_url" to "https://wa.me/237600000001",
@@ -136,7 +144,7 @@ class MatchVisitAgentNudgeMailetTest {
 
     @Test
     fun `no photo - no image`() {
-        doReturn(null).whenever(imageService).cover(any())
+        doReturn(null).whenever(listingImageService).cover(any())
 
         mailet.send(match, customer, agent)
 
