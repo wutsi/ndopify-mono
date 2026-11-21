@@ -12,4 +12,10 @@ data class ListingImage(
     val height: Int? = null,
     val quality: Int? = null,
     val errorMessage: String? = null,
+
+    /** The 3:2 renditions, ascending width; the browser picks one with `srcset`. */
+    val variants: List<ImageVariant> = emptyList(),
+
+    /** The 1200×630 rendition for `og:image`. */
+    val socialUrl: String = "",
 )
