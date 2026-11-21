@@ -2,6 +2,7 @@ package com.wutsi.ndopify.web.ui.visit
 
 import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.customer.dto.Customer
+import com.wutsi.ndopify.listing.dto.ImageVariant
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingStatus
@@ -115,6 +116,7 @@ class VisitTemplateTest {
         customer: Customer? = this.customer,
         agent: Agent? = this.agent,
         feedback: String? = null,
+        images: List<ListingImage> = this.images,
     ) = VisitPages.of(
         visit,
         listing,
@@ -144,6 +146,24 @@ class VisitTemplateTest {
         assertEquals("post", doc.selectFirst("#cancel form")?.attr("method"))
         assertEquals("/visits/9/cancel", doc.selectFirst("#cancel form")?.attr("action"))
         assertEquals("500", doc.selectFirst("#cancel textarea")?.attr("maxlength"))
+    }
+
+    @Test
+    fun `the summary photo is the 240 variant`() {
+        val variantImages = listOf(
+            ListingImage(
+                id = 1,
+                url = "https://cdn/1.jpg",
+                title = "Photo 1",
+                variants = listOf(
+                    ImageVariant(240, 160, "https://ik/1-240.jpg"),
+                    ImageVariant(960, 640, "https://ik/1-960.jpg"),
+                ),
+            ),
+        )
+        val doc = render(of(visit(VisitStatus.REQUESTED, VisitType.ON_SITE), images = variantImages))
+
+        assertEquals("https://ik/1-240.jpg", doc.selectFirst(".visit-listing img")?.attr("src"))
     }
 
     @Test
