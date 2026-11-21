@@ -74,8 +74,9 @@ class TelegramPublishListingsJobTest : BaseEndpointIntegrationTest() {
             caption.capture(),
             buttons.capture(),
         )
-        assertTrue(caption.firstValue.startsWith("Votre annonce à Yaoundé est publiée"))
-        assertTrue(caption.firstValue.contains("Annonce: Appartement à louer, 3 chambres, Yaoundé (Bastos)"))
+        assertTrue(caption.firstValue.startsWith("🏠 Votre annonce est publiée :"))
+        assertTrue(caption.firstValue.contains("Appartement à louer, 3 chambres, Yaoundé (Bastos)"))
+        assertFalse(caption.firstValue.contains("Annonce:"))
         assertEquals(
             listOf(
                 TelegramButton(
