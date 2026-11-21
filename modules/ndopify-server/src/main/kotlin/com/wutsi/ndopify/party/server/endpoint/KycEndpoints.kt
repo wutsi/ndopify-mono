@@ -1,5 +1,8 @@
 package com.wutsi.ndopify.party.server.endpoint
 
+import com.wutsi.ndopify.common.dto.AttachUploadRequest
+import com.wutsi.ndopify.common.dto.PresignUploadRequest
+import com.wutsi.ndopify.common.dto.PresignUploadResponse
 import com.wutsi.ndopify.party.dto.CreateKycCaseRequest
 import com.wutsi.ndopify.party.dto.CreateKycCaseResponse
 import com.wutsi.ndopify.party.dto.GetKycCaseResponse
@@ -69,6 +72,27 @@ class KycEndpoints(
         @RequestParam(required = false) multipartFile: MultipartFile,
     ) {
         service.upload(id, identificationType, imageType, multipartFile)
+    }
+
+    /** A short-lived URL to upload a KYC photo straight to the storage; no url with local storage. */
+    @PostMapping("/{id}/images/presign")
+    fun presign(
+        @PathVariable id: String,
+        @RequestParam identificationType: IdentificationType,
+        @RequestParam imageType: KycImageType,
+        @RequestBody request: PresignUploadRequest,
+    ): PresignUploadResponse =
+        service.presign(id, identificationType, imageType, request.contentType)
+
+    /** Attaches a KYC photo uploaded straight to the storage, replacing the case's image for that type. */
+    @PostMapping("/{id}/images/attach")
+    fun attach(
+        @PathVariable id: String,
+        @RequestParam identificationType: IdentificationType,
+        @RequestParam imageType: KycImageType,
+        @RequestBody request: AttachUploadRequest,
+    ) {
+        service.attach(id, identificationType, imageType, request.path)
     }
 
     @GetMapping("/images/{id}/url")

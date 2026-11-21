@@ -7,6 +7,7 @@ import com.wutsi.ndopify.party.dto.KycStatus
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -43,6 +44,17 @@ class KycRulesTest {
         assertEquals("front", KycRules.firstIncompleteStep(setOf(KycImageType.BACK, KycImageType.SELFIE)))
         assertEquals("selfie", KycRules.firstIncompleteStep(setOf(KycImageType.FRONT, KycImageType.BACK)))
         assertEquals("review", KycRules.firstIncompleteStep(setOf(KycImageType.FRONT, KycImageType.BACK, KycImageType.SELFIE)))
+    }
+
+    @Test
+    fun stepAllowed() {
+        assertTrue(KycRules.stepAllowed("front", emptySet()))
+        assertFalse(KycRules.stepAllowed("back", emptySet()))
+        assertTrue(KycRules.stepAllowed("back", setOf(KycImageType.FRONT)))
+        assertFalse(KycRules.stepAllowed("selfie", setOf(KycImageType.FRONT)))
+        assertTrue(KycRules.stepAllowed("selfie", setOf(KycImageType.FRONT, KycImageType.BACK)))
+        assertFalse(KycRules.stepAllowed("review", setOf(KycImageType.FRONT, KycImageType.BACK)))
+        assertTrue(KycRules.stepAllowed("review", setOf(KycImageType.FRONT, KycImageType.BACK, KycImageType.SELFIE)))
     }
 
     @Test

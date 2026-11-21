@@ -51,6 +51,10 @@ object KycRules {
     fun firstIncompleteStep(photos: Set<KycImageType>): String =
         PHOTOS.entries.firstOrNull { (_, type) -> type !in photos }?.key ?: STEP_REVIEW
 
+    /** The wizard only shows a step once every photo before it is in the case: the URL is never trusted. */
+    fun stepAllowed(step: String, photos: Set<KycImageType>): Boolean =
+        STEPS.indexOf(step) <= STEPS.indexOf(firstIncompleteStep(photos))
+
     /** Checks a photo from its real (sniffed) type and size; null when it's acceptable. */
     fun photo(size: Long, mimeType: String?): String? = when {
         mimeType !in ACCEPTED_TYPES -> "Format non accepté. Utilisez une photo JPG, PNG ou WEBP."

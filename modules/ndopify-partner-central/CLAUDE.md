@@ -36,9 +36,11 @@ another agent — photo or initials, name linked to `/agent?id=&back=…`, Whats
 `ui/agent/AgentCardViews.of`, used as a card footer on the visit, proposal and match cards and boxed (`standalone`) on
 the visit and the read-only listing pages; a null `AgentCardView` renders "un autre agent"), and page scripts in `public/assets/js/`, one per
 page (`<page>.js`, picked by the body's `data-page`) plus `partner-central.js` / `util.js`. `direct-upload.js` is the
-shared browser half of a direct upload: `NdDirectUpload.upload(action, file)` runs presign → PUT → attach against
-`<action>/presign` and `<action>/attach` and resolves false on any failure, for the page to fall back to its form
-post (the KYC and profile photo stories reuse it). Every page works without
+shared browser half of a direct upload: `NdDirectUpload.upload(action, file, options)` runs presign → PUT → attach
+against `<action>/presign` and `<action>/attach` and resolves false on any failure, for the page to fall back to its
+form post (the KYC and profile photo stories reuse it). Only a caller whose attach replaces an object (KYC, profile
+photo) passes `{attachTimeout: true}`: the listing photos are added, so an attach that times out but lands must not
+be followed by the multipart fallback, which would add a second photo. Every page works without
 JS: a script only enhances it, and the rules it mirrors are always re-checked server-side by `<Feature>Rules`.
 `src/main/html/` is the prototype (see below).
 
@@ -132,6 +134,13 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   submitting); `POST /kyc/restart` opens a new case after a rejection. A user with no party is signed out (`SignInRequiredException`).
   Photos are sniffed with Tika (`tika-core`) and capped at 5 Mo (`KycUploadErrorHandler` catches the multipart
   limit). `public/assets/js/kyc.js` only enhances (shrinks photos, in-page selfie camera); every step posts without it.
+  **Direct upload** (#205): `kyc.html` loads `direct-upload.js` before `kyc.js`; on *Suivant*, `kyc.js` sends the shrunk
+  photo (or the selfie) through `POST /kyc/{step}/presign` → PUT → `POST /kyc/{step}/attach` (JSON proxies to
+  ndopify-server, 502 when it fails; like the form post, they open a case when the agent has none or a cancelled
+  one, and answer 409 once it is submitted or when the step is ahead of the first missing photo; *Suivant* stays
+  inactive meanwhile and the photo can't be changed; `direct-upload.js` aborts a stalled call, which falls back), clears the input and
+  submits the form, which moves on as for a photo the case already has. Any failure (local storage: no url, a failed
+  PUT or attach) posts the photo with the form: the multipart upload above stays the fallback, and the path without JS.
 - Login redirects to `/`, the *Espace agent* (`HomeController`, `ui/home/`, `templates/index.html`), whatever the
   KYC status: an agent who isn't `VERIFIED` gets a banner linking to `/kyc`, worded after its newest case (documents
   to send, under review, rejected), since the party's status only changes on verification. Its profile section only
@@ -150,9 +159,9 @@ main package, with `mockito-kotlin` (`com.nhaarman.mockitokotlin2`) mocks and `k
   same flash and redirects to `/`; the multipart post stays the no-JS / local storage / failure path.
   `join.js` and `kyc.js` enhance them (`data-page` `profile-edit` / `profile-photo`); on `profile-photo` only,
   `kyc.js` first centre-crops the photo and shrinks it to a 400 px square (`PROFILE_SIDE`, white-filled, never
-  enlarged), then its submit handler sends it through `direct-upload.js` (loaded by `profile/photo.html`) and
-  posts the form when it resolves false; the KYC wizard keeps its form post, and its steps keep their shape
-  capped at 2000 px (`MAX_SIDE`). `SectorValidator`
+  enlarged), then its `initDirectUpload` submit handler sends it through `direct-upload.js` (loaded by
+  `profile/photo.html`) and posts the form when it resolves false; the KYC wizard uploads directly too, through its own
+  `initKycDirectUpload`, and its steps keep their shape capped at 2000 px (`MAX_SIDE`). `SectorValidator`
   (`ui/location/`) is the city/neighbourhood check shared with the join wizard.
   A VERIFIED agent's Espace agent also lists the mandates offered to it (*Mandats proposés*): `HomeController` reads
   its PENDING assignments (`NdAssignmentClient` → `GET /v1/assignments?agent-id=&status=PENDING`, leaving out those

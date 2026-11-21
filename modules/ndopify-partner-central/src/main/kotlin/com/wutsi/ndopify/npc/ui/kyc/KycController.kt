@@ -1,5 +1,8 @@
 package com.wutsi.ndopify.npc.ui.kyc
 
+import com.wutsi.ndopify.common.dto.AttachUploadRequest
+import com.wutsi.ndopify.common.dto.PresignUploadRequest
+import com.wutsi.ndopify.common.dto.PresignUploadResponse
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
 import com.wutsi.ndopify.npc.client.ndopify.NdKycClient
@@ -19,13 +22,18 @@ import com.wutsi.ndopify.party.dto.KycStatus
 import jakarta.servlet.http.HttpSession
 import org.apache.tika.Tika
 import org.slf4j.LoggerFactory
+import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
+import org.springframework.http.ResponseEntity
 import org.springframework.stereotype.Controller
 import org.springframework.ui.Model
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.RestClientException
 import org.springframework.web.multipart.MultipartFile
@@ -34,8 +42,9 @@ import org.springframework.web.multipart.MultipartFile
  * The agent's identity verification, on a single page (`kyc.html`), in three views:
  * - wizard: four steps, [STEPS] (front → back → selfie → review). `GET /kyc?step=…` shows a step. Each upload
  *   step posts its photo to `POST /kyc/{step}`, which adds it straight to the agent's PENDING_VERIFICATION case on
- *   ndopify-server, so the case is the wizard's state and the session holds no photos. `POST /kyc/review`
- *   submits the case.
+ *   ndopify-server, so the case is the wizard's state and the session holds no photos. With JS, `kyc.js` first sends
+ *   the photo straight to the storage (`POST /kyc/{step}/presign`, PUT, `POST /kyc/{step}/attach`), then posts the
+ *   step without it. `POST /kyc/review` submits the case.
  * - confirmation: `?step=confirmation`, right after submitting (while [SubmittedKyc] is in the session).
  * - status: once the case is no longer PENDING_VERIFICATION (pending / verified / rejected), whatever the URL says. A rejected
  *   case can be restarted (`POST /kyc/restart`), which opens a new case.
@@ -100,7 +109,7 @@ class KycController(
         val case = openCase(party.id) ?: return "redirect:/kyc"
         val photos = KycRules.photos(case)
         val firstIncomplete = KycRules.firstIncompleteStep(photos.keys)
-        if (STEPS.indexOf(step) > STEPS.indexOf(firstIncomplete)) return redirect(firstIncomplete)
+        if (!KycRules.stepAllowed(step, photos.keys)) return redirect(firstIncomplete)
 
         val imageType = PHOTOS.getValue(step)
         if (photo == null || photo.isEmpty) {
@@ -126,6 +135,66 @@ class KycController(
         val done = photos.keys + imageType
         val next = if (returnTo == RETURN_TO_REVIEW) STEP_REVIEW else STEPS[STEPS.indexOf(step) + 1]
         return redirect(minOf(next, KycRules.firstIncompleteStep(done), compareBy { STEPS.indexOf(it) }))
+    }
+
+    /**
+     * A short-lived URL to upload the step's photo straight to the storage, for `kyc.js`. Like the form post, a case is
+     * opened when the agent has none (or a cancelled one); 409 once it is submitted or when the step is ahead of the
+     * first missing photo, as the form post would redirect; else the storage's answer (no url with local storage), or
+     * ndopify-server's status when it refuses (a 401 signs the agent out), 502 when it fails.
+     */
+    @PostMapping("/{step:front|back|selfie}/presign", produces = [MediaType.APPLICATION_JSON_VALUE])
+    @ResponseBody
+    fun presign(
+        @PathVariable step: String,
+        @RequestBody request: PresignUploadRequest,
+    ): ResponseEntity<PresignUploadResponse> =
+        proxy("Presign", step) { case ->
+            ResponseEntity.ok(
+                kycClient.presign(case.id, NdKycClient.IDENTIFICATION_TYPE, PHOTOS.getValue(step), request.contentType.orEmpty()),
+            )
+        }
+
+    /**
+     * Attaches the step's photo uploaded straight to the storage, replacing the case's one, for `kyc.js`. Same case and 409s
+     * as [presign], else 200, or ndopify-server's status when it refuses the file: `kyc.js` then posts it to [upload].
+     */
+    @PostMapping("/{step:front|back|selfie}/attach", produces = [MediaType.APPLICATION_JSON_VALUE])
+    @ResponseBody
+    fun attach(
+        @PathVariable step: String,
+        @RequestBody request: AttachUploadRequest,
+    ): ResponseEntity<Void> =
+        proxy("Attach", step) { case ->
+            kycClient.attach(case.id, NdKycClient.IDENTIFICATION_TYPE, PHOTOS.getValue(step), request.path)
+            ResponseEntity.ok().build()
+        }
+
+    /**
+     * The presign/attach proxies' frame: the signed-in party's open case (opened as the form post does), 409 when it is
+     * submitted or the step is ahead; ndopify-server's status when it refuses, a 401 rethrown (HttpClientErrorHandler
+     * signs the agent out), 502 when it fails or can't be reached — the party and the case lookups included, so
+     * `fetch` always gets a status, never an HTML error page.
+     */
+    private fun <T : Any> proxy(operation: String, step: String, call: (KycCase) -> ResponseEntity<T>): ResponseEntity<T> {
+        var partyId: Long? = null
+        return try {
+            val party = currentParty.get() ?: throw SignInRequiredException()
+            partyId = party.id
+            val case = openCase(party.id) ?: return ResponseEntity.status(HttpStatus.CONFLICT).build()
+            if (!KycRules.stepAllowed(step, KycRules.photos(case).keys)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).build()
+            }
+            call(case)
+        } catch (ex: HttpClientErrorException.Unauthorized) {
+            throw ex
+        } catch (ex: HttpClientErrorException) {
+            LOGGER.warn("$operation of a KYC photo of Party#${partyId ?: "-"} refused: ${ex.statusCode}")
+            ResponseEntity.status(ex.statusCode).build()
+        } catch (ex: RestClientException) {
+            LOGGER.error("$operation of a KYC photo of Party#${partyId ?: "-"} failed", ex)
+            ResponseEntity.status(HttpStatus.BAD_GATEWAY).build()
+        }
     }
 
     @PostMapping("/$STEP_REVIEW")

@@ -9,6 +9,7 @@ import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.dto.Agent
+import com.wutsi.ndopify.common.dto.PresignUploadResponse
 import com.wutsi.ndopify.error.dto.Error
 import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.error.dto.ErrorResponse
@@ -24,7 +25,9 @@ import com.wutsi.ndopify.party.dto.Party
 import com.wutsi.ndopify.refdata.dto.KycErrorCode
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.mock.web.MockHttpSession
 import org.springframework.mock.web.MockMultipartFile
 import org.springframework.test.web.servlet.MockMvc
@@ -32,6 +35,8 @@ import org.springframework.test.web.servlet.MvcResult
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.test.web.servlet.setup.MockMvcBuilders
 import org.springframework.web.client.HttpClientErrorException
 import org.springframework.web.client.HttpServerErrorException
@@ -509,5 +514,219 @@ class KycControllerTest {
 
         assertEquals("back", model(result)["step"])
         assertEquals("Cette photo dépasse la taille maximale de 5 Mo.", model(result)["error"])
+    }
+
+    private fun presign(step: String, contentType: String = "image/jpeg") =
+        mvc.perform(
+            post("/kyc/$step/presign")
+                .session(session)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"contentType":"$contentType"}"""),
+        )
+
+    private fun attach(step: String, path: String = "kyc/case-1/images/a.jpg") =
+        mvc.perform(
+            post("/kyc/$step/attach")
+                .session(session)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""{"path":"$path"}"""),
+        )
+
+    @Test
+    fun `presign - the upload url`() {
+        given(case())
+        doReturn(PresignUploadResponse("https://s3.example.com/put", "kyc/case-1/images/a.jpg"))
+            .whenever(kycClient).presign("case-1", NdKycClient.IDENTIFICATION_TYPE, KycImageType.FRONT, "image/jpeg")
+
+        presign("front")
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.url").value("https://s3.example.com/put"))
+            .andExpect(jsonPath("$.path").value("kyc/case-1/images/a.jpg"))
+    }
+
+    @Test
+    fun `presign - the step's image type`() {
+        given(case(images = listOf(front, back)))
+        doReturn(PresignUploadResponse()).whenever(kycClient).presign(any(), any(), any(), any())
+
+        presign("selfie", "image/png").andExpect(status().isOk)
+
+        verify(kycClient).presign("case-1", NdKycClient.IDENTIFICATION_TYPE, KycImageType.SELFIE, "image/png")
+    }
+
+    @Test
+    fun `presign - local storage, no url`() {
+        given(case())
+        doReturn(PresignUploadResponse()).whenever(kycClient).presign(any(), any(), any(), any())
+
+        presign("front")
+            .andExpect(status().isOk)
+            .andExpect(jsonPath("$.url").doesNotExist())
+    }
+
+    @Test
+    fun `presign - no case yet - one is opened`() {
+        given(null)
+        doReturn("case-new").whenever(kycClient).create(PARTY_ID)
+        doReturn(KycCase(id = "case-new", status = KycStatus.PENDING_VERIFICATION)).whenever(kycClient).get("case-new")
+        doReturn(PresignUploadResponse()).whenever(kycClient).presign(any(), any(), any(), any())
+
+        presign("front").andExpect(status().isOk)
+
+        verify(kycClient).presign(eq("case-new"), any(), eq(KycImageType.FRONT), any())
+    }
+
+    @Test
+    fun `presign - step ahead of the wizard`() {
+        given(case()) // no photo yet: only the front is open
+
+        presign("back").andExpect(status().isConflict)
+
+        verify(kycClient, never()).presign(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `presign - no open case`() {
+        given(case(status = KycStatus.SUBMITTED))
+
+        presign("front").andExpect(status().isConflict)
+
+        verify(kycClient, never()).presign(any(), any(), any(), any())
+        verify(kycClient, never()).create(any())
+    }
+
+    @Test
+    fun `presign - refused by the server`() {
+        given(case())
+        doThrow(serverError(ErrorCode.HTTP_INVALID_PARAMETER)).whenever(kycClient).presign(any(), any(), any(), any())
+
+        presign("front", "application/pdf").andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `presign - server unreachable`() {
+        given(case())
+        doThrow(ResourceAccessException("down")).whenever(kycClient).presign(any(), any(), any(), any())
+
+        presign("front").andExpect(status().isBadGateway)
+    }
+
+    @Test
+    fun `presign - case lookup fails - 502`() {
+        doThrow(HttpServerErrorException(HttpStatus.SERVICE_UNAVAILABLE)).whenever(kycClient).current(any())
+
+        presign("front").andExpect(status().isBadGateway)
+
+        verify(kycClient, never()).presign(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `presign - party lookup fails - 502`() {
+        doThrow(ResourceAccessException("down")).whenever(currentParty).get()
+
+        presign("front").andExpect(status().isBadGateway)
+
+        verify(kycClient, never()).presign(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `presign - token refused by the server - signed out`() {
+        given(case())
+        doThrow(HttpClientErrorException.create(HttpStatus.UNAUTHORIZED, "", HttpHeaders.EMPTY, null, null)).whenever(kycClient).presign(any(), any(), any(), any())
+
+        val result = presign("front").andReturn()
+
+        assertEquals("redirect:/login", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun `presign without party - signed out`() {
+        doReturn(null).whenever(currentParty).get()
+
+        val result = presign("front").andReturn()
+
+        assertEquals("redirect:/login", result.modelAndView?.viewName)
+        verify(kycClient, never()).presign(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `attach - 200`() {
+        given(case())
+
+        attach("front").andExpect(status().isOk)
+
+        verify(kycClient).attach("case-1", NdKycClient.IDENTIFICATION_TYPE, KycImageType.FRONT, "kyc/case-1/images/a.jpg")
+    }
+
+    @Test
+    fun `attach - replaces a photo from the review`() {
+        given(case(images = listOf(front, back, selfie)))
+
+        attach("back").andExpect(status().isOk)
+
+        verify(kycClient).attach("case-1", NdKycClient.IDENTIFICATION_TYPE, KycImageType.BACK, "kyc/case-1/images/a.jpg")
+    }
+
+    @Test
+    fun `attach - step ahead of the wizard`() {
+        given(case(images = listOf(front)))
+
+        attach("selfie").andExpect(status().isConflict)
+
+        verify(kycClient, never()).attach(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `attach - no open case`() {
+        given(case(status = KycStatus.VERIFIED))
+
+        attach("front").andExpect(status().isConflict)
+
+        verify(kycClient, never()).attach(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `attach - refused by the server`() {
+        given(case())
+        doThrow(serverError(ErrorCode.HTTP_INVALID_PARAMETER)).whenever(kycClient).attach(any(), any(), any(), any())
+
+        attach("front").andExpect(status().isBadRequest)
+    }
+
+    @Test
+    fun `attach - server failure`() {
+        given(case())
+        doThrow(HttpServerErrorException(HttpStatus.BAD_GATEWAY)).whenever(kycClient).attach(any(), any(), any(), any())
+
+        attach("front").andExpect(status().isBadGateway)
+    }
+
+    @Test
+    fun `attach - token refused by the server - signed out`() {
+        given(case())
+        doThrow(HttpClientErrorException.create(HttpStatus.UNAUTHORIZED, "", HttpHeaders.EMPTY, null, null)).whenever(kycClient).attach(any(), any(), any(), any())
+
+        val result = attach("front").andReturn()
+
+        assertEquals("redirect:/login", result.modelAndView?.viewName)
+    }
+
+    @Test
+    fun `attach without party - signed out`() {
+        doReturn(null).whenever(currentParty).get()
+
+        val result = attach("front").andReturn()
+
+        assertEquals("redirect:/login", result.modelAndView?.viewName)
+        verify(kycClient, never()).attach(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `attach - party lookup fails - 502`() {
+        doThrow(ResourceAccessException("down")).whenever(currentParty).get()
+
+        attach("front").andExpect(status().isBadGateway)
+
+        verify(kycClient, never()).attach(any(), any(), any(), any())
     }
 }
