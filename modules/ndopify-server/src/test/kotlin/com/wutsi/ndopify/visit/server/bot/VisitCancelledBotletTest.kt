@@ -9,10 +9,12 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.listing.server.bot.ListingTelegramLabels
 import com.wutsi.ndopify.listing.server.bot.ListingTelegramSender
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
+import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.LocationService
@@ -34,7 +36,8 @@ class VisitCancelledBotletTest {
     private val tenantService = mock<TenantService>()
     private val locationService = mock<LocationService>()
     private val sender = mock<ListingTelegramSender>()
-    private val botlet = VisitCancelledBotlet(tenantService, locationService, sender)
+    private val labels = ListingTelegramLabels(locationService)
+    private val botlet = VisitCancelledBotlet(tenantService, labels, sender)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -42,6 +45,8 @@ class VisitCancelledBotletTest {
         partnerCentralUrl = "https://partner.ndopify.com/",
         dateFormat = "dd/MM/yyyy",
         timeFormat = "HH:mm",
+        currencyCode = "XAF",
+        monetaryFormat = "#,###,##0 FCFA",
     )
     private val customer = CustomerEntity(
         id = 10L,
@@ -51,7 +56,15 @@ class VisitCancelledBotletTest {
         id = 20L,
         party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible"),
     )
-    private val listing = ListingEntity(id = 101L, title = "Nice apartment", cityId = 2370201, neighborhoodId = 1001)
+    private val listing = ListingEntity(
+        id = 101L,
+        title = "Nice apartment",
+        cityId = 2370201,
+        neighborhoodId = 1001,
+        price = 150000,
+        currencyCode = "XAF",
+        pricePeriodicityType = PeriodicityType.MONTHLY,
+    )
     private val visit = VisitEntity(
         id = 1L,
         tenantId = 1L,
@@ -82,14 +95,8 @@ class VisitCancelledBotletTest {
         verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertEquals(
             """
-            Le client a annulé la visite
-
-            Bien: Nice apartment
-            Ville: Yaounde
-            Quartier: Bastos
-            Date: 02/12/2026 à 10:00
-            Client: Ray Sponsible
-            Motif: Empêchement
+            ❌ Ray Sponsible a annulé la visite : Nice apartment (Bastos) — 150 000 FCFA / mois
+            02/12/2026 à 10:00 · Motif : Empêchement
             """.trimIndent(),
             text.firstValue,
         )
@@ -100,39 +107,54 @@ class VisitCancelledBotletTest {
     }
 
     @Test
-    fun `no reason and no neighbourhood leave no line`() {
+    fun `no reason - the slot alone`() {
         botlet.send(
             visit.copy(cancellationReason = " "),
             customer,
             agent,
-            listing.copy(neighborhoodId = null),
+            listing,
             1000L,
         )
 
-        val text = argumentCaptor<String>()
-        verify(sender).send(eq(1000L), eq(listing.copy(neighborhoodId = null)), text.capture(), any())
-        assertFalse(text.firstValue.contains("Motif:"))
-        assertFalse(text.firstValue.contains("Quartier:"))
+        assertEquals(
+            """
+            ❌ Ray Sponsible a annulé la visite : Nice apartment (Bastos) — 150 000 FCFA / mois
+            02/12/2026 à 10:00
+            """.trimIndent(),
+            text(listing),
+        )
+    }
+
+    @Test
+    fun `no neighbourhood - no empty parenthesis`() {
+        botlet.send(visit, customer, agent, listing.copy(neighborhoodId = null), 1000L)
+
+        assertFalse(text(listing.copy(neighborhoodId = null)).contains("("))
     }
 
     @Test
     fun `a listing without a title is named by its id`() {
-        botlet.send(visit, customer, agent, listing.copy(title = null), 1000L)
+        val withoutTitle = listing.copy(title = null)
 
-        val text = argumentCaptor<String>()
-        verify(sender).send(eq(1000L), eq(listing.copy(title = null)), text.capture(), any())
-        assertTrue(text.firstValue.contains("Bien: Bien n° 101"))
+        botlet.send(visit, customer, agent, withoutTitle, 1000L)
+
+        assertEquals(
+            "❌ Ray Sponsible a annulé la visite : Bien n° 101 (Bastos) — 150 000 FCFA / mois",
+            text(withoutTitle).lines().first(),
+        )
     }
 
     @Test
-    fun `an unknown city leaves no Ville line`() {
-        doReturn(null).whenever(locationService).findByIdOrNull(2370201)
+    fun `a never-scheduled visit keeps only its reason`() {
+        botlet.send(visit.copy(scheduledAt = null), customer, agent, listing, 1000L)
 
-        botlet.send(visit, customer, agent, listing, 1000L)
-
-        val text = argumentCaptor<String>()
-        verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
-        assertFalse(text.firstValue.contains("Ville:"))
+        assertEquals(
+            """
+            ❌ Ray Sponsible a annulé la visite : Nice apartment (Bastos) — 150 000 FCFA / mois
+            Motif : Empêchement
+            """.trimIndent(),
+            text(listing),
+        )
     }
 
     @Test
@@ -142,6 +164,12 @@ class VisitCancelledBotletTest {
         botlet.send(visit, customer, agent, listing, 1000L)
 
         verify(sender).send(eq(1000L), eq(listing), any(), eq(emptyList<TelegramButton>()))
+    }
+
+    private fun text(listing: ListingEntity): String {
+        val text = argumentCaptor<String>()
+        verify(sender).send(eq(1000L), eq(listing), text.capture(), any())
+        return text.firstValue
     }
 
     private fun date(year: Int, month: Int, day: Int, hour: Int, minute: Int): Date =
