@@ -13,8 +13,10 @@ import com.wutsi.ndopify.error.dto.ErrorCode
 import com.wutsi.ndopify.listing.dto.ListingStatus
 import com.wutsi.ndopify.listing.server.dao.ListingRepository
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
+import com.wutsi.ndopify.listing.server.event.ListingSentBackEvent
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.transaction.PlatformTransactionManager
 import org.springframework.transaction.TransactionStatus
 import org.springframework.transaction.support.TransactionTemplate
@@ -39,9 +41,10 @@ class ListingVerifierServiceTest {
     )
     private val image = mock<ListingVerifierImage>()
     private val geo = mock<ListingVerifierGeoLocalization>()
-    private val service = ListingVerifierService(dao, tx, clock, image, geo)
+    private val eventPublisher = mock<ApplicationEventPublisher>()
+    private val service = ListingVerifierService(dao, tx, clock, image, geo, eventPublisher)
 
-    private val listing = ListingEntity(id = 1L, status = ListingStatus.UNDER_VERIFICATION)
+    private val listing = ListingEntity(id = 1L, tenantId = 7L, status = ListingStatus.UNDER_VERIFICATION)
 
     @BeforeEach
     fun setUp() {
@@ -156,5 +159,39 @@ class ListingVerifierServiceTest {
 
         verify(dao, never()).save(any<ListingEntity>())
         verify(image, never()).verify(any())
+    }
+
+    @Test
+    fun `a rejection publishes a sent-back event`() {
+        doReturn(ListingVerification(errorCode = ErrorCode.LISTING_NOT_ENOUGH_IMAGES)).whenever(image).verify(any())
+
+        service.verify(listing)
+
+        verify(eventPublisher).publishEvent(ListingSentBackEvent(listingId = 1L, tenantId = 7L))
+    }
+
+    @Test
+    fun `a verified listing publishes no sent-back event`() {
+        service.verify(listing)
+
+        verify(eventPublisher, never()).publishEvent(any<Any>())
+    }
+
+    @Test
+    fun `a retry left under verification publishes no sent-back event`() {
+        doThrow(RuntimeException("boom")).whenever(image).verify(any())
+
+        service.verify(listing)
+
+        verify(eventPublisher, never()).publishEvent(any<Any>())
+    }
+
+    @Test
+    fun `the last retry publishes a sent-back event`() {
+        doThrow(RuntimeException("boom")).whenever(geo).verify(any())
+
+        service.verify(listing.copy(retries = ListingVerifierService.MAX_RETRIES))
+
+        verify(eventPublisher).publishEvent(ListingSentBackEvent(listingId = 1L, tenantId = 7L))
     }
 }
