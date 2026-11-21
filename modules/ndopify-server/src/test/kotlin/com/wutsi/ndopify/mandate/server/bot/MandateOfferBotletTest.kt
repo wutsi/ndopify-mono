@@ -63,12 +63,13 @@ class MandateOfferBotletTest {
         val text = argumentCaptor<String>()
         val buttons = argumentCaptor<List<TelegramButton>>()
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
-        assertTrue(text.firstValue.startsWith("Un nouveau mandat vous est proposé à Yaounde"))
-        assertTrue(text.firstValue.contains("Un client recherche un bien, et nous vous proposons son mandat en exclusivité."))
-        assertTrue(text.firstValue.contains("Recherche: Location - Appartement"))
-        assertTrue(text.firstValue.contains("Quartier(s): Bastos"))
-        assertTrue(text.firstValue.contains("Budget: 150"))
-        assertTrue(text.firstValue.contains("Vous avez jusqu'au"))
+        assertEquals(
+            """
+            📋 Nouveau mandat : Location - Appartement (Bastos) — 150 000 XAF / mois
+            Expire le 15/01/2027 à 09:00.
+            """.trimIndent(),
+            text.firstValue,
+        )
         assertEquals(listOf("Accepter", "Refuser"), buttons.firstValue.map { it.text })
         assertEquals(listOf("accept:99", "decline:99"), buttons.firstValue.map { it.callbackData })
     }
@@ -78,8 +79,9 @@ class MandateOfferBotletTest {
         val assignment = AssignmentEntity(
             id = 99L,
             mandate = MandateEntity(
-                id = 2L, tenantId = 1L, cityId = 2370201L, listingType = ListingType.SALE,
-                propertyType = PropertyType.VILLA, price = 25_000_000, currencyCode = "XAF",
+                id = 2L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
+                listingType = ListingType.SALE, propertyType = PropertyType.VILLA, rooms = "4",
+                price = 25_000_000, currencyCode = "XAF",
                 area = 250, availableFrom = LocalDate.of(2026, 12, 1), mandateType = MandateType.LISTING,
             ),
             agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
@@ -89,14 +91,18 @@ class MandateOfferBotletTest {
 
         val text = argumentCaptor<String>()
         verify(client).sendMessage(eq(1000L), text.capture(), any())
-        assertTrue(text.firstValue.contains("Bien: Vente - Villa"))
-        assertTrue(text.firstValue.contains("Prix: 25"))
-        assertTrue(text.firstValue.contains("Surface: 250 m²"))
-        assertTrue(text.firstValue.contains("Disponible à partir du: 01/12/2026"))
+        assertEquals(
+            """
+            📋 Nouveau mandat : Vente - Villa (Bastos) — 25 000 000 XAF
+            4 pièces · 250 m² · disponible le 01/12/2026
+            Expire le 15/01/2027 à 09:00.
+            """.trimIndent(),
+            text.firstValue,
+        )
     }
 
     @Test
-    fun `a mandate without a resolvable city has no dangling place`() {
+    fun `a mandate without neighbourhoods or a city has no dangling place`() {
         val assignment = AssignmentEntity(
             id = 98L,
             mandate = MandateEntity(
@@ -111,7 +117,8 @@ class MandateOfferBotletTest {
 
         val text = argumentCaptor<String>()
         verify(client).sendMessage(eq(1000L), text.capture(), any())
-        assertTrue(text.firstValue.startsWith("Un nouveau mandat vous est proposé\n"))
-        assertFalse(text.firstValue.contains(" à \n"))
+        assertTrue(text.firstValue.startsWith("📋 Nouveau mandat : Location"))
+        assertFalse(text.firstValue.lines().first().contains(" à "), "no dangling city on the property line")
+        assertFalse(text.firstValue.contains("()"))
     }
 }
