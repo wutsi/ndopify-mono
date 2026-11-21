@@ -17,6 +17,7 @@ import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
+import com.wutsi.ndopify.platform.mail.mockMailImageService
 import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.LocationService
@@ -31,12 +32,14 @@ class ListingPublishedMailetTest {
     private val locationService = mock<LocationService>()
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
-    private val imageService = mock<ListingImageService>()
+    private val listingImageService = mock<ListingImageService>()
+    private val imageService = mockMailImageService()
     private val mailet = ListingPublishedMailet(
         tenantService,
         locationService,
         mailService,
         mailBodyResolver,
+        listingImageService,
         imageService,
     )
 
@@ -68,7 +71,7 @@ class ListingPublishedMailetTest {
         doReturn(tenant).whenever(tenantService).findById(1L)
         doReturn(LocationEntity(id = 2370201L, name = "Yaounde")).whenever(locationService).findByIdOrNull(2370201L)
         doReturn(LocationEntity(id = 111L, name = "Bastos")).whenever(locationService).findByIdOrNull(111L)
-        doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(imageService).cover(any())
+        doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(listingImageService).cover(any())
         doReturn("<html>published</html>").whenever(mailBodyResolver).resolve(any(), any())
     }
 
@@ -104,7 +107,7 @@ class ListingPublishedMailetTest {
                 "city" to "Yaounde",
                 "neighbourhood" to "Bastos",
                 "listing_url" to "https://www.ndopify.com/yaounde/bastos/listing/1/appartement-a-louer-3-chambres-yaounde-bastos",
-                "image_url" to "https://cdn.ndopify.com/7.jpg",
+                "image_url" to "https://ik.imagekit.io/key/tr:w-1200,h-800,f-jpg,q-75/7.jpg",
                 "recipient_name" to "Kim Possible",
             ),
             context(ListingPublishedMailet.TEMPLATE_AGENT),
@@ -133,14 +136,14 @@ class ListingPublishedMailetTest {
 
     @Test
     fun `no cover photo - no image`() {
-        doReturn(null).whenever(imageService).cover(any())
+        doReturn(null).whenever(listingImageService).cover(any())
 
         assertNull(context(ListingPublishedMailet.TEMPLATE_AGENT)["image_url"])
     }
 
     @Test
     fun `blank cover photo url - no image`() {
-        doReturn(ListingImageEntity(id = 7L, url = " ")).whenever(imageService).cover(any())
+        doReturn(ListingImageEntity(id = 7L, url = " ")).whenever(listingImageService).cover(any())
 
         assertNull(context(ListingPublishedMailet.TEMPLATE_AGENT)["image_url"])
     }
