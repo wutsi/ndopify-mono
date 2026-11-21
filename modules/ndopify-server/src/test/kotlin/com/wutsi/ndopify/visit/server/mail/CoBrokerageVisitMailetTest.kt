@@ -16,6 +16,7 @@ import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
+import com.wutsi.ndopify.platform.mail.mockMailImageService
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.visit.dto.VisitNoShowReason
@@ -36,8 +37,9 @@ class CoBrokerageVisitMailetTest {
     private val tenantService = mock<TenantService>()
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
-    private val imageService = mock<ListingImageService>()
-    private val mailet = CoBrokerageVisitMailet(tenantService, mailService, mailBodyResolver, imageService)
+    private val listingImageService = mock<ListingImageService>()
+    private val imageService = mockMailImageService()
+    private val mailet = CoBrokerageVisitMailet(tenantService, mailService, mailBodyResolver, listingImageService, imageService)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -80,7 +82,7 @@ class CoBrokerageVisitMailetTest {
 
     @BeforeTest
     fun setUp() {
-        doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(imageService).cover(any())
+        doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(listingImageService).cover(any())
         doReturn(tenant).whenever(tenantService).findById(1L)
         doReturn("<html>co-brokerage</html>").whenever(mailBodyResolver).resolve(any(), any())
     }
@@ -104,7 +106,7 @@ class CoBrokerageVisitMailetTest {
         assertEquals("https://partner.ndopify.com/agent?id=20", context["agent_profile_url"])
         assertEquals("https://wa.me/237699000001", context["agent_whatsapp_url"])
         assertEquals("https://partner.ndopify.com/listings/101#visits-title", context["listing_url"])
-        assertEquals("https://cdn.ndopify.com/7.jpg", context["image_url"])
+        assertEquals("https://ik.imagekit.io/key/tr:w-1200,h-800,f-jpg,q-75/7.jpg", context["image_url"])
         assertFalse(context.toString().contains("Secret Client"))
         assertFalse(context.toString().contains("secret@example.com"))
         assertFalse(context.toString().contains("1234"))

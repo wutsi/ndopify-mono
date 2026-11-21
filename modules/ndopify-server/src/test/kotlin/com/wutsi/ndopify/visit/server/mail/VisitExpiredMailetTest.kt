@@ -18,6 +18,7 @@ import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
+import com.wutsi.ndopify.platform.mail.mockMailImageService
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.visit.dto.VisitStatus
@@ -35,9 +36,10 @@ class VisitExpiredMailetTest {
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
     private val linkTokenService = mock<MatchLinkTokenService>()
-    private val imageService = mock<ListingImageService>()
+    private val listingImageService = mock<ListingImageService>()
+    private val imageService = mockMailImageService()
     private val mailet =
-        VisitExpiredMailet(tenantService, mailService, mailBodyResolver, linkTokenService, imageService)
+        VisitExpiredMailet(tenantService, mailService, mailBodyResolver, linkTokenService, listingImageService, imageService)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -72,7 +74,7 @@ class VisitExpiredMailetTest {
 
     @BeforeTest
     fun setUp() {
-        doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(imageService).cover(any())
+        doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(listingImageService).cover(any())
         doReturn(tenant).whenever(tenantService).findById(1L)
         doReturn("xxx.yyy.zzz").whenever(linkTokenService).create(customer)
         doReturn("<html>expired</html>").whenever(mailBodyResolver).resolve(any(), any())
@@ -93,6 +95,7 @@ class VisitExpiredMailetTest {
         assertEquals("02/12/2026", customerContext["requested_date"])
         assertEquals("10:00", customerContext["requested_time"])
         assertEquals("Kim Possible", customerContext["other_party"])
+        assertEquals("https://ik.imagekit.io/key/tr:w-1200,h-800,f-jpg,q-75/7.jpg", customerContext["image_url"])
         assertEquals("https://www.ndopify.com/visits/1?token=xxx.yyy.zzz", customerContext["visit_url"])
     }
 

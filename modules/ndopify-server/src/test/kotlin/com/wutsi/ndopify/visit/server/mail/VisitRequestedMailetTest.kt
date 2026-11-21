@@ -16,6 +16,7 @@ import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
+import com.wutsi.ndopify.platform.mail.mockMailImageService
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.visit.dto.VisitStatus
@@ -33,9 +34,10 @@ class VisitRequestedMailetTest {
     private val tenantService = mock<TenantService>()
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
-    private val imageService = mock<ListingImageService>()
+    private val listingImageService = mock<ListingImageService>()
+    private val imageService = mockMailImageService()
     private val mailet =
-        VisitRequestedMailet(tenantService, mailService, mailBodyResolver, imageService)
+        VisitRequestedMailet(tenantService, mailService, mailBodyResolver, listingImageService, imageService)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -70,7 +72,7 @@ class VisitRequestedMailetTest {
 
     @BeforeTest
     fun setUp() {
-        doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(imageService).cover(any())
+        doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(listingImageService).cover(any())
         doReturn(tenant).whenever(tenantService).findById(1L)
         doReturn("<html>requested</html>").whenever(mailBodyResolver).resolve(any(), any())
     }
@@ -87,7 +89,7 @@ class VisitRequestedMailetTest {
                 "customer_name" to "Ray Sponsible",
                 "customer_whatsapp" to "+237 6 00 00 00 01",
                 "listing_title" to "Nice apartment",
-                "image_url" to "https://cdn.ndopify.com/7.jpg",
+                "image_url" to "https://ik.imagekit.io/key/tr:w-1200,h-800,f-jpg,q-75/7.jpg",
                 "requested_date" to "01/12/2026",
                 "requested_time" to "10:00",
                 "note" to "Je viens avec ma femme",

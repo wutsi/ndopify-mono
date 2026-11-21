@@ -19,6 +19,7 @@ import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
+import com.wutsi.ndopify.platform.mail.mockMailImageService
 import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.LocationService
@@ -43,9 +44,10 @@ class VisitConfirmedMailetTest {
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
     private val linkTokenService = mock<MatchLinkTokenService>()
-    private val imageService = mock<ListingImageService>()
+    private val listingImageService = mock<ListingImageService>()
+    private val imageService = mockMailImageService()
     private val mailet =
-        VisitConfirmedMailet(tenantService, locationService, mailService, mailBodyResolver, linkTokenService, imageService)
+        VisitConfirmedMailet(tenantService, locationService, mailService, mailBodyResolver, linkTokenService, listingImageService, imageService)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -89,7 +91,7 @@ class VisitConfirmedMailetTest {
 
     @BeforeTest
     fun setUp() {
-        doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(imageService).cover(any())
+        doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(listingImageService).cover(any())
         doReturn(tenant).whenever(tenantService).findById(1L)
         doReturn(LocationEntity(id = 2370201L, name = "Yaounde")).whenever(locationService).findByIdOrNull(2370201L)
         doReturn(LocationEntity(id = 1001L, name = "Bastos")).whenever(locationService).findByIdOrNull(1001L)
@@ -120,7 +122,7 @@ class VisitConfirmedMailetTest {
                 "listing_title" to "Nice apartment",
                 "place" to "Bastos, Yaounde",
                 "landmark" to "près de Rue 1.234, Bonapriso",
-                "image_url" to "https://cdn.ndopify.com/7.jpg",
+                "image_url" to "https://ik.imagekit.io/key/tr:w-1200,h-800,f-jpg,q-75/7.jpg",
                 "agent_full_name" to "Kim Possible",
                 "agent_whatsapp" to "+237 6 99 00 00 01",
                 "agent_photo_url" to null,
@@ -142,7 +144,7 @@ class VisitConfirmedMailetTest {
                 "customer_name" to "Ray Sponsible",
                 "customer_whatsapp" to "+237 6 00 00 00 01",
                 "listing_title" to "Nice apartment",
-                "image_url" to "https://cdn.ndopify.com/7.jpg",
+                "image_url" to "https://ik.imagekit.io/key/tr:w-1200,h-800,f-jpg,q-75/7.jpg",
                 "visit_date" to "02/12/2026",
                 "visit_time" to "10:00",
                 "on_site" to true,

@@ -6,8 +6,10 @@ import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.match.server.service.MatchLinkTokenService
+import com.wutsi.ndopify.platform.image.ImageService
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
+import com.wutsi.ndopify.platform.mail.MailImages
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.Receipient
 import com.wutsi.ndopify.refdata.server.service.LocationService
@@ -24,6 +26,7 @@ import org.springframework.stereotype.Service
  * [sendCustomer] is the customer's copy, the only one with the code, the exact address and the public-portal link;
  * [sendAgent] mirrors it for the agent, without them. A channel that fails for one side must never resend the other
  * side's copy, hence two methods rather than one shared one.
+ * The photo is resized through [MailImages] for the e-mail (never the original URL).
  */
 @Service
 class VisitReminderMailet(
@@ -32,7 +35,8 @@ class VisitReminderMailet(
     private val mailService: MailService,
     private val mailBodyResolver: MailBodyResolver,
     private val linkTokenService: MatchLinkTokenService,
-    private val imageService: ListingImageService,
+    private val listingImageService: ListingImageService,
+    private val imageService: ImageService,
 ) {
     companion object {
         const val SUBJECT_CUSTOMER = "{{tenant_name}}: rappel de votre visite"
@@ -44,7 +48,7 @@ class VisitReminderMailet(
     fun sendCustomer(visit: VisitEntity, customer: CustomerEntity, agent: AgentEntity, listing: ListingEntity) {
         val tenant = tenantService.findById(visit.tenantId!!)
         val formatter = TenantFormatter(tenant)
-        val imageUrl = imageService.cover(listing)?.url?.ifBlank { null }
+        val imageUrl = MailImages.imageUrl(listingImageService.cover(listing)?.url, imageService, MailImages.COVER)
         val customerName = customer.party.fullName()
         val token = tenant.publicPortalUrl?.let { linkTokenService.create(customer) }
         val customerUrl = tenant.publicPortalUrl?.removeSuffix("/")?.let { base ->
@@ -83,7 +87,7 @@ class VisitReminderMailet(
     fun sendAgent(visit: VisitEntity, customer: CustomerEntity, agent: AgentEntity, listing: ListingEntity) {
         val tenant = tenantService.findById(visit.tenantId!!)
         val formatter = TenantFormatter(tenant)
-        val imageUrl = imageService.cover(listing)?.url?.ifBlank { null }
+        val imageUrl = MailImages.imageUrl(listingImageService.cover(listing)?.url, imageService, MailImages.COVER)
         val customerName = customer.party.fullName()
         val agentName = agent.party.fullName()
         val agentUrl = tenant.partnerCentralUrl?.removeSuffix("/")?.let { "$it/visits/${visit.id}" }

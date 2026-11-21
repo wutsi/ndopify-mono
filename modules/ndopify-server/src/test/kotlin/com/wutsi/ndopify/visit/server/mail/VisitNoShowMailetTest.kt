@@ -20,6 +20,7 @@ import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
+import com.wutsi.ndopify.platform.mail.mockMailImageService
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.visit.dto.VisitNoShowReason
@@ -40,9 +41,10 @@ class VisitNoShowMailetTest {
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
     private val linkTokenService = mock<MatchLinkTokenService>()
-    private val imageService = mock<ListingImageService>()
+    private val listingImageService = mock<ListingImageService>()
+    private val imageService = mockMailImageService()
     private val mailet =
-        VisitNoShowMailet(tenantService, mailService, mailBodyResolver, linkTokenService, imageService)
+        VisitNoShowMailet(tenantService, mailService, mailBodyResolver, linkTokenService, listingImageService, imageService)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -79,7 +81,7 @@ class VisitNoShowMailetTest {
 
     @BeforeTest
     fun setUp() {
-        doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(imageService).cover(any())
+        doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(listingImageService).cover(any())
         doReturn(tenant).whenever(tenantService).findById(1L)
         doReturn("xxx.yyy.zzz").whenever(linkTokenService).create(customer)
         doReturn("<html>no show</html>").whenever(mailBodyResolver).resolve(any(), any())
@@ -102,7 +104,7 @@ class VisitNoShowMailetTest {
                 "recipient_name" to "Ray Sponsible",
                 "other_party" to "Kim Possible",
                 "listing_title" to "Nice apartment",
-                "image_url" to "https://cdn.ndopify.com/7.jpg",
+                "image_url" to "https://ik.imagekit.io/key/tr:w-1200,h-800,f-jpg,q-75/7.jpg",
                 "visit_date" to "02/12/2026",
                 "visit_time" to "10:00",
                 "reason_label" to "Vous ne vous êtes pas présenté.",

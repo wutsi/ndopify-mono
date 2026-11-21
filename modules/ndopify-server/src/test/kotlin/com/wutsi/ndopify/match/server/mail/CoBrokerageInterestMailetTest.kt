@@ -15,6 +15,7 @@ import com.wutsi.ndopify.agent.server.service.AgentService
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
+import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
@@ -27,6 +28,7 @@ import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.filter.MailFilterNull
+import com.wutsi.ndopify.platform.mail.mockMailImageService
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
@@ -46,9 +48,10 @@ class CoBrokerageInterestMailetTest {
     private val locationService = mock<LocationService>()
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
-    private val imageService = mock<ListingImageService>()
-    private val builder = CoBrokerageInterestDigestBuilder(tenantService, agentService, locationService, imageService)
-    private val mailet = CoBrokerageInterestMailet(mailService, mailBodyResolver)
+    private val listingImageService = mock<ListingImageService>()
+    private val imageService = mockMailImageService()
+    private val builder = CoBrokerageInterestDigestBuilder(tenantService, agentService, locationService, listingImageService)
+    private val mailet = CoBrokerageInterestMailet(mailService, mailBodyResolver, imageService)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -122,6 +125,7 @@ class CoBrokerageInterestMailetTest {
         doReturn(LocationEntity(id = 2370201L, name = "Yaounde")).whenever(locationService).findByIdOrNull(2370201L)
         doReturn(LocationEntity(id = 111L, name = "Bastos")).whenever(locationService).findByIdOrNull(111L)
         doReturn(searchAgent).whenever(agentService).findByIdOrNull(20L)
+        doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(listingImageService).cover(any())
         doReturn("<html>interest</html>").whenever(mailBodyResolver).resolve(any(), any())
     }
 
@@ -132,6 +136,7 @@ class CoBrokerageInterestMailetTest {
         val context = context()
         val listing = (context["listings"] as List<*>).single() as Map<*, *>
         assertEquals("Villa Bastos", listing["title"])
+        assertEquals("https://ik.imagekit.io/key/tr:w-160,h-120,f-jpg,q-75/7.jpg", listing["image_url"])
         val agent = (listing["agents"] as List<*>).single() as Map<*, *>
         assertEquals("Kim Possible", agent["agent_full_name"])
         assertEquals("Appartement", agent["property_type"])
@@ -150,6 +155,13 @@ class CoBrokerageInterestMailetTest {
         verify(mailService).send(email.capture())
         assertEquals("john.doe@gmail.com", email.firstValue.recipient.email)
         assertEquals("Ndopify: 1 agent s'intéresse à votre bien", email.firstValue.subject)
+    }
+
+    @Test
+    fun `the digest keeps the raw cover URL`() {
+        val digest = builder.build(listOf(match))
+
+        assertEquals("https://cdn.ndopify.com/7.jpg", digest.listings.single().imageUrl)
     }
 
     @Test

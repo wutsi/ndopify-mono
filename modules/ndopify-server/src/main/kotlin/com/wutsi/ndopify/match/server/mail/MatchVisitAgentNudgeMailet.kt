@@ -6,8 +6,10 @@ import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.mandate.server.mail.MandateMailLabels
 import com.wutsi.ndopify.match.server.domain.MatchEntity
+import com.wutsi.ndopify.platform.image.ImageService
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
+import com.wutsi.ndopify.platform.mail.MailImages
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.Receipient
 import com.wutsi.ndopify.refdata.server.service.TenantFormatter
@@ -19,13 +21,15 @@ import org.springframework.stereotype.Service
  * listing and its price, and two buttons — call the customer on WhatsApp, then book the visit on the mandate's page
  * (`{partnerCentralUrl}/mandates/{mandateId}#match-{matchId}`, none without a `partnerCentralUrl`). The fallback of the
  * Telegram message ([com.wutsi.ndopify.match.server.bot.MatchVisitAgentNudgeBotlet]) for an agent without a linked chat.
+ * The photo is resized through [MailImages] for the e-mail (never the original URL).
  */
 @Service
 class MatchVisitAgentNudgeMailet(
     private val tenantService: TenantService,
     private val mailService: MailService,
     private val mailBodyResolver: MailBodyResolver,
-    private val imageService: ListingImageService,
+    private val listingImageService: ListingImageService,
+    private val imageService: ImageService,
 ) {
     companion object {
         const val SUBJECT = "{{tenant_name}}: {{customer_name}} attend une visite"
@@ -52,7 +56,7 @@ class MatchVisitAgentNudgeMailet(
                         "recipient_name" to agent.party.fullName(),
                         "customer_name" to customerName,
                         "listing_title" to (listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"),
-                        "image_url" to imageService.cover(listing)?.url?.ifBlank { null },
+                        "image_url" to MailImages.imageUrl(listingImageService.cover(listing)?.url, imageService, MailImages.COVER),
                         "price_label" to MandateMailLabels.priceLabel(match.mandate),
                         "price" to MandateMailLabels.price(
                             listing.price,

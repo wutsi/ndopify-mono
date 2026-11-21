@@ -23,6 +23,7 @@ import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
+import com.wutsi.ndopify.platform.mail.mockMailImageService
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
@@ -36,9 +37,16 @@ class MatchVisitReminderMailetTest {
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
     private val linkTokenService = mock<MatchLinkTokenService>()
-    private val imageService = mock<ListingImageService>()
-    private val mailet =
-        MatchVisitReminderMailet(tenantService, mailService, mailBodyResolver, linkTokenService, imageService)
+    private val listingImageService = mock<ListingImageService>()
+    private val imageService = mockMailImageService()
+    private val mailet = MatchVisitReminderMailet(
+        tenantService,
+        mailService,
+        mailBodyResolver,
+        linkTokenService,
+        listingImageService,
+        imageService,
+    )
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -77,7 +85,7 @@ class MatchVisitReminderMailetTest {
         doReturn("<html>reminder</html>").whenever(mailBodyResolver).resolve(any(), any())
         doReturn("xxx.yyy.zzz").whenever(linkTokenService).create(customer)
         doReturn(ListingImageEntity(id = 7L, listingId = 101L, url = "https://cdn.ndopify.com/7.jpg"))
-            .whenever(imageService).cover(any())
+            .whenever(listingImageService).cover(any())
     }
 
     @Test
@@ -94,7 +102,7 @@ class MatchVisitReminderMailetTest {
                 "agent_whatsapp" to null,
                 "agent_whatsapp_url" to null,
                 "listing_title" to "Nice apartment",
-                "image_url" to "https://cdn.ndopify.com/7.jpg",
+                "image_url" to "https://ik.imagekit.io/key/tr:w-1200,h-800,f-jpg,q-75/7.jpg",
                 "price_label" to "Loyer",
                 "price" to "150 000 FCFA / mois",
                 "online" to true,
@@ -135,7 +143,7 @@ class MatchVisitReminderMailetTest {
 
     @Test
     fun `no photo - no image`() {
-        doReturn(null).whenever(imageService).cover(any())
+        doReturn(null).whenever(listingImageService).cover(any())
 
         mailet.send(match, customer, agent)
 
