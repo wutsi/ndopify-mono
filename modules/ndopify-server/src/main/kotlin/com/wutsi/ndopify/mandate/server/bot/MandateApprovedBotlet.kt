@@ -12,9 +12,9 @@ import com.wutsi.ndopify.refdata.server.service.TenantService
 import org.springframework.stereotype.Service
 
 /**
- * Tells an agent over Telegram that its mandate is approved: the same wording as `MandateApprovedMailet`, with the
- * city, the type, the neighbourhoods and the budget or price, and a `Voir le mandat` button. The customer's name, the
- * contract number and its validity dates stay on the mandate page.
+ * Tells an agent over Telegram that its mandate is approved: a `✅` line saying the customer signed, then the
+ * mandate's property line — its criteria, its neighbourhoods and its budget or price — with a `Voir le mandat` button.
+ * The customer's name, the contract number and its validity dates stay on the mandate page.
  *
  * [send]'s recipient is the agent's chat, from #135's link (`AgentTelegramService.chatId`), never the agent's e-mail.
  * Telegram refusing the message throws ([com.wutsi.ndopify.platform.telegram.TelegramException]): the notifier then
@@ -28,35 +28,25 @@ class MandateApprovedBotlet(
 ) {
     fun send(mandate: MandateEntity, agent: AgentEntity, chatId: Long) {
         val tenant = tenantService.findById(mandate.tenantId!!)
-        val city = locationService.findByIdOrNull(mandate.cityId)?.name ?: ""
         val formatter = TenantFormatter(tenant)
         client.sendMessage(
             chatId,
-            text(mandate, city, formatter),
+            text(mandate, formatter),
             tenant.partnerCentralUrl?.let { url ->
                 listOf(TelegramButton("Voir le mandat", url = "${url.removeSuffix("/")}/mandates/${mandate.id}"))
             } ?: emptyList(),
         )
     }
 
-    private fun text(mandate: MandateEntity, city: String, formatter: TenantFormatter): String {
-        val listing = mandate.mandateType == MandateType.LISTING
-        val lines = mutableListOf<String>()
-        lines.add("Votre mandat" + (if (city.isEmpty()) "" else " à $city") + " est approuvé")
-        lines.add("")
-        lines.add("Votre client a signé le mandat. Vous pouvez commencer.")
-        lines.add("")
-        lines.add("${if (listing) "Bien" else "Recherche"}: " + criteria(mandate))
-        if (city.isNotEmpty()) {
-            lines.add("Ville: $city")
-        }
-        MandateMailLabels.neighbourhoods(mandate, locationService)?.let { lines.add("Quartier(s): $it") }
-        if (listing) {
-            lines.add("${MandateMailLabels.priceLabel(mandate)}: ${MandateMailLabels.budget(mandate, formatter)}")
-        } else {
-            lines.add("Budget: ${MandateMailLabels.budget(mandate, formatter)}")
-        }
-        return lines.joinToString("\n")
+    private fun text(mandate: MandateEntity, formatter: TenantFormatter): String {
+        val property = "${if (mandate.mandateType == MandateType.LISTING) "Bien" else "Recherche"} : " +
+            criteria(mandate) +
+            (MandateMailLabels.neighbourhoods(mandate, locationService)?.let { " ($it)" } ?: "") +
+            " — ${MandateMailLabels.budget(mandate, formatter)}"
+        return listOf(
+            "✅ Le client a signé le mandat. Il va commencer à recevoir les offres.",
+            property,
+        ).joinToString("\n")
     }
 
     // Ex: "Location - Appartement", or "Location" without a property type
