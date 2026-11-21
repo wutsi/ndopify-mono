@@ -621,6 +621,15 @@ class KycControllerTest {
     }
 
     @Test
+    fun `presign - party lookup fails - 502`() {
+        doThrow(ResourceAccessException("down")).whenever(currentParty).get()
+
+        presign("front").andExpect(status().isBadGateway)
+
+        verify(kycClient, never()).presign(any(), any(), any(), any())
+    }
+
+    @Test
     fun `presign - token refused by the server - signed out`() {
         given(case())
         doThrow(HttpClientErrorException.create(HttpStatus.UNAUTHORIZED, "", HttpHeaders.EMPTY, null, null)).whenever(kycClient).presign(any(), any(), any(), any())
@@ -709,6 +718,15 @@ class KycControllerTest {
         val result = attach("front").andReturn()
 
         assertEquals("redirect:/login", result.modelAndView?.viewName)
+        verify(kycClient, never()).attach(any(), any(), any(), any())
+    }
+
+    @Test
+    fun `attach - party lookup fails - 502`() {
+        doThrow(ResourceAccessException("down")).whenever(currentParty).get()
+
+        attach("front").andExpect(status().isBadGateway)
+
         verify(kycClient, never()).attach(any(), any(), any(), any())
     }
 }

@@ -36,9 +36,11 @@ another agent — photo or initials, name linked to `/agent?id=&back=…`, Whats
 `ui/agent/AgentCardViews.of`, used as a card footer on the visit, proposal and match cards and boxed (`standalone`) on
 the visit and the read-only listing pages; a null `AgentCardView` renders "un autre agent"), and page scripts in `public/assets/js/`, one per
 page (`<page>.js`, picked by the body's `data-page`) plus `partner-central.js` / `util.js`. `direct-upload.js` is the
-shared browser half of a direct upload: `NdDirectUpload.upload(action, file)` runs presign → PUT → attach against
-`<action>/presign` and `<action>/attach` and resolves false on any failure, for the page to fall back to its form
-post (the KYC and profile photo stories reuse it). Every page works without
+shared browser half of a direct upload: `NdDirectUpload.upload(action, file, options)` runs presign → PUT → attach
+against `<action>/presign` and `<action>/attach` and resolves false on any failure, for the page to fall back to its
+form post (the KYC and profile photo stories reuse it). Only a caller whose attach replaces an object (KYC, profile
+photo) passes `{attachTimeout: true}`: the listing photos are added, so an attach that times out but lands must not
+be followed by the multipart fallback, which would add a second photo. Every page works without
 JS: a script only enhances it, and the rules it mirrors are always re-checked server-side by `<Feature>Rules`.
 `src/main/html/` is the prototype (see below).
 

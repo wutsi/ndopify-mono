@@ -343,7 +343,7 @@
             setBusy(true);
             var status = $("[data-upload-status]", form);
             if (status) status.textContent = "Envoi de la photo en cours…";
-            window.NdDirectUpload.upload(form.getAttribute("action"), file)
+            window.NdDirectUpload.upload(form.getAttribute("action"), file, { attachTimeout: true })
                 .catch(function () {
                     return false;
                 })
@@ -359,8 +359,9 @@
                 });
         });
         // Back from the next page restores this one from the cache: "Suivant" must work again, if it has a photo.
+        // Only when its photo was on its way: otherwise the step's status ("Photo … ajoutée.") stays as it was.
         window.addEventListener("pageshow", function (event) {
-            if (event.persisted) setBusy(false);
+            if (event.persisted && sending) setBusy(false);
         });
     }
 
@@ -406,7 +407,7 @@
             // One upload: a second click while it runs would upload the photo twice.
             if (busy) return;
             setBusy(true);
-            window.NdDirectUpload.upload(action, file).then(function (uploaded) {
+            window.NdDirectUpload.upload(action, file, { attachTimeout: true }).then(function (uploaded) {
                 if (uploaded) {
                     location.assign(action + "/saved");
                 } else {

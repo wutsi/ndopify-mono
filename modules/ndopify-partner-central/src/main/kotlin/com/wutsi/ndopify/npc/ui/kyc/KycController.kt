@@ -109,7 +109,7 @@ class KycController(
         val case = openCase(party.id) ?: return "redirect:/kyc"
         val photos = KycRules.photos(case)
         val firstIncomplete = KycRules.firstIncompleteStep(photos.keys)
-        if (STEPS.indexOf(step) > STEPS.indexOf(firstIncomplete)) return redirect(firstIncomplete)
+        if (!KycRules.stepAllowed(step, photos.keys)) return redirect(firstIncomplete)
 
         val imageType = PHOTOS.getValue(step)
         if (photo == null || photo.isEmpty) {
@@ -173,22 +173,26 @@ class KycController(
     /**
      * The presign/attach proxies' frame: the signed-in party's open case (opened as the form post does), 409 when it is
      * submitted or the step is ahead; ndopify-server's status when it refuses, a 401 rethrown (HttpClientErrorHandler
-     * signs the agent out), 502 when it fails or can't be reached — the case lookup included, so `fetch` always gets
-     * a status, never an HTML error page.
+     * signs the agent out), 502 when it fails or can't be reached — the party and the case lookups included, so
+     * `fetch` always gets a status, never an HTML error page.
      */
     private fun <T : Any> proxy(operation: String, step: String, call: (KycCase) -> ResponseEntity<T>): ResponseEntity<T> {
-        val party = currentParty.get() ?: throw SignInRequiredException()
+        var partyId: Long? = null
         return try {
+            val party = currentParty.get() ?: throw SignInRequiredException()
+            partyId = party.id
             val case = openCase(party.id) ?: return ResponseEntity.status(HttpStatus.CONFLICT).build()
-            if (!stepAllowed(step, case)) return ResponseEntity.status(HttpStatus.CONFLICT).build()
+            if (!KycRules.stepAllowed(step, KycRules.photos(case).keys)) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).build()
+            }
             call(case)
         } catch (ex: HttpClientErrorException.Unauthorized) {
             throw ex
         } catch (ex: HttpClientErrorException) {
-            LOGGER.warn("$operation of a KYC photo of Party#${party.id} refused: ${ex.statusCode}")
+            LOGGER.warn("$operation of a KYC photo of Party#${partyId ?: "-"} refused: ${ex.statusCode}")
             ResponseEntity.status(ex.statusCode).build()
         } catch (ex: RestClientException) {
-            LOGGER.error("$operation of a KYC photo of Party#${party.id} failed", ex)
+            LOGGER.error("$operation of a KYC photo of Party#${partyId ?: "-"} failed", ex)
             ResponseEntity.status(HttpStatus.BAD_GATEWAY).build()
         }
     }
@@ -236,12 +240,6 @@ class KycController(
             null, KycStatus.CANCELLED -> kycClient.get(kycClient.create(partyId))
             else -> null
         }
-    }
-
-    /** The wizard only shows a step once every photo before it is in the case: the URL is never trusted. */
-    private fun stepAllowed(step: String, case: KycCase): Boolean {
-        val firstIncomplete = KycRules.firstIncompleteStep(KycRules.photos(case).keys)
-        return STEPS.indexOf(step) <= STEPS.indexOf(firstIncomplete)
     }
 
     private fun toMessage(code: String?): String = when (code) {
