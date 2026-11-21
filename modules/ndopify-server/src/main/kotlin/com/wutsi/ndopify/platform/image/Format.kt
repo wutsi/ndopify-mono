@@ -4,5 +4,6 @@ enum class Format {
     PNG,
     JPG,
     GIF,
-    WEBP
+    WEBP,
+    AUTO
 }

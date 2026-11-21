@@ -166,4 +166,29 @@ class ImageKitTest {
         )
         assertEquals(url, result)
     }
+
+    @Test
+    fun `automatic format`() {
+        val result = service.transform(url, Transformation(format = Format.AUTO))
+        assertEquals("https://ik.imagekit.io/cx8qxsgz4d/tr:f-auto/foo/bar/image.jpg", result)
+    }
+
+    @Test
+    fun `exact 3 by 2 crop`() {
+        val result = service.transform(
+            url,
+            Transformation(
+                dimension = Dimension(960, 640),
+                aspectRatio = Dimension(3, 2),
+                format = Format.AUTO,
+                crop = Crop.MAINTAIN_RATIO,
+                cropMode = CropMode.EXTRACT,
+                quality = 75,
+            ),
+        )
+        assertEquals(
+            "https://ik.imagekit.io/cx8qxsgz4d/tr:w-960,h-640,f-auto,ar-3-2,c-maintain_ratio,cm-extract,q-75/foo/bar/image.jpg",
+            result,
+        )
+    }
 }
