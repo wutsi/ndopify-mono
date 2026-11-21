@@ -367,9 +367,11 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   tenant's `publicPortalUrl`; no neighbourhood nor title segment without them): `PUBLISHED`, or still `PUBLISHING` to be retried after a failure; after `MAX_RETRIES` failed attempts
   it's `PUBLISHED` without title, summary nor description (the UIs handle it), its last error kept. Either way it
   publishes `ListingPublishedEvent`: `ListingPublishedNotifier` messages a linked agent (its link's chat) through
-  `ListingPublishedBotlet` — the cover photo (`ListingImageService.cover`, none without one) is read from the storage and
-  uploaded as a `sendPhoto` whose caption is the text and whose keyboard is a `Voir l'annonce` link to
-  `{publicPortalUrl}{url}`; a failed download or upload only drops the photo — and e-mails the others
+  `ListingPublishedBotlet` — the cover photo (`ListingImageService.cover`, none without one) is resized to 1280×1280 at
+  quality 80 through the `ImageService` and handed to `sendPhoto` as a URL, or read from the storage and uploaded when
+  the URL can't be resized (local), with the text as caption and a `Voir l'annonce` keyboard link to
+  `{publicPortalUrl}{url}`; a failed resize, download or upload only drops the photo, never sending the original —
+  and e-mails the others
   (`ListingPublishedMailet`, `mail/listing/published_agent.mjml`; no link without either), falling back to the e-mail
   when the text send fails. The customer (the property's owner) is told nothing for now
   (`published_customer.mjml` is kept for when it is). **Close**: a mandate's
