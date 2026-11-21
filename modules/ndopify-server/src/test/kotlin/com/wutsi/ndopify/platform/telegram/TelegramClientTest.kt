@@ -363,4 +363,36 @@ class TelegramClientTest {
             eq(emptyMap()),
         )
     }
+
+    @Test
+    fun `sendPhoto by URL posts the URL, its caption and one keyboard row per button`() {
+        val photoUrl = "https://ik.imagekit.io/key/tr:w-1280,h-1280,f-jpg,c-at_max,q-80/7.jpg"
+        doReturn(TelegramMessageResponse(ok = true))
+            .whenever(http).post(eq("$base/sendPhoto"), any(), eq(TelegramMessageResponse::class.java), eq(emptyMap()))
+
+        client.sendPhoto(
+            123L,
+            photoUrl,
+            "En ligne",
+            listOf(TelegramButton("Voir l'annonce", url = "https://www.ndopify.com/listing")),
+        )
+
+        verify(http).post(
+            eq("$base/sendPhoto"),
+            eq(
+                mapOf(
+                    "chat_id" to 123L,
+                    "photo" to photoUrl,
+                    "caption" to "En ligne",
+                    "reply_markup" to mapOf(
+                        "inline_keyboard" to listOf(
+                            listOf(mapOf("text" to "Voir l'annonce", "url" to "https://www.ndopify.com/listing")),
+                        ),
+                    ),
+                ),
+            ),
+            eq(TelegramMessageResponse::class.java),
+            eq(emptyMap()),
+        )
+    }
 }
