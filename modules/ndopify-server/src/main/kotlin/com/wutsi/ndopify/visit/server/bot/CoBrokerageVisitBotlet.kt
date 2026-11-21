@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.visit.server.bot
 
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
+import com.wutsi.ndopify.listing.server.bot.ListingTelegramLabels
 import com.wutsi.ndopify.listing.server.bot.ListingTelegramSender
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
@@ -13,14 +14,14 @@ import org.springframework.stereotype.Service
 
 /**
  * Tells the listing agent (B) over Telegram about a co-brokerage visit organized by the search agent (A): the same
- * four messages as `CoBrokerageVisitMailet`, in French plain text, so that a linked B gets the message instead of the
- * e-mail.
+ * four events as `CoBrokerageVisitMailet`, each as an emoji line naming the property, the slot and the type or reason,
+ * so that a linked B gets the message instead of the e-mail.
  *
  * [listing]'s agent is the recipient B, [agent] is A, the organizer whose voice the message carries: the text closes
- * with A's name instead of the e-mail's agent footer. [ListingTelegramSender] sends the message with the listing's
- * photo as its caption when it fits, else as the text alone. [sendX]'s chat id comes from #135's
- * link (`AgentTelegramService.chatId`), never B's e-mail. The customer is only ever "mon client": this botlet never
- * reads it, and its text carries none of its data.
+ * with A's name instead of the e-mail's agent footer, on the line after the event. [ListingTelegramSender] sends the
+ * message with the listing's photo as its caption when it fits, else as the text alone. [sendX]'s chat id comes from
+ * #135's link (`AgentTelegramService.chatId`), never B's e-mail. The customer is only ever "mon client": this botlet
+ * never reads it, and its text carries none of its data.
  *
  * Telegram refusing a message throws ([com.wutsi.ndopify.platform.telegram.TelegramException]), so the notifier falls
  * back to the e-mail.
@@ -28,48 +29,37 @@ import org.springframework.stereotype.Service
 @Service
 class CoBrokerageVisitBotlet(
     private val tenantService: TenantService,
+    private val labels: ListingTelegramLabels,
     private val sender: ListingTelegramSender,
 ) {
     fun sendConfirmed(visit: VisitEntity, listing: ListingEntity, agent: AgentEntity, chatId: Long) =
-        send(visit, listing, agent, chatId) { title, slot, type ->
+        send(visit, listing, agent, chatId) { line, slot, type ->
             listOf(
-                "Visite de votre bien confirmée",
-                "",
-                "J'ai organisé une visite de $title le $slot ($type).",
-                "",
-                onSite(visit.type),
+                "✅ Visite confirmée : $line, $slot",
+                "$type — ${onSite(visit.type)}",
             )
         }
 
     fun sendReminder(visit: VisitEntity, listing: ListingEntity, agent: AgentEntity, chatId: Long) =
-        send(visit, listing, agent, chatId) { title, slot, type ->
+        send(visit, listing, agent, chatId) { line, slot, type ->
             listOf(
-                "Rappel de la visite de votre bien",
-                "",
-                "La visite de $title a lieu le $slot ($type).",
-                "",
-                onSite(visit.type),
+                "⏰ Rappel : $line, $slot",
+                "$type — ${onSite(visit.type)}",
             )
         }
 
     fun sendCancelled(visit: VisitEntity, listing: ListingEntity, agent: AgentEntity, chatId: Long) =
-        send(visit, listing, agent, chatId) { title, slot, type ->
+        send(visit, listing, agent, chatId) { line, slot, _ ->
             listOf(
-                "La visite de votre bien est annulée",
-                "",
-                "$title ($type), prévue le $slot.",
-                "",
+                "❌ Visite annulée : $line, $slot",
                 CoBrokerageVisitLabels.cancelledBy(visit.cancelledBy),
             )
         }
 
     fun sendNoShow(visit: VisitEntity, listing: ListingEntity, agent: AgentEntity, chatId: Long) =
-        send(visit, listing, agent, chatId) { title, slot, type ->
+        send(visit, listing, agent, chatId) { line, slot, _ ->
             listOf(
-                "La visite de votre bien n'a pas eu lieu",
-                "",
-                "$title ($type), prévue le $slot.",
-                "",
+                "⚠️ Visite non honorée : $line, $slot",
                 CoBrokerageVisitLabels.noShowReason(visit.noShowReason),
             )
         }
@@ -80,16 +70,15 @@ class CoBrokerageVisitBotlet(
         listing: ListingEntity,
         agent: AgentEntity,
         chatId: Long,
-        body: (title: String, slot: String, type: String) -> List<String>,
+        body: (line: String, slot: String, type: String) -> List<String>,
     ) {
         val tenant = tenantService.findById(visit.tenantId!!)
         val formatter = TenantFormatter(tenant)
         val scheduledAt = visit.scheduledAt!!
-        val title = listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"
+        val line = labels.titleAndPrice(listing, formatter)
         val slot = "${formatter.date(scheduledAt)} à ${formatter.time(scheduledAt)}"
-        val lines = body(title, slot, CoBrokerageVisitLabels.typeLabel(visit.type))
+        val lines = body(line, slot, CoBrokerageVisitLabels.typeLabel(visit.type))
             .toMutableList()
-        lines.add("")
         lines.add("Visite organisée par ${agent.party.fullName()}.")
 
         sender.send(
@@ -104,8 +93,8 @@ class CoBrokerageVisitBotlet(
 
     private fun onSite(type: VisitType): String =
         if (type == VisitType.ON_SITE) {
-            "Je vous y retrouve avec mon client."
+            "je vous y retrouve avec mon client."
         } else {
-            "Je serai sur place pour vous ouvrir ; le client suivra en visio."
+            "je serai sur place pour vous ouvrir ; le client suivra en visio."
         }
 }

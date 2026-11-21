@@ -55,9 +55,12 @@ class TelegramCoBrokerageVisitEndpointTest : AuthorizationAwareEndpointIntegrati
         val text = argumentCaptor<String>()
         val buttons = argumentCaptor<List<TelegramButton>>()
         verify(client).sendMessage(eq(2000L), text.capture(), buttons.capture())
-        assertTrue(text.firstValue.startsWith("Visite de votre bien confirmée"))
-        assertTrue(text.firstValue.contains("J'ai organisé une visite de Nice apartment le "))
-        assertTrue(text.firstValue.contains(" à 10:00 (Sur place)."))
+        assertTrue(
+            text.firstValue.startsWith(
+                "✅ Visite confirmée : Nice apartment (Bastos) — 150 000 FCFA / mois, ",
+            ),
+        )
+        assertTrue(text.firstValue.contains("Sur place — je vous y retrouve avec mon client."))
         assertTrue(text.firstValue.contains("Visite organisée par John Doe."))
         assertEquals(
             listOf(TelegramButton("Voir l'annonce", url = "https://partner.ndopify.com/listings/101#visits-title")),
