@@ -41,4 +41,30 @@ class ListingEventListenerTest {
         assertNull(TenantContext.get())
         assertNull(KVLoggerThreadLocal.get())
     }
+
+    @Test
+    fun `sent back - the agent is notified, in its tenant`() {
+        var tenantId: Long? = null
+        doAnswer {
+            tenantId = TenantContext.get()
+            true
+        }.whenever(service).sendSentBackNotification(10L)
+
+        listener.onListingSentBack(ListingSentBackEvent(listingId = 10L, tenantId = 7L))
+
+        verify(service).sendSentBackNotification(10L)
+        assertEquals(7L, tenantId)
+        assertNull(TenantContext.get())
+        assertNull(KVLoggerThreadLocal.get())
+    }
+
+    @Test
+    fun `sent back - a failure is only logged`() {
+        doThrow(IllegalStateException("boom")).whenever(service).sendSentBackNotification(10L)
+
+        listener.onListingSentBack(ListingSentBackEvent(listingId = 10L, tenantId = 7L))
+
+        assertNull(TenantContext.get())
+        assertNull(KVLoggerThreadLocal.get())
+    }
 }

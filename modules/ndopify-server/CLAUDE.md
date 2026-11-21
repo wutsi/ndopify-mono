@@ -359,7 +359,15 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   send again; a failed attempt leaves it UNDER_VERIFICATION for the next run, then after `MAX_RETRIES` back to `DRAFT`
   with `INTERNAL_ERROR`. `PENDING_VERIFICATION` isn't used for a listing (only for its photos). `VerifyListingsJobTest`
   covers the send and the job together, end to end: keep it so. There is no rejected status:
-  a DRAFT with `errorCodes` is one sent back. **Publish**: `POST /{id}/publish` moves a `VERIFIED` listing
+  a DRAFT with `errorCodes` is one sent back. A send-back publishes `ListingSentBackEvent`, in the transaction that
+  saves DRAFT with `errorCodes` (a verifier rejection, or `INTERNAL_ERROR` after `MAX_RETRIES`):
+  `ListingSentBackNotifier` messages a linked agent (`ListingSentBackBotlet`, via `AgentTelegramService.chatId`) and
+  e-mails the others (`ListingSentBackMailet`, `mail/listing/sent_back_agent.mjml`), falling back to the e-mail on a
+  failed send. The message is generic (no per-reason wording, the panel on the page lists what to fix), names the
+  property (`n° <id>` plus its neighbourhood and city) and carries a `Corriger l'annonce` button to
+  `{partnerCentralUrl}/listings/{id}` (none without a `partnerCentralUrl`); nothing is sent for a successful
+  verification, a retry left UNDER_VERIFICATION, nor a listing no longer DRAFT with errors (resubmitted meanwhile).
+  **Publish**: `POST /{id}/publish` moves a `VERIFIED` listing
   to `PUBLISHING` (404 `LISTING_NOT_FOUND`, then 409 `LISTING_NOT_VERIFIED`), `retries` reset; `ListingJobs.publish`
   then has `ListingPublisherService` generate its title, summary and description (`ListingContentGenerator`, text
   LLM, `ChatClients.TEXT`, from the listing's details, verified photos and agent remarks) and its hero image (the
@@ -589,9 +597,10 @@ status e-mail (`KycMailet`) is sent by `KycEventListener` whether the endpoint o
   `ConflictException`, `ForbiddenException`, `UnauthorizedException`, `InternalErrorException`) and a global
   `ControllerErrorHandler`.
 
-**Asynchronous e-mails** (welcome, OTP, KYC status, mandate offered, mandate assigned, mandate approved, contract to sign, listing published, new matches, match proposed, match answered, visit requested / confirmed / completed / cancelled / no-show / expired / reminded / feedback): the service publishes an event
+**Asynchronous e-mails** (welcome, OTP, KYC status, mandate offered, mandate assigned, mandate approved, contract to sign, listing published, listing sent back, new matches, match proposed, match answered, visit requested / confirmed / completed / cancelled / no-show / expired / reminded / feedback): the service publishes an event
 from its transaction (`AgentCreatedEvent`, `OtpCreatedEvent`, `KycCaseCompletedEvent`, `AssignmentCreatedEvent`,
-`AssignmentAcceptedEvent`, `MandateApprovedEvent`, `ContractSignatureRequestedEvent`, `ListingPublishedEvent`, `MatchProposedEvent`,
+`AssignmentAcceptedEvent`, `MandateApprovedEvent`, `ContractSignatureRequestedEvent`, `ListingPublishedEvent`,
+`ListingSentBackEvent`, `MatchProposedEvent`,
 `MatchAnsweredEvent`, `VisitRequestedEvent`, `VisitConfirmedEvent`, `VisitCompletedEvent`, `VisitCancelledEvent`, `VisitNoShowEvent`, `VisitExpiredEvent`,
 `VisitReminderEvent`, `VisitFeedbackSentEvent` in `<domain>/server/event/`), carrying ids plus the `tenantId` — never entities. Its
 listener is `@Async @TransactionalEventListener(AFTER_COMMIT)`, so nothing is sent for a rolled-back transaction. The
@@ -599,15 +608,16 @@ executor thread has no request, so the listener sets `TenantContext` and a `Defa
 (which the injected `KVLogger` falls back to), calls `logger.log()` in `finally` to flush it, and removes both
 (threads are reused). The work runs in a `@Transactional` service method (`AgentService.sendWelcomeEmail`,
 `OtpService.sendEmail`, `KycService.sendStatusEmail`, `AssignmentService.sendOfferNotification` / `sendAssignedEmail`, `MandateService.sendApprovedNotification`,
-`ContractService.sendSignatureRequestEmails`, `ListingService.sendPublishedNotification`, `MatchProposalService.sendProposedEmail` /
+`ContractService.sendSignatureRequestEmails`, `ListingService.sendPublishedNotification` / `sendSentBackNotification`,
+`MatchProposalService.sendProposedEmail` /
 `sendAnsweredNotification`,
 `VisitService.sendRequestedNotification` / `sendConfirmedEmails` / `sendCompletedEmail` / `sendCancelledNotification` / `sendNoShowEmails` /
 `sendExpiredEmails` / `sendReminderNotifications` / `sendFeedbackNotification`); the signed PDF (`ContractSignedEvent` → `SignedContractService.generate`,
 not an e-mail, not transactional) follows the same listener pattern. The requested-visit, cancellation, reminder,
-feedback, mandate-approval and match-answered entries are the ones that don't always go by e-mail:
+feedback, mandate-approval, listing sent-back and match-answered entries are the ones that don't always go by e-mail:
 `VisitRequestedNotifier` / `VisitCancelledNotifier` / `VisitReminderNotifier` / `VisitFeedbackNotifier` (see *visit*),
-`MandateApprovedNotifier` (see *mandate*) and `MatchAnsweredNotifier` (see *match*) message a
-linked agent over Telegram, and e-mail the others or as the fallback. The service methods are
+`MandateApprovedNotifier` (see *mandate*), `ListingSentBackNotifier` (see *listing*) and `MatchAnsweredNotifier` (see *match*)
+message a linked agent over Telegram, and e-mail the others or as the fallback. The service methods are
 entered *after* `TenantContext` is set since Hibernate resolves the tenant when the session opens. Failures are
 logged, never rethrown. Tests must wait for the mail (`smtp.waitForIncomingEmail`);
 `BaseEndpointIntegrationTest.tearDown` waits for the running async tasks, so a test's mail can't reach the next one.
