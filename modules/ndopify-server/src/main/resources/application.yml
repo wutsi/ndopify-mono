@@ -243,6 +243,11 @@ logging:
 ndopify:
     endpoints:
         ops: true                          # @OpsEndpoint endpoints (unauthenticated): off in prod
+    image:
+        type: local                        # local | image-kit
+        image-kit:
+            origin-url: ""
+            endpoint-url: "https://ik.imagekit.io/key"
     telegram:
         token: ${TELEGRAM_TOKEN}           # No default: the server doesn't start without it
         username: ${TELEGRAM_BOT_USERNAME} # No default: the bot's public username, used in the connection e-mail's link

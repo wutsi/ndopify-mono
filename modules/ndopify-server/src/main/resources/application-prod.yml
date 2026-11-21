@@ -45,6 +45,12 @@ ndopify:
     database:
         pool-size: 16
 
+    image:
+        type: image-kit
+        image-kit:
+            origin-url: "https://${ndopify.storage.s3.bucket}.s3.amazonaws.com"
+            endpoint-url: "${IMAGE_KIT_ENDPOINT_URL}"
+
     telegram:
         transport: webhook
         webhook:

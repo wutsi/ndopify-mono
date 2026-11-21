@@ -30,6 +30,11 @@ logging:
 ndopify:
     database:
         pool-size: 16
+    image:
+        type: image-kit
+        image-kit:
+            origin-url: "https://${ndopify.storage.s3.bucket}.s3.amazonaws.com"
+            endpoint-url: "${IMAGE_KIT_ENDPOINT_URL}"
     security:
         jwt:
             secret: ${JWT_SECRET}          # No default: the server doesn't start without it
@@ -39,12 +44,6 @@ ndopify:
         webhook:
             url: ${SERVER_URL}/telegram/webhook
             secret: ${TELEGRAM_WEBHOOK_SECRET}
-
-    #    mandate:
-    #        assignment:
-    #            night:
-    #                start: "22:00"
-    #                end: "07:00"
 
     mobile-money:
         mtn:
