@@ -11,4 +11,14 @@ internal object ListingUrls {
         val url = listing.url ?: return null
         return baseUrl.removeSuffix("/") + url
     }
+
+    /**
+     * The listing's page in Partner Central, where its agent corrects it: a DRAFT has no public URL. Null without a
+     * non-blank `partnerCentralUrl`, or a listing id.
+     */
+    fun fixUrl(tenant: TenantEntity, listing: ListingEntity): String? {
+        val baseUrl = tenant.partnerCentralUrl?.ifBlank { null } ?: return null
+        val id = listing.id ?: return null
+        return baseUrl.removeSuffix("/") + "/listings/$id"
+    }
 }
