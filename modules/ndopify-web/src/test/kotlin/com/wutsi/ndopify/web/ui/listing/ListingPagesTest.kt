@@ -1,6 +1,7 @@
 package com.wutsi.ndopify.web.ui.listing
 
 import com.wutsi.ndopify.listing.dto.FurnitureType
+import com.wutsi.ndopify.listing.dto.ImageVariant
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingStatus
@@ -255,6 +256,42 @@ class ListingPagesTest {
     @Test
     fun `no photo`() {
         assertTrue(page().photos.isEmpty())
+    }
+
+    @Test
+    fun `photos - the view carries the renditions`() {
+        val images = listOf(
+            ListingImage(
+                id = 1,
+                url = "https://cdn/1.jpg",
+                variants = listOf(
+                    ImageVariant(240, 160, "https://ik/1-240.jpg"),
+                    ImageVariant(960, 640, "https://ik/1-960.jpg"),
+                    ImageVariant(2048, 1365, "https://ik/1-2048.jpg"),
+                ),
+                socialUrl = "https://ik/1-og.jpg",
+            ),
+        )
+
+        val photo = page(images = images).photos.single()
+
+        assertEquals("https://ik/1-960.jpg", photo.src)
+        assertEquals("https://ik/1-2048.jpg", photo.fullSrc)
+        assertEquals("https://ik/1-240.jpg", photo.thumbSrc)
+        assertEquals("https://ik/1-og.jpg", photo.socialUrl)
+        assertEquals("https://ik/1-240.jpg 240w, https://ik/1-960.jpg 960w, https://ik/1-2048.jpg 2048w", photo.srcSet)
+        assertEquals(960, photo.width)
+        assertEquals(640, photo.height)
+    }
+
+    @Test
+    fun `photos - a listing image without variants falls back to its raw URL`() {
+        val photo = page(images = listOf(ListingImage(id = 1, url = "https://cdn/1.jpg"))).photos.single()
+
+        assertEquals("https://cdn/1.jpg", photo.src)
+        assertEquals("https://cdn/1.jpg", photo.fullSrc)
+        assertEquals("https://cdn/1.jpg", photo.thumbSrc)
+        assertEquals("", photo.srcSet)
     }
 
     @Test
