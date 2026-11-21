@@ -102,6 +102,32 @@ class MandateOfferBotletTest {
     }
 
     @Test
+    fun `a 5+ rooms listing keeps its rooms in the details line`() {
+        val assignment = AssignmentEntity(
+            id = 99L,
+            mandate = MandateEntity(
+                id = 4L, tenantId = 1L, cityId = 2370201L, neighborhoodIds = listOf(111L),
+                listingType = ListingType.SALE, propertyType = PropertyType.VILLA, rooms = "5+",
+                price = 25_000_000, currencyCode = "XAF", mandateType = MandateType.LISTING,
+            ),
+            agentId = 20L, status = AssignmentStatus.PENDING, expiresAt = Date(1_800_000_000_000L),
+        )
+
+        botlet.send(assignment, agent, 1000L)
+
+        val text = argumentCaptor<String>()
+        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        assertEquals(
+            """
+            📋 Nouveau mandat : Vente - Villa (Bastos) — 25 000 000 XAF
+            5+ pièces
+            Expire le 15/01/2027 à 09:00.
+            """.trimIndent(),
+            text.firstValue,
+        )
+    }
+
+    @Test
     fun `a mandate without neighbourhoods or a city has no dangling place`() {
         val assignment = AssignmentEntity(
             id = 98L,

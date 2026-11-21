@@ -64,7 +64,7 @@ class MandateOfferBotlet(
     // The listing's facts on one line: "4 pièces · 250 m² · disponible le 01/12/2026"
     private fun details(mandate: MandateEntity, formatter: TenantFormatter): String? =
         listOfNotNull(
-            mandate.rooms?.trim()?.toIntOrNull()?.let { "$it pièce" + if (it > 1) "s" else "" },
+            mandate.rooms?.trim()?.ifBlank { null }?.let { rooms -> "$rooms pièce" + if (rooms == "1") "" else "s" },
             mandate.area?.let { "$it m²" },
             mandate.availableFrom?.let { "disponible le ${formatter.date(it)}" },
         ).ifEmpty { null }?.joinToString(" · ")
