@@ -42,6 +42,7 @@ class ListingService(
     private val agentService: AgentService,
     private val customerService: CustomerService,
     private val publishedNotifier: ListingPublishedNotifier,
+    private val sentBackNotifier: ListingSentBackNotifier,
     private val sectionService: ListingSectionService,
     private val locationService: LocationService,
     private val accessService: ListingAccessService,
@@ -350,6 +351,24 @@ class ListingService(
             customer = customerService.findById(listing.mandate.customerId),
             agent = listing.agent,
         )
+        return true
+    }
+
+    /**
+     * Notifies the agent of a listing sent back to DRAFT that it must be corrected: over Telegram when #135's link
+     * gives it a chat, by e-mail otherwise. Nothing is sent once the listing has moved on (a resubmission may have
+     * taken it out of DRAFT) or has no error left: that's the guard of a notice posted after commit, which may run
+     * after the agent's next change. The listener swallows a failure, so the notice is never retried. Returns whether
+     * it was sent.
+     */
+    @Transactional
+    fun sendSentBackNotification(id: Long): Boolean {
+        val listing = findById(id)
+        if (listing.status != ListingStatus.DRAFT || listing.errorCodes.isEmpty()) {
+            return false
+        }
+
+        sentBackNotifier.send(listing, listing.agent)
         return true
     }
 
