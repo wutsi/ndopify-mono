@@ -28,6 +28,7 @@ import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.filter.MailFilterNull
+import com.wutsi.ndopify.platform.mail.mockMailImageService
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
@@ -47,13 +48,15 @@ class MatchNotificationMailetTest {
     private val locationService = mock<LocationService>()
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
-    private val imageService = mock<ListingImageService>()
+    private val listingImageService = mock<ListingImageService>()
+    private val imageService = mockMailImageService()
     private val mailet = MatchNotificationMailet(
         tenantService,
         customerService,
         locationService,
         mailService,
         mailBodyResolver,
+        listingImageService,
         imageService,
     )
 
@@ -91,7 +94,7 @@ class MatchNotificationMailetTest {
         doReturn(customer(11L, "Sam", "Sung")).whenever(customerService).findByIdOrNull(11L)
         doReturn("<html>matches</html>").whenever(mailBodyResolver).resolve(any(), any())
         doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/302.jpg"))
-            .whenever(imageService).cover(argThat { id == 302L })
+            .whenever(listingImageService).cover(argThat { id == 302L })
     }
 
     @Test
@@ -120,7 +123,7 @@ class MatchNotificationMailetTest {
                     "mandate_url" to "https://pc.ndopify.com/mandates/2",
                     "listings" to listOf(
                         mapOf(
-                            "image_url" to "https://cdn.ndopify.com/302.jpg",
+                            "image_url" to "https://ik.imagekit.io/key/tr:w-160,h-120,f-jpg,q-75/302.jpg",
                             "title" to "Villa Etoudi",
                             "price" to "400 000 FCFA / mois",
                             "score" to 91,
@@ -173,7 +176,7 @@ class MatchNotificationMailetTest {
             (mandate["listings"] as List<*>).map { listing -> (listing as Map<*, *>)["title"] },
         )
         assertEquals(2, mandate["more"])
-        verify(imageService, times(5)).cover(any()) // Only for the listings shown
+        verify(listingImageService, times(5)).cover(any()) // Only for the listings shown
     }
 
     @Test

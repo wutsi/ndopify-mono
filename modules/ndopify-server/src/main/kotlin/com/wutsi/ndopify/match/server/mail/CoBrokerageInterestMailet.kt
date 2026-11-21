@@ -3,8 +3,10 @@ package com.wutsi.ndopify.match.server.mail
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.match.server.service.CoBrokerageInterestDigest
 import com.wutsi.ndopify.match.server.service.InterestedAgent
+import com.wutsi.ndopify.platform.image.ImageService
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
+import com.wutsi.ndopify.platform.mail.MailImages
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.Receipient
 import org.springframework.stereotype.Service
@@ -19,12 +21,13 @@ import org.springframework.stereotype.Service
  * [com.wutsi.ndopify.match.server.service.CoBrokerageInterestDigestBuilder], the same one the Telegram message renders.
  * The interested agent's identity/contact may be shown, but the search CUSTOMER is never read nor rendered. The CTA is
  * the listing agent's own mandate, absent without a partner portal. Sent by the co-brokerage job, as the fallback of
- * the Telegram channel.
+ * the Telegram channel. The e-mail's listing photos are resized through [MailImages]; the digest keeps the raw URL.
  */
 @Service
 class CoBrokerageInterestMailet(
     private val mailService: MailService,
     private val mailBodyResolver: MailBodyResolver,
+    private val imageService: ImageService,
 ) {
     companion object {
         const val SUBJECT_ONE = "{{tenant_name}}: 1 agent s'intéresse à votre bien"
@@ -56,7 +59,7 @@ class CoBrokerageInterestMailet(
                         "recipient_name" to fullName,
                         "listings" to digest.listings.map { listing ->
                             mapOf(
-                                "image_url" to listing.imageUrl,
+                                "image_url" to MailImages.imageUrl(listing.imageUrl, imageService, MailImages.THUMBNAIL),
                                 "title" to (listing.title ?: "Bien n° ${listing.listingId}"),
                                 "price" to listing.price,
                                 "mandate_url" to listing.mandateUrl,

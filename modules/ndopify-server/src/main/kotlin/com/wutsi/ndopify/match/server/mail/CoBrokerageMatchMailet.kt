@@ -6,8 +6,10 @@ import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.mandate.server.mail.MandateMailLabels
 import com.wutsi.ndopify.match.server.domain.MatchEntity
+import com.wutsi.ndopify.platform.image.ImageService
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
+import com.wutsi.ndopify.platform.mail.MailImages
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.Receipient
 import com.wutsi.ndopify.refdata.server.service.LocationService
@@ -22,7 +24,7 @@ import kotlin.math.roundToInt
  * counted; each with a thumbnail of its photo ([ListingImageService.cover], none without a verified one) and the
  * listing agent's contact (WhatsApp, or e-mail when there is none). Sent by the co-brokerage job, which marks the
  * matches notified only once this returns. The listing's own customer is never read: only the recipient's search
- * customer is.
+ * customer is. The photo is resized through [MailImages] for the e-mail (never the original URL).
  */
 @Service
 class CoBrokerageMatchMailet(
@@ -31,7 +33,8 @@ class CoBrokerageMatchMailet(
     private val locationService: LocationService,
     private val mailService: MailService,
     private val mailBodyResolver: MailBodyResolver,
-    private val imageService: ListingImageService,
+    private val listingImageService: ListingImageService,
+    private val imageService: ImageService,
 ) {
     companion object {
         const val SUBJECT_ONE = "{{tenant_name}}: 1 bien d'un autre agent correspond à vos recherches"
@@ -73,7 +76,7 @@ class CoBrokerageMatchMailet(
                         contact["agent_email"] = email
                         contact["agent_email_url"] = email?.let { "mailto:$it" }
                         mapOf(
-                            "image_url" to imageService.cover(listing)?.url?.ifBlank { null },
+                            "image_url" to MailImages.imageUrl(listingImageService.cover(listing)?.url, imageService, MailImages.THUMBNAIL),
                             "title" to (listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"),
                             "price" to MandateMailLabels.price(
                                 listing.price,

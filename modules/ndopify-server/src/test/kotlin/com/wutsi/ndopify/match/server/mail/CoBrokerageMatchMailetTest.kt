@@ -16,6 +16,7 @@ import com.wutsi.ndopify.customer.server.service.CustomerService
 import com.wutsi.ndopify.listing.dto.ListingType
 import com.wutsi.ndopify.listing.dto.PropertyType
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
+import com.wutsi.ndopify.listing.server.domain.ListingImageEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
@@ -26,6 +27,7 @@ import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.filter.MailFilterNull
+import com.wutsi.ndopify.platform.mail.mockMailImageService
 import com.wutsi.ndopify.refdata.dto.PeriodicityType
 import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
@@ -45,13 +47,15 @@ class CoBrokerageMatchMailetTest {
     private val locationService = mock<LocationService>()
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
-    private val imageService = mock<ListingImageService>()
+    private val listingImageService = mock<ListingImageService>()
+    private val imageService = mockMailImageService()
     private val mailet = CoBrokerageMatchMailet(
         tenantService,
         customerService,
         locationService,
         mailService,
         mailBodyResolver,
+        listingImageService,
         imageService,
     )
 
@@ -127,6 +131,7 @@ class CoBrokerageMatchMailetTest {
         doReturn(LocationEntity(id = 111L, name = "Bastos")).whenever(locationService).findByIdOrNull(111L)
         doReturn(customer(10L, "Ray", "Sponsible")).whenever(customerService).findByIdOrNull(10L)
         doReturn(customer(11L, "Secret", "Owner", "owner@gmail.com")).whenever(customerService).findByIdOrNull(11L)
+        doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(listingImageService).cover(any())
         doReturn("<html>matches</html>").whenever(mailBodyResolver).resolve(any(), any())
     }
 
@@ -142,6 +147,7 @@ class CoBrokerageMatchMailetTest {
 
         val listing = (mandate["listings"] as List<*>).single() as Map<*, *>
         assertEquals("Villa Bastos", listing["title"])
+        assertEquals("https://ik.imagekit.io/key/tr:w-160,h-120,f-jpg,q-75/7.jpg", listing["image_url"])
         assertEquals("90 000 FCFA / mois", listing["price"])
         assertEquals(80, listing["score"])
         assertEquals("John Doe", listing["agent_full_name"])
