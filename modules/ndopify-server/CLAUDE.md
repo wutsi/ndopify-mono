@@ -646,7 +646,8 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
   (`tr:w-…,h-…,f-…,ar-…,c-…,cm-…,q-…`), `ImageServiceLocal` returns it unchanged. Only `ListingTelegramSender` uses it
   today (see *listing*).
 - `platform/mail` — e-mail sending (`MailService`, `MailBodyResolver`, `MailFilter`); MJML templates under
-  `src/main/resources/mail/`.
+  `src/main/resources/mail/`. E-mail listing images always go through `MailImages` (`COVER` 1200×800, `THUMBNAIL`
+  160×120, JPEG quality 75), never the cover's original URL; a missing cover still sends no image.
 - `platform/logger` — key-value request logging (`KVLogger`, `KVLoggerFilter`).
 - `platform/tenant` — tenant resolution (see Multi-Tenancy below).
 - `platform/ai` — the two Spring AI `ChatClient`s (`ChatClients.VISION` for images, `ChatClients.TEXT` for text) and
