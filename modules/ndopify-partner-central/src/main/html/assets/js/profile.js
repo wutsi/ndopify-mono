@@ -11,7 +11,7 @@
     var MAX_BIOGRAPHY = 500;
     var MAX_FILE_BYTES = 5 * 1024 * 1024;
     var ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp"];
-    var PHOTO_SIZE = 480; // px, square: shown round, at most 12rem wide
+    var PHOTO_SIZE = 400; // px, square: the profile photo is shown round at 192 px at most
 
     // PROTOTYPE: the signed-in agent, as GET /v1/agents/{id} would return it (same as index.html's).
     var DEFAULT_PROFILE = {
@@ -440,19 +440,25 @@
 
     /* ---------- profile/photo.html ---------- */
 
-    // Center-crops the photo to a square and shrinks it to PHOTO_SIZE, as a JPEG data URL.
+    // Center-crops the photo to a square of at most PHOTO_SIZE, on white, as a JPEG data URL; never enlarged.
     function toSquare(file, callback) {
         var reader = new FileReader();
         reader.onload = function () {
             var img = new Image();
             img.onload = function () {
+                // Centred square, never enlarged: a photo under PHOTO_SIZE keeps its own side. White first, so a
+                // transparent PNG doesn't turn black in the JPEG.
                 var side = Math.min(img.naturalWidth, img.naturalHeight);
+                var size = Math.min(side, PHOTO_SIZE);
                 var canvas = document.createElement("canvas");
-                canvas.width = PHOTO_SIZE;
-                canvas.height = PHOTO_SIZE;
-                canvas.getContext("2d").drawImage(img,
+                canvas.width = size;
+                canvas.height = size;
+                var context = canvas.getContext("2d");
+                context.fillStyle = "#ffffff";
+                context.fillRect(0, 0, size, size);
+                context.drawImage(img,
                     (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side,
-                    0, 0, PHOTO_SIZE, PHOTO_SIZE);
+                    0, 0, size, size);
                 callback(canvas.toDataURL("image/jpeg", 0.85));
             };
             img.onerror = function () {

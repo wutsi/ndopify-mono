@@ -2,6 +2,7 @@
  * kyc.html enhancements. Every step works without this file: the form posts its photo to /kyc/{step}.
  * - photos are checked (type, 5 MB) and shrunk in the browser before they're posted, so a 12 MP phone photo
  *   doesn't hit the upload limit, and the preview shows the chosen photo at once;
+ * - the profile photo is centre-cropped to a 400 px square first; the KYC photos keep their shape, capped at 2000 px;
  * - the selfie step uses the front camera in the page (getUserMedia) when it can, under an oval guide; otherwise
  *   the <input type="file" capture="user"> that the page already shows is kept;
  * - "Suivant" stays inactive until the step has its photo: one chosen here, or one the case already has.
@@ -16,6 +17,8 @@
     var MAX_FILE_BYTES = 5 * 1024 * 1024;
     // Long enough for the ID card text to stay readable by the verification.
     var MAX_SIDE = 2000;
+    // px, square: the profile photo is shown round at 192 px at most; 400 is 2x that, and the usual profile size.
+    var PROFILE_SIDE = 400;
     var SELFIE_MAX_HEIGHT = 1000;
 
     function $(selector, root) {
@@ -95,17 +98,32 @@
         }
     }
 
-    function shrink(file, callback) {
+    // Shrinks a photo in the browser, as a JPEG at 0.85. A profile photo (square) is centre-cropped to a square of at
+    // most PROFILE_SIDE, on a white canvas so a transparent PNG doesn't turn black; a KYC photo keeps its shape, capped
+    // at MAX_SIDE.
+    function shrink(file, square, callback) {
         var url;
         var img = new Image();
         img.onload = function () {
             try {
                 URL.revokeObjectURL(url);
-                var scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height));
                 var canvas = document.createElement("canvas");
-                canvas.width = Math.round(img.width * scale);
-                canvas.height = Math.round(img.height * scale);
-                canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+                var context = canvas.getContext("2d");
+                if (square) {
+                    var side = Math.min(img.width, img.height);
+                    var size = Math.min(side, PROFILE_SIDE);
+                    canvas.width = size;
+                    canvas.height = size;
+                    context.fillStyle = "#ffffff";
+                    context.fillRect(0, 0, size, size);
+                    context.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side,
+                        0, 0, size, size);
+                } else {
+                    var scale = Math.min(1, MAX_SIDE / Math.max(img.width, img.height));
+                    canvas.width = Math.round(img.width * scale);
+                    canvas.height = Math.round(img.height * scale);
+                    context.drawImage(img, 0, 0, canvas.width, canvas.height);
+                }
                 canvas.toBlob(function (blob) {
                     callback(blob ? new File([blob], "photo.jpg", { type: "image/jpeg" }) : null);
                 }, "image/jpeg", 0.85);
@@ -125,7 +143,7 @@
         }
     }
 
-    function initUpload(step, refresh) {
+    function initUpload(step, refresh, square) {
         var input = $(".upload__input", step);
         if (!input) return;
         var latest = 0; // the change whose photo the input must hold: an older shrink that ends later is dropped
@@ -144,7 +162,7 @@
             setError(step, "");
             input.setAttribute("data-shrinking", "");
             refresh();
-            shrink(file, function (small) {
+            shrink(file, square, function (small) {
                 if (change !== latest) return;
                 input.removeAttribute("data-shrinking");
                 // Can't shrink (or can't swap the file): post the original and let the server check it.
@@ -359,7 +377,8 @@
         if (!form) return;
         var step = $("[data-step]", form);
         var refresh = initNext(step);
-        initUpload(step, refresh);
+        // Only the profile photo is cropped to a square; the KYC steps keep their shape.
+        initUpload(step, refresh, page === "profile-photo");
         initCamera(step, refresh);
         initSubmit(form);
         // Not on the KYC wizard: its steps keep the form post.
