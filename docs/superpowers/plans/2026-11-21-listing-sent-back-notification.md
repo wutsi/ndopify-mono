@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Tell a listing's agent over Telegram (e-mail as the fallback) when its listing is sent back to `DRAFT` for correction, with the reasons and a link to fix it.
+**Goal:** Tell a listing's agent over Telegram (e-mail as the fallback) when its listing is sent back to `DRAFT` for correction, with a generic message and a link to its Partner Central page.
 
-**Architecture:** `ListingVerifierService` publishes a `ListingSentBackEvent` inside the transaction that saves `DRAFT` + `errorCodes` (a verifier rejection, or the `INTERNAL_ERROR` left after `MAX_RETRIES`). An async after-commit listener calls `ListingService.sendSentBackNotification`, which guards on `DRAFT` + non-empty `errorCodes` and delegates to a new `ListingSentBackNotifier`: Telegram when the agent's chat is linked, e-mail otherwise or when Telegram fails. A shared labels class carries the French reasons and the property label.
+**Architecture:** `ListingVerifierService` publishes a `ListingSentBackEvent` inside the transaction that saves `DRAFT` + `errorCodes` (a verifier rejection, or the `INTERNAL_ERROR` left after `MAX_RETRIES`). An async after-commit listener calls `ListingService.sendSentBackNotification`, which guards on `DRAFT` + non-empty `errorCodes` and delegates to a new `ListingSentBackNotifier`: Telegram when the agent's chat is linked, e-mail otherwise or when Telegram fails. A small copy object carries the generic French wording and the property label (`n° <id> — <neighbourhood>, <city>`); a shared `ListingUrls.fixUrl` builds `{partnerCentralUrl}/listings/{id}`.
 
 **Tech Stack:** Kotlin, Spring Boot (application events, `TransactionTemplate`, `@Async` listeners), JUnit 5 + `kotlin.test`, mockito-kotlin, Mustache/MJML e-mail templates, Spring Data JPA with MySQL-backed endpoint tests.
 
@@ -15,6 +15,8 @@
 - UI text, e-mail copy and Telegram copy are in French; code, comments, logs and docs are in English.
 - `kotlin.test` assertions (`assertEquals`, `assertTrue`, `assertNull`, `assertFailsWith`), never `org.junit.jupiter.api.Assertions.*`; mocks with mockito-kotlin (`mock`, `doReturn(...).whenever(...)`, `verify`, `argumentCaptor`).
 - KDoc on every new class and public method: what it is for and the non-obvious rules (the guard, the fallback, the link rule).
+- The message is **generic**: no per-reason wording in the server. `ListingRules.REJECTIONS` stays Partner Central's; the message points at the page instead.
+- Trigger: every send-back, on each occurrence — ordinary verifier `errorCodes`, and `INTERNAL_ERROR` after `MAX_RETRIES`. Never on a successful verification nor on an attempt left `UNDER_VERIFICATION`.
 - No `ndopify-dto`, `ndopify-web-core`, Partner Central, `src/main/html/`, Flyway or configuration-key change. No API change.
 - The Telegram failure path falls back to e-mail and is logged without the bot token nor the Telegram URL; an async listener failure is logged, never rethrown.
 - Every task ends with `mvn test -Dtest=...` green; the last task runs the module's full `mvn verify` (`modules/ndopify-server` needs its local MySQL).
@@ -26,105 +28,47 @@
 - A listing resubmitted between the send-back save and the async listener: nothing may be sent for a listing that is no longer `DRAFT` or has no errors (`ListingServiceTest`).
 - The retry distinction: a verifier failure left `UNDER_VERIFICATION` notifies nobody; the failure that exhausts `MAX_RETRIES` and writes `DRAFT` + `INTERNAL_ERROR` notifies (`ListingVerifierServiceTest`).
 - `partnerCentralUrl` missing, blank or ending in `/`: no button/link, or no double slash (`ListingUrlsTest`, the botlet and mailet tests).
-- `errorCodes` duplicated, empty or unknown: one French reason each, a generic one for an unknown code, nothing sent when empty (`ListingSentBackLabelsTest`, `ListingServiceTest`).
+- The generic copy: no reasons in the message; a blank city/neighbourhood gives `n° <id>` with no dangling separator (`ListingSentBackCopyTest`, the botlet and template tests).
 - Telegram refusing the message, or no linked chat: exactly one e-mail, never a lost notice (`ListingSentBackNotifierTest`).
-- Blank city/neighbourhood: `n° <id>` with no dangling ` — ` (`ListingSentBackLabelsTest`, `ListingSentBackBotletTest`).
-- The photos reason names the configured `min-images`, not a hard-coded 5 (`ListingSentBackLabelsTest`).
+- End to end: a linked agent is messaged (no e-mail), an unlinked one is e-mailed (no Telegram) (`Task 7`).
 
 ---
 
-### Task 1: French labels and the Partner Central fix URL
+### Task 1: The copy and the Partner Central fix URL
 
 **Files:**
-- Create: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/listing/server/mail/ListingSentBackLabels.kt`
+- Create: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/listing/server/mail/ListingSentBackCopy.kt`
 - Modify: `modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/listing/server/mail/ListingUrls.kt`
-- Test: `modules/ndopify-server/src/test/kotlin/com/wutsi/ndopify/listing/server/mail/ListingSentBackLabelsTest.kt`
+- Test: `modules/ndopify-server/src/test/kotlin/com/wutsi/ndopify/listing/server/mail/ListingSentBackCopyTest.kt`
 - Test: `modules/ndopify-server/src/test/kotlin/com/wutsi/ndopify/listing/server/mail/ListingUrlsTest.kt`
 
 **Interfaces:**
-- Consumes: `ErrorCode` constants from `ndopify-dto`.
-- Produces: `ListingSentBackLabels(minImages: Int)` with `HEADLINE`, `NEXT_STEP`, `BUTTON` constants, `reason(code: String): String`, `reasons(codes: List<String>): List<String>`, `property(id: Long, city: String?, neighbourhood: String?): String`; `ListingUrls.fixUrl(tenant: TenantEntity, listing: ListingEntity): String?`.
+- Produces: `object ListingSentBackCopy` with `HEADLINE = "Votre annonce"`, `STATUS = "a été renvoyée pour correction"`, `NEXT_STEP = "Ouvrez-la dans Partner Central pour voir ce qui est à corriger, puis renvoyez-la."`, `BUTTON = "Corriger l'annonce"`, `SUBJECT = "{{tenant_name}}: Votre annonce a été renvoyée pour correction"`, and `property(id: Long, city: String?, neighbourhood: String?): String`.
+- Produces: `ListingUrls.fixUrl(tenant: TenantEntity, listing: ListingEntity): String?`.
 
-- [ ] **Step 1: Write the failing labels test**
+- [ ] **Step 1: Write the failing copy test**
 
 ```kotlin
-class ListingSentBackLabelsTest {
-    private val labels = ListingSentBackLabels(5)
-
-    @Test
-    fun `every rejection code has its French reason`() {
-        assertEquals(
-            "Pas assez de photos acceptées : il en faut 5 au moins.",
-            labels.reason(ErrorCode.LISTING_NOT_ENOUGH_IMAGES),
-        )
-        assertEquals("La position GPS du bien n'a pas été relevée.", labels.reason(ErrorCode.LISTING_MISSING_LAT_LONG))
-        assertEquals("Le quartier du bien n'est pas indiqué.", labels.reason(ErrorCode.LISTING_MISSING_NEIGHBORHOOD))
-        assertEquals(
-            "Le quartier indiqué n'est pas un quartier de la ville du bien.",
-            labels.reason(ErrorCode.LISTING_INVALID_NEIGHBORHOOD),
-        )
-        assertEquals(
-            "La position GPS relevée n'est pas dans le quartier indiqué.",
-            labels.reason(ErrorCode.LISTING_OUTSIDE_NEIGHBORHOOD),
-        )
-        assertEquals("La vérification de l'annonce n'a pas abouti.", labels.reason(ErrorCode.INTERNAL_ERROR))
-    }
-
-    @Test
-    fun `an unknown code gets the generic reason`() {
-        assertEquals("La vérification de l'annonce a signalé un problème.", labels.reason("unknown:code"))
-    }
-
-    @Test
-    fun `reasons keep the listing order and drop duplicates`() {
-        assertEquals(
-            listOf(
-                "Pas assez de photos acceptées : il en faut 5 au moins.",
-                "La position GPS relevée n'est pas dans le quartier indiqué.",
-            ),
-            labels.reasons(
-                listOf(ErrorCode.LISTING_NOT_ENOUGH_IMAGES, ErrorCode.LISTING_OUTSIDE_NEIGHBORHOOD, ErrorCode.LISTING_NOT_ENOUGH_IMAGES),
-            ),
-        )
-    }
-
-    @Test
-    fun `the photos reason names the configured minimum`() {
-        assertEquals(
-            "Pas assez de photos acceptées : il en faut 7 au moins.",
-            ListingSentBackLabels(7).reason(ErrorCode.LISTING_NOT_ENOUGH_IMAGES),
-        )
-    }
-
+class ListingSentBackCopyTest {
     @Test
     fun `the property label carries the id and, when known, the place`() {
-        assertEquals("n° 101 — Bastos, Yaoundé", labels.property(101L, "Yaoundé", "Bastos"))
-        assertEquals("n° 101 — Yaoundé", labels.property(101L, "Yaoundé", null))
-        assertEquals("n° 101 — Bastos", labels.property(101L, null, "Bastos"))
-        assertEquals("n° 101", labels.property(101L, null, null))
-        assertEquals("n° 101", labels.property(101L, " ", "  "))
+        assertEquals("n° 101 — Bastos, Yaoundé", ListingSentBackCopy.property(101L, "Yaoundé", "Bastos"))
+        assertEquals("n° 101 — Yaoundé", ListingSentBackCopy.property(101L, "Yaoundé", null))
+        assertEquals("n° 101 — Bastos", ListingSentBackCopy.property(101L, null, "Bastos"))
+        assertEquals("n° 101", ListingSentBackCopy.property(101L, null, null))
+        assertEquals("n° 101", ListingSentBackCopy.property(101L, " ", "  "))
+    }
+
+    @Test
+    fun `the copy names no reason`() {
+        assertEquals("Votre annonce", ListingSentBackCopy.HEADLINE)
+        assertEquals("a été renvoyée pour correction", ListingSentBackCopy.STATUS)
+        assertEquals("Corriger l'annonce", ListingSentBackCopy.BUTTON)
     }
 }
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
-
-Run: `cd modules/ndopify-server && mvn test -Dtest=ListingSentBackLabelsTest`
-Expected: compilation failure — `ListingSentBackLabels` is unresolved.
-
-- [ ] **Step 3: Write `ListingSentBackLabels`**
-
-A `@Service` whose `min-images` value is injected: `@param:Value("\${ndopify.listing.min-images}") private val minImages: Int`. `reason` is a `when` over the six codes, with `List` of the six values in the same order as `ListingVerifierService` produces them; the unknown fallback is `La vérification de l'annonce a signalé un problème.` `reasons` is `codes.distinct().map { reason(it) }`. `property` joins `neighbourhood` then `city` with `, `, skipping null/blank values, and returns `n° <id>` alone when both are blank, else `n° <id> — <place>`.
-
-```kotlin
-companion object {
-    const val HEADLINE = "Votre annonce n'a pas été validée"
-    const val NEXT_STEP = "Corrigez l'annonce si nécessaire, puis renvoyez-la pour vérification."
-    const val BUTTON = "Corriger l'annonce"
-}
-```
-
-- [ ] **Step 4: Write the failing URL test**
+- [ ] **Step 2: Write the failing URL test**
 
 ```kotlin
 class ListingUrlsTest {
@@ -153,23 +97,32 @@ class ListingUrlsTest {
 }
 ```
 
+- [ ] **Step 3: Run the tests to verify they fail**
+
+Run: `cd modules/ndopify-server && mvn test -Dtest=ListingSentBackCopyTest,ListingUrlsTest`
+Expected: compilation failure — the copy and `fixUrl` are unresolved.
+
+- [ ] **Step 4: Write `ListingSentBackCopy`**
+
+An `object` with the constants above. `property` joins `neighbourhood` then `city`, skipping null/blank values, and returns `n° <id>` alone when both are blank, else `n° <id> — <place>`.
+
 - [ ] **Step 5: Implement `ListingUrls.fixUrl`**
 
-Add to the existing object, with KDoc: the listing's page in Partner Central (a `DRAFT` has no public URL), `null` without a `partnerCentralUrl` or a listing id. Trim the trailing `/` from the base before appending `/listings/{id}`.
+Add to the existing object, with KDoc: the listing's page in Partner Central (a `DRAFT` has no public URL), `null` without a non-blank `partnerCentralUrl` or a listing id. Trim the trailing `/` from the base before appending `/listings/{id}`.
 
-- [ ] **Step 6: Run both tests to verify they pass**
+- [ ] **Step 6: Run the tests to verify they pass**
 
-Run: `cd modules/ndopify-server && mvn test -Dtest=ListingSentBackLabelsTest,ListingUrlsTest`
+Run: `cd modules/ndopify-server && mvn test -Dtest=ListingSentBackCopyTest,ListingUrlsTest`
 Expected: PASS.
 
 - [ ] **Step 7: Commit**
 
 ```bash
-git add modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/listing/server/mail/ListingSentBackLabels.kt \
+git add modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/listing/server/mail/ListingSentBackCopy.kt \
         modules/ndopify-server/src/main/kotlin/com/wutsi/ndopify/listing/server/mail/ListingUrls.kt \
-        modules/ndopify-server/src/test/kotlin/com/wutsi/ndopify/listing/server/mail/ListingSentBackLabelsTest.kt \
+        modules/ndopify-server/src/test/kotlin/com/wutsi/ndopify/listing/server/mail/ListingSentBackCopyTest.kt \
         modules/ndopify-server/src/test/kotlin/com/wutsi/ndopify/listing/server/mail/ListingUrlsTest.kt
-git commit -m "feat(server): add the sent-back listing labels and fix URL" -m "Refs #230"
+git commit -m "feat(server): add the sent-back copy and fix URL" -m "Refs #230"
 ```
 
 ---
@@ -234,7 +187,19 @@ Expected: compilation failure — the event and the constructor parameter are un
 
 - [ ] **Step 3: Create `ListingSentBackEvent`**
 
-KDoc: published by `ListingVerifierService.verify` inside the transaction that saves a listing back to `DRAFT` with `errorCodes` (a verifier rejection, or `INTERNAL_ERROR` after `MAX_RETRIES`); carries ids, not entities.
+```kotlin
+package com.wutsi.ndopify.listing.server.event
+
+/**
+ * Published by `ListingVerifierService.verify`, inside the transaction that saves a listing back to DRAFT with
+ * `errorCodes` (a verifier rejection, or `INTERNAL_ERROR` after `MAX_RETRIES`). Carries ids rather than the entity,
+ * so listeners reload what they need. [tenantId] is the listing's tenant, since listeners run on a thread with none.
+ */
+data class ListingSentBackEvent(
+    val listingId: Long,
+    val tenantId: Long,
+)
+```
 
 - [ ] **Step 4: Publish it from the verifier**
 
@@ -263,69 +228,77 @@ git commit -m "feat(server): publish a listing sent-back event" -m "Refs #230"
 - Test: `modules/ndopify-server/src/test/kotlin/com/wutsi/ndopify/listing/server/bot/ListingSentBackBotletTest.kt`
 
 **Interfaces:**
-- Consumes: `ListingSentBackLabels`, `ListingUrls.fixUrl`, `TenantService.findById`, `LocationService.findByIdOrNull`, `TelegramClient.sendMessage(chatId: Long, text: String, buttons: List<TelegramButton>)`.
+- Consumes: `ListingSentBackCopy`, `ListingUrls.fixUrl`, `TenantService.findById`, `LocationService.findByIdOrNull`, `TelegramClient.sendMessage(chatId: Long, text: String, buttons: List<TelegramButton>)`.
 - Produces: `ListingSentBackBotlet.send(listing: ListingEntity, chatId: Long)`; throws `TelegramException` when Telegram refuses.
 
 - [ ] **Step 1: Write the failing botlet test**
 
-Use a real `ListingSentBackLabels(5)`, mocked `TenantService`, `LocationService` and `TelegramClient`. Fixture:
+Use mocked `TenantService`, `LocationService` and `TelegramClient`. Fixture:
 
 ```kotlin
-private val tenant = TenantEntity(id = 1L, name = "Ndopify", partnerCentralUrl = "https://partner.ndopify.com/")
-private val listing = ListingEntity(
-    id = 101L,
-    tenantId = 1L,
-    cityId = 2370201L,
-    neighborhoodId = 111L,
-    errorCodes = listOf(ErrorCode.LISTING_NOT_ENOUGH_IMAGES, ErrorCode.LISTING_OUTSIDE_NEIGHBORHOOD),
-)
-private val text = """
-    ⚠️ Votre annonce n'a pas été validée : n° 101 — Bastos, Yaoundé
-    - Pas assez de photos acceptées : il en faut 5 au moins.
-    - La position GPS relevée n'est pas dans le quartier indiqué.
+class ListingSentBackBotletTest {
+    private val tenantService = mock<TenantService>()
+    private val locationService = mock<LocationService>()
+    private val client = mock<TelegramClient>()
+    private val botlet = ListingSentBackBotlet(tenantService, locationService, client)
 
-    Corrigez l'annonce si nécessaire, puis renvoyez-la pour vérification.
-""".trimIndent()
-```
-
-Tests:
-
-```kotlin
-@Test
-fun `the message and its fix button are sent`() {
-    botlet.send(listing, 1000L)
-
-    verify(client).sendMessage(
-        1000L,
-        text,
-        listOf(TelegramButton("Corriger l'annonce", url = "https://partner.ndopify.com/listings/101")),
+    private val tenant = TenantEntity(id = 1L, name = "Ndopify", partnerCentralUrl = "https://partner.ndopify.com/")
+    private val listing = ListingEntity(
+        id = 101L,
+        tenantId = 1L,
+        cityId = 2370201L,
+        neighborhoodId = 111L,
+        errorCodes = listOf(ErrorCode.LISTING_NOT_ENOUGH_IMAGES, ErrorCode.LISTING_OUTSIDE_NEIGHBORHOOD),
     )
-}
+    private val text = """
+        Votre annonce n° 101 — Bastos, Yaoundé a été renvoyée pour correction
 
-@Test
-fun `no partner central URL means no button`() {
-    doReturn(tenant.copy(partnerCentralUrl = null)).whenever(tenantService).findById(1L)
+        Ouvrez-la dans Partner Central pour voir ce qui est à corriger, puis renvoyez-la.
+    """.trimIndent()
 
-    botlet.send(listing, 1000L)
+    @BeforeTest
+    fun setUp() {
+        doReturn(tenant).whenever(tenantService).findById(1L)
+        doReturn(LocationEntity(id = 2370201L, name = "Yaoundé")).whenever(locationService).findByIdOrNull(2370201L)
+        doReturn(LocationEntity(id = 111L, name = "Bastos")).whenever(locationService).findByIdOrNull(111L)
+    }
 
-    verify(client).sendMessage(1000L, text, emptyList())
-}
+    @Test
+    fun `the message and its fix button are sent`() {
+        botlet.send(listing, 1000L)
 
-@Test
-fun `no place means the id alone`() {
-    val text = argumentCaptor<String>()
-    botlet.send(listing.copy(cityId = -1L, neighborhoodId = null), 1000L)
+        verify(client).sendMessage(
+            1000L,
+            text,
+            listOf(TelegramButton("Corriger l'annonce", url = "https://partner.ndopify.com/listings/101")),
+        )
+    }
 
-    verify(client).sendMessage(eq(1000L), text.capture(), any())
-    assertTrue(text.firstValue.startsWith("⚠️ Votre annonce n'a pas été validée : n° 101\n"))
-}
+    @Test
+    fun `no partner central URL means no button`() {
+        doReturn(tenant.copy(partnerCentralUrl = null)).whenever(tenantService).findById(1L)
 
-@Test
-fun `a Telegram refusal propagates`() {
-    doThrow(TelegramException("Forbidden: bot was blocked by the user"))
-        .whenever(client).sendMessage(eq(1000L), any(), any())
+        botlet.send(listing, 1000L)
 
-    assertFailsWith<TelegramException> { botlet.send(listing, 1000L) }
+        verify(client).sendMessage(1000L, text, emptyList())
+    }
+
+    @Test
+    fun `no place means the id alone`() {
+        val text = argumentCaptor<String>()
+        botlet.send(listing.copy(cityId = -1L, neighborhoodId = null), 1000L)
+
+        verify(client).sendMessage(eq(1000L), text.capture(), any())
+        assertTrue(text.firstValue.startsWith("Votre annonce n° 101 a été renvoyée pour correction\n"))
+    }
+
+    @Test
+    fun `a Telegram refusal propagates`() {
+        doThrow(TelegramException("Forbidden: bot was blocked by the user"))
+            .whenever(client).sendMessage(eq(1000L), any(), any())
+
+        assertFailsWith<TelegramException> { botlet.send(listing, 1000L) }
+    }
 }
 ```
 
@@ -336,13 +309,12 @@ Expected: compilation failure — `ListingSentBackBotlet` is unresolved.
 
 - [ ] **Step 3: Implement `ListingSentBackBotlet`**
 
-A `@Service` with `tenantService`, `locationService`, `labels`, `client`. `send` loads the tenant from `listing.tenantId!!`, resolves the city and neighbourhood names (null for missing/blank), builds the lines:
+A `@Service` with `tenantService`, `locationService`, `client`. `send` loads the tenant from `listing.tenantId!!`, resolves the city and neighbourhood names (null for missing/blank), builds the lines:
 
-1. `⚠️ ${ListingSentBackLabels.HEADLINE} : ${labels.property(listing.id!!, city, neighbourhood)}`
-2. one `- <reason>` per `labels.reasons(listing.errorCodes)`
-3. blank line, then `ListingSentBackLabels.NEXT_STEP`
+1. `"${ListingSentBackCopy.HEADLINE} ${ListingSentBackCopy.property(listing.id!!, city, neighbourhood)} ${ListingSentBackCopy.STATUS}"`
+2. blank line, then `ListingSentBackCopy.NEXT_STEP`
 
-Then `client.sendMessage(chatId, lines.joinToString("\n"), buttons)` where `buttons` is one `TelegramButton(ListingSentBackLabels.BUTTON, url = ListingUrls.fixUrl(tenant, listing))` when the URL exists, else `emptyList()`. KDoc: the recipient is the chat from #135's link; Telegram refusing throws so the notifier falls back.
+Then `client.sendMessage(chatId, lines.joinToString("\n"), buttons)` where `buttons` is one `TelegramButton(ListingSentBackCopy.BUTTON, url = ListingUrls.fixUrl(tenant, listing))` when the URL exists, else `emptyList()`. KDoc: the recipient is the chat from #135's link; Telegram refusing throws so the notifier falls back.
 
 - [ ] **Step 4: Run the test to verify it passes**
 
@@ -368,14 +340,12 @@ git commit -m "feat(server): add the listing sent-back Telegram message" -m "Ref
 - Test: `modules/ndopify-server/src/test/kotlin/com/wutsi/ndopify/listing/server/mail/ListingSentBackTemplateTest.kt`
 
 **Interfaces:**
-- Consumes: `ListingSentBackLabels`, `ListingUrls.fixUrl`, `MailService.send(Email)`, `MailBodyResolver.resolve(path, context)`, `TenantService`, `LocationService`.
-- Produces: `ListingSentBackMailet.send(listing: ListingEntity, agent: AgentEntity)`; `SUBJECT_AGENT = "{{tenant_name}}: Votre annonce n'a pas été validée"`; `TEMPLATE_AGENT = "/mail/listing/sent_back_agent.mjml"`.
+- Consumes: `ListingSentBackCopy`, `ListingUrls.fixUrl`, `MailService.send(Email)`, `MailBodyResolver.resolve(path, context)`, `TenantService`, `LocationService`.
+- Produces: `ListingSentBackMailet.send(listing: ListingEntity, agent: AgentEntity)`; `SUBJECT_AGENT = ListingSentBackCopy.SUBJECT`; `TEMPLATE_AGENT = "/mail/listing/sent_back_agent.mjml"`.
 
 - [ ] **Step 1: Write the failing mailet test**
 
-Mirror `ListingPublishedMailetTest` with mocks for `TenantService`, `LocationService`, `MailService`, `MailBodyResolver` and a real `ListingSentBackLabels(5)`. Fixtures: tenant with `logoUrl` and `partnerCentralUrl`, listing `id = 101`, `tenantId = 1`, `cityId = 2370201`, `neighborhoodId = 111`, both error codes; agent `Kim Possible <kim.possible@gmail.com>`. Stub `mailBodyResolver.resolve(any(), any())` to `"<html>sent back</html>"`.
-
-Assert:
+Mirror `ListingPublishedMailetTest` with mocks for `TenantService`, `LocationService`, `MailService` and `MailBodyResolver`. Fixtures: tenant with `logoUrl` and `partnerCentralUrl`, listing `id = 101`, `tenantId = 1`, `cityId = 2370201`, `neighborhoodId = 111`, both error codes; agent `Kim Possible <kim.possible@gmail.com>`. Stub `mailBodyResolver.resolve(any(), any())` to `"<html>sent back</html>"`.
 
 ```kotlin
 @Test
@@ -386,12 +356,12 @@ fun `send to the agent only`() {
     verify(mailService).send(email.capture())
     assertEquals("kim.possible@gmail.com", email.firstValue.recipient.email)
     assertEquals("Kim Possible", email.firstValue.recipient.displayName)
-    assertEquals("Ndopify: Votre annonce n'a pas été validée", email.firstValue.subject)
+    assertEquals("Ndopify: Votre annonce a été renvoyée pour correction", email.firstValue.subject)
     assertEquals("<html>sent back</html>", email.firstValue.body)
 }
 
 @Test
-fun `the e-mail context carries the property, the reasons and the link`() {
+fun `the e-mail context carries the property and the link`() {
     mailet.send(listing, agent)
 
     val context = argumentCaptor<Map<String, Any?>>()
@@ -402,10 +372,6 @@ fun `the e-mail context carries the property, the reasons and the link`() {
             "tenant_name" to "Ndopify",
             "recipient_name" to "Kim Possible",
             "property" to "n° 101 — Bastos, Yaoundé",
-            "reasons" to listOf(
-                "Pas assez de photos acceptées : il en faut 5 au moins.",
-                "La position GPS relevée n'est pas dans le quartier indiqué.",
-            ),
             "fix_url" to "https://partner.ndopify.com/listings/101",
         ),
         context.firstValue,
@@ -431,7 +397,54 @@ Expected: compilation failure — `ListingSentBackMailet` is unresolved.
 
 - [ ] **Step 3: Implement `ListingSentBackMailet` and the template**
 
-The mailet loads the tenant, resolves city/neighbourhood (blank → null), builds the context above and sends one `Email` to `agent.party` with the subject `{{tenant_name}}` replaced by the tenant's name and the resolved body. Template `mail/listing/sent_back_agent.mjml`: logo, greeting, `Votre annonce ({{property}}) n'a pas été validée.`, a `Points à corriger :` list over `{{#reasons}}<li>{{.}}</li>{{/reasons}}`, `{{#fix_url}}` button labelled `Corriger l'annonce `, and the sign-off, following `published_agent.mjml`'s structure and CSS classes.
+The mailet loads the tenant, resolves the city and neighbourhood names (blank → null), builds `property = ListingSentBackCopy.property(listing.id!!, city, neighbourhood)` and `fix_url = ListingUrls.fixUrl(tenant, listing)`, then sends one `Email` to `agent.party` with `SUBJECT_AGENT` (the tenant's name substituted) and the resolved body. The context also carries `tenant_logo_url`, `tenant_name` and `recipient_name`.
+
+Template `mail/listing/sent_back_agent.mjml`, following `published_agent.mjml`'s structure and CSS classes:
+
+```xml
+<mjml>
+    <mj-head>
+        <mj-style inline="inline">
+            {{__css__}}
+        </mj-style>
+    </mj-head>
+    <mj-body css-class="body">
+        <mj-section css-class="main-content">
+            <mj-column>
+                <mj-image align="center" src="{{tenant_logo_url}}" alt="Logo" width="128" />
+                <mj-divider css-class="divider"/>
+
+                <mj-text>
+                    Bonjour <strong>{{recipient_name}}</strong>,
+                </mj-text>
+                <mj-text>
+                    Votre annonce <strong>{{property}}</strong> a été
+                    <span class="text-primary"><strong>renvoyée pour correction</strong></span>.
+                </mj-text>
+
+                <mj-text>
+                    Ouvrez-la dans Partner Central pour voir ce qui est à corriger, puis renvoyez-la.
+                </mj-text>
+
+                {{#fix_url}}
+                <mj-spacer/>
+                <mj-button href="{{fix_url}}" css-class="btn-primary" align="center">
+                    Corriger l'annonce
+                </mj-button>
+                <mj-spacer/>
+                {{/fix_url}}
+
+                <mj-spacer/>
+                <mj-text>
+                    Cordialement,
+                    <br/>
+                    L'équipe {{tenant_name}}
+                </mj-text>
+            </mj-column>
+        </mj-section>
+    </mj-body>
+</mjml>
+```
 
 - [ ] **Step 4: Write the failing template test**
 
@@ -446,17 +459,16 @@ class ListingSentBackTemplateTest {
         "tenant_name" to "Ndopify",
         "recipient_name" to "Kim Possible",
         "property" to "n° 101 — Bastos, Yaoundé",
-        "reasons" to listOf("Pas assez de photos acceptées : il en faut 5 au moins."),
         "fix_url" to "https://partner.ndopify.com/listings/101",
     )
 
     @Test
-    fun `the e-mail carries the reasons and the fix button`() {
+    fun `the e-mail carries the generic message and the fix button`() {
         val html = resolver.resolve(ListingSentBackMailet.TEMPLATE_AGENT, context)
 
-        assertTrue(html.contains("n'a pas été validée"))
+        assertTrue(html.contains("renvoyée pour correction"))
         assertTrue(html.contains("n° 101 — Bastos, Yaoundé"))
-        assertTrue(html.contains("Pas assez de photos acceptées"))
+        assertTrue(html.contains("Ouvrez-la dans Partner Central"))
         assertTrue(html.contains("https://partner.ndopify.com/listings/101"))
         assertTrue(html.contains("Corriger l'annonce"))
     }
@@ -708,6 +720,7 @@ git commit -m "feat(server): send the sent-back notice after commit" -m "Refs #2
 
 **Files:**
 - Create: `modules/ndopify-server/src/test/resources/db/test/listing/SentBackListingsJob.sql`
+- Create: `modules/ndopify-server/src/test/resources/db/test/listing/SentBackListingsJobNoTelegram.sql`
 - Create: `modules/ndopify-server/src/test/kotlin/com/wutsi/ndopify/listing/server/job/TelegramSentBackListingsJobTest.kt`
 - Create: `modules/ndopify-server/src/test/kotlin/com/wutsi/ndopify/listing/server/job/SentBackListingsJobTest.kt`
 
@@ -717,7 +730,9 @@ git commit -m "feat(server): send the sent-back notice after commit" -m "Refs #2
 
 - [ ] **Step 1: Write the SQL fixture**
 
-Copy `VerifyListingsJob.sql` and keep two listings: `100` at the neighbourhood's centre (valid) and `101` 30 km away (outside). Both are `UNDER_VERIFICATION` — the job only selects that status, and these tests call `jobs.verify()` directly, not the `POST /v1/listings/{id}/verify` endpoint. The tenant carries `partner_central_url = 'https://partner.ndopify.com'` and `active = true`; the agent's party is `Kim Possible <kim.possible@gmail.com>`; add `T_AGENT_TELEGRAM(tenant_id, agent_id, chat_id, linked_at) VALUES (1, 20, 1000, '2026-11-15 00:00:00')`. Each listing gets the five required sections and five `VERIFIED` photos (no download in the verifier).
+Copy `VerifyListingsJob.sql` and keep two listings: `100` at the neighbourhood's centre (valid) and `101` 30 km away (outside). Both are `UNDER_VERIFICATION` — the job only selects that status, and these tests call `jobs.verify()` directly, not the `POST /v1/listings/{id}/verify` endpoint. The tenant carries `partner_central_url = 'https://partner.ndopify.com'` and `active = true`; the agent's party is `Kim Possible <kim.possible@gmail.com>`. Each listing gets the five required sections and five `VERIFIED` photos (no download in the verifier).
+
+`SentBackListingsJob.sql` adds the linked chat: `T_AGENT_TELEGRAM(tenant_id, agent_id, chat_id, linked_at) VALUES (1, 20, 1000, '2026-11-15 00:00:00')`. `SentBackListingsJobNoTelegram.sql` is the same fixture without that row, for the e-mail test (a second file, rather than a `@Sql` delete whose ordering against the class-level fixture would be fragile).
 
 - [ ] **Step 2: Write the failing Telegram job test**
 
@@ -738,8 +753,8 @@ class TelegramSentBackListingsJobTest : BaseEndpointIntegrationTest() {
         val text = argumentCaptor<String>()
         val buttons = argumentCaptor<List<TelegramButton>>()
         verify(client).sendMessage(eq(1000L), text.capture(), buttons.capture())
-        assertTrue(text.firstValue.startsWith("⚠️ Votre annonce n'a pas été validée : n° 101 — Bastos, Yaoundé"))
-        assertTrue(text.firstValue.contains("La position GPS relevée n'est pas dans le quartier indiqué."))
+        assertTrue(text.firstValue.startsWith("Votre annonce n° 101 — Bastos, Yaoundé a été renvoyée pour correction"))
+        assertTrue(text.firstValue.contains("Ouvrez-la dans Partner Central pour voir ce qui est à corriger"))
         assertEquals(
             listOf(TelegramButton("Corriger l'annonce", url = "https://partner.ndopify.com/listings/101")),
             buttons.firstValue,
@@ -753,10 +768,10 @@ class TelegramSentBackListingsJobTest : BaseEndpointIntegrationTest() {
 
 - [ ] **Step 3: Write the failing e-mail job test**
 
-Same fixture, no Telegram link on the test method:
+Same fixture without the Telegram link:
 
 ```kotlin
-@Sql(value = ["/db/test/clean.sql", "/db/test/listing/SentBackListingsJob.sql"])
+@Sql(value = ["/db/test/clean.sql", "/db/test/listing/SentBackListingsJobNoTelegram.sql"])
 class SentBackListingsJobTest : BaseEndpointIntegrationTest() {
     @Autowired
     private lateinit var jobs: ListingJobs
@@ -765,16 +780,15 @@ class SentBackListingsJobTest : BaseEndpointIntegrationTest() {
     private lateinit var client: TelegramClient
 
     @Test
-    @Sql(statements = ["DELETE FROM T_AGENT_TELEGRAM"])
-    fun `an unlinked agent is e-mailed the reasons and the fix link`() {
+    fun `an unlinked agent is e-mailed the generic message and the fix link`() {
         jobs.verify()
         awaitAsyncTasks()
 
         assertTrue(smtp.waitForIncomingEmail(5000, 1), "no e-mail received")
         val message = smtp.receivedMessages.single()
         assertEquals("Kim Possible <kim.possible@gmail.com>", message.allRecipients.single().toString())
-        assertEquals("Ndopify: Votre annonce n'a pas été validée", message.subject)
-        assertTrue(message.content.toString().contains("La position GPS relevée n'est pas dans le quartier indiqué."))
+        assertEquals("Ndopify: Votre annonce a été renvoyée pour correction", message.subject)
+        assertTrue(message.content.toString().contains("n° 101 — Bastos, Yaoundé"))
         assertTrue(message.content.toString().contains("https://partner.ndopify.com/listings/101"))
         verifyNoInteractions(client)
     }
@@ -784,7 +798,7 @@ class SentBackListingsJobTest : BaseEndpointIntegrationTest() {
 - [ ] **Step 4: Run them**
 
 Run: `cd modules/ndopify-server && mvn test -Dtest=TelegramSentBackListingsJobTest,SentBackListingsJobTest`
-Expected: PASS once Tasks 1–6 are complete. These tests pin the wiring end to end rather than drive new production code: a failure means the event, the listener, the guard, the label or the link is wrong, not that the test needs loosening. If the fixture itself is wrong, fix it first.
+Expected: PASS once Tasks 1–6 are complete. These tests pin the wiring end to end rather than drive new production code: a failure means the event, the listener, the guard, the copy or the link is wrong, not that the test needs loosening. If the fixture itself is wrong, fix it first.
 
 - [ ] **Step 5: Fix the owning class, never the assertion**
 
@@ -799,6 +813,7 @@ Expected: PASS.
 
 ```bash
 git add modules/ndopify-server/src/test/resources/db/test/listing/SentBackListingsJob.sql \
+        modules/ndopify-server/src/test/resources/db/test/listing/SentBackListingsJobNoTelegram.sql \
         modules/ndopify-server/src/test/kotlin/com/wutsi/ndopify/listing/server/job/TelegramSentBackListingsJobTest.kt \
         modules/ndopify-server/src/test/kotlin/com/wutsi/ndopify/listing/server/job/SentBackListingsJobTest.kt
 git commit -m "test(server): cover the sent-back notification end to end" -m "Refs #230"
@@ -813,7 +828,7 @@ git commit -m "test(server): cover the sent-back notification end to end" -m "Re
 
 - [ ] **Step 1: Document the notice in the listing section**
 
-After the *Send* paragraph (the send-back to `DRAFT`), add a short paragraph: a send-back publishes `ListingSentBackEvent`; `ListingSentBackNotifier` messages a linked agent (`ListingSentBackBotlet`, via `AgentTelegramService.chatId`) and e-mails the others (`ListingSentBackMailet`, `mail/listing/sent_back_agent.mjml`), falling back to e-mail on a failed send; the message names the property (`n° <id>` plus city/neighbourhood), the French reasons (the photo minimum from `min-images`), and a `Corriger l'annonce` button to `{partnerCentralUrl}/listings/{id}` (none without it); nothing is sent when the listing is no longer `DRAFT` with errors.
+After the *Send* paragraph (the send-back to `DRAFT`), add a short paragraph: a send-back publishes `ListingSentBackEvent`; `ListingSentBackNotifier` messages a linked agent (`ListingSentBackBotlet`, via `AgentTelegramService.chatId`) and e-mails the others (`ListingSentBackMailet`, `mail/listing/sent_back_agent.mjml`), falling back to e-mail on a failed send; the message is generic, names the property (`n° <id>` plus neighbourhood/city) and carries a `Corriger l'annonce` button to `{partnerCentralUrl}/listings/{id}` (none without it); nothing is sent when the listing is no longer `DRAFT` with errors.
 
 - [ ] **Step 2: Document the event and the notifier under asynchronous e-mails**
 
