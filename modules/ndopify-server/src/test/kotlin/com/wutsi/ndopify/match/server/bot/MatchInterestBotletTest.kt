@@ -9,24 +9,34 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.listing.server.bot.ListingTelegramLabels
 import com.wutsi.ndopify.listing.server.bot.ListingTelegramSender
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
+import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
+import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class MatchInterestBotletTest {
     private val tenantService = mock<TenantService>()
+    private val locationService = mock<LocationService>()
     private val sender = mock<ListingTelegramSender>()
-    private val botlet = MatchInterestBotlet(tenantService, sender)
+    private val labels = ListingTelegramLabels(locationService)
+    private val botlet = MatchInterestBotlet(tenantService, labels, sender)
 
-    private val tenant = TenantEntity(id = 1L, partnerCentralUrl = "https://partner.ndopify.com/")
+    private val tenant = TenantEntity(
+        id = 1L,
+        partnerCentralUrl = "https://partner.ndopify.com/",
+        currencyCode = "XAF",
+        monetaryFormat = "#,###,##0 FCFA",
+    )
     private val agent = AgentEntity(
         id = 20L,
         party = PartyEntity(id = 200L, firstName = "Kim", lastName = "Possible"),
@@ -36,28 +46,30 @@ class MatchInterestBotletTest {
         party = PartyEntity(id = 100L, firstName = "Ray", lastName = "Sponsible"),
     )
     private val mandate = MandateEntity(id = 5L, tenantId = 1L)
-    private val listing = ListingEntity(id = 101L, title = "Nice apartment")
+    private val listing = ListingEntity(
+        id = 101L,
+        title = "Nice apartment",
+        neighborhoodId = 1001L,
+        price = 150000,
+        currencyCode = "XAF",
+        pricePeriodicityType = PeriodicityType.MONTHLY,
+    )
 
     @BeforeTest
     fun setUp() {
         doReturn(tenant).whenever(tenantService).findById(1L)
+        doReturn(LocationEntity(id = 1001L, name = "Bastos")).whenever(locationService).findByIdOrNull(1001L)
     }
 
     @Test
-    fun `the interest opens with the event, not a greeting`() {
+    fun `the interest opens with the event and the property line`() {
         botlet.send(agent, customer, mandate, listing, 1000L)
 
         val text = argumentCaptor<String>()
         val buttons = argumentCaptor<List<TelegramButton>>()
         verify(sender).send(eq(1000L), eq(listing), text.capture(), buttons.capture())
         assertEquals(
-            """
-            Ray Sponsible s'intéresse à un logement
-
-            Bien: Nice apartment
-
-            Contactez-le pour organiser la visite.
-            """.trimIndent(),
+            "👀 Ray Sponsible s'intéresse à : Nice apartment (Bastos) — 150 000 FCFA / mois",
             text.firstValue,
         )
         assertEquals(
@@ -74,18 +86,20 @@ class MatchInterestBotletTest {
 
         val text = argumentCaptor<String>()
         verify(sender).send(eq(1000L), eq(withoutTitle), text.capture(), any())
-        assertTrue(text.firstValue.contains("Bien: Bien n° 101"))
+        assertEquals(
+            "👀 Ray Sponsible s'intéresse à : Bien n° 101 (Bastos) — 150 000 FCFA / mois",
+            text.firstValue,
+        )
     }
 
     @Test
     fun `a customer with a WhatsApp number gets a contact button`() {
         botlet.send(agent, customer.copy(whatsappNumber = "+237600000001"), mandate, listing, 1000L)
 
-        val text = argumentCaptor<String>()
         verify(sender).send(
             eq(1000L),
             eq(listing),
-            text.capture(),
+            any(),
             eq(
                 listOf(
                     TelegramButton("Contacter sur WhatsApp", url = "https://wa.me/237600000001"),
@@ -93,7 +107,6 @@ class MatchInterestBotletTest {
                 ),
             ),
         )
-        assertTrue(text.firstValue.startsWith("Ray Sponsible s'intéresse à un logement"))
     }
 
     @Test
