@@ -4,7 +4,6 @@ import com.wutsi.ndopify.agent.dto.Agent
 import com.wutsi.ndopify.common.dto.AttachUploadRequest
 import com.wutsi.ndopify.common.dto.PresignUploadRequest
 import com.wutsi.ndopify.common.dto.PresignUploadResponse
-import com.wutsi.ndopify.listing.dto.AttachListingImageResponse
 import com.wutsi.ndopify.listing.dto.Listing
 import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.listing.dto.ListingSection

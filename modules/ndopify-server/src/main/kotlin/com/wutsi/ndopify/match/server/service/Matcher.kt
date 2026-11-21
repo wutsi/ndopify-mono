@@ -164,7 +164,8 @@ class Matcher(
     private fun categoryMismatch(search: MandateEntity, listing: ListingEntity): Boolean =
         listing.propertyCategory != search.propertyCategory &&
             (
-                search.propertyType == null || search.propertyType == PropertyType.UNKNOWN ||
+                search.propertyType == null ||
+                    search.propertyType == PropertyType.UNKNOWN ||
                     (search.propertyType != PropertyType.BUILDING && listing.propertyType != PropertyType.BUILDING)
                 )
 

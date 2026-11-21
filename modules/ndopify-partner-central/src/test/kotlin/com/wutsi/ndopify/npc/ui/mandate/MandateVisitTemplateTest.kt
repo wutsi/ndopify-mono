@@ -20,7 +20,6 @@ import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.APPROVED
 import com.wutsi.ndopify.npc.ui.mandate.MandateViewsTest.Companion.CUSTOMER
 import com.wutsi.ndopify.npc.ui.match.MatchFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
-import com.wutsi.ndopify.npc.ui.visit.VisitFixtures
 import com.wutsi.ndopify.npc.ui.visit.VisitRules
 import com.wutsi.ndopify.visit.dto.VisitSummary
 import com.wutsi.ndopify.web.core.service.TenantContext

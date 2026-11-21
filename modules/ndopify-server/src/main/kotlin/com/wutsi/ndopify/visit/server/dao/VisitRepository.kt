@@ -1,7 +1,6 @@
 package com.wutsi.ndopify.visit.server.dao
 
 import com.wutsi.ndopify.listing.dto.ListingStatus
-import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.server.domain.VisitEntity

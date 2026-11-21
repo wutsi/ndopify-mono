@@ -55,7 +55,6 @@ import java.time.Instant
 import java.util.Date
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 class VisitControllerTest {
     private val currentAgent = mock<CurrentAgent>()

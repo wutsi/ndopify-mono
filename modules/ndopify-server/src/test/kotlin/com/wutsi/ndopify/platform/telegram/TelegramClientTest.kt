@@ -334,7 +334,9 @@ class TelegramClientTest {
                     ),
                 ),
                 argThat {
-                    fieldName == "photo" && filename == "1.jpg" && contentType == "image/jpeg" &&
+                    fieldName == "photo" &&
+                        filename == "1.jpg" &&
+                        contentType == "image/jpeg" &&
                         content.contentEquals(bytes)
                 },
                 eq(TelegramMessageResponse::class.java),

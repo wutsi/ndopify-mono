@@ -4,7 +4,6 @@ import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.mock
-import com.nhaarman.mockitokotlin2.never
 import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.AuthorizationAwareEndpointIntegrationTest
@@ -30,7 +29,6 @@ import javax.imageio.ImageIO
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 @Sql(value = ["/db/test/clean.sql", "/db/test/listing/UploadListingImageEndpoint.sql"])
 class AttachListingImageEndpointTest : AuthorizationAwareEndpointIntegrationTest() {

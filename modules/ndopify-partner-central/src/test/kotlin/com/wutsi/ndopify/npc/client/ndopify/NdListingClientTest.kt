@@ -1,7 +1,5 @@
 package com.wutsi.ndopify.npc.client.ndopify
 
-import com.wutsi.ndopify.common.dto.PresignUploadResponse
-import com.wutsi.ndopify.listing.dto.AttachListingImageResponse
 import com.wutsi.ndopify.listing.dto.GetListingResponse
 import com.wutsi.ndopify.listing.dto.ImageStatus
 import com.wutsi.ndopify.listing.dto.Listing

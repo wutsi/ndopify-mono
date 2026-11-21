@@ -7,7 +7,6 @@ import com.wutsi.ndopify.listing.dto.ListingImage
 import com.wutsi.ndopify.refdata.dto.Location
 import com.wutsi.ndopify.refdata.dto.Tenant
 import com.wutsi.ndopify.visit.dto.Visit
-import com.wutsi.ndopify.visit.dto.VisitInterest
 import com.wutsi.ndopify.visit.dto.VisitParty
 import com.wutsi.ndopify.visit.dto.VisitStatus
 import com.wutsi.ndopify.visit.dto.VisitType

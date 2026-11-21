@@ -32,7 +32,6 @@ import com.wutsi.ndopify.npc.ui.mandate.MandateController
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures
 import com.wutsi.ndopify.npc.ui.profile.ProfileFixtures.AGENT
 import com.wutsi.ndopify.web.core.service.TenantContext
-import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.http.HttpStatus

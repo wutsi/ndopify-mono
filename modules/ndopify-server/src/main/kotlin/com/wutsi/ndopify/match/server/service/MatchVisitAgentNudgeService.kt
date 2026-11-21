@@ -67,7 +67,8 @@ class MatchVisitAgentNudgeService(
     // booked a visit meanwhile.
     private fun nudge(id: Long, now: Date): Boolean {
         val current = dao.findById(id).orElse(null) ?: return false
-        if (current.status != MatchStatus.ACCEPTED || current.agentVisitNudgedAt != null ||
+        if (current.status != MatchStatus.ACCEPTED ||
+            current.agentVisitNudgedAt != null ||
             current.mandate.status != MandateStatus.APPROVED ||
             current.listing.status != ListingStatus.PUBLISHED ||
             dao.existsOpenVisit(id, MatchVisitReminderService.OPEN_VISIT_STATUSES)

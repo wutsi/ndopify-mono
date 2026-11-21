@@ -73,7 +73,8 @@ object VisitViews {
         }
         val slotChanged = if (
             (panel == VisitRules.Panel.CONFIRMED || panel == VisitRules.Panel.WINDOW) &&
-            scheduledAt != null && scheduledAt.time != visit.requestedAt.time
+            scheduledAt != null &&
+                scheduledAt.time != visit.requestedAt.time
         ) {
             "Créneau modifié : la demande portait sur le " +
                 VisitSlots.dateTimeLabel(visit.requestedAt, tenant, formatter) +

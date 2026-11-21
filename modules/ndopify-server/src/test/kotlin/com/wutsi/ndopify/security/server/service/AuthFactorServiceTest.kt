@@ -1,7 +1,6 @@
 package com.wutsi.ndopify.security.server.service
 
 import com.nhaarman.mockitokotlin2.any
-import com.nhaarman.mockitokotlin2.doReturn
 import com.nhaarman.mockitokotlin2.mock
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.refdata.dto.AuthType

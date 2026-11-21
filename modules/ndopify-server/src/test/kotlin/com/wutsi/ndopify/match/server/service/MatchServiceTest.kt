@@ -22,7 +22,6 @@ import com.wutsi.ndopify.mandate.dto.MandateStatus
 import com.wutsi.ndopify.mandate.dto.MandateType
 import com.wutsi.ndopify.mandate.server.dao.MandateRepository
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
-import com.wutsi.ndopify.mandate.server.service.MandateService
 import com.wutsi.ndopify.match.dto.MatchRejectionReason
 import com.wutsi.ndopify.match.dto.MatchStatus
 import com.wutsi.ndopify.match.server.dao.MatchRepository

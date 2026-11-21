@@ -1,6 +1,5 @@
 package com.wutsi.ndopify.platform.telegram
 
-import com.nhaarman.mockitokotlin2.any
 import com.nhaarman.mockitokotlin2.argumentCaptor
 import com.nhaarman.mockitokotlin2.eq
 import com.nhaarman.mockitokotlin2.verify

@@ -70,7 +70,8 @@ class MatchVisitReminderService(
     // booked a visit meanwhile.
     private fun remind(id: Long, now: Date): Boolean {
         val current = dao.findById(id).orElse(null) ?: return false
-        if (current.status != MatchStatus.ACCEPTED || current.visitRemindedAt != null ||
+        if (current.status != MatchStatus.ACCEPTED ||
+            current.visitRemindedAt != null ||
             current.mandate.status != MandateStatus.APPROVED ||
             current.listing.status != ListingStatus.PUBLISHED ||
             dao.existsOpenVisit(id, OPEN_VISIT_STATUSES)

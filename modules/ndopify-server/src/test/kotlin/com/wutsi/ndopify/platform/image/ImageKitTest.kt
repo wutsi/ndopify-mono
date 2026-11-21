@@ -11,7 +11,6 @@ class ImageKitTest {
     )
     val url = "https://www.example.com/foo/bar/image.jpg"
 
-
     @Test
     fun transform() {
         val transformation = Transformation(
