@@ -9,13 +9,17 @@ import com.nhaarman.mockitokotlin2.verify
 import com.nhaarman.mockitokotlin2.whenever
 import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
+import com.wutsi.ndopify.listing.server.bot.ListingTelegramLabels
 import com.wutsi.ndopify.listing.server.bot.ListingTelegramSender
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.mandate.server.domain.MandateEntity
 import com.wutsi.ndopify.match.server.domain.MatchEntity
 import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.telegram.model.TelegramButton
+import com.wutsi.ndopify.refdata.dto.PeriodicityType
+import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
+import com.wutsi.ndopify.refdata.server.service.LocationService
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -24,19 +28,30 @@ import kotlin.test.assertTrue
 
 class MatchVisitAgentNudgeBotletTest {
     private val tenantService = mock<TenantService>()
+    private val locationService = mock<LocationService>()
     private val sender = mock<ListingTelegramSender>()
-    private val botlet = MatchVisitAgentNudgeBotlet(tenantService, sender)
+    private val labels = ListingTelegramLabels(locationService)
+    private val botlet = MatchVisitAgentNudgeBotlet(tenantService, labels, sender)
 
     private val tenant = TenantEntity(
         id = 1L,
         name = "Ndopify",
         partnerCentralUrl = "https://partner.ndopify.com",
+        currencyCode = "XAF",
+        monetaryFormat = "#,###,##0 FCFA",
     )
     private val match = MatchEntity(
         id = 9001L,
         tenantId = 1L,
         mandate = MandateEntity(id = 204L),
-        listing = ListingEntity(id = 501L, title = "Nice apartment"),
+        listing = ListingEntity(
+            id = 501L,
+            title = "Nice apartment",
+            neighborhoodId = 1001L,
+            price = 150000,
+            currencyCode = "XAF",
+            pricePeriodicityType = PeriodicityType.MONTHLY,
+        ),
         agentId = 20L,
     )
     private val customer = CustomerEntity(
@@ -49,6 +64,7 @@ class MatchVisitAgentNudgeBotletTest {
     @BeforeTest
     fun setUp() {
         doReturn(tenant).whenever(tenantService).findById(1L)
+        doReturn(LocationEntity(id = 1001L, name = "Bastos")).whenever(locationService).findByIdOrNull(1001L)
     }
 
     @Test
@@ -57,13 +73,8 @@ class MatchVisitAgentNudgeBotletTest {
 
         assertEquals(
             """
-            Ray Sponsible attend une visite
-
-            Ray Sponsible a accepté votre proposition pour Nice apartment il y a plus de 48 h, mais aucune visite n'est planifiée.
-
-            Appelez-le sur WhatsApp pour convenir d'un créneau, puis planifiez la visite.
-
-            — Ndopify
+            ⏰ Ray Sponsible attend une visite : Nice apartment (Bastos) — 150 000 FCFA / mois
+            Acceptée il y a plus de 48 h. Appelez-le, puis planifiez la visite.
             """.trimIndent(),
             text(),
         )
@@ -113,7 +124,10 @@ class MatchVisitAgentNudgeBotletTest {
 
         botlet.send(withoutTitle, customer, agent, 1000L)
 
-        assertTrue(text(withoutTitle.listing).contains("pour Bien n° 501 il y a plus de 48 h"))
+        assertEquals(
+            "⏰ Ray Sponsible attend une visite : Bien n° 501 (Bastos) — 150 000 FCFA / mois",
+            text(withoutTitle.listing).lines().first(),
+        )
     }
 
     private fun text(listing: ListingEntity = match.listing): String {
