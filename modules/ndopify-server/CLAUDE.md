@@ -639,6 +639,10 @@ There's also a non-domain **`platform`** package holding shared infrastructure (
   file (path under the prefix, presence, size, sniffed type; deletes a rejected one): image-only (JPEG / PNG / WEBP,
   5 MB). Domains call it from their own *presign* / *attach* endpoints, after their access checks, and keep their
   multipart endpoint as the fallback. S3 only: on `local` the presign answers `{url: null}`.
+- `platform/image` — resizing through ImageKit, wired by `config/platform/ImageConfiguration` from `ndopify.image.*`:
+  `ImageKit` rewrites a storage URL into an `ik.imagekit.io` transformation URL
+  (`tr:w-…,h-…,f-…,ar-…,c-…,cm-…,q-…`), `ImageServiceLocal` returns it unchanged. Only `ListingTelegramSender` uses it
+  today (see *listing*).
 - `platform/mail` — e-mail sending (`MailService`, `MailBodyResolver`, `MailFilter`); MJML templates under
   `src/main/resources/mail/`.
 - `platform/logger` — key-value request logging (`KVLogger`, `KVLoggerFilter`).
