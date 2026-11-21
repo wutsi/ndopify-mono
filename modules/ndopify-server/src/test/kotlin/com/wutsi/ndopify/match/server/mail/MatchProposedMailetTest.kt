@@ -161,6 +161,10 @@ class MatchProposedMailetTest {
         )
         verify(linkTokenService).create(customer) // One token for all the links
         assertEquals("200 000 FCFA / mois", (listings[1] as Map<*, *>)["price"])
+        assertEquals(
+            List(2) { "https://ik.imagekit.io/key/tr:w-1200,h-800,f-jpg,q-75/7.jpg" },
+            listings.map { (it as Map<*, *>)["image_url"] },
+        )
 
         val email = argumentCaptor<Email>()
         verify(mailService).send(email.capture())
