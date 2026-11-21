@@ -30,6 +30,18 @@ class ImageKit(
             tr.add("ar-${transformation.aspectRatio.width}-${transformation.aspectRatio.height}")
         }
 
+        transformation.crop?.let {
+            tr.add("c-${it.name.lowercase()}")
+        }
+
+        transformation.cropMode?.let {
+            tr.add("cm-${it.name.lowercase()}")
+        }
+
+        transformation.quality?.let {
+            tr.add("q-$it")
+        }
+
         if (tr.isNotEmpty()) {
             qs.append("/tr:").append(tr.joinToString(","))
         }
