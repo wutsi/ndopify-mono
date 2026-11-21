@@ -4,8 +4,10 @@ import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.agent.server.mail.AgentMailContext
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
+import com.wutsi.ndopify.platform.image.ImageService
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
+import com.wutsi.ndopify.platform.mail.MailImages
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.Receipient
 import com.wutsi.ndopify.refdata.server.service.TenantFormatter
@@ -19,13 +21,15 @@ import org.springframework.stereotype.Service
  * asked: A has already agreed with him by phone. The e-mail speaks in A's voice ([AgentMailContext]), and never
  * carries A's customer's name, e-mail, WhatsApp, code, note, address, report, feedback, mandate, match or search
  * criteria — the customer is only ever "mon client".
+ * The photo is resized through [MailImages] for the e-mail (never the original URL).
  */
 @Service
 class CoBrokerageVisitMailet(
     private val tenantService: TenantService,
     private val mailService: MailService,
     private val mailBodyResolver: MailBodyResolver,
-    private val imageService: ListingImageService,
+    private val listingImageService: ListingImageService,
+    private val imageService: ImageService,
 ) {
     companion object {
         const val SUBJECT_CONFIRMED = "{{tenant_name}}: visite de votre bien confirmée"
@@ -93,7 +97,7 @@ class CoBrokerageVisitMailet(
                         "tenant_name" to tenant.name,
                         "recipient_name" to recipient.fullName(),
                         "listing_title" to (listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"),
-                        "image_url" to imageService.cover(listing)?.url?.ifBlank { null },
+                        "image_url" to MailImages.imageUrl(listingImageService.cover(listing)?.url, imageService, MailImages.COVER),
                         "visit_date" to visit.scheduledAt?.let { formatter.date(it) },
                         "visit_time" to visit.scheduledAt?.let { formatter.time(it) },
                         "type_label" to CoBrokerageVisitLabels.typeLabel(visit.type),

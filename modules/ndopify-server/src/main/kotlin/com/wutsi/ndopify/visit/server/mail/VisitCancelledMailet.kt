@@ -7,8 +7,10 @@ import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.match.server.service.MatchLinkTokenService
 import com.wutsi.ndopify.party.server.domain.PartyEntity
+import com.wutsi.ndopify.platform.image.ImageService
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
+import com.wutsi.ndopify.platform.mail.MailImages
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.Receipient
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
@@ -24,6 +26,7 @@ import org.springframework.stereotype.Service
  *
  * A cancellation the platform caused (`SYSTEM`, ex: the mandate ended) e-mails nobody: the platform's own decision is
  * not the other side's appointment problem.
+ * The photo is resized through [MailImages] for the e-mail (never the original URL).
  */
 @Service
 class VisitCancelledMailet(
@@ -31,7 +34,8 @@ class VisitCancelledMailet(
     private val mailService: MailService,
     private val mailBodyResolver: MailBodyResolver,
     private val linkTokenService: MatchLinkTokenService,
-    private val imageService: ListingImageService,
+    private val listingImageService: ListingImageService,
+    private val imageService: ImageService,
 ) {
     companion object {
         const val SUBJECT = "{{tenant_name}}: la visite a été annulée"
@@ -156,7 +160,7 @@ class VisitCancelledMailet(
             "recipient_name" to recipientName,
             "other_party" to otherParty,
             "listing_title" to (listing.title?.ifBlank { null } ?: "Bien n° ${listing.id}"),
-            "image_url" to imageService.cover(listing)?.url?.ifBlank { null },
+            "image_url" to MailImages.imageUrl(listingImageService.cover(listing)?.url, imageService, MailImages.COVER),
             "visit_date" to visit.scheduledAt?.let { formatter.date(it) },
             "visit_time" to visit.scheduledAt?.let { formatter.time(it) },
             "cancelled_by_label" to cancelledByLabel,

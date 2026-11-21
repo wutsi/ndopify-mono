@@ -4,8 +4,10 @@ import com.wutsi.ndopify.agent.server.domain.AgentEntity
 import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
+import com.wutsi.ndopify.platform.image.ImageService
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
+import com.wutsi.ndopify.platform.mail.MailImages
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.Receipient
 import com.wutsi.ndopify.refdata.server.service.TenantFormatter
@@ -16,13 +18,15 @@ import org.springframework.stereotype.Service
 /**
  * Tells the agent that its customer asked to visit a listing: who, which listing, the slot it asked for and its note, and
  * a link to the visit's page on Partner Central, where it schedules it.
+ * The photo is resized through [MailImages] for the e-mail (never the original URL).
  */
 @Service
 class VisitRequestedMailet(
     private val tenantService: TenantService,
     private val mailService: MailService,
     private val mailBodyResolver: MailBodyResolver,
-    private val imageService: ListingImageService,
+    private val listingImageService: ListingImageService,
+    private val imageService: ImageService,
 ) {
     companion object {
         const val SUBJECT = "{{tenant_name}}: {{customer_name}} demande une visite"
@@ -32,7 +36,7 @@ class VisitRequestedMailet(
     fun send(visit: VisitEntity, customer: CustomerEntity, agent: AgentEntity, listing: ListingEntity) {
         val tenant = tenantService.findById(visit.tenantId!!)
         val formatter = TenantFormatter(tenant)
-        val imageUrl = imageService.cover(listing)?.url?.ifBlank { null }
+        val imageUrl = MailImages.imageUrl(listingImageService.cover(listing)?.url, imageService, MailImages.COVER)
         val customerName = customer.party.fullName()
         val agentName = agent.party.fullName()
         val visitUrl = tenant.partnerCentralUrl?.removeSuffix("/")?.let { "$it/visits/${visit.id}" }

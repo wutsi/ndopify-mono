@@ -18,6 +18,7 @@ import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
+import com.wutsi.ndopify.platform.mail.mockMailImageService
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.TenantService
 import com.wutsi.ndopify.visit.dto.VisitParty
@@ -38,9 +39,10 @@ class VisitCancelledMailetTest {
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
     private val linkTokenService = mock<MatchLinkTokenService>()
-    private val imageService = mock<ListingImageService>()
+    private val listingImageService = mock<ListingImageService>()
+    private val imageService = mockMailImageService()
     private val mailet =
-        VisitCancelledMailet(tenantService, mailService, mailBodyResolver, linkTokenService, imageService)
+        VisitCancelledMailet(tenantService, mailService, mailBodyResolver, linkTokenService, listingImageService, imageService)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -77,7 +79,7 @@ class VisitCancelledMailetTest {
 
     @BeforeTest
     fun setUp() {
-        doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(imageService).cover(any())
+        doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(listingImageService).cover(any())
         doReturn(tenant).whenever(tenantService).findById(1L)
         doReturn("xxx.yyy.zzz").whenever(linkTokenService).create(customer)
         doReturn("<html>cancelled</html>").whenever(mailBodyResolver).resolve(any(), any())
@@ -99,7 +101,7 @@ class VisitCancelledMailetTest {
                 "recipient_name" to "Kim Possible",
                 "other_party" to "Ray Sponsible",
                 "listing_title" to "Nice apartment",
-                "image_url" to "https://cdn.ndopify.com/7.jpg",
+                "image_url" to "https://ik.imagekit.io/key/tr:w-1200,h-800,f-jpg,q-75/7.jpg",
                 "visit_date" to "02/12/2026",
                 "visit_time" to "10:00",
                 "cancelled_by_label" to "Le client a annulé la visite.",

@@ -6,8 +6,10 @@ import com.wutsi.ndopify.customer.server.domain.CustomerEntity
 import com.wutsi.ndopify.listing.server.domain.ListingEntity
 import com.wutsi.ndopify.listing.server.service.ListingImageService
 import com.wutsi.ndopify.match.server.service.MatchLinkTokenService
+import com.wutsi.ndopify.platform.image.ImageService
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
+import com.wutsi.ndopify.platform.mail.MailImages
 import com.wutsi.ndopify.platform.mail.MailService
 import com.wutsi.ndopify.platform.mail.Receipient
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
@@ -21,6 +23,7 @@ import org.springframework.stereotype.Service
 /**
  * Tells a visit didn't happen. When the customer caused it (reported by its agent), only the customer is told; when the
  * agent didn't come (marked by a job), both sides are. The customer's link lets it ask for another visit.
+ * The photo is resized through [MailImages] for the e-mail (never the original URL).
  */
 @Service
 class VisitNoShowMailet(
@@ -28,7 +31,8 @@ class VisitNoShowMailet(
     private val mailService: MailService,
     private val mailBodyResolver: MailBodyResolver,
     private val linkTokenService: MatchLinkTokenService,
-    private val imageService: ListingImageService,
+    private val listingImageService: ListingImageService,
+    private val imageService: ImageService,
 ) {
     companion object {
         const val SUBJECT_CUSTOMER = "{{tenant_name}}: la visite n'a pas eu lieu"
@@ -111,7 +115,7 @@ class VisitNoShowMailet(
         agentRecipient: Boolean,
     ): Map<String, Any?> {
         val formatter = TenantFormatter(tenant)
-        val imageUrl = imageService.cover(listing)?.url?.ifBlank { null }
+        val imageUrl = MailImages.imageUrl(listingImageService.cover(listing)?.url, imageService, MailImages.COVER)
         return mapOf(
             "tenant_logo_url" to tenant.logoUrl,
             "tenant_name" to tenant.name,

@@ -17,6 +17,7 @@ import com.wutsi.ndopify.party.server.domain.PartyEntity
 import com.wutsi.ndopify.platform.mail.Email
 import com.wutsi.ndopify.platform.mail.MailBodyResolver
 import com.wutsi.ndopify.platform.mail.MailService
+import com.wutsi.ndopify.platform.mail.mockMailImageService
 import com.wutsi.ndopify.refdata.server.domain.LocationEntity
 import com.wutsi.ndopify.refdata.server.domain.TenantEntity
 import com.wutsi.ndopify.refdata.server.service.LocationService
@@ -39,9 +40,10 @@ class VisitReminderMailetTest {
     private val mailService = mock<MailService>()
     private val mailBodyResolver = mock<MailBodyResolver>()
     private val linkTokenService = mock<MatchLinkTokenService>()
-    private val imageService = mock<ListingImageService>()
+    private val listingImageService = mock<ListingImageService>()
+    private val imageService = mockMailImageService()
     private val mailet =
-        VisitReminderMailet(tenantService, locationService, mailService, mailBodyResolver, linkTokenService, imageService)
+        VisitReminderMailet(tenantService, locationService, mailService, mailBodyResolver, linkTokenService, listingImageService, imageService)
 
     private val tenant = TenantEntity(
         id = 1L,
@@ -86,7 +88,7 @@ class VisitReminderMailetTest {
 
     @BeforeTest
     fun setUp() {
-        doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(imageService).cover(any())
+        doReturn(ListingImageEntity(id = 7L, url = "https://cdn.ndopify.com/7.jpg")).whenever(listingImageService).cover(any())
         doReturn(tenant).whenever(tenantService).findById(1L)
         doReturn(LocationEntity(id = 2370201L, name = "Yaounde")).whenever(locationService).findByIdOrNull(2370201L)
         doReturn(LocationEntity(id = 1001L, name = "Bastos")).whenever(locationService).findByIdOrNull(1001L)
@@ -108,6 +110,7 @@ class VisitReminderMailetTest {
         assertEquals("10:00", customerContext["visit_time"])
         assertEquals("1234", customerContext["code"])
         assertEquals("Bastos, Yaounde", customerContext["place"])
+        assertEquals("https://ik.imagekit.io/key/tr:w-1200,h-800,f-jpg,q-75/7.jpg", customerContext["image_url"])
         assertEquals("près de Rue 1.234", customerContext["landmark"])
         assertFalse(customerContext.containsKey("address"))
         assertEquals("https://www.ndopify.com/visits/1?token=xxx.yyy.zzz", customerContext["visit_url"])
@@ -124,6 +127,7 @@ class VisitReminderMailetTest {
 
         val agentContext = context(VisitReminderMailet.TEMPLATE_AGENT)
         assertEquals("+237 6 00 00 00 01", agentContext["customer_whatsapp"])
+        assertEquals("https://ik.imagekit.io/key/tr:w-1200,h-800,f-jpg,q-75/7.jpg", agentContext["image_url"])
         assertEquals("https://partner.ndopify.com/visits/1", agentContext["visit_url"])
     }
 
