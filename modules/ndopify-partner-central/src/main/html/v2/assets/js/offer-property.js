@@ -13,6 +13,9 @@
  *  - has no advance nor deposit (hidden, sent as null) and no furnishing question; availableFrom is kept
  *    ("Disponible à partir du" reads as well for a sale);
  *  - offers no room (ROOM), and a plot (LAND) as residential too (data-sale-categories in the page);
+ *  - asks the ownership documents (ownershipDocuments) of a plot of land only (Titre foncier / Plan de bornage /
+ *    Certificat de propriété, optional and several, none being a valid answer), sent only for a SALE · LAND and
+ *    shown on the review as "Document de propriété";
  *  - shows the page's data-for="SALE" texts instead of the data-for="RENTAL" ones (applyProject), and its
  *    Quitter / confirmation links go to {publicPortalUrl}/owner/sell instead of /owner.
  */
@@ -127,6 +130,15 @@
     var PARKING_LABELS = { "1": "1 place de parking", "2": "2 places de parking", "3+": "3 places de parking et +" };
     var PERIOD_LABELS = { MORNING: "le matin", AFTERNOON: "l'après-midi", EVENING: "le soir" };
 
+    // The ownership documents a seller may declare (optional, several): asked only for a SALE · LAND. "Titre foncier"
+    // is the land title, "Plan de bornage" the survey plan that delimits the parcel, "Certificat de propriété" the
+    // certificate of ownership. An owner with none can continue: the agent checks the documents at the audit.
+    var OWNERSHIP_DOCUMENT_LABELS = {
+        LAND_TITLE: "Titre foncier",
+        SURVEY_PLAN: "Plan de bornage",
+        CERTIFICATE_OF_OWNERSHIP: "Certificat de propriété"
+    };
+
     // The road access is one answer (a radio), sent as the matching boolean of CreateMandateRequest.
     var ROAD_ACCESS = {
         roadPaved: "Route bitumée",
@@ -195,6 +207,11 @@
 
     function needsArea(a) {
         return a.propertyCategory === "COMMERCIAL" || a.propertyType === "LAND";
+    }
+
+    // A plot of land sold: the only property whose ownership documents are asked (optional, sent only for a SALE · LAND).
+    function needsOwnershipDocuments(a) {
+        return isSale(a) && a.propertyType === "LAND";
     }
 
     /*
@@ -312,6 +329,20 @@
     function setChecked(name, value) {
         $all('input[name="' + name + '"]').forEach(function (input) {
             input.checked = value != null && input.value === String(value);
+        });
+    }
+
+    // All checked values of a checkbox group, in document order.
+    function checkedValues(name) {
+        return $all('input[name="' + name + '"]:checked').map(function (input) {
+            return input.value;
+        });
+    }
+
+    // Re-tick a saved checkbox group (an array of values).
+    function setCheckedAll(name, values) {
+        $all('input[name="' + name + '"]').forEach(function (input) {
+            input.checked = (values || []).indexOf(input.value) !== -1;
         });
     }
 
@@ -609,6 +640,7 @@
             rooms: needsRooms(a) ? a.rooms : null,
             parkings: needsParking(a) ? a.parkings : null,
             area: needsArea(a) ? a.area : null,
+            ownershipDocuments: needsOwnershipDocuments(a) ? (a.ownershipDocuments || []) : null,
             price: {
                 amount: a.priceAmount,
                 currency: CURRENCY,
@@ -832,12 +864,14 @@
     function propertyStep(resync) {
         var answers = loadAnswers();
         var area = $("#area");
+        var perSqm = $("[data-price-per-sqm]");
         var groups = {
             furnitureType: $('[data-group="furnitureType"]'),
             rooms: $('[data-group="rooms"]'),
             hasParking: $('[data-group="hasParking"]'),
             parkings: $('[data-group="parkings"]'),
-            area: $('[data-group="area"]')
+            area: $('[data-group="area"]'),
+            ownershipDocuments: $('[data-group="ownershipDocuments"]')
         };
 
         setChecked("propertyType", answers.propertyType);
@@ -846,8 +880,10 @@
         // parkings is "0" for "Non", else the number of places: the Oui / Non question is UI only.
         setChecked("hasParking", answers.parkings == null ? null : answers.parkings === "0" ? "NO" : "YES");
         setChecked("parkings", answers.parkings === "0" ? null : answers.parkings);
+        setCheckedAll("ownershipDocuments", answers.ownershipDocuments);
         area.value = formatNumber(answers.area);
         bindNumber(area, 7);
+        area.addEventListener("input", updatePricePerSqm);
 
         // The category from step 1 (saved) with the type being chosen now (live).
         function live() {
@@ -867,6 +903,31 @@
             return area.value.trim() ? numberValue(area) : null;
         }
 
+        // A plot of land sold (the same case as its ownership documents): the implied price per m², total asking
+        // price ÷ surface, rounded to the nearest 100 FCFA. Display only — never stored, never sent, never on the
+        // review. Hidden until both a valid asking price (conditions step) and a valid surface exist; also hidden
+        // for a rental or another property type. The price is read from the saved answers, the surface as typed.
+        function updatePricePerSqm() {
+            var a = live();
+            var saved = loadAnswers();
+            var price = saved.priceAmount != null ? Number(saved.priceAmount) : 0;
+            var surface = areaValue();
+            var show = needsOwnershipDocuments(a) && surface > 0 && areaValid(surface) && price > 0;
+            if (!show) {
+                perSqm.hidden = true;
+                perSqm.textContent = "";
+                return;
+            }
+            var rate = Math.round((price / surface) / 100) * 100;
+            if (rate <= 0) {
+                perSqm.hidden = true;
+                perSqm.textContent = "";
+                return;
+            }
+            perSqm.textContent = "Soit ≈ " + formatNumber(rate) + " FCFA/m² pour " + formatNumber(surface) + " m²";
+            perSqm.hidden = false;
+        }
+
         // Shows only the questions that apply; a hidden question is never in error.
         function updateQuestions() {
             var a = live();
@@ -876,13 +937,15 @@
                 rooms: chosen && needsRooms(a),
                 hasParking: chosen && needsParking(a),
                 parkings: chosen && asksPlaces(),
-                area: chosen && needsArea(a)
+                area: chosen && needsArea(a),
+                ownershipDocuments: chosen && needsOwnershipDocuments(a)
             };
             Object.keys(groups).forEach(function (key) {
                 groups[key].hidden = !shown[key];
                 if (!shown[key]) setFieldError(groups[key], $("#" + key + "-error"), "");
             });
             $("[data-area-label]").textContent = a.propertyType === "LAND" ? "Surface du terrain estimée" : "Surface estimée";
+            updatePricePerSqm();
         }
 
         $all('input[name="propertyType"], input[name="hasParking"]').forEach(function (input) {
@@ -942,7 +1005,8 @@
                     furnitureType: needsFurniture(a) ? checkedValue("furnitureType") : null,
                     rooms: needsRooms(a) ? checkedValue("rooms") : null,
                     parkings: parkings,
-                    area: needsArea(a) ? areaValue() : null
+                    area: needsArea(a) ? areaValue() : null,
+                    ownershipDocuments: needsOwnershipDocuments(a) ? checkedValues("ownershipDocuments") : null
                 };
             }
         };
@@ -1045,12 +1109,19 @@
                 conditions: describeConditions(a),
                 property: describeProperty(a),
                 amenities: describeAmenities(a),
+                ownershipDocuments: needsOwnershipDocuments(a)
+                    ? ((a.ownershipDocuments || []).map(function (id) {
+                        return OWNERSHIP_DOCUMENT_LABELS[id];
+                    }).filter(Boolean).join(" · ") || "Aucun document déclaré")
+                    : "",
                 contact: isStepComplete("contact", a)
                     ? [a.firstName + " " + a.lastName, a.email, formatPhone(a.whatsappNumber),
                         "Contact " + PERIOD_LABELS[a.preferredContactPeriod]].join("\n")
                     : ""
             };
             var complete = firstIncompleteStep(a) === REVIEW;
+            // A sale of a plot of land only: its ownership documents, on the review as "Document de propriété".
+            $("[data-review-ownershipDocuments]").hidden = !needsOwnershipDocuments(a);
             Object.keys(values).forEach(function (key) {
                 var valueEl = $('[data-review-value="' + key + '"]');
                 var missing = $('[data-review-missing="' + key + '"]');

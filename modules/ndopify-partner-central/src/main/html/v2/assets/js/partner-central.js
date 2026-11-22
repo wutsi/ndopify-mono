@@ -1591,6 +1591,31 @@
                 movingPeriod: "WITHIN_1_MONTH",
                 comments: "Titre foncier disponible."
             }
+        },
+        // v2: a seller's plot of land (LISTING · SALE), signed: no rooms nor parking, its surface and ownership documents.
+        302: {
+            party: "bailleur",
+            listingType: "SALE",
+            createdAt: -9,
+            initial: { status: "APPROVED", acceptedAt: -9, requestedAt: -7, approvedAt: -5 },
+            contact: {
+                firstName: "Carine",
+                lastName: "Mbarga",
+                whatsapp: "+237655223344",
+                email: "c.mbarga@example.com",
+                period: "Après-midi"
+            },
+            fields: {
+                city: "Yaoundé",
+                neighbourhoods: ["Mendong"],
+                propertyCategory: "RESIDENTIAL",
+                propertyType: "LAND",
+                area: 800,
+                amenities: ["securedFenced", "roadPaved"],
+                price: 45000000,
+                movingPeriod: "WITHIN_3_MONTHS",
+                ownershipDocuments: ["LAND_TITLE", "SURVEY_PLAN"]
+            }
         }
     };
 
@@ -1677,6 +1702,13 @@
     var PROPERTY_TYPE_SHORT = { RETAIL: "Boutique", INDUSTRIAL: "Entrepôt", ANY: "Tout type" };
     var FURNITURE_LABELS = { FULLY_FURNISHED: "Oui", UNFURNISHED: "Non", ANY: "Indifférent" };
     var PARKING_LABELS = { "0": "Aucune", "3+": "3+", ANY: "Indifférent" };
+    // A land sale's ownership documents (TitleDocumentType, ndopify-dto): the only criteria a villa, apartment, …
+    // sale or a rental never shows.
+    var OWNERSHIP_DOCUMENT_LABELS = {
+        LAND_TITLE: "Titre foncier",
+        SURVEY_PLAN: "Plan de bornage",
+        CERTIFICATE_OF_OWNERSHIP: "Certificat de propriété"
+    };
     var MOVING_LABELS = {
         WITHIN_1_MONTH: "Dans moins de 1 mois",
         WITHIN_3_MONTHS: "Dans 1 à 3 mois",
@@ -1778,6 +1810,12 @@
         if (f.rooms) rows.push(["Chambres", f.rooms]);
         if (f.parkings) rows.push(["Parking", PARKING_LABELS[f.parkings] || f.parkings]);
         if (f.area) rows.push([owner ? "Surface" : "Surface souhaitée", f.area + " m²"]);
+        // v2: a land sale's ownership documents (a villa, apartment, … sale or a rental never shows the row).
+        if (sale && f.propertyType === "LAND" && f.ownershipDocuments && f.ownershipDocuments.length) {
+            rows.push(["Document de propriété", f.ownershipDocuments.map(function (id) {
+                return OWNERSHIP_DOCUMENT_LABELS[id];
+            }).filter(Boolean).join(" · ")]);
+        }
         AMENITY_GROUPS.forEach(function (group) {
             var labels = group[1].filter(function (a) {
                 return f.amenities.indexOf(a[0]) !== -1;
