@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Icônes PWA — Ndopify Partner Central</title>
+    <meta name="description" content="Planche d'approbation du jeu d'icônes PWA de Partner Central : any, maskable et apple-touch.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="apple-touch-icon" href="assets/images/icon.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
+    <link rel="stylesheet" href="assets/css/partner-central.css">
+    <style>
+        /*
+         * pwa-icons.html only: a static asset sheet that documents and lets the reviewer approve the rebuilt
+         * NPC icon set. Not linked from the app's pages; follows the prototype's tokens (partner-central.css)
+         * and DESIGN.md — no new colours, sizes or fonts, only the composition helpers below.
+         *
+         * Composition recipes (what the committed production files must match):
+         *  - "any" icons: the source artwork as supplied (opaque white square, #1d7edf circle, black N), resized.
+         *  - maskable: a full-bleed #1d7edf square tile; the artwork clipped to a circle (border-radius: 50%,
+         *    overflow: hidden) and scaled to 90% of the tile (inset: 5%), centred — the white corners vanish into
+         *    the blue, the black N stays at 90%, inside the maskable 80%-diameter safe circle.
+         *  - apple-touch: the same tile, seen through iOS's ~22% rounded-square mask (border-radius: 22.5%).
+         */
+
+        .pwa-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            gap: var(--space-4);
+        }
+
+        .pwa-figure {
+            margin: 0;
+            min-width: 0; /* lets a 512 px tile shrink on a 375 px viewport instead of overflowing */
+        }
+
+        .pwa-figure > * + * {
+            margin-top: var(--space-2);
+        }
+
+        .pwa-figure figcaption {
+            font-size: var(--step-hint);
+        }
+
+        .pwa-figure figcaption strong {
+            display: block;
+            font-weight: 600;
+        }
+
+        /* A "any" icon (white square) sits on the white page: a hairline border keeps its extent visible. */
+        .pwa-any {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            border: 1px solid var(--color-border);
+            background: var(--color-bg);
+        }
+
+        /* A blue tile: the subtle shadow marks its extent on the white surface. */
+        .pwa-tile {
+            box-shadow: 0 1px 3px rgba(4, 4, 4, 0.18);
+        }
+
+        /* Full-bleed blue tile, artwork clipped to a circle at 90% and centred. */
+        .pwa-maskable {
+            position: relative;
+            aspect-ratio: 1;
+            background: var(--primary);
+            overflow: hidden;
+        }
+
+        .pwa-maskable__art {
+            position: absolute;
+            inset: 5%; /* 90% of the tile, centred */
+            border-radius: 50%;
+            overflow: hidden;
+        }
+
+        .pwa-maskable__art img {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Sizes (px). width + max-width keeps the true pixel size on desktop and shrinks on a narrow viewport. */
+        .pwa-512 { width: 512px; }
+        .pwa-500 { width: 500px; }
+        .pwa-192 { width: 192px; }
+        .pwa-180 { width: 180px; }
+        .pwa-48 { width: 48px; }
+        .pwa-32 { width: 32px; }
+        .pwa-16 { width: 16px; }
+        .pwa-tile,
+        .pwa-any,
+        .pwa-figure .pwa-512,
+        .pwa-figure .pwa-500 {
+            max-width: 100%;
+        }
+
+        /* The same maskable tile under each launcher mask Android offers, at a demo size. */
+        .pwa-mask {
+            width: 7rem; /* 112 px */
+            aspect-ratio: 1;
+            position: relative;
+            background: var(--primary);
+            overflow: hidden;
+        }
+
+        .pwa-mask--square { border-radius: 0; }
+        .pwa-mask--rounded { border-radius: 22.5%; }
+        .pwa-mask--squircle { border-radius: 30%; }
+        .pwa-mask--circle { border-radius: 50%; }
+
+        /* Apple-touch: the maskable tile seen through iOS's ~22% rounded-square mask. */
+        .pwa-apple {
+            border-radius: 22.5%;
+        }
+
+        /* Browser-tab mock for the "no favicon" note. */
+        .pwa-tabstrip {
+            display: flex;
+            align-items: flex-end;
+            gap: var(--space-1);
+            padding: var(--space-2) var(--space-2) 0;
+            background: var(--color-surface-alt);
+            border: 1px solid var(--color-border);
+            border-bottom: 0;
+        }
+
+        .pwa-tab {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            max-width: 15rem;
+            padding: var(--space-2) var(--space-3);
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-bottom: 0;
+            border-radius: var(--space-2) var(--space-2) 0 0;
+            font-size: var(--step-hint);
+        }
+
+        .pwa-tab__fav {
+            flex: none;
+            width: 1rem;
+            height: 1rem;
+            border-radius: 3px;
+            background: var(--color-surface-alt);
+            border: 1px dashed var(--color-border-strong);
+        }
+
+        /* The old shared mark (blue circle) the tab used to show, before the removal. */
+        .pwa-tab__fav--old {
+            border: 0;
+            border-radius: 50%;
+            background: var(--primary);
+        }
+
+        .pwa-tab__label {
+            min-width: 0;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .pwa-tab__close {
+            flex: none;
+            color: var(--color-fg-disabled);
+        }
+    </style>
+</head>
+<!--
+    Approval sheet for the rebuilt PWA icon set (#249). A standalone page, not linked from the app: it documents the
+    exact composition the committed production files (icon-192.png, icon-512.png, icon-maskable-192.png,
+    icon-maskable-512.png, apple-touch-icon.png) must match, and lets the reviewer sign it off before implementation.
+    The source artwork is linked (user-attachments), not copied into the tree.
+-->
+<body data-page="pwa-icons">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <span class="site-header__brand">
+                <img src="assets/images/logo.png" alt="Ndopify" width="84" height="40">
+            </span>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <div class="page-intro">
+                <h1>Icônes PWA</h1>
+                <p>Le jeu d'icônes dédié à Partner Central : un carré blanc au cercle bleu
+                    <code>#1d7edf</code> et au signe maison/N. Cette planche montre la composition exacte des
+                    fichiers à livrer, à leur taille réelle.</p>
+            </div>
+
+            <section class="section" aria-labelledby="source-title">
+                <h2 id="source-title">Source (500 × 500)</h2>
+                <p>Le fichier fourni, tel quel. Il sert de base à toutes les tailles «&nbsp;any&nbsp;» ci-dessous.</p>
+                <figure class="pwa-figure">
+                    <img class="pwa-any pwa-500" src="https://github.com/user-attachments/assets/b7f9d547-a614-46de-b318-dca4aef459ab"
+                         alt="Illustration source : carré blanc, cercle bleu, signe maison/N" width="500" height="500">
+                    <figcaption><strong>500 × 500</strong> source fournie (non modifiée)</figcaption>
+                </figure>
+            </section>
+
+            <section class="section" aria-labelledby="any-title">
+                <h2 id="any-title">Icônes «&nbsp;any&nbsp;»</h2>
+                <p>La source redimensionnée, coins blancs et cercle bleu conservés. Seuls 512 et 192 sont livrés,
+                    ce sont les icônes du manifest&nbsp;; 48, 32 et 16 ne sont qu'un aperçu de lisibilité, non
+                    livrés, car le favicon est supprimé.</p>
+                <div class="pwa-row">
+                    <figure class="pwa-figure">
+                        <img class="pwa-any pwa-512" src="https://github.com/user-attachments/assets/b7f9d547-a614-46de-b318-dca4aef459ab"
+                             alt="" width="512" height="512">
+                        <figcaption><strong>512 × 512</strong> manifest</figcaption>
+                    </figure>
+                    <figure class="pwa-figure">
+                        <img class="pwa-any pwa-192" src="https://github.com/user-attachments/assets/b7f9d547-a614-46de-b318-dca4aef459ab"
+                             alt="" width="192" height="192">
+                        <figcaption><strong>192 × 192</strong> manifest</figcaption>
+                    </figure>
+                    <figure class="pwa-figure">
+                        <img class="pwa-any pwa-48" src="https://github.com/user-attachments/assets/b7f9d547-a614-46de-b318-dca4aef459ab"
+                             alt="" width="48" height="48">
+                        <figcaption><strong>48 × 48</strong> aperçu, non livré</figcaption>
+                    </figure>
+                    <figure class="pwa-figure">
+                        <img class="pwa-any pwa-32" src="https://github.com/user-attachments/assets/b7f9d547-a614-46de-b318-dca4aef459ab"
+                             alt="" width="32" height="32">
+                        <figcaption><strong>32 × 32</strong> aperçu, non livré</figcaption>
+                    </figure>
+                    <figure class="pwa-figure">
+                        <img class="pwa-any pwa-16" src="https://github.com/user-attachments/assets/b7f9d547-a614-46de-b318-dca4aef459ab"
+                             alt="" width="16" height="16">
+                        <figcaption><strong>16 × 16</strong> aperçu, non livré</figcaption>
+                    </figure>
+                </div>
+            </section>
+
+            <section class="section" aria-labelledby="maskable-title">
+                <h2 id="maskable-title">Icône maskable</h2>
+                <p>Une tuile carrée bleue pleine&nbsp;: l'illustration est rognée en cercle
+                    (<code>border-radius: 50%</code>) et réduite à 90&nbsp;% de la tuile, centrée. Les coins blancs
+                    disparaissent dans le bleu&nbsp;; la maison et le N restent à 90&nbsp;%, à l'intérieur du cercle
+                    de sécurité (80&nbsp;% du diamètre).</p>
+                <div class="pwa-row">
+                    <figure class="pwa-figure">
+                        <div class="pwa-tile pwa-maskable pwa-512">
+                            <span class="pwa-maskable__art">
+                                <img src="https://github.com/user-attachments/assets/b7f9d547-a614-46de-b318-dca4aef459ab" alt="">
+                            </span>
+                        </div>
+                        <figcaption><strong>512 × 512</strong> maskable</figcaption>
+                    </figure>
+                    <figure class="pwa-figure">
+                        <div class="pwa-tile pwa-maskable pwa-192">
+                            <span class="pwa-maskable__art">
+                                <img src="https://github.com/user-attachments/assets/b7f9d547-a614-46de-b318-dca4aef459ab" alt="">
+                            </span>
+                        </div>
+                        <figcaption><strong>192 × 192</strong> maskable</figcaption>
+                    </figure>
+                </div>
+
+                <p>La même tuile sous chacun des masques de lanceur qu'Android peut appliquer&nbsp;:</p>
+                <div class="pwa-row">
+                    <figure class="pwa-figure">
+                        <div class="pwa-mask pwa-mask--square">
+                            <span class="pwa-maskable__art">
+                                <img src="https://github.com/user-attachments/assets/b7f9d547-a614-46de-b318-dca4aef459ab" alt="">
+                            </span>
+                        </div>
+                        <figcaption>Carré plein</figcaption>
+                    </figure>
+                    <figure class="pwa-figure">
+                        <div class="pwa-mask pwa-mask--circle">
+                            <span class="pwa-maskable__art">
+                                <img src="https://github.com/user-attachments/assets/b7f9d547-a614-46de-b318-dca4aef459ab" alt="">
+                            </span>
+                        </div>
+                        <figcaption>Cercle</figcaption>
+                    </figure>
+                    <figure class="pwa-figure">
+                        <div class="pwa-mask pwa-mask--squircle">
+                            <span class="pwa-maskable__art">
+                                <img src="https://github.com/user-attachments/assets/b7f9d547-a614-46de-b318-dca4aef459ab" alt="">
+                            </span>
+                        </div>
+                        <figcaption>Squircle</figcaption>
+                    </figure>
+                    <figure class="pwa-figure">
+                        <div class="pwa-mask pwa-mask--rounded">
+                            <span class="pwa-maskable__art">
+                                <img src="https://github.com/user-attachments/assets/b7f9d547-a614-46de-b318-dca4aef459ab" alt="">
+                            </span>
+                        </div>
+                        <figcaption>Carré arrondi</figcaption>
+                    </figure>
+                </div>
+            </section>
+
+            <section class="section" aria-labelledby="apple-title">
+                <h2 id="apple-title">Apple touch (180 × 180)</h2>
+                <p>La même tuile bleue pleine, vue à travers le masque carré arrondi d'iOS (~22&nbsp;% de rayon).</p>
+                <figure class="pwa-figure">
+                    <div class="pwa-tile pwa-maskable pwa-apple pwa-180">
+                        <span class="pwa-maskable__art">
+                            <img src="https://github.com/user-attachments/assets/b7f9d547-a614-46de-b318-dca4aef459ab" alt="">
+                        </span>
+                    </div>
+                    <figcaption><strong>180 × 180</strong> apple-touch-icon</figcaption>
+                </figure>
+            </section>
+
+            <section class="section" aria-labelledby="tab-title">
+                <h2 id="tab-title">Onglet du navigateur — sans favicon</h2>
+                <p>L'onglet ne montre plus d'icône&nbsp;: Partner Central ne partage plus le même signe que le site
+                    public. <code>apple-touch-icon</code> et le manifest sont conservés&nbsp;: ce sont des icônes
+                    d'installation, pas un favicon.</p>
+
+                <p>Avant&nbsp;: l'onglet portait le signe Ndopify partagé avec le site public (l'ancien cercle
+                    bleu, pas la marque maison/N).</p>
+                <div class="pwa-tabstrip" aria-hidden="true">
+                    <span class="pwa-tab">
+                        <span class="pwa-tab__fav pwa-tab__fav--old"></span>
+                        <span class="pwa-tab__label">Espace agent — Ndopify Partner Central</span>
+                        <span class="pwa-tab__close">×</span>
+                    </span>
+                </div>
+
+                <p>Après&nbsp;: aucun <code>&lt;link rel=&quot;icon&quot;&gt;</code>, l'onglet n'a plus de favicon.</p>
+                <div class="pwa-tabstrip" aria-hidden="true">
+                    <span class="pwa-tab">
+                        <span class="pwa-tab__fav"></span>
+                        <span class="pwa-tab__label">Espace agent — Ndopify Partner Central</span>
+                        <span class="pwa-tab__close">×</span>
+                    </span>
+                </div>
+            </section>
+        </div>
+    </main>
+</body>
+</html>
