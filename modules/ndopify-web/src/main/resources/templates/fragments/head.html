@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:fragment="head(title, description, canonical, ogTitle, ogDescription, ogImage, robots, referrer, styles, cdn, brand, structuredData)">
+<head th:fragment="head(title, description, canonical, ogTitle, ogDescription, ogImage, robots, referrer, cdn, brand, structuredData)">
     <meta charset="utf-8">
     <meta content="width=device-width, initial-scale=1" name="viewport">
     <title th:text="${title}">Ndopify</title>
@@ -27,10 +27,10 @@
           th:href="${!brand or #strings.isEmpty(tenant?.iconUrl)} ? @{/assets/images/icon.png} : ${tenant.iconUrl}">
     <link th:if="${cdn}" rel="stylesheet"
           href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/css/intlTelInput.min.css">
-    <link rel="stylesheet" th:href="@{/assets/css/styles.css}">
-    <link th:each="name : ${styles}" rel="stylesheet" th:href="@{/assets/css/{name}.css(name=${name})}">
+    <link rel="stylesheet" th:href="@{/assets/dist/app.min.css}">
     <th:block th:if="${structuredData != null}">
         <th:block th:replace="${structuredData}"></th:block>
     </th:block>
+    <script th:src="@{/assets/dist/app.min.js}" defer></script>
 </head>
 </html>

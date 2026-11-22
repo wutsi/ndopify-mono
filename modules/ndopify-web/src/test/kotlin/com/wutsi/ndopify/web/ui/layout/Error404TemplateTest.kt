@@ -12,6 +12,7 @@ import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 /** Renders `templates/error/404.html` with a real Thymeleaf engine, without a tenant. */
@@ -50,6 +51,12 @@ class Error404TemplateTest {
         assertEquals("Page introuvable — Ndopify", page.title())
         assertEquals("noindex, nofollow", page.selectFirst("meta[name=robots]")?.attr("content"))
         assertEquals("/assets/images/icon.png", page.selectFirst("link[rel=icon]")?.attr("href"))
+        assertEquals("/assets/dist/app.min.css", page.selectFirst("link[rel=stylesheet]")?.attr("href"))
+        assertEquals(1, page.select("link[rel=stylesheet]").size)
+        val script = page.selectFirst("script[src=/assets/dist/app.min.js]")
+        assertNotNull(script)
+        assertTrue(script.hasAttr("defer"))
+        assertEquals(1, page.select("script[src^=/assets/]").size)
         assertEquals("/assets/images/logo.png", page.selectFirst("header img")?.attr("src"))
         assertEquals("Ndopify", page.selectFirst("header img")?.attr("alt"))
         assertEquals("/assets/images/icon.png", page.selectFirst("footer img")?.attr("src"))
