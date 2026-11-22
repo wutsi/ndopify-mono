@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head(${close} ? |Fermer le mandat ${close.mandateId} — Ndopify Partner Central| : 'Fermer le mandat — Ndopify Partner Central', 'Fermer un mandat : le client, le loyer convenu, puis la confirmation.', ${ {'join','find-property','home'} }, ${ {'partner-central','mandate'} }, false)}"></head>
+<head th:replace="~{fragments/head :: head(${close} ? |Fermer le mandat ${close.mandateId} — Ndopify Partner Central| : 'Fermer le mandat — Ndopify Partner Central', 'Fermer un mandat : le client, le loyer convenu, puis la confirmation.', false)}"></head>
 <!--/*
     Closing a mandate (the deal's counterpart, the agreed rent, then the confirmation), one step at a time on its own
     page, reached from the mandate page's "Fermer le mandat" while the mandate is APPROVED. Each step is its own form,

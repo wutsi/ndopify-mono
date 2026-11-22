@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head(${section} ? ${section.pageTitle} : 'Annonce — Ndopify Partner Central', |Les photos de l'annonce, prises pendant la visite du bien.|, ${ {'join','find-property','home','listing'} }, ${ {'partner-central','direct-upload','listing'} }, false)}"></head>
+<head th:replace="~{fragments/head :: head(${section} ? ${section.pageTitle} : 'Annonce — Ndopify Partner Central', |Les photos de l'annonce, prises pendant la visite du bien.|, false)}"></head>
 <!--/*
   The photos of a listing's checklist (ListingPhotoController), from the prototype's listing/photos.html: "section" is
   the SectionView (absent when "locked" or "unavailable"), "photos" the PhotosView, "photoError" why the last upload

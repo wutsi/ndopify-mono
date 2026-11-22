@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head('Envoyer le mandat — Ndopify Partner Central', 'Envoyer un mandat au client pour signature : durée et frais de visite.', ${ {'find-property','home'} }, ${ {'partner-central','mandate'} }, false)}"></head>
+<head th:replace="~{fragments/head :: head('Envoyer le mandat — Ndopify Partner Central', 'Envoyer un mandat au client pour signature : durée et frais de visite.', false)}"></head>
 <!--/*
     Sending a mandate's contract (MandateContractController), on its own page reached from the mandate page's
     "Envoyer au client" (ASSIGNED) or "Renvoyer" (PENDING_APPROVAL). The agent confirms the terms the customer accepts

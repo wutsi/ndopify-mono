@@ -1490,7 +1490,7 @@ class MandateTemplateTest {
     fun `script and hooks`() {
         val page = render(APPROVED)
 
-        val script = page.selectFirst("script[src=/assets/js/mandate.js]")!!
+        val script = page.selectFirst("script[src=/assets/dist/app.min.js]")!!
         assertTrue(script.hasAttr("defer"))
         assertEquals("mandate", page.body().attr("data-page"))
         assertEquals("/mandates/201/close", page.selectFirst("[data-close-link]")?.attr("href"))

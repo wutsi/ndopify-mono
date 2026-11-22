@@ -118,7 +118,6 @@ class AgentProfileTemplateTest {
         assertEquals("Page 1 sur 2", page.selectFirst(".agent-pagination__page")?.text())
         assertEquals("/agent?id=30&page=2", page.selectFirst("[data-listings-next]")?.attr("href"))
         assertNotNull(page.selectFirst("button.agent-pagination__button[disabled]"))
-        assertNull(page.selectFirst("script[src=/assets/js/agent.js]"))
     }
 
     @Test
@@ -147,9 +146,11 @@ class AgentProfileTemplateTest {
         val page = render()
 
         assertEquals("agent", page.body().attr("data-page"))
-        assertEquals("/assets/css/partner-central.css", page.selectFirst("link[href=/assets/css/partner-central.css]")?.attr("href"))
-        assertEquals("/assets/css/agent.css", page.selectFirst("link[href=/assets/css/agent.css]")?.attr("href"))
-        assertNotNull(page.selectFirst("script[src=/assets/js/partner-central.js]"))
+        assertEquals("/assets/dist/app.min.css", page.selectFirst("link[href=/assets/dist/app.min.css]")?.attr("href"))
+        assertNotNull(page.selectFirst("script[src=/assets/dist/app.min.js]"))
+        assertEquals("/manifest.json", page.selectFirst("link[rel=manifest]")?.attr("href"))
+        assertNotNull(page.selectFirst("meta[name=apple-mobile-web-app-title]"))
+        assertNotNull(page.selectFirst("meta[name=apple-mobile-web-app-capable]"))
         assertNotNull(page.selectFirst("nav.user-menu"))
         assertEquals("/", page.selectFirst(".agent-back a")?.attr("href"))
         assertEquals("← Retour à l'espace agent", page.selectFirst(".agent-back a")?.text())

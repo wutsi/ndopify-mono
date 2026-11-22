@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head(${listing} ? |${listing.title} — Ndopify Partner Central| : 'Annonce — Ndopify Partner Central', |L'annonce d'un bien sous mandat : la visite du bien, section par section, puis l'envoi pour vérification.|, ${ {'join','find-property','home','listing'} }, ${ {'partner-central','listing'} }, false)}"></head>
+<head th:replace="~{fragments/head :: head(${listing} ? |${listing.title} — Ndopify Partner Central| : 'Annonce — Ndopify Partner Central', |L'annonce d'un bien sous mandat : la visite du bien, section par section, puis l'envoi pour vérification.|, false)}"></head>
 <!--/*
   The listing of an approved LISTING mandate (ListingController), created from the mandate page's "Créer l'annonce"
   (POST /mandates/{id}/listing: a DRAFT, pre-filled from the landlord's answers). The agent completes it during the

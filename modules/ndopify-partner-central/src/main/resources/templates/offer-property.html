@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head(${step == 'confirmation'} ? 'Bien enregistré — Ndopify' : 'Proposer un bien — Ndopify', 'Mettez votre bien en location avec un Agent Vérifié Ndopify de votre quartier : audit et photos gratuits, frais dus seulement à la signature du bail.', ${ {'join','find-property','offer-property'} }, ${ {'util','offer-property'} }, true)}"></head>
+<head th:replace="~{fragments/head :: head(${step == 'confirmation'} ? 'Bien enregistré — Ndopify' : 'Proposer un bien — Ndopify', 'Mettez votre bien en location avec un Agent Vérifié Ndopify de votre quartier : audit et photos gratuits, frais dus seulement à la signature du bail.', true)}"></head>
 <!--/*
   One page, seven steps then the confirmation: OfferPropertyController picks the step (model attribute "step") and
   only renders that one. Each step is its own form, posted to /offer-property/{step}; the answers live in the HTTP

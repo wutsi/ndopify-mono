@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head('Photo de profil — Ndopify Partner Central', |Ajoutez une photo professionnelle à votre profil d'agent Ndopify.|, ${ {'profile'} }, ${ {'partner-central','direct-upload','kyc'} }, false)}"></head>
+<head th:replace="~{fragments/head :: head('Photo de profil — Ndopify Partner Central', |Ajoutez une photo professionnelle à votre profil d'agent Ndopify.|, false)}"></head>
 <!--/*
   The profile photo (ProfileController, POST /profile/photo, multipart "photo"). kyc.js enhances it like a KYC
   photo step (type and size checked, photo centre-cropped to a 400 px square, shrunk and previewed in the browser);

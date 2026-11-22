@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head(${mandate} ? |${mandate.title} — Ndopify Partner Central| : 'Mandat — Ndopify Partner Central', |Détail d'un mandat de l'agent : suivi, coordonnées du client et recherche.|, ${ {'join','home','listing','visit'} }, ${ {'partner-central','mandate'} }, false)}"></head>
+<head th:replace="~{fragments/head :: head(${mandate} ? |${mandate.title} — Ndopify Partner Central| : 'Mandat — Ndopify Partner Central', |Détail d'un mandat de l'agent : suivi, coordonnées du client et recherche.|, false)}"></head>
 <!--/*
   The page of one of the agent's mandates (MandateController), opened from the Espace agent's Mes mandats. Its status
   is a wizard, Assigné > En approbation > Actif > Fermé (or Annulé), with the actions of the current step:

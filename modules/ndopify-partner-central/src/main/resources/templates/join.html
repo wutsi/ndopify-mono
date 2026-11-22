@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head(${step == 'confirmation'} ? 'Candidature envoyée — Ndopify Partner Central' : 'Rejoindre Ndopify — Ndopify Partner Central', 'Créez votre compte agent Ndopify : vos coordonnées, votre expérience, votre zone et votre numéro Mobile Money.', ${ {'join'} }, ${ {'util','join'} }, true)}"></head>
+<head th:replace="~{fragments/head :: head(${step == 'confirmation'} ? 'Candidature envoyée — Ndopify Partner Central' : 'Rejoindre Ndopify — Ndopify Partner Central', 'Créez votre compte agent Ndopify : vos coordonnées, votre expérience, votre zone et votre numéro Mobile Money.', true)}"></head>
 <!--/*
   One page, five steps then the confirmation: JoinController picks the step (model attribute "step") and only renders
   that one. Each step is its own form, posted to /join/{step}; the answers live in the HTTP session, so a step's

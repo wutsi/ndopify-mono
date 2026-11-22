@@ -23,6 +23,7 @@ class SecurityConfiguration(
             .authorizeHttpRequests { customizer ->
                 customizer
                     .requestMatchers("/assets/**").permitAll()
+                    .requestMatchers("/sw.js", "/offline.html", "/manifest.json").permitAll()
                     .requestMatchers("/login", "/login/**").permitAll()
                     .requestMatchers("/error").permitAll()
                     .requestMatchers("/join", "/join/**").permitAll()

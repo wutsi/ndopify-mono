@@ -32,6 +32,7 @@ import org.thymeleaf.spring6.SpringTemplateEngine
 import org.thymeleaf.spring6.view.ThymeleafViewResolver
 import org.thymeleaf.templateresolver.ClassLoaderTemplateResolver
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -103,10 +104,7 @@ class MandateContractTemplateTest {
 
         val page = render("/mandates/201/contract")
 
-        assertEquals(
-            listOf("/assets/js/partner-central.js", "/assets/js/mandate.js"),
-            page.select("script[src]").map { it.attr("src") },
-        )
+        assertNotNull(page.selectFirst("script[src=/assets/dist/app.min.js]"))
         assertEquals("mandate-contract", page.body().attr("data-page"))
     }
 

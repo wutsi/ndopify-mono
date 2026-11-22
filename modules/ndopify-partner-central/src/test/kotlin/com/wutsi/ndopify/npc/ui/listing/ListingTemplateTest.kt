@@ -141,7 +141,7 @@ class ListingTemplateTest {
         assertNull(page.selectFirst("[data-listing-flash]"))
         assertEquals(listOf("DRAFT"), page.select("[data-listing-panel]").map { it.attr("data-listing-panel") })
         assertEquals("listing", page.body().attr("data-page"))
-        assertNotNull(page.selectFirst("script[src=/assets/js/listing.js]"))
+        assertNotNull(page.selectFirst("script[src=/assets/dist/app.min.js]"))
         assertNull(page.selectFirst("[data-listing-stats]"))
         assertNull(page.selectFirst("[data-listing-share]"))
     }

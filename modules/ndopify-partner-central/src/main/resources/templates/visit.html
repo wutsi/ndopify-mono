@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/head :: head(${page} ? |Visite de ${page.customerName} — Ndopify Partner Central| : 'Visite — Ndopify Partner Central', |Une visite d'un client de l'agent : la confirmer, la démarrer avec le code du client, la terminer.|, ${ {'join','home','listing','visit'} }, ${ {'partner-central','visit'} }, false)}"></head>
+<head th:replace="~{fragments/head :: head(${page} ? |Visite de ${page.customerName} — Ndopify Partner Central| : 'Visite — Ndopify Partner Central', |Une visite d'un client de l'agent : la confirmer, la démarrer avec le code du client, la terminer.|, false)}"></head>
 <!--/*
   The page of one of the agent's visits (VisitController), opened from the Espace agent's Visites. One panel per state:
     - REQUESTED ("À confirmer"): the customer's slot and note, the schedule form (day, time, type: POST

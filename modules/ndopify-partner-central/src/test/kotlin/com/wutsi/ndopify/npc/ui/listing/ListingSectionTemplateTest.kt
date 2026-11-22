@@ -119,7 +119,7 @@ class ListingSectionTemplateTest {
 
         assertEquals("Emplacement · Annonce · Appartement, Bonapriso — Ndopify Partner Central", page.title())
         assertEquals("listing-section", page.body().attr("data-page"))
-        assertNotNull(page.selectFirst("script[src=/assets/js/listing.js]"))
+        assertNotNull(page.selectFirst("script[src=/assets/dist/app.min.js]"))
         assertEquals("location", page.body().attr("data-section"))
         assertEquals("Emplacement", page.selectFirst("h1")?.text())
         assertEquals(

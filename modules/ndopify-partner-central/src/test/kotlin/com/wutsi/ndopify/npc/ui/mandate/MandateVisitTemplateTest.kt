@@ -146,8 +146,8 @@ class MandateVisitTemplateTest {
         assertEquals("Annuler", page.selectFirst("form a.btn--outline")?.text())
         assertEquals("Confirmer la visite", page.selectFirst("button[data-visit-submit]")?.text())
         assertEquals(0, page.select("script[src]").count { it.attr("src").contains("visit.js") })
-        // The shared header script still opens the account menu, as on every signed-in page
-        assertNotNull(page.selectFirst("script[src*='partner-central.js']"))
+        // The shared bundle still opens the account menu, as on every signed-in page
+        assertNotNull(page.selectFirst("script[src=/assets/dist/app.min.js]"))
     }
 
     @Test
