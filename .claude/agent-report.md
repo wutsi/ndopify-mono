@@ -1,5 +1,8 @@
 # Agent report
 
+> **This file is the template, not a destination.** Never write a report into it: an agent's final message *is* the
+> report, in the shape below. Overwriting it breaks the contract for every agent.
+
 Every agent in `.claude/agents/` ends its run with this report, one key per line, in this order. Your final message is
 the report and nothing else; put any explanation in `NOTES`. Use `-` when a value does not apply. The orchestrator reads
 it.

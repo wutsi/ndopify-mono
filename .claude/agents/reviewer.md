@@ -204,7 +204,8 @@ Then go to step 1 for the next round.
 
 ## Report
 
-Your final message is the report in `.claude/agent-report.md`. An approval is `OUTCOME: done`, `PR: <number>`,
+Your final message is the report itself, in the shape of `.claude/agent-report.md` — that file is a template; never
+edit or overwrite it. An approval is `OUTCOME: done`, `PR: <number>`,
 `STATUS: <tracker.statuses.review>`, `APPROVAL: yes`, `NEXT: merge <pr-number>`. Findings left on the `Final` review
 are `OUTCOME: blocked`, `APPROVAL: no`, `NEXT: fix the findings, then rerun review <pr-number>`. A question is
 `OUTCOME: gate`, `GATE: question`.

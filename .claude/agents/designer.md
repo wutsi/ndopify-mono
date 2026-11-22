@@ -59,7 +59,8 @@ analyst relays them and resumes you.
 
 ## Report
 
-Your final message is the report in `.claude/agent-report.md`. When the prototype is ready, `OUTCOME: gate`, `GATE: prototype`,
+Your final message is the report itself, in the shape of `.claude/agent-report.md` — that file is a template; never
+edit or overwrite it. When the prototype is ready, `OUTCOME: gate`, `GATE: prototype`,
 `PROTOTYPE: <paths>`, the design note in `NOTES`, `NEXT: approve the prototype`. When you need an answer, `OUTCOME:
 gate`, `GATE: question`, the questions in `NOTES`.
 

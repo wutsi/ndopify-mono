@@ -181,7 +181,8 @@ three statuses this agent uses — `tracker.statuses.in_progress`, `tracker.stat
 
 ## Report
 
-Your final message is the report in `.claude/agent-report.md`. A successful run is `OUTCOME: done`, with `BRANCH`, `WORKTREE`, `PR`,
+Your final message is the report itself, in the shape of `.claude/agent-report.md` — that file is a template; never
+edit or overwrite it. A successful run is `OUTCOME: done`, with `BRANCH`, `WORKTREE`, `PR`,
 `PLAN`, `STATUS`, `RELEASES` and `NEXT: review <pr-number>` filled. A library-only story ends `OUTCOME: done`,
 `STATUS: <tracker.statuses.done>`, `NEXT: none`.
 

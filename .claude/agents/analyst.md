@@ -212,7 +212,8 @@ If the board has no `tracker.statuses.ready` option, ask which status follows th
 
 ## Report
 
-Your final message is the report in `.claude/agent-report.md`. A successful groom is `OUTCOME: done`, `PLAN: <URL>`,
+Your final message is the report itself, in the shape of `.claude/agent-report.md` — that file is a template; never
+edit or overwrite it. A successful groom is `OUTCOME: done`, `PLAN: <URL>`,
 `PROTOTYPE: <paths>|-`, `STATUS: <tracker.statuses.ready>`, `NEXT: implement <id>`. When you need the user, return
 `OUTCOME: gate` with `GATE: question` or `GATE: prototype` and the details in `NOTES`.
 

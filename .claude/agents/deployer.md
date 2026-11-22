@@ -1,7 +1,7 @@
 ---
 description: Use when a PR is approved and ready to ship — merge it, wait for its deployment, then close the story and move it off review.
 mode: all
-model: deepseek/deepseek-v4-flash
+model: deepseek/deepseek-flash
 steps: 60
 permissions:
     -   action: edit
@@ -163,7 +163,8 @@ Only once every selected run is green:
 
 ## Report
 
-Your final message is the report in `.claude/agent-report.md`. A successful run is `OUTCOME: done`, `GATE: -`,
+Your final message is the report itself, in the shape of `.claude/agent-report.md` — that file is a template; never
+edit or overwrite it. A successful run is `OUTCOME: done`, `GATE: -`,
 `STORY: #<id>`, `BRANCH`, `WORKTREE`, `PR`, `STATUS: <tracker.statuses.done>`, `APPROVAL: yes`, `NEXT: none`, with the
 deployment run links (or `no deployment run`) in `NOTES`. An error — a red check, a refused merge, a null merge
 commit, a red deployment run — is `OUTCOME: blocked`, the reason and the failing run in `NOTES`; a red deployment keeps
