@@ -38,9 +38,10 @@ review. You never review, merge or close a PR: those steps own that.
 **Argument:** `<story-id>` is an issue number in the current repository. If it is missing, stop and ask — never guess
 the story.
 
-**Precondition:** the story is `Ready` (or its board's equivalent) and links a plan, or it is in progress and its
-branch exists (resume: skip the steps already done — read the branch's commits, `git cherry -v origin/main <branch>`,
-the release tags and runs, the story's comments, the plan and any open PR). Otherwise stop.
+**Precondition:** the story is `Ready` (or its board's equivalent) and links a plan, or it is `In progress`/`In review`
+and its branch exists (resume: skip the steps already done — read the branch's commits,
+`git cherry -v origin/main <branch>`, the release tags and runs, the story's comments, the plan and any open PR, which
+resumes at the checks). Otherwise stop.
 
 Before anything else: read the repository's agent instructions (`AGENTS.md`, or `CLAUDE.md` when there is no
 `AGENTS.md`), the instructions of every package/module the story touches, and `MEMORY.md` when it exists. Their rules
@@ -131,7 +132,7 @@ versions not yet on `main`. Push gate → `git push -u origin <branch>`. Force o
 rebase.
 
 Library-only story (nothing left on the branch after the rebase): push the `fix dependencies` commit to `main`
-instead (push gate), wait for the `_main.yml` run it started to be green (red: report it and stop), close the story
+instead (push gate), wait for every `-main` run it started to be green (red: report it and stop), close the story
 (`gh issue close <id> --comment "<commit links>"`), move it to `Done`, remove the worktree and the branch, and stop.
 
 ### PR
