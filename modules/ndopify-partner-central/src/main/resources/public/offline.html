@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Hors ligne — Ndopify Partner Central</title>
+    <meta name="description" content="Ndopify Partner Central n'a pas pu joindre le serveur.">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="theme-color" content="#ffffff">
+    <link rel="icon" type="image/png" href="/assets/images/icon.png">
+    <link rel="apple-touch-icon" href="/assets/images/icon.png">
+    <!--
+      Served by the service worker when a navigation fails. Self-contained: no webfont, no bundle — it must render
+      with no network. The styles below are copied from partner-central.css (only the rules this page reads).
+    -->
+    <style>
+        :root {
+            --primary: #1d7edf;
+            --primary-hover: #111184;
+            --background-default: #ffffff;
+            --background-secondary: #e4edf7;
+            --background-disabled: #808080;
+            --text-default: #040404;
+            --text-success: #155724;
+            --border-default: #dfdfdf;
+            --button-primary-text: #ffffff;
+            --primary-glow: 0 4px 12px rgba(29, 126, 223, 0.25);
+            --font-heading: "Lora", Georgia, "Times New Roman", serif;
+            --font-body: "Montserrat", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            --spacing-sm: 0.25rem;
+            --spacing-md: 0.5rem;
+            --spacing-lg: 0.75rem;
+            --spacing-xl: 1.5rem;
+            --rounded-full: 30px;
+            --h1-size: 3.2rem;
+            --body-size: 1rem;
+
+            color-scheme: light;
+            --color-bg: var(--background-default);
+            --color-bg-subtle: var(--background-secondary);
+            --color-fg: var(--text-default);
+            --color-fg-disabled: var(--background-disabled);
+            --color-border: var(--border-default);
+            --color-accent: var(--primary);
+            --color-accent-hover: var(--primary-hover);
+            --color-on-accent: var(--button-primary-text);
+            --color-focus: var(--primary);
+            --color-success-fg: var(--text-success);
+            --shadow-cta: var(--primary-glow);
+            --radius-control: var(--rounded-full);
+            --space-1: var(--spacing-sm);
+            --space-2: var(--spacing-md);
+            --space-3: var(--spacing-lg);
+            --space-4: var(--spacing-xl);
+            --space-5: calc(var(--spacing-xl) * 2);
+            --space-6: calc(var(--spacing-xl) * 3);
+            --step-h1: clamp(1.25rem, 7.5vw - 0.25rem, 2.5rem);
+            --step-body: var(--body-size);
+            --step-hint: 0.875rem;
+            --measure: 65ch;
+            --shell: 72rem;
+            --column: 34rem;
+            --header-height: 4rem;
+            --target: 2.75rem;
+            --duration: 200ms;
+            --ease-out: cubic-bezier(0.2, 0, 0, 1);
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        html {
+            -webkit-text-size-adjust: 100%;
+            caret-color: var(--color-accent);
+            scroll-padding-top: calc(var(--header-height) + var(--space-3));
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--color-bg);
+            color: var(--color-fg);
+            font-family: var(--font-body);
+            font-size: var(--step-body);
+            font-weight: 400;
+            line-height: 1.6;
+        }
+
+        h1 {
+            margin: 0;
+            font-family: var(--font-heading);
+            font-weight: 700;
+            line-height: 1.15;
+            text-wrap: balance;
+            font-size: var(--step-h1);
+        }
+
+        p {
+            margin: 0;
+            max-width: var(--measure);
+        }
+
+        img {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+
+        a {
+            color: var(--color-fg);
+            text-decoration: underline;
+            text-underline-offset: 0.2em;
+            text-decoration-thickness: 1px;
+        }
+
+        a:hover {
+            text-decoration-thickness: 2px;
+        }
+
+        :focus-visible {
+            outline: 2px solid var(--color-focus);
+            outline-offset: 2px;
+        }
+
+        .skip-link {
+            position: absolute;
+            top: var(--space-2);
+            left: var(--space-2);
+            z-index: 100;
+            padding: var(--space-3) var(--space-4);
+            background: var(--color-bg);
+            color: var(--color-fg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-control);
+            font-weight: 600;
+            transform: translateY(-200%);
+        }
+
+        .skip-link:focus {
+            transform: none;
+        }
+
+        .site-header {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            border-bottom: 1px solid var(--color-border);
+            background: var(--color-bg);
+        }
+
+        .site-header__inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-4);
+            max-width: var(--shell);
+            min-height: var(--header-height);
+            margin-inline: auto;
+            padding-inline: clamp(1rem, 5vw, 4rem);
+        }
+
+        .site-header__brand {
+            display: inline-flex;
+            align-items: center;
+            min-height: var(--target);
+        }
+
+        .site-header__brand img {
+            width: auto;
+            height: 2.5rem;
+        }
+
+        .page {
+            max-width: var(--shell);
+            margin-inline: auto;
+            padding: var(--space-4) clamp(1rem, 5vw, 4rem) var(--space-6);
+        }
+
+        .column {
+            max-width: var(--column);
+            margin-inline: auto;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--space-2);
+            min-height: var(--target);
+            padding: var(--space-3) var(--space-4);
+            border: 1px solid transparent;
+            border-radius: var(--radius-control);
+            font: 600 var(--step-body) / 1.25 var(--font-body);
+            text-align: center;
+            text-decoration: none;
+            cursor: pointer;
+            transition:
+                background-color var(--duration) var(--ease-out),
+                box-shadow var(--duration) var(--ease-out),
+                transform var(--duration) var(--ease-out);
+        }
+
+        .btn--primary {
+            background: var(--color-accent);
+            color: var(--color-on-accent);
+            box-shadow: var(--shadow-cta);
+        }
+
+        .btn--primary:hover:not([aria-disabled="true"], :disabled) {
+            background: var(--color-accent-hover);
+        }
+
+        /* ---- offline.html only: a quiet, centred empty state on the app's own tokens ---- */
+        .offline {
+            display: grid;
+            justify-items: center;
+            align-content: center;
+            gap: var(--space-3);
+            min-height: calc(100vh - var(--header-height) - var(--space-6));
+            padding-block: var(--space-5);
+            text-align: center;
+        }
+
+        .offline__icon {
+            display: grid;
+            place-items: center;
+            width: 6rem;
+            height: 6rem;
+            margin: 0;
+            border-radius: 50%;
+            background: var(--color-bg-subtle);
+            color: var(--color-accent);
+        }
+
+        .offline__title {
+            margin: 0;
+            font-family: var(--font-heading);
+            font-size: var(--step-h1);
+            line-height: 1.2;
+        }
+
+        .offline__text {
+            margin: 0;
+            max-width: 28rem;
+            color: var(--color-fg);
+        }
+
+        /* Reserves its line so the button doesn't jump when the status appears */
+        .offline__status {
+            margin: 0;
+            min-height: 1.5em;
+            font-size: var(--step-hint);
+            color: var(--color-success-fg);
+        }
+
+        .offline__note {
+            margin: 0;
+            max-width: 28rem;
+            font-size: var(--step-hint);
+            color: var(--color-fg-disabled);
+        }
+    </style>
+</head>
+<!--/*
+  Shown when the app can't reach its server: the service worker serves this page for a failed navigation.
+  No account menu (nobody is known here) and no link that would fail while offline.
+
+  The button is a link to "/" so it still retries without JavaScript; the script turns it into a reload and,
+  once the connection is back, says so and reloads by itself.
+*/-->
+<body data-page="offline">
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+        <div class="site-header__inner">
+            <span class="site-header__brand">
+                <img src="/assets/images/logo.png" alt="Ndopify" width="84" height="40">
+            </span>
+        </div>
+    </header>
+    <main id="main" class="page">
+        <div class="column">
+            <section class="offline" aria-labelledby="offline-title">
+                <p class="offline__icon" aria-hidden="true">
+                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                         stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+                        <path d="M12 20h.01"/>
+                        <path d="M8.5 16.4a5 5 0 0 1 7 0"/>
+                        <path d="M5 12.9a10 10 0 0 1 5.2-2.7"/>
+                        <path d="M19 12.9a10 10 0 0 0-2-1.5"/>
+                        <path d="M2 8.8a15 15 0 0 1 4.2-2.6"/>
+                        <path d="M22 8.8a15 15 0 0 0-11.3-3.8"/>
+                        <path d="m2 2 20 20"/>
+                    </svg>
+                </p>
+                <h1 id="offline-title" class="offline__title" tabindex="-1">Vous êtes hors ligne</h1>
+                <p class="offline__text">
+                    Ndopify a besoin d'une connexion Internet pour afficher votre espace agent.
+                    Vérifiez votre connexion, puis réessayez.
+                </p>
+                <p class="offline__status" role="status" aria-live="polite" data-offline-status></p>
+                <a class="btn btn--primary" href="/" data-retry>Réessayer</a>
+                <p class="offline__note">
+                    Si vous venez d'envoyer un formulaire, vérifiez son résultat une fois reconnecté.
+                </p>
+            </section>
+        </div>
+    </main>
+    <script>
+        (function () {
+            "use strict";
+
+            var status = document.querySelector("[data-offline-status]");
+            var retry = document.querySelector("[data-retry]");
+            var reloaded = false;
+
+            function reload() {
+                if (reloaded) return;
+                reloaded = true;
+                window.location.reload();
+            }
+
+            // Back online: say so, then reload once by itself.
+            window.addEventListener("online", function () {
+                if (!status) return;
+                status.textContent = "Connexion rétablie. Rechargement…";
+                window.setTimeout(reload, 900);
+            });
+
+            // Without JavaScript the link still retries by navigating to the app.
+            if (retry) {
+                retry.addEventListener("click", function (event) {
+                    event.preventDefault();
+                    reload();
+                });
+            }
+        })();
+    </script>
+</body>
+</html>
