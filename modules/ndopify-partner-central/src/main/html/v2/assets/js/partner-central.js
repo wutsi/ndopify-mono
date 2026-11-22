@@ -1374,6 +1374,9 @@
                 propertyCategory: "RESIDENTIAL",
                 propertyType: "LAND",
                 area: 500,
+                // v2 (#253): the documents this buyer requires of the seller (any one of them is enough, see the note
+                // on mandate.html — #256).
+                titleDocuments: ["LAND_TITLE", "SURVEY_PLAN"],
                 amenities: ["trackAccessibleByCar", "electricityMeter"],
                 price: 15000000,
                 movingPeriod: "WITHIN_3_MONTHS",
@@ -1791,7 +1794,8 @@
     }
 
     // The search as [term, value] rows: sector, amount and date first (a card's three facts), then the rest.
-    function criteriaOf(id) {
+    // [noDocuments] is the PROTOTYPE's ?documents=none (a land purchase requiring no document).
+    function criteriaOf(id, noDocuments) {
         var f = fieldsOf(id);
         var owner = MANDATES[id].party === "bailleur";
         var sale = isSale(id);
@@ -1810,6 +1814,15 @@
         if (f.rooms) rows.push(["Chambres", f.rooms]);
         if (f.parkings) rows.push(["Parking", PARKING_LABELS[f.parkings] || f.parkings]);
         if (f.area) rows.push([owner ? "Surface" : "Surface souhaitée", f.area + " m²"]);
+        // v2 (#253): a land purchase's required documents (the same TitleDocumentType enum as the seller's ownership
+        // documents), after the surface; "Aucun document exigé" when the buyer requires none. The mandate page keeps
+        // this row visible, with the note of #256 under it.
+        if (sale && !owner && f.propertyType === "LAND") {
+            var documents = (noDocuments ? [] : f.titleDocuments || []).map(function (doc) {
+                return OWNERSHIP_DOCUMENT_LABELS[doc];
+            }).filter(Boolean);
+            rows.push(["Documents exigés", documents.join(" · ") || "Aucun document exigé"]);
+        }
         // v2: a land sale's ownership documents (a villa, apartment, … sale or a rental never shows the row).
         if (sale && f.propertyType === "LAND" && f.ownershipDocuments && f.ownershipDocuments.length) {
             rows.push(["Document de propriété", f.ownershipDocuments.map(function (id) {
@@ -2739,7 +2752,10 @@
     var MANDATE_STEPS = ["ASSIGNED", "PENDING_APPROVAL", "APPROVED", "CLOSED"];
 
     function initMandate() {
-        var id = new URLSearchParams(window.location.search).get("id");
+        var params = new URLSearchParams(window.location.search);
+        var id = params.get("id");
+        // PROTOTYPE: ?documents=none shows a land purchase that requires no document ("Aucun document exigé", no note).
+        var noDocuments = params.get("documents") === "none";
         if (!ownsMandate(id)) {
             $("[data-mandate-locked]").hidden = false;
             return;
@@ -2839,8 +2855,9 @@
         }
 
         // Visible: sector, amount, date, the type with its rooms ("Maison, 3 chambres"), then the client's comments.
-        // Folded: everything else.
-        var rows = criteriaOf(id);
+        // Folded: everything else. A land purchase's "Documents exigés" also stays visible (with the note at the end
+        // of the visible list, #256): what filters the matches must reach an agent who never opens the folded list.
+        var rows = criteriaOf(id, noDocuments);
         var byTerm = {};
         rows.forEach(function (row) {
             byTerm[row[0]] = row[1];
@@ -2849,8 +2866,9 @@
         var key = rows.slice(0, 3).concat([["Type de bien", byTerm["Type de propriété"] +
             (rooms ? ", " + rooms + (rooms === "1" ? " chambre" : " chambres") : "")]]);
         if (byTerm["Autres précisions"]) key.push(["Autres précisions", byTerm["Autres précisions"]]);
+        if (byTerm["Documents exigés"]) key.push(["Documents exigés", byTerm["Documents exigés"]]);
         var rest = rows.slice(3).filter(function (row) {
-            return ["Type de propriété", "Chambres", "Autres précisions"].indexOf(row[0]) === -1;
+            return ["Type de propriété", "Chambres", "Autres précisions", "Documents exigés"].indexOf(row[0]) === -1;
         });
         key.forEach(function (row) {
             criterion($("[data-mandate-key-criteria]"), row);
@@ -2858,6 +2876,11 @@
         rest.forEach(function (row) {
             criterion($("[data-mandate-criteria]"), row);
         });
+        // The note explains the filter, never a refused listing: a land purchase requiring at least one document only
+        // (a rental, a non-land sale or a seller's mandate has none). ?documents=none requires none, so no note.
+        var documentsNote = $("[data-mandate-documents-note]");
+        documentsNote.hidden = noDocuments || !isSale(id) || MANDATES[id].party === "bailleur" ||
+            fieldsOf(id).propertyType !== "LAND" || (fieldsOf(id).titleDocuments || []).length === 0;
         var more = $("[data-mandate-more]");
         var moreLabel = $("[data-mandate-more-label]");
         more.hidden = rest.length === 0;
@@ -4018,6 +4041,9 @@
                 movingPeriod: checked("movingPeriod"),
                 comments: field("comments").value.trim() || null
             };
+            // v2 (#253): not editable on this page, but the search keeps the documents it requires (the note of #256
+            // depends on them).
+            if (f.titleDocuments) fields.titleDocuments = f.titleDocuments;
 
             // PROTOTYPE: simulates POST /v1/mandates/{id} with the whole search (UpdateMandateRequest).
             setActive(submit, false);

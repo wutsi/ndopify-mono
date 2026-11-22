@@ -24,6 +24,7 @@ agents whose specialisation covers it.
 | `rejoindre.html` (sign-up), `profile/edit.html` | The agent's specialisation, in the experience step (still 5 steps) and on the profile: *Quels mandats traitez-vous ?* (Location, Vente) and *Quels biens ?* (Logements, Locaux commerciaux, Terrains), at least one of each; shown on the review. Proposed fields: `listingTypes` (ListingType[]), `propertyCategories` (PropertyCategory[]), `land` (Boolean). |
 | `index.html` (Espace agent) | Every offer and *Mes mandats* card has a *Vente* / *Location* tag. Samples: sale offer **104** (a buyer's plot of land, 15M FCFA) and sale mandate **301** (a seller's villa, signed, listing to create). |
 | `mandate.html` | For a sale: *Acheteur* / *Vendeur*, *Budget total* / *Prix de vente* with no "/ mois", no rental terms; closing and cancel text for a sale (*Vente conclue*, *acte de vente*). |
+| `mandate.html` | A buyer's land purchase (#253/#256): *Documents exigés* (*Titre foncier · Plan de bornage*, or *Aucun document exigé*) stays among the **visible** criteria, with the note that a land for sale whose seller declared none of them is not proposed (*Un seul de ces documents déclaré suffit*). `?documents=none` shows a buyer who requires none: no note. |
 | `mandate/contract.html` | For a sale, a **Commission** field in % of the sale price (default 5 %): a proposal, see open questions. |
 | `mandate/close.html` | For a sale: *Prix de vente final* in FCFA, *Vendu à un autre acheteur*. |
 | `mandate/edit.html`, `listing.html`, `listing/conditions.html` | Sale labels; rental-only terms (deposit, advance, lease term, notice, furniture) hidden and saved empty; the listing's checklist row is *Prix et conditions*. |
@@ -31,8 +32,9 @@ agents whose specialisation covers it.
 
 To review the sale states: `index.html` (offer 104, card 301), `mandate.html?id=301` (a seller's villa) and
 `mandate.html?id=302` (a seller's plot of land, whose criteria show its *Document de propriété*), `mandate/contract.html?id=104`,
-`mandate/close.html?id=301`; accept offer 104 to open `mandate.html?id=104` and `mandate/edit.html?id=104`; *Créer
-l'annonce* on 301, then `listing.html?id=501` and `listing/conditions.html?id=501`.
+`mandate/close.html?id=301`; accept offer 104 to open `mandate.html?id=104` (a buyer's land search: its visible
+*Documents exigés* and the note of #256 — `&documents=none` for *Aucun document exigé*, without the note) and
+`mandate/edit.html?id=104`; *Créer l'annonce* on 301, then `listing.html?id=501` and `listing/conditions.html?id=501`.
 
 ## Out of scope, never promised here
 

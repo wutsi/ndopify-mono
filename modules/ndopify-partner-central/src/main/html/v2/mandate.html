@@ -17,7 +17,7 @@
     <link rel="stylesheet" href="assets/css/home.css?v=20261118c">
     <link rel="stylesheet" href="assets/css/listing.css">
     <link rel="stylesheet" href="assets/css/visit.css">
-    <script src="assets/js/partner-central.js?v=20261119a" defer></script>
+    <script src="assets/js/partner-central.js?v=20261122a" defer></script>
     <script src="assets/js/visit.js?v=20261118a" defer></script>
 </head>
 <!--
@@ -26,6 +26,9 @@
     reads as a sale: "Vendeur" / "Acheteur" and a "Vente" tag after the title, "Prix de vente" / "Budget total" with no
     "/ mois", no furniture, and the closing wording of a sale (data-sale-text: "Vente conclue", "prix de vente final").
     A RENTAL mandate has a "Location" tag and is otherwise unchanged.
+    v2 (#256): a buyer's land search that requires documents (104) keeps "Documents exigés" among the visible criteria,
+    with the note that a land for sale whose seller declared none of them is not proposed (any one is enough).
+    ?id=104&amp;documents=none requires none: "Aucun document exigé", no note.
     Mandate page (source doc): the detail of one of the agent's mandates, unlocked by the acceptance (anti-bypass:
     an agent never sees a mandate that isn't assigned to it), so it shows the client's contact details and the whole
     search. Its status is a wizard, Assigné > En approbation > Actif > Fermé, with the actions of the current step:
@@ -563,9 +566,22 @@
                     <h2 id="search-title" data-search-title>Sa recherche</h2>
                     <!--
                         The facts that qualify a property stay visible: sector, amount, date, type (with its rooms), and
-                        the client's own words when there are some. The rest is folded.
+                        the client's own words when there are some. The rest is folded — except a land purchase's
+                        "Documents exigés", kept visible with the note below, since it filters the matches.
                     -->
                     <dl class="review" data-mandate-key-criteria></dl>
+                    <!--
+                        v2 (#256): a land purchase requiring documents is never matched with a land for sale whose
+                        seller declared none of them. The note explains that filter, not a per-listing refusal (the
+                        reason of each rule-out stays in ndopify-server's log). PROTOTYPE: mandate.html?id=104, after
+                        the offer is accepted; ?id=104&amp;documents=none requires none (no note). A rental, a non-land
+                        sale or a seller's mandate never shows it.
+                    -->
+                    <div class="hint" hidden data-mandate-documents-note>
+                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <p>Les terrains à vendre dont le vendeur n'a déclaré aucun de ces documents ne vous sont pas
+                            proposés. Un seul de ces documents déclaré suffit.</p>
+                    </div>
                     <details class="assignment__details mandate-more" data-mandate-more>
                         <summary data-mandate-more-label>Voir tous les critères</summary>
                         <dl class="review" data-mandate-criteria></dl>
