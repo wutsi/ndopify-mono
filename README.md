@@ -160,7 +160,7 @@ AI tooling for [Claude Code](https://claude.com/claude-code) lives in [`.claude/
 
 | Skill                                    | Purpose                                                                                                                                                                                |
 |------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| [`story`](.claude/skills/story/SKILL.md) | Takes a story of the GitHub Project through its lifecycle: `groom <story-id>` (enrich it, write its plan), `implement <story-id>` (code it on one branch), `push <story-id>` (release its library changes, open its PR), `review <pr-number>` (review the PR, resolve its findings, up to 3 times, until it approves it), `merge <pr-number>` (merge the approved PR, then close the story), `ship <story-id>` (run implement, push, review and merge in sequence, each in a fresh subagent). |
+| [`story`](.claude/skills/story/SKILL.md) | Orchestrates the `analyst`, `developer`, `reviewer` and `deployer` agents through a story's lifecycle: `groom <story-id>` (Backlog to Ready, including the designer and the plan), `implement <story-id>` (Ready to In review; `push` is an alias), `review <pr-number>` (the approval loop), `merge <pr-number>` (merge, deployment, Done), `ship <story-id>` (developer, reviewer and deployer in sequence). |
 
 ### Third-party skills
 
