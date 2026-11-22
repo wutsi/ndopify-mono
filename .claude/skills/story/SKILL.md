@@ -24,7 +24,7 @@ supplies `tracker.statuses.*`, `repository.story_ref` and `repository.default_br
 |---|---|---|
 | `groom <story-id>` | `analyst` | `STATUS: <tracker.statuses.ready>`, `NEXT: implement <id>` |
 | `implement <story-id>`, `push <story-id>` | `developer` | `NEXT: review <pr>`, or `STATUS: <tracker.statuses.done>` for a library-only story |
-| `review <pr-number>` | `reviewer` | `APPROVAL: yes`, `NEXT: merge <pr>` |
+| `review <pr-number>` | `reviewer` | `APPROVAL: yes`, `NEXT: merge <pr>` — or `OUTCOME: handoff`, `NEXT: implement <id>` |
 | `merge <pr-number>` | `deployer` | `STATUS: <tracker.statuses.done>`, `NEXT: none` |
 | `ship <story-id>` | `developer` → `reviewer` → `deployer` | the chain in *Ship* |
 
@@ -47,6 +47,8 @@ supplies `tracker.statuses.*`, `repository.story_ref` and `repository.default_br
   answer to the same child session and wait. If the harness cannot resume a child, re-dispatch the same agent for the
   same phase with the questions already asked and the answers so far: the later phases rebuild their state from git,
   the pull request and the story, but the analyst's answers exist only in that session.
+- `OUTCOME: handoff` — the phase ended as expected and another agent continues: in `ship`, follow `NEXT`; in an
+  explicit mode, report it and stop.
 - `OUTCOME: blocked` — report `NOTES` and stop.
 - Unknown agent — report the block (`<agent>` is not registered) and tell the user to register or reload the agents.
   Never fall back to a generic agent or do the phase yourself.
@@ -66,6 +68,7 @@ Dispatch `developer <story-id>`. `push` is the same mode, kept as an alias. On d
 ### `review <pr-number>`
 
 Dispatch `reviewer <pr-number>`. Relay its question gates. On `APPROVAL: yes`, report it; next is `merge <pr>`. A
+handoff (`OUTCOME: handoff`, `NEXT: implement <id>`) reports the findings and the developer as the next action. A
 `Final` review with findings stops: report the findings in `NOTES`, the pull request link and the reviewer's `NEXT`.
 
 ### `merge <pr-number>`
@@ -83,10 +86,16 @@ Read the story's status and its pull request:
 gh issue view <id> --json projectItems --jq '.projectItems[].status.name'
 gh pr list --state all --search "<repository.story_ref with the id> in:body" \
   --json number,state,mergedAt
+gh api repos/<owner>/<repo>/pulls/<pr>/reviews --jq '.[-1] | {body, commit_id}'
 ```
 
 Replace the id in `repository.story_ref`. If the issue has no project item or more than one, or the search returns
 several pull requests, stop and ask.
+
+Route on the latest review's body and `commit_id`: `<Round n|Final> — Approved` on the head → deployer; `Final —
+Changes requested` → stop, the cap is reached; `Round n — Changes requested (reviewer)` on the head → reviewer;
+`Round n — Changes requested (author)` on the head → developer; any other review whose head has moved since → reviewer.
+The head is `gh pr view <pr> --json headRefOid --jq .headRefOid`.
 
 Resolve the start point in this order; the first row that matches wins:
 
@@ -97,15 +106,20 @@ Resolve the start point in this order; the first row that matches wins:
 | a merged pull request in any other status | stop; the status and the merge disagree |
 | `tracker.statuses.backlog` | stop; ask the user to run `groom <id>` |
 | a closed pull request that is not merged | stop and ask |
+| an open pull request whose latest review is `Final — Changes requested` | stop; the three rounds are spent, the user fixes and reruns `review <pr>` |
+| an open pull request whose latest review is `Round n — Changes requested (author)` on its head | `developer` (address the review) |
+| an open pull request whose latest review is `Round n — Changes requested (reviewer)` on its head | `reviewer` (resume its resolve) |
+| an open pull request whose latest review is `<Round n|Final> — Approved` on its head | `deployer` |
 | an open pull request, with the story in `tracker.statuses.review` | `reviewer` |
 | an open pull request in any other status | stop; the status and the pull request disagree |
 | no pull request, with the story in `tracker.statuses.ready` or `tracker.statuses.in_progress` | `developer` |
 | no pull request, with the story in `tracker.statuses.review` | `developer` (resume the push) |
 | anything else | stop and ask |
 
-Then follow each report's `NEXT`: developer `NEXT: review <pr>` → reviewer; reviewer `NEXT: merge <pr>` → deployer;
-deployer `NEXT: none` → done. A developer `STATUS: <tracker.statuses.done>` with `NEXT: none` is a library-only story:
-the chain ends there. A gate is relayed and the same session resumed; `blocked` stops the chain.
+Then follow each report's `NEXT`: developer `NEXT: review <pr>` → reviewer; reviewer `NEXT: implement <id>` →
+developer; reviewer `NEXT: merge <pr>` → deployer; deployer `NEXT: none` → done. A developer
+`STATUS: <tracker.statuses.done>` with `NEXT: none` is a library-only story: the chain ends there. A gate is relayed
+and the same session resumed; `blocked` stops the chain.
 
 The main thread only orchestrates: no code, commit, push, review, merge or board edit.
 
@@ -122,5 +136,6 @@ needs the user's answer. Never guess a story or a pull request.
 
 ## Done when
 
-The mode's agent reported `done` and the report names the next action — or the chain stopped on `blocked`, on a `Final`
-review, or on a gate, and the user knows why.
+The mode's agent reported `done` and the report names the next action — or the reviewer handed a pass to the developer
+and the chain is at the developer, or the chain stopped on `blocked`, on a `Final` review, or on a gate, and the user
+knows why.
