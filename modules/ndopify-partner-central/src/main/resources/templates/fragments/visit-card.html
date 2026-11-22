@@ -23,7 +23,7 @@
                 <span data-visit-listing th:text="${v.listing}">Sur place · Appartement 3 chambres · Bonapriso</span>
             </p>
             <p class="assignment__timer visit-card__timer" th:if="${v.expiresIn != null}" data-visit-timer>
-                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                <svg th:replace="~{fragments/icon :: clock}"></svg>
                 <span>Il reste <strong data-visit-left th:text="${v.expiresIn}">42 h</strong> pour confirmer</span>
             </p>
             <th:block th:if="${v.coBrokerage}"><div th:replace="~{fragments/agent-card :: agentCard(${v.agent}, false)}"></div></th:block>
@@ -52,7 +52,7 @@
                 <span data-visit-listing th:text="${v.listing}">Sur place · Appartement 3 chambres · Bonapriso</span>
             </p>
             <p class="assignment__timer visit-card__timer" th:if="${v.expiresIn != null}" data-visit-timer>
-                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                <svg th:replace="~{fragments/icon :: clock}"></svg>
                 <span>Il reste <strong data-visit-left th:text="${v.expiresIn}">42 h</strong> pour confirmer</span>
             </p>
 

@@ -1,25 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title th:text="${listing} ? |${listing.title} — Ndopify Partner Central| : 'Annonce — Ndopify Partner Central'">Annonce — Ndopify Partner Central</title>
-    <meta name="description" content="L'annonce d'un bien sous mandat : la visite du bien, section par section, puis l'envoi pour vérification.">
-    <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#ffffff">
-    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
-    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
-    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/join.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/find-property.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/home.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/listing.css}">
-    <script th:src="@{/assets/js/partner-central.js}" defer></script>
-    <script th:src="@{/assets/js/listing.js}" defer></script>
-</head>
+<head th:replace="~{fragments/head :: head(${listing} ? |${listing.title} — Ndopify Partner Central| : 'Annonce — Ndopify Partner Central', |L'annonce d'un bien sous mandat : la visite du bien, section par section, puis l'envoi pour vérification.|, ${ {'join','find-property','home','listing'} }, ${ {'partner-central','listing'} }, false)}"></head>
 <!--/*
   The listing of an approved LISTING mandate (ListingController), created from the mandate page's "Créer l'annonce"
   (POST /mandates/{id}/listing: a DRAFT, pre-filled from the landlord's answers). The agent completes it during the
@@ -46,15 +27,7 @@
   "outcome", worded by ListingController).
 */-->
 <body data-page="listing">
-    <a class="skip-link" href="#main">Aller au contenu</a>
-    <header class="site-header">
-        <div class="site-header__inner">
-            <a class="site-header__brand" th:href="@{/}">
-                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
-            </a>
-            <nav th:replace="~{fragments/user-menu :: menu}"></nav>
-        </div>
-    </header>
+    <th:block th:replace="~{fragments/site-header :: header(@{/}, true)}"></th:block>
     <main id="main" class="page">
         <div class="column column--wide">
             <p class="back-link"><a th:href="${listing} ? ${listing.backUrl} : @{/#mandates-title}"
@@ -66,15 +39,15 @@
             -->
             <th:block th:if="${listing == null}"><div th:fragment="flash" th:if="${outcomeText}" th:class="|alert alert--${outcomeStyle}|" tabindex="-1"
                  th:attr="role=${outcomeStyle == 'error'} ? 'alert' : 'status'" data-listing-flash>
-                <svg th:if="${outcomeStyle == 'success'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                <svg th:if="${outcomeStyle == 'warning'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
-                <svg th:if="${outcomeStyle == 'error'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <th:block th:if="${outcomeStyle == 'success'}"><svg th:replace="~{fragments/icon :: check('icon')}"></svg></th:block>
+                <th:block th:if="${outcomeStyle == 'warning'}"><svg th:replace="~{fragments/icon :: warning}"></svg></th:block>
+                <th:block th:if="${outcomeStyle == 'error'}"><svg th:replace="~{fragments/icon :: close}"></svg></th:block>
                 <p data-listing-flash-text th:text="${outcomeText}">Annonce envoyée.</p>
             </div></th:block>
 
             <!-- Unavailable: ndopify-server couldn't answer. Not the locked view: the listing may be there. -->
             <div class="alert alert--error" role="alert" th:if="${unavailable}" data-listing-unavailable>
-                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <svg th:replace="~{fragments/icon :: close}"></svg>
                 <div>
                     <h1 class="alert__title">Annonce indisponible pour le moment</h1>
                     <p>Réessayez dans quelques instants.</p>
@@ -83,7 +56,7 @@
 
             <!-- Locked: no such listing, another agent's non-public one, or one ndopify-server can't answer for. -->
             <div class="alert alert--warning" th:if="${locked}" data-listing-locked>
-                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <svg th:replace="~{fragments/icon :: warning}"></svg>
                 <div>
                     <h1 class="alert__title">Cette annonce n'est pas disponible</h1>
                     <p>Une annonce se crée depuis un mandat de bailleur approuvé, dans votre espace agent.</p>
@@ -116,7 +89,7 @@
                         <span class="visually-hidden" role="status" data-share-status></span>
                     </p>
                     <p class="listing-stats" th:if="${l.stats}" data-listing-stats>
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                        <svg th:replace="~{fragments/icon :: chart}"></svg>
                         <span><span class="visually-hidden">Activité de l'annonce : </span><span th:text="${l.stats}">2 personnes intéressées · 3 visites</span></span>
                     </p>
                 </div>
@@ -150,12 +123,12 @@
 
                 <!-- One panel per status but PUBLISHED, above the checklist. -->
                 <div class="hint" th:if="${l.panel == 'DRAFT'}" data-listing-panel="DRAFT">
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <svg th:replace="~{fragments/icon :: info}"></svg>
                     <p>Sur place, vérifiez chaque section et prenez les photos. Les réponses du propriétaire sont
                         déjà remplies&nbsp;: corrigez ce qui ne correspond pas.</p>
                 </div>
                 <div class="alert alert--info" th:if="${l.panel == 'SENT'}" data-listing-panel="SENT">
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <svg th:replace="~{fragments/icon :: info}"></svg>
                     <div>
                         <p class="alert__title">En vérification</p>
                         <p>Envoyée le <span th:text="${l.sentAt}">22 oct. 2026</span>. Nous vérifions l'annonce et les photos,
@@ -163,7 +136,7 @@
                     </div>
                 </div>
                 <div class="alert alert--warning" th:if="${l.panel == 'TO_FIX'}" data-listing-panel="TO_FIX">
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                    <svg th:replace="~{fragments/icon :: warning}"></svg>
                     <div>
                         <p class="alert__title">Annonce à corriger</p>
                         <ul data-rejection-reasons>

@@ -1,26 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title th:text="${section} ? ${section.pageTitle} : 'Annonce — Ndopify Partner Central'">Annonce — Ndopify Partner Central</title>
-    <meta name="description" content="Les photos de l'annonce, prises pendant la visite du bien.">
-    <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#ffffff">
-    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
-    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
-    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/join.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/find-property.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/home.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/listing.css}">
-    <script th:src="@{/assets/js/partner-central.js}" defer></script>
-    <script th:src="@{/assets/js/direct-upload.js}" defer></script>
-    <script th:src="@{/assets/js/listing.js}" defer></script>
-</head>
+<head th:replace="~{fragments/head :: head(${section} ? ${section.pageTitle} : 'Annonce — Ndopify Partner Central', |Les photos de l'annonce, prises pendant la visite du bien.|, ${ {'join','find-property','home','listing'} }, ${ {'partner-central','direct-upload','listing'} }, false)}"></head>
 <!--/*
   The photos of a listing's checklist (ListingPhotoController), from the prototype's listing/photos.html: "section" is
   the SectionView (absent when "locked" or "unavailable"), "photos" the PhotosView, "photoError" why the last upload
@@ -31,15 +11,7 @@
   sent ("section.editable" false), the photos are only shown.
 */-->
 <body data-page="listing-photos" th:attr="data-section=${section} ? 'photos' : null">
-    <a class="skip-link" href="#main">Aller au contenu</a>
-    <header class="site-header">
-        <div class="site-header__inner">
-            <a class="site-header__brand" th:href="@{/}">
-                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
-            </a>
-            <nav th:replace="~{fragments/user-menu :: menu}"></nav>
-        </div>
-    </header>
+    <th:block th:replace="~{fragments/site-header :: header(@{/}, true)}"></th:block>
     <main id="main" class="page">
         <div class="column">
             <p class="back-link"><a th:href="${section} ? @{/listings/{id}(id=${section.listingId})} : @{/#mandates-title}"
@@ -47,7 +19,7 @@
 
             <!-- Locked: not the agent's listing, or not found. -->
             <div class="alert alert--warning" th:if="${locked}" data-section-locked>
-                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <svg th:replace="~{fragments/icon :: warning}"></svg>
                 <div>
                     <h1 class="alert__title">Cette annonce n'est pas disponible</h1>
                     <p>Une annonce se crée depuis un mandat de bailleur approuvé.</p>
@@ -56,7 +28,7 @@
 
             <!-- Unavailable: ndopify-server couldn't answer. -->
             <div class="alert alert--error" role="alert" th:if="${unavailable}" data-section-unavailable>
-                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                <svg th:replace="~{fragments/icon :: close}"></svg>
                 <div>
                     <h1 class="alert__title">Annonce indisponible pour le moment</h1>
                     <p>Réessayez dans quelques instants.</p>
@@ -72,7 +44,7 @@
 
                 <!-- Sent or published: the photos as they were sent, read-only. -->
                 <div class="hint" th:if="${s.readonlyText}" data-section-readonly>
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <svg th:replace="~{fragments/icon :: info}"></svg>
                     <p th:text="${s.readonlyText}">Annonce en vérification depuis le 22 oct. 2026 : voici ce que vous avez relevé.</p>
                 </div>
 
@@ -97,7 +69,7 @@
                     </form>
                 </th:block>
                 <p class="field__error" id="photos-error" role="alert" th:hidden="${photoError == null}">
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <svg th:replace="~{fragments/icon :: close}"></svg>
                     <span data-error-text th:text="${photoError}"></span></p>
 
                 <p class="checklist__progress" th:text="${p.count}" data-photo-count>0 photo · encore 5 au moins</p>

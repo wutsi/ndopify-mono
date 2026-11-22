@@ -1,24 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title th:text="${close} ? |Fermer le mandat ${close.mandateId} — Ndopify Partner Central| : 'Fermer le mandat — Ndopify Partner Central'">Fermer le mandat — Ndopify Partner Central</title>
-    <meta name="description" content="Fermer un mandat : le client, le loyer convenu, puis la confirmation.">
-    <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#ffffff">
-    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
-    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
-    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/join.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/find-property.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/home.css}">
-    <script th:src="@{/assets/js/partner-central.js}" defer></script>
-    <script th:src="@{/assets/js/mandate.js}" defer></script>
-</head>
+<head th:replace="~{fragments/head :: head(${close} ? |Fermer le mandat ${close.mandateId} — Ndopify Partner Central| : 'Fermer le mandat — Ndopify Partner Central', 'Fermer un mandat : le client, le loyer convenu, puis la confirmation.', ${ {'join','find-property','home'} }, ${ {'partner-central','mandate'} }, false)}"></head>
 <!--/*
     Closing a mandate (the deal's counterpart, the agreed rent, then the confirmation), one step at a time on its own
     page, reached from the mandate page's "Fermer le mandat" while the mandate is APPROVED. Each step is its own form,
@@ -36,15 +18,7 @@
     per field, "currency" the tenant's currency, "conflict" the flash of a match that is no longer a candidate.
 */-->
 <body data-page="mandate-close" th:attr="data-currency=${currency}">
-    <a class="skip-link" href="#main">Aller au contenu</a>
-    <header class="site-header">
-        <div class="site-header__inner">
-            <a class="site-header__brand" th:href="@{/}">
-                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
-            </a>
-            <nav th:replace="~{fragments/user-menu :: menu}"></nav>
-        </div>
-    </header>
+    <th:block th:replace="~{fragments/site-header :: header(@{/}, true)}"></th:block>
     <main id="main" class="page">
         <div class="column">
             <p class="back-link">
@@ -54,7 +28,7 @@
 
             <!-- Locked: not the agent's mandate, or not (no longer) one that can be closed. -->
             <div class="alert alert--warning" th:if="${locked}" data-close-locked>
-                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <svg th:replace="~{fragments/icon :: warning}"></svg>
                 <div>
                     <h1 class="alert__title">Ce mandat n'est pas disponible</h1>
                     <p>Un mandat se ferme une fois approuvé par le client.</p>
@@ -70,7 +44,7 @@
 
                 <!-- A match chosen earlier that is no longer a candidate: the wizard restarted at the counterpart step. -->
                 <div class="alert alert--warning" th:if="${conflict}" tabindex="-1" role="status" data-close-conflict>
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                    <svg th:replace="~{fragments/icon :: warning}"></svg>
                     <p>La contrepartie choisie n'est plus disponible : choisissez-en une autre.</p>
                 </div>
 
@@ -96,7 +70,7 @@
                            th:text="${c.owner} ? 'Les clients qui ont répondu intéressés. Il peut aussi avoir été loué autrement.' : 'Les biens qui ont intéressé le client. Il peut aussi avoir trouvé ailleurs.'">Les clients qui ont répondu intéressés.</p>
 
                         <div class="alert alert--warning" th:if="${c.candidatesUnavailable}" data-counterpart-unavailable>
-                            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                            <svg th:replace="~{fragments/icon :: warning}"></svg>
                             <p th:text="${c.owner} ? 'Les clients intéressés ne peuvent pas être affichés pour le moment.' : 'Les biens correspondants ne peuvent pas être affichés pour le moment.'">Les biens correspondants ne peuvent pas être affichés pour le moment.</p>
                         </div>
 
@@ -134,7 +108,7 @@
                         </label>
 
                         <p class="field__error" id="counterpart-error" th:hidden="${errors['counterpart'] == null}">
-                            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                            <svg th:replace="~{fragments/icon :: close}"></svg>
                             <span data-error-text th:text="${errors['counterpart']}"></span>
                         </p>
                     </fieldset>
@@ -160,7 +134,7 @@
                             <span aria-hidden="true" class="input-unit__suffix" th:text="${currency} + ' / mois'">FCFA / mois</span>
                         </div>
                         <p class="field__error" id="finalPrice-error" th:hidden="${errors['finalPrice'] == null}">
-                            <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                            <svg th:replace="~{fragments/icon :: close}"></svg>
                             <span data-error-text th:text="${errors['finalPrice']}"></span>
                         </p>
                     </div>

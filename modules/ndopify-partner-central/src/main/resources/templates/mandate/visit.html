@@ -1,23 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Planifier la visite — Ndopify Partner Central</title>
-    <meta name="description" content="Planifier la visite d'un bien accepté par le client : type, jour et heure.">
-    <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#ffffff">
-    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
-    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
-    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/rejoindre.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/home.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/visit.css}">
-    <script th:src="@{/assets/js/partner-central.js}" defer></script>
-</head>
+<head th:replace="~{fragments/head :: head('Planifier la visite — Ndopify Partner Central', |Planifier la visite d'un bien accepté par le client : type, jour et heure.|, ${ {'rejoindre','home','visit'} }, ${ {'partner-central'} }, false)}"></head>
 <!--/*
     Booking a visit for a property the customer accepted (MandateVisitController), on its own page reached from the
     mandate page's "Planifier une visite", next to the client's contact: the agent called the customer on WhatsApp,
@@ -32,15 +15,7 @@
     (MandateVisitForm) the answers and "errors" its errors per field.
 */-->
 <body data-page="mandate-visit">
-    <a class="skip-link" href="#main">Aller au contenu</a>
-    <header class="site-header">
-        <div class="site-header__inner">
-            <a class="site-header__brand" th:href="@{/}">
-                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
-            </a>
-            <nav th:replace="~{fragments/user-menu :: menu}"></nav>
-        </div>
-    </header>
+    <th:block th:replace="~{fragments/site-header :: header(@{/}, true)}"></th:block>
     <main id="main" class="page">
         <div class="column">
             <p class="back-link">
@@ -58,7 +33,7 @@
             <form class="form" method="post" novalidate th:action="@{/mandates/{id}/visits(id=${mandate.id})}"
                   data-visit-form>
                 <div class="hint">
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <svg th:replace="~{fragments/icon :: info}"></svg>
                     <p>Le client reçoit par e-mail la date, l'adresse et son code de visite. Il garde la main : il peut
                         annuler depuis sa page de visite.</p>
                 </div>

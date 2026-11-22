@@ -1,26 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title th:text="|Modifier les coordonnées ${mandate?.words?.of ?: 'du client'} — Mandat n° ${mandateId} — Ndopify Partner Central|">Modifier les coordonnées du client — Mandat n° 201 — Ndopify Partner Central</title>
-    <meta name="description" content="Corriger les coordonnées d'un client : prénom, nom, adresse email et numéro WhatsApp.">
-    <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#ffffff">
-    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
-    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/css/intlTelInput.min.css">
-    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/join.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/home.css}">
-    <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/js/intlTelInput.min.js" defer></script>
-    <script th:src="@{/assets/js/util.js}" defer></script>
-    <script th:src="@{/assets/js/partner-central.js}" defer></script>
-    <script th:src="@{/assets/js/mandate.js}" defer></script>
-</head>
+<head th:replace="~{fragments/head :: head(|Modifier les coordonnées ${mandate?.words?.of ?: 'du client'} — Mandat n° ${mandateId} — Ndopify Partner Central|, |Corriger les coordonnées d'un client : prénom, nom, adresse email et numéro WhatsApp.|, ${ {'join','home'} }, ${ {'util','partner-central','mandate'} }, true)}"></head>
 <!--/*
   Correct a mandate's customer details (CustomerEditController, POST /mandates/{id}/customer/edit), reached from the
   mandate page's "Modifier", until the mandate is closed. Saved with POST /v1/mandates/{id}/customer
@@ -33,21 +13,13 @@
   and posts E.164 through a hidden input.
 */-->
 <body data-page="customer-edit">
-    <a class="skip-link" href="#main">Aller au contenu</a>
-    <header class="site-header">
-        <div class="site-header__inner">
-            <a class="site-header__brand" th:href="@{/}">
-                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
-            </a>
-            <nav th:replace="~{fragments/user-menu :: menu}"></nav>
-        </div>
-    </header>
+    <th:block th:replace="~{fragments/site-header :: header(@{/}, true)}"></th:block>
     <main id="main" class="page">
         <div class="column">
             <p class="back-link"><a th:href="@{/mandates/{id}(id=${mandateId})}" data-back-link>← Retour au mandat</a></p>
 
             <div class="alert alert--warning" th:if="${locked}" data-customer-locked>
-                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <svg th:replace="~{fragments/icon :: warning}"></svg>
                 <div th:switch="${locked}">
                     <th:block th:case="'closed'">
                         <h1 class="alert__title">Ce mandat ne permet plus de corriger les coordonnées</h1>
@@ -68,7 +40,7 @@
                 </div>
 
                 <div class="hint" data-customer-hint>
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <svg th:replace="~{fragments/icon :: info}"></svg>
                     <div>
                         <p th:if="${mandate.status.name() == 'PENDING_APPROVAL'}" data-customer-resend>Ce mandat attend la
                             signature. Si l'adresse email change, le mandat revient à «&nbsp;Assigné&nbsp;»&nbsp;: renvoyez-le
@@ -80,7 +52,7 @@
                 </div>
 
                 <div class="alert alert--error" role="alert" th:if="${error}" data-customer-error>
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <svg th:replace="~{fragments/icon :: close}"></svg>
                     <p th:text="${error}">Enregistrement impossible pour le moment.</p>
                 </div>
 
@@ -91,7 +63,7 @@
                         <input class="input" id="firstName" name="firstName" type="text" autocomplete="given-name" required
                                aria-describedby="firstName-error" th:value="${answers.firstName}"
                                th:attr="aria-invalid=${errors['firstName'] != null ? 'true' : null}">
-                        <p class="field__error" id="firstName-error" th:hidden="${errors['firstName'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['firstName']}"></span></p>
+                        <p class="field__error" id="firstName-error" th:hidden="${errors['firstName'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['firstName']}"></span></p>
                     </div>
 
                     <div class="field">
@@ -99,7 +71,7 @@
                         <input class="input" id="lastName" name="lastName" type="text" autocomplete="family-name" required
                                aria-describedby="lastName-error" th:value="${answers.lastName}"
                                th:attr="aria-invalid=${errors['lastName'] != null ? 'true' : null}">
-                        <p class="field__error" id="lastName-error" th:hidden="${errors['lastName'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['lastName']}"></span></p>
+                        <p class="field__error" id="lastName-error" th:hidden="${errors['lastName'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['lastName']}"></span></p>
                     </div>
 
                     <div class="field">
@@ -107,7 +79,7 @@
                         <input class="input" id="email" name="email" type="email" autocomplete="email" required
                                aria-describedby="email-error" th:value="${answers.email}"
                                th:attr="aria-invalid=${errors['email'] != null ? 'true' : null}">
-                        <p class="field__error" id="email-error" th:hidden="${errors['email'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['email']}"></span></p>
+                        <p class="field__error" id="email-error" th:hidden="${errors['email'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['email']}"></span></p>
                     </div>
 
                     <div class="field">
@@ -117,7 +89,7 @@
                         <input class="input" id="whatsappNumber" name="whatsappNumber" type="tel" autocomplete="tel" required
                                aria-describedby="whatsappNumber-error" th:value="${answers.whatsappNumber}"
                                th:attr="aria-invalid=${errors['whatsappNumber'] != null ? 'true' : null}">
-                        <p class="field__error" id="whatsappNumber-error" th:hidden="${errors['whatsappNumber'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['whatsappNumber']}"></span></p>
+                        <p class="field__error" id="whatsappNumber-error" th:hidden="${errors['whatsappNumber'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['whatsappNumber']}"></span></p>
                     </div>
 
                     <div class="form__actions">

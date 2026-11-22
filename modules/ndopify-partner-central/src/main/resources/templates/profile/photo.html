@@ -1,23 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Photo de profil — Ndopify Partner Central</title>
-    <meta name="description" content="Ajoutez une photo professionnelle à votre profil d'agent Ndopify.">
-    <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#ffffff">
-    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
-    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
-    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/profile.css}">
-    <script th:src="@{/assets/js/partner-central.js}" defer></script>
-    <script th:src="@{/assets/js/direct-upload.js}" defer></script>
-    <script th:src="@{/assets/js/kyc.js}" defer></script>
-</head>
+<head th:replace="~{fragments/head :: head('Photo de profil — Ndopify Partner Central', |Ajoutez une photo professionnelle à votre profil d'agent Ndopify.|, ${ {'profile'} }, ${ {'partner-central','direct-upload','kyc'} }, false)}"></head>
 <!--/*
   The profile photo (ProfileController, POST /profile/photo, multipart "photo"). kyc.js enhances it like a KYC
   photo step (type and size checked, photo centre-cropped to a 400 px square, shrunk and previewed in the browser);
@@ -25,15 +8,7 @@
   "error" is the upload's error, if any.
 */-->
 <body data-page="profile-photo">
-    <a class="skip-link" href="#main">Aller au contenu</a>
-    <header class="site-header">
-        <div class="site-header__inner">
-            <a class="site-header__brand" th:href="@{/}">
-                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
-            </a>
-            <nav th:replace="~{fragments/user-menu :: menu}"></nav>
-        </div>
-    </header>
+    <th:block th:replace="~{fragments/site-header :: header(@{/}, true)}"></th:block>
     <main id="main" class="page">
         <div class="column">
             <div class="page-intro">
@@ -60,11 +35,11 @@
                             <span data-upload-label th:text="${photoUrl} ? 'Changer la photo' : 'Choisir une photo'">Choisir une photo</span>
                         </label>
                         <p class="visually-hidden" role="status" data-upload-status></p>
-                        <p class="field__error" id="photo-error" role="alert" hidden th:hidden="${error == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${error}"></span></p>
+                        <p class="field__error" id="photo-error" role="alert" hidden th:hidden="${error == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${error}"></span></p>
                     </div>
 
                     <div class="hint" id="photo-hint">
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <svg th:replace="~{fragments/icon :: info}"></svg>
                         <div>
                             <p>Pour une photo professionnelle&nbsp;:</p>
                             <ul>

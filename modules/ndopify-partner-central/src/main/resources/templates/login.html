@@ -1,33 +1,9 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta content="width=device-width, initial-scale=1" name="viewport">
-    <title th:text="${step == 'code'} ? 'Code de connexion — Ndopify Partner Central' : 'Connexion — Ndopify Partner Central'">
-        Connexion — Ndopify Partner Central</title>
-    <meta content="Connectez-vous à l'espace partenaires Ndopify avec votre adresse email et un code à usage unique."
-          name="description">
-    <meta content="noindex, nofollow" name="robots">
-    <meta content="#ffffff" name="theme-color">
-    <link rel="icon" th:href="@{/assets/images/icon.png}" type="image/png">
-    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
-    <link href="https://fonts.googleapis.com" rel="preconnect">
-    <link crossorigin href="https://fonts.gstatic.com" rel="preconnect">
-    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap"
-          rel="stylesheet">
-    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
-    <script defer th:src="@{/assets/js/partner-central.js}"></script>
-</head>
+<head th:replace="~{fragments/head :: head(${step == 'code'} ? 'Code de connexion — Ndopify Partner Central' : 'Connexion — Ndopify Partner Central', |Connectez-vous à l'espace partenaires Ndopify avec votre adresse email et un code à usage unique.|, null, ${ {'partner-central'} }, false)}"></head>
 <!--/* One page, two steps: LoginController picks the step (model attribute "step") and only renders that one. */-->
 <body data-page="login">
-<a class="skip-link" href="#main">Aller au contenu</a>
-<header class="site-header">
-    <div class="site-header__inner">
-        <a class="site-header__brand" th:href="@{/login}">
-            <img alt="Ndopify, accueil" height="40" th:src="@{/assets/images/logo.png}" width="84">
-        </a>
-    </div>
-</header>
+<th:block th:replace="~{fragments/site-header :: header(@{/login}, false)}"></th:block>
 <main class="page" id="main">
     <!--/* Step 1: e-mail (POST /login) */-->
     <section aria-labelledby="email-title" class="column" data-step="email" th:if="${step == 'email'}">
@@ -44,20 +20,12 @@
                        name="email" required spellcheck="false" th:attr="aria-invalid=${error != null ? 'true' : null}" th:value="${email}"
                        type="email">
                 <div class="hint" id="email-hint">
-                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                        <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                        <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/>
-                        <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
-                    </svg>
+                    <svg th:replace="~{fragments/icon :: info}"></svg>
                     <p>Nous vous envoyons un code de connexion à 6&nbsp;chiffres par email. Aucun mot de passe à
                         retenir.</p>
                 </div>
                 <p class="field__error" id="email-error" th:hidden="${error == null}">
-                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                        <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                        <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
-                              stroke-width="1.5"/>
-                    </svg>
+                    <svg th:replace="~{fragments/icon :: close}"></svg>
                     <span data-error-text th:text="${error}"></span></p>
             </div>
 
@@ -92,22 +60,14 @@
                        name="code" required th:attr="aria-invalid=${error != null ? 'true' : null}"
                        type="text">
                 <div class="hint" id="code-hint">
-                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                        <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                        <path d="M10 9v5" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="1.5"/>
-                        <circle cx="10" cy="6.25" fill="currentColor" r="1"/>
-                    </svg>
+                    <svg th:replace="~{fragments/icon :: info}"></svg>
                     <div>
                         <p>Le code est valable 5&nbsp;minutes, jusqu'à <span data-expiry th:attr="data-expires-at=${expiresAt}">—</span>.</p>
                         <p>Vous ne le voyez pas&nbsp;? Regardez dans vos courriers indésirables.</p>
                     </div>
                 </div>
                 <p class="field__error" id="code-error" th:hidden="${error == null}">
-                    <svg aria-hidden="true" class="icon" focusable="false" viewBox="0 0 20 20">
-                        <circle cx="10" cy="10" fill="none" r="8.25" stroke="currentColor" stroke-width="1.5"/>
-                        <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"
-                              stroke-width="1.5"/>
-                    </svg>
+                    <svg th:replace="~{fragments/icon :: close}"></svg>
                     <span data-error-text th:text="${error}"></span></p>
             </div>
 

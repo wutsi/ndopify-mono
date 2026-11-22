@@ -1,25 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title th:text="${mandate} ? |${mandate.title} — Ndopify Partner Central| : 'Mandat — Ndopify Partner Central'">Mandat — Ndopify Partner Central</title>
-    <meta name="description" content="Détail d'un mandat de l'agent : suivi, coordonnées du client et recherche.">
-    <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#ffffff">
-    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
-    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
-    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/join.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/home.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/listing.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/visit.css}">
-    <script th:src="@{/assets/js/partner-central.js}" defer></script>
-    <script th:src="@{/assets/js/mandate.js}" defer></script>
-</head>
+<head th:replace="~{fragments/head :: head(${mandate} ? |${mandate.title} — Ndopify Partner Central| : 'Mandat — Ndopify Partner Central', |Détail d'un mandat de l'agent : suivi, coordonnées du client et recherche.|, ${ {'join','home','listing','visit'} }, ${ {'partner-central','mandate'} }, false)}"></head>
 <!--/*
   The page of one of the agent's mandates (MandateController), opened from the Espace agent's Mes mandats. Its status
   is a wizard, Assigné > En approbation > Actif > Fermé (or Annulé), with the actions of the current step:
@@ -51,22 +32,14 @@
   are unavailable, and no pending callout is shown. Past visits are never shown.
 */-->
 <body data-page="mandate" th:attr="data-currency=${currency}">
-    <a class="skip-link" href="#main">Aller au contenu</a>
-    <header class="site-header">
-        <div class="site-header__inner">
-            <a class="site-header__brand" th:href="@{/}">
-                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
-            </a>
-            <nav th:replace="~{fragments/user-menu :: menu}"></nav>
-        </div>
-    </header>
+    <th:block th:replace="~{fragments/site-header :: header(@{/}, true)}"></th:block>
     <main id="main" class="page">
         <div class="column column--wide">
             <p class="back-link"><a th:href="@{/#mandates-title}">← Retour à l'espace agent</a></p>
 
             <!-- Locked: not found, or not (or no longer) the agent's to follow. -->
             <div class="alert alert--warning" th:if="${locked}" data-mandate-locked>
-                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <svg th:replace="~{fragments/icon :: warning}"></svg>
                 <div>
                     <h1 class="alert__title">Ce mandat n'est pas disponible</h1>
                     <p>Le détail d'un mandat et les coordonnées du client se débloquent lorsque vous acceptez le
@@ -89,9 +62,9 @@
                 <!-- Outcome of the last action (sent, closed, cancelled, saved, or why it couldn't be done). -->
                 <div th:if="${outcomeText}" th:class="|alert alert--${outcomeStyle}|" tabindex="-1"
                      th:attr="role=${outcomeStyle == 'error'} ? 'alert' : 'status'" data-mandate-flash>
-                    <svg th:if="${outcomeStyle == 'success'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                    <svg th:if="${outcomeStyle == 'warning'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
-                    <svg th:if="${outcomeStyle == 'error'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <th:block th:if="${outcomeStyle == 'success'}"><svg th:replace="~{fragments/icon :: check('icon')}"></svg></th:block>
+                    <th:block th:if="${outcomeStyle == 'warning'}"><svg th:replace="~{fragments/icon :: warning}"></svg></th:block>
+                    <th:block th:if="${outcomeStyle == 'error'}"><svg th:replace="~{fragments/icon :: close}"></svg></th:block>
                     <p data-mandate-flash-text th:text="${outcomeText}">Mandat envoyé pour signature.</p>
                 </div>
 
@@ -119,7 +92,7 @@
                                     th:text="${c.whatsappDisplay}">+237 6 99 12 34 56</span></a>
                             <a class="btn btn--secondary btn--compact" target="_blank" rel="noopener" data-contact="whatsapp"
                                th:href="|https://wa.me/${c.whatsappDigits}|"
-                               th:attr="aria-label=|Écrire à ${c.name} sur WhatsApp|"><svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg>WhatsApp</a>
+                               th:attr="aria-label=|Écrire à ${c.name} sur WhatsApp|"><svg th:replace="~{fragments/icon :: whatsapp}"></svg>WhatsApp</a>
                         </div>
                         <p class="contact-card__line contact-card__email" th:if="${!#strings.isEmpty(c.email)}">
                             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 6-10 7L2 6"/></svg>
@@ -210,13 +183,13 @@
                         <!-- The one visit to confirm, above the mandate's activity: one tap goes to its card. -->
                         <a class="mandate-pending" th:if="${pendingVisit}" th:href="${pendingVisit.url}"
                            data-mandate-pending-visit>
-                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                            <svg th:replace="~{fragments/icon :: clock}"></svg>
                             <span th:text="${pendingVisit.label}">1 visite à confirmer · 8 h — Sandrine Eboa</span>
                             <svg class="icon mandate-pending__arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="m6 9 6 6 6-6"/></svg>
                         </a>
                         <!-- A signed search: its pool, the client's interest and its visits, like the Espace agent's card. -->
                         <p class="search-stats" th:if="${searchStats != null and searchStats.shown}" data-search-stats>
-                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                            <svg th:replace="~{fragments/icon :: chart}"></svg>
                             <span><span class="visually-hidden">Activité de la recherche : </span><span th:text="${searchStats.label}">12 biens · 1 intéressé · 3 visites</span></span>
                         </p>
                         <!--
@@ -233,7 +206,7 @@
                             </p>
                             <!-- Published only: its activity, like the Espace agent's card. -->
                             <p class="listing-stats" th:if="${ml.stats}" data-listing-stats>
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M3 20h18"/><path d="M6 20v-6M12 20V8M18 20V4"/></svg>
+                                <svg th:replace="~{fragments/icon :: chart}"></svg>
                                 <span><span class="visually-hidden">Activité de l'annonce : </span><span th:text="${ml.stats}">2 personnes intéressées · 3 visites</span></span>
                             </p>
                             <p th:if="${ml.text}" th:text="${ml.text}" data-listing-text></p>
@@ -256,7 +229,7 @@
                     </div>
 
                     <div class="alert alert--success" th:if="${m.status.name() == 'CLOSED'}" data-panel="CLOSED">
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <svg th:replace="~{fragments/icon :: check('icon')}"></svg>
                         <div>
                             <p class="alert__title">Bail signé</p>
                             <p>Mandat fermé le <span th:text="${m.closedAt}">1 novembre 2026</span>, au loyer de
@@ -276,7 +249,7 @@
                     </div>
 
                     <div class="alert alert--info" th:if="${m.status.name() == 'CANCELLED'}" data-panel="CANCELLED">
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <svg th:replace="~{fragments/icon :: info}"></svg>
                         <div>
                             <p class="alert__title">Mandat annulé</p>
                             <p>Le <span th:text="${m.closedAt}">19 octobre 2026</span>&nbsp;: <span th:text="${m.cancellation}">changement de projet</span>.</p>
@@ -300,7 +273,7 @@
                     <p>Les visites à confirmer d'abord.</p>
 
                     <div class="alert alert--warning" th:if="${p.visitsUnavailable}" data-visits-unavailable>
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                        <svg th:replace="~{fragments/icon :: warning}"></svg>
                         <p>Les visites de ce bien ne peuvent pas être affichées pour le moment.</p>
                     </div>
 
@@ -375,15 +348,15 @@
                         publiés par d'autres agents. Envoyez-les-lui ou écartez-les.</p>
 
                     <div class="alert alert--warning" th:if="${ms.visitsUnavailable and !ms.unavailable}" data-visits-unavailable>
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                        <svg th:replace="~{fragments/icon :: warning}"></svg>
                         <p>Les visites de ce mandat ne peuvent pas être affichées pour le moment.</p>
                     </div>
 
                     <div th:if="${matchOutcomeText}" th:class="|alert alert--${matchOutcomeStyle}|" tabindex="-1"
                          th:attr="role=${matchOutcomeStyle == 'error'} ? 'alert' : 'status'" data-match-flash>
-                        <svg th:if="${matchOutcomeStyle == 'success'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                        <svg th:if="${matchOutcomeStyle == 'warning'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
-                        <svg th:if="${matchOutcomeStyle == 'error'}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        <th:block th:if="${matchOutcomeStyle == 'success'}"><svg th:replace="~{fragments/icon :: check('icon')}"></svg></th:block>
+                        <th:block th:if="${matchOutcomeStyle == 'warning'}"><svg th:replace="~{fragments/icon :: warning}"></svg></th:block>
+                        <th:block th:if="${matchOutcomeStyle == 'error'}"><svg th:replace="~{fragments/icon :: close}"></svg></th:block>
                         <p data-match-flash-text th:text="${matchOutcomeText}">Annonce n° 3012 envoyée au client.</p>
                     </div>
 
@@ -446,7 +419,7 @@
                                                     <ul class="match__fit" data-match-fit>
                                                         <li th:each="line : ${match.fit}"
                                                             class="match__fit-item" th:classappend="${line.full} ? 'match__fit-item--full'">
-                                                            <svg th:if="${line.full}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                                            <th:block th:if="${line.full}"><svg th:replace="~{fragments/icon :: check('icon')}"></svg></th:block>
                                                             <svg th:unless="${line.full}" class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6.5 10h7" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
                                                             <span><span class="visually-hidden"
                                                                         th:text="${line.full} ? 'Oui : ' : 'En partie : '">Oui : </span><th:block
@@ -469,7 +442,7 @@
                                                 </div>
                                                 <div class="alert alert--warning assignment__confirm" data-match-confirm
                                                      th:attr="hidden=${confirming} ? null : 'hidden'">
-                                                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                                                    <svg th:replace="~{fragments/icon :: warning}"></svg>
                                                     <div>
                                                         <p class="alert__title">Écarter ce bien&nbsp;?</p>
                                                         <p>Il ne vous sera plus proposé pour ce mandat.</p>
@@ -602,7 +575,7 @@
                                                              th:checked="${form.cancellationCode?.name() == 'OTHER'}">
                                     Autre raison</label>
                             </div>
-                            <p class="field__error" id="cancellationCode-error" th:hidden="${errors['cancellationCode'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['cancellationCode']}"></span></p>
+                            <p class="field__error" id="cancellationCode-error" th:hidden="${errors['cancellationCode'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['cancellationCode']}"></span></p>
                         </fieldset>
                         <div class="field">
                             <label class="field__label" for="cancellationReason">Précisions <span class="field__optional">(facultatif)</span></label>
@@ -610,7 +583,7 @@
                                       rows="3" maxlength="500" aria-describedby="cancellationReason-error"
                                       th:text="${form.cancellationReason}"
                                       th:attr="aria-invalid=${errors['cancellationReason'] != null ? 'true' : null}"></textarea>
-                            <p class="field__error" id="cancellationReason-error" th:hidden="${errors['cancellationReason'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['cancellationReason']}"></span></p>
+                            <p class="field__error" id="cancellationReason-error" th:hidden="${errors['cancellationReason'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['cancellationReason']}"></span></p>
                         </div>
                         <div class="mandate-panel__actions">
                             <button type="submit" class="btn btn--danger" data-end-submit>Confirmer l'annulation</button>

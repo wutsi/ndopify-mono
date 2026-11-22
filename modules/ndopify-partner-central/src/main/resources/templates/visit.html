@@ -1,25 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title th:text="${page} ? |Visite de ${page.customerName} — Ndopify Partner Central| : 'Visite — Ndopify Partner Central'">Visite — Ndopify Partner Central</title>
-    <meta name="description" content="Une visite d'un client de l'agent : la confirmer, la démarrer avec le code du client, la terminer.">
-    <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#ffffff">
-    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
-    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
-    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/join.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/home.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/listing.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/visit.css}">
-    <script th:src="@{/assets/js/partner-central.js}" defer></script>
-    <script th:src="@{/assets/js/visit.js}" defer></script>
-</head>
+<head th:replace="~{fragments/head :: head(${page} ? |Visite de ${page.customerName} — Ndopify Partner Central| : 'Visite — Ndopify Partner Central', |Une visite d'un client de l'agent : la confirmer, la démarrer avec le code du client, la terminer.|, ${ {'join','home','listing','visit'} }, ${ {'partner-central','visit'} }, false)}"></head>
 <!--/*
   The page of one of the agent's visits (VisitController), opened from the Espace agent's Visites. One panel per state:
     - REQUESTED ("À confirmer"): the customer's slot and note, the schedule form (day, time, type: POST
@@ -38,22 +19,14 @@
   shows the listing's address, never Visit.address.
 */-->
 <body data-page="visit" th:attr="data-currency=${currency}">
-    <a class="skip-link" href="#main">Aller au contenu</a>
-    <header class="site-header">
-        <div class="site-header__inner">
-            <a class="site-header__brand" th:href="@{/}">
-                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
-            </a>
-            <nav th:replace="~{fragments/user-menu :: menu}"></nav>
-        </div>
-    </header>
+    <th:block th:replace="~{fragments/site-header :: header(@{/}, true)}"></th:block>
     <main id="main" class="page">
         <div class="column">
             <p class="back-link"><a th:href="@{/#visits-title}">← Retour à l'espace agent</a></p>
 
             <!-- Locked: another agent's visit, gone, or unreadable. -->
             <div class="alert alert--warning" th:if="${locked != null}" data-visit-locked>
-                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                <svg th:replace="~{fragments/icon :: warning}"></svg>
                 <div>
                     <h1 class="alert__title">Cette visite n'est pas disponible</h1>
                     <p th:if="${locked == 'not-yours'}">Retrouvez les visites de vos clients dans votre
@@ -98,7 +71,7 @@
                                        th:if="${p.phoneDigits != null and !(p.panel.name() == 'WINDOW' and p.type.name() == 'VIDEO')}"
                                        target="_blank" rel="noopener" th:href="|https://wa.me/${p.phoneDigits}|"
                                        th:aria-label="|Écrire à ${p.customerName} sur WhatsApp|"
-                                       data-whatsapp-link data-header-whatsapp><svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg><span class="visually-hidden">Écrire à <span th:text="${p.customerName}">Sandrine Eboa</span> sur </span>WhatsApp</a>
+                                       data-whatsapp-link data-header-whatsapp><svg th:replace="~{fragments/icon :: whatsapp}"></svg><span class="visually-hidden">Écrire à <span th:text="${p.customerName}">Sandrine Eboa</span> sur </span>WhatsApp</a>
                                 </p>
                             </li>
                             <li class="visit-contact__person" th:if="${p.agent != null}">
@@ -112,7 +85,7 @@
                                        data-phone-link><span th:text="${p.agentPhone}">+237 6 99 00 00 02</span></a>
                                     <a class="btn btn--secondary btn--compact visit-contact__whatsapp" target="_blank" rel="noopener"
                                        th:href="${p.agent.whatsappUrl}" th:aria-label="|Écrire à ${p.agent.name} sur WhatsApp|"
-                                       data-whatsapp-link><svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg><span class="visually-hidden">Écrire à <span th:text="${p.agent.name}">Clarisse Mbarga</span> sur </span>WhatsApp</a>
+                                       data-whatsapp-link><svg th:replace="~{fragments/icon :: whatsapp}"></svg><span class="visually-hidden">Écrire à <span th:text="${p.agent.name}">Clarisse Mbarga</span> sur </span>WhatsApp</a>
                                 </p>
                             </li>
                         </ul>
@@ -130,14 +103,14 @@
                         <span th:text="${p.typeLabel}">Sur place</span>
                     </p>
                     <p class="visit-fee" data-visit-fee th:if="${p.visitFee}">
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <svg th:replace="~{fragments/icon :: info}"></svg>
                         <span th:text="${p.visitFee}">Frais de visite : 5 000 FCFA, à encaisser auprès du client à la visite.</span>
                     </p>
                 </div>
 
                 <!-- Outcome of the last action. -->
                 <div th:if="${flashText}" th:class="|alert alert--${flashStyle}|" role="status" tabindex="-1" data-visit-flash>
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                    <svg th:replace="~{fragments/icon :: check('icon')}"></svg>
                     <p th:text="${flashText}">Visite confirmée.</p>
                 </div>
 
@@ -154,7 +127,7 @@
                         <figcaption>Message de <span th:text="${p.customerFirstName}">Sandrine</span></figcaption>
                     </figure>
                     <p class="visit-deadline">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                        <svg th:replace="~{fragments/icon :: clock}"></svg>
                         <span>À confirmer avant le <strong th:text="${p.expiresAt}">mer. 4 novembre 2026 à 08:00</strong>
                             (<span th:text="${p.expiresIn}">42 h</span>) : sans réponse d'ici là, la demande expire.</span>
                     </p>
@@ -238,7 +211,7 @@
                          th:if="${p.panel.name() == 'CONFIRMED'}">
                     <h2 id="confirmed-title" class="visually-hidden">Visite confirmée</h2>
                     <div class="visit-address" th:if="${p.address != null}">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+                        <svg th:replace="~{fragments/icon :: pin}"></svg>
                         <div>
                             <p th:text="${p.address}">Rue Njo-Njo, portail bleu, Derrière la pharmacie</p>
                             <p th:if="${p.mapUrl != null}"><a target="_blank" rel="noopener" th:href="${p.mapUrl}" data-map-link>Voir sur la carte<span class="visually-hidden"> (s'ouvre dans un nouvel onglet)</span></a></p>
@@ -253,7 +226,7 @@
                             démarre la visite. Vous le saisirez ici, à partir du <span th:text="${p.windowFrom}">sam. 7 novembre 2026 à 09:30</span>.</p>
                     </div>
                     <p class="visit-later">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                        <svg th:replace="~{fragments/icon :: clock}"></svg>
                         <span>Vous n'avez rien à faire d'ici là.</span>
                     </p>
                     <div class="visit-close" data-visit-close>
@@ -288,7 +261,7 @@
                          th:if="${p.panel.name() == 'WINDOW'}">
                     <h2 id="window-title" class="visit-panel__title">Démarrer la visite</h2>
                     <div class="visit-address" th:if="${p.address != null}">
-                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+                        <svg th:replace="~{fragments/icon :: pin}"></svg>
                         <div>
                             <p th:text="${p.address}">Rue Njo-Njo, portail bleu, Derrière la pharmacie</p>
                             <p th:if="${p.mapUrl != null}"><a target="_blank" rel="noopener" th:href="${p.mapUrl}" data-map-link>Voir sur la carte<span class="visually-hidden"> (s'ouvre dans un nouvel onglet)</span></a></p>
@@ -298,7 +271,7 @@
                     <!-- A video visit: the call first, from the property, to the customer's WhatsApp. -->
                     <div class="visit-call" th:if="${p.type.name() == 'VIDEO'}" data-for-type="VIDEO">
                         <a class="btn btn--primary visit-call__button" th:if="${p.phoneDigits != null}" target="_blank" rel="noopener"
-                           th:href="|https://wa.me/${p.phoneDigits}|" data-whatsapp-link><svg class="icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg><span>Ouvrir WhatsApp<span class="visually-hidden"> avec <span th:text="${p.customerFirstName}">Sandrine</span></span></span></a>
+                           th:href="|https://wa.me/${p.phoneDigits}|" data-whatsapp-link><svg th:replace="~{fragments/icon :: whatsapp}"></svg><span>Ouvrir WhatsApp<span class="visually-hidden"> avec <span th:text="${p.customerFirstName}">Sandrine</span></span></span></a>
                         <ol class="visit-call__steps">
                             <li>Ouvrez la discussion WhatsApp ci-dessus.</li>
                             <li>Touchez l'icône vidéo en haut de la discussion.</li>
@@ -325,7 +298,7 @@
                         <input type="hidden" name="accuracyMeters" data-position-input>
                         <div class="visit-position" hidden data-position-status
                              data-none-text="Position non disponible&nbsp;: la visite peut quand même démarrer.">
-                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+                            <svg th:replace="~{fragments/icon :: pin}"></svg>
                             <span role="status" data-position-text></span>
                             <button type="button" class="link-button" hidden data-position-retry>Relever à nouveau</button>
                         </div>
@@ -336,7 +309,7 @@
 
                     <!-- 5 wrong codes: no more tries (409 VISIT_CODE_LOCKED). -->
                     <div class="alert alert--error" th:if="${checkInLocked}" data-code-locked>
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                        <svg th:replace="~{fragments/icon :: close}"></svg>
                         <div>
                             <p class="alert__title">Code bloqué après 5 essais.</p>
                             <p>Le code ne peut plus être saisi pour cette visite.
@@ -409,7 +382,7 @@
                             <input type="hidden" name="accuracyMeters" data-position-input>
                             <div class="visit-position" hidden data-position-status
                                  data-none-text="Position non disponible&nbsp;: la déclaration est quand même enregistrée.">
-                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+                                <svg th:replace="~{fragments/icon :: pin}"></svg>
                                 <span role="status" data-position-text></span>
                                 <button type="button" class="link-button" hidden data-position-retry>Relever à nouveau</button>
                             </div>
@@ -444,11 +417,11 @@
                     <h2 id="checkedin-title" class="visit-panel__title">Visite en cours depuis
                         <span th:text="${p.checkedInAt}">10:05</span></h2>
                     <p class="visit-distance" data-distance-ok th:if="${p.distanceKnown and !p.checkInFlagged}">
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m6.5 10.5 2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                        <svg th:replace="~{fragments/icon :: check('icon')}"></svg>
                         <span>Vous étiez à <strong th:text="${p.distance}">820 m</strong> du bien au démarrage.</span>
                     </p>
                     <div class="alert alert--warning" th:if="${p.checkInFlagged}" data-distance-far>
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                        <svg th:replace="~{fragments/icon :: warning}"></svg>
                         <div>
                             <p class="alert__title">Vous étiez à <span th:text="${p.distance}">820 m</span> du bien au démarrage</p>
                             <p>La visite sera vérifiée par l'équipe Ndopify. Vous pouvez la terminer normalement.</p>
@@ -473,12 +446,12 @@
                         <input type="hidden" name="accuracyMeters" data-position-input>
                         <div class="visit-position" hidden data-position-status
                              data-none-text="Position non disponible&nbsp;: la visite peut quand même se terminer.">
-                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+                            <svg th:replace="~{fragments/icon :: pin}"></svg>
                             <span role="status" data-position-text></span>
                             <button type="button" class="link-button" hidden data-position-retry>Relever à nouveau</button>
                         </div>
                         <p class="visit-later" id="checkout-wait" tabindex="-1" th:if="${!p.checkOutReady}" data-checkout-wait>
-                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" focusable="false"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                            <svg th:replace="~{fragments/icon :: clock}"></svg>
                             <span>Vous pourrez terminer la visite à partir de <strong th:text="${p.checkOutFrom}">10:15</strong>,
                                 10 min après son démarrage.</span>
                         </p>
@@ -516,7 +489,7 @@
 
                 <!-- ===== CANCELLED / EXPIRED / NO_SHOW: what happened ===== -->
                 <div class="alert alert--info" data-panel="CANCELLED" th:if="${p.panel.name() == 'CANCELLED'}">
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <svg th:replace="~{fragments/icon :: info}"></svg>
                     <div>
                         <h2 class="alert__title" th:text="${p.cancelledTitle}">Visite annulée</h2>
                         <p th:text="${p.cancelledText}">Vous avez annulé la visite.</p>
@@ -526,7 +499,7 @@
                 </div>
 
                 <div class="alert alert--info" data-panel="EXPIRED" th:if="${p.panel.name() == 'EXPIRED'}">
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                    <svg th:replace="~{fragments/icon :: info}"></svg>
                     <div>
                         <h2 class="alert__title">Demande expirée</h2>
                         <p th:text="${p.expiredText}">Vous n'avez pas confirmé la demande à temps.</p>
@@ -535,7 +508,7 @@
                 </div>
 
                 <div class="alert alert--warning" data-panel="NO_SHOW" th:if="${p.panel.name() == 'NO_SHOW'}">
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><path d="M10 2.5 18.5 17h-17z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/><path d="M10 8v4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="14.5" r="1" fill="currentColor"/></svg>
+                    <svg th:replace="~{fragments/icon :: warning}"></svg>
                     <div>
                         <h2 class="alert__title" th:text="${p.noShowTitle}">Client absent</h2>
                         <p th:text="${p.noShowText}">Déclaré par vous : l'absence du client est enregistrée.</p>

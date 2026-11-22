@@ -1,28 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Modifier mon profil — Ndopify Partner Central</title>
-    <meta name="description" content="Modifiez votre profil d'agent Ndopify.">
-    <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#ffffff">
-    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
-    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/css/intlTelInput.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.css">
-    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/join.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/profile.css}">
-    <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@25.11.2/build/js/intlTelInput.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/slim-select@4.3.0/dist/slimselect.iife.js" defer></script>
-    <script th:src="@{/assets/js/util.js}" defer></script>
-    <script th:src="@{/assets/js/partner-central.js}" defer></script>
-    <script th:src="@{/assets/js/join.js}" defer></script>
-</head>
+<head th:replace="~{fragments/head :: head('Modifier mon profil — Ndopify Partner Central', |Modifiez votre profil d'agent Ndopify.|, ${ {'join','profile'} }, ${ {'util','partner-central','join'} }, true)}"></head>
 <!--/*
   The agent's profile (ProfileController, POST /profile), pre-filled from "answers", with "errors" per field and
   "error" when the server couldn't save it. join.js enhances it like the join wizard's steps (intl-tel-input, the
@@ -30,15 +8,7 @@
   posts, except that the neighbourhoods of a newly chosen city are loaded by join.js.
 */-->
 <body data-page="profile-edit">
-    <a class="skip-link" href="#main">Aller au contenu</a>
-    <header class="site-header">
-        <div class="site-header__inner">
-            <a class="site-header__brand" th:href="@{/}">
-                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
-            </a>
-            <nav th:replace="~{fragments/user-menu :: menu}"></nav>
-        </div>
-    </header>
+    <th:block th:replace="~{fragments/site-header :: header(@{/}, true)}"></th:block>
     <main id="main" class="page">
         <div class="column">
             <div class="page-intro">
@@ -50,7 +20,7 @@
                   th:attr="data-locations-url=@{/locations}">
                 <input type="hidden" name="version" th:value="${answers.version}">
                 <div class="alert alert--error" role="alert" th:if="${error}">
-                    <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+                    <svg th:replace="~{fragments/icon :: close}"></svg>
                     <p th:text="${error}">Enregistrement impossible pour le moment.</p>
                 </div>
 
@@ -82,8 +52,8 @@
                     <input class="input" id="whatsappNumber" name="whatsappNumber" type="tel" autocomplete="tel" required
                            aria-describedby="whatsappNumber-error" th:value="${answers.whatsappNumber}"
                            th:attr="aria-invalid=${errors['whatsappNumber'] != null ? 'true' : null}">
-                    <p class="field__error" id="whatsappNumber-error" th:hidden="${errors['whatsappNumber'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['whatsappNumber']}"></span></p>
-                    <p class="field__error" hidden data-phone-unavailable><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span>Nous ne pouvons pas vérifier ce numéro pour l'instant. Rechargez la page.</span></p>
+                    <p class="field__error" id="whatsappNumber-error" th:hidden="${errors['whatsappNumber'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['whatsappNumber']}"></span></p>
+                    <p class="field__error" hidden data-phone-unavailable><svg th:replace="~{fragments/icon :: close}"></svg><span>Nous ne pouvons pas vérifier ce numéro pour l'instant. Rechargez la page.</span></p>
                 </div>
 
                 <fieldset class="choices" data-group="experienceLevel" aria-describedby="experienceLevel-error"
@@ -99,7 +69,7 @@
                         <label class="choice"><input type="radio" name="experienceLevel" value="SENIOR" required
                                                      th:checked="${#strings.equals(answers.experienceLevel, 'SENIOR')}"> <th:block th:text="${experienceLabels['SENIOR']}">Plus de 5 ans</th:block></label>
                     </div>
-                    <p class="field__error" id="experienceLevel-error" th:hidden="${errors['experienceLevel'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['experienceLevel']}"></span></p>
+                    <p class="field__error" id="experienceLevel-error" th:hidden="${errors['experienceLevel'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['experienceLevel']}"></span></p>
                 </fieldset>
 
                 <fieldset class="choices" data-group="agentType" aria-describedby="agentType-error"
@@ -111,7 +81,7 @@
                         <label class="choice"><input type="radio" name="agentType" value="REAL_ESTATE_AGENT" required
                                                      th:checked="${#strings.equals(answers.agentType, 'REAL_ESTATE_AGENT')}"> <th:block th:text="${agentTypeLabels['REAL_ESTATE_AGENT']}">Rattaché à une agence immobilière</th:block></label>
                     </div>
-                    <p class="field__error" id="agentType-error" th:hidden="${errors['agentType'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['agentType']}"></span></p>
+                    <p class="field__error" id="agentType-error" th:hidden="${errors['agentType'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['agentType']}"></span></p>
                 </fieldset>
 
                 <div class="field">
@@ -122,7 +92,7 @@
                         <option value="" data-placeholder="true">Choisissez une ville</option>
                         <option selected th:if="${city != null}" th:value="${city.id}" th:text="${city.name}">Douala</option>
                     </select>
-                    <p class="field__error" id="cityId-error" th:hidden="${errors['cityId'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['cityId']}"></span></p>
+                    <p class="field__error" id="cityId-error" th:hidden="${errors['cityId'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['cityId']}"></span></p>
                 </div>
 
                 <p data-neighborhoods-empty th:hidden="${city != null}">Choisissez d'abord votre ville pour voir ses quartiers.</p>
@@ -140,7 +110,7 @@
                     <p class="field__counter" id="neighborhood-counter" data-neighborhood-counter
                        th:text="|${#lists.size(neighborhoods)} sur 3 sélectionné${#lists.size(neighborhoods) > 1 ? 's' : ''}|">
                         0 sur 3 sélectionné</p>
-                    <p class="field__error" id="neighborhoodIds-error" th:hidden="${errors['neighborhoodIds'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['neighborhoodIds']}"></span></p>
+                    <p class="field__error" id="neighborhoodIds-error" th:hidden="${errors['neighborhoodIds'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['neighborhoodIds']}"></span></p>
                     <p class="visually-hidden" role="status" data-neighborhood-status></p>
                 </div>
 
@@ -153,9 +123,9 @@
                               th:text="${answers.biography}" data-char-counter="biography-counter"></textarea>
                     <p class="field__counter" id="biography-counter"
                        th:text="|${#strings.length(answers.biography)} sur ${maxBiography} caractères|">0 sur 500 caractères</p>
-                    <p class="field__error" id="biography-error" th:hidden="${errors['biography'] == null}"><svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor" stroke-linecap="round"/></svg><span data-error-text th:text="${errors['biography']}"></span></p>
+                    <p class="field__error" id="biography-error" th:hidden="${errors['biography'] == null}"><svg th:replace="~{fragments/icon :: close}"></svg><span data-error-text th:text="${errors['biography']}"></span></p>
                     <div class="hint" id="biography-hint">
-                        <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false"><circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="10" cy="6.25" r="1" fill="currentColor"/></svg>
+                        <svg th:replace="~{fragments/icon :: info}"></svg>
                         <div>
                             <p>Quelques lignes suffisent pour rassurer un client&nbsp;:</p>
                             <ul>

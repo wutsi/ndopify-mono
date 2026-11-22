@@ -1,21 +1,6 @@
 <!doctype html>
 <html lang="fr" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Connecter Telegram — Ndopify Partner Central</title>
-    <meta name="description" content="Connectez votre compte Telegram pour recevoir vos notifications Ndopify.">
-    <meta name="robots" content="noindex, nofollow">
-    <meta name="theme-color" content="#ffffff">
-    <link rel="icon" type="image/png" th:href="@{/assets/images/icon.png}">
-    <link rel="apple-touch-icon" th:href="@{/assets/images/icon.png}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:wght@700&amp;family=Montserrat:wght@400;600&amp;display=swap">
-    <link rel="stylesheet" th:href="@{/assets/css/partner-central.css}">
-    <link rel="stylesheet" th:href="@{/assets/css/telegram.css}">
-    <script th:src="@{/assets/js/partner-central.js}" defer></script>
-</head>
+<head th:replace="~{fragments/head :: head('Connecter Telegram — Ndopify Partner Central', 'Connectez votre compte Telegram pour recevoir vos notifications Ndopify.', ${ {'telegram'} }, ${ {'partner-central'} }, false)}"></head>
 <!--/*
   The Telegram connection page (TelegramController): the three steps and their two actions, each inside its step —
   the code request in the first, the bot's link in the second, which stays disabled until a code is pending.
@@ -24,15 +9,7 @@
   (already connected, server down). Everything is server-rendered: the page works without JavaScript.
 */-->
 <body data-page="telegram">
-    <a class="skip-link" href="#main">Aller au contenu</a>
-    <header class="site-header">
-        <div class="site-header__inner">
-            <a class="site-header__brand" th:href="@{/}">
-                <img th:src="@{/assets/images/logo.png}" alt="Ndopify, accueil" width="84" height="40">
-            </a>
-            <nav th:replace="~{fragments/user-menu :: menu}"></nav>
-        </div>
-    </header>
+    <th:block th:replace="~{fragments/site-header :: header(@{/}, true)}"></th:block>
     <main id="main" class="page">
         <div class="column">
             <p class="connect-back"><a th:href="@{/}">Retour à l'espace agent</a></p>
@@ -43,11 +20,7 @@
             </div>
 
             <div class="alert alert--success" role="status" data-telegram-sent th:if="${telegramCodeSent}">
-                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
-                    <circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/>
-                    <path d="m6.5 10.25 2.5 2.5 4.5-5" fill="none" stroke="currentColor"
-                          stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
+                <svg th:replace="~{fragments/icon :: check('icon')}"></svg>
                 <div>
                     <p class="alert__title">Code envoyé</p>
                     <p>Consultez l'adresse e-mail de votre compte, puis envoyez <code>/connect</code> suivi du
@@ -56,11 +29,7 @@
             </div>
 
             <div class="alert alert--error" role="alert" data-telegram-error th:if="${telegramError}">
-                <svg class="icon" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
-                    <circle cx="10" cy="10" r="8.25" fill="none" stroke="currentColor" stroke-width="1.5"/>
-                    <path d="m7 7 6 6M13 7l-6 6" fill="none" stroke="currentColor"
-                          stroke-width="1.5" stroke-linecap="round"/>
-                </svg>
+                <svg th:replace="~{fragments/icon :: close}"></svg>
                 <div>
                     <p class="alert__title">Connexion impossible</p>
                     <p th:text="${telegramError}">L'envoi du code a échoué.</p>
