@@ -8,7 +8,7 @@ the report and nothing else; put any explanation in `NOTES`. Use `-` when a valu
 it.
 
 ```
-OUTCOME: done|gate|blocked
+OUTCOME: done|handoff|gate|blocked
 GATE: question|prototype|approval|-
 STORY: #<id>|-
 BRANCH: <branch>|-
@@ -24,6 +24,8 @@ NOTES: <one or two lines; for GATE: question, one question per line>
 ```
 
 - `OUTCOME: done` — the agent's *Done when* is met.
+- `OUTCOME: handoff` — the phase ended as expected and another agent continues; `NEXT` names it (a reviewer handing a
+  pass to the author). It is not `blocked`: the chain continues.
 - `OUTCOME: gate` — a human decision is needed; `GATE` names it and `NOTES` carries the question(s) or the prototype
   paths.
 - `OUTCOME: blocked` — the agent stopped on an error or an unresolvable conflict; `NOTES` says why.
