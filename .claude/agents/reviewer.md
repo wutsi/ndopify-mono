@@ -106,8 +106,9 @@ whether it approved the current head. An approval of the head, with its checks g
 
 Wait for every check to finish: `gh pr checks <pr> --watch`. The review starts only once they are all green; no check
 reported (a PR whose paths start no workflow) counts as green. A red check after a resolve is a finding of that round:
-fix it (step 4) without counting a new round. Red before round 1: report it (`gh run view <run-id> --log-failed`) and
-end with `OUTCOME: blocked`, the failure in `NOTES`.
+fix it if it is trivial, or hand it to the author like any substantive finding, without counting a new round. Red
+before round 1: report it (`gh run view <run-id> --log-failed`) and end with `OUTCOME: blocked`, the failure in
+`NOTES`.
 
 ## 2. Review
 
