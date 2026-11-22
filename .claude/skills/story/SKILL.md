@@ -1,6 +1,6 @@
 ---
 name: story
-description: Use to take a story through its lifecycle by orchestrating the analyst, developer, reviewer and deployer agents - `groom <story-id>`, `implement <story-id>` (`push` is an alias), `review <pr-number>`, `merge <pr-number>`, `ship <story-id>`. Triggers on "groom story", "implement story", "review story PR", "merge story PR", "ship story" - not for a generic PR review.
+description: Use to take a story through its lifecycle by orchestrating the analyst, developer, reviewer and deployer agents - `groom <story-id>`, `implement <story-id>` (`push` is an alias), `review <pr-number>`, `merge <pr-number>`, `ship <story-id>`. Triggers on "groom story", "implement story", "push story", "review story PR", "merge story PR", "ship story" - not for a generic PR review.
 ---
 
 # Story workflow
@@ -39,16 +39,17 @@ supplies `tracker.statuses.*`, `repository.story_ref` and `repository.default_br
   Run the <agent> agent for <mode> <id> in <repository path>. Follow your instructions to their "Done when".
   ```
 
-- Keep the child session id. Read only the agent's report in `.claude/agent-report.md` — `OUTCOME`, `GATE`, `STORY`,
-  `BRANCH`, `WORKTREE`, `PR`, `PLAN`, `PROTOTYPE`, `STATUS`, `RELEASES`, `APPROVAL`, `NEXT`, `NOTES` — never its tool
-  transcript.
+- Keep the child session id. The agent's final message is its report, in the format of `.claude/agent-report.md` —
+  `OUTCOME`, `GATE`, `STORY`, `BRANCH`, `WORKTREE`, `PR`, `PLAN`, `PROTOTYPE`, `STATUS`, `RELEASES`, `APPROVAL`,
+  `NEXT`, `NOTES`. Read that, never its tool transcript.
 - `OUTCOME: done` — in `ship`, follow `NEXT`; in an explicit mode, report the result and stop.
 - `OUTCOME: gate` — show the user the questions in `NOTES`, or the prototype paths (`GATE: prototype`), then send their
   answer to the same child session and wait. If the harness cannot resume a child, re-dispatch the same agent for the
-  same phase: every agent rebuilds its state from git, the pull request and the story.
+  same phase with the questions already asked and the answers so far: the later phases rebuild their state from git,
+  the pull request and the story, but the analyst's answers exist only in that session.
 - `OUTCOME: blocked` — report `NOTES` and stop.
-- Unknown agent — report `OUTCOME: blocked` and tell the user to register or reload the agents. Never fall back to a
-  generic agent or do the phase yourself.
+- Unknown agent — report the block (`<agent>` is not registered) and tell the user to register or reload the agents.
+  Never fall back to a generic agent or do the phase yourself.
 
 ## Modes
 
@@ -65,7 +66,7 @@ Dispatch `developer <story-id>`. `push` is the same mode, kept as an alias. On d
 ### `review <pr-number>`
 
 Dispatch `reviewer <pr-number>`. Relay its question gates. On `APPROVAL: yes`, report it; next is `merge <pr>`. A
-`Final` review with findings stops: report the findings in `NOTES` and the pull request link.
+`Final` review with findings stops: report the findings in `NOTES`, the pull request link and the reviewer's `NEXT`.
 
 ### `merge <pr-number>`
 
@@ -84,16 +85,23 @@ gh pr list --state all --search "<repository.story_ref with the id> in:body" \
   --json number,state,mergedAt
 ```
 
-Replace the id in `repository.story_ref`. If the issue has no project item, or the search returns several pull
-requests, stop and ask.
+Replace the id in `repository.story_ref`. If the issue has no project item or more than one, or the search returns
+several pull requests, stop and ask.
 
-| Story state | Start with |
+Resolve the start point in this order; the first row that matches wins:
+
+| State | Start with |
 |---|---|
-| `tracker.statuses.backlog` | stop; ask the user to run `groom <id>` |
 | `tracker.statuses.done` | report done and stop |
-| `ready`, `in_progress`, or `review` without a pull request | `developer` |
-| `review` with an open pull request | `reviewer` |
-| a merged pull request, whatever the status | `deployer` |
+| a merged pull request, with the story in `tracker.statuses.review` | `deployer` |
+| a merged pull request in any other status | stop; the status and the merge disagree |
+| `tracker.statuses.backlog` | stop; ask the user to run `groom <id>` |
+| a closed pull request that is not merged | stop and ask |
+| an open pull request, with the story in `tracker.statuses.review` | `reviewer` |
+| an open pull request in any other status | stop; the status and the pull request disagree |
+| no pull request, with the story in `tracker.statuses.ready` or `tracker.statuses.in_progress` | `developer` |
+| no pull request, with the story in `tracker.statuses.review` | `developer` (resume the push) |
+| anything else | stop and ask |
 
 Then follow each report's `NEXT`: developer `NEXT: review <pr>` → reviewer; reviewer `NEXT: merge <pr>` → deployer;
 deployer `NEXT: none` → done. A developer `STATUS: <tracker.statuses.done>` with `NEXT: none` is a library-only story:
