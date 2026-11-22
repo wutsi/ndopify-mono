@@ -1,0 +1,35 @@
+{
+  // OpenCode V2 configuration. Rules are ordered: the last matching rule wins,
+  // so the broad allow comes first and the narrower guards follow it.
+  "$schema": "https://opencode.ai/config.json",
+  "permissions": [
+    // Run any shell command without asking...
+    { "action": "shell", "resource": "*", "effect": "allow" },
+
+    // ...except recursive/forced deletes. Matching is case-sensitive on
+    // macOS/Linux, so every flag spelling and casing needs its own rule.
+    { "action": "shell", "resource": "rm -rf *", "effect": "ask" },
+    { "action": "shell", "resource": "rm -rF *", "effect": "ask" },
+    { "action": "shell", "resource": "rm -Rf *", "effect": "ask" },
+    { "action": "shell", "resource": "rm -RF *", "effect": "ask" },
+    { "action": "shell", "resource": "rm -fr *", "effect": "ask" },
+    { "action": "shell", "resource": "rm -fR *", "effect": "ask" },
+    { "action": "shell", "resource": "rm -Fr *", "effect": "ask" },
+    { "action": "shell", "resource": "rm -FR *", "effect": "ask" },
+    { "action": "shell", "resource": "rm -r *", "effect": "ask" },
+    { "action": "shell", "resource": "rm -R *", "effect": "ask" },
+    { "action": "shell", "resource": "rm --recursive *", "effect": "ask" },
+    { "action": "shell", "resource": "rm --force --recursive *", "effect": "ask" },
+    { "action": "shell", "resource": "rm --recursive --force *", "effect": "ask" },
+    { "action": "shell", "resource": "sudo rm *", "effect": "ask" },
+
+    // Force pushes still need an explicit approval.
+    { "action": "shell", "resource": "git push --force*", "effect": "ask" }
+  ],
+
+  // The story workflow nests one level: the analyst subagent dispatches the
+  // designer subagent. The default depth of 1 forbids that.
+  "experimental": {
+    "subagent_depth": 2
+  }
+}
